@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import java.net.URL
+import java.net.{URI, URL}
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
@@ -565,4 +565,4 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case Resource.URL(url) =>
           Nil
         case Resource.URLToCopy(url, dest) =>
-          Seq(copy(new URL(url).openStream(), dest))
+          Seq(copy(URI(url).toURL.openStream(), dest))

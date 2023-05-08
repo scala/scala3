@@ -1,6 +1,6 @@
 package dotty.tools.scaladoc
 
-import java.net.URL
+import java.net.{URI, URL}
 import scala.util.matching._
 import scala.util.{ Try, Success, Failure }
 
@@ -30,7 +30,7 @@ object ExternalDocLink:
   def parseLegacy(mapping: String): Either[String, ExternalDocLink] =
     mapping.split("#").toList match
       case path :: apiUrl :: Nil => for {
-        url <- tryParse(mapping, "url")(URL(stripIndex(apiUrl)))
+        url <- tryParse(mapping, "url")(URI(stripIndex(apiUrl)).toURL)
       } yield ExternalDocLink(
         List(s"${Regex.quote(path)}.*".r),
         url,
@@ -42,7 +42,7 @@ object ExternalDocLink:
   def parse(mapping: String): Either[String, ExternalDocLink] =
 
     def parsePackageList(elements: List[String]) = elements match
-     case List(urlStr) => tryParse(mapping, "packageList")(Some(URL(urlStr)))
+     case List(urlStr) => tryParse(mapping, "packageList")(Some(URI(urlStr).toURL))
      case Nil => Right(None)
      case other => fail(mapping, s"Provided multiple package lists: $other")
 
@@ -57,7 +57,7 @@ object ExternalDocLink:
       case regexStr :: docToolStr :: urlStr :: rest =>
         for {
           regex <- tryParse(mapping, "regex")(regexStr.r)
-          url <- tryParse(mapping, "url")(URL(stripIndex(urlStr)))
+          url <- tryParse(mapping, "url")(URI(stripIndex(urlStr)).toURL)
           doctool <- doctoolByName(docToolStr)
           packageList <- parsePackageList(rest)
         } yield ExternalDocLink(
