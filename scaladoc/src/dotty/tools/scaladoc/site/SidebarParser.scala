@@ -44,13 +44,15 @@ object Sidebar:
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
       Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar(_, content)).toList, Option.when(dir.nonEmpty)(dir))
     case RawInput(title, page, index, subsection, dir, hidden) =>
-      val errors = (title.isEmpty(), page.isEmpty(), index.isEmpty(), subsection.isEmpty(), dir.isEmpty())
-      errors match
-        case (true, _, _, _, _) =>
-          report.error(s"Title is not provided.\n$schemaMessage")
-        case (false, true, true, _, _) =>
-          report.error(s"Index or page path to at least one page is missing.\n$schemaMessage")
-        case _ => report.error(s"Error parsing YAML configuration file.\n$schemaMessage")
+      if title.isEmpty() then
+        val msg = "Error parsing YAML configuration file: Title is not provided."
+        report.error(s"$msg\n$schemaMessage")
+      else if title.nonEmpty && (page.isEmpty() || index.isEmpty()) then
+        val msg = "Error parsing YAML configuration file: Index or page path to at least one page is missing."
+        report.error(s"$msg\n$schemaMessage")
+      else
+        val msg = "The parsing seems not to have been done correctly."
+        report.warning(s"$msg\n$schemaMessage")
       Sidebar.Page(None, page, hidden)
 
   private def schemaMessage: String =
