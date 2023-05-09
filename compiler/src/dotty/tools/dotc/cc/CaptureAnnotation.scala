@@ -74,3 +74,9 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     case _ => false
 
 end CaptureAnnotation
+
+object CaptureAnnotation:
+  /** Capture annotation with an additional field which is a set of
+   *  captures that are known to be separated from. */
+  final class SeparationCaptureAnnotation(refs: CaptureSet, val seps: CaptureSet, boxed: Boolean)(cls: Symbol) extends CaptureAnnotation(refs, boxed)(cls)
+

@@ -636,7 +636,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
       def recur(expected: Type): Type = expected.dealias match
         case expected @ CapturingType(eparent, refs) =>
-          CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
+          expected.derivedCapturingType(recur(eparent), refs)
         case expected @ defn.FunctionOf(args, resultType, isContextual)
           if defn.isNonRefinedFunction(expected) && defn.isFunctionType(actual) && !defn.isNonRefinedFunction(actual) =>
           val expected1 = toDepFun(args, resultType, isContextual)

@@ -1041,6 +1041,8 @@ class Definitions {
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
+  @tu lazy val RetainsWithSepAnnot: ClassSymbol = requiredClass("scala.annotation.retainsWithSep")
+  @tu lazy val ReaderAnnot: ClassSymbol = requiredClass("scala.annotation.reader")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
