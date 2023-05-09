@@ -2540,13 +2540,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr): Symbol =
         newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
       def newMethod(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
-        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validMethodFlags)
-        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin)
+        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
-        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validValFlags)
-        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags, tpe, privateWithin)
+        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags, tpe, privateWithin1)
       def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
         checkValidFlags(flags.toTermFlags, Flags.validBindFlags)
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Case, tpe)
