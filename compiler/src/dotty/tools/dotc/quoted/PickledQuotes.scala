@@ -100,9 +100,9 @@ object PickledQuotes {
   private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
     def evaluateHoles = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
-        case Hole(isTermHole, idx, args, _, _) =>
+        case Hole(isTerm, idx, args, _, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
-            if isTermHole then
+            if isTerm then
               val quotedExpr = termHole match
                 case ExprHole.V1(evalHole) =>
                   evalHole.nn.apply(idx, reifyExprHoleV1Args(args), QuotesImpl())
