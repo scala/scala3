@@ -254,7 +254,8 @@ The following two rewritings are tried in order:
     not a wildcard import, pick the expansion from that import. Otherwise, report
     an ambiguous reference error.
 
-    **Note**: This relaxation is currently enabled only under the `experimental.relaxedExtensionImports` language import.
+    **Note**: This relaxation of the import rules applies only if the method `m` is used as an extension method. If it is used as a normal method in prefix form, the usual import rules apply, which means that importing `m` from
+    multiple places can lead to an ambiguity error.
 
  2. If the first rewriting does not typecheck with expected type `T`,
     and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.m[Ts](e)`. An object `o` is _eligible_ if

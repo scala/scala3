@@ -29,7 +29,6 @@ object Feature:
   val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
   val clauseInterleaving = experimental("clauseInterleaving")
-  val relaxedExtensionImports = experimental("relaxedExtensionImports")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")

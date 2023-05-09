@@ -260,7 +260,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           then
             altImports.uncheckedNN += altImp
 
-        if Feature.enabled(Feature.relaxedExtensionImports) && altImports != null && ctx.isImportContext then
+        if altImports != null && ctx.isImportContext then
           val curImport = ctx.importInfo.uncheckedNN
           namedImportRef(curImport) match
             case altImp: TermRef =>
