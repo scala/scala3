@@ -1,0 +1,84 @@
+-- [E181] Potential Issue Error: tests/neg/i17266.scala:4:2 ------------------------------------------------------------
+4 |  synchronized { // error
+  |  ^^^^^^^^^^^^
+  |  Suspicious call to Predef.synchronized
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Top-level unqualified calls to AnyRef or Any methods such as synchronized are
+  | resolved to calls on Predef. This might not be what you intended.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E182] Potential Issue Error: tests/neg/i17266.scala:9:7 ------------------------------------------------------------
+9 |  this.synchronized { // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  Suspicious top-level call to this.synchronized
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Top-level calls to AnyRef or Any methods are resolved to calls on the
+  | synthetic package object generated for the current file. This might not be
+  | what you intended.
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E181] Potential Issue Error: tests/neg/i17266.scala:22:2 -----------------------------------------------------------
+22 |  wait() // error
+   |  ^^^^
+   |  Suspicious call to Predef.wait
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Top-level unqualified calls to AnyRef or Any methods such as wait are
+   | resolved to calls on Predef. This might not be what you intended.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E182] Potential Issue Error: tests/neg/i17266.scala:25:7 -----------------------------------------------------------
+25 |  this.wait() // error
+   |  ^^^^^^^^^
+   |  Suspicious top-level call to this.wait
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Top-level calls to AnyRef or Any methods are resolved to calls on the
+   | synthetic package object generated for the current file. This might not be
+   | what you intended.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E181] Potential Issue Error: tests/neg/i17266.scala:32:2 -----------------------------------------------------------
+32 |  wait(10) // error
+   |  ^^^^
+   |  Suspicious call to Predef.wait
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Top-level unqualified calls to AnyRef or Any methods such as wait are
+   | resolved to calls on Predef. This might not be what you intended.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E182] Potential Issue Error: tests/neg/i17266.scala:35:7 -----------------------------------------------------------
+35 |  this.wait(10) // error
+   |  ^^^^^^^^^
+   |  Suspicious top-level call to this.wait
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Top-level calls to AnyRef or Any methods are resolved to calls on the
+   | synthetic package object generated for the current file. This might not be
+   | what you intended.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E181] Potential Issue Error: tests/neg/i17266.scala:42:2 -----------------------------------------------------------
+42 |  hashCode() // error
+   |  ^^^^^^^^
+   |  Suspicious call to Predef.hashCode
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Top-level unqualified calls to AnyRef or Any methods such as hashCode are
+   | resolved to calls on Predef. This might not be what you intended.
+    --------------------------------------------------------------------------------------------------------------------
+-- [E182] Potential Issue Error: tests/neg/i17266.scala:45:7 -----------------------------------------------------------
+45 |  this.hashCode() // error
+   |  ^^^^^^^^^^^^^
+   |  Suspicious top-level call to this.hashCode
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | Top-level calls to AnyRef or Any methods are resolved to calls on the
+   | synthetic package object generated for the current file. This might not be
+   | what you intended.
+    --------------------------------------------------------------------------------------------------------------------
