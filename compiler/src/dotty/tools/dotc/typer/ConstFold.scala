@@ -23,7 +23,11 @@ object ConstFold:
     nme.ADD, nme.SUB, nme.MUL, nme.DIV, nme.MOD)
 
   val foldedUnops = Set[Name](
-    nme.UNARY_!, nme.UNARY_~, nme.UNARY_+, nme.UNARY_-)
+    nme.UNARY_!, nme.UNARY_~, nme.UNARY_+, nme.UNARY_-,
+    nme.toChar, nme.toInt, nme.toFloat, nme.toLong, nme.toDouble,
+    // toByte and toShort are NOT included because we cannot write
+    // the type of a constant byte or short
+  )
 
   def Apply[T <: Apply](tree: T)(using Context): T =
     tree.fun match
@@ -88,6 +92,12 @@ object ConstFold:
     case (nme.UNARY_- , LongTag   ) => Constant(-x.longValue)
     case (nme.UNARY_- , FloatTag  ) => Constant(-x.floatValue)
     case (nme.UNARY_- , DoubleTag ) => Constant(-x.doubleValue)
+
+    case (nme.toChar  , _ ) if x.isNumeric => Constant(x.charValue)
+    case (nme.toInt   , _ ) if x.isNumeric => Constant(x.intValue)
+    case (nme.toLong  , _ ) if x.isNumeric => Constant(x.longValue)
+    case (nme.toFloat , _ ) if x.isNumeric => Constant(x.floatValue)
+    case (nme.toDouble, _ ) if x.isNumeric => Constant(x.doubleValue)
 
     case _ => null
   }
