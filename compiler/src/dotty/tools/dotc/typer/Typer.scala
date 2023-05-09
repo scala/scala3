@@ -438,7 +438,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val found =
                 if owner.is(Package) then
                   owner.denot.asClass.membersNamed(name)
-                    .filterWithPredicate(d => !d.symbol.is(Package) && d.symbol.source == denot.symbol.source)
+                    .filterWithPredicate(d => !d.symbol.is(Package)
+                      && denot.symbol.source.exists
+                      && d.symbol.source == denot.symbol.source)
                 else
                   val scope = if owner.isClass then owner.info.decls else outer.scope
                   scope.denotsNamed(name)
@@ -479,7 +481,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 result = checkNewOrShadowed(found, Definition) // no need to go further out, we found highest prec entry
                 found match
                   case found: NamedType
-                  if curOwner.isClass && isInherited(found.denot) && !ctx.compilationUnit.isJava =>
+                  if curOwner.isClass && found.denot.exists && isInherited(found.denot) && !ctx.compilationUnit.isJava =>
                     checkNoOuterDefs(found.denot, ctx, ctx)
                   case _ =>
               else
