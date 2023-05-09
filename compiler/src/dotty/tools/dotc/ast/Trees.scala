@@ -1563,8 +1563,8 @@ object Trees {
               cpy.Quote(tree)(transform(body)(using quoteContext))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr)(using spliceContext))
-            case tree @ Hole(_, _, args, content, tpt) =>
-              cpy.Hole(tree)(args = transform(args), content = transform(content), tpt = transform(tpt))
+            case tree @ Hole(isTerm, idx, args, content, tpt) =>
+              cpy.Hole(tree)(isTerm, idx, transform(args), transform(content), transform(tpt))
             case _ =>
               transformMoreCases(tree)
           }
