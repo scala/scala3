@@ -116,8 +116,6 @@ trait Plugins {
 
   /** Add plugin phases to phase plan */
   def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
-    // plugin-specific options.
-    // The user writes `-P:plugname:opt1,opt2`, but the plugin sees `List(opt1, opt2)`.
     def options(plugin: Plugin): List[String] = {
       def namec = plugin.name + ":"
       ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
