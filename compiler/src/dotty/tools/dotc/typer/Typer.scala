@@ -233,7 +233,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           found
         else
           if !scala2pkg && !previous.isError && !found.isError then
-            fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx))
+            fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx,
+              isExtension = previous.termSymbol.is(ExtensionMethod) && found.termSymbol.is(ExtensionMethod)))
           previous
 
       /** Assemble and check alternatives to an imported reference. This implies:

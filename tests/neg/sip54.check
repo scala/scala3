@@ -1,0 +1,17 @@
+-- [E049] Reference Error: tests/neg/sip54.scala:12:8 ------------------------------------------------------------------
+12 |val _ = meth(foo)() // error // error
+   |        ^^^^
+   |        Reference to meth is ambiguous.
+   |        It is both imported by import A._
+   |        and imported subsequently by import B._
+   |
+   |         Hint: This error may arise if extension method `meth` is called as a normal method.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/sip54.scala:12:13 -------------------------------------------------------------
+12 |val _ = meth(foo)() // error // error
+   |             ^^^
+   |             Found:    (foo : Foo)
+   |             Required: Bar
+   |
+   | longer explanation available when compiling with `-explain`
