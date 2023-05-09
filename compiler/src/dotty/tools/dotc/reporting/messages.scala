@@ -2288,6 +2288,25 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
         |It can be removed without changing the semantics of the program. This may indicate an error."""
 }
 
+class CallToAnyRefMethodOnPredef(stat: untpd.Tree, method: Symbol)(using Context)
+  extends Message(CallToAnyRefMethodOnPredefID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Suspicious call to ${hl("Predef." + method.name)}"
+  def explain(using Context) =
+    i"""Top-level unqualified calls to ${hl("AnyRef")} or ${hl("Any")} methods such as ${hl(method.name.toString)} are
+       |resolved to calls on ${hl("Predef")}. This might not be what you intended."""
+}
+
+class CallToAnyRefMethodOnPackageObject(stat: untpd.Tree, method: Symbol)(using Context)
+  extends Message(CallToAnyRefMethodOnPackageObjectID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Suspicious top-level call to ${hl("this." + method.name)}"
+  def explain(using Context) =
+    i"""Top-level calls to ${hl("AnyRef")} or ${hl("Any")} methods are resolved to calls on the
+       |synthetic package object generated for the current file. This might not be
+       |what you intended."""
+}
+
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
   def msg(using Context) = i"Companion of traits cannot define mutable @static fields"

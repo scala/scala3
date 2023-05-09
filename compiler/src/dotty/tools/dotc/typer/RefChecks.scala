@@ -1090,6 +1090,17 @@ object RefChecks {
 
   end checkImplicitNotFoundAnnotation
 
+  def checkSynchronizedCall(tree: Tree, symbol: Symbol)(using Context) =
+    if symbol.exists && defn.topClasses.contains(symbol.owner) then
+      tree.tpe match
+        case tp: NamedType =>
+          val prefixSymbol = tp.prefix.typeSymbol
+          if prefixSymbol == defn.ScalaPredefModuleClass then
+            report.warning(CallToAnyRefMethodOnPredef(tree, symbol), tree)
+          if prefixSymbol.isPackageObject && !tp.symbol.isConstructor then
+            report.warning(CallToAnyRefMethodOnPackageObject(tree, symbol), tree)
+        case _ => ()
+
 }
 import RefChecks._
 
@@ -1168,6 +1179,15 @@ class RefChecks extends MiniPhase { thisPhase =>
       report.error(ex, tree.srcPos)
       tree
   }
+
+  override def transformSelect(tree: Select)(using Context): Tree =
+    checkSynchronizedCall(tree, tree.denot.symbol)
+    tree
+
+  override def transformIdent(tree: Ident)(using Context): Tree =
+    checkSynchronizedCall(tree, tree.symbol)
+    tree
+
 }
 
 /* todo: rewrite and re-enable

@@ -17,8 +17,10 @@ import scala.util.control.{ControlThrowable, NonFatal}
 
 import dotc.config.CommandLineParser
 
+object Dummy
+
 def scripts(path: String): Array[File] = {
-  val dir = new File(this.getClass.getResource(path).getPath)
+  val dir = new File(Dummy.getClass.getResource(path).getPath)
   assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
   dir.listFiles.filter { f =>
     val path = if f.isDirectory then f.getPath + "/" else f.getPath
