@@ -3,6 +3,10 @@ package site
 
 import org.junit.Test
 import org.junit.Assert._
+import dotty.tools.scaladoc.site.Sidebar
+import dotty.tools.scaladoc.site.Sidebar.RawInput
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 
 // TODO add negaitve and more details tests
 class SidebarParserTest:
@@ -34,10 +38,10 @@ class SidebarParserTest:
       |          - page: my-page6/my-page6/my-page6.md
       """.stripMargin
 
-  private val sidebarErrorNoTitle =
-      """index: index.md
+  private val sidebarErrorNoPage =
+    """index: index.md
       |subsection:
-      |    page: my-page1.md
+      |  - title: My title
       |  - page: my-page2.md
       |  - page: my-page3/subsection
       |  - title: Reference
@@ -60,28 +64,12 @@ class SidebarParserTest:
       |          - page: my-page6/my-page6/my-page6.md
       """.stripMargin
 
-  private val msg = "Error parsing YAML configuration file: Title is not provided."
+  private val msgNoTitle = "Error parsing YAML configuration file: Title is not provided."
+  private val msgNoPage = "Error parsing YAML configuration file: Index or page path to at least one page is missing."
 
-  private def schemaMessage: String =
-    s"""Static site YAML configuration file should comply with the following description:
-      |The root element of static site needs to be <subsection>
-      |`title` and `directory` properties are ignored in root subsection.
-      |
-      |<subsection>:
-      |  title: <string> # optional - Default value is file name. Title can be also set using front-matter.
-      |  index: <string> # optional - If not provided, default empty index template is generated.
-      |  directory: <string> # optional - By default, directory name is title name in kebab case.
-      |  subsection: # optional - If not provided, pages are loaded from the index directory
-      |    - <subsection> | <page>
-      |  # either index or subsection needs to be present
-      |<page>:
-      |  title: <string> # optional - Default value is file name. Title can be also set using front-matter.
-      |  page: <string>
-      |  hidden: <boolean> # optional - Default value is false.
-      |
-      |For more information visit:
-      |https://docs.scala-lang.org/scala3/guides/scaladoc/static-site.html
-      |""".stripMargin
+  private def schemaMessage: String = Sidebar.schemaMessage
+
+  private val noPageExpectedError = s"$msgNoPage\n$schemaMessage\nPage my-page2.md does not exist.\nPage my-page3/subsection does not exist.\nPage my-page3.md does not exist.\nPage my-page4/my-page4.md does not exist.\nPage my-page5/my-page5.md does not exist.\nPage my-page7/my-page7.md does not exist.\nPage my-page6/my-page6/my-page6.md does not exist."
 
   @Test
   def loadSidebar(): Unit = assertEquals(
@@ -103,15 +91,11 @@ class SidebarParserTest:
     Sidebar.load(sidebar)(using testContext)
   )
 
-  @Test(expected = classOf[IllegalArgumentException])
+  @Test
   def loadSidebarError(): Unit =
-    assertEquals(
-    Sidebar.Category(
-      None,
-      None,
-      List(),
-      None
-    ),
-    Sidebar.load(sidebarErrorNoTitle)(using testContext)
-    )
-    throw new IllegalArgumentException(s"$msg\n$schemaMessage")
+    val out = new ByteArrayOutputStream()
+    Console.withErr(new PrintStream(out)) {
+      Sidebar.load(sidebarErrorNoPage)(using testContext)
+    }
+    val error = out.toString().trim()
+    assertEquals(noPageExpectedError, error)

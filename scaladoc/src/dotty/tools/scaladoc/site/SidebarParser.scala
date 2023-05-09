@@ -55,7 +55,7 @@ object Sidebar:
         report.warning(s"$msg\n$schemaMessage")
       Sidebar.Page(None, page, hidden)
 
-  private def schemaMessage: String =
+  def schemaMessage: String =
     s"""Static site YAML configuration file should comply with the following description:
       |The root element of static site needs to be <subsection>
       |`title` and `directory` properties are ignored in root subsection.
@@ -73,8 +73,7 @@ object Sidebar:
       |  hidden: <boolean> # optional - Default value is false.
       |
       |For more information visit:
-      |https://docs.scala-lang.org/scala3/guides/scaladoc/static-site.html
-      |""".stripMargin
+      |https://docs.scala-lang.org/scala3/guides/scaladoc/static-site.html""".stripMargin
 
   def load(content: String | java.io.File)(using CompilerContext): Sidebar.Category =
     import scala.util.Try
