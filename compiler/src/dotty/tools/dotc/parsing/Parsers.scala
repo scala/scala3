@@ -1673,7 +1673,7 @@ object Parsers {
       infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
         isOperator = !followingIsVararg() && !isPureArrow)
 
-    /** RefinedType   ::=  WithType {[nl] (Refinement} [`^` CaptureSet]
+    /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
      */
     val refinedTypeFn: Location => Tree = _ => refinedType()
 
