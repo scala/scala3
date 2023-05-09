@@ -1033,16 +1033,15 @@ object Trees {
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
    *  It is only used when picking quotes (will never be in a TASTy file).
    *
-   *  @param isTermHole If this hole is a term, otherwise it is a type hole.
+   *  @param isTerm If this hole is a term, otherwise it is a type hole.
    *  @param idx The index of the hole in it's enclosing level 0 quote.
    *  @param args The arguments of the splice to compute its content
    *  @param content Lambda that computes the content of the hole. This tree is empty when in a quote pickle.
    *  @param tpt Type of the hole
    */
-  case class Hole[+T <: Untyped](isTermHole: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+  case class Hole[+T <: Untyped](override val isTerm: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[+T <: Untyped] <: Hole[T]
-    override def isTerm: Boolean = isTermHole
-    override def isType: Boolean = !isTermHole
+    override def isType: Boolean = !isTerm
   }
 
   def flatten[T <: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {

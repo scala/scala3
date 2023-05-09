@@ -397,8 +397,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Throw(expr: Tree)(using Context): Tree =
     ref(defn.throwMethod).appliedTo(expr)
 
-  def Hole(isTermHole: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
-    ta.assignType(untpd.Hole(isTermHole, idx, args, content, tpt), tpt)
+  def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
+    ta.assignType(untpd.Hole(isTerm, idx, args, content, tpt), tpt)
 
   // ------ Making references ------------------------------------------------------
 
