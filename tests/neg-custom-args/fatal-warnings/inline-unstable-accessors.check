@@ -5,11 +5,6 @@
   |
   |    Annotate valBinaryAPI1 with `@binaryAPIAccessor` to generate a stable accessor.
   |
-  |    Adding @binaryAPIAccessor may break binary compatibility if a previous version of this
-  |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-  |    using MiMa. To keep binary you can add the following accessor to class A:
-  |      @binaryAPI private[A] final def foo$A$$inline$valBinaryAPI1: Int = this.valBinaryAPI1
-  |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:10:4 ------------------------------------
 10 |    valBinaryAPI2 + // error
    |    ^^^^^^^^^^^^^
@@ -19,9 +14,8 @@
    |
    |    Adding @binaryAPI may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to class A:
-   |      @binaryAPI private[A] def foo$A$$inline$valBinaryAPI2: Int = this.valBinaryAPI2
-   |
+   |    using MiMa. To keep binary compatibility you can use @binaryAPIAccessor on
+   |    val valBinaryAPI2.
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:15:6 ------------------------------------
 15 |    a.valBinaryAPI2 + // error
    |    ^^^^^^^^^^^^^^^
@@ -31,7 +25,7 @@
    |
    |    Adding @binaryAPI may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to class B:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to class B:
    |      @binaryAPI private[B] def inline$valBinaryAPI2$i1(x$0: foo.A): Int = x$0.valBinaryAPI2
    |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:24:4 ------------------------------------
@@ -43,7 +37,7 @@
    |
    |    Adding @binaryAPIAccessor may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to class C:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to class C:
    |      @binaryAPI private[C] final def inline$valBinaryAPI1: Int = this.valBinaryAPI1
    |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:25:4 ------------------------------------
@@ -55,7 +49,7 @@
    |
    |    Adding @binaryAPI may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to class C:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to class C:
    |      @binaryAPI private[C] def inline$valBinaryAPI2: Int = this.valBinaryAPI2
    |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:30:6 ------------------------------------
@@ -67,7 +61,7 @@
    |
    |    Adding @binaryAPI may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to class D:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to class D:
    |      @binaryAPI private[D] def inline$valBinaryAPI2$i2(x$0: foo.C): Int = x$0.valBinaryAPI2
    |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:39:4 ------------------------------------
@@ -79,7 +73,7 @@
    |
    |    Adding @binaryAPIAccessor may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to object E:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to object E:
    |      @binaryAPI private[E] final def inline$valBinaryAPI1: Int = foo.E.valBinaryAPI1
    |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:40:4 ------------------------------------
@@ -91,7 +85,7 @@
    |
    |    Adding @binaryAPI may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to object E:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to object E:
    |      @binaryAPI private[E] def inline$valBinaryAPI2: Int = foo.E.valBinaryAPI2
    |
 -- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:45:6 ------------------------------------
@@ -103,6 +97,6 @@
    |
    |    Adding @binaryAPI may break binary compatibility if a previous version of this
    |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-   |    using MiMa. To keep binary you can add the following accessor to object F:
+   |    using MiMa. To keep binary compatibility you can add the following accessor to object F:
    |      @binaryAPI private[F] def inline$valBinaryAPI2$i3(x$0: foo.E): Int = x$0.valBinaryAPI2
    |

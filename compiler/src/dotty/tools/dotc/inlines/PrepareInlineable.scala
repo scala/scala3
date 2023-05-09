@@ -110,13 +110,25 @@ object PrepareInlineable {
             s"Annotate ${accessed.name} with `$annot` to generate a stable accessor."
           else
             s"Annotate ${accessed.name} with `$annot` to make it accessible."
+
         val binaryCompat =
-          s"""Adding $annot may break binary compatibility if a previous version of this
-              |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
-              |using MiMa. To keep binary you can add the following accessor to ${accessor.owner.showKind} ${accessor.owner.name.stripModuleClassSuffix}:
-              |  @binaryAPI private[${accessor.owner.name.stripModuleClassSuffix}] ${accessorDefTree.show}
-              |
-              |""".stripMargin
+          val accessorClass = AccessProxies.hostForAccessorOf(accessed: Symbol)
+          val inlineAccessorMatches =
+            accessor.name == InlineAccessorName(accessed.name.asTermName).expandedName(accessorClass)
+          if !inlineAccessorMatches then
+            s"""Adding $annot may break binary compatibility if a previous version of this
+                |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+                |using MiMa. To keep binary compatibility you can add the following accessor to ${accessor.owner.showKind} ${accessor.owner.name.stripModuleClassSuffix}:
+                |  @binaryAPI private[${accessor.owner.name.stripModuleClassSuffix}] ${accessorDefTree.show}
+                |
+                |""".stripMargin
+          else if !accessed.is(Private) then
+            s"""Adding $annot may break binary compatibility if a previous version of this
+                |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+                |using MiMa. To keep binary compatibility you can use @binaryAPIAccessor on
+                |$accessed.""".stripMargin
+          else
+            ""
         report.warning(em"Generated unstable inline accessor for $accessed defined in ${accessed.owner}.\n\n$solution\n\n$binaryCompat", srcPos)
     }
 
