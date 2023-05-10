@@ -86,15 +86,15 @@ class Splicing extends MacroTransform:
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       assert(level == 0)
       tree match
-        case Apply(Select(_: Quote, nme.apply), _) =>
-          QuoteTransformer().transform(tree)
+        case tree: Quote =>
+          val body1 = QuoteTransformer().transform(tree.body)(using quoteContext)
+          cpy.Quote(tree)(body = body1)
         case tree: DefDef if tree.symbol.is(Inline) =>
           // Quotes in inlined methods are only pickled after they are inlined.
           tree
         case _ =>
           super.transform(tree)
   end Level0QuoteTransformer
-
 
   /** Transforms all direct splices in the current quote and replace them with holes. */
   private class QuoteTransformer() extends Transformer:
@@ -108,6 +108,7 @@ class Splicing extends MacroTransform:
     private val typeHoles = mutable.Map.empty[TermRef, Hole]
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
+      assert(level > 0)
       tree match
         case tree: Splice if level == 1 =>
           val holeIdx = numHoles
