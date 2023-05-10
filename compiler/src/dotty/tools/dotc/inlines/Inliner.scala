@@ -566,8 +566,11 @@ class Inliner(val call: tpd.Tree)(using Context):
   protected val inlinerTypeMap: InlinerTypeMap = InlinerTypeMap()
   protected val inlinerTreeMap: InlinerTreeMap = InlinerTreeMap()
 
+  protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
+    inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
+
   /** The Inlined node representing the inlined call */
-  def inlined(rhsToInline: tpd.Tree): (List[MemberDef], Tree) =
+  def inlined(rhsToInline: tpd.Tree)(using Context): (List[MemberDef], Tree) =
     inlining.println(i"-----------------------\nInlining $call\nWith RHS $rhsToInline")
 
     def paramTypess(call: Tree, acc: List[List[Type]]): List[List[Type]] = call match
@@ -609,7 +612,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
-    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
+    val inlineCtx = this.inlineCtx(inlineTyper)
 
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to

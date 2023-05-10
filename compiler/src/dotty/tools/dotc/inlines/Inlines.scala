@@ -550,6 +550,9 @@ object Inlines:
     override protected val inlinerTypeMap: InlinerTypeMap = InlineTraitTypeMap()
     override protected val inlinerTreeMap: InlinerTreeMap = InlineTraitTreeMap()
 
+    override protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
+      ctx.fresh.setTyper(inlineTyper).setNewScope
+
     private val paramAccessorsValueOf: Map[Name, Tree] =
       def allArgs(tree: Tree, acc: Vector[List[Tree]]): List[List[Tree]] = tree match
         case Apply(fun, args) => allArgs(fun, acc :+ args)
@@ -620,7 +623,7 @@ object Inlines:
         if vdef.symbol.isTermParamAccessor then
           paramAccessorsValueOf(vdef.symbol.name)
         else
-          inlinedRhs(vdef.rhs.changeOwner(vdef.symbol, inlinedSym))
+          inlinedRhs(vdef, inlinedSym)
       tpd.ValDef(inlinedSym.asTerm, rhs).withSpan(parent.span)
 
     private def inlinedDefDef(ddef: DefDef, inlinedSym: Symbol)(using Context): DefDef =
@@ -631,7 +634,8 @@ object Inlines:
           paramss =>
             val oldParamSyms = ddef.paramss.flatten.map(_.symbol)
             val newParamSyms = paramss.flatten.map(_.symbol)
-            inlinedRhs(ddef.rhs.subst(oldParamSyms, newParamSyms).changeOwner(ddef.symbol, inlinedSym))
+            val ddef1 = cpy.DefDef(ddef)(rhs = ddef.rhs.subst(oldParamSyms, newParamSyms))
+            inlinedRhs(ddef1, inlinedSym)
       tpd.DefDef(inlinedSym.asTerm, rhsFun).withSpan(parent.span)
 
     private def inlinedPrimaryConstructorDefDef(ddef: DefDef)(using Context): DefDef =
@@ -652,11 +656,12 @@ object Inlines:
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
       tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
 
-    private def inlinedRhs(rhs: Tree): Tree =
+    private def inlinedRhs(vddef: ValOrDefDef, inlinedSym: Symbol)(using Context): Tree =
+      val rhs = vddef.rhs.changeOwner(vddef.symbol, inlinedSym)
       if rhs.isEmpty then
         rhs
       else
-        val inlinedRhs = inlined(rhs)._2
+        val inlinedRhs = inContext(ctx.withOwner(inlinedSym)) { inlined(rhs)._2 }
         Inlined(tpd.ref(parentSym), Nil, inlinedRhs).withSpan(parent.span)
 
   end InlineParentTrait
