@@ -884,7 +884,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
-     *  without an explicit self type have the universal capture set `{*}` on the
+     *  without an explicit self type have the universal capture set `{cap}` on the
      *  self type. If a class without explicit self type is not `effectivelyFinal`
      *  it is checked that the inferred self type is universal, in order to assure
      *  that joint and separate compilation give the same result.
@@ -941,9 +941,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  that this type parameter can't see.
      *  For example, when capture checking the following expression:
      *
-     *    def usingLogFile[T](op: (f: {*} File) => T): T = ...
+     *    def usingLogFile[T](op: (f: {cap} File) => T): T = ...
      *
-     *    usingLogFile[box ?1 () -> Unit] { (f: {*} File) => () => { f.write(0) } }
+     *    usingLogFile[box ?1 () -> Unit] { (f: {cap} File) => () => { f.write(0) } }
      *
      *  We may propagate `f` into ?1, making ?1 ill-formed.
      *  This also causes soundness issues, since `f` in ?1 should be widened to `cap`,

@@ -122,7 +122,7 @@ extends tpd.TreeTraverser:
           val sym = tp.typeSymbol
           if sym.isClass then
             sym == defn.AnyClass
-              // we assume Any is a shorthand of {*} Any, so if Any is an upper
+              // we assume Any is a shorthand of {cap} Any, so if Any is an upper
               // bound, the type is taken to be impure.
           else superTypeIsImpure(tp.superType)
         case tp: (RefinedOrRecType | MatchType) =>
@@ -155,7 +155,7 @@ extends tpd.TreeTraverser:
         case CapturingType(parent, refs) =>
           needsVariable(parent)
           && refs.isConst      // if refs is a variable, no need to add another
-          && !refs.isUniversal // if refs is {*}, an added variable would not change anything
+          && !refs.isUniversal // if refs is {cap}, an added variable would not change anything
         case _ =>
           false
     }.showing(i"can have inferred capture $tp = $result", capt)

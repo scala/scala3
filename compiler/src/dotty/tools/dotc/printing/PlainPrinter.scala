@@ -163,7 +163,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       boxText ~ toTextLocal(parent) ~ "^"
       ~ (refsText provided refsText != rootSetText)
 
-  final protected def rootSetText = Str("{*}")
+  final protected def rootSetText = Str("{cap}")
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
