@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.staging.StagingLevel
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.core.Types.TypeBounds
 
 import scala.collection.mutable.ListBuffer
 
@@ -75,7 +76,7 @@ class Inlining extends MacroTransform, SymTransformer {
           owner = tree.symbol,
           name = name.asTypeName,
           flags = tdef.symbol.flags & (Private | Protected),
-          info = Types.TypeBounds.upper(newTrait.symbol.typeRef),
+          info = TypeBounds.upper(newTrait.symbol.typeRef),
           privateWithin = tdef.symbol.privateWithin,
           coord = tdef.symbol.coord,
           nestingLevel = tdef.symbol.nestingLevel,
