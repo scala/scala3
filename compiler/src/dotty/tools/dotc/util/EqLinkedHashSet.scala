@@ -21,8 +21,8 @@ class EqLinkedHashSet[T](
     map -= x
     if map.size != linkingArray.size then linkingArray -= x
 
-  override def clear(): Unit =
-    map.clear()
+  override def clear(resetToInitial: Boolean = true): Unit =
+    map.clear(resetToInitial)
     linkingArray.clear()
 
   override def lookup(x: T): T | Null = if map.contains(x) then x else null
