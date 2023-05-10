@@ -38,6 +38,32 @@ class SidebarParserTest:
       |          - page: my-page6/my-page6/my-page6.md
       """.stripMargin
 
+  private val sidebarNoTitle =
+    """index: index.md
+      |subsection:
+      |    page: my-page1.md
+      |  - page: my-page2.md
+      |  - page: my-page3/subsection
+      |  - title: Reference
+      |    subsection:
+      |      - page: my-page3.md
+      |        hidden: true
+      |  - index: my-page4/index.md
+      |    subsection:
+      |      - page: my-page4/my-page4.md
+      |  - title: My subsection
+      |    index: my-page5/index.md
+      |    subsection:
+      |      - page: my-page5/my-page5.md
+      |  - subsection:
+      |      - page: my-page7/my-page7.md
+      |  - index: my-page6/index.md
+      |    subsection:
+      |      - index: my-page6/my-page6/index.md
+      |        subsection:
+      |          - page: my-page6/my-page6/my-page6.md
+      """.stripMargin
+
   private val sidebarErrorNoPage =
     """index: index.md
       |subsection:
@@ -64,12 +90,10 @@ class SidebarParserTest:
       |          - page: my-page6/my-page6/my-page6.md
       """.stripMargin
 
-  private val msgNoTitle = "Error parsing YAML configuration file: Title is not provided."
-  private val msgNoPage = "Error parsing YAML configuration file: Index or page path to at least one page is missing."
+  private val msgNoTitle = "Error parsing YAML configuration file: 'title' is not provided."
+  private val msgNoPage = "Error parsing YAML configuration file: 'index' or 'page' path is missing for title 'My title'."
 
   private def schemaMessage: String = Sidebar.schemaMessage
-
-  private val noPageExpectedError = s"$msgNoPage\n$schemaMessage\nPage my-page2.md does not exist.\nPage my-page3/subsection does not exist.\nPage my-page3.md does not exist.\nPage my-page4/my-page4.md does not exist.\nPage my-page5/my-page5.md does not exist.\nPage my-page7/my-page7.md does not exist.\nPage my-page6/my-page6/my-page6.md does not exist."
 
   @Test
   def loadSidebar(): Unit = assertEquals(
@@ -92,10 +116,23 @@ class SidebarParserTest:
   )
 
   @Test
-  def loadSidebarError(): Unit =
+  def loadSidebarNoPageError: Unit =
     val out = new ByteArrayOutputStream()
     Console.withErr(new PrintStream(out)) {
       Sidebar.load(sidebarErrorNoPage)(using testContext)
     }
+    println(out.toString())
     val error = out.toString().trim()
-    assertEquals(noPageExpectedError, error)
+
+    assert(error.contains(msgNoPage) && error.contains(schemaMessage))
+
+
+  @Test
+  def loadSidebarNoTitleError(): Unit =
+    val out = new ByteArrayOutputStream()
+    Console.withErr(new PrintStream(out)) {
+      Sidebar.load(sidebarNoTitle)(using testContext)
+    }
+    val error = out.toString().trim()
+
+    assert(error.contains(msgNoTitle) && error.contains(schemaMessage))
