@@ -2871,14 +2871,14 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
-    /**  Pattern1     ::= PatVar Ascription
-     *                  | [‘-’] integerLiteral Ascription
-     *                  | [‘-’] floatingPointLiteral Ascription
-     *                  | Pattern2
+    /**  Pattern1     ::= Pattern2 [Ascription]
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
-      if (isVarPattern(p) || p.isInstanceOf[Number]) && in.isColon then
+      if in.isColon then
+        val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
+        if !isVariableOrNumber then
+          warning(em"Only variable and number literal patterns can have type ascriptions")
         in.nextToken()
         ascription(p, location)
       else p
