@@ -116,8 +116,7 @@ trait QuotesAndSplices {
   }
 
   def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
-    val tpt = typedType(tree.tpt)
-    assignType(tree, tpt)
+    throw new UnsupportedOperationException("cannot type check a Hole node")
 
   /** Types a splice applied to some arguments `$f(arg1, ..., argn)` in a quote pattern.
    *

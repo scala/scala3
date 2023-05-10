@@ -746,6 +746,19 @@ object Trees {
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
   }
 
+  /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
+   *  It is only used when picking quotes (will never be in a TASTy file).
+   *
+   *  @param isTerm If this hole is a term, otherwise it is a type hole.
+   *  @param idx The index of the hole in it's enclosing level 0 quote.
+   *  @param args The arguments of the splice to compute its content
+   *  @param content Lambda that computes the content of the hole. This tree is empty when in a quote pickle.
+   */
+  case class Hole[+T <: Untyped](override val isTerm: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
+    type ThisTree[+T <: Untyped] <: Hole[T]
+    override def isType: Boolean = !isTerm
+  }
+
   /** A type tree whose type is inferred. These trees appear in two contexts
    *    - as an argument of a TypeApply. In that case its type is always a TypeVar
    *    - as a (result-)type of an inferred ValDef or DefDef.
@@ -1034,20 +1047,6 @@ object Trees {
 
   def genericEmptyValDef[T <: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T <: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
-
-  /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
-   *  It is only used when picking quotes (will never be in a TASTy file).
-   *
-   *  @param isTerm If this hole is a term, otherwise it is a type hole.
-   *  @param idx The index of the hole in it's enclosing level 0 quote.
-   *  @param args The arguments of the splice to compute its content
-   *  @param content Lambda that computes the content of the hole. This tree is empty when in a quote pickle.
-   *  @param tpt Type of the hole
-   */
-  case class Hole[+T <: Untyped](override val isTerm: Boolean, idx: Int, args: List[Tree[T]], content: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile) extends Tree[T] {
-    type ThisTree[+T <: Untyped] <: Hole[T]
-    override def isType: Boolean = !isTerm
-  }
 
   def flatten[T <: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     def recur(buf: ListBuffer[Tree[T]] | Null, remaining: List[Tree[T]]): ListBuffer[Tree[T]] | Null =
@@ -1406,9 +1405,9 @@ object Trees {
         case tree: Thicket if (trees eq tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
-      def Hole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole = tree match {
+      def Hole(tree: Tree)(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree)(using Context): Hole = tree match {
         case tree: Hole if isTerm == tree.isTerm && idx == tree.idx && args.eq(tree.args) && content.eq(tree.content) && content.eq(tree.content) => tree
-        case _ => finalize(tree, untpd.Hole(isTerm, idx, args, content, tpt)(sourceFile(tree)))
+        case _ => finalize(tree, untpd.Hole(isTerm, idx, args, content)(sourceFile(tree)))
       }
 
       // Copier methods with default arguments; these demand that the original tree
@@ -1431,8 +1430,8 @@ object Trees {
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(using Context)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
-      def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content, tpt: Tree = tree.tpt)(using Context): Hole =
-        Hole(tree: Tree)(isTerm, idx, args, content, tpt)
+      def Hole(tree: Hole)(isTerm: Boolean = tree.isTerm, idx: Int = tree.idx, args: List[Tree] = tree.args, content: Tree = tree.content)(using Context): Hole =
+        Hole(tree: Tree)(isTerm, idx, args, content)
 
     }
 
@@ -1567,8 +1566,8 @@ object Trees {
               cpy.Quote(tree)(transform(body)(using quoteContext), transform(tags))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr)(using spliceContext))
-            case tree @ Hole(isTerm, idx, args, content, tpt) =>
-              cpy.Hole(tree)(isTerm, idx, transform(args), transform(content), transform(tpt))
+            case tree @ Hole(isTerm, idx, args, content) =>
+              cpy.Hole(tree)(isTerm, idx, transform(args), transform(content))
             case _ =>
               transformMoreCases(tree)
           }
@@ -1712,8 +1711,8 @@ object Trees {
               this(this(x, body)(using quoteContext), tags)
             case Splice(expr) =>
               this(x, expr)(using spliceContext)
-            case Hole(_, _, args, content, tpt) =>
-              this(this(this(x, args), content), tpt)
+            case Hole(_, _, args, content) =>
+              this(this(x, args), content)
             case _ =>
               foldMoreCases(x, tree)
           }

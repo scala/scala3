@@ -688,7 +688,10 @@ object TreeChecker {
       super.typedSplice(tree, pt)
 
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
-      val tree1 @ Hole(isTerm, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
+      val tree1 @ Hole(isTerm, idx, args, content) = super.typedHole(tree, pt): @unchecked
+
+      assert(idx >= 0, i"hole should not have negative index: $tree")
+      assert(isTerm || tree.args.isEmpty, i"type hole should not have arguments: $tree")
 
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
@@ -696,8 +699,8 @@ object TreeChecker {
         assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
 
       // Check result type of the hole
-      if isTerm then assert(tpt.typeOpt <:< pt)
-      else assert(tpt.typeOpt =:= pt)
+      if isTerm then assert(tree1.typeOpt <:< pt)
+      else assert(tree1.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
       val argQuotedTypes = args.map { arg =>
@@ -712,8 +715,8 @@ object TreeChecker {
         else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
       }
       val expectedResultType =
-        if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
-        else defn.QuotedTypeClass.typeRef.appliedTo(tpt.typeOpt)
+        if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =

@@ -14,6 +14,7 @@ import ast.TreeTypeMap
 import SymUtils._
 import NameKinds._
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.ScalaRelease.*
 
 import scala.collection.mutable
@@ -108,12 +109,12 @@ class PickleQuotes extends MacroTransform {
       private val contents = List.newBuilder[Tree]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
-          case tree @ Hole(isTerm, _, _, content, _) =>
+          case tree @ Hole(isTerm, _, _, content) =>
             assert(isTerm)
             assert(!content.isEmpty)
             contents += content
             val holeType = getTermHoleType(tree.tpe)
-            val hole = cpy.Hole(tree)(content = EmptyTree, TypeTree(holeType))
+            val hole = untpd.cpy.Hole(tree)(content = EmptyTree).withType(holeType)
             cpy.Inlined(tree)(EmptyTree, Nil, hole)
           case tree: DefTree =>
             val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
@@ -197,7 +198,7 @@ class PickleQuotes extends MacroTransform {
 
   private def mkTagSymbolAndAssignType(typeArg: Tree, idx: Int)(using Context): TypeDef = {
     val holeType = getTypeHoleType(typeArg.tpe.select(tpnme.Underlying))
-    val hole = cpy.Hole(typeArg)(isTerm = false, idx, Nil, EmptyTree, TypeTree(holeType))
+    val hole = untpd.cpy.Hole(typeArg)(isTerm = false, idx, Nil, EmptyTree).withType(holeType)
     val local = newSymbol(
       owner = ctx.owner,
       name = UniqueName.fresh(hole.tpe.dealias.typeSymbol.name.toTypeName),

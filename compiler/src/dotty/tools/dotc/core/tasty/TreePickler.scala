@@ -685,11 +685,11 @@ class TreePickler(pickler: TastyPickler) {
               .appliedTo(expr)
               .withSpan(tree.span)
           )
-        case Hole(_, idx, args, _, tpt) =>
+        case Hole(_, idx, args, _) =>
           writeByte(HOLE)
           withLength {
             writeNat(idx)
-            pickleType(tpt.tpe, richTypes = true)
+            pickleType(tree.tpe, richTypes = true)
             args.foreach(pickleTree)
           }
       }
