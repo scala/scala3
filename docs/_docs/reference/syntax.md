@@ -312,10 +312,7 @@ TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ (InfixType | ‘_’) ‘=>’ Type [semi]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }
-Pattern1          ::=  PatVar ‘:’ RefinedType
-                    | [‘-’] integerLiteral ‘:’ RefinedType
-                    | [‘-’] floatingPointLiteral ‘:’ RefinedType
-                    |  Pattern2
+Pattern1          ::=  Pattern2 [‘:’ RefinedType]
 Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }
 SimplePattern     ::=  PatVar
