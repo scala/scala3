@@ -1,9 +1,9 @@
 import annotation.retains
 class C
-type Cap = C @retains(caps.*)
+type Cap = C @retains(caps.cap)
 
 def test1() =
-  val y: {*} String = ""
+  val y: String^ = ""
   def x: Object @retains(y) = y
 
 def test2() =
@@ -13,8 +13,8 @@ def test2() =
   z: (() -> Unit) @retains(x)
   def z2: (() -> Unit) @retains(y) = y
   z2: (() -> Unit) @retains(y)
-  val p: {*} () -> String = () => "abc"
-  val q: {p} C = ???
-  val _ = p: ({p} () -> String)
+  val p: () => String = () => "abc"
+  val q: C^{p} = ???
+  val _ = p: (() ->{p} String)
 
 

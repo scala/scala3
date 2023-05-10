@@ -223,9 +223,6 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
   /** Strip `=> T` to `T` and (under pureFunctions) `{refs}-> T` to `T` */
   def stripByNameType(tree: Tree)(using Context): Tree = unsplice(tree) match
     case ByNameTypeTree(t1) => t1
-    case untpd.CapturingTypeTree(_, parent) =>
-      val parent1 = stripByNameType(parent)
-      if parent1 eq parent then tree else parent1
     case _ => tree
 
   /** All type and value parameter symbols of this DefDef */
@@ -473,13 +470,15 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   object ImpureByNameTypeTree:
 
-    def apply(tp: ByNameTypeTree)(using Context): untpd.CapturingTypeTree =
-      untpd.CapturingTypeTree(
-        untpd.captureRoot.withSpan(tp.span.startPos) :: Nil, tp)
+    def apply(tp: Tree)(using Context): untpd.ByNameTypeTree =
+      untpd.ByNameTypeTree(
+        untpd.CapturesAndResult(
+          untpd.captureRoot.withSpan(tp.span.startPos) :: Nil, tp))
 
-    def unapply(tp: Tree)(using Context): Option[ByNameTypeTree] = tp match
-      case untpd.CapturingTypeTree(id @ Select(_, nme.CAPTURE_ROOT) :: Nil, bntp: ByNameTypeTree)
-      if id.span == bntp.span.startPos => Some(bntp)
+    def unapply(tp: Tree)(using Context): Option[Tree] = tp match
+      case untpd.ByNameTypeTree(
+        untpd.CapturesAndResult(id @ Select(_, nme.CAPTURE_ROOT) :: Nil, result))
+      if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
 }

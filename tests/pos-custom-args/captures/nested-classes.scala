@@ -5,10 +5,10 @@ import annotation.{capability, constructorOnly}
 class Blah
 class Pkg(using @constructorOnly io: IO):
   class Foo:
-    def m(foo: {io} Blah) = ???
+    def m(foo: Blah^{io}) = ???
 class Pkg2(using io: IO):
   class Foo:
-    def m(foo: {io} Blah): Any = io; ???
+    def m(foo: Blah^{io}): Any = io; ???
 
 def main(using io: IO) =
   val pkg = Pkg()

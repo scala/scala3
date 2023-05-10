@@ -1,5 +1,5 @@
 class CC
-type Cap = {*} CC
+type Cap = CC^
 
 def test(cap1: Cap, cap2: Cap) =
   var b: List[String => String] = Nil // was error, now OK

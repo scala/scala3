@@ -1,3 +1,3 @@
-class Zip[A, B](underlying: String, other: {*} String) {
-  this: {underlying, other} Zip[A, B] =>  // error
+class Zip[A, B](underlying: String, other: String^) {
+  this: Zip[A, B]^{underlying, other} =>  // error
 }

@@ -70,7 +70,7 @@ sealed abstract class CaptureSet extends Showable:
     assert(!isConst)
     asInstanceOf[Var]
 
-  /** Does this capture set contain the root reference `*` as element? */
+  /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
     elems.exists {
       case ref: TermRef => ref.symbol == defn.captureRoot
@@ -133,7 +133,7 @@ sealed abstract class CaptureSet extends Showable:
    *  for `x` in a state where we assume all supersets of `x` have just the elements
    *  known at this point. On the other hand if x's capture set has no known elements,
    *  a set `cs` might account for `x` only if it subsumes `x` or it contains the
-   *  root capability `*`.
+   *  root capability `cap`.
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
@@ -270,7 +270,7 @@ sealed abstract class CaptureSet extends Showable:
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
 
-  /** Invoke handler if this set has (or later aquires) the root capability `*` */
+  /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
     if isUniversal then handler()
     this
@@ -372,7 +372,7 @@ object CaptureSet:
     def isConst = isSolved
     def isAlwaysEmpty = false
 
-    /** A handler to be invoked if the root reference `*` is added to this set */
+    /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
     var description: String = ""

@@ -2,27 +2,27 @@
 3 |  val x = Foo(m)   // error
   |  ^^^^^^^^^^^^^^
   |  Non-local value x cannot have an inferred type
-  |  {Bar.this.m} Foo{val m: {Bar.this.m} String}
+  |  Foo{val m: String^{Bar.this.m}}^{Bar.this.m}
   |  with non-empty capture set {Bar.this.m}.
   |  The type needs to be declared explicitly.
 -- Error: tests/neg-custom-args/captures/i15116.scala:5:6 --------------------------------------------------------------
 5 |  val x = Foo(m)   // error
   |  ^^^^^^^^^^^^^^
   |  Non-local value x cannot have an inferred type
-  |  {Baz.this} Foo{val m: {*} String}
+  |  Foo{val m: String^}^{Baz.this}
   |  with non-empty capture set {Baz.this}.
   |  The type needs to be declared explicitly.
 -- Error: tests/neg-custom-args/captures/i15116.scala:7:6 --------------------------------------------------------------
 7 |  val x = Foo(m)   // error
   |  ^^^^^^^^^^^^^^
   |  Non-local value x cannot have an inferred type
-  |  {Bar1.this.m} Foo{val m: {Bar1.this.m} String}
+  |  Foo{val m: String^{Bar1.this.m}}^{Bar1.this.m}
   |  with non-empty capture set {Bar1.this.m}.
   |  The type needs to be declared explicitly.
 -- Error: tests/neg-custom-args/captures/i15116.scala:9:6 --------------------------------------------------------------
 9 |  val x = Foo(m)   // error
   |  ^^^^^^^^^^^^^^
   |  Non-local value x cannot have an inferred type
-  |  {Baz2.this} Foo{val m: {*} String}
+  |  Foo{val m: String^}^{Baz2.this}
   |  with non-empty capture set {Baz2.this}.
   |  The type needs to be declared explicitly.

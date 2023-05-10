@@ -1,4 +1,4 @@
-type Proc = {*} () => Unit
+type Proc = () => Unit
 
 val xs: List[Proc] = ???
 

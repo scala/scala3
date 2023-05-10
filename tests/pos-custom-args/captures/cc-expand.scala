@@ -5,11 +5,11 @@ object Test:
   class B
   class C
   class CTC
-  type CT = CTC @retains(caps.*)
+  type CT = CTC @retains(caps.cap)
 
   def test(ct: CT, dt: CT) =
 
-    def x0: A -> {ct} B = ???
+    def x0: A -> B^{ct} = ???
 
     def x1: A -> B @retains(ct) = ???
     def x2: A -> B -> C @retains(ct) = ???

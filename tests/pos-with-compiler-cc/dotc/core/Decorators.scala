@@ -84,7 +84,7 @@ object Decorators {
    *  on lists that avoid duplication of list nodes where feasible.
    */
   extension [T](xs: List[T])
-    final def collectCC[U](pf: PartialFunction[T, U] @retains(caps.*)): List[U] =
+    final def collectCC[U](pf: PartialFunction[T, U] @retains(caps.cap)): List[U] =
       xs.collect(pf.asInstanceOf)
 
     final def mapconserve[U](f: T => U): List[U] = {
@@ -230,11 +230,11 @@ object Decorators {
   end extension
 
   extension [T](xs: Seq[T])
-    final def collectCC[U](pf: PartialFunction[T, U] @retains(caps.*)): Seq[U] =
+    final def collectCC[U](pf: PartialFunction[T, U] @retains(caps.cap)): Seq[U] =
       xs.collect(pf.asInstanceOf)
 
-  extension [A, B](f: PartialFunction[A, B] @retains(caps.*))
-    def orElseCC(g: PartialFunction[A, B] @retains(caps.*)): PartialFunction[A, B] @retains(f, g) =
+  extension [A, B](f: PartialFunction[A, B] @retains(caps.cap))
+    def orElseCC(g: PartialFunction[A, B] @retains(caps.cap)): PartialFunction[A, B] @retains(f, g) =
       f.orElse(g.asInstanceOf).asInstanceOf
 
   extension (text: Text)

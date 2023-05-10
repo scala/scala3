@@ -115,7 +115,7 @@ object Types {
     private def testProvisional(using Context): Boolean =
       class ProAcc extends TypeAccumulator[Boolean]:
         override def apply(x: Boolean, t: Type) = x || test(t, this)
-      def test(t: Type, theAcc: TypeAccumulator[Boolean] @retains(caps.*) | Null): Boolean =
+      def test(t: Type, theAcc: TypeAccumulator[Boolean] @retains(caps.cap) | Null): Boolean =
         if t.mightBeProvisional then
           t.mightBeProvisional = t match
             case t: TypeRef =>
@@ -2158,8 +2158,8 @@ object Types {
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
     def isMatchedBy(tp: Type, keepConstraint: Boolean = false)(using Context): Boolean
-    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T
-    def map(tm: TypeMap @retains(caps.*))(using Context): ProtoType
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T
+    def map(tm: TypeMap @retains(caps.cap))(using Context): ProtoType
 
     /** If this prototype captures a context, the same prototype except that the result
      *  captures the given context `ctx`.
@@ -3773,7 +3773,7 @@ object Types {
         val status = (x & StatusMask) max (y & StatusMask)
         val provisional = (x | y) & Provisional
         (if status == TrueDeps then status else status | provisional).toByte
-      def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] @retains(caps.*) | Null): DependencyStatus =
+      def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] @retains(caps.cap) | Null): DependencyStatus =
         def applyPrefix(tp: NamedType) =
           if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
           then status // Note: a type ref with static symbol can still be dependent since the symbol might be refined in the enclosing type. See pos/15331.scala.
@@ -4351,7 +4351,7 @@ object Types {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
-    def isGround(acc: TypeAccumulator[Boolean] @retains(caps.*))(using Context): Boolean =
+    def isGround(acc: TypeAccumulator[Boolean] @retains(caps.cap))(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
 
@@ -5552,7 +5552,7 @@ object Types {
    *  BiTypeMaps should map capture references to capture references.
    */
   trait BiTypeMap extends TypeMap:
-    thisMap: BiTypeMap @retains(caps.*) =>
+    thisMap: BiTypeMap @retains(caps.cap) =>
 
     /** The inverse of the type map as a function */
     def inverse(tp: Type): Type
@@ -6106,7 +6106,7 @@ object Types {
 
   abstract class TypeAccumulator[T](implicit protected val accCtx: Context)
   extends VariantTraversal with ((T, Type) => T) {
-    this: TypeAccumulator[T] @annotation.retains(caps.*) =>
+    this: TypeAccumulator[T] @annotation.retains(caps.cap) =>
 
     def apply(x: T, tp: Type): T
 

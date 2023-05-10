@@ -22,7 +22,7 @@ def test() =
     case _: Ex2 => ???
 
   val b = try  // ok here, but error on use
-    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {*} () => Unit]
+    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {cap} () => Unit]
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???

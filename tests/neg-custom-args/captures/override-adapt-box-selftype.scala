@@ -4,45 +4,45 @@ class IO
 class C
 
 object Test1 {
-  abstract class A[X] { this: {} A[X] =>
+  abstract class A[X] { this: A[X] =>
     def foo(x: X): X
   }
 
-  def test(io: {*} IO) = {
-    class B extends A[{io} C] {  // X =:= {io} C // error
-      override def foo(x: {io} C): {io} C = ???
+  def test(io: IO^) = {
+    class B extends A[C^{io}] {  // X =:= {io} C // error
+      override def foo(x: C^{io}): C^{io} = ???
     }
   }
 }
 
-def Test2(io: {*} IO, fs: {io} IO, ct: {*} IO) = {
-  abstract class A[X] { this: {io} A[X] =>
+def Test2(io: IO^{cap}, fs: IO^{io}, ct: IO^) = {
+  abstract class A[X] { this: A[X]^{io} =>
     def foo(x: X): X
   }
 
-  class B1 extends A[{io} C] {
-    override def foo(x: {io} C): {io} C = ???
+  class B1 extends A[C^{io}] {
+    override def foo(x: C^{io}): C^{io} = ???
   }
 
-  class B2 extends A[{ct} C] {  // error
-    override def foo(x: {ct} C): {ct} C = ???
+  class B2 extends A[C^{ct}] {  // error
+    override def foo(x: C^{ct}): C^{ct} = ???
   }
 
-  class B3 extends A[{fs} C] {
-    override def foo(x: {fs} C): {fs} C = ???
+  class B3 extends A[C^{fs}] {
+    override def foo(x: C^{fs}): C^{fs} = ???
   }
 }
 
-def Test3(io: {*} IO, ct: {*} IO) = {
-  abstract class A[X] { this: {*} A[X] =>
+def Test3(io: IO^, ct: IO^) = {
+  abstract class A[X] { this: A[X]^ =>
     def foo(x: X): X
   }
 
-  class B1 extends A[{io} C] {
-    override def foo(x: {io} C): {io} C = ???
+  class B1 extends A[C^{io}] {
+    override def foo(x: C^{io}): C^{io} = ???
   }
 
-  class B2 extends A[{io, ct} C] {
-    override def foo(x: {io, ct} C): {io, ct} C = ???
+  class B2 extends A[C^{io, ct}] {
+    override def foo(x: C^{io, ct}): C^{io, ct} = ???
   }
 }

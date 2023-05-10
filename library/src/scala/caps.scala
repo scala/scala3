@@ -4,8 +4,12 @@ import annotation.experimental
 
 @experimental object caps:
 
-  /** The universal capture reference */
+  /** The universal capture reference (deprecated) */
+  @deprecated("Use `cap` instead")
   val `*`: Any = ()
+
+  /** The universal capture reference */
+  val cap: Any = ()
 
   object unsafe:
 

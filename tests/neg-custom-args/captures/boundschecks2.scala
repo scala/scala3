@@ -6,8 +6,8 @@ object test {
 
   class C[X <: Tree](x: X)
 
-  val foo: C[{*} Tree] = ??? // error
-  type T = C[{*} Tree] // error
+  val foo: C[Tree^] = ??? // error
+  type T = C[Tree^] // error
   val bar: T -> T = ???
-  val baz: C[{*} Tree] -> Unit = ??? // error
+  val baz: C[Tree^] -> Unit = ??? // error
 }
