@@ -523,8 +523,6 @@ object Inlines:
 
     private val parentSym = symbolFromParent(parent)
 
-    private val thisInlineTrait = ThisType.raw(ctx.owner.typeRef)
-
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
       val inlinedSymbols = stats.map(stat => inlinedSym(stat.symbol))
@@ -533,7 +531,7 @@ object Inlines:
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
       override def apply(t: Type) = t match {
-        case t: ThisType if t.cls == parentSym => thisInlineTrait
+        case t: ThisType if t.cls == parentSym => ctx.owner.thisType
         case t => super.apply(t)
       }
     }
