@@ -1,5 +1,5 @@
 class Unit
-object unit extends Unit
+object u extends Unit
 
 type Top = Any^
 
@@ -10,12 +10,12 @@ def test =
   def wrapper[T](x: T): Wrapper[T] =
     [X] => (op: T ->{cap} X) => op(x)
 
-  def strictMap[A <: Top, B <: Top](mx: Wrapper[A])(f: A ->{cap} B): Wrapper[B] =
+  def strictMap[A <: Top, sealed B <: Top](mx: Wrapper[A])(f: A ->{cap} B): Wrapper[B] =
     mx((x: A) => wrapper(f(x)))
 
-  def force[A](thunk: Unit ->{cap} A): A = thunk(unit)
+  def force[A](thunk: Unit ->{cap} A): A = thunk(u)
 
-  def forceWrapper[A](mx: Wrapper[Unit ->{cap} A]): Wrapper[A] =
+  def forceWrapper[sealed A](mx: Wrapper[Unit ->{cap} A]): Wrapper[A] =
     // Γ ⊢ mx: Wrapper[□ {cap} Unit => A]
     // `force` should be typed as ∀(□ {cap} Unit -> A) A, but it can not
     strictMap[Unit ->{cap} A, A](mx)(t => force[A](t)) // error

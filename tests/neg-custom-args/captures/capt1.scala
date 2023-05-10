@@ -30,7 +30,7 @@ def foo() =
   val x: C @retains(caps.cap) = ???
   def h[X](a: X)(b: X) = a
   val z2 = h[() -> Cap](() => x) // error
-    (() => C())  // error
+    (() => C())
   val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // ok
   val z4 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // what was inferred for z3
 

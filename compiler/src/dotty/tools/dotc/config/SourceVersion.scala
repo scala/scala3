@@ -18,6 +18,8 @@ enum SourceVersion:
 
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 
+  def isAtMost(v: SourceVersion) = stable.ordinal <= v.ordinal
+
 object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.3`
 

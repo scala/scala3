@@ -319,7 +319,7 @@ object CaptureSet:
   /** The empty capture set `{}` */
   val empty: CaptureSet.Const = Const(emptySet)
 
-  /** The universal capture set `{*}` */
+  /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
 
@@ -429,7 +429,7 @@ object CaptureSet:
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The universal set {*} is a sound fallback.
+     *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if computingApprox then universal

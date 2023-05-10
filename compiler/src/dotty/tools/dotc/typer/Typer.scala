@@ -608,7 +608,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       ownType match
         case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
           findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
-            case shadowed: TermRef =>
+            case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
               pt match
                 case pt: FunOrPolyProto =>
                   def err(shadowedIsApply: Boolean) =
