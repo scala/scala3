@@ -3180,7 +3180,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             tp
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        throw TypeError(em"Match type reduction $casesText")
+        throw MatchTypeReductionError(em"Match type reduction $casesText")
 
     inFrozenConstraint {
       // Empty types break the basic assumption that if a scrutinee and a
