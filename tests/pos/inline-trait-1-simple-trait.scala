@@ -10,6 +10,8 @@ inline trait A:
   def f[T](x: T): Int = 2
 
   private def g = 1
+  protected[this] def p = 123
+  private[this] def pp = 123456
 
   def xx: X = "foo".asInstanceOf[X]
 end A

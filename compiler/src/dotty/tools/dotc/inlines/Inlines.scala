@@ -54,6 +54,9 @@ object Inlines:
   def inInlineMethod(using Context): Boolean =
     ctx.owner.ownersIterator.exists(_.isInlineMethod)
 
+  def inInlineContext(using Context): Boolean =
+    ctx.owner.ownersIterator.exists(sym => sym.isInlineMethod || sym.isInlineTrait)
+
   /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
     meth.isInlineMethod && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
@@ -82,7 +85,7 @@ object Inlines:
       case _ =>
         isInlineable(tree.symbol) && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] && isInlineableInCtx
 
-  private def symbolFromParent(parent: Tree)(using Context): Symbol =
+  private[dotc] def symbolFromParent(parent: Tree)(using Context): Symbol =
     if parent.symbol.isConstructor then parent.symbol.owner else parent.symbol
 
   private def inlineTraitAncestors(cls: TypeDef)(using Context): List[Tree] = cls match {
