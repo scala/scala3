@@ -154,6 +154,19 @@ To each type constructor corresponds an _inferred type parameter clause_ which i
 - For a [polymorphic class type](#type-designators), the type parameter clause of the referenced class definition.
 - For a non-class [type designator](#type-designators), the inferred clause of its upper bound.
 
+### Type Definitions
+
+A _type definition_ ´D´ represents the right-hand-side of a `type` declaration or the bounds of a type parameter.
+It is either:
+
+- a type alias of the form ´= U´, or
+- an abstract type definition with bounds ´>: L <: H´.
+
+All type definitions have a lower bound ´L´ and an upper bound ´H´, which are types.
+For type aliases, ´L = H = U´.
+
+The type definition of a type parameter is never a type alias.
+
 ## Types
 
 ### Type Lambdas
@@ -216,27 +229,24 @@ Named designators refer to *member* definitions of a non-empty prefix:
 #### Term Designators
 
 A term designator ´p.x´ referring to a term definition `t` has an _underlying type_ ´U´.
-If `t` is a member of some class ´C´ with _declared type_ `T`, then ´p´ must be a type prefix, and the underlying type ´U´ of ´p.x´ is [`asSeenFrom`](#as-seen-from)`(´T´, ´C´, ´p´)`.
-Otherwise, the underlying type ´U´ is the _declared type_ of `t`.
+If ´p = \epsilon´ or ´p´ is a package ref, the underlying type ´U´ is the _declared type_ of `t` and ´p.x´ is a stable type if an only if `t` is a `val` or `object` definition.
+Otherwise, the underlying type ´U´ and whether ´p.x´ is a stable type are determined by [`memberType`](#member-type)`(´p´, ´x´)`.
 
 All term designators are concrete types.
 If `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
 Otherwise, the designator denotes the singleton set only containing ´v´.
-
-A term designator referring to a term definition `v` is a stable type if and only if `v` is a `val` definition.
 
 #### Type Designators
 
 A type designator ´p.C´ referring to a _class_ definition (including traits and hidden object classes) is a _class type_.
 If the class is monomorphic, the type designator is a value type denoting the set of instances of ´C´ or any of its subclasses.
 Otherwise it is a type constructor with the same type parameters as the class definition.
-All class types are concrete types.
+All class types are concrete, non-stable types.
 
-If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` declaration) and has an _underlying type definition_.
-The type definition can be an _abstract type definition_ with bounds ´>: L <: H´, or an alias ´U´ (in which case ´U´ also acts as lower and higher bound).
-If `T` is a member of some class ´C´ with _declared type definition_ ´D´, the underlying type definition of ´p.T´ is [`asSeenFrom`](#as-seen-from)`(´D´, ´C´, ´p´)`.
-Otherwise, it is the _declared type definition_ of `T`.
-A non-class type designator is concrete if and only if its underlying type definition is an alias ´U´ and ´U´ is itself concrete.
+If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` declaration) and has an _underlying [type definition](#type-definitions)_.
+If ´p = \epsilon´ or ´p´ is a package ref, the underlying type definition is the _declared type definition_ of `T`.
+Otherwise, it is determined by [`memberType`](#member-type)`(´p´, ´T´)`.
+A non-class type designator is concrete (resp. stable) if and only if its underlying type definition is an alias ´U´ and ´U´ is itself concrete (resp. stable).
 
 ### Parameterized Types
 
