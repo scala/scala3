@@ -610,6 +610,8 @@ trait ImplicitRunInfo:
         else
           partSeen += t
           t.dealias match
+            case dealias if t ne dealias =>
+              traverse(wildApprox(dealias))
             case t: TypeRef =>
               if isAnchor(t.symbol) then
                 parts += t
