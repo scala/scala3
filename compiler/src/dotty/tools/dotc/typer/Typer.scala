@@ -2670,6 +2670,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
 
       if !ctx.isAfterTyper && cls.isInlineTrait then
+        body1.map(_.symbol).filter(_.isInlineTrait).foreach(innerInlTrait =>
+          report.error(
+            em"Implementation restriction: an inline trait cannot be defined inside of another inline trait",
+            innerInlTrait.srcPos
+          )
+        )
         val membersToInline = body1.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
         val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
         PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
