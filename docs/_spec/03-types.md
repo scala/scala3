@@ -1091,6 +1091,10 @@ ParamValueType        ::=  ParamValueType [‘*’]
 TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
 Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 
+RefineDcl             ::=  ‘val’ ValDcl
+                        |  ‘def’ DefDcl
+                        |  ‘type’ {nl} TypeDcl
+
 TypeBounds            ::=  [‘>:’ Type] [‘<:’ Type]
 
 TypesOrWildcards      ::=  TypeOrWildcard {‘,’ TypeOrWildcard}
@@ -1152,3 +1156,28 @@ trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
 ```
 
 Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
+
+### Concrete Refined Types
+
+```ebnf
+RefinedType           ::=  AnnotType {[nl] Refinement}
+SimpleType1           ::=  ...
+                        |  Refinement
+Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+
+RefineDcl             ::=  ‘val’ ValDcl
+                        |  ‘def’ DefDcl
+                        |  ‘type’ {nl} TypeDcl
+```
+
+In the concrete syntax of types, refinements can contain several refined declarations.
+Moreover, the refined declarations can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
+
+In the abstract syntax of types, each refinement defines exactly one refined declaration, and references to `this` must be made explicit in a recursive type.
+
+The conversion from the concrete syntax to the abstract syntax works as follows:
+
+1. Create a fresh recursive this name ´\alpha´.
+2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
+3. Create nested [refined types](#refined-types), one for every refined declaration.
+4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
