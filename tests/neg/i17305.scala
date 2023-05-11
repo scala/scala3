@@ -17,7 +17,6 @@ def entryPoint(): Unit = {
 
 private def myAssert[A4](a: A4)(assertion: Assertion[A4]): Unit = ()
 
-// This should be Unit or generic, but let compiler figure it out
 private def someAssertion(i: Int): Assertion[Int] = ???
 
 trait HideAInOut[-A] {
