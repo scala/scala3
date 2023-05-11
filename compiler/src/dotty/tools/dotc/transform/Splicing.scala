@@ -23,6 +23,7 @@ import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.config.ScalaRelease.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.QuoteTypeTags
+import dotty.tools.dotc.staging.QuoteTypeTags.*
 
 import scala.annotation.constructorOnly
 
@@ -88,7 +89,7 @@ class Splicing extends MacroTransform:
       tree match
         case tree: Quote =>
           val body1 = QuoteTransformer().transform(tree.body)(using quoteContext)
-          cpy.Quote(tree)(body = body1)
+          cpy.Quote(tree)(body1, tree.tags)
         case tree: DefDef if tree.symbol.is(Inline) =>
           // Quotes in inlined methods are only pickled after they are inlined.
           tree
@@ -117,18 +118,6 @@ class Splicing extends MacroTransform:
           val newSplicedCode1 = splicer.transformSplice(tree.expr, tree.tpe, holeIdx)(using spliceContext)
           val newSplicedCode2 = Level0QuoteTransformer.transform(newSplicedCode1)(using spliceContext)
           newSplicedCode2
-        case tree: TypeDef if tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
-          val tp @ TypeRef(qual: TermRef, _) = tree.rhs.tpe.hiBound: @unchecked
-          quotedDefs += tree.symbol
-          val hole = typeHoles.get(qual) match
-            case Some (hole) => cpy.Hole(hole)(content = EmptyTree)
-            case None =>
-              val holeIdx = numHoles
-              numHoles += 1
-              val hole = tpd.Hole(false, holeIdx, Nil, ref(qual), TypeTree(tp))
-              typeHoles.put(qual, hole)
-              hole
-          cpy.TypeDef(tree)(rhs = hole)
         case _: Template =>
           for sym <- tree.symbol.owner.info.decls do
             quotedDefs += sym
@@ -174,14 +163,13 @@ class Splicing extends MacroTransform:
    *  ```
    *  is transformed into
    * ```scala
-   *  {{{ <holeIdx++> | T2 | x, X | (x$1: Expr[T1], X$1: Type[X]) => (using Quotes) ?=> {... ${x$1} ...  X$1.Underlying ...}  }}}
+   *  {{{ <holeIdx++> | T2 | x, X | (x$1: Expr[T1], X$1: Type[X]) => (using Quotes) ?=> '<X$1>{... ${x$1} ...  X$1.Underlying ...}  }}}
    *  ```
    */
   private class SpliceTransformer(spliceOwner: Symbol, isCaptured: Symbol => Boolean) extends Transformer:
     private var refBindingMap = mutable.LinkedHashMap.empty[Symbol, (Tree, Symbol)]
     /** Reference to the `Quotes` instance of the current level 1 splice */
     private var quotes: Tree | Null = null // TODO: add to the context
-    private var healedTypes: QuoteTypeTags | Null = null // TODO: add to the context
 
     def transformSplice(tree: tpd.Tree, tpe: Type, holeIdx: Int)(using Context): tpd.Tree =
       assert(level == 0)
@@ -229,33 +217,23 @@ class Splicing extends MacroTransform:
           else super.transform(tree)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
-        case Apply(Select(Quote(body), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
+        case Apply(Select(Quote(body, _), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
           body match
             case _: RefTree if isCaptured(body.symbol) => capturedTerm(body)
             case _ => withCurrentQuote(quotes) { super.transform(tree) }
-        case Quote(body) if level == 0 =>
-          val newBody =
-            if body.isTerm then transformLevel0QuoteContent(body)(using quoteContext)
-            else if containsCapturedType(body.tpe) then capturedPartTypes(body)
-            else body
-          cpy.Quote(tree)(newBody)
+        case tree: Quote if level == 0 =>
+          if tree.body.isTerm then transformLevel0Quote(tree)
+          else if containsCapturedType(tree.body.tpe) then capturedPartTypes(tree)
+          else tree
         case _ =>
           super.transform(tree)
 
-    private def transformLevel0QuoteContent(tree: Tree)(using Context): Tree =
+    private def transformLevel0Quote(quote: Quote)(using Context): Tree =
       // transform and collect new healed types
-      val old = healedTypes
-      healedTypes = new QuoteTypeTags(tree.span)
-      val tree1 = transform(tree)
-      val newHealedTypes = healedTypes.nn.getTypeTags
-      healedTypes = old
-      // add new healed types to the current, merge with existing healed types if necessary
-      if newHealedTypes.isEmpty then tree1
-      else tree1 match
-        case Block(stats @ (x :: _), expr) if x.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
-          Block(newHealedTypes ::: stats, expr)
-        case _ =>
-          Block(newHealedTypes, tree1)
+      val (tags, body1) = inContextWithQuoteTypeTags {
+        transform(quote.body)(using quoteContext)
+      }
+      cpy.Quote(quote)(body1, quote.tags ::: tags)
 
     class ArgsClause(val args: List[Tree]):
       def isTerm: Boolean = args.isEmpty || args.head.isTerm
@@ -341,35 +319,26 @@ class Splicing extends MacroTransform:
         .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
       bindingSym
 
-    private def capturedPartTypes(tpt: Tree)(using Context): Tree =
-      val old = healedTypes
-      healedTypes = QuoteTypeTags(tpt.span)
-      val capturePartTypes = new TypeMap {
-        def apply(tp: Type) = tp match {
-          case typeRef: TypeRef if containsCapturedType(typeRef) =>
-            val termRef = refBindingMap
-              .getOrElseUpdate(typeRef.symbol, (TypeTree(typeRef), newQuotedTypeClassBinding(typeRef)))._2.termRef
-            val tagRef = healedTypes.nn.getTagRef(termRef)
-            tagRef
-          case _ =>
-            mapOver(tp)
+    private def capturedPartTypes(quote: Quote)(using Context): Tree =
+      val (tags, body1) = inContextWithQuoteTypeTags {
+        val capturePartTypes = new TypeMap {
+          def apply(tp: Type) = tp match {
+            case typeRef: TypeRef if containsCapturedType(typeRef) =>
+              val termRef = refBindingMap
+                .getOrElseUpdate(typeRef.symbol, (TypeTree(typeRef), newQuotedTypeClassBinding(typeRef)))._2.termRef
+              val tagRef = getTagRef(termRef)
+              tagRef
+            case _ =>
+              mapOver(tp)
+          }
         }
+        TypeTree(capturePartTypes(quote.body.tpe.widenTermRefExpr))
       }
-      val captured = capturePartTypes(tpt.tpe.widenTermRefExpr)
-      val newHealedTypes = healedTypes.nn.getTypeTags
-      healedTypes = old
-      tpt match
-        case block: Block =>
-          cpy.Block(block)(newHealedTypes ::: block.stats, TypeTree(captured))
-        case _ =>
-          if newHealedTypes.nonEmpty then
-            cpy.Block(tpt)(newHealedTypes, TypeTree(captured))
-          else
-            tpt
+      cpy.Quote(quote)(body1, quote.tags ::: tags)
 
     private def getTagRefFor(tree: Tree)(using Context): Tree =
       val capturedTypeSym = capturedType(tree)
-      TypeTree(healedTypes.nn.getTagRef(capturedTypeSym.termRef))
+      TypeTree(getTagRef(capturedTypeSym.termRef))
 
     private def withCurrentQuote[T](newQuotes: Tree)(body: => T)(using Context): T =
       if level == 0 then
@@ -392,7 +361,7 @@ class Splicing extends MacroTransform:
       Splice(closure, tpe)
 
     private def quoted(expr: Tree)(using Context): Tree =
-      tpd.Quote(expr).select(nme.apply).appliedTo(quotes.nn)
+      tpd.Quote(expr, Nil).select(nme.apply).appliedTo(quotes.nn)
 
     /** Helper methods to construct trees calling methods in `Quotes.reflect` based on the current `quotes` tree */
     private object reflect extends ReifiedReflect {

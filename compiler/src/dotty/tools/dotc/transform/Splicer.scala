@@ -44,7 +44,7 @@ object Splicer {
    *  See: `Staging`
    */
   def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
-    case Quote(quotedTree) => quotedTree
+    case Quote(quotedTree, Nil) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
@@ -136,7 +136,7 @@ object Splicer {
     *  See: `Staging`
     */
   def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match {
-    case Quote(_) => // ok
+    case Quote(_, Nil) => // ok
     case _ =>
       type Env = Set[Symbol]
 
@@ -155,7 +155,7 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Quote(body), nme.apply), _) =>
+        case Apply(Select(Quote(body, _), nme.apply), _) =>
           val noSpliceChecker = new TreeTraverser {
             def traverse(tree: Tree)(using Context): Unit = tree match
               case Splice(_) =>
@@ -203,7 +203,7 @@ object Splicer {
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
 
-        case Apply(Select(Quote(quoted), nme.apply), _) =>
+        case Apply(Select(Quote(quoted, Nil), nme.apply), _) =>
           // OK, canceled and warning emitted
 
         case Call(fn, args)
@@ -240,7 +240,7 @@ object Splicer {
 
     override protected  def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
       // Interpret level -1 quoted code `'{...}` (assumed without level 0 splices)
-      case Apply(Select(Quote(body), nme.apply), _) =>
+      case Apply(Select(Quote(body, _), nme.apply), _) =>
         val body1 = body match {
           case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter

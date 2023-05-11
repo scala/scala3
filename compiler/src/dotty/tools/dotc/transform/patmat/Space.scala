@@ -312,7 +312,7 @@ object SpaceEngine {
   def isIrrefutableQuotedPattern(unapp: tpd.Tree, implicits: List[tpd.Tree], pt: Type)(using Context): Boolean = {
     implicits.headOption match
       // pattern '{ $x: T }
-      case Some(tpd.Apply(tpd.Select(tpd.Quote(tpd.TypeApply(fn, List(tpt))), nme.apply), _))
+      case Some(tpd.Apply(tpd.Select(tpd.Quote(tpd.TypeApply(fn, List(tpt)), _), nme.apply), _))
           if unapp.symbol.owner.eq(defn.QuoteMatching_ExprMatchModule)
           && fn.symbol.eq(defn.QuotedRuntimePatterns_patternHole) =>
         pt <:< defn.QuotedExprClass.typeRef.appliedTo(tpt.tpe)

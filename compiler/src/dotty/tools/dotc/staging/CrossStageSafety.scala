@@ -16,28 +16,36 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.SrcPos
 
-/** Checks that staging level consistency holds and heals staged types .
+/** Checks that staging level consistency holds and heals staged types.
  *
  *  Local term references are level consistent if and only if they are used at the same level as their definition.
  *
  *  Local type references can be used at the level of their definition or lower. If used used at a higher level,
  *  it will be healed if possible, otherwise it is inconsistent.
  *
- *  Type healing consists in transforming a level inconsistent type `T` into `summon[Type[T]].Underlying`.
+ *  Healing a type consists in replacing locally defined types defined at staging level 0 and used in higher levels.
+ *  For each type local `T` that is defined at level 0 and used in a quote, we summon a tag `t: Type[T]`. This `t`
+ *  tag must be defined at level 0. The tags will be listed in the `tags` of the level 0 quote (`'<t>{ ... }`) and
+ *  each reference to `T` will be replaced by `t.Underlying` in the body of the quote.
  *
- *  As references to types do not necessarily have an associated tree it is not always possible to replace the types directly.
- *  Instead we always generate a type alias for it and place it at the start of the surrounding quote. This also avoids duplication.
- *  For example:
+ *  We delay the healing of types in quotes at level 1 or higher until those quotes reach level 0. At this point
+ *  more types will be statically known and fewer types will need to be healed. This also keeps the nested quotes
+ *  in their original form, we do not want macro users to see any artifacts of this phase in quoted expressions
+ *  they might inspect.
+ *
+ *  Type heal example:
+ *
  *    '{
  *      val x: List[T] = List[T]()
+ *      '{ .. T .. }
  *      ()
  *    }
  *
  *  is transformed to
  *
- *    '{
- *      type t$1 = summon[Type[T]].Underlying
- *      val x: List[t$1] = List[t$1]();
+ *    '<t>{ // where `t` is a given term of type `Type[T]`
+ *      val x: List[t.Underlying] = List[t.Underlying]();
+ *      '{ .. t.Underlying .. }
  *      ()
  *     }
  *
@@ -56,11 +64,18 @@ class CrossStageSafety extends TreeMapWithStages {
       case tree: Quote =>
         if (ctx.property(InAnnotation).isDefined)
           report.error("Cannot have a quote in an annotation", tree.srcPos)
-        val body1 = transformQuoteBody(tree.body, tree.span)
-        val stripAnnotationsDeep: TypeMap = new TypeMap:
-          def apply(tp: Type): Type = mapOver(tp.stripAnnots)
-        val bodyType1 = healType(tree.srcPos)(stripAnnotationsDeep(tree.bodyType))
-        cpy.Quote(tree)(body1).withBodyType(bodyType1)
+
+        val tree1 =
+          val stripAnnotationsDeep: TypeMap = new TypeMap:
+            def apply(tp: Type): Type = mapOver(tp.stripAnnots)
+          val bodyType1 = healType(tree.srcPos)(stripAnnotationsDeep(tree.bodyType))
+          tree.withBodyType(bodyType1)
+
+        if level == 0 then
+          val (tags, body1) = inContextWithQuoteTypeTags { transform(tree1.body)(using quoteContext) }
+          cpy.Quote(tree1)(body1, tags)
+        else
+          super.transform(tree1)
 
       case CancelledSplice(tree) =>
         transform(tree) // Optimization: `${ 'x }` --> `x`
@@ -74,22 +89,18 @@ class CrossStageSafety extends TreeMapWithStages {
       case tree @ QuotedTypeOf(body) =>
         if (ctx.property(InAnnotation).isDefined)
           report.error("Cannot have a quote in an annotation", tree.srcPos)
-        body.tpe match
-          case DirectTypeOf(termRef) =>
-            // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
-            ref(termRef).withSpan(tree.span)
-          case _ =>
-            transformQuoteBody(body, tree.span) match
-              case DirectTypeOf.Healed(termRef) =>
-                // Optimization: `quoted.Type.of[@SplicedType type T = x.Underlying; T](quotes)`  -->  `x`
-                ref(termRef).withSpan(tree.span)
-              case transformedBody =>
-                val quotes = transform(tree.args.head)
-                // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
-                val TypeApply(fun, _) = tree.fun: @unchecked
-                if level != 0 then cpy.Apply(tree)(cpy.TypeApply(tree.fun)(fun, transformedBody :: Nil), quotes :: Nil)
-                else tpd.Quote(transformedBody).select(nme.apply).appliedTo(quotes).withSpan(tree.span)
 
+        if level == 0 then
+          val (tags, body1) = inContextWithQuoteTypeTags { transform(body)(using quoteContext) }
+          val quotes = transform(tree.args.head)
+          tags match
+            case tag :: Nil if body1.isType && body1.tpe =:= tag.tpe.select(tpnme.Underlying) =>
+              tag // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
+            case _ =>
+              // `quoted.Type.of[<body>](<quotes>)` --> `'[<body1>].apply(<quotes>)`
+              tpd.Quote(body1, tags).select(nme.apply).appliedTo(quotes).withSpan(tree.span)
+        else
+          super.transform(tree)
       case _: DefDef if tree.symbol.isInlineMethod =>
         tree
 
@@ -136,17 +147,6 @@ class CrossStageSafety extends TreeMapWithStages {
       case _ =>
         super.transform(tree)
   end transform
-
-  private def transformQuoteBody(body: Tree, span: Span)(using Context): Tree = {
-    val taggedTypes = new QuoteTypeTags(span)
-    val contextWithQuote =
-      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
-      else quoteContext
-    val transformedBody = transform(body)(using contextWithQuote)
-    taggedTypes.getTypeTags match
-      case Nil  => transformedBody
-      case tags => tpd.Block(tags, transformedBody).withSpan(body.span)
-  }
 
   def transformTypeAnnotationSplices(tp: Type)(using Context) = new TypeMap {
     def apply(tp: Type): Type = tp match
@@ -234,7 +234,7 @@ class CrossStageSafety extends TreeMapWithStages {
     def unapply(tree: Splice): Option[Tree] =
       def rec(tree: Tree): Option[Tree] = tree match
         case Block(Nil, expr) => rec(expr)
-        case Quote(inner) => Some(inner)
+        case Quote(inner, _) => Some(inner)
         case _ => None
       rec(tree.expr)
 }

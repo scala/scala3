@@ -20,6 +20,8 @@ import ast.{tpd, untpd}
 import util.Chars._
 import collection.mutable
 import ProtoTypes._
+import staging.StagingLevel
+import inlines.Inlines.inInlineMethod
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -656,6 +658,34 @@ object TreeChecker {
         promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
       else
         super.typedPackageDef(tree)
+
+    override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
+      if ctx.phase <= stagingPhase.prev then
+        assert(tree.tags.isEmpty, i"unexpected tags in Quote before staging phase: ${tree.tags}")
+      else
+        assert(!tree.body.isInstanceOf[untpd.Splice] || inInlineMethod, i"missed quote cancellation in $tree")
+        assert(!tree.body.isInstanceOf[untpd.Hole] || inInlineMethod, i"missed quote cancellation in $tree")
+        if StagingLevel.level != 0 then
+          assert(tree.tags.isEmpty, i"unexpected tags in Quote at staging level ${StagingLevel.level}: ${tree.tags}")
+
+      for tag <- tree.tags do
+        assert(tag.isInstanceOf[RefTree], i"expected RefTree in Quote but was: $tag")
+
+      val tree1 = super.typedQuote(tree, pt)
+      for tag <- tree.tags do
+        assert(tag.typeOpt.derivesFrom(defn.QuotedTypeClass), i"expected Quote tag to be of type `Type` but was: ${tag.tpe}")
+
+      tree1 match
+        case Quote(body, targ :: Nil) if body.isType =>
+          assert(!(body.tpe =:= targ.tpe.select(tpnme.Underlying)), i"missed quote cancellation in $tree1")
+        case _ =>
+
+      tree1
+
+    override def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree =
+      if stagingPhase <= ctx.phase then
+        assert(!tree.expr.isInstanceOf[untpd.Quote] || inInlineMethod, i"missed quote cancellation in $tree")
+      super.typedSplice(tree, pt)
 
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
       val tree1 @ Hole(isTerm, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked

@@ -75,7 +75,7 @@ trait ReifiedReflect:
       .select(defn.Quotes_reflect_TypeRepr_of)
       .appliedToType(tpe)
       .appliedTo(
-        tpd.Quote(TypeTree(tpe))
+        tpd.Quote(TypeTree(tpe), Nil)
           .select(nme.apply)
           .appliedTo(quotesTree)
       )

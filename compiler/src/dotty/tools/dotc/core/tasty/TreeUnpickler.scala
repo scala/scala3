@@ -1269,7 +1269,7 @@ class TreeUnpickler(reader: TastyReader,
 
       def quotedExpr(fn: Tree, args: List[Tree]): Tree =
         val TypeApply(_, targs) = fn: @unchecked
-        untpd.Quote(args.head).withBodyType(targs.head.tpe)
+        untpd.Quote(args.head, Nil).withBodyType(targs.head.tpe)
 
       def splicedExpr(fn: Tree, args: List[Tree]): Tree =
         val TypeApply(_, targs) = fn: @unchecked
