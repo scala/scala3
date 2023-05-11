@@ -954,7 +954,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // scala.AnyRef [Scala 3: which scala.Null conforms to], the type denotes the set of values consisting
                 // of null and the value denoted by p (i.e., the value v for which v eq p). [Otherwise,] the type
                 // denotes the set consisting of only the value denoted by p.
-                isNullable(tp.underlying) && tp.isStable
+                !ctx.explicitNulls && isNullable(tp.underlying) && tp.isStable
               case tp: RefinedOrRecType => isNullable(tp.parent)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
