@@ -23,6 +23,10 @@ class StaticSiteContext(
   val docsPath = root.toPath.resolve("_docs")
   val blogPath = root.toPath.resolve("_blog")
 
+  def resolveNewBlogPath(stringPath: String): Path =
+    if stringPath.nonEmpty then root.toPath.resolve(stringPath)
+    else blogPath
+
   def relativize(path: Path): Path =
     if args.apiSubdirectory then
       docsPath.relativize(path)
