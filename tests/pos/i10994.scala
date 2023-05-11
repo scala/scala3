@@ -1,2 +1,2 @@
 def foo = true match
-  case (b: Boolean): Boolean => ()
+  case (b: Boolean): Boolean => () // warning
