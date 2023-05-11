@@ -181,7 +181,7 @@ class Splicing extends MacroTransform:
       val ddef = DefDef(meth, List(bindings), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
       val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
       val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
-      tpd.Hole(true, holeIdx, refs, closure, TypeTree(tpe))
+      tpd.Hole(true, holeIdx, refs, closure, tpe)
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match

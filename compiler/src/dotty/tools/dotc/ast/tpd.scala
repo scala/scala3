@@ -176,6 +176,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Splice(expr: Tree, tpe: Type)(using Context): Splice =
     untpd.Splice(expr).withType(tpe)
 
+  def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpe: Type)(using Context): Hole =
+    untpd.Hole(isTerm, idx, args, content).withType(tpe)
+
   def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
     (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)
 
@@ -396,9 +399,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Throw(expr: Tree)(using Context): Tree =
     ref(defn.throwMethod).appliedTo(expr)
-
-  def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
-    ta.assignType(untpd.Hole(isTerm, idx, args, content, tpt), tpt)
 
   // ------ Making references ------------------------------------------------------
 
