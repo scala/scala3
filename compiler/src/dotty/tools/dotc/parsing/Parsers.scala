@@ -2871,14 +2871,25 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
-    /**  Pattern1     ::= Pattern2 [Ascription]
+    /**  Pattern1     ::= PatVar Ascription
+     *                  | [‘-’] integerLiteral Ascription
+     *                  | [‘-’] floatingPointLiteral Ascription
+     *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
       if in.isColon then
         val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
         if !isVariableOrNumber then
-          warning(em"Only variable and number literal patterns can have type ascriptions")
+          report.gradualErrorOrMigrationWarning(
+            em"""Type ascriptions after patterns other than:
+                |  * variable pattern, e.g. `case x: String =>`
+                |  * number literal pattern, e.g. `case 10.5: Double =>`
+                |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
+            in.sourcePos(),
+            warnFrom = `3.3`,
+            errorFrom = future
+          )
         in.nextToken()
         ascription(p, location)
       else p
