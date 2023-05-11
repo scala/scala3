@@ -943,16 +943,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // However, `null` can always be a value of `T` for Java side.
             // So the best solution here is to let `Null` be a subtype of non-primitive
             // value types temporarily.
-            def isNullable(tp: Type): Boolean = tp.widenDealias match
+            def isNullable(tp: Type): Boolean = tp.dealias match
               case tp: TypeRef =>
                 val tpSym = tp.symbol
                 ctx.mode.is(Mode.RelaxedOverriding) && !tpSym.isPrimitiveValueClass ||
                 tpSym.isNullableClass
+              case tp: TermRef =>
+                // https://scala-lang.org/files/archive/spec/2.13/03-types.html#singleton-types
+                // A singleton type is of the form p.type. Where p is a path pointing to a value which conforms to
+                // scala.AnyRef [Scala 3: which scala.Null conforms to], the type denotes the set of values consisting
+                // of null and the value denoted by p (i.e., the value v for which v eq p). [Otherwise,] the type
+                // denotes the set consisting of only the value denoted by p.
+                isNullable(tp.underlying) && tp.isStable
               case tp: RefinedOrRecType => isNullable(tp.parent)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
               case AnnotatedType(tp1, _) => isNullable(tp1)
+              case ConstantType(c) => c.tag == Constants.NullTag
               case _ => false
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
