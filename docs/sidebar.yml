@@ -167,10 +167,7 @@ subsection:
     index: contributing/index.md
     subsection:
       - page: contributing/getting-started.md
-      - page: contributing/workflow.md
-      - title: Steps to Contribute
-        directory: issues
-        index: contributins/issues/index.md
+      - index: contributing/workflow.md
         subsection:
           - page: contributing/issues/reproduce.md
           - page: contributing/issues/cause.md
