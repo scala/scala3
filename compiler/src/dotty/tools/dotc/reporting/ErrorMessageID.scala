@@ -176,7 +176,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case JavaEnumParentArgsID // errorNumber: 160
   case AlreadyDefinedID // errorNumber: 161
   case CaseClassInInlinedCodeID // errorNumber: 162
-  case OverrideTypeMismatchErrorID // errorNumber: 163
+  case OverrideTypeMismatchErrorID extends ErrorMessageID(isActive = false) // errorNumber: 163
   case OverrideErrorID // errorNumber: 164
   case MatchableWarningID // errorNumber: 165
   case CannotExtendFunctionID // errorNumber: 166
@@ -185,6 +185,15 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case TargetNameOnTopLevelClassID // errorNumber: 169
   case NotClassTypeID // errorNumber 170
   case MissingArgumentID // errorNumer 171
+  case MissingImplicitArgumentID // errorNumber 172
+  case CannotBeAccessedID // errorNumber 173
+  case InlineGivenShouldNotBeFunctionID // errorNumber 174
+  case ValueDiscardingID // errorNumber 175
+  case UnusedNonUnitValueID // errorNumber 176
+  case ConstrProxyShadowsID // errorNumber 177
+  case MissingArgumentListID // errorNumber: 178
+  case MatchTypeScrutineeCannotBeHigherKindedID // errorNumber: 179
+  case AmbiguousExtensionMethodID // errorNumber 180
 
   def errorNumber = ordinal - 1
 

@@ -70,7 +70,7 @@ sealed abstract class CaptureSet extends Showable:
     assert(!isConst)
     asInstanceOf[Var]
 
-  /** Does this capture set contain the root reference `*` as element? */
+  /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
     elems.exists {
       case ref: TermRef => ref.symbol == defn.captureRoot
@@ -133,7 +133,7 @@ sealed abstract class CaptureSet extends Showable:
    *  for `x` in a state where we assume all supersets of `x` have just the elements
    *  known at this point. On the other hand if x's capture set has no known elements,
    *  a set `cs` might account for `x` only if it subsumes `x` or it contains the
-   *  root capability `*`.
+   *  root capability `cap`.
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
@@ -222,7 +222,7 @@ sealed abstract class CaptureSet extends Showable:
   /** The largest subset (via <:<) of this capture set that only contains elements
    *  for which `p` is true.
    */
-  def filter(p: CaptureRef => Boolean)(using Context): CaptureSet =
+  def filter(p: Context ?=> CaptureRef => Boolean)(using Context): CaptureSet =
     if this.isConst then
       val elems1 = elems.filter(p)
       if elems1 == elems then this
@@ -270,8 +270,8 @@ sealed abstract class CaptureSet extends Showable:
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
 
-  /** Invoke handler if this set has (or later aquires) the root capability `*` */
-  def disallowRootCapability(handler: () => Unit)(using Context): this.type =
+  /** Invoke handler if this set has (or later aquires) the root capability `cap` */
+  def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
     if isUniversal then handler()
     this
 
@@ -319,7 +319,7 @@ object CaptureSet:
   /** The empty capture set `{}` */
   val empty: CaptureSet.Const = Const(emptySet)
 
-  /** The universal capture set `{*}` */
+  /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
 
@@ -372,8 +372,8 @@ object CaptureSet:
     def isConst = isSolved
     def isAlwaysEmpty = false
 
-    /** A handler to be invoked if the root reference `*` is added to this set */
-    var addRootHandler: () => Unit = () => ()
+    /** A handler to be invoked if the root reference `cap` is added to this set */
+    var rootAddedHandler: () => Context ?=> Unit = () => ()
 
     var description: String = ""
 
@@ -404,7 +404,7 @@ object CaptureSet:
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if !isConst && recordElemsState() then
         elems ++= newElems
-        if isUniversal then addRootHandler()
+        if isUniversal then rootAddedHandler()
         // assert(id != 2 || elems.size != 2, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
@@ -421,15 +421,15 @@ object CaptureSet:
       else
         CompareResult.fail(this)
 
-    override def disallowRootCapability(handler: () => Unit)(using Context): this.type =
-      addRootHandler = handler
+    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
+      rootAddedHandler = handler
       super.disallowRootCapability(handler)
 
     private var computingApprox = false
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The universal set {*} is a sound fallback.
+     *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if computingApprox then universal
@@ -546,7 +546,7 @@ object CaptureSet:
           else CompareResult.fail(this)
         }
         .andAlso {
-          if (origin ne source) && mapIsIdempotent then
+          if (origin ne source) && (origin ne initial) && mapIsIdempotent then
             // `tm` is idempotent, propagate back elems from image set.
             // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
             // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
@@ -559,7 +559,7 @@ object CaptureSet:
             // elements from variable sources in contra- and non-variant positions. In essence,
             // we approximate types resulting from such maps by returning a possible super type
             // from the actual type. But this is neither sound nor complete.
-            report.warning(i"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
+            report.warning(em"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
             CompareResult.fail(this)
           else
             CompareResult.OK
@@ -613,7 +613,7 @@ object CaptureSet:
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
-    (val source: Var, p: CaptureRef => Boolean)(using @constructorOnly ctx: Context)
+    (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =

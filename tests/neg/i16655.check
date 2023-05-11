@@ -1,0 +1,6 @@
+-- [E052] Type Error: tests/neg/i16655.scala:3:4 -----------------------------------------------------------------------
+3 |  x = 5 // error
+  |  ^^^^^
+  |  Reassignment to val x
+  |
+  | longer explanation available when compiling with `-explain`

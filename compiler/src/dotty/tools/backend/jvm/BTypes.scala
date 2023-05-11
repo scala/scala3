@@ -14,7 +14,9 @@ import scala.tools.asm
  * This representation is immutable and independent of the compiler data structures, hence it can
  * be queried by concurrent threads.
  */
-abstract class BTypes {
+abstract class BTypes { self =>
+  val frontendAccess: PostProcessorFrontendAccess
+  import frontendAccess.{frontendSynch}
 
   val int: DottyBackendInterface
   import int.given
@@ -37,10 +39,7 @@ abstract class BTypes {
    */
   def classBTypeFromInternalName(internalName: String) = classBTypeFromInternalNameMap(internalName)
 
-  // Some core BTypes are required here, in class BType, where no Global instance is available.
-  // The Global is only available in the subclass BTypesFromSymbols. We cannot depend on the actual
-  // implementation (CoreBTypesProxy) here because it has members that refer to global.Symbol.
-  val coreBTypes: CoreBTypesProxyGlobalIndependent[this.type]
+  val coreBTypes: CoreBTypes { val bTypes: self.type}
   import coreBTypes._
 
   /**
@@ -861,4 +860,13 @@ abstract class BTypes {
    * Just a named pair, used in CoreBTypes.asmBoxTo/asmUnboxTo.
    */
   /*final*/ case class MethodNameAndType(name: String, methodType: MethodBType)
+}
+
+object BTypes {
+  /**
+   * A marker for strings that represent class internal names.
+   * Ideally the type would be incompatible with String, for example by making it a value class.
+   * But that would create overhead in a Collection[InternalName].
+   */
+  type InternalName = String
 }

@@ -244,7 +244,18 @@ The precise rules for resolving a selection to an extension method are as follow
 Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type.
 The following two rewritings are tried in order:
 
- 1. The selection is rewritten to `m[Ts](e)`.
+ 1. The selection is rewritten to `m[Ts](e)` and typechecked, using the following
+    slight modification of the name resolution rules:
+
+  - If `m` is imported by several imports which are all on the nesting level,
+    try each import as an extension method instead of failing with an ambiguity.
+    If only one import leads to an expansion that typechecks without errors, pick
+    that expansion. If there are several such imports, but only one import which is
+    not a wildcard import, pick the expansion from that import. Otherwise, report
+    an ambiguous reference error.
+
+    **Note**: This relaxation is currently enabled only under the `experimental.relaxedExtensionImports` language import.
+
  2. If the first rewriting does not typecheck with expected type `T`,
     and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.m[Ts](e)`. An object `o` is _eligible_ if
 
@@ -285,7 +296,7 @@ def position(s: String)(ch: Char, n: Int): Int =
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../syntax.md).
 
-```
+```ebnf
 BlockStat         ::=  ... | Extension
 TemplateStat      ::=  ... | Extension
 TopStat           ::=  ... | Extension

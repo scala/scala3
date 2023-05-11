@@ -16,6 +16,8 @@ import core.Decorators._
 import config.{SourceVersion, Feature}
 import StdNames.nme
 import scala.annotation.internal.sharable
+import scala.util.control.NoStackTrace
+import transform.MacroAnnotations
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -44,6 +46,8 @@ class CompilationUnit protected (val source: SourceFile) {
    *  The information is used in phase `Inlining` in order to avoid traversing trees that need no transformations.
    */
   var needsInlining: Boolean = false
+
+  var hasMacroAnnotations: Boolean = false
 
   /** Set to `true` if inliner added anonymous mirrors that need to be completed */
   var needsMirrorSupport: Boolean = false
@@ -102,7 +106,7 @@ class CompilationUnit protected (val source: SourceFile) {
 
 object CompilationUnit {
 
-  class SuspendException extends Exception
+  class SuspendException extends Exception with NoStackTrace
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
@@ -119,6 +123,7 @@ object CompilationUnit {
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
       unit1.needsInlining = force.containsInline
+      unit1.hasMacroAnnotations = force.containsMacroAnnotation
     }
     unit1
   }
@@ -131,11 +136,11 @@ object CompilationUnit {
       if (!mustExist)
         source
       else if (source.file.isDirectory) {
-        report.error(s"expected file, received directory '${source.file.path}'")
+        report.error(em"expected file, received directory '${source.file.path}'")
         NoSource
       }
       else if (!source.file.exists) {
-        report.error(s"source file not found: ${source.file.path}")
+        report.error(em"source file not found: ${source.file.path}")
         NoSource
       }
       else source
@@ -147,12 +152,15 @@ object CompilationUnit {
     var containsQuote = false
     var containsInline = false
     var containsCaptureChecking = false
+    var containsMacroAnnotation = false
     def traverse(tree: Tree)(using Context): Unit = {
-      if (tree.symbol.isQuote)
-        containsQuote = true
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
+        case tpd.Quote(_) =>
+          containsQuote = true
+        case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
+          containsQuote = true
         case Import(qual, selectors) =>
           tpd.languageImport(qual) match
             case Some(prefix) =>
@@ -160,6 +168,9 @@ object CompilationUnit {
                 Feature.handleGlobalLanguageImport(prefix, imported)
             case _ =>
         case _ =>
+      for annot <- tree.symbol.annotations do
+        if MacroAnnotations.isMacroAnnotation(annot) then
+          ctx.compilationUnit.hasMacroAnnotations = true
       traverseChildren(tree)
     }
   }

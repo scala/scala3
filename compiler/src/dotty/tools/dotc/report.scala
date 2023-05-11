@@ -4,12 +4,11 @@ import reporting._
 import Diagnostic._
 import util.{SourcePosition, NoSourcePosition, SrcPos}
 import core._
-import Contexts._, Symbols._, Decorators._
+import Contexts._, Flags.*, Symbols._, Decorators._
 import config.SourceVersion
 import ast._
 import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
-
 
 object report:
 
@@ -26,30 +25,18 @@ object report:
   def deprecationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new DeprecationWarning(msg, pos.sourcePos))
 
-  def deprecationWarning(msg: => String, pos: SrcPos)(using Context): Unit =
-    deprecationWarning(msg.toMessage, pos)
-
   def migrationWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new MigrationWarning(msg, pos.sourcePos))
-
-  def migrationWarning(msg: => String, pos: SrcPos)(using Context): Unit =
-    migrationWarning(msg.toMessage, pos)
 
   def uncheckedWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new UncheckedWarning(msg, pos.sourcePos))
 
-  def uncheckedWarning(msg: => String, pos: SrcPos)(using Context): Unit =
-    uncheckedWarning(msg.toMessage, pos)
-
   def featureWarning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new FeatureWarning(msg, pos.sourcePos))
 
-  def featureWarning(msg: => String, pos: SrcPos)(using Context): Unit =
-    featureWarning(msg.toMessage, pos)
-
   def featureWarning(feature: String, featureDescription: => String,
-      featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit = {
-    val req = if (required) "needs to" else "should"
+      featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit =
+    val req = if required then "needs to" else "should"
     val fqname = s"scala.language.$feature"
 
     val explain =
@@ -60,46 +47,47 @@ object report:
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
 
-    def msg = s"""$featureDescription $req be enabled
-                 |by adding the import clause 'import $fqname'
-                 |or by setting the compiler option -language:$feature.$explain""".stripMargin
-    if (required) error(msg, pos)
-    else issueWarning(new FeatureWarning(msg.toMessage, pos.sourcePos))
-  }
+    def msg = em"""$featureDescription $req be enabled
+                  |by adding the import clause 'import $fqname'
+                  |or by setting the compiler option -language:$feature.$explain"""
+    if required then error(msg, pos)
+    else issueWarning(new FeatureWarning(msg, pos.sourcePos))
+  end featureWarning
 
   def warning(msg: Message, pos: SrcPos)(using Context): Unit =
     issueWarning(new Warning(msg, addInlineds(pos)))
 
+  def warning(msg: Message)(using Context): Unit =
+    warning(msg, NoSourcePosition)
+
   def warning(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     warning(msg.toMessage, pos)
 
-  def error(msg: Message, pos: SrcPos)(using Context): Unit =
+  def error(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     val fullPos = addInlineds(pos)
     ctx.reporter.report(new Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
-  def error(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+  def error(msg: => String, pos: SrcPos)(using Context): Unit =
     error(msg.toMessage, pos)
+
+  def error(msg: => String)(using Context): Unit =
+    error(msg, NoSourcePosition)
 
   def error(ex: TypeError, pos: SrcPos)(using Context): Unit =
     val fullPos = addInlineds(pos)
     ctx.reporter.report(new StickyError(ex.toMessage, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
+    if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, from: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
       if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
       else error(msg, pos)
 
-  def errorOrMigrationWarning(msg: => String, pos: SrcPos, from: SourceVersion)(using Context): Unit =
-    errorOrMigrationWarning(msg.toMessage, pos, from)
-
   def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(errorFrom) then errorOrMigrationWarning(msg, pos, errorFrom)
     else if sourceVersion.isAtLeast(warnFrom) then warning(msg, pos)
-
-  def gradualErrorOrMigrationWarning(msg: => String, pos: SrcPos, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
-    gradualErrorOrMigrationWarning(msg.toMessage, pos, warnFrom, errorFrom)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
@@ -140,4 +128,64 @@ object report:
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
 
+  private object messageRendering extends MessageRendering
+
+  // Should only be called from Run#enrichErrorMessage.
+  def enrichErrorMessage(errorMessage: String)(using Context): String = try {
+    def formatExplain(pairs: List[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
+
+    val settings = ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name)
+    val tree     = ctx.tree
+    val sym      = tree.symbol
+    val pos      = tree.sourcePos
+    val path     = pos.source.path
+    val site     = ctx.outersIterator.map(_.owner).filter(sym => !sym.exists || sym.isClass || sym.is(Method)).next()
+
+    import untpd.*
+    extension (tree: Tree) def summaryString: String = tree match
+      case Literal(const)     => s"Literal($const)"
+      case Ident(name)        => s"Ident(${name.decode})"
+      case Select(qual, name) => s"Select(${qual.summaryString}, ${name.decode})"
+      case tree: NameTree     => (if tree.isType then "type " else "") + tree.name.decode
+      case tree               => s"${tree.className}${if tree.symbol.exists then s"(${tree.symbol})" else ""}"
+
+    val info1 = formatExplain(List(
+      "while compiling"    -> ctx.compilationUnit,
+      "during phase"       -> ctx.phase.prevMega,
+      "mode"               -> ctx.mode,
+      "library version"    -> scala.util.Properties.versionString,
+      "compiler version"   -> dotty.tools.dotc.config.Properties.versionString,
+      "settings"           -> settings.map(s => if s.value == "" then s"${s.name} \"\"" else s"${s.name} ${s.value}").mkString(" "),
+    ))
+    val symbolInfos = if sym eq NoSymbol then List("symbol" -> sym) else List(
+      "symbol"             -> sym.showLocated,
+      "symbol definition"  -> s"${sym.showDcl} (a ${sym.className})",
+      "symbol package"     -> sym.enclosingPackageClass.fullName,
+      "symbol owners"      -> sym.showExtendedLocation,
+    )
+    val info2 = formatExplain(List(
+      "tree"               -> tree.summaryString,
+      "tree position"      -> (if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else s"$path:<unknown>"),
+      "tree type"          -> tree.typeOpt.show,
+    ) ::: symbolInfos ::: List(
+      "call site"          -> s"${site.showLocated} in ${site.enclosingPackageClass}"
+    ))
+    val context_s = try
+      s"""  == Source file context for tree position ==
+         |
+         |${messageRendering.messageAndPos(Diagnostic.Error("", pos))}""".stripMargin
+    catch case _: Exception => "<Cannot read source file>"
+    s"""
+       |  $errorMessage
+       |
+       |  An unhandled exception was thrown in the compiler.
+       |  Please file a crash report here:
+       |  https://github.com/lampepfl/dotty/issues/new/choose
+       |
+       |$info1
+       |
+       |$info2
+       |
+       |$context_s""".stripMargin
+  } catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 end report

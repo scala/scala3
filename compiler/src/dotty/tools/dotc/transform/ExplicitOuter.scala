@@ -13,6 +13,7 @@ import core.Decorators._
 import core.StdNames.nme
 import core.Names._
 import core.NameOps._
+import core.NameKinds.SuperArgName
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
 
@@ -176,8 +177,9 @@ object ExplicitOuter {
           if prefix == NoPrefix then outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty))
           else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
+    val currentNestingLevel = ctx.nestingLevel
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
-      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord)
+      newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord, nestingLevel = currentNestingLevel)
     }
   }
 
@@ -196,11 +198,17 @@ object ExplicitOuter {
   private def outerAccName(cls: ClassSymbol)(using Context): TermName =
     nme.OUTER.expandedName(cls)
 
+  private def outerOwner(sym: Symbol)(using Context): Symbol =
+    val owner = sym.effectiveOwner
+    if owner.name.is(SuperArgName) || owner.isLocalDummy
+    then owner.enclosingClass
+    else owner
+
   /** Class needs an outer pointer, provided there is a reference to an outer this in it. */
   def needsOuterIfReferenced(cls: ClassSymbol)(using Context): Boolean =
-    !(cls.isStatic ||
-      cls.owner.enclosingClass.isStaticOwner ||
-      cls.is(PureInterface)
+    !(cls.isStatic
+      || outerOwner(cls).isStaticOwner
+      || cls.is(PureInterface)
      )
 
   /** Class unconditionally needs an outer pointer. This is the case if
@@ -225,7 +233,9 @@ object ExplicitOuter {
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
-    cls.info.decl(nme.OUTER).symbol.asTerm
+    val outer = cls.info.decl(nme.OUTER).symbol
+    assert(outer.isTerm, i"missing outer accessor in $cls")
+    outer.asTerm
 
   /** The outer accessor of class `cls`. To find it is a bit tricky. The
    *  class might have been moved with new owners between ExplicitOuter and Erasure,
@@ -254,7 +264,6 @@ object ExplicitOuter {
   /** Tree references an outer class of `cls` which is not a static owner.
    */
   def referencesOuter(cls: Symbol, tree: Tree)(using Context): Boolean =
-
 
     val test = new TreeAccumulator[Boolean]:
       private var inInline = false
@@ -301,19 +310,20 @@ object ExplicitOuter {
       def containsOuterRefs(t: Tree): Boolean = t match
         case _: This | _: Ident => isOuterRef(t.tpe)
         case nw: New =>
-          val newCls = nw.tpe.classSymbol
+          val newType = nw.tpe.dealias
+          val newCls = newType.classSymbol
           isOuterSym(newCls.owner.enclosingClass) ||
-          hasOuterPrefix(nw.tpe) ||
+          hasOuterPrefix(newType) ||
           newCls.owner.isTerm && cls.isProperlyContainedIn(newCls)
             // newCls might get proxies for free variables. If current class is
             // properly contained in newCls, it needs an outer path to newCls access the
             // proxies and forward them to the new instance.
         case app: TypeApply if app.symbol.isTypeTest =>
           // Type tests of singletons translate to `eq` tests with references, which might require outer pointers
-          containsOuterRefsAtTopLevel(app.args.head.tpe)
+          containsOuterRefsAtTopLevel(app.args.head.tpe.dealias)
         case t: TypeTree if inInline =>
           // Expansions of inline methods must be able to address outer types
-          containsOuterRefsAnywhere(t.tpe)
+          containsOuterRefsAnywhere(t.tpe.dealias)
         case _ =>
           false
 

@@ -1,1 +1,1 @@
-object A 
+object A

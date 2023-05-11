@@ -80,9 +80,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.1"
+  val referenceVersion = "3.3.0-RC5"
 
-  val baseVersion = "3.2.2"
+  val baseVersion = "3.3.1-RC1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -98,7 +98,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.2.1"
+  val previousDottyVersion = "3.2.2"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -360,6 +360,7 @@ object Build {
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
+    // To enable support of scaladoc and language-server projects you need to change this to true and use sbt as your build server
     bspEnabled := false,
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
@@ -489,7 +490,8 @@ object Build {
     settings(commonJavaSettings).
     settings(commonMiMaSettings).
     settings(
-      versionScheme := Some("semver-spec")
+      versionScheme := Some("semver-spec"),
+      mimaBinaryIssueFilters ++= MiMaFilters.Interfaces
     )
 
   /** Find an artifact with the given `name` in `classpath` */
@@ -545,7 +547,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.3.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -607,7 +609,7 @@ object Build {
         if (args.contains("--help")) {
           println(
             s"""
-               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [<filter>]
+               |usage: testCompilation [--help] [--from-tasty] [--update-checkfiles] [--failed] [<filter>]
                |
                |By default runs tests in dotty.tools.dotc.*CompilationTests and dotty.tools.dotc.coverage.*,
                |excluding tests tagged with dotty.SlowTests.
@@ -615,6 +617,7 @@ object Build {
                |  --help                show this message
                |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
                |  --update-checkfiles   override the checkfiles that did not match with the current output
+               |  --failed              re-run only failed tests
                |  <filter>              substring of the path of the tests file
                |
              """.stripMargin
@@ -623,11 +626,13 @@ object Build {
         }
         else {
           val updateCheckfile = args.contains("--update-checkfiles")
+          val rerunFailed = args.contains("--failed")
           val fromTasty = args.contains("--from-tasty")
-          val args1 = if (updateCheckfile | fromTasty) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty") else args
+          val args1 = if (updateCheckfile | fromTasty | rerunFailed) args.filter(x => x != "--update-checkfiles" && x != "--from-tasty" && x != "--failed") else args
           val test = if (fromTasty) "dotty.tools.dotc.FromTastyTests" else "dotty.tools.dotc.*CompilationTests dotty.tools.dotc.coverage.*"
           val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
             (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
+            (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
             (if (args1.nonEmpty) " -Ddotty.tests.filter=" + args1.mkString(" ") else "")
           (Test / testOnly).toTask(cmd)
         }
@@ -839,6 +844,7 @@ object Build {
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
       "-Yexplicit-nulls",
     ),
+    (Compile / doc / scalacOptions) ++= ScaladocConfigs.DefaultGenerationSettings.value.settings
   )
 
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
@@ -1051,15 +1057,13 @@ object Build {
   // with the bootstrapped library on the classpath.
   lazy val `scala3-sbt-bridge-tests` = project.in(file("sbt-bridge/test")).
     dependsOn(dottyCompiler(Bootstrapped) % Test).
+    dependsOn(`scala3-sbt-bridge`).
     settings(commonBootstrappedSettings).
     settings(
       Compile / sources := Seq(),
       Test / scalaSource := baseDirectory.value,
       Test / javaSource := baseDirectory.value,
-
-      // Tests disabled until zinc-api-info cross-compiles with 2.13,
-      // alternatively we could just copy in sources the part of zinc-api-info we need.
-      Test / sources := Seq()
+      libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
     )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
@@ -1127,6 +1131,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      bspEnabled := false,
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
 
       // Required to run Scala.js tests.
@@ -1189,6 +1194,9 @@ object Build {
             "isFullOpt" -> (stage == FullOptStage),
             "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
             "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+            "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
+            "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+            "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
             "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
             "strictFloats" -> sems.strictFloats,
             "productionMode" -> sems.productionMode,
@@ -1209,6 +1217,18 @@ object Build {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
         val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
         org.scalajs.jsenv.Input.Script(f) +: (Test / jsEnvInput).value
+      },
+
+      Test / unmanagedSourceDirectories ++= {
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Test / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler)
+          Seq(baseDirectory.value / "test-require-multi-modules")
+        else
+          Nil
       },
 
       (Compile / managedSources) ++= {
@@ -1265,6 +1285,14 @@ object Build {
         )
       },
 
+      /* For some reason, in Scala 3, the implementation of IterableDefaultTest
+       * resolves to `scala.collection.ArrayOps.ArrayIterator`, whose `next()`
+       * method is not compliant when called past the last element on Scala.js.
+       * It relies on catching an `ArrayIndexOutOfBoundsException`.
+       * We have to ignore it here.
+       */
+      Test / testOptions := Seq(Tests.Filter(_ != "org.scalajs.testsuite.javalib.lang.IterableDefaultTest")),
+
       Test / managedResources ++= {
         val testDir = fetchScalaJSSource.value / "test-suite/js/src/test"
 
@@ -1300,6 +1328,7 @@ object Build {
 
         Seq(
           "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
+          "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
         )
       },
@@ -1820,9 +1849,10 @@ object Build {
       settings(disableDocSetting).
       settings(
         versionScheme := Some("semver-spec"),
-        if (mode == Bootstrapped) {
-          commonMiMaSettings
-        } else {
+        if (mode == Bootstrapped) Def.settings(
+          commonMiMaSettings,
+          mimaBinaryIssueFilters ++= MiMaFilters.TastyCore,
+        ) else {
           Nil
         }
       )
@@ -1877,8 +1907,7 @@ object ScaladocConfigs {
     )
   }
 
-  lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / pack).value
+  lazy val DefaultGenerationSettings = Def.task {
     def projectVersion = version.value
     def socialLinks = SocialLinks(List(
       "github::https://github.com/lampepfl/dotty",
@@ -1917,6 +1946,11 @@ object ScaladocConfigs {
         )
       )
     )
+  }
+
+  lazy val DefaultGenerationConfig = Def.task {
+    def distLocation = (dist / pack).value
+    DefaultGenerationSettings.value
   }
 
   lazy val Scaladoc = Def.task {

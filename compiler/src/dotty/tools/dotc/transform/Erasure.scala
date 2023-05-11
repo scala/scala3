@@ -500,7 +500,7 @@ object Erasure {
         if isFunction && !ctx.settings.scalajs.value then
           val arity = implParamTypes.length
           val specializedFunctionalInterface =
-            if defn.isSpecializableFunctionSAM(implParamTypes, implResultType) then
+            if !implType.hasErasedParams && defn.isSpecializableFunctionSAM(implParamTypes, implResultType) then
               // Using these subclasses is critical to avoid boxing since their
               // SAM is a specialized method `apply$mc*$sp` whose default
               // implementation in FunctionN boxes.
@@ -549,28 +549,30 @@ object Erasure {
 
     /** Check that Java statics and packages can only be used in selections.
       */
-    private def checkNotErased(tree: Tree)(using Context): tree.type = {
-      if (!ctx.mode.is(Mode.Type)) {
+    private def checkNotErased(tree: Tree)(using Context): tree.type =
+      if !ctx.mode.is(Mode.Type) then
         if isErased(tree) then
           val msg =
             if tree.symbol.is(Flags.Inline) then
               em"""${tree.symbol} is declared as `inline`, but was not inlined
                   |
-                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}""".stripMargin
-            else em"${tree.symbol} is declared as `erased`, but is in fact used"
+                  |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}"""
+            else
+              em"${tree.symbol} is declared as `erased`, but is in fact used"
           report.error(msg, tree.srcPos)
-        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
+        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
           case Some(annot) =>
-            def defaultMsg =
-              i"""Reference to ${tree.symbol.showLocated} should not have survived,
-                 |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
-            val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
+            val message = annot.argumentConstant(0) match
+              case Some(c) =>
+                c.stringValue.toMessage
+              case _ =>
+                em"""Reference to ${tree.symbol.showLocated} should not have survived,
+                    |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             report.error(message, tree.srcPos)
           case _ => // OK
-        }
-      }
+
       checkNotErasedClass(tree)
-    }
+    end checkNotErased
 
     private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
       case JavaArrayType(et) =>
@@ -614,7 +616,7 @@ object Erasure {
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
-      checkNotErasedClass(tree.withType(erasure(tree.tpe)))
+      checkNotErasedClass(tree.withType(erasure(tree.typeOpt)))
 
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
@@ -677,6 +679,8 @@ object Erasure {
             val qualTp = tree.qualifier.typeOpt.widen
             if qualTp.derivesFrom(defn.PolyFunctionClass) then
               erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
+            else if defn.isErasedFunctionType(qualTp) then
+              eraseErasedFunctionApply(qualTp.select(nme.apply).widen.asInstanceOf[MethodType]).classSymbol
             else
               NoSymbol
           }
@@ -696,18 +700,20 @@ object Erasure {
         return tree.asInstanceOf[Tree] // we are re-typing a primitive array op
 
       val owner = mapOwner(origSym)
-      var sym = if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol
-      if !sym.exists then
-        // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
-        // recurring match type to an overloaded constructor. An equivalent test
-        // with regular apply methods succeeds. It's at present unclear whether
-        //  - the program should be rejected, or
-        //  - there is another fix.
-        // Therefore, we apply the fix to use the pre-erasure symbol, but only
-        // for constructors, in order not to mask other possible bugs that would
-        // trigger the assert(sym.exists, ...) below.
-        val prevSym = tree.symbol(using preErasureCtx)
-        if prevSym.isConstructor then sym = prevSym
+      val sym =
+        (if (owner eq origSym.maybeOwner) origSym else owner.info.decl(tree.name).symbol)
+        .orElse {
+          // We fail the sym.exists test for pos/i15158.scala, where we pass an infinitely
+          // recurring match type to an overloaded constructor. An equivalent test
+          // with regular apply methods succeeds. It's at present unclear whether
+          //  - the program should be rejected, or
+          //  - there is another fix.
+          // Therefore, we apply the fix to use the pre-erasure symbol, but only
+          // for constructors, in order not to mask other possible bugs that would
+          // trigger the assert(sym.exists, ...) below.
+          val prevSym = tree.symbol(using preErasureCtx)
+          if prevSym.isConstructor then prevSym else NoSymbol
+        }
 
       assert(sym.exists, i"no owner from $owner/${origSym.showLocated} in $tree")
 
@@ -770,7 +776,7 @@ object Erasure {
             select(qual1, sym)
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
-              if isJvmAccessible(sym.owner)
+              if isJvmAccessible(sym.owner) && sym.owner.isType
               then
                 sym.owner.typeRef
               else
@@ -780,7 +786,7 @@ object Erasure {
                 val tp = originalQual
                 if tp =:= qual1.tpe.widen then
                   return errorTree(qual1,
-                    ex"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
+                    em"Unable to emit reference to ${sym.showLocated}, ${sym.owner} is not accessible in ${ctx.owner.enclosingClass}")
                 tp
             recur(cast(qual1, castTarget))
         }
@@ -823,7 +829,10 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
-      val ownArgs = if origFunType.isErasedMethod then Nil else args
+      val ownArgs = origFunType match
+        case mt: MethodType if mt.hasErasedParams =>
+          args.zip(mt.erasedParams).collect { case (arg, false) => arg }
+        case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
         case mt: MethodType =>

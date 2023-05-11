@@ -1,0 +1,6 @@
+
+-- Error: tests/neg-macros/i16835/Test_2.scala:1:17 --------------------------------------------------------------------
+1 |def test: Unit = foo // error
+  |                 ^^^
+  |                 my error
+  |                 my second error

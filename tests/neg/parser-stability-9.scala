@@ -1,2 +1,2 @@
-import // error
+import
 // error

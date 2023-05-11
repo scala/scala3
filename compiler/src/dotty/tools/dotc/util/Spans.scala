@@ -86,7 +86,6 @@ object Spans {
       || containsInner(this, that.end)
       || containsInner(that, this.start)
       || containsInner(that, this.end)
-      || this.start == that.start && this.end == that.end   // exact match in one point
       )
     }
 
@@ -182,6 +181,7 @@ object Spans {
       assert(isSpan)
       if (this == NoCoord) NoSpan else Span(-1 - encoding)
     }
+    override def toString = if isSpan then s"$toSpan" else s"Coord(idx=$toIndex)"
   }
 
   /** An index coordinate */

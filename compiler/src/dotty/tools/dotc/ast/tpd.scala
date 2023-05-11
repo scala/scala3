@@ -47,11 +47,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Apply(expr, args)
     case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
       ta.assignType(untpd.Apply(fn, args), fn, args)
+    case _ =>
+      assert(ctx.reporter.errorsReported)
+      ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
     case Block(Nil, expr) =>
       TypeApply(expr, args)
     case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
+    case _ =>
+      assert(ctx.reporter.errorsReported)
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
@@ -164,6 +170,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
+  def Quote(body: Tree)(using Context): Quote =
+    untpd.Quote(body).withBodyType(body.tpe)
+
+  def Splice(expr: Tree, tpe: Type)(using Context): Splice =
+    untpd.Splice(expr).withType(tpe)
+
   def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
     (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)
 
@@ -254,12 +266,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
           if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
 
-        def valueParam(name: TermName, origInfo: Type): TermSymbol =
+        def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
             if tp.isContextualMethod then Given
             else if tp.isImplicitMethod then Implicit
             else EmptyFlags
-          val maybeErased = if tp.isErasedMethod then Erased else EmptyFlags
+          val maybeErased = if isErased then Erased else EmptyFlags
 
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
@@ -277,7 +289,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.erasedParams).map(valueParam), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
@@ -385,8 +397,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Throw(expr: Tree)(using Context): Tree =
     ref(defn.throwMethod).appliedTo(expr)
 
-  def Hole(isTermHole: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
-    ta.assignType(untpd.Hole(isTermHole, idx, args, content, tpt), tpt)
+  def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
+    ta.assignType(untpd.Hole(isTerm, idx, args, content, tpt), tpt)
 
   // ------ Making references ------------------------------------------------------
 
@@ -414,6 +426,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case _ => false
   }
 
+  def needsIdent(tp: Type)(using Context): Boolean = tp match
+    case tp: TermRef => tp.prefix eq NoPrefix
+    case _ => false
+
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
     if (tp.isType) TypeTree(tp)
@@ -428,7 +444,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         val res = Select(TypeTree(pre), tp)
         if needLoad && !res.symbol.isStatic then
-          throw new TypeError(em"cannot establish a reference to $res")
+          throw TypeError(em"cannot establish a reference to $res")
         res
 
   def ref(sym: Symbol)(using Context): Tree =
@@ -857,7 +873,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     /** After phase `trans`, set the owner of every definition in this tree that was formerly
-     *  owner by `from` to `to`.
+     *  owned by `from` to `to`.
      */
     def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(using Context): ThisTree =
       if (ctx.phase == trans.next) {
@@ -1130,10 +1146,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
-        case defn.ContextFunctionType(argTypes, resType, isErased) =>
+        case defn.ContextFunctionType(argTypes, resType, _) =>
           val anonFun = newAnonFun(
             ctx.owner,
-            MethodType.companion(isContextual = true, isErased = isErased)(argTypes, resType),
+            MethodType.companion(isContextual = true)(argTypes, resType),
             coord = ctx.owner.coord)
           def lambdaBody(refss: List[List[Tree]]) =
             expand(target.select(nme.apply).appliedToArgss(refss), resType)(
@@ -1144,35 +1160,38 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       expand(tree, tree.tpe.widen)
   }
 
-  inline val MapRecursionLimit = 10
-
   extension (trees: List[Tree])
 
-    /** A map that expands to a recursive function. It's equivalent to
+    /** Equivalent (but faster) to
      *
      *    flatten(trees.mapConserve(op))
      *
-     *  and falls back to it after `MaxRecursionLimit` recursions.
-     *  Before that it uses a simpler method that uses stackspace
-     *  instead of heap.
-     *  Note `op` is duplicated in the generated code, so it should be
-     *  kept small.
+     *  assuming that `trees` does not contain `Thicket`s to start with.
      */
-    inline def mapInline(inline op: Tree => Tree): List[Tree] =
-      def recur(trees: List[Tree], count: Int): List[Tree] =
-        if count > MapRecursionLimit then
-          // use a slower implementation that avoids stack overflows
-          flatten(trees.mapConserve(op))
-        else trees match
-          case tree :: rest =>
-            val tree1 = op(tree)
-            val rest1 = recur(rest, count + 1)
-            if (tree1 eq tree) && (rest1 eq rest) then trees
-            else tree1 match
-              case Thicket(elems1) => elems1 ::: rest1
-              case _ => tree1 :: rest1
-          case nil => nil
-      recur(trees, 0)
+    inline def flattenedMapConserve(inline f: Tree => Tree): List[Tree] =
+      @tailrec
+      def loop(mapped: ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree]): List[Tree] =
+        if pending.isEmpty then
+          if mapped == null then unchanged
+          else mapped.prependToList(unchanged)
+        else
+          val head0 = pending.head
+          val head1 = f(head0)
+
+          if head1 eq head0 then
+            loop(mapped, unchanged, pending.tail)
+          else
+            val buf = if mapped == null then new ListBuffer[Tree] else mapped
+            var xc = unchanged
+            while xc ne pending do
+              buf += xc.head
+              xc = xc.tail
+            head1 match
+              case Thicket(elems1) => buf ++= elems1
+              case _ => buf += head1
+            val tail0 = pending.tail
+            loop(buf, tail0, tail0)
+      loop(null, trees, trees)
 
     /** Transform statements while maintaining import contexts and expression contexts
      *  in the same way as Typer does. The code addresses additional concerns:
@@ -1296,7 +1315,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (tree.tpe.widen isRef numericCls)
       tree
     else {
-      report.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
+      report.warning(em"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
     }
   }
@@ -1495,7 +1514,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** Creates the tuple type tree repesentation of the type trees in `ts` */
+  /** Creates the tuple type tree representation of the type trees in `ts` */
   def tupleTypeTree(elems: List[Tree])(using Context): Tree = {
     val arity = elems.length
     if arity <= Definitions.MaxTupleArity then
@@ -1506,9 +1525,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else nestedPairsTypeTree(elems)
   }
 
-  /** Creates the nested pairs type tree repesentation of the type trees in `ts` */
+  /** Creates the nested pairs type tree representation of the type trees in `ts` */
   def nestedPairsTypeTree(ts: List[Tree])(using Context): Tree =
     ts.foldRight[Tree](TypeTree(defn.EmptyTupleModule.termRef))((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), x :: acc :: Nil))
+
+  /** Creates the nested higher-kinded pairs type tree representation of the type trees in `ts` */
+  def hkNestedPairsTypeTree(ts: List[Tree])(using Context): Tree =
+    ts.foldRight[Tree](TypeTree(defn.QuoteMatching_KNil.typeRef))((x, acc) => AppliedTypeTree(TypeTree(defn.QuoteMatching_KCons.typeRef), x :: acc :: Nil))
 
   /** Replaces all positions in `tree` with zero-extent positions */
   private def focusPositions(tree: Tree)(using Context): Tree = {
@@ -1531,7 +1554,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *
    *  @param trees  the elements the list represented by
    *                the resulting tree should contain.
-   *  @param tpe    the type of the elements of the resulting list.
+   *  @param tpt    the type of the elements of the resulting list.
    *
    */
   def mkList(trees: List[Tree], tpt: Tree)(using Context): Tree =

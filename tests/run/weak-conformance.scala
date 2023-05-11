@@ -26,11 +26,11 @@ object Test extends App {
   locally {
     def f(): Int = b + 1
     val x1 = ArrayBuffer(b, 33, 5.5)      ; x1: ArrayBuffer[Double] // b is an inline val
-    val x2 = ArrayBuffer(f(), 33, 5.5)    ; x2: ArrayBuffer[AnyVal] // f() is not a constant
+    val x2 = ArrayBuffer(f(), 33, 5.5)    ; x2: ArrayBuffer[Int | Double] // f() is not a constant
     val x3 = ArrayBuffer(5, 11L)          ; x3: ArrayBuffer[Long]
-    val x4 = ArrayBuffer(5, 11L, 5.5)     ; x4: ArrayBuffer[AnyVal] // Long and Double found
+    val x4 = ArrayBuffer(5, 11L, 5.5)     ; x4: ArrayBuffer[Int | Long | Double] // Long and Double found
     val x5 = ArrayBuffer(1.0f, 2)         ; x5: ArrayBuffer[Float]
-    val x6 = ArrayBuffer(1.0f, 1234567890); x6: ArrayBuffer[AnyVal] // loss of precision
+    val x6 = ArrayBuffer(1.0f, 1234567890); x6: ArrayBuffer[Float | Int] // loss of precision
     val x7 = ArrayBuffer(b, 33, 'a')      ; x7: ArrayBuffer[Char]
     val x8 = ArrayBuffer(5.toByte, 11)    ; x8: ArrayBuffer[Byte]
 

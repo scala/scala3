@@ -18,7 +18,7 @@ class InitializedAccess {
 
   @Setup
   def prepare: Unit = {
-    holder = new LazyHolder 
+    holder = new LazyHolder
     holder.value
   }
 

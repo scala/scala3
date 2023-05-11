@@ -6,6 +6,7 @@ import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
+import config.SourceVersion
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
@@ -18,6 +19,9 @@ private val BoxedType: Key[BoxedTypeCache] = Key()
 private[cc] def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
   case _ => Nil
+
+def allowUniversalInBoxed(using Context) =
+  Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
@@ -146,7 +150,6 @@ extension (tp: Type)
       defn.FunctionType(
         fname.functionArity,
         isContextual = fname.isContextFunction,
-        isErased = fname.isErasedFunction,
         isImpure = true).appliedTo(args)
     case _ =>
       tp
@@ -166,7 +169,53 @@ extension (tp: Type)
       case CapturingType(_, _) => true
       case _ => false
 
+  def isEventuallyCapturingType(using Context): Boolean =
+    tp match
+      case EventuallyCapturingType(_, _) => true
+      case _ => false
+
+  /** Is type known to be always pure by its class structure,
+   *  so that adding a capture set to it would not make sense?
+   */
+  def isAlwaysPure(using Context): Boolean = tp.dealias match
+    case tp: (TypeRef | AppliedType) =>
+      val sym = tp.typeSymbol
+      if sym.isClass then sym.isPureClass
+      else tp.superType.isAlwaysPure
+    case CapturingType(parent, refs) =>
+      parent.isAlwaysPure || refs.isAlwaysEmpty
+    case tp: TypeProxy =>
+      tp.superType.isAlwaysPure
+    case tp: AndType =>
+      tp.tp1.isAlwaysPure || tp.tp2.isAlwaysPure
+    case tp: OrType =>
+      tp.tp1.isAlwaysPure && tp.tp2.isAlwaysPure
+    case _ =>
+      false
+
+extension (cls: ClassSymbol)
+
+  def pureBaseClass(using Context): Option[Symbol] =
+    cls.baseClasses.find(bc =>
+      defn.pureBaseClasses.contains(bc)
+      || {
+        val selfType = bc.givenSelfType
+        selfType.exists && selfType.captureSet.isAlwaysEmpty
+      })
+
 extension (sym: Symbol)
+
+  /** A class is pure if:
+   *   - one its base types has an explicitly declared self type with an empty capture set
+   *   - or it is a value class
+   *   - or it is an exception
+   *   - or it is one of Nothing, Null, or String
+   */
+  def isPureClass(using Context): Boolean = sym match
+    case cls: ClassSymbol =>
+      cls.pureBaseClass.isDefined || defn.pureSimpleClasses.contains(cls)
+    case _ =>
+      false
 
   /** Does this symbol allow results carrying the universal capability?
    *  Currently this is true only for function type applies (since their

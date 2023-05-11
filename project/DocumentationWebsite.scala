@@ -1,4 +1,5 @@
 import java.io.File
+import java.net.URI
 import java.nio.file.Paths
 import sbt._
 import Build._
@@ -42,13 +43,13 @@ object DocumentationWebsite {
     import _root_.scala.concurrent._
     import _root_.scala.concurrent.duration.Duration
     import ExecutionContext.Implicits.global
-    val inkuireVersion = "1.0.0-M3"
+    val inkuireVersion = "v1.0.0-M7"
     val inkuireLink = s"https://github.com/VirtusLab/Inkuire/releases/download/$inkuireVersion/inkuire.js"
     val inkuireDestinationFile = baseDest / "dotty_res" / "scripts" / "inkuire.js"
     sbt.IO.touch(inkuireDestinationFile)
 
     def tryFetch(retries: Int, timeout: Duration): Unit = {
-      val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
+      val downloadProcess = (new URI(inkuireLink).toURL #> inkuireDestinationFile).run()
       val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
       try {
         Await.result(result, timeout) match {

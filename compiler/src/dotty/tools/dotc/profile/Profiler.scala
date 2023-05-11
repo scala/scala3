@@ -13,6 +13,7 @@ import javax.management.{Notification, NotificationEmitter, NotificationListener
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.io.AbstractFile
+import annotation.internal.sharable
 
 object Profiler {
   def apply()(using Context): Profiler =
@@ -217,14 +218,16 @@ sealed trait ProfileReporter {
 }
 
 object ConsoleProfileReporter extends ProfileReporter {
-
+  @sharable var totalAlloc = 0L
 
   override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
-  // TODO
-    ???
+    reportCommon(EventType.BACKGROUND, profiler, threadRange)
   override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
-  // TODO
-    ???
+    reportCommon(EventType.MAIN, profiler, threadRange)
+  @nowarn("cat=deprecation")
+  private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit =
+    totalAlloc += threadRange.allocatedBytes
+    println(s"${threadRange.phase.phaseName.replace(',', ' ')},run ns = ${threadRange.runNs},idle ns = ${threadRange.idleNs},cpu ns = ${threadRange.cpuNs},user ns = ${threadRange.userNs},allocated = ${threadRange.allocatedBytes},heap at end = ${threadRange.end.heapBytes}, total allocated = $totalAlloc ")
 
   override def close(profiler: RealProfiler): Unit = ()
 

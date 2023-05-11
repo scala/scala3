@@ -197,6 +197,14 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
+    /** Unlink `phase` from Denot transformer chain. This means that
+     *  any denotation transformer defined by the phase will not be executed.
+     */
+    def unlinkPhaseAsDenotTransformer(phase: Phase)(using Context) =
+      for i <- 0 until nextDenotTransformerId.length do
+        if nextDenotTransformerId(i) == phase.id then
+          nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
+
     private var myParserPhase: Phase = _
     private var myTyperPhase: Phase = _
     private var myPostTyperPhase: Phase = _
@@ -314,8 +322,8 @@ object Phases {
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         try run(using unitCtx)
-        catch case ex: Throwable =>
-          println(s"$ex while running $phaseName on $unit")
+        catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+          println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
           throw ex
         unitCtx.compilationUnit
       }

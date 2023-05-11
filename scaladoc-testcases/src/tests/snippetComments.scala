@@ -3,7 +3,7 @@ package tests.snippetComments
 
 /**
  * This is my codeblock
- * 
+ *
  * ```
  * //{{
  * import xd
@@ -20,7 +20,7 @@ package tests.snippetComments
  * val y = 2 // comment in the same line
  * // comment in new line
  * val z = 3
- * 
+ *
  * //{{
  * val hideMe = 7
  * //}}

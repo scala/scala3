@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeError
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
 import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.util.Chars

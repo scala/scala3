@@ -315,7 +315,7 @@ object Flags {
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")
 
   /** A parameter with a default value / an impure untpd.FunctionWithMods type */
-  val (_, HasDefault @ _, Impure @ _) = newFlags(27, "<hasdefault>", "<{*}>")
+  val (_, HasDefault @ _, Impure @ _) = newFlags(27, "<hasdefault>", "<impure>")
 
   /** An extension method, or a collective extension instance */
   val (Extension @ _, ExtensionMethod @ _, _) = newFlags(28, "<extension>")
@@ -350,14 +350,14 @@ object Flags {
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   val (_, Synchronized @ _, _) = newFlags(36, "<synchronized>")
 
-  /** Symbol is a Java-style varargs method */
-  val (_, JavaVarargs @ _, _) = newFlags(37, "<varargs>")
+  /** Symbol is a Java-style varargs method / a Java annotation */
+  val (_, JavaVarargs @ _, JavaAnnotation @ _) = newFlags(37, "<varargs>", "<java-annotation>")
 
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
   /** Symbol is a transparent inline method or trait */
-  val (Transparent @ _, _, _) = newFlags(39, "transparent")
+  val (Transparent @ _, _, TransparentType @ _) = newFlags(39, "transparent")
 
   /** Symbol is an enum class or enum case (if used with case) */
   val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
@@ -477,7 +477,7 @@ object Flags {
    */
   val AfterLoadFlags: FlagSet = commonFlags(
     FromStartFlags, AccessFlags, Final, AccessorOrSealed,
-    Abstract, LazyOrTrait, SelfName, JavaDefined, Transparent)
+    Abstract, LazyOrTrait, SelfName, JavaDefined, JavaAnnotation, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
@@ -604,10 +604,10 @@ object Flags {
   val Scala2Trait: FlagSet                   = Scala2x | Trait
   val SyntheticArtifact: FlagSet             = Synthetic | Artifact
   val SyntheticCase: FlagSet                 = Synthetic | Case
+  val SyntheticMethod: FlagSet               = Synthetic | Method
   val SyntheticModule: FlagSet               = Synthetic | Module
   val SyntheticOpaque: FlagSet               = Synthetic | Opaque
   val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
-  val TransparentTrait: FlagSet              = Trait | Transparent
 }

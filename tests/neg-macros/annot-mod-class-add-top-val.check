@@ -1,0 +1,9 @@
+
+-- Error: tests/neg-macros/annot-mod-class-add-top-val/Test_2.scala:1:0 ------------------------------------------------
+1 |@addTopLevelVal // error
+  |^^^^^^^^^^^^^^^
+  |macro annotation can not add top-level value. @addTopLevelVal tried to add value toLevelVal$macro$1.
+-- Error: tests/neg-macros/annot-mod-class-add-top-val/Test_2.scala:4:0 ------------------------------------------------
+4 |@addTopLevelVal // error
+  |^^^^^^^^^^^^^^^
+  |macro annotation can not add top-level value. @addTopLevelVal tried to add value toLevelVal$macro$2.

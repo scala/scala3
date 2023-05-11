@@ -40,7 +40,7 @@ object Symbols {
   val Ids: Property.Key[Array[String]] = new Property.Key
 
   /** A Symbol represents a Scala definition/declaration or a package.
-   *  @param coord  The coordinates of the symbol (a position or an index)
+   *  @param myCoord The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
@@ -103,7 +103,7 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if (checkedPeriod == ctx.period) lastDenot
+      if checkedPeriod.code == ctx.period.code then lastDenot
       else computeDenot(lastDenot)
     }
 
@@ -170,7 +170,7 @@ object Symbols {
       asInstanceOf[TermSymbol]
     }
     final def asType(using Context): TypeSymbol = {
-      assert(isType, s"isType called on not-a-Type $this");
+      assert(isType, s"asType called on not-a-Type $this");
       asInstanceOf[TypeSymbol]
     }
 
@@ -630,6 +630,32 @@ object Symbols {
           owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
         privateWithin, coord, assocFile)
 
+  /** Same as `newCompleteModuleSymbol` except that `parents` can be a list of arbitrary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parentTypes: List[Type],
+      decls: Scope,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile | Null = null)(using Context): TermSymbol = {
+    def completer(module: Symbol) = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        denot.info = ClassInfo(owner.thisType, cls, parentTypes.map(_.dealias), decls, TermRef(owner.thisType, module))
+      }
+    }
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => completer(module),
+        privateWithin, coord, assocFile)
+  }
+
   /** Create a package symbol with associated package class
    *  from its non-info fields and a lazy type for loading the package's members.
    */
@@ -660,7 +686,7 @@ object Symbols {
       addToGadt: Boolean = true,
       flags: FlagSet = EmptyFlags)(using Context): Symbol = {
     val sym = newSymbol(ctx.owner, name, Case | flags, info, coord = span)
-    if (addToGadt && name.isTypeName) ctx.gadt.addToConstraint(sym)
+    if (addToGadt && name.isTypeName) ctx.gadtState.addToConstraint(sym)
     sym
   }
 

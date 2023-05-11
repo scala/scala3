@@ -216,7 +216,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 
    <details>
    <summary>Example 1</summary>
-   
+
    ```scala
    import scala.annotation.experimental
 
@@ -242,7 +242,7 @@ Experimental definitions can only be referenced in an experimental scope. Experi
      }
    }
    ```
-   
+
    </details>
 
 5. Annotations of an experimental definition are in experimental scopes. Examples:
@@ -269,13 +269,6 @@ Experimental definitions can only be referenced in an experimental scope. Experi
 Can use the `-Yno-experimental` compiler flag to disable it and run as a proper release.
 
 In any other situation, a reference to an experimental definition will cause a compilation error.
-
-## Experimental inheritance
-
-All subclasses of an experimental `class` or `trait` must be marked as [`@experimental`](https://scala-lang.org/api/3.x/scala/annotation/experimental.html) even if they are in an experimental scope.
-Anonymous classes and SAMs of experimental classes are considered experimental.
-
-We require explicit annotations to make sure we do not have completion or cycles issues with nested classes. This restriction could be relaxed in the future.
 
 ## Experimental overriding
 

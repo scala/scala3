@@ -93,6 +93,24 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       }
     }
 
+    private var dynamicImportEnclosingClasses: Set[Symbol] = Set.empty
+
+    private def enterDynamicImportEnclosingClass[A](cls: Symbol)(body: => A): A = {
+      val saved = dynamicImportEnclosingClasses
+      dynamicImportEnclosingClasses = saved + cls
+      try
+        body
+      finally
+        dynamicImportEnclosingClasses = saved
+    }
+
+    private def hasImplicitThisPrefixToDynamicImportEnclosingClass(tpe: Type)(using Context): Boolean =
+      tpe match
+        case tpe: ThisType      => dynamicImportEnclosingClasses.contains(tpe.cls)
+        case TermRef(prefix, _) => hasImplicitThisPrefixToDynamicImportEnclosingClass(prefix)
+        case _                  => false
+    end hasImplicitThisPrefixToDynamicImportEnclosingClass
+
     /** DefDefs in class templates that export methods to JavaScript */
     private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
@@ -248,9 +266,9 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           if (tpeSym.isJSType) {
             def reportError(reasonAndExplanation: String): Unit = {
               report.error(
-                  "Using an anonymous function as a SAM for the JavaScript type " +
-                  i"${tpeSym.fullName} is not allowed because " +
-                  reasonAndExplanation,
+                  em"Using an anonymous function as a SAM for the JavaScript type ${
+                     tpeSym.fullName
+                    } is not allowed because $reasonAndExplanation",
                   tree)
             }
             if (!tpeSym.is(Trait) || tpeSym.asClass.superClass != jsdefn.JSFunctionClass) {
@@ -297,10 +315,15 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           assert(currentOwner.isTerm, s"unexpected owner: $currentOwner at ${tree.sourcePos}")
 
+          val enclosingClass = currentOwner.enclosingClass
+
           // new DynamicImportThunk { def apply(): Any = body }
           val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
             val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
-            val newBody = transform(body).changeOwnerAfter(currentOwner, applySym, thisPhase)
+            val transformedBody = enterDynamicImportEnclosingClass(enclosingClass) {
+              transform(body)
+            }
+            val newBody = transformedBody.changeOwnerAfter(currentOwner, applySym, thisPhase)
             val applyDefDef = DefDef(applySym, newBody)
             List(applyDefDef)
           }
@@ -310,6 +333,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
             .appliedToTypeTree(tpeArg)
             .appliedTo(dynamicImportThunkAnonClass)
 
+        // #17344 Make `ThisType`-based references to enclosing classes of `js.dynamicImport` explicit
+        case tree: Ident if hasImplicitThisPrefixToDynamicImportEnclosingClass(tree.tpe) =>
+          def rec(tpe: Type): Tree = (tpe: @unchecked) match // exhaustive because of the `if ... =>`
+            case tpe: ThisType            => This(tpe.cls)
+            case tpe @ TermRef(prefix, _) => rec(prefix).select(tpe.symbol)
+
+          rec(tree.tpe).withSpan(tree.span)
+
         // Compile-time errors and warnings for js.Dynamic.literal
         case Apply(Apply(fun, nameArgs), args)
             if fun.symbol == jsdefn.JSDynamicLiteral_applyDynamic ||
@@ -318,9 +349,9 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           nameArgs match {
             case List(Literal(Constant(s: String))) =>
               if (s != "apply")
-                report.error(i"js.Dynamic.literal does not have a method named $s", tree)
+                report.error(em"js.Dynamic.literal does not have a method named $s", tree)
             case _ =>
-              report.error(i"js.Dynamic.literal.${tree.symbol.name} may not be called directly", tree)
+              report.error(em"js.Dynamic.literal.${tree.symbol.name} may not be called directly", tree)
           }
 
           // TODO Warn for known duplicate property names
@@ -381,7 +412,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
       tpe.underlyingClassRef(refinementOK = false) match {
         case typeRef: TypeRef if typeRef.symbol.isOneOf(Trait | ModuleClass) =>
-          report.error(i"non-trait class type required but $tpe found", tpeArg)
+          report.error(em"non-trait class type required but $tpe found", tpeArg)
         case _ =>
           // an error was already reported above
       }
@@ -440,7 +471,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
              * which is never valid.
              */
             report.error(
-                i"${sym.name} extends ${parentSym.fullName} which does not extend js.Any.",
+                em"${sym.name} extends ${parentSym.fullName} which does not extend js.Any.",
                 classDef)
         }
       }
@@ -502,8 +533,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           def emitOverrideError(msg: String): Unit = {
             report.error(
-              "error overriding %s;\n  %s %s".format(
-                infoStringWithLocation(overridden), infoString(overriding), msg),
+              em"""error overriding ${infoStringWithLocation(overridden)};
+                  |  ${infoString(overriding)} $msg""",
               errorPos)
           }
 
@@ -559,7 +590,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           for (annot <- sym.annotations) {
             val annotSym = annot.symbol
             if (isJSNativeLoadingSpecAnnot(annotSym))
-              report.error(i"Traits may not have an @${annotSym.name} annotation.", annot.tree)
+              report.error(em"Traits may not have an @${annotSym.name} annotation.", annot.tree)
           }
         } else {
           checkJSNativeLoadSpecOf(treePos, sym)
@@ -571,7 +602,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
       def checkGlobalRefName(globalRef: String): Unit = {
         if (!JSGlobalRef.isValidJSGlobalRefName(globalRef))
-          report.error(s"The name of a JS global variable must be a valid JS identifier (got '$globalRef')", pos)
+          report.error(em"The name of a JS global variable must be a valid JS identifier (got '$globalRef')", pos)
       }
 
       if (enclosingOwner is OwnerKind.JSNative) {
@@ -585,7 +616,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         for (annot <- sym.annotations) {
           val annotSym = annot.symbol
           if (isJSNativeLoadingSpecAnnot(annotSym))
-            report.error(i"Nested JS classes and objects cannot have an @${annotSym.name} annotation.", annot.tree)
+            report.error(em"Nested JS classes and objects cannot have an @${annotSym.name} annotation.", annot.tree)
         }
 
         if (sym.owner.isStaticOwner) {
@@ -731,7 +762,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       if (overriddenSymbols.hasNext) {
         val overridden = overriddenSymbols.next()
         val verb = if (overridden.is(Deferred)) "implement" else "override"
-        report.error(i"An @js.native member cannot $verb the inherited member ${overridden.fullName}", tree)
+        report.error(em"An @js.native member cannot $verb the inherited member ${overridden.fullName}", tree)
       }
 
       tree
@@ -888,6 +919,9 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
             report.error("A non-native JS trait cannot contain private members", tree)
           } else if (sym.is(Lazy)) {
             report.error("A non-native JS trait cannot contain lazy vals", tree)
+          } else if (sym.is(ParamAccessor)) {
+            // #12621
+            report.error("A non-native JS trait cannot have constructor parameters", tree)
           } else if (!sym.is(Deferred)) {
             /* Tell the back-end not to emit this thing. In fact, this only
              * matters for mixed-in members created from this member.
@@ -974,6 +1008,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       tree.rhs match {
         case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
           // ok
+        case rhs: Ident if rhs.symbol == jsdefn.JSPackage_native =>
+          // ok
         case _ =>
           val pos = if (tree.rhs != EmptyTree) tree.rhs.srcPos else tree.srcPos
           report.error(s"$longKindStr may only call js.native.", pos)
@@ -982,7 +1018,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       // Check that the result type was explicitly specified
       // (This is stronger than Scala 2, which only warns, and only if it was inferred as Nothing.)
       if (tree.tpt.isInstanceOf[InferredTypeTree])
-        report.error(i"The type of ${tree.name} must be explicitly specified because it is JS native.", tree)
+        report.error(em"The type of ${tree.name} must be explicitly specified because it is JS native.", tree)
     }
 
     private def checkJSNativeSpecificAnnotsOnNonJSNative(memberDef: MemberDef)(using Context): Unit = {
@@ -1319,7 +1355,7 @@ object PrepJSInterop {
     for (annotation <- sym.annotations) {
       if (isCompilerAnnotation(annotation)) {
         report.error(
-            i"@${annotation.symbol.fullName} is for compiler internal use only. Do not use it yourself.",
+            em"@${annotation.symbol.fullName} is for compiler internal use only. Do not use it yourself.",
             annotation.tree)
       }
     }

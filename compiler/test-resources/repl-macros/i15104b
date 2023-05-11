@@ -1,0 +1,5 @@
+scala> import scala.quoted._
+scala> object Foo { def macroImpl(using Quotes) = Expr(1); inline def foo = ${ Foo.macroImpl } }
+// defined object Foo
+scala> Foo.foo
+val res0: Int = 1

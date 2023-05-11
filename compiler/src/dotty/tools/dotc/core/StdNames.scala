@@ -3,6 +3,7 @@ package core
 
 import scala.collection.mutable
 import scala.annotation.switch
+import scala.annotation.internal.sharable
 import Names._
 import Symbols._
 import Contexts._
@@ -40,7 +41,9 @@ object StdNames {
     inline val Tuple                      = "Tuple"
     inline val Product                    = "Product"
 
-    def sanitize(str: String): String = str.replaceAll("""[<>]""", """\$""").nn
+    @sharable
+    private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
+    def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
   }
 
   abstract class DefinedNames[N <: Name] {
@@ -128,6 +131,7 @@ object StdNames {
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = str.EXPAND_SEPARATOR
     val IMPORT: N                     = "<import>"
+    val INTO: N                       = "<into>"
     val MODULE_SUFFIX: N              = str.MODULE_SUFFIX
     val OPS_PACKAGE: N                = "<special-ops>"
     val OVERLOADED: N                 = "<overloaded>"
@@ -208,6 +212,7 @@ object StdNames {
     final val Throwable: N           = "Throwable"
     final val IOOBException: N       = "IndexOutOfBoundsException"
     final val FunctionXXL: N         = "FunctionXXL"
+    final val ErasedFunction: N      = "ErasedFunction"
 
     final val Abs: N                  = "Abs"
     final val And: N                  = "&&"
@@ -243,7 +248,6 @@ object StdNames {
     final val ToString: N             = "ToString"
     final val Xor: N                  = "^"
 
-    final val ClassfileAnnotation: N = "ClassfileAnnotation"
     final val ClassManifest: N       = "ClassManifest"
     final val Enum: N                = "Enum"
     final val Group: N               = "Group"
@@ -282,7 +286,7 @@ object StdNames {
 // ----- Term names -----------------------------------------
 
     // Compiler-internal
-    val CAPTURE_ROOT: N             = "*"
+    val CAPTURE_ROOT: N             = "cap"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val EVT2U: N                    = "evt2u$"
@@ -297,6 +301,7 @@ object StdNames {
     val THROWS: N                   = "$throws"
     val U2EVT: N                    = "u2evt$"
     val ALLARGS: N                  = "$allArgs"
+    val UPARROW: N                  = "^"
 
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"
@@ -420,6 +425,7 @@ object StdNames {
     val assert_ : N             = "assert"
     val assume_ : N             = "assume"
     val box: N                  = "box"
+    val break: N                = "break"
     val build : N               = "build"
     val bundle: N               = "bundle"
     val bytes: N                = "bytes"
@@ -501,6 +507,7 @@ object StdNames {
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
     val internal: N             = "internal"
+    val into: N                 = "into"
     val isArray: N              = "isArray"
     val isDefinedAt: N          = "isDefinedAt"
     val isDefinedAtImpl: N      = "$isDefinedAt"
@@ -510,10 +517,12 @@ object StdNames {
     val isInstanceOfPM: N       = "$isInstanceOf$"
     val java: N                 = "java"
     val key: N                  = "key"
+    val label: N                = "label"
     val lang: N                 = "lang"
     val language: N             = "language"
     val length: N               = "length"
     val lengthCompare: N        = "lengthCompare"
+    val local: N                = "local"
     val longHash: N             = "longHash"
     val macroThis : N           = "_this"
     val macroContext : N        = "c"
@@ -825,7 +834,7 @@ object StdNames {
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 
-    def selectorName(n: Int): TermName = "_" + (n + 1)
+    def selectorName(n: Int): TermName = productAccessorName(n + 1)
 
     object primitive {
       val arrayApply: TermName  = "[]apply"

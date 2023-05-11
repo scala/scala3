@@ -4,7 +4,9 @@
    |       value º is not a member of object BugExp4Point2D.IntT.
    |       An extension method was tried, but could not be fully constructed:
    |
-   |           º(x)    failed with
+   |           º(x)
+   |
+   |           failed with:
    |
    |               Ambiguous overload. The overloaded alternatives of method º in object dsl with types
    |                [T1, T2]
@@ -22,7 +24,9 @@
    |value º is not a member of object BugExp4Point2D.IntT.
    |An extension method was tried, but could not be fully constructed:
    |
-   |    º(x)    failed with
+   |    º(x)
+   |
+   |    failed with:
    |
    |        Ambiguous overload. The overloaded alternatives of method º in object dsl with types
    |         [T1, T2]
@@ -36,6 +40,8 @@
    |          value foo is not a member of String.
    |          An extension method was tried, but could not be fully constructed:
    |
-   |              Test.foo("abc")(/* missing */summon[C])    failed with
+   |              Test.foo("abc")(/* missing */summon[C])
+   |
+   |              failed with:
    |
    |                  No given instance of type C was found for parameter x$2 of method foo in object Test

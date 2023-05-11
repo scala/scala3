@@ -1,5 +1,5 @@
 class CC
-type Cap = {*} CC
+type Cap = CC^
 
 abstract class C:
   def head: String

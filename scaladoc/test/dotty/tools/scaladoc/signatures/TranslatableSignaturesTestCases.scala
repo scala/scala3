@@ -39,7 +39,9 @@ class PackageObjectSymbolSignatures extends SignatureTest("packageObjectSymbolSi
 class MergedPackageSignatures extends SignatureTest("mergedPackage", SignatureTest.all.filterNot(_ == "object"),
   sourceFiles = List("mergedPackage1", "mergedPackage2", "mergedPackage3"))
 
-class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures", SignatureTest.all)
+class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures", SignatureTest.all.filterNot(_ == "extension"))
+
+class ExtensionMethodParamsSignature extends SignatureTest("extensionParams", SignatureTest.all)
 
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
@@ -104,3 +106,7 @@ class ImplicitMembers extends SignatureTest(
   Seq("def"),
   filterFunc = _.toString.endsWith("OuterClass$ImplicitMemberTarget.html")
 )
+
+class NonScala3Parent extends SignatureTest("nonScala3Parent", SignatureTest.all)
+
+class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)

@@ -6,7 +6,7 @@
   |                                  Note: a match type could not be fully reduced:
   |
   |                                    trying to reduce  Tuple.Tail[X]
-  |                                    failed since selector  X
+  |                                    failed since selector X
   |                                    does not uniquely determine parameter xs in
   |                                      case _ *: xs => xs
   |                                    The computed bounds for the parameter are:
@@ -21,7 +21,7 @@
    |                                      Note: a match type could not be fully reduced:
    |
    |                                        trying to reduce  Tuple.Tail[X]
-   |                                        failed since selector  X
+   |                                        failed since selector X
    |                                        does not uniquely determine parameter xs in
    |                                          case _ *: xs => xs
    |                                        The computed bounds for the parameter are:
@@ -36,7 +36,7 @@
    |                         Note: a match type could not be fully reduced:
    |
    |                           trying to reduce  Tuple.Tail[X]
-   |                           failed since selector  X
+   |                           failed since selector X
    |                           does not uniquely determine parameter xs in
    |                             case _ *: xs => xs
    |                           The computed bounds for the parameter are:

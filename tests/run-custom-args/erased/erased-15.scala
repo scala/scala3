@@ -1,3 +1,5 @@
+import scala.runtime.ErasedFunction
+
 object Test {
 
   def main(args: Array[String]): Unit = {
@@ -10,7 +12,7 @@ object Test {
   }
 }
 
-class Foo extends ErasedFunction1[Int, Int] {
+class Foo extends ErasedFunction {
   def apply(erased x: Int): Int = {
     println("Foo.apply")
     42

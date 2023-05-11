@@ -1,8 +1,15 @@
+-- [E129] Potential Issue Warning: tests/neg-custom-args/captures/real-try.scala:30:4 ----------------------------------
+30 |  b.x
+   |  ^^^
+   |  A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/real-try.scala:12:2 -----------------------------------------------------------
 12 |  try  // error
    |  ^
-   |  The expression's type {*} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
+   |  Result of `try` cannot have type () => Unit since
+   |  that type captures the root capability `cap`.
+   |  This is often caused by a locally generated exception capability leaking as part of its result.
 13 |    () => foo(1)
 14 |  catch
 15 |    case _: Ex1 => ???
@@ -10,14 +17,20 @@
 -- Error: tests/neg-custom-args/captures/real-try.scala:18:2 -----------------------------------------------------------
 18 |  try  // error
    |  ^
-   |  The expression's type {*} () -> ? Cell[Unit] is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
+   |  Result of `try` cannot have type () => Cell[Unit]^? since
+   |  that type captures the root capability `cap`.
+   |  This is often caused by a locally generated exception capability leaking as part of its result.
 19 |    () => Cell(foo(1))
 20 |  catch
 21 |    case _: Ex1 => ???
 22 |    case _: Ex2 => ???
--- Error: tests/neg-custom-args/captures/real-try.scala:30:4 -----------------------------------------------------------
-30 |  b.x // error
-   |  ^^^
-   |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/real-try.scala:24:10 ----------------------------------------------------------
+24 |  val b = try  // error
+   |          ^
+   |          Result of `try` cannot have type Cell[box () => Unit]^? since
+   |          the part box () => Unit of that type captures the root capability `cap`.
+   |          This is often caused by a locally generated exception capability leaking as part of its result.
+25 |    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {cap} () => Unit]
+26 |  catch
+27 |    case _: Ex1 => ???
+28 |    case _: Ex2 => ???

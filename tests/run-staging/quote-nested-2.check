@@ -1,4 +1,4 @@
 ((q: scala.quoted.Quotes) ?=> {
   val a: scala.quoted.Expr[scala.Int] = scala.quoted.runtime.Expr.quote[scala.Int](4).apply(using q)
-  ((evidence$2: scala.quoted.Quotes) ?=> a).asInstanceOf[scala.ContextFunction1[scala.quoted.Quotes, scala.quoted.Expr[scala.Int]]].apply(using q)
+  ((evidence$2: scala.quoted.Quotes) ?=> a).apply(using q)
 })

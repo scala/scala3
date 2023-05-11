@@ -12,12 +12,13 @@ import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisitor, YamlFrontMatterExtension}
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
-import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.html.HtmlRenderer
 
 import scala.jdk.CollectionConverters._
+import com.vladsch.flexmark.util.data.DataHolder
+import com.vladsch.flexmark.util.data.MutableDataSet
 
 val docsRootDRI: DRI = DRI(location = "_docs/index", symbolUUID = staticFileSymbolUUID)
 val apiPageDRI: DRI = DRI(location = "api/index")

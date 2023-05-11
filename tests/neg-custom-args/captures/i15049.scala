@@ -1,10 +1,10 @@
 class Session:
   def request = "Response"
 class Foo:
-  private val session: {*} Session = new Session
-  def withSession[T](f: ({*} Session) => T): T = f(session)
+  private val session: Session^{cap} = new Session
+  def withSession[sealed T](f: (Session^{cap}) => T): T = f(session)
 
-def Test =
+def Test: Unit =
   val f = new Foo
   f.withSession(s => s).request // error
-  f.withSession[{*} Session](t => t) // error
+  f.withSession[Session^](t => t) // error

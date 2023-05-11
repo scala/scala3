@@ -520,8 +520,9 @@ object TypeErasure {
         case _: ClassInfo => true
         case _ => false
       }
-    case tp: TypeParamRef => false
-    case tp: TypeBounds => false
+    case _: TypeParamRef => false
+    case _: TypeBounds => false
+    case _: MatchType => false
     case tp: TypeProxy => hasStableErasure(tp.translucentSuperType)
     case tp: AndType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case tp: OrType  => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
@@ -535,7 +536,14 @@ object TypeErasure {
     val paramss = res.paramNamess
     assert(paramss.length == 1)
     erasure(defn.FunctionType(paramss.head.length,
-      isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
+      isContextual = res.isImplicitMethod))
+
+  def eraseErasedFunctionApply(erasedFn: MethodType)(using Context): Type =
+    val fnType = defn.FunctionType(
+      n = erasedFn.erasedParams.count(_ == false),
+      isContextual = erasedFn.isContextualMethod,
+    )
+    erasure(fnType)
 }
 
 import TypeErasure._
@@ -591,9 +599,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       tp
     case tp: TypeRef =>
       val sym = tp.symbol
-      if (!sym.isClass) this(tp.translucentSuperType)
-      else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClass(tp)
-      else if (defn.isSyntheticFunctionClass(sym)) defn.functionTypeErasure(sym)
+      if !sym.isClass then this(checkedSuperType(tp))
+      else if semiEraseVCs && isDerivedValueClass(sym) then eraseDerivedValueClass(tp)
+      else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
       val tycon = tp.tycon
@@ -601,7 +609,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       else if (tycon.isRef(defn.PairClass)) erasePair(tp)
       else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
       else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
-      else apply(tp.translucentSuperType)
+      else this(checkedSuperType(tp))
     case tp: TermRef =>
       this(underlyingOfTermRef(tp))
     case _: ThisType =>
@@ -612,6 +620,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       defn.FunctionType(0)
     case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
       erasePolyFunctionApply(refinedInfo)
+    case RefinedType(parent, nme.apply, refinedInfo: MethodType) if defn.isErasedFunctionType(parent) =>
+      eraseErasedFunctionApply(refinedInfo)
     case tp: TypeProxy =>
       this(tp.underlying)
     case tp @ AndType(tp1, tp2) =>
@@ -638,7 +648,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK)(tpToErase)
-      val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
+      val (names, formals0) = if tp.hasErasedParams then
+        tp.paramNames
+          .zip(tp.paramInfos)
+          .zip(tp.erasedParams)
+          .collect{ case (param, isErased) if !isErased => param }
+          .unzip
+      else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
@@ -688,6 +704,18 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case tp if (tp `eq` NoType) || (tp `eq` NoPrefix) =>
       tp
   }
+
+  /** Like translucentSuperType, but issue a fatal error if it does not exist. */
+  private def checkedSuperType(tp: TypeProxy)(using Context): Type =
+    val tp1 = tp.translucentSuperType
+    if !tp1.exists then
+      val msg = tp.typeConstructor match
+        case tycon: TypeRef =>
+          MissingType(tycon.prefix, tycon.name).toMessage.message
+        case _ =>
+          i"Cannot resolve reference to $tp"
+      throw FatalError(msg)
+    tp1
 
   /** Widen term ref, skipping any `()` parameter of an eventual getter. Used to erase a TermRef.
    *  Since getters are introduced after erasure, one would think that erasing a TermRef
@@ -815,7 +843,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           throw new MissingType(tp.prefix, tp.name)
         val sym = tp.symbol
         if (!sym.isClass) {
-          val info = tp.translucentSuperType
+          val info = checkedSuperType(tp)
           if (!info.exists) assert(false, i"undefined: $tp with symbol $sym")
           return sigName(info)
         }
@@ -841,7 +869,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName( // todo: what about repeatedParam?
           if (erasureDependsOnArgs(sym)) this(tp)
           else if (sym.isClass) tp.underlying
-          else tp.translucentSuperType)
+          else checkedSuperType(tp))
       case ErasedValueType(_, underlying) =>
         sigName(underlying)
       case JavaArrayType(elem) =>
@@ -857,6 +885,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         // we need this case rather than falling through to the default
         // because RefinedTypes <: TypeProxy and it would be caught by
         // the case immediately below
+        sigName(this(tp))
+      case tp @ RefinedType(parent, nme.apply, refinedInfo) if defn.isErasedFunctionType(parent) =>
         sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)

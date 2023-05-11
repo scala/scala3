@@ -1,5 +1,5 @@
 class C
-type Cap = {*} C
+type Cap = C^
 
 class Pair[+A, +B](x: A, y: B):
     def fst: A = x

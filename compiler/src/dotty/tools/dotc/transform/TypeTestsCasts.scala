@@ -16,6 +16,8 @@ import util.Spans._
 import reporting._
 import config.Printers.{ transforms => debug }
 
+import patmat.Typ
+
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
  *  Any remaining type tests
@@ -51,7 +53,8 @@ object TypeTestsCasts {
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, "it's a refinement type"
    *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
-   *  9. otherwise, ""
+   *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P) or (isCheckDefinitelyFalse(T1, P) && checkable(T2, P)) or (checkable(T1, P) && isCheckDefinitelyFalse(T2, P)).
+   *  10. otherwise, ""
    */
   def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
     extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
@@ -129,6 +132,41 @@ object TypeTestsCasts {
 
     }
 
+    /** Whether the check X.isInstanceOf[P] is definitely false? */
+    def isCheckDefinitelyFalse(X: Type, P: Type)(using Context): Boolean = trace(s"isCheckDefinitelyFalse(${X.show}, ${P.show})") {
+      X.widenDealias match
+      case AndType(x1, x2) =>
+        isCheckDefinitelyFalse(x1, P) || isCheckDefinitelyFalse(x2, P)
+
+      case x =>
+        P.widenDealias match
+        case AndType(p1, p2) =>
+          isCheckDefinitelyFalse(x, p1) || isCheckDefinitelyFalse(x, p2)
+
+        case p =>
+          val pSpace = Typ(p)
+          val xSpace = Typ(x)
+          if pSpace.canDecompose then
+            val ps = pSpace.decompose.map(_.tp)
+            ps.forall(p => isCheckDefinitelyFalse(x, p))
+          else if xSpace.canDecompose then
+            val xs = xSpace.decompose.map(_.tp)
+            xs.forall(x => isCheckDefinitelyFalse(x, p))
+          else
+            if x.typeSymbol.isClass && p.typeSymbol.isClass then
+              val xClass = effectiveClass(x)
+              val pClass = effectiveClass(p)
+
+              val bothAreClasses = !xClass.is(Trait) && !pClass.is(Trait)
+              val notXsubP = !xClass.derivesFrom(pClass)
+              val notPsubX = !pClass.derivesFrom(xClass)
+              bothAreClasses && notXsubP && notPsubX
+              || xClass.is(Final) && notXsubP
+              || pClass.is(Final) && notPsubX
+            else
+              false
+    }
+
     def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
       case _: SingletonType     => ""
       case _: TypeProxy
@@ -146,7 +184,20 @@ object TypeTestsCasts {
             //   - T1 <:< T2 | T3
             //   - T1 & T2 <:< T3
             // See TypeComparer#either
-            recur(tp1, P) && recur(tp2, P)
+            val res1 = recur(tp1, P)
+            val res2 = recur(tp2, P)
+
+            if res1.isEmpty && res2.isEmpty then
+              res1
+            else if res2.isEmpty then
+              if isCheckDefinitelyFalse(tp1, P) then res2
+              else res1
+            else if res1.isEmpty then
+              if isCheckDefinitelyFalse(tp2, P) then res1
+              else res2
+            else
+              res1
+
           case _ =>
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists &&
@@ -241,7 +292,7 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
+              report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
@@ -302,8 +353,8 @@ object TypeTestsCasts {
 
         /** Transform isInstanceOf
          *
-         *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
-         *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A | B]          ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A & B]          ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
          *    expr.isInstanceOf[Tuple]          ~~>  scala.runtime.Tuples.isInstanceOfTuple(expr)
          *    expr.isInstanceOf[EmptyTuple]     ~~>  scala.runtime.Tuples.isInstanceOfEmptyTuple(expr)
          *    expr.isInstanceOf[NonEmptyTuple]  ~~>  scala.runtime.Tuples.isInstanceOfNonEmptyTuple(expr)
@@ -345,7 +396,7 @@ object TypeTestsCasts {
             val testWidened = testType.widen
             defn.untestableClasses.find(testWidened.isRef(_)) match
               case Some(untestable) =>
-                report.error(i"$untestable cannot be used in runtime type tests", tree.srcPos)
+                report.error(em"$untestable cannot be used in runtime type tests", tree.srcPos)
                 constant(expr, Literal(Constant(false)))
               case _ =>
                 val erasedTestType = erasure(testType)
@@ -359,7 +410,7 @@ object TypeTestsCasts {
           if !isTrusted && !isUnchecked then
             val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
             if whyNot.nonEmpty then
-              report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
+              report.uncheckedWarning(em"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }

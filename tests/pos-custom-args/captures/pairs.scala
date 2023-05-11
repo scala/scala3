@@ -12,21 +12,21 @@ object Generic:
     def g(x: Cap): Unit = if d == x then ()
     val p = Pair(f, g)
     val x1 = p.fst
-    val x1c: {c} Cap -> Unit = x1
+    val x1c: Cap ->{c} Unit = x1
     val y1 = p.snd
-    val y1c: {d} Cap -> Unit = y1
+    val y1c: Cap ->{d} Unit = y1
 
 object Monomorphic:
 
-  class Pair(x: Cap => Unit, y: {*} Cap -> Unit):
-    def fst: {x} Cap -> Unit = x
-    def snd: {y} Cap -> Unit = y
+  class Pair(x: Cap => Unit, y: Cap => Unit):
+    def fst: Cap ->{x} Unit = x
+    def snd: Cap ->{y} Unit = y
 
   def test(c: Cap, d: Cap) =
     def f(x: Cap): Unit = if c == x then ()
     def g(x: Cap): Unit = if d == x then ()
     val p = Pair(f, g)
     val x1 = p.fst
-    val x1c: {c} Cap -> Unit = x1
+    val x1c: Cap ->{c} Unit = x1
     val y1 = p.snd
-    val y1c: {d} Cap -> Unit = y1
+    val y1c: Cap ->{d} Unit = y1

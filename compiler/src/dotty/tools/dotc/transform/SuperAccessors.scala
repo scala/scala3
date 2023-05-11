@@ -88,7 +88,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           report.error(
-            s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz.is(Package)}. Accessor required for ${sel} (${sel.show})",
+            em"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz.is(Package)}. Accessor required for ${sel.toString} ($sel)",
             sel.srcPos)
         else accDefs(clazz) += DefDef(acc, EmptyTree).withSpan(accRange)
         acc
@@ -109,16 +109,16 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
     if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
-      report.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
+      report.error(em"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
     else if (isDisallowed(sym))
-      report.error(s"super not allowed here: use this.${sel.name} instead", sel.srcPos)
+      report.error(em"super not allowed here: use this.${sel.name} instead", sel.srcPos)
     else if (sym.is(Deferred)) {
       val member = sym.overridingSymbol(clazz.asClass)
       if (!mix.name.isEmpty ||
           !member.exists ||
           !(member.is(AbsOverride) && member.isIncompleteIn(clazz)))
         report.error(
-            i"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
+            em"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
             sel.srcPos)
       else report.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
     }
@@ -131,7 +131,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             val overriding = sym.overridingSymbol(intermediateClass)
             if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
               report.error(
-                s"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
+                em"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
                 sel.srcPos)
           }
         else {
@@ -174,27 +174,30 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val sel @ Select(qual, name) = tree: @unchecked
     val sym = sel.symbol
 
-    /** If an accesses to protected member of a class comes from a trait,
-      *  or would need a protected accessor placed in a trait, we cannot
-      *  perform the access to the protected member directly since jvm access
-      *  restrictions require the call site to be in an actual subclass and
-      *  traits don't count as subclasses in this respect. In this case
-      *  we generate a super accessor instead. See SI-2296.
-      */
     def needsSuperAccessor =
       ProtectedAccessors.needsAccessorIfNotInSubclass(sym) &&
       AccessProxies.hostForAccessorOf(sym).is(Trait)
     qual match {
       case _: This if needsSuperAccessor =>
-        /*
-          * A trait which extends a class and accesses a protected member
-          *  of that class cannot implement the necessary accessor method
-          *  because jvm access restrictions require the call site to be in
-          *  an actual subclass and traits don't count as subclasses in this
-          *  respect. We generate a super accessor itself, which will be fixed
-          *  by the implementing class.  See SI-2296.
-          */
-        superAccessorCall(sel)
+        /* Given a protected member m defined in class C,
+         * and a trait T that calls m.
+         *
+         * If T extends C, then we can access it by casting
+         * the qualifier of the select to C.
+         *
+         * That's because the protected method is actually public,
+         * so we can call it.  For truly protected methods, like from
+         * Java, we error instead of emitting the wrong code (i17021.ext-java).
+         *
+         * Otherwise, we need to go through an accessor,
+         * which the implementing class will provide an implementation for.
+         */
+        if ctx.owner.enclosingClass.derivesFrom(sym.owner) then
+          if sym.is(JavaDefined) then
+            report.error(em"${ctx.owner} accesses protected $sym inside a concrete trait method: use super.${sel.name} instead", sel.srcPos)
+          sel
+        else
+          superAccessorCall(sel)
       case Super(_, mix) =>
         transformSuperSelect(sel)
       case _ =>

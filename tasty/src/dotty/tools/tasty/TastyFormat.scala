@@ -91,6 +91,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
                   NAMEDARG              paramName_NameRef arg_Term                 -- paramName = arg
                   APPLY          Length fn_Term arg_Term*                          -- fn(args)
+                  APPLYsigpoly   Length fn_Term meth_Type arg_Term*                -- The application of a signature-polymorphic method
                   TYPEAPPLY      Length fn_Term arg_Type*                          -- fn[args]
                   SUPER          Length this_Term mixinTypeIdent_Tree?             -- super[mixin]
                   TYPED          Length expr_Term ascriptionType_Term              -- expr: ascription
@@ -121,7 +122,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*              -- sel match { CaseDef } where `bound` is optional upper bound of all rhs
                   BYNAMEtpt             underlying_Term                            -- => underlying
                   SHAREDterm            term_ASTRef                                -- Link to previously serialized term
-                  HOLE           Length idx_Nat arg_Tree*                          -- Hole where a splice goes with sequence number idx, splice is applied to arguments `arg`s
+                  HOLE           Length idx_Nat tpe_Type arg_Tree*                 -- Splice hole with index `idx`, the type of the hole `tpe`, type and term arguments of the hole `arg`s
+
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?              -- case pat if guard => rhs
   ImplicitArg   = IMPLICITARG           arg_Term                                   -- implicit unapply argument
@@ -288,7 +290,7 @@ object TastyFormat {
    *  compatibility, but remains backwards compatible, with all
    *  preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 2
+  final val MinorVersion: Int = 4
 
   /** Natural Number. The `ExperimentalVersion` allows for
    *  experimentation with changes to TASTy without committing
@@ -304,7 +306,7 @@ object TastyFormat {
    *  is able to read final TASTy documents if the file's
    *  `MinorVersion` is strictly less than the current value.
    */
-  final val ExperimentalVersion: Int = 0
+  final val ExperimentalVersion: Int = 1
 
   /**This method implements a binary relation (`<:<`) between two TASTy versions.
    *
@@ -578,6 +580,7 @@ object TastyFormat {
   // final val ??? = 178
   // final val ??? = 179
   final val METHODtype = 180
+  final val APPLYsigpoly = 181
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
@@ -744,6 +747,7 @@ object TastyFormat {
     case BOUNDED => "BOUNDED"
     case APPLY => "APPLY"
     case TYPEAPPLY => "TYPEAPPLY"
+    case APPLYsigpoly => "APPLYsigpoly"
     case NEW => "NEW"
     case THROW => "THROW"
     case TYPED => "TYPED"

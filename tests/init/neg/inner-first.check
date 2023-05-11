@@ -1,10 +1,9 @@
 -- Error: tests/init/neg/inner-first.scala:3:12 ------------------------------------------------------------------------
 3 |    println(this)           // error
   |            ^^^^
-  |            Cannot prove the method argument is hot. Only hot values are safe to leak.
-  |            Found = ThisRef[class B].
-  |            Non initialized field(s): value n. Calling trace:
-  |            -> class B:	[ inner-first.scala:2 ]
-  |               ^
-  |            -> println(this)           // error	[ inner-first.scala:3 ]
-  |                       ^^^^
+  |Could not verify that the method argument is transitively initialized (Hot). It was found to be the original object of type (class B) where initialization checking started. Only transitively initialized arguments may be passed to methods (except constructors).
+  |Non initialized field(s): value n. Calling trace:
+  |-> class B:	[ inner-first.scala:2 ]
+  |   ^
+  |-> println(this)           // error	[ inner-first.scala:3 ]
+  |           ^^^^

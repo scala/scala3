@@ -164,19 +164,23 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
   /** Will be set to true if any of the compiled compilation units contains
-   *  a pureFunctions or captureChecking language import.
+   *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
 
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a captureChecking language import.
+   */
+  var ccImportEncountered = false
+
+  private var myEnrichedErrorMessage = false
+
   def compile(files: List[AbstractFile]): Unit =
-    try
-      val sources = files.map(runContext.getSource(_))
-      compileSources(sources)
-    catch
-      case NonFatal(ex) =>
-        if units.nonEmpty then report.echo(i"exception occurred while compiling $units%, %")
-        else report.echo(s"exception occurred while compiling ${files.map(_.name).mkString(", ")}")
-        throw ex
+    try compileSources(files.map(runContext.getSource(_)))
+    catch case NonFatal(ex) if !this.enrichedErrorMessage =>
+      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
+      throw ex
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
@@ -226,9 +230,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)
 
+    if ctx.settings.YnoDoubleBindings.value then
+      ctx.base.checkNoDoubleBindings = true
+
     def runPhases(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
+      var phasesWereAdjusted = false
 
       for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
@@ -247,6 +255,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
             ctx.typerState.gc()
           }
+          if !phasesWereAdjusted then
+            phasesWereAdjusted = true
+            if !Feature.ccEnabledSomewhere then
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase.prev)
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase)
 
       profiler.finished()
     }
@@ -383,4 +396,17 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** The context created for this run */
   given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
   assert(runContext.runId <= Periods.MaxPossibleRunId)
+}
+
+object Run {
+  extension (run: Run | Null)
+    def enrichedErrorMessage: Boolean = if run == null then false else run.myEnrichedErrorMessage
+    def enrichErrorMessage(errorMessage: String)(using Context): String =
+      if run == null then
+        report.enrichErrorMessage(errorMessage)
+      else if !run.enrichedErrorMessage then
+        run.myEnrichedErrorMessage = true
+        report.enrichErrorMessage(errorMessage)
+      else
+        errorMessage
 }

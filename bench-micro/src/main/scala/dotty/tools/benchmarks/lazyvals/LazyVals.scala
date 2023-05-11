@@ -21,7 +21,7 @@ object LazyVals {
             }
         }
     }
-    
+
     class LazyHolder {
 
         lazy val value: List[Int] = {
@@ -47,6 +47,24 @@ object LazyVals {
                 case 2 => new Bar3
                 case 3 => new Bar4
                 case 4 => new Bar4
+            }
+        }
+    }
+
+    class LazyIntHolder {
+        lazy val value: Int = {
+            (System.nanoTime() % 1000).toInt
+        }
+    }
+
+    object ObjectHolder {
+        lazy val value: String = {
+            System.nanoTime() % 5 match {
+                case 0 => "abc"
+                case 1 => "def"
+                case 2 => "ghi"
+                case 3 => "jkl"
+                case 4 => "mno"
             }
         }
     }

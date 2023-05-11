@@ -1,5 +1,6 @@
 import scala.quoted.*
 import scala.tasty.inspector.*
+import scala.language.experimental.erasedDefinitions
 
 val experimentalDefinitionInLibrary = Set(
 
@@ -55,28 +56,43 @@ val experimentalDefinitionInLibrary = Set(
   "scala.caps",
   "scala.caps$",
 
-  //// New APIs: Mirror
-  // Can be stabilized in 3.3.0 or later.
-  "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
+  //// New feature: into
+  "scala.annotation.allowConversions",
+
+  //// New feature: Macro annotations
+  "scala.annotation.MacroAnnotation",
 
    //// New APIs: Quotes
-  // Can be stabilized in 3.3.0 (unsure) or later
+  // Should be stabilized in 3.4.0
+  "scala.quoted.Quotes.reflectModule.defnModule.FunctionClass",
+  "scala.quoted.Quotes.reflectModule.FlagsModule.AbsOverride",
+  // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
+  "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
   "scala.quoted.Quotes.reflectModule.ClassDefModule.apply",
+  "scala.quoted.Quotes.reflectModule.ClassDefModule.module",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newClass",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
+  "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
+  "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
+  // Quotes for functions with erased parameters.
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass",
 
-  // New APIs: Lightweight lazy vals. Can be stabilized in 3.3.0
-  "scala.runtime.LazyVals$.Evaluating",
-  "scala.runtime.LazyVals$.Evaluating$",
-  "scala.runtime.LazyVals$.LazyValControlState",
-  "scala.runtime.LazyVals$.NullValue",
-  "scala.runtime.LazyVals$.NullValue$",
-  "scala.runtime.LazyVals$.Waiting",
-  "scala.runtime.LazyVals$.getStaticFieldOffset",
-  "scala.runtime.LazyVals$.objCAS"
+  // New feature: functions with erased parameters.
+  // Need erasedDefinitions enabled.
+  "scala.runtime.ErasedFunction",
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
+  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
+  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
+  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass"
 )
 
 
