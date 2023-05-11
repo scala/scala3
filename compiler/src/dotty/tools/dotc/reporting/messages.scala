@@ -2288,23 +2288,14 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
         |It can be removed without changing the semantics of the program. This may indicate an error."""
 }
 
-class CallToAnyRefMethodOnPredef(stat: untpd.Tree, method: Symbol)(using Context)
-  extends Message(CallToAnyRefMethodOnPredefID) {
+class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Context)
+  extends Message(UnqualifiedCallToAnyRefMethodID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Suspicious call to ${hl("Predef." + method.name)}"
+  def msg(using Context) = i"Suspicious top-level unqualified call to ${hl(method.name.toString)}"
   def explain(using Context) =
     i"""Top-level unqualified calls to ${hl("AnyRef")} or ${hl("Any")} methods such as ${hl(method.name.toString)} are
-       |resolved to calls on ${hl("Predef")}. This might not be what you intended."""
-}
-
-class CallToAnyRefMethodOnPackageObject(stat: untpd.Tree, method: Symbol)(using Context)
-  extends Message(CallToAnyRefMethodOnPackageObjectID) {
-  def kind = MessageKind.PotentialIssue
-  def msg(using Context) = i"Suspicious top-level call to ${hl("this." + method.name)}"
-  def explain(using Context) =
-    i"""Top-level calls to ${hl("AnyRef")} or ${hl("Any")} methods are resolved to calls on the
-       |synthetic package object generated for the current file. This might not be
-       |what you intended."""
+       |resolved to calls on ${hl("Predef")} or on imported methods. This might not be what
+       |you intended."""
 }
 
 class TraitCompanionWithMutableStatic()(using Context)
