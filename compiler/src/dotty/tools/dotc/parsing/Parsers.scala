@@ -3602,8 +3602,6 @@ object Parsers {
       }
     }
 
-
-
     /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
      *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
      *  DefDcl  ::=  DefSig `:' Type
