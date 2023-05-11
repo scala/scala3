@@ -59,7 +59,7 @@ object PrepareInlineable {
 
       def accessorNameOf(accessed: Symbol, site: Symbol)(using Context): TermName =
         val accName = InlineAccessorName(accessed.name.asTermName)
-        if site.isExtensibleClass || accessed.isBinaryAPIAccessor then accName.expandedName(site)
+        if site.isExtensibleClass || (accessed.isBinaryAPIAccessor && !site.is(Module)) then accName.expandedName(site)
         else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
@@ -114,7 +114,10 @@ object PrepareInlineable {
         val binaryCompat =
           val accessorClass = AccessProxies.hostForAccessorOf(accessed: Symbol)
           val inlineAccessorMatches =
-            accessor.name == InlineAccessorName(accessed.name.asTermName).expandedName(accessorClass)
+            def binaryAccessorName =
+              if accessed.owner.is(Module) then InlineAccessorName(accessed.name.asTermName)
+              else InlineAccessorName(accessed.name.asTermName).expandedName(accessorClass)
+            accessor.owner == accessed.owner && accessor.name == binaryAccessorName
           if !inlineAccessorMatches then
             s"""Adding $annot may break binary compatibility if a previous version of this
                 |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
