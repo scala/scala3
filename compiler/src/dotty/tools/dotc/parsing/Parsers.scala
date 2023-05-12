@@ -2860,7 +2860,18 @@ object Parsers {
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
-      if (isVarPattern(p) || p.isInstanceOf[Number]) && in.isColon then
+      if in.isColon then
+        val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
+        if !isVariableOrNumber then
+          report.gradualErrorOrMigrationWarning(
+            em"""Type ascriptions after patterns other than:
+                |  * variable pattern, e.g. `case x: String =>`
+                |  * number literal pattern, e.g. `case 10.5: Double =>`
+                |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
+            in.sourcePos(),
+            warnFrom = `3.3`,
+            errorFrom = future
+          )
         in.nextToken()
         ascription(p, location)
       else p
