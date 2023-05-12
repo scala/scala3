@@ -28,8 +28,11 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
 import org.eclipse.{lsp4j as l}
+import dotty.tools.dotc.semanticdb.SymbolInformation
+import scala.meta.internal.metals.WorkspaceSymbolQuery
+import dotty.tools.dotc.semanticdb.SymbolInformation.Kind
 
-object MtagsEnrichments extends ScalametaCommonEnrichments:
+object MtagsEnrichments extends CommonMtagsEnrichments:
 
   extension (driver: InteractiveDriver)
 
@@ -155,7 +158,7 @@ object MtagsEnrichments extends ScalametaCommonEnrichments:
     def isStale: Boolean =
       sym.sourcePos.span.exists && {
         val source = ctx.source
-        if source ne sym.source then
+        if (source ne sym.source) && source.path == sym.source.path then
           !source.content.startsWith(
             sym.decodedName.toString(),
             sym.sourcePos.span.point,
@@ -269,5 +272,17 @@ object MtagsEnrichments extends ScalametaCommonEnrichments:
           // we dealias applied type params by hand, because `dealias` doesn't do it
           AppliedType(tycon, params.map(_.metalsDealias))
         case dealised => dealised
+
+  extension (query: WorkspaceSymbolQuery)
+    def matches(info: SymbolInformation) =
+      info.kind.isRelevantKind && query.matches(info.symbol)
+
+  extension (kind: Kind)
+    def isRelevantKind: Boolean =
+      kind match
+        case Kind.OBJECT | Kind.PACKAGE_OBJECT | Kind.CLASS | Kind.TRAIT |
+            Kind.INTERFACE | Kind.METHOD | Kind.TYPE =>
+          true
+        case _ => false
 
 end MtagsEnrichments

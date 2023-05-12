@@ -92,7 +92,6 @@ final class PcInlineValueProviderImpl(
           case _ => false
 
   end referenceRequiresBrackets
-  // format: on
 
   private def adjustRhs(pos: SourcePosition) =
     def extend(point: Int, acceptedChar: Char, step: Int): Int =

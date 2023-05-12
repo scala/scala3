@@ -3,7 +3,6 @@ package scala.meta.internal.pc.completions
 import scala.meta.internal.mtags.CoursierComplete
 import scala.meta.internal.mtags.MtagsEnrichments.*
 
-import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Contexts.Context
 

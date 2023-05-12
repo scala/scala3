@@ -97,7 +97,8 @@ class MetalsPrinter(
           if sym.is(Flags.Implicit) then List("implicit") else Nil
         val finalKeyword = if sym.is(Flags.Final) then List("final") else Nil
         val keyOrEmpty = dotcPrinter.keywords(sym)
-        val keyword = if keyOrEmpty.nonEmpty then List(keyOrEmpty) else Nil
+        val keyword =
+          if keyOrEmpty.iterator.nonEmpty then List(keyOrEmpty) else Nil
         (implicitKeyword ::: finalKeyword ::: keyword ::: (s"$name:" :: shortTypeString :: Nil))
           .mkString(" ")
     end match
@@ -292,18 +293,18 @@ class MetalsPrinter(
       .zipAll(paramss, Nil, Nil)
       .map { case (params, syms) =>
         Params.paramsKind(syms) match
-          case Params.Kind.TypeParameter if params.nonEmpty =>
-            params.mkString("[", ", ", "]")
+          case Params.Kind.TypeParameter if params.iterator.nonEmpty =>
+            params.iterator.mkString("[", ", ", "]")
           case Params.Kind.Normal =>
-            params.mkString("(", ", ", ")")
-          case Params.Kind.Using if params.nonEmpty =>
-            params.mkString(
+            params.iterator.mkString("(", ", ", ")")
+          case Params.Kind.Using if params.iterator.nonEmpty =>
+            params.iterator.mkString(
               "(using ",
               ", ",
               ")",
             )
-          case Params.Kind.Implicit if params.nonEmpty =>
-            params.mkString(
+          case Params.Kind.Implicit if params.iterator.nonEmpty =>
+            params.iterator.mkString(
               "(implicit ",
               ", ",
               ")",

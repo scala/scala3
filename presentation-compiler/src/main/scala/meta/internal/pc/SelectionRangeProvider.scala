@@ -3,14 +3,10 @@ package scala.meta.internal.pc
 import java.nio.file.Paths
 import java.{util as ju}
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters._
 
-import scala.meta.inputs.Position
 import scala.meta.internal.mtags.MtagsEnrichments.*
-import scala.meta.internal.pc.SelectionRangeProvider.*
 import scala.meta.pc.OffsetParams
-import scala.meta.tokens.Token
-import scala.meta.tokens.Token.Trivia
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.Interactive
@@ -57,15 +53,7 @@ class SelectionRangeProvider(
           selectionRange
         }
 
-      // if cursor is in comment return range in comment4
-      val commentRanges = getCommentRanges(pos, path, param.text()).map { x =>
-        new SelectionRange():
-          setRange(x)
-      }.toList
-
-      (commentRanges ++ bareRanges)
-        .reduceRightOption(setParent)
-        .getOrElse(new SelectionRange())
+      bareRanges.reduceRight(setParent)
     }
 
     selectionRanges
@@ -101,55 +89,54 @@ class SelectionRangeProvider(
 
 end SelectionRangeProvider
 
-object SelectionRangeProvider:
+// FIXME: update with latest mtags implementation, requires rewrite to dotty because fo scalameta
 
-  import scala.meta.dialects.Scala3
-  import scala.meta.*
-  import scala.meta.Token.Comment
-  import dotty.tools.dotc.ast.tpd
+// object SelectionRangeProvider:
 
-  def commentRangesFromTokens(
-      tokenList: List[Token],
-      cursorStart: SourcePosition,
-      offsetStart: Int,
-  ) =
-    val cursorStartShifted = cursorStart.start - offsetStart
+//   import dotty.tools.dotc.ast.tpd
 
-    tokenList
-      .collect { case x: Comment =>
-        (x.start, x.end, x.pos)
-      }
-      .collect {
-        case (commentStart, commentEnd, _)
-            if commentStart <= cursorStartShifted && cursorStartShifted <= commentEnd =>
-          cursorStart
-            .withStart(commentStart + offsetStart)
-            .withEnd(commentEnd + offsetStart)
-            .toLsp
+//   def commentRangesFromTokens(
+//       tokenList: List[Token],
+//       cursorStart: SourcePosition,
+//       offsetStart: Int
+//   ) =
+//     val cursorStartShifted = cursorStart.start - offsetStart
 
-      }
-  end commentRangesFromTokens
+//     tokenList
+//       .collect { case x: Comment =>
+//         (x.start, x.end, x.pos)
+//       }
+//       .collect {
+//         case (commentStart, commentEnd, _)
+//             if commentStart <= cursorStartShifted && cursorStartShifted <= commentEnd =>
+//           cursorStart
+//             .withStart(commentStart + offsetStart)
+//             .withEnd(commentEnd + offsetStart)
+//             .toLsp
 
-  /** get comments under cursor */
-  def getCommentRanges(
-      cursor: SourcePosition,
-      path: List[tpd.Tree],
-      srcText: String,
-  )(using Context): List[lsp4j.Range] =
-    val (treeStart, treeEnd) = path.headOption
-      .map(t => (t.sourcePos.start, t.sourcePos.end))
-      .getOrElse((0, srcText.size))
+//       }
+//   end commentRangesFromTokens
 
-    // only parse comments from first range to reduce computation
-    val srcSliced = srcText.slice(treeStart, treeEnd)
+//   /** get comments under cursor */
+//   def getCommentRanges(
+//       cursor: SourcePosition,
+//       path: List[tpd.Tree],
+//       srcText: String
+//   )(using Context): List[lsp4j.Range] =
+//     val (treeStart, treeEnd) = path.headOption
+//       .map(t => (t.sourcePos.start, t.sourcePos.end))
+//       .getOrElse((0, srcText.size))
 
-    val tokens = srcSliced.tokenize.toOption
-    if tokens.isEmpty then Nil
-    else
-      commentRangesFromTokens(
-        tokens.toList.flatten,
-        cursor,
-        treeStart,
-      )
-  end getCommentRanges
-end SelectionRangeProvider
+//     // only parse comments from first range to reduce computation
+//     val srcSliced = srcText.slice(treeStart, treeEnd)
+
+//     val tokens = srcSliced.tokenize.toOption
+//     if tokens.isEmpty then Nil
+//     else
+//       commentRangesFromTokens(
+//         tokens.toList.flatten,
+//         cursor,
+//         treeStart
+//       )
+//   end getCommentRanges
+// end SelectionRangeProvider

@@ -4,7 +4,7 @@ package completions
 import java.nio.file.Files
 import java.nio.file.Path
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters._
 
 import scala.meta.internal.mtags.MtagsEnrichments.*
 
@@ -80,6 +80,7 @@ object AmmoniteFileCompletions:
           else Nil
         Files
           .list(currentPath)
+          .iterator
           .asScala
           .toList
           .filter(_.getFileName.toString.stripSuffix(".sc") != fileName)

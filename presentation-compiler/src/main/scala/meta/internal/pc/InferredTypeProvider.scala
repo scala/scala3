@@ -79,6 +79,7 @@ final class InferredTypeProvider(
       pos,
       params.text,
       unit.tpdTree,
+      unit.comments,
       indexedCtx,
       config,
     )

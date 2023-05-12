@@ -4,7 +4,6 @@ package completions
 import java.net.URI
 
 import scala.meta.internal.mtags.MtagsEnrichments.*
-import scala.meta.internal.tokenizers.Chars
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd.*
@@ -14,6 +13,7 @@ import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import org.eclipse.{lsp4j as l}
+import dotty.tools.dotc.util.Chars
 
 enum CompletionKind:
   case Empty, Scope, Members

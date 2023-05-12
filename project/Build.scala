@@ -1122,6 +1122,60 @@ object Build {
       libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
     )
 
+  lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler")).
+    dependsOn(dottyCompiler(Bootstrapped)).
+    settings(commonBootstrappedSettings).
+    settings(
+      bspEnabled := true,
+      moduleName := "scala3-presentation-compiler",
+      libraryDependencies ++= Seq(
+        "org.lz4" % "lz4-java" % "1.8.0",
+        "io.get-coursier" % "interface" % "1.0.13",
+        "org.scalameta" % "mtags-interfaces" % "0.11.13-SNAPSHOT"
+      ),
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      resolvers += Resolver.defaultLocal,
+      libraryDependencies += ("org.scalameta" %% "mtags-shared" % "0.11.13-SNAPSHOT" % "sourcedeps")
+        .cross(CrossVersion.for3Use2_13),
+      (Compile / sourceGenerators) += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val targetDir = (Compile/sourceManaged).value / "mtags-shared"
+
+        val report = updateClassifiers.value
+        val mtagsSharedSourceJar = report.select(
+          configuration = configurationFilter("sourcedeps"),
+          module = (_: ModuleID).name.startsWith("mtags-shared_"),
+          artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+            sys.error(s"Could not fetch mtags-shared sources")
+
+          }
+        FileFunction.cached(cacheDir / s"fetchMtagsSharedSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking mtags-shared sources to $targetDir...")
+          if (targetDir.exists)
+            IO.delete(targetDir)
+          IO.createDirectory(targetDir)
+          IO.unzip(mtagsSharedSourceJar, targetDir)
+
+          val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
+          mtagsSharedSources.foreach(f => {
+            val lines = IO.readLines(f)
+            IO.writeLines(f, insertUnsafeNullsImport(lines))
+          })
+          mtagsSharedSources
+        } (Set(mtagsSharedSourceJar)).toSeq
+      }.taskValue,
+      ideTestsDependencyClasspath := {
+        Seq((`stdlib-bootstrapped` / Compile / classDirectory).value.toPath.normalize.toFile)
+      },
+      Compile / buildInfoKeys := Seq[BuildInfoKey](scalaVersion, ideTestsDependencyClasspath),
+      Compile / buildInfoPackage := "dotty.tools.pc.util",
+      BuildInfoPlugin.buildInfoScopedSettings(Compile),
+      BuildInfoPlugin.buildInfoDefaultSettings
+    )
+
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
     settings(commonBootstrappedSettings).
@@ -1845,8 +1899,8 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`).
-      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`,
-        `scala3-library-bootstrappedJS`, scaladoc).
+      bootstrappedAggregate(`scala3-language-server`, `scala3-presentation-compiler`, `scala3-staging`,
+        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).

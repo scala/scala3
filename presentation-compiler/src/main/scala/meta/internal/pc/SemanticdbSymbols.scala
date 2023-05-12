@@ -6,17 +6,18 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.semanticdb._
 
 object SemanticdbSymbols:
 
   def inverseSemanticdbSymbol(sym: String)(using ctx: Context): List[Symbol] =
-    import scala.meta.internal.semanticdb.Scala.*
+    import Scala3.StringOps.*
 
     val defns = ctx.definitions
     import defns.*
 
     def loop(s: String): List[Symbol] =
-      if s.isNone || s.isRootPackage then RootPackage :: Nil
+      if !s.isSymbol || s.isRootPackage then RootPackage :: Nil
       else if s.isEmptyPackage then EmptyPackageVal :: Nil
       else if s.isPackage then
         try requiredPackage(s.stripSuffix("/").replace("/", ".")) :: Nil

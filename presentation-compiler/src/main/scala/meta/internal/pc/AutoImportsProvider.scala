@@ -82,6 +82,7 @@ final class AutoImportsProvider(
                 correctedPos,
                 params.text,
                 tree,
+                unit.comments,
                 indexedContext.importContext,
                 config,
               )

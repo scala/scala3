@@ -3,7 +3,7 @@ package completions
 
 import java.nio.file.Path
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters._
 
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.mtags.MtagsEnrichments.*
@@ -66,6 +66,7 @@ class CompletionProvider(
           completionPos.sourcePos,
           params.text,
           unit.tpdTree,
+          unit.comments,
           indexedCtx,
           config,
         )
@@ -82,6 +83,7 @@ class CompletionProvider(
             config,
             folderPath,
             autoImportsGen,
+            unit.comments,
             driver.settings,
           ).completions()
 

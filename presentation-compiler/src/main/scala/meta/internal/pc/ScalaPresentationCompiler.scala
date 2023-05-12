@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
 import java.{util as ju}
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContextExecutor
 
@@ -18,12 +18,12 @@ import scala.meta.internal.metals.EmptyReportContext
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.metals.StdReportContext
-import scala.meta.internal.mtags.BuildInfo
 import scala.meta.internal.pc.completions.CompletionProvider
 import scala.meta.internal.pc.completions.OverrideCompletions
 import scala.meta.pc.*
 
 import dotty.tools.dotc.reporting.StoreReporter
+import dotty.tools.pc.util.BuildInfo
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.{lsp4j as l}
@@ -42,7 +42,7 @@ case class ScalaPresentationCompiler(
 
   def this() = this("", Nil, Nil)
 
-  val scalaVersion = BuildInfo.scalaCompilerVersion
+  val scalaVersion = BuildInfo.scalaVersion
 
   private val forbiddenOptions = Set("-print-lines", "-print-tasty")
   private val forbiddenDoubleOptions = Set("-release")

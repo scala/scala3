@@ -247,8 +247,10 @@ abstract class PcCollector[T](
     def collectParams(
         extMethods: ExtMethods
     ): Option[ExtensionParamOccurence] =
-      MetalsNavigateAST
-        .pathToExtensionParam(pos.span, extMethods)(using compilatonUnitContext)
+      NavigateAST
+        .pathTo(pos.span, extMethods.paramss.flatten)(using
+          compilatonUnitContext
+        )
         .collectFirst {
           case v: untpd.ValOrTypeDef =>
             ExtensionParamOccurence(

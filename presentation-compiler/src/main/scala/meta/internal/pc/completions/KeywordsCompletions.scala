@@ -1,22 +1,27 @@
 package scala.meta.internal.pc.completions
 
-import scala.meta.internal.mtags.MtagsEnrichments.given
 import scala.meta.internal.pc.Keyword
-import scala.meta.internal.pc.KeywordCompletionsUtils
-import scala.meta.tokenizers.XtensionTokenizeInputLike
-import scala.meta.tokens.Token
 
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.core.Comments
+import dotty.tools.dotc.core.Comments.Comment
+import dotty.tools.dotc.ast.NavigateAST
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.transform.SymUtils._
 
 object KeywordsCompletions:
 
   def contribute(
       path: List[Tree],
       completionPos: CompletionPos,
+      comments: List[Comment],
   )(using ctx: Context): List[CompletionValue] =
-    lazy val notInComment = checkIfNotInComment(completionPos.cursorPos, path)
+    lazy val notInComment =
+      checkIfNotInComment(completionPos.cursorPos, path, comments)
+
     path match
       case Nil if completionPos.query.isEmpty =>
         Keyword.all.collect {
@@ -35,27 +40,8 @@ object KeywordsCompletions:
         val isParam = this.isParam(path)
         val isSelect = this.isSelect(path)
         val isImport = this.isImport(path)
-        lazy val text = completionPos.cursorPos.source.content.mkString
-        lazy val reverseTokens: Array[Token] =
-          // Try not to tokenize the whole file
-          // Maybe we should re-use the tokenize result with `notInComment`
-          val lineStart =
-            if completionPos.cursorPos.line > 0 then
-              completionPos.sourcePos.source.lineToOffset(
-                completionPos.cursorPos.line - 1
-              )
-            else 0
-          text
-            .substring(lineStart, completionPos.cursorPos.start)
-            .tokenize
-            .toOption match
-            case Some(toks) => toks.tokens.reverse
-            case None => Array.empty[Token]
-        end reverseTokens
-
-        val canBeExtended = KeywordCompletionsUtils.canBeExtended(reverseTokens)
-        val canDerive = KeywordCompletionsUtils.canDerive(reverseTokens)
-        val hasExtend = KeywordCompletionsUtils.hasExtend(reverseTokens)
+        val possibleTemplateKeywords =
+          checkTemplateForNewParents(enclosing = path, completionPos)
 
         Keyword.all.collect {
           case kw
@@ -72,9 +58,9 @@ object KeywordsCompletions:
                 isSelect = isSelect,
                 isImport = isImport,
                 allowToplevel = true,
-                canBeExtended = canBeExtended,
-                canDerive = canDerive,
-                hasExtend = hasExtend,
+                canBeExtended = possibleTemplateKeywords.`extends`,
+                canDerive = possibleTemplateKeywords.`derives`,
+                hasExtend = possibleTemplateKeywords.`with`,
               ) && notInComment =>
             CompletionValue.keyword(kw.name, kw.insertText)
         }
@@ -84,14 +70,9 @@ object KeywordsCompletions:
   private def checkIfNotInComment(
       pos: SourcePosition,
       path: List[Tree],
-  ): Boolean =
-    val text = pos.source.content
-    val (treeStart, treeEnd) = path.headOption
-      .map(t => (t.span.start, t.span.end))
-      .getOrElse((0, text.size))
-    val offset = pos.start
-    text.mkString.checkIfNotInComment(treeStart, treeEnd, offset)
-  end checkIfNotInComment
+      comments: List[Comment],
+  )(using ctx: Context): Boolean =
+    !comments.exists(_.span.contains(pos.span))
 
   private def isPackage(enclosing: List[Tree]): Boolean =
     enclosing match
@@ -160,4 +141,96 @@ object KeywordsCompletions:
       case Ident(_) :: (_: ValOrDefDef) :: _ => true
       case Ident(_) :: t :: _ if t.isTerm => true
       case other => false
+
+  case class TemplateKeywordAvailability(
+      `extends`: Boolean,
+      `with`: Boolean,
+      `derives`: Boolean,
+  )
+
+  object TemplateKeywordAvailability:
+    def default = TemplateKeywordAvailability(false, false, false)
+
+  /*
+   * Checks whether given path and position can be followed with
+   * `extends`, `with` or `derives` keywords.
+   * @param enclosing - typed path to position
+   * @param pos - completion position
+   *
+   * @returns TemplateKeywordAvailability with available keywords
+   *
+   * @note This method requires a typed path. The rest of the metals functionalities.
+   */
+  def checkTemplateForNewParents(enclosing: List[Tree], pos: CompletionPos)(
+      using ctx: Context
+  ): TemplateKeywordAvailability =
+    /*
+     * Finds tree which ends just before cursor positions, that may be extended or derive.
+     * In Scala 3, such tree must be a `TypeDef` which has field of type `Template` describing
+     * its parents and derived classes.
+     *
+     * @tree - enclosing tree
+     *
+     * @returns TypeDef tree defined before the cursor position or `enclosingTree` otherwise
+     */
+    def findLastSatisfyingTree(span: Span): Option[Tree] =
+      NavigateAST.untypedPath(span).headOption.flatMap {
+        case other: untpd.Tree =>
+          val typeDefs = other.filterSubTrees {
+            // package test
+            // class Test ext@@ - Interactive.pathTo returns `PackageDef` instead of `TypeDef`
+            // - because it tried to repair the broken tree by finishing `TypeDef` before ext
+            //
+            // The cursor position is 27 and tree positions after parsing are:
+            //
+            //  package Test@../Test.sc<8..12> {
+            //    class Test {}@../Test.sc[13..19..23]
+            //  }@../Test.sc<0..27>
+            case typeDef: (untpd.TypeDef | untpd.ModuleDef) =>
+              typeDef.span.exists && typeDef.span.end < pos.sourcePos.span.start
+            case other =>
+              false
+          }
+
+          typeDefs match
+            // If we didn't find any trees, it means the enclosingTree is not a TypeDef,
+            // thus can't be followed with `extends`, `with` and `derives`
+            case Nil =>
+              // we have to fallback to typed tree and check if it is an enum
+              enclosing match
+                case (tree: TypeDef) :: _ if tree.symbol.isEnumClass =>
+                  Some(other)
+                case _ => None
+            case other =>
+              other
+                .filter(tree => tree.span.exists && tree.span.end < pos.start)
+                .maxByOption(_.span.end)
+
+        case _ => None
+      }
+
+    end findLastSatisfyingTree
+
+    def checkForPossibleKeywords(
+        template: Template
+    ): TemplateKeywordAvailability =
+      TemplateKeywordAvailability(
+        template.parents.isEmpty,
+        template.parents.nonEmpty,
+        template.derived.isEmpty,
+      )
+
+    findLastSatisfyingTree(pos.cursorPos.span)
+      .flatMap {
+        case untpd.TypeDef(_, template: Template) =>
+          Some(checkForPossibleKeywords(template))
+        case untpd.ModuleDef(_, template: Template) =>
+          Some(checkForPossibleKeywords(template))
+        case template: Template => Some(checkForPossibleKeywords(template))
+        case other => None
+      }
+      .getOrElse(TemplateKeywordAvailability.default)
+
+  end checkTemplateForNewParents
+
 end KeywordsCompletions

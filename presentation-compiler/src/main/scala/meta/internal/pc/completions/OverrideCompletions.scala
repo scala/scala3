@@ -3,7 +3,7 @@ package completions
 
 import java.{util as ju}
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters._
 
 import scala.meta.internal.mtags.MtagsEnrichments.*
 import scala.meta.internal.pc.AutoImports.AutoImport
@@ -196,6 +196,7 @@ object OverrideCompletions:
       pos,
       params.text,
       unit.tpdTree,
+      unit.comments,
       indexedContext,
       config,
     )
@@ -279,9 +280,7 @@ object OverrideCompletions:
     val caseClassOwners = Set("Product", "Equals")
     val overridables =
       if defn.symbol.is(Flags.CaseClass) then
-        abstractMembers.filter(sym =>
-          sym.sourcePos.exists || !caseClassOwners(sym.owner.decodedName)
-        )
+        abstractMembers.filter(sym => !caseClassOwners(sym.owner.decodedName))
       else abstractMembers
 
     val completionValues = overridables

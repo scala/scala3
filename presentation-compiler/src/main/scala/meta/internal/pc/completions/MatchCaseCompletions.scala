@@ -3,7 +3,7 @@ package completions
 
 import java.net.URI
 
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -22,6 +22,7 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Types.AndType
 import dotty.tools.dotc.core.Types.ClassInfo
 import dotty.tools.dotc.core.Types.NoType
@@ -313,6 +314,15 @@ object CaseKeywordCompletion:
         defnSymbols.getOrElse(semancticName, -1)
       }
 
+  def sealedStrictDescendants(sym: Symbol)(using Context): List[Symbol] =
+    sym.sealedStrictDescendants
+      .filter(child =>
+        !(child.is(Sealed) && (child.is(Abstract) || child.is(Trait)))
+          && (child.isPublic || child.isAccessibleFrom(sym.info)) &&
+          child.name != StdNames.tpnme.LOCAL_CHILD
+      )
+      .map(_.sourceSymbol)
+
   def subclassesForType(tpe: Type)(using Context): List[Symbol] =
     /**
      * Split type made of & and | types to a list of simple types.
@@ -346,7 +356,7 @@ object CaseKeywordCompletion:
     parents.toList.map { parent =>
       // There is an issue in Dotty, `sealedStrictDescendants` ends in an exception for java enums. https://github.com/lampepfl/dotty/issues/15908
       if parent.isAllOf(JavaEnumTrait) then parent.children
-      else MetalsSealedDesc.sealedStrictDescendants(parent)
+      else sealedStrictDescendants(parent)
     } match
       case Nil => Nil
       case subcls :: Nil => subcls
