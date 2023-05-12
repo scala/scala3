@@ -586,12 +586,15 @@ object Inlines:
     private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
       sym.info match {
         case ClassInfo(prefix, cls, declaredParents, scope, selfInfo) =>
-          val baseThisCls = ThisType.raw(ctx.owner.typeRef).select(sym)
+          val baseThisCls = ctx.owner.thisType.select(sym)
           val inlinedSym = newClassSymbol(
             ctx.owner,
             sym.asType.name,
             (sym.flags | Synthetic) &~ withoutFlags,
-            clsSym => ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ baseThisCls, Scopes.newScope, selfInfo)
+            clsSym =>
+              ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ baseThisCls, Scopes.newScope, selfInfo),
+            privateWithin = sym.privateWithin,
+            coord = spanCoord(parent.span)
           )
           inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
           inlinedSym
