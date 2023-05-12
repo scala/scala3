@@ -8,6 +8,7 @@ import scala.jdk.CollectionConverters._
 import java.util.Optional
 import scala.beans._
 import java.nio.file.{Files, Paths}
+import scala.io.Source
 
 enum Sidebar:
   case Category(
@@ -31,6 +32,17 @@ object Sidebar:
 
   private object RawInputTypeRef extends TypeReference[RawInput]
 
+  private def pageWithNoTitle(content: String | java.io.File): String =
+    val fileContent = content match {
+    case file: java.io.File => Source.fromFile(file).getLines().mkString("\n")
+    case str: String => str
+    }
+    val lines = fileContent.split("\n")
+    lines.zipWithIndex
+    .find { case (line, i) => line.trim.startsWith("page:") && !lines(i - 1).contains("- title:") }
+    .map(_._1.trim.stripPrefix("page:"))
+    .getOrElse("")
+
   private def toSidebar(r: RawInput, content: String | java.io.File)(using CompilerContext): Sidebar = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
       val sidebarPath = content match
@@ -44,14 +56,15 @@ object Sidebar:
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
       Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar(_, content)).toList, Option.when(dir.nonEmpty)(dir))
     case RawInput(title, page, index, subsection, dir, hidden) =>
-      if title.isEmpty() then
-        val msg = s"Error parsing YAML configuration file: 'title' is not provided."
+      if title.isEmpty() && index.isEmpty() then
+        val page = pageWithNoTitle(content).trim()
+        val msg = s"Error parsing YAML configuration file: 'title' is not provided for page '$page'."
         report.error(s"$msg\n$schemaMessage")
       else if title.nonEmpty && (page.isEmpty() || index.isEmpty()) then
         val msg = s"Error parsing YAML configuration file: 'index' or 'page' path is missing for title '$title'."
         report.error(s"$msg\n$schemaMessage")
       else
-        val msg = s"The parsing seems not to have been done correctly."
+        val msg = s"Error parsing YAML configuration file."
         report.warning(s"$msg\n$schemaMessage")
       Sidebar.Page(None, page, hidden)
 

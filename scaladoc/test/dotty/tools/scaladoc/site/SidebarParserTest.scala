@@ -8,7 +8,7 @@ import dotty.tools.scaladoc.site.Sidebar.RawInput
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 
-// TODO add negaitve and more details tests
+// TODO add negative and more details tests
 class SidebarParserTest:
 
   private val sidebar =
@@ -41,6 +41,7 @@ class SidebarParserTest:
   private val sidebarNoTitle =
     """index: index.md
       |subsection:
+      |  - title: My title
       |    page: my-page1.md
       |  - page: my-page2.md
       |  - page: my-page3/subsection
@@ -56,7 +57,7 @@ class SidebarParserTest:
       |    subsection:
       |      - page: my-page5/my-page5.md
       |  - subsection:
-      |      - page: my-page7/my-page7.md
+      |        page: my-page7/my-page7.md
       |  - index: my-page6/index.md
       |    subsection:
       |      - index: my-page6/my-page6/index.md
@@ -90,7 +91,7 @@ class SidebarParserTest:
       |          - page: my-page6/my-page6/my-page6.md
       """.stripMargin
 
-  private val msgNoTitle = "Error parsing YAML configuration file: 'title' is not provided."
+  private val msgNoTitle = "Error parsing YAML configuration file: 'title' is not provided for page 'my-page7/my-page7.md'."
   private val msgNoPage = "Error parsing YAML configuration file: 'index' or 'page' path is missing for title 'My title'."
 
   private def schemaMessage: String = Sidebar.schemaMessage
