@@ -5,6 +5,7 @@ package typer
 import backend.sjs.JSDefinitions
 import core._
 import ast._
+import ast.untpd.CapturingTypeTree
 import Trees._
 import Constants._
 import StdNames._
@@ -50,7 +51,7 @@ import transform.TypeUtils._
 import reporting._
 import Nullables._
 import NullOpsDecorator._
-import cc.CheckCaptures
+import cc.{CheckCaptures, EventuallyCapturingType}
 import config.Config
 
 import scala.annotation.constructorOnly
@@ -3051,7 +3052,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
-            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
+            if (ctx.mode is Mode.Pattern)
+              typedUnApply(tree, pt)
+            else
+              tree match {
+                case tApp @ untpd.Apply(tSelect @ untpd.Select(tNew @ untpd.New(untpd.CapturingTypeTree(List(sz), parent)), _), _)  =>
+                  // For the new expression with a specified safe zone, e.g. `new {sz} T(...)`
+                  // rewrite it to `scala.scalanative.safe.SafeZoneCompat.withSafeZone(sz, new T(...))`
+                  import scala.util.{Try, Failure}
+                  Try(defn.NativeWithSafeZoneMethod.sym) match
+                    case Failure(ex: TypeError) =>
+                      report.error(
+                        em"""Specifying a safe zone in the instance creation expression is only supported in Scala Native.
+                            |Please check the current environment.""", sz.srcPos)
+                    case _ =>
+                  import untpd._
+                  val tNew1 = cpy.New(tNew)(parent)
+                  val tSelect1 = cpy.Select(tSelect)(tNew1, tSelect.name)
+                  val tApp1 = cpy.Apply(tApp)(tSelect1, tApp.args)
+                  val tApp2 = Apply(defn.NativeWithSafeZoneMethod.genTree, List(sz, tApp1))
+                  typedApply(tApp2, pt)
+                case _ => typedApply(tree, pt)
+              }
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Number => typedNumber(tree, pt)
           case tree: untpd.Literal => typedLiteral(tree)

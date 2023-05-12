@@ -94,3 +94,7 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
+
+# new expression with safe zone difference since translation from `new {sz} T(...)` to `withSafeZone(sz, new T(...))`
+new-expr-with-safe-zone0
+new-expr-with-safe-zone1

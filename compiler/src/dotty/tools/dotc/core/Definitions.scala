@@ -1080,6 +1080,23 @@ class Definitions {
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
   def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
 
+  // Native methods
+
+  case class NativeModuleMethod(modulePath: String, methodName: String) {
+    val sym: Symbol = requiredModule(modulePath).requiredMethod(methodName)
+
+    def genTree(using Context): ast.untpd.Tree = {
+      import ast.untpd._
+      val ps = modulePath.split("\\.").nn.map(_.nn).toList
+      assert(!ps.isEmpty, "Module path can't be empty")
+      var tree: Tree = Ident(termName(ps.head))
+      for p <- ps.tail do
+        tree = Select(tree, termName(p))
+      Select(tree, termName(methodName))
+    }
+  }
+  @tu lazy val NativeWithSafeZoneMethod = NativeModuleMethod("scala.scalanative.safe.SafeZoneCompat", "withSafeZone")
+
   // Derived types
 
   def RepeatedParamType: TypeRef = RepeatedParamClass.typeRef
