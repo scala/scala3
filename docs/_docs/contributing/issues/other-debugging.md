@@ -1,25 +1,7 @@
 ---
 layout: doc-page
-title: Debugging Techniques
+title: Other Debugging Techniques
 ---
-
-# Debugging Techniques
-- [Setting up the playground](#setting-up-the-playground)
-- [Show for human readable output](#show-for-human-readable-output)
-- [How to disable color](#how-to-disable-color)
-- [Reporting as a non-intrusive println](#reporting-as-a-non-intrusive-println)
-- [Printing out trees after phases](#printing-out-trees-after-phases)
-- [Printing out stack traces of compile time errors](#printing-out-stack-traces-of-compile-time-errors)
-- [Configuring the printer output](#configuring-the-printer-output)
-- [Figuring out an object creation site](#figuring-out-an-object-creation-site)
-  * [Via ID](#via-id)
-  * [Via tracer](#via-tracer)
-- [Built-in Logging Architecture](#built-in-logging-architecture)
-  * [Printers](#printers)
-  * [Tracing](#tracing)
-  * [Reporter](#reporter)
-
-<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
 
 ## Setting up the playground
 Consider the `../issues/Playground.scala` (relative to the Dotty directory) file is:
