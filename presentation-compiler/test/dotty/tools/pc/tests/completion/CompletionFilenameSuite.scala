@@ -3,7 +3,7 @@ package dotty.tools.pc.tests.completion
 import org.junit.Test
 import dotty.tools.pc.base.BaseCompletionSuite
 
-class FilenameCompletionSuit extends BaseCompletionSuite:
+class CompletionFilenameSuit extends BaseCompletionSuite:
 
   @Test def `class` =
     check(

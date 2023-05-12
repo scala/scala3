@@ -15,9 +15,9 @@ import java.io.File
 import java.nio.file.Paths
 import scala.collection.mutable
 import scala.meta.internal.metals.{CompilerVirtualFileParams, Fuzzy}
-import scala.meta.internal.mtags.MtagsEnrichments.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.{OffsetParams, SymbolSearchVisitor, VirtualFileParams}
-import scala.meta.internal.pc.PcCollector
+import dotty.tools.pc.PcCollector
 
 final class DefSymbolCollector(
     driver: InteractiveDriver,

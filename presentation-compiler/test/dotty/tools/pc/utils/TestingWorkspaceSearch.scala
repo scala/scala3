@@ -9,7 +9,7 @@ import java.io.File
 import java.nio.file.Paths
 import scala.collection.mutable
 import scala.meta.internal.metals.{CompilerVirtualFileParams, Fuzzy, WorkspaceSymbolQuery}
-import scala.meta.internal.pc.CompilerSearchVisitor
+import dotty.tools.pc.CompilerSearchVisitor
 import scala.meta.pc.SymbolSearchVisitor
 
 object TestingWorkspaceSearch:

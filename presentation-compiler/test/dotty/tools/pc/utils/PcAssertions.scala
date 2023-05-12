@@ -16,7 +16,7 @@ import java.util.Collections
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import scala.meta.internal.mtags.MtagsEnrichments.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.CancelToken
 
 trait PcAssertions:
@@ -64,11 +64,7 @@ trait PcAssertions:
     snippet.map(addSnippet(description))
 
     val error = new AssertionError(description.toString)
-    val filteredStackTraceElements = error.getStackTrace
-      .filter(_.getClassName.startsWith("dotty.tools.pc.tests"))
-      .toArray
-
-    error.setStackTrace(filteredStackTraceElements)
+    error.setStackTrace(Array.empty)
     throw error
 
   private def unifyNewlines(str: String): String =
@@ -99,11 +95,7 @@ trait PcAssertions:
       snippet.map(addSnippet(description))
 
       val error = new AssertionError(description.toString)
-      val filteredStackTraceElements = error.getStackTrace
-        .filter(_.getClassName.startsWith("dotty.tools.pc.tests"))
-        .toArray
-
-      error.setStackTrace(filteredStackTraceElements)
+      error.setStackTrace(Array.empty)
       throw error
 
   private def assertThat[T](
@@ -126,11 +118,7 @@ trait PcAssertions:
       matcher.describeMismatch(_actual, description)
 
       val error = new AssertionError(description.toString)
-      val filteredStackTraceElements = error.getStackTrace
-        .filter(_.getClassName.startsWith("dotty.tools.pc.tests"))
-        .toArray
-
-      error.setStackTrace(filteredStackTraceElements)
+      error.setStackTrace(Array.empty)
       throw error
 
   private def lineByLineDiffMatcher(expected: String): TypeSafeMatcher[String] =

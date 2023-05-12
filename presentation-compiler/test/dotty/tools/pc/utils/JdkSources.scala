@@ -2,7 +2,7 @@ package dotty.tools.pc.utils
 
 import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.mtags.MtagsEnrichments.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 /**
  * Locates zip file on disk that contains the source code for the JDK.

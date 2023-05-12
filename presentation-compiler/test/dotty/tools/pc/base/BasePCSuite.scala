@@ -19,7 +19,7 @@ import scala.collection.immutable
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
 import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
-import scala.meta.internal.pc.ScalaPresentationCompiler
+import dotty.tools.pc.ScalaPresentationCompiler
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 
 object TestResources:
@@ -27,33 +27,6 @@ object TestResources:
 
   val index = TestingIndex(scalaLibrary.map(_.toString))
   val classpathSearch = ClasspathSearch.fromClasspath(scalaLibrary, ExcludedPackagesHandler.default)
-
-class ReusableClassRunner(testClass: Class[BasePCSuite]) extends BlockJUnit4ClassRunner(testClass):
-  private val instance: BasePCSuite = testClass.getDeclaredConstructor().newInstance()
-
-  override def createTest(): AnyRef = instance
-  override def withBefores(
-      method: FrameworkMethod,
-      target: Object,
-      statement: Statement
-  ): Statement =
-    statement
-
-  override def withAfters(
-      method: FrameworkMethod,
-      target: Object,
-      statement: Statement
-  ): Statement =
-    new Statement():
-      override def evaluate(): Unit =
-        try
-          statement.evaluate()
-        finally
-          if (isLastTestCase(method)) then instance.clean()
-
-  private def isLastTestCase(method: FrameworkMethod): Boolean =
-    val testMethods = getTestClass().getAnnotatedMethods(classOf[org.junit.Test])
-    testMethods.asScala.last == method
 
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:

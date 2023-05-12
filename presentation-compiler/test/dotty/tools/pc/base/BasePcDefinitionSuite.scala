@@ -8,7 +8,7 @@ import dotty.tools.pc.utils.TextEdits
 
 import java.net.URI
 import scala.meta.internal.metals.CompilerOffsetParams
-import scala.meta.internal.mtags.MtagsEnrichments.toLsp
+import dotty.tools.pc.utils.MtagsEnrichments.toLsp
 import scala.meta.pc.OffsetParams
 
 abstract class BasePcDefinitionSuite extends BasePCSuite:

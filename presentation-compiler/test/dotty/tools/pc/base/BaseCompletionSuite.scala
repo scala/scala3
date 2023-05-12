@@ -17,7 +17,7 @@ import java.util.Collections
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import scala.meta.internal.mtags.MtagsEnrichments.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.CancelToken
 
 abstract class BaseCompletionSuite extends BasePCSuite:

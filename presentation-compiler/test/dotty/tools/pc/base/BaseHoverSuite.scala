@@ -4,7 +4,7 @@ import dotty.tools.pc.utils.{RangeReplace, TestHovers}
 
 import java.nio.file.Paths
 import scala.meta.internal.metals.{CompilerOffsetParams, CompilerRangeParams}
-import scala.meta.internal.mtags.MtagsEnrichments.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 abstract class BaseHoverSuite extends BasePCSuite with TestHovers with RangeReplace:
 

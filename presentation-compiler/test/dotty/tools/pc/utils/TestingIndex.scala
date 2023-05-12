@@ -10,7 +10,7 @@ import dotty.tools.dotc.util.ParsedComment
 import dotty.tools.io.AbstractFile
 
 import java.io.File
-import scala.meta.internal.pc.SemanticdbSymbols
+import dotty.tools.pc.SemanticdbSymbols
 import scala.meta.pc.SymbolDocumentation
 
 class TestingIndex(classpath: Seq[String]):
