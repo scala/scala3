@@ -31,13 +31,13 @@ class PruneInlineTraits extends MiniPhase with SymTransformer { thisTransform =>
     else tree
 
   private def isEraseable(sym: SymDenotation)(using Context): Boolean =
-    sym.owner.isInlineTrait
+    !sym.isType
     && !sym.isConstructor
     && !sym.is(Param)
     && !sym.is(ParamAccessor)
     && !sym.is(Private)
     && !sym.isLocalDummy
-    && !sym.isType
+    && sym.owner.isInlineTrait
 }
 
 object PruneInlineTraits {
