@@ -337,7 +337,7 @@ object PickleQuotes {
       // This and all closures in typeSplices are removed by the BetaReduce phase
       val types =
         if quote.tags.isEmpty then Literal(Constant(null)) // keep pickled quote without holeContents as small as possible
-        else SeqLiteral(quote.tags, TypeTree(defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)))
+        else SeqLiteral(quote.tags, TypeTree(defn.QuotedTypeClass.typeRef.appliedTo(TypeBounds.emptyPolyKind)))
 
       // This and all closures in termSplices are removed by the BetaReduce phase
       val termHoles =
