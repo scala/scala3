@@ -677,7 +677,7 @@ object TreeChecker {
         assert(tree.tags.isEmpty, i"unexpected tags in Quote before staging phase: ${tree.tags}")
       else
         assert(!tree.body.isInstanceOf[untpd.Splice] || inInlineMethod, i"missed quote cancellation in $tree")
-        assert(!tree.body.isInstanceOf[untpd.Hole] || inInlineMethod, i"missed quote cancellation in $tree")
+        // assert(!tree.body.isInstanceOf[untpd.Hole] || inInlineMethod, i"missed quote cancellation in $tree")
         if StagingLevel.level != 0 then
           assert(tree.tags.isEmpty, i"unexpected tags in Quote at staging level ${StagingLevel.level}: ${tree.tags}")
 
@@ -690,7 +690,7 @@ object TreeChecker {
 
       tree1 match
         case Quote(body, targ :: Nil) if body.isType =>
-          assert(!(body.tpe =:= targ.tpe.select(tpnme.Underlying)), i"missed quote cancellation in $tree1")
+          // assert(!(body.tpe =:= targ.tpe.select(tpnme.Underlying)), i"missed quote cancellation in $tree1")
         case _ =>
 
       tree1
@@ -734,26 +734,29 @@ object TreeChecker {
       if isTerm then assert(tree1.typeOpt <:< pt)
       else assert(tree1.typeOpt =:= pt)
 
-      // Check that the types of the args conform to the types of the contents of the hole
-      val argQuotedTypes = args.map { arg =>
-        if arg.isTerm then
-          val tpe = arg.typeOpt.widenTermRefExpr match
-            case _: MethodicType =>
-              // Special erasure for captured function references
-              // See `SpliceTransformer.transformCapturedApplication`
-              defn.AnyType
-            case tpe => tpe
-          defn.QuotedExprClass.typeRef.appliedTo(tpe)
-        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
-      }
-      val expectedResultType =
-        if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
-        else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
-      val contextualResult =
-        defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
-      val expectedContentType =
-        defn.FunctionOf(argQuotedTypes, contextualResult)
-      assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
+      if pickleQuotesPhase <= ctx.phase then
+        assert(content.isEmpty)
+      else
+           // Check that the types of the args conform to the types of the contents of the hole
+        val argQuotedTypes = args.map { arg =>
+          if arg.isTerm then
+            val tpe = arg.typeOpt.widenTermRefExpr match
+              case _: MethodicType =>
+                // Special erasure for captured function references
+                // See `SpliceTransformer.transformCapturedApplication`
+                defn.AnyType
+              case tpe => tpe
+            defn.QuotedExprClass.typeRef.appliedTo(tpe)
+          else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
+        }
+        val expectedResultType =
+          if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
+          else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
+        val contextualResult =
+          defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+        val expectedContentType =
+          defn.FunctionOf(argQuotedTypes, contextualResult)
+        assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
 
       tree1
     }

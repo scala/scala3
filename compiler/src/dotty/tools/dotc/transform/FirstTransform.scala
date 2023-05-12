@@ -184,7 +184,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     if (!ctx.mode.is(Mode.Pattern)) constToLiteral(tree) else tree
 
   override def transformBlock(tree: Block)(using Context): Tree =
-    constToLiteral(tree)
+    if tree.isType then tree
+    else constToLiteral(tree)
 
   override def transformIf(tree: If)(using Context): Tree =
     tree.cond.tpe match {

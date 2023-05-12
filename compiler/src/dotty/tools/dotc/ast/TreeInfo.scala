@@ -1061,6 +1061,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       val quoteType = tree.tpe // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
       val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
       exprType.argInfos.head // T
+
+    /** Returns scala.quoted.{Expr,Type} depending if this is a term or type quote */
+    def quoteKind(using Context): Type =
+      if tree.isTypeQuote then defn.QuotedTypeClass.typeRef
+      else defn.QuotedExprClass.typeRef
   end extension
 
   extension (tree: tpd.QuotePattern)

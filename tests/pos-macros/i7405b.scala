@@ -5,7 +5,7 @@ class Foo {
     '{
       trait X extends A {
         type Y
-        def y: Y = ???
+        override def y: Y = ???
       }
       val x: X = ???
       type Z = x.Y

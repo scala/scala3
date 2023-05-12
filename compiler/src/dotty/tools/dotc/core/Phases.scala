@@ -213,6 +213,7 @@ object Phases {
     private var myInliningPhase: Phase = _
     private var myStagingPhase: Phase = _
     private var mySplicingPhase: Phase = _
+    private var myPickleQuotesPhase: Phase = _
     private var myFirstTransformPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
     private var myRefChecksPhase: Phase = _
@@ -238,6 +239,7 @@ object Phases {
     final def inliningPhase: Phase = myInliningPhase
     final def stagingPhase: Phase = myStagingPhase
     final def splicingPhase: Phase = mySplicingPhase
+    final def pickleQuotesPhase: Phase = myPickleQuotesPhase
     final def firstTransformPhase: Phase = myFirstTransformPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
     final def refchecksPhase: Phase = myRefChecksPhase
@@ -266,6 +268,7 @@ object Phases {
       myInliningPhase = phaseOfClass(classOf[Inlining])
       myStagingPhase = phaseOfClass(classOf[Staging])
       mySplicingPhase = phaseOfClass(classOf[Splicing])
+      myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
       myFirstTransformPhase = phaseOfClass(classOf[FirstTransform])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
@@ -452,8 +455,9 @@ object Phases {
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
-  def stagingPhase(using Context): Phase               = ctx.base.stagingPhase
+  def stagingPhase(using Context): Phase                = ctx.base.stagingPhase
   def splicingPhase(using Context): Phase               = ctx.base.splicingPhase
+  def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
   def firstTransformPhase(using Context): Phase         = ctx.base.firstTransformPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
   def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase

@@ -92,6 +92,7 @@ class Compiler {
          new StringInterpolatorOpt,  // Optimizes raw and s and f string interpolators by rewriting them to string concatenations or formats
          new DropBreaks) ::          // Optimize local Break throws by rewriting them
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+         new PruneQuotes,            // Drop non-pickled copies of the quotes
          new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods

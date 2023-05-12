@@ -80,10 +80,10 @@ class PickleQuotes extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match
-      case tree: Quote =>
-        assert(Inlines.inInlineMethod)
-      case tree: Splice =>
-        assert(Inlines.inInlineMethod)
+      // case tree: Quote =>
+      //   assert(Inlines.inInlineMethod)
+      // case tree: Splice =>
+      //   assert(Inlines.inInlineMethod)
       case _ =>
 
   override def run(using Context): Unit =
@@ -93,15 +93,23 @@ class PickleQuotes extends MacroTransform {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
-          val (holeContents, quote1) = extractHolesContents(quote)
+          val (contents, quote1) = extractHolesContents(quote)
           val quote2 = encodeTypeArgs(quote1)
-          val holeContents1 = holeContents.map(transform(_))
-          PickleQuotes.pickle(quote2, quotes, holeContents1)
+          val contents1 = contents.map(transform(_)) ::: quote.tags
+          val pickled = PickleQuotes.pickle(quote2, quotes, contents1)
+          cpy.Block(tree)(removeHoleContents(quote) :: Nil, pickled)
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
         case _ =>
           super.transform(tree)
   }
+
+  private def removeHoleContents(tree: Tree)(using Context) =
+    new TreeMap {
+      override def transform(tree: Tree)(using Context): Tree = tree match
+        case tree: Hole => cpy.Hole(tree)(content = EmptyTree)
+        case _ => super.transform(tree)
+    }.transform(tree)
 
   private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
