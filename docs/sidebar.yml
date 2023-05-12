@@ -189,7 +189,6 @@ subsection:
     subsection:
       - page: internals/backend.md
       - page: internals/classpaths.md
-      - page: internals/core-data-structures.md
       - page: internals/contexts.md
       - page: internals/dotc-scalac.md
       - page: internals/higher-kinded-v2.md
