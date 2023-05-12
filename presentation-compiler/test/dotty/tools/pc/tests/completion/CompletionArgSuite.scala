@@ -1,8 +1,9 @@
 package dotty.tools.pc.tests.completion
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseCompletionSuite
+
 import org.junit.FixMethodOrder
+import org.junit.Test
 import org.junit.runners.MethodSorters
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -486,7 +487,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|xxx = : Int
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `contructor-param2` =
@@ -501,8 +502,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|xxx = : Int
-         |""".stripMargin,
-  )
+         |""".stripMargin
+    )
 
   @Test def `context-function-as-param` =
     check(
@@ -514,7 +515,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|arg1 = : (Context) ?=> Int
          |arg2 = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `context-function-as-param2` =
@@ -526,7 +527,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|arg2 = : (Context) ?=> Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `context-function-as-param3` =
@@ -538,5 +539,5 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|arg2 = : (Boolean, Context) ?=> (Int) ?=> String
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )

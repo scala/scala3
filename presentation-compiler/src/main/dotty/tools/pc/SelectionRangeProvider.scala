@@ -1,11 +1,9 @@
 package dotty.tools.pc
 
 import java.nio.file.Paths
-import java.{util as ju}
+import java.util as ju
 
 import scala.jdk.CollectionConverters._
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.core.Contexts.Context
@@ -14,6 +12,8 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.semanticdb.Scala3
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j
 import org.eclipse.lsp4j.SelectionRange
 

@@ -1,12 +1,13 @@
 package dotty.tools.pc
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.DocumentHighlightKind
 

@@ -2,22 +2,22 @@ package dotty.tools.pc
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
-
 import scala.meta.internal.mtags.KeywordWrapper
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.printer.ShortenedNames.ShortName
-import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.internal.pc.AutoImportPosition
+import scala.meta.pc.PresentationCompilerConfig
 
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
-import org.eclipse.{lsp4j as l}
-import dotty.tools.dotc.core.Comments.Comment
+import dotty.tools.pc.printer.ShortenedNames.ShortName
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 object AutoImports extends AutoImportsBackticks:
 
@@ -178,7 +178,8 @@ object AutoImports extends AutoImportsBackticks:
 
       val importEdit =
         symbolImport.importSel.flatMap(sel => renderImports(List(sel)))
-      if nameEdit.isDefined || importEdit.isDefined then Some(AutoImportEdits(nameEdit, importEdit))
+      if nameEdit.isDefined || importEdit.isDefined then
+        Some(AutoImportEdits(nameEdit, importEdit))
       else None
     end editsForSymbol
 
@@ -224,7 +225,9 @@ object AutoImports extends AutoImportsBackticks:
                     !indexedContext.hasRename(owner, rename)
                   )
                 else
-                  Some(ImportSel.Direct(owner)).filter(_ => !indexedContext.lookupSym(owner).exists)
+                  Some(ImportSel.Direct(owner)).filter(_ =>
+                    !indexedContext.lookupSym(owner).exists
+                  )
 
               SymbolImport(
                 symbol,
@@ -297,7 +300,8 @@ object AutoImports extends AutoImportsBackticks:
         tree: Tree
     ): Option[PackageDef] =
       tree match
-        case curr @ PackageDef(_, (next: PackageDef) :: Nil) if !curr.symbol.isPackageObject =>
+        case curr @ PackageDef(_, (next: PackageDef) :: Nil)
+            if !curr.symbol.isPackageObject =>
           lastPackageDef(Some(curr), next)
         case pkg: PackageDef if !pkg.symbol.isPackageObject => Some(pkg)
         case _ => prev
@@ -307,7 +311,8 @@ object AutoImports extends AutoImportsBackticks:
         case PackageDef(_, stats) =>
           stats.flatMap {
             case s: PackageDef => firstObjectBody(s)
-            case TypeDef(_, t @ Template(defDef, _, _, _)) if defDef.symbol.showName == "<init>" =>
+            case TypeDef(_, t @ Template(defDef, _, _, _))
+                if defDef.symbol.showName == "<init>" =>
               Some(t)
             case _ => None
           }.headOption
@@ -316,7 +321,8 @@ object AutoImports extends AutoImportsBackticks:
     def skipUsingDirectivesOffset =
       comments
         .takeWhile(comment =>
-          !comment.isDocComment && comment.span.end < firstObjectBody(tree).fold(0)(_.span.start)
+          !comment.isDocComment && comment.span.end < firstObjectBody(tree)
+            .fold(0)(_.span.start)
         )
         .lastOption
         .fold(0)(_.span.end + 1)
@@ -350,8 +356,10 @@ object AutoImports extends AutoImportsBackticks:
             offset
           case None =>
             val scriptOffset =
-              if isAmmonite then ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
-              else ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
+              if isAmmonite then
+                ScriptFirstImportPosition.ammoniteScStartOffset(text, comments)
+              else
+                ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
 
             scriptOffset.getOrElse(
               pos.source.lineToOffset(tmpl.self.srcPos.line)

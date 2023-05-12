@@ -7,31 +7,31 @@ import java.util.Optional
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledExecutorService
-import java.{util as ju}
+import java.util as ju
 
-import scala.jdk.CollectionConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContextExecutor
-
+import scala.jdk.CollectionConverters._
 import scala.meta.internal.metals.EmptyCancelToken
 import scala.meta.internal.metals.EmptyReportContext
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.metals.StdReportContext
-import dotty.tools.pc.completions.CompletionProvider
-import dotty.tools.pc.completions.OverrideCompletions
-import scala.meta.pc.*
-import scala.meta.internal.pc.EmptySymbolSearch
-import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.internal.pc.CompilerAccess
 import scala.meta.internal.pc.DefinitionResultImpl
 import scala.meta.internal.pc.EmptyCompletionList
+import scala.meta.internal.pc.EmptySymbolSearch
+import scala.meta.internal.pc.PresentationCompilerConfigImpl
+import scala.meta.pc.*
 
 import dotty.tools.dotc.reporting.StoreReporter
+import dotty.tools.pc.completions.CompletionProvider
+import dotty.tools.pc.completions.OverrideCompletions
 import dotty.tools.pc.util.BuildInfo
+
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
-import org.eclipse.{lsp4j as l}
+import org.eclipse.lsp4j as l
 
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
@@ -295,11 +295,12 @@ case class ScalaPresentationCompiler(
       params: ju.List[OffsetParams]
   ): CompletableFuture[ju.List[l.SelectionRange]] =
     CompletableFuture.completedFuture {
-      compilerAccess.withSharedCompiler(List.empty[l.SelectionRange].asJava) { pc =>
-        new SelectionRangeProvider(
-          pc.compiler(),
-          params
-        ).selectionRange().asJava
+      compilerAccess.withSharedCompiler(List.empty[l.SelectionRange].asJava) {
+        pc =>
+          new SelectionRangeProvider(
+            pc.compiler(),
+            params
+          ).selectionRange().asJava
       }
     }
   end selectionRange

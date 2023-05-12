@@ -1,11 +1,13 @@
 package dotty.tools.pc.base
 
-import org.eclipse.lsp4j.DocumentHighlight
-import dotty.tools.pc.utils.RangeReplace
-
 import java.net.URI
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
+
+import dotty.tools.pc.utils.RangeReplace
+
+import org.eclipse.lsp4j.DocumentHighlight
 
 class BaseDocumentHighlightSuite extends BasePCSuite with RangeReplace:
 

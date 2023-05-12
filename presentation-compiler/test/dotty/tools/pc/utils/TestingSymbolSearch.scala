@@ -1,16 +1,23 @@
 package dotty.tools.pc.utils
 
-import dotty.tools.dotc.core.Contexts.Context
-import org.eclipse.lsp4j.{Location, Position, Range}
-
 import java.net.URI
-import java.util as ju
 import java.util.Optional
+import java.util as ju
+
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.meta.internal.metals.{ClasspathSearch, WorkspaceSymbolQuery}
 import scala.meta.pc.SymbolSearch.Result
-import scala.meta.pc.{ParentSymbols, SymbolDocumentation, SymbolSearch, SymbolSearchVisitor}
+import scala.meta.pc.{
+  ParentSymbols,
+  SymbolDocumentation,
+  SymbolSearch,
+  SymbolSearchVisitor
+}
+
+import dotty.tools.dotc.core.Contexts.Context
+
+import org.eclipse.lsp4j.{Location, Position, Range}
 
 /*
  * This symbol index is only used for testing purposes and should not be used

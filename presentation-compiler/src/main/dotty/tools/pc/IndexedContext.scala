@@ -3,15 +3,14 @@ package dotty.tools.pc
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.IndexedContext.Result
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.ImportInfo
+import dotty.tools.pc.IndexedContext.Result
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 sealed trait IndexedContext:
   given ctx: Context
@@ -141,7 +140,9 @@ object IndexedContext:
     def accessibleSymbols(site: Type, tpe: Type)(using
         Context
     ): List[Symbol] =
-      tpe.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
+      tpe.decls.toList.filter(sym =>
+        sym.isAccessibleFrom(site, superAccess = false)
+      )
 
     def accesibleMembers(site: Type)(using Context): List[Symbol] =
       site.allMembers
@@ -185,7 +186,8 @@ object IndexedContext:
           val isRename = name != rename
           if !isRename && !excludedNames.contains(name.decoded) then
             fromImport(imp.site, name).map((_, None))
-          else if isRename then fromImport(imp.site, name).map((_, Some(rename)))
+          else if isRename then
+            fromImport(imp.site, name).map((_, Some(rename)))
           else Nil
         }
       end if

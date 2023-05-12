@@ -1,16 +1,25 @@
 package dotty.tools.pc.tests.completion
 
-import org.junit.Test
-import dotty.tools.pc.base.BaseCompletionSuite
-
 import java.lang
 import java.net.URI
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{CancellationException, CompletableFuture, CompletionStage}
+import java.util.concurrent.{
+  CancellationException,
+  CompletableFuture,
+  CompletionStage
+}
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import scala.meta.internal.pc.{InterruptException, PresentationCompilerConfigImpl}
+import scala.meta.internal.pc.{
+  InterruptException,
+  PresentationCompilerConfigImpl
+}
 import scala.meta.pc.{CancelToken, PresentationCompilerConfig}
+
+import dotty.tools.pc.base.BaseCompletionSuite
+
+import org.junit.Test
 
 class CompletionCancelSuite extends BaseCompletionSuite:
 

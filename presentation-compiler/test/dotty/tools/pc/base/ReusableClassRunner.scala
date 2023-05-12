@@ -1,13 +1,15 @@
 package dotty.tools.pc.base
 
+import scala.jdk.CollectionConverters._
+
 import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.runners.model.FrameworkMethod
 import org.junit.runners.model.Statement
-import scala.jdk.CollectionConverters._
 
-
-class ReusableClassRunner(testClass: Class[BasePCSuite]) extends BlockJUnit4ClassRunner(testClass):
-  private val instance: BasePCSuite = testClass.getDeclaredConstructor().newInstance()
+class ReusableClassRunner(testClass: Class[BasePCSuite])
+    extends BlockJUnit4ClassRunner(testClass):
+  private val instance: BasePCSuite =
+    testClass.getDeclaredConstructor().newInstance()
 
   override def createTest(): AnyRef = instance
   override def withBefores(
@@ -30,5 +32,6 @@ class ReusableClassRunner(testClass: Class[BasePCSuite]) extends BlockJUnit4Clas
           if (isLastTestCase(method)) then instance.clean()
 
   private def isLastTestCase(method: FrameworkMethod): Boolean =
-    val testMethods = getTestClass().getAnnotatedMethods(classOf[org.junit.Test])
+    val testMethods =
+      getTestClass().getAnnotatedMethods(classOf[org.junit.Test])
     testMethods.asScala.last == method

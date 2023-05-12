@@ -1,8 +1,6 @@
 package dotty.tools.pc
 
 import scala.jdk.CollectionConverters._
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.internal.semver.SemVer
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
@@ -19,7 +17,9 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.Signatures
 import dotty.tools.dotc.util.Signatures.Signature
 import dotty.tools.dotc.util.SourcePosition
-import org.eclipse.{lsp4j as l}
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 object SignatureHelpProvider:
 
@@ -113,7 +113,8 @@ object SignatureHelpProvider:
           allParams.lift(index) match
             case Some(paramDoc) =>
               val newName =
-                if isJavaSymbol && head.name.startsWith("x$") then paramDoc.displayName
+                if isJavaSymbol && head.name.startsWith("x$") then
+                  paramDoc.displayName
                 else head.name
               head.copy(
                 doc = Some(paramDoc.docstring),

@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.edit
 
-import org.junit.Test
 import dotty.tools.pc.base.BasePcRenameSuite
+
+import org.junit.Test
 
 class PcRenameSuite extends BasePcRenameSuite:
 
@@ -460,5 +461,5 @@ class PcRenameSuite extends BasePcRenameSuite:
         |} yield {
         |  val x = foo + <<foo@@Bar>> + baz
         |  x
-        |}""".stripMargin,
+        |}""".stripMargin
     )

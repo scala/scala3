@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.edit
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseAutoImportsSuite
+
+import org.junit.Test
 
 class AutoImportsSuite extends BaseAutoImportsSuite:
 

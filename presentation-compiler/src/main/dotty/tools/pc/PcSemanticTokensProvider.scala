@@ -1,10 +1,9 @@
 package dotty.tools.pc
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.internal.pc.SemanticTokens.*
+import scala.meta.internal.pc.TokenNode
 import scala.meta.pc.Node
 import scala.meta.pc.VirtualFileParams
-import scala.meta.internal.pc.TokenNode
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
@@ -13,6 +12,8 @@ import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.SemanticTokenModifiers
 import org.eclipse.lsp4j.SemanticTokenTypes
 
@@ -104,19 +105,27 @@ final class PcSemanticTokensProvider(
       then
         addPwrToMod(SemanticTokenModifiers.Readonly)
         getTypeId(SemanticTokenTypes.Parameter)
-      else if sym.isTypeParam || sym.isSkolem then getTypeId(SemanticTokenTypes.TypeParameter)
+      else if sym.isTypeParam || sym.isSkolem then
+        getTypeId(SemanticTokenTypes.TypeParameter)
       else if sym.is(Flags.Enum) || sym.isAllOf(Flags.EnumVal)
       then getTypeId(SemanticTokenTypes.Enum)
-      else if sym.is(Flags.Trait) then getTypeId(SemanticTokenTypes.Interface) // "interface"
+      else if sym.is(Flags.Trait) then
+        getTypeId(SemanticTokenTypes.Interface) // "interface"
       else if sym.isClass then getTypeId(SemanticTokenTypes.Class) // "class"
-      else if sym.isType && !sym.is(Flags.Param) then getTypeId(SemanticTokenTypes.Type) // "type"
-      else if sym.is(Flags.Mutable) then getTypeId(SemanticTokenTypes.Variable) // "var"
-      else if sym.is(Flags.Package) then getTypeId(SemanticTokenTypes.Namespace) // "package"
-      else if sym.is(Flags.Module) then getTypeId(SemanticTokenTypes.Class) // "object"
+      else if sym.isType && !sym.is(Flags.Param) then
+        getTypeId(SemanticTokenTypes.Type) // "type"
+      else if sym.is(Flags.Mutable) then
+        getTypeId(SemanticTokenTypes.Variable) // "var"
+      else if sym.is(Flags.Package) then
+        getTypeId(SemanticTokenTypes.Namespace) // "package"
+      else if sym.is(Flags.Module) then
+        getTypeId(SemanticTokenTypes.Class) // "object"
       else if sym.isRealMethod then
-        if sym.isGetter | sym.isSetter then getTypeId(SemanticTokenTypes.Variable)
+        if sym.isGetter | sym.isSetter then
+          getTypeId(SemanticTokenTypes.Variable)
         else getTypeId(SemanticTokenTypes.Method) // "def"
-      else if isPredefClass(sym) then getTypeId(SemanticTokenTypes.Class) // "class"
+      else if isPredefClass(sym) then
+        getTypeId(SemanticTokenTypes.Class) // "class"
       else if sym.isTerm &&
         (!sym.is(Flags.Param) || sym.is(Flags.ParamAccessor))
       then

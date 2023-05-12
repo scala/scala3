@@ -1,11 +1,10 @@
 package dotty.tools.pc
 package completions
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
-
 import dotty.tools.dotc.ast.tpd.TypeDef
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 object FilenameCompletions:
 

@@ -1,21 +1,16 @@
 package dotty.tools.pc
 package completions
 
-import java.{util as ju}
+import java.util as ju
 
 import scala.jdk.CollectionConverters._
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.AutoImports.AutoImport
-import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.printer.MetalsPrinter
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
 import scala.meta.pc.SymbolSearch
 
-import dotty.tools.dotc.ast.tpd.Tree
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.tpd.Tree
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -29,7 +24,12 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import org.eclipse.{lsp4j as l}
+import dotty.tools.pc.AutoImports.AutoImport
+import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 object OverrideCompletions:
   private type TargetDef = TypeDef | DefDef
@@ -155,7 +155,8 @@ object OverrideCompletions:
         //   extension (x: T)
         //     ...
         // class <<Concrete>>[T] extends Base[Int]
-        case (dd: DefDef) :: (_: Template) :: (td: TypeDef) :: _ if dd.symbol.isConstructor =>
+        case (dd: DefDef) :: (_: Template) :: (td: TypeDef) :: _
+            if dd.symbol.isConstructor =>
           Some(td)
 
         // case class <<Foo>>(a: Int) extends ...
@@ -342,8 +343,10 @@ object OverrideCompletions:
       val (start, last) =
         val (startNL, lastNL) =
           if posFromDecls.nonEmpty then ("\n", "\n\n") else ("\n\n", "\n")
-        if shouldCompleteWith then (s" with$startNL$indent", s"$lastNL$lastIndent")
-        else if shouldCompleteBraces then (s" {$startNL$indent", s"$lastNL$lastIndent}")
+        if shouldCompleteWith then
+          (s" with$startNL$indent", s"$lastNL$lastIndent")
+        else if shouldCompleteBraces then
+          (s" {$startNL$indent", s"$lastNL$lastIndent}")
         else (s"$startNL$indent", s"$lastNL$lastIndent")
 
       val newEdit =
@@ -413,20 +416,23 @@ object OverrideCompletions:
       // should be completed as `def iterator: Iterator[Int]` instead of `Iterator[A]`.
       val seenFrom =
         val memInfo = defn.tpe.memberInfo(sym.symbol)
-        if memInfo.isErroneous || memInfo.finalResultType.isAny then sym.info.widenTermRefExpr
+        if memInfo.isErroneous || memInfo.finalResultType.isAny then
+          sym.info.widenTermRefExpr
         else memInfo
 
       if sym.is(Method) then
         printer.defaultMethodSignature(
           sym.symbol,
           seenFrom,
-          additionalMods = if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil
+          additionalMods =
+            if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil,
         )
       else
         printer.defaultValueSignature(
           sym.symbol,
           seenFrom,
-          additionalMods = if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil
+          additionalMods =
+            if overrideKeyword.nonEmpty then List(overrideKeyword) else Nil,
         )
       end if
     end signature
@@ -508,7 +514,8 @@ object OverrideCompletions:
       path match
         // class FooImpl extends Foo:
         //   def x|
-        case (dd: (DefDef | ValDef)) :: (t: Template) :: (td: TypeDef) :: _ if t.parents.nonEmpty =>
+        case (dd: (DefDef | ValDef)) :: (t: Template) :: (td: TypeDef) :: _
+            if t.parents.nonEmpty =>
           val completing =
             if dd.symbol.name == StdNames.nme.ERROR then None
             else Some(dd.symbol)
@@ -556,7 +563,8 @@ object OverrideCompletions:
           )
         // class Main extends Val:
         //    he@@
-        case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _ if t.parents.nonEmpty =>
+        case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
+            if t.parents.nonEmpty =>
           Some(
             (
               td,

@@ -1,10 +1,11 @@
 package dotty.tools.pc.utils
 
-import org.eclipse.lsp4j.{CompletionItem, Range, TextEdit}
-import dotty.tools.pc.utils.TestExtensions.*
-
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
+
+import dotty.tools.pc.utils.TestExtensions.*
+
+import org.eclipse.lsp4j.{CompletionItem, Range, TextEdit}
 
 object TextEdits:
   def applyEdits(text: String, edits: List[TextEdit]): String =
@@ -15,7 +16,9 @@ object TextEdits:
         .collect { case (edit, Some(range)) =>
           edit -> range
         }
-        .sortBy((_, range) => (range.getStart.getLine, range.getStart.getCharacter))
+        .sortBy((_, range) =>
+          (range.getStart.getLine, range.getStart.getCharacter)
+        )
       var curr = 0
       val out = new java.lang.StringBuilder()
       positions.foreach { case (edit, pos) =>

@@ -1,16 +1,15 @@
 package dotty.tools.pc.printer
 
-import dotty.tools.pc.IndexedContext
-import dotty.tools.pc.printer.ShortenedNames.PrettyType
-
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.printing.Texts.Text
 import dotty.tools.dotc.printing.RefinedPrinter
+import dotty.tools.dotc.printing.Texts.Text
+import dotty.tools.pc.IndexedContext
+import dotty.tools.pc.printer.ShortenedNames.PrettyType
 
 /**
  * A limited subset of function that we use from compiler's printer
@@ -49,7 +48,8 @@ object DotcPrinter:
       tp match
         case tp @ TermRef(pre, _) =>
           val sym = tp.symbol
-          if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefix(pre)
+          if sym.isPackageObject && !homogenizedView && !printDebug then
+            toTextPrefix(pre)
           else printPrefix(tp)
         case _ => super.toTextPrefix(tp)
     }
@@ -95,11 +95,13 @@ object DotcPrinter:
           tp.tref match
             case tpe @ TypeRef(NoPrefix, designator) =>
               val sym =
-                if designator.isInstanceOf[Symbol] then designator.asInstanceOf[Symbol]
+                if designator.isInstanceOf[Symbol] then
+                  designator.asInstanceOf[Symbol]
                 else tpe.termSymbol
 
               val text = super.toTextPrefix(tp)
-              if sym.is(ModuleClass) && indexed.toplevelClashes(sym) then Str("_root_.") ~ text
+              if sym.is(ModuleClass) && indexed.toplevelClashes(sym) then
+                Str("_root_.") ~ text
               else text
             case _ => super.toTextPrefix(tp)
         case _ => super.toTextPrefix(tp)

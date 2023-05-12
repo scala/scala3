@@ -4,12 +4,7 @@ package completions
 import java.nio.file.Path
 
 import scala.jdk.CollectionConverters._
-
 import scala.meta.internal.metals.ReportContext
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.AutoImports.AutoImportEdits
-import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.printer.MetalsPrinter
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -21,14 +16,19 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.pc.AutoImports.AutoImportEdits
+import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.Command
 import org.eclipse.lsp4j.CompletionItem
 import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionList
 import org.eclipse.lsp4j.InsertTextFormat
 import org.eclipse.lsp4j.InsertTextMode
-import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j.Range as LspRange
+import org.eclipse.lsp4j.TextEdit
 
 class CompletionProvider(
     search: SymbolSearch,
@@ -190,7 +190,8 @@ class CompletionProvider(
 
       item.setTags(completion.lspTags.asJava)
 
-      if config.isCompletionSnippetsEnabled then item.setInsertTextFormat(InsertTextFormat.Snippet)
+      if config.isCompletionSnippetsEnabled then
+        item.setInsertTextFormat(InsertTextFormat.Snippet)
 
       completion.command.foreach { command =>
         item.setCommand(new Command("", command))
@@ -217,7 +218,8 @@ class CompletionProvider(
           false
 
     def mkItemWithImports(
-        v: CompletionValue.Workspace | CompletionValue.Extension | CompletionValue.Interpolator
+        v: CompletionValue.Workspace | CompletionValue.Extension |
+          CompletionValue.Interpolator
     ) =
       val sym = v.symbol
       path match

@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.signaturehelp
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseSignatureHelpSuite
+
+import org.junit.Test
 
 class SignatureHelpSuite extends BaseSignatureHelpSuite:
 

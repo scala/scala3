@@ -1,5 +1,9 @@
 package dotty.tools.pc.utils
 
+import java.io.File
+
+import scala.meta.pc.SymbolDocumentation
+
 import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
@@ -8,10 +12,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.ParsedComment
 import dotty.tools.io.AbstractFile
-
-import java.io.File
 import dotty.tools.pc.SemanticdbSymbols
-import scala.meta.pc.SymbolDocumentation
 
 class TestingIndex(classpath: Seq[String]):
 
@@ -27,9 +28,12 @@ class TestingIndex(classpath: Seq[String]):
   def search(query: String): List[AbstractFile] =
     val symbols = SemanticdbSymbols.inverseSemanticdbSymbol(query)
     symbols
-      .distinctBy(symbol => if symbol.is(JavaDefined) then symbol.name.toString else symbol)
+      .distinctBy(symbol =>
+        if symbol.is(JavaDefined) then symbol.name.toString else symbol
+      )
       .flatMap(symbol =>
-        if !symbol.is(JavaDefined) then Option(symbol.sourcePos).map(_.source.file)
+        if !symbol.is(JavaDefined) then
+          Option(symbol.sourcePos).map(_.source.file)
         else Option(symbol.associatedFile)
       )
 
@@ -47,12 +51,14 @@ class TestingIndex(classpath: Seq[String]):
       .filter(_.is(JavaDefined))
       .distinctBy(sym => sym.name.toString)
 
-    val adjustedSymbols = symbols.filterNot(_.is(JavaDefined)) ++ deduplicatedJavaSymbols
+    val adjustedSymbols =
+      symbols.filterNot(_.is(JavaDefined)) ++ deduplicatedJavaSymbols
 
     adjustedSymbols
       .map(symbol =>
         val path = Option(symbol.associatedFile).map(_.path.toString)
-        if symbol.is(JavaDefined) then path.flatMap(path => jdkIndex.search(path, symbol, query))
+        if symbol.is(JavaDefined) then
+          path.flatMap(path => jdkIndex.search(path, symbol, query))
         else
           symbol.ensureCompleted()
           val docComment = ParsedComment.docOf(symbol)

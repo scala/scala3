@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.tokens
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseSemanticTokensSuite
+
+import org.junit.Test
 
 class SemanticTokensSuite extends BaseSemanticTokensSuite:
 
@@ -308,5 +309,5 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |object <<Tag>>/*class*/ {
          |  type <<@@>>/*type,definition*/ = <<Int>>/*class,abstract*/
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )

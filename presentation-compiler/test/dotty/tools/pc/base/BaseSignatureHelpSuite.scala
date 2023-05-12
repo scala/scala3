@@ -1,6 +1,7 @@
 package dotty.tools.pc.base
 
 import java.nio.file.Paths
+
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 

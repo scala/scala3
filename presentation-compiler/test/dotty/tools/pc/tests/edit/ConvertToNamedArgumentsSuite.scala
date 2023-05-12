@@ -1,16 +1,18 @@
 package dotty.tools.pc.tests.edit
 
-import org.eclipse.lsp4j as l
-import org.junit.Test
-import dotty.tools.pc.base.BaseCodeActionSuite
-import dotty.tools.pc.utils.TextEdits
-
 import java.net.URI
 import java.util.concurrent.ExecutionException
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.pc.CodeActionErrorMessages
 import scala.meta.pc.DisplayableException
+
+import dotty.tools.pc.base.BaseCodeActionSuite
+import dotty.tools.pc.utils.TextEdits
+
+import org.eclipse.lsp4j as l
+import org.junit.Test
 
 class ConvertToNamedArgumentsSuite extends BaseCodeActionSuite:
 

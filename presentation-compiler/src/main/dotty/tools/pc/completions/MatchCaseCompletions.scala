@@ -3,14 +3,10 @@ package completions
 
 import java.net.URI
 
-import scala.jdk.CollectionConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.AutoImports.SymbolImport
-import dotty.tools.pc.MetalsInteractive.*
+import scala.jdk.CollectionConverters._
+import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
 
@@ -20,9 +16,9 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Definitions
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Types.AndType
 import dotty.tools.dotc.core.Types.ClassInfo
 import dotty.tools.dotc.core.Types.NoType
@@ -30,8 +26,12 @@ import dotty.tools.dotc.core.Types.OrType
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types.TypeRef
 import dotty.tools.dotc.util.SourcePosition
-import scala.meta.internal.pc.CompletionFuzzy
-import org.eclipse.{lsp4j as l}
+import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import dotty.tools.pc.AutoImports.SymbolImport
+import dotty.tools.pc.MetalsInteractive.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 object CaseKeywordCompletion:
 
@@ -130,7 +130,8 @@ object CaseKeywordCompletion:
         val sym = symImport.sym
         if !isVisited(sym) then
           recordVisit(sym)
-          if completionGenerator.fuzzyMatches(symImport.name) then result += symImport
+          if completionGenerator.fuzzyMatches(symImport.name) then
+            result += symImport
       end visit
 
       // Step 0: case for selector type
@@ -157,10 +158,11 @@ object CaseKeywordCompletion:
         val symbolImport = autoImportsGen.inferSymbolImport(sym)
         visit(symbolImport)
       }
-      val res = result.result().flatMap { case si @ SymbolImport(sym, name, importSel) =>
-        completionGenerator.labelForCaseMember(sym, name.value).map { label =>
-          (si, label)
-        }
+      val res = result.result().flatMap {
+        case si @ SymbolImport(sym, name, importSel) =>
+          completionGenerator.labelForCaseMember(sym, name.value).map { label =>
+            (si, label)
+          }
       }
       val caseItems = res.map((si, label) =>
         completionGenerator.toCompletionValue(
@@ -191,7 +193,8 @@ object CaseKeywordCompletion:
                 tail
                   .map(_._2)
                   .mkString(
-                    if clientSupportsSnippets then s"$newLine${label} $$0\n$addIndent"
+                    if clientSupportsSnippets then
+                      s"$newLine${label} $$0\n$addIndent"
                     else s"$newLine${label}\n$addIndent",
                     s"\n$addIndent",
                     if addNewLineAfter then "\n" else ""
@@ -247,7 +250,9 @@ object CaseKeywordCompletion:
       val subclasses =
         subclassesForType(tpe.widen.bounds.hi)
           .map(autoImportsGen.inferSymbolImport)
-          .flatMap(si => completionGenerator.labelForCaseMember(si.sym, si.name).map((si, _)))
+          .flatMap(si =>
+            completionGenerator.labelForCaseMember(si.sym, si.name).map((si, _))
+          )
       sortSubclasses(tpe, subclasses, completionPos.sourceUri, search)
 
     val (labels, imports) =
@@ -270,7 +275,8 @@ object CaseKeywordCompletion:
         val insertText = Some(
           tail
             .mkString(
-              if clientSupportsSnippets then s"match$obracket\n\t${head} $$0\n\t"
+              if clientSupportsSnippets then
+                s"match$obracket\n\t${head} $$0\n\t"
               else s"match$obracket\n\t${head}\n\t",
               "\n\t",
               s"\n$cbracket"
@@ -293,7 +299,8 @@ object CaseKeywordCompletion:
       uri: URI,
       search: SymbolSearch
   )(using Context): List[(SymbolImport, String)] =
-    if syms.forall(_._1.sym.sourcePos.exists) then syms.sortBy(_._1.sym.sourcePos.point)
+    if syms.forall(_._1.sym.sourcePos.exists) then
+      syms.sortBy(_._1.sym.sourcePos.point)
     else
       val defnSymbols = search
         .definitionSourceToplevels(
@@ -593,7 +600,8 @@ class MatchCaseExtractor(
               Literal((Constant(null))),
               _,
               _
-            )) :: (m: Match) :: parent :: _ if pos.start - c.sourcePos.start > 4 =>
+            )) :: (m: Match) :: parent :: _
+            if pos.start - c.sourcePos.start > 4 =>
           Some((m.selector, parent, ""))
         // case Som@@
         case Ident(name) :: CaseExtractor(selector, parent, _) =>

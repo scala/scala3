@@ -1,13 +1,8 @@
 package dotty.tools.pc.printer
 
-import java.{util as ju}
+import java.util as ju
 
 import scala.annotation.tailrec
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.AutoImports
-import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.IndexedContext
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
@@ -18,6 +13,11 @@ import dotty.tools.dotc.core.Names.termName
 import dotty.tools.dotc.core.Symbols
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.pc.AutoImports
+import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import dotty.tools.pc.IndexedContext
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.TextEdit
 
 class ShortenedNames(
@@ -111,7 +111,8 @@ class ShortenedNames(
           // designator is not necessarily an instance of `Symbol` and it's an instance of `Name`
           // this can be seen, for example, when we are shortening the signature of 3rd party APIs.
           val sym =
-            if designator.isInstanceOf[Symbol] then designator.asInstanceOf[Symbol]
+            if designator.isInstanceOf[Symbol] then
+              designator.asInstanceOf[Symbol]
             else tpe.typeSymbol
 
           @tailrec
@@ -142,13 +143,15 @@ class ShortenedNames(
           renames.get(sym.owner) match
             case Some(rename) =>
               val short = ShortName(Names.termName(rename), sym.owner)
-              if tryShortenName(short) then PrettyType(s"$rename.${sym.name.show}")
+              if tryShortenName(short) then
+                PrettyType(s"$rename.${sym.name.show}")
               else shortened
             case _ => shortened
 
         case TermRef(prefix, designator) =>
           val sym =
-            if designator.isInstanceOf[Symbol] then designator.asInstanceOf[Symbol]
+            if designator.isInstanceOf[Symbol] then
+              designator.asInstanceOf[Symbol]
             else tpe.termSymbol
           val short = ShortName(sym)
           if tryShortenName(short) then TermRef(NoPrefix, sym)
@@ -170,7 +173,9 @@ class ShortenedNames(
         case pl @ PolyType(_, restpe) =>
           PolyType(
             pl.paramNames,
-            pl.paramInfos.map(bound => TypeBounds(loop(bound.lo, None), loop(bound.hi, None))),
+            pl.paramInfos.map(bound =>
+              TypeBounds(loop(bound.lo, None), loop(bound.hi, None))
+            ),
             loop(restpe, None)
           )
         case SuperType(thistpe, supertpe) =>

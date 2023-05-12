@@ -1,9 +1,10 @@
 package dotty.tools.pc.tests.completion
 
+import dotty.tools.pc.base.BaseCompletionSuite
+
 import org.junit.rules.{RuleChain, TestRule, TestWatcher}
 import org.junit.runner.Description
 import org.junit.{Ignore, Test}
-import dotty.tools.pc.base.BaseCompletionSuite
 
 class CompletionSuite extends BaseCompletionSuite:
 

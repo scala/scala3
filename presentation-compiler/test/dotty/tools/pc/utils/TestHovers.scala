@@ -1,9 +1,10 @@
 package dotty.tools.pc.utils
 
-import org.eclipse.lsp4j.Hover
+import scala.meta.internal.pc.HoverMarkup
+
 import dotty.tools.pc.utils.TestExtensions.*
 
-import scala.meta.internal.pc.HoverMarkup
+import org.eclipse.lsp4j.Hover
 
 trait TestHovers:
   extension (string: String)

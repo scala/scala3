@@ -1,12 +1,7 @@
 package dotty.tools.pc.printer
 
 import scala.collection.mutable
-
 import scala.meta.internal.jdk.CollectionConverters.*
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.IndexedContext
-import dotty.tools.pc.Params
-import dotty.tools.pc.printer.ShortenedNames.ShortName
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
@@ -19,14 +14,19 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.Types.Type
+import dotty.tools.pc.IndexedContext
+import dotty.tools.pc.Params
+import dotty.tools.pc.printer.ShortenedNames.ShortName
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 class MetalsPrinter(
     names: ShortenedNames,
     dotcPrinter: DotcPrinter,
     symbolSearch: SymbolSearch,
-    includeDefaultParam: MetalsPrinter.IncludeDefaultParam = IncludeDefaultParam.ResolveLater
+    includeDefaultParam: MetalsPrinter.IncludeDefaultParam =
+      IncludeDefaultParam.ResolveLater,
 )(using
     Context
 ):
@@ -107,11 +107,14 @@ class MetalsPrinter(
     val info = sym.info.widenTermRefExpr
     val typeSymbol = info.typeSymbol
 
-    if sym.is(Flags.Package) || sym.isClass then " " + dotcPrinter.fullName(sym.owner)
+    if sym.is(Flags.Package) || sym.isClass then
+      " " + dotcPrinter.fullName(sym.owner)
     else if sym.is(Flags.Module) || typeSymbol.is(Flags.Module) then
-      if typeSymbol != NoSymbol then " " + dotcPrinter.fullName(typeSymbol.owner)
+      if typeSymbol != NoSymbol then
+        " " + dotcPrinter.fullName(typeSymbol.owner)
       else " " + dotcPrinter.fullName(sym.owner)
-    else if sym.is(Flags.Method) then defaultMethodSignature(sym, info, onlyMethodParams = true)
+    else if sym.is(Flags.Method) then
+      defaultMethodSignature(sym, info, onlyMethodParams = true)
     else tpe(info)
 
   /**
@@ -189,7 +192,8 @@ class MetalsPrinter(
     val returnType = tpe(gtpe.finalResultType)
     def extensionSignatureString =
       val extensionSignature = paramssString(extLabelss, extParams)
-      if extParams.nonEmpty then extensionSignature.mkString("extension ", "", " ")
+      if extParams.nonEmpty then
+        extensionSignature.mkString("extension ", "", " ")
       else ""
     val paramssSignature = paramssString(paramLabelss, methodParams)
       .mkString("", "", s": ${returnType}")
@@ -385,7 +389,8 @@ class MetalsPrinter(
       .map(_.info)
       .collect {
         // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class reflect)),trait ClassTag),List(TypeRef(NoPrefix,type T)))
-        case AppliedType(tycon, TypeRef(_, tparam) :: Nil) if tparam.isInstanceOf[Symbol] =>
+        case AppliedType(tycon, TypeRef(_, tparam) :: Nil)
+            if tparam.isInstanceOf[Symbol] =>
           (tycon, tparam.asInstanceOf[Symbol])
       }
       .foreach { case (tycon, tparam) =>

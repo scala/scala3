@@ -3,11 +3,10 @@ package dotty.tools.pc
 import java.util.logging.Level
 import java.util.logging.Logger
 
-import scala.util.control.NonFatal
-
 import scala.meta.internal.metals.Report
 import scala.meta.internal.metals.ReportContext
 import scala.meta.pc.*
+import scala.util.control.NonFatal
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Names.*
@@ -20,7 +19,8 @@ class CompilerSearchVisitor(
 
   val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName)
 
-  private def isAccessible(sym: Symbol): Boolean = try sym != NoSymbol && sym.isPublic
+  private def isAccessible(sym: Symbol): Boolean = try
+    sym != NoSymbol && sym.isPublic
   catch
     case NonFatal(e) =>
       reports.incognito.create(

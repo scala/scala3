@@ -1,10 +1,11 @@
 package dotty.tools.pc.tests
 
+import java.net.URI
+
 import dotty.tools.dotc.semanticdb.{SymbolOccurrence, TextDocument}
-import org.junit.Test
 import dotty.tools.pc.base.BasePCSuite
 
-import java.net.URI
+import org.junit.Test
 
 class PcSemanticdbSuite extends BasePCSuite:
 

@@ -3,11 +3,10 @@ package dotty.tools.pc
 import java.util.concurrent.ScheduledExecutorService
 
 import scala.concurrent.ExecutionContextExecutor
-
+import scala.meta.internal.pc.CompilerAccess
 import scala.meta.pc.PresentationCompilerConfig
 
 import dotty.tools.dotc.reporting.StoreReporter
-import scala.meta.internal.pc.CompilerAccess
 
 class Scala3CompilerAccess(
     config: PresentationCompilerConfig,

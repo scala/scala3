@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.edit
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseExtractMethodSuite
+
+import org.junit.Test
 
 class ExtractMethodSuite extends BaseExtractMethodSuite:
   @Test def `simple-expr` =

@@ -1,12 +1,16 @@
 package dotty.tools.pc.base
 
+import java.nio.file.Paths
+
+import scala.meta.internal.metals.{CompilerOffsetParams, CompilerRangeParams}
+
+import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.pc.utils.{RangeReplace, TestHovers}
 
-import java.nio.file.Paths
-import scala.meta.internal.metals.{CompilerOffsetParams, CompilerRangeParams}
-import dotty.tools.pc.utils.MtagsEnrichments.*
-
-abstract class BaseHoverSuite extends BasePCSuite with TestHovers with RangeReplace:
+abstract class BaseHoverSuite
+    extends BasePCSuite
+    with TestHovers
+    with RangeReplace:
 
   def check(
       original: String,

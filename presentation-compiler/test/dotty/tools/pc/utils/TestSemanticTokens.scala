@@ -1,13 +1,13 @@
 package dotty.tools.pc.utils
 
-import org.eclipse.lsp4j as l
-
 import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.collection.mutable.ListBuffer
 import scala.meta.internal.pc.SemanticTokens
 import scala.meta.internal.pc.SemanticTokens.*
 import scala.meta.pc.Node
+
+import org.eclipse.lsp4j as l
 
 object TestSemanticTokens:
 
@@ -68,7 +68,9 @@ object TestSemanticTokens:
                 nxt.end()
               )
             )
-            val node = candidates.maxBy(node => SemanticTokens.getTypePriority(node.tokenType()))
+            val node = candidates.maxBy(node =>
+              SemanticTokens.getTypePriority(node.tokenType())
+            )
             val slice = fileContent.slice(curr, node.start)
             wkStr ++= slice
             wkStr ++= "<<"

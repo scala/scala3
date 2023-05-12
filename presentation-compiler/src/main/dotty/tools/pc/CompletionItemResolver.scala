@@ -1,15 +1,16 @@
 package dotty.tools.pc
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import scala.meta.internal.pc.ItemResolver
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
-import scala.meta.internal.pc.ItemResolver
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.TermRef
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.CompletionItem
 
 object CompletionItemResolver extends ItemResolver:
@@ -60,7 +61,8 @@ object CompletionItemResolver extends ItemResolver:
     val companion = gsym.companion
     if companion == NoSymbol || gsym.is(JavaDefined) then
       if gsymDoc.isEmpty then
-        if gsym.isAliasType then fullDocstring(gsym.info.metalsDealias.typeSymbol, search)
+        if gsym.isAliasType then
+          fullDocstring(gsym.info.metalsDealias.typeSymbol, search)
         else if gsym.is(Method) then
           gsym.info.finalResultType match
             case tr @ TermRef(_, sym) =>

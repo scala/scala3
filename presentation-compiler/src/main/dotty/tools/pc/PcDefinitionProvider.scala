@@ -4,11 +4,9 @@ import java.nio.file.Paths
 import java.util.ArrayList
 
 import scala.jdk.CollectionConverters.*
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
+import scala.meta.internal.pc.DefinitionResultImpl
 import scala.meta.pc.DefinitionResult
 import scala.meta.pc.OffsetParams
-import scala.meta.internal.pc.DefinitionResultImpl
 import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.CompilationUnit
@@ -22,6 +20,8 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.Location
 
 class PcDefinitionProvider(
@@ -72,8 +72,8 @@ class PcDefinitionProvider(
    * @param pos cursor position
    * @return definition result
    */
-  private def fallbackToUntyped(unit: CompilationUnit, pos: SourcePosition)(using
-      ctx: Context
+  private def fallbackToUntyped(unit: CompilationUnit, pos: SourcePosition)(
+      using ctx: Context
   ) =
     lazy val untpdPath = NavigateAST
       .untypedPath(pos.span)

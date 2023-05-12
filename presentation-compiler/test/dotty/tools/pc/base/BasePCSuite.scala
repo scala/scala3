@@ -1,6 +1,21 @@
 package dotty.tools.pc.base
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path}
+import java.util.Comparator
+import java.util.concurrent.{Executors, ScheduledExecutorService}
+
+import scala.collection.immutable
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
+import scala.meta.internal.pc.PresentationCompilerConfigImpl
+import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
+
+import dotty.tools.pc.*
+import dotty.tools.pc.ScalaPresentationCompiler
 import dotty.tools.pc.util.BuildInfo
+import dotty.tools.pc.utils._
+
 import org.eclipse.lsp4j.MarkupContent
 import org.eclipse.lsp4j.jsonrpc.messages.Either as JEither
 import org.junit.Assert.*
@@ -8,31 +23,22 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.BlockJUnit4ClassRunner
 import org.junit.runners.model.{FrameworkMethod, Statement}
-import dotty.tools.pc.*
-import dotty.tools.pc.utils._
-
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
-import java.util.Comparator
-import java.util.concurrent.{Executors, ScheduledExecutorService}
-import scala.collection.immutable
-import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
-import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
-import dotty.tools.pc.ScalaPresentationCompiler
-import scala.meta.internal.pc.PresentationCompilerConfigImpl
 
 object TestResources:
   val scalaLibrary = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
 
   val index = TestingIndex(scalaLibrary.map(_.toString))
-  val classpathSearch = ClasspathSearch.fromClasspath(scalaLibrary, ExcludedPackagesHandler.default)
+  val classpathSearch =
+    ClasspathSearch.fromClasspath(scalaLibrary, ExcludedPackagesHandler.default)
 
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:
   val tmp = Files.createTempDirectory("metals")
-  val executorService: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
-  val testingWorkspaceSearch = TestingWorkspaceSearch(TestResources.scalaLibrary.map(_.toString))
+  val executorService: ScheduledExecutorService =
+    Executors.newSingleThreadScheduledExecutor()
+  val testingWorkspaceSearch = TestingWorkspaceSearch(
+    TestResources.scalaLibrary.map(_.toString)
+  )
 
   lazy val presentationCompiler: PresentationCompiler =
     val myclasspath: Seq[Path] = TestResources.scalaLibrary
@@ -71,7 +77,8 @@ abstract class BasePCSuite extends PcAssertions:
       .map(_.toFile)
       .forEach(_.delete)
 
-  protected def scalacOptions(classpath: Seq[Path]): Seq[String] = immutable.Seq.empty
+  protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
+    immutable.Seq.empty
   protected def requiresJdkSources: Boolean = false
   protected def requiresScalaLibrarySources: Boolean = false
 

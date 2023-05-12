@@ -4,12 +4,8 @@ import java.nio.file.Paths
 
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.pc.AutoImportsResultImpl
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.AutoImports.*
-import dotty.tools.pc.completions.CompletionPos
 import scala.meta.pc.*
 
 import dotty.tools.dotc.ast.tpd.*
@@ -17,7 +13,11 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
-import org.eclipse.{lsp4j as l}
+import dotty.tools.pc.AutoImports.*
+import dotty.tools.pc.completions.CompletionPos
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 final class AutoImportsProvider(
     search: SymbolSearch,
@@ -62,7 +62,8 @@ final class AutoImportsProvider(
       sym.name.show == query
 
     val visitor = new CompilerSearchVisitor(visit)
-    if isExtension then search.searchMethods(name, buildTargetIdentifier, visitor)
+    if isExtension then
+      search.searchMethods(name, buildTargetIdentifier, visitor)
     else search.search(name, buildTargetIdentifier, visitor)
     val results = symbols.result.filter(isExactMatch(_, name))
 

@@ -1,7 +1,7 @@
 package dotty.tools.pc
 
 import java.net.URI
-import java.{util as ju}
+import java.util as ju
 
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.Diagnostic

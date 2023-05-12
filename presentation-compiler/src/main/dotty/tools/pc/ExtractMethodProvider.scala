@@ -2,16 +2,11 @@ package dotty.tools.pc
 
 import java.nio.file.Paths
 
-import scala.meta as m
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.MetalsInteractive.*
-import dotty.tools.pc.printer.MetalsPrinter
-import dotty.tools.pc.printer.MetalsPrinter.IncludeDefaultParam
+import scala.meta.internal.pc.ExtractMethodUtils
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolSearch
-import scala.meta.internal.pc.ExtractMethodUtils
+import scala.meta as m
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.tpd
@@ -25,8 +20,13 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.MetalsInteractive.*
+import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.printer.MetalsPrinter.IncludeDefaultParam
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.TextEdit
-import org.eclipse.{lsp4j as l}
+import org.eclipse.lsp4j as l
 
 final class ExtractMethodProvider(
     range: RangeParams,

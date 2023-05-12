@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.hover
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseHoverSuite
+
+import org.junit.Test
 
 class HoverTermSuite extends BaseHoverSuite:
 

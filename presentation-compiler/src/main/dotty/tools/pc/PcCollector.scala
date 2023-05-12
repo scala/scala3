@@ -2,12 +2,10 @@ package dotty.tools.pc
 
 import java.nio.file.Paths
 
-import scala.meta as m
-
 import scala.meta.internal.metals.CompilerOffsetParams
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.VirtualFileParams
+import scala.meta as m
 
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.Positioned
@@ -28,6 +26,7 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 abstract class PcCollector[T](
     driver: InteractiveDriver,
@@ -100,16 +99,21 @@ abstract class PcCollector[T](
       val isOldNameBackticked = sourceText(pos.start) != '`' &&
         sourceText(pos.start - 1) == '`' &&
         sourceText(pos.end) == '`'
-      if isBackticked && forRename then (pos.withStart(pos.start + 1).withEnd(pos.`end` - 1), true)
-      else if isOldNameBackticked then (pos.withStart(pos.start - 1).withEnd(pos.`end` + 1), false)
+      if isBackticked && forRename then
+        (pos.withStart(pos.start + 1).withEnd(pos.`end` - 1), true)
+      else if isOldNameBackticked then
+        (pos.withStart(pos.start - 1).withEnd(pos.`end` + 1), false)
       else (pos, false)
   end adjust
 
   def symbolAlternatives(sym: Symbol) =
     val all =
-      if sym.is(Flags.ModuleClass) then Set(sym, sym.companionModule, sym.companionModule.companion)
-      else if sym.isClass then Set(sym, sym.companionModule, sym.companion.moduleClass)
-      else if sym.is(Flags.Module) then Set(sym, sym.companionClass, sym.moduleClass)
+      if sym.is(Flags.ModuleClass) then
+        Set(sym, sym.companionModule, sym.companionModule.companion)
+      else if sym.isClass then
+        Set(sym, sym.companionModule, sym.companion.moduleClass)
+      else if sym.is(Flags.Module) then
+        Set(sym, sym.companionClass, sym.moduleClass)
       else if sym.isTerm && (sym.owner.isClass || sym.owner.isConstructor)
       then
         val info =
@@ -183,7 +187,8 @@ abstract class PcCollector[T](
        * class Fo@@o = ???
        * etc.
        */
-      case (df: NamedDefTree) :: _ if df.nameSpan.contains(pos.span) && !isGeneratedGiven(df) =>
+      case (df: NamedDefTree) :: _
+          if df.nameSpan.contains(pos.span) && !isGeneratedGiven(df) =>
         Some(symbolAlternatives(df.symbol), pos.withSpan(df.nameSpan))
       /**
        * For traversing annotations:
@@ -241,7 +246,10 @@ abstract class PcCollector[T](
     def collectParams(
         extMethods: ExtMethods
     ): Option[ExtensionParamOccurence] =
-      NavigateAST.pathTo(pos.span, extMethods.paramss.flatten)(using compilatonUnitContext)
+      NavigateAST
+        .pathTo(pos.span, extMethods.paramss.flatten)(using
+          compilatonUnitContext
+        )
         .collectFirst {
           case v: untpd.ValOrTypeDef =>
             ExtensionParamOccurence(
@@ -326,7 +334,9 @@ abstract class PcCollector[T](
               .Try(named.symbol.owner)
               .toOption
               .exists(_.isAnonymousFunction) &&
-            owners.exists(o => o.span.exists && o.span.point == named.symbol.owner.span.point)
+            owners.exists(o =>
+              o.span.exists && o.span.point == named.symbol.owner.span.point
+            )
 
         def soughtOrOverride(sym: Symbol) =
           sought(sym) || sym.allOverriddenSymbols.exists(sought(_))
@@ -338,7 +348,8 @@ abstract class PcCollector[T](
                   isForComprehensionOwner(ident) =>
               true
             case sel: Select if soughtOrOverride(sel.symbol) => true
-            case df: NamedDefTree if soughtOrOverride(df.symbol) && !df.symbol.isSetter =>
+            case df: NamedDefTree
+                if soughtOrOverride(df.symbol) && !df.symbol.isSetter =>
               true
             case imp: Import if owners(imp.expr.symbol) => true
             case _ => false
@@ -470,10 +481,12 @@ abstract class PcCollector[T](
         case imp: Import if filter(imp) =>
           imp.selectors
             .collect {
-              case sel: ImportSelector if soughtFilter(_.decodedName == sel.name.decoded) =>
+              case sel: ImportSelector
+                  if soughtFilter(_.decodedName == sel.name.decoded) =>
                 // Show both rename and main together
                 val spans =
-                  if !sel.renamed.isEmpty then Set(sel.renamed.span, sel.imported.span)
+                  if !sel.renamed.isEmpty then
+                    Set(sel.renamed.span, sel.imported.span)
                   else Set(sel.imported.span)
                 // See https://github.com/scalameta/metals/pull/5100
                 val symbol = imp.expr.symbol.info.member(sel.name).symbol match

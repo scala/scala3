@@ -106,7 +106,8 @@ object ScaladocCompletions:
       defn match
         case defdef: DefDef =>
           val extensionParam =
-            if defdef.symbol.isAllOf(ExtensionMethod) then defdef.symbol.extensionParam
+            if defdef.symbol.isAllOf(ExtensionMethod) then
+              defdef.symbol.extensionParam
             else NoSymbol
           defdef.trailingParamss.flatten.collect {
             case param

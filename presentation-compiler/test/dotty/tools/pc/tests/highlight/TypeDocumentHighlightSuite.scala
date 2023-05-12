@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.highlight
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseDocumentHighlightSuite
+
+import org.junit.Test
 
 class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
 
@@ -169,11 +170,11 @@ class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
     )
 
   @Test def `trait-param1` =
-   check(
+    check(
       """|trait Zg[<<T@@T>>]{
          |  def doZ: List[<<TT>>]
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `trait-param2` =
@@ -181,7 +182,7 @@ class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|trait Zg[<<TT>>]{
          |  def doZ: List[<<T@@T>>]
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `symbolic-type` =
@@ -190,6 +191,5 @@ class TypeDocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  type <<!!>>[+T, -U] = Int
          |  def m(x: Int <<!@@!>> String) = ???
          |}
-         |""".stripMargin,
-  )
-
+         |""".stripMargin
+    )

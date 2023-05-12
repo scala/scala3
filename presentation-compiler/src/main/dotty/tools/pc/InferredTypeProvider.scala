@@ -3,14 +3,10 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.annotation.tailrec
-import scala.meta as m
-
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.printer.MetalsPrinter
-import dotty.tools.pc.printer.ShortenedNames
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
+import scala.meta as m
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.untpd
@@ -25,6 +21,10 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.printer.ShortenedNames
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
 
@@ -127,7 +127,8 @@ final class InferredTypeProvider(
       case Some(vl @ ValDef(sym, tpt, rhs)) =>
         val isParam = path match
           case head :: next :: _ if next.symbol.isAnonymousFunction => true
-          case head :: (b @ Block(stats, expr)) :: next :: _ if next.symbol.isAnonymousFunction =>
+          case head :: (b @ Block(stats, expr)) :: next :: _
+              if next.symbol.isAnonymousFunction =>
             true
           case _ => false
         def baseEdit(withParens: Boolean): TextEdit =
@@ -154,14 +155,17 @@ final class InferredTypeProvider(
             text(blockStartPos.start) == '('
 
           if isParensFunction && !alreadyHasParens then
-            new TextEdit(blockStartPos.toLsp, "(") :: baseEdit(withParens = true) :: Nil
+            new TextEdit(blockStartPos.toLsp, "(") :: baseEdit(withParens =
+              true
+            ) :: Nil
           else baseEdit(withParens = false) :: Nil
         end checkForParensAndEdit
 
         def typeNameEdit: List[TextEdit] =
           path match
             // lambda `map(a => ???)` apply
-            case _ :: _ :: (block: untpd.Block) :: (appl: untpd.Apply) :: _ if isParam =>
+            case _ :: _ :: (block: untpd.Block) :: (appl: untpd.Apply) :: _
+                if isParam =>
               checkForParensAndEdit(appl.fun.endPos.end, '(', block.startPos)
 
             // labda `map{a => ???}` apply
@@ -247,7 +251,8 @@ final class InferredTypeProvider(
            * we need to add () for example in:
            * case (head : Int) :: tail =>
            */
-          case _ :: (unappl @ UnApply(_, _, patterns)) :: _ if patterns.size > 1 =>
+          case _ :: (unappl @ UnApply(_, _, patterns)) :: _
+              if patterns.size > 1 =>
             val firstEnd = patterns(0).endPos.end
             val secondStart = patterns(1).startPos.start
             val hasDot = params
@@ -297,7 +302,8 @@ final class InferredTypeProvider(
     ): Option[SourcePosition] =
       start match
         case Some((start, nextMatch :: left)) =>
-          if text.charAt(idx) == nextMatch then lookup(idx + 1, Some((start, left)), withBacktick)
+          if text.charAt(idx) == nextMatch then
+            lookup(idx + 1, Some((start, left)), withBacktick)
           else lookup(idx + 1, None, withBacktick = false)
         case Some((start, Nil)) =>
           val end = if withBacktick then idx + 1 else idx
@@ -305,14 +311,16 @@ final class InferredTypeProvider(
           Some(pos)
         case None if idx < text.length =>
           val ch = text.charAt(idx)
-          if ch == realName.head then lookup(idx + 1, Some((idx, realName.tail)), withBacktick)
+          if ch == realName.head then
+            lookup(idx + 1, Some((idx, realName.tail)), withBacktick)
           else if ch == '`' then lookup(idx + 1, None, withBacktick = true)
           else lookup(idx + 1, None, withBacktick = false)
         case _ =>
           None
 
     val matchedByText =
-      if realName.nonEmpty then lookup(tree.sourcePos.start + kewordOffset, None, false)
+      if realName.nonEmpty then
+        lookup(tree.sourcePos.start + kewordOffset, None, false)
       else None
 
     matchedByText.getOrElse(tree.namePos)

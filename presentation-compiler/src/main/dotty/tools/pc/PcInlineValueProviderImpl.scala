@@ -1,12 +1,11 @@
 package dotty.tools.pc
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import scala.meta.internal.pc.InlineValueProvider.Errors
-import scala.meta.pc.OffsetParams
-import scala.meta.internal.pc.InlineValueProvider
-import scala.meta.internal.pc.RangeOffset
 import scala.meta.internal.pc.Definition
+import scala.meta.internal.pc.InlineValueProvider
+import scala.meta.internal.pc.InlineValueProvider.Errors
+import scala.meta.internal.pc.RangeOffset
 import scala.meta.internal.pc.Reference
+import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.tpd.*
@@ -18,7 +17,9 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
-import org.eclipse.{lsp4j as l}
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 final class PcInlineValueProviderImpl(
     val driver: InteractiveDriver,
@@ -117,7 +118,8 @@ final class PcInlineValueProviderImpl(
         tree: Tree
     ): List[Symbol] =
       tree match
-        case id: (Ident | Select) if !id.symbol.is(Synthetic) && !id.symbol.is(Implicit) =>
+        case id: (Ident | Select)
+            if !id.symbol.is(Synthetic) && !id.symbol.is(Implicit) =>
           tree.symbol :: symbols
         case _ => symbols
 
@@ -174,7 +176,9 @@ final class PcInlineValueProviderImpl(
         Right(
           Reference(
             occurence.pos.toLsp,
-            occurence.parent.map(p => RangeOffset(p.sourcePos.start, p.sourcePos.end)),
+            occurence.parent.map(p =>
+              RangeOffset(p.sourcePos.start, p.sourcePos.end)
+            ),
             occurence.parent
               .map(p => referenceRequiresBrackets(p)(using newctx))
               .getOrElse(false)

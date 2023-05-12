@@ -1,12 +1,12 @@
 package dotty.tools.pc
 
 import java.net.URI
+import java.nio.file.{Files, Paths}
 
 import scala.meta.internal.metals.HtmlBuilder
 
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import java.nio.file.{Files, Paths}
 
 object TastyUtils:
   def getTasty(

@@ -1,8 +1,5 @@
 package dotty.tools.pc.completions
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.IndexedContext
-
 import dotty.tools.dotc.ast.Trees.ValDef
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
@@ -13,6 +10,8 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.IndexedContext
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 object NamedArgCompletions:
 
@@ -23,7 +22,8 @@ object NamedArgCompletions:
       clientSupportsSnippets: Boolean
   )(using ctx: Context): List[CompletionValue] =
     path match
-      case (ident: Ident) :: ValDef(_, _, _) :: Block(_, app: Apply) :: _ if !isInfix(pos, app) =>
+      case (ident: Ident) :: ValDef(_, _, _) :: Block(_, app: Apply) :: _
+          if !isInfix(pos, app) =>
         contribute(
           Some(ident),
           app,

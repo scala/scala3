@@ -1,10 +1,10 @@
 package dotty.tools.pc.completions
 
 import scala.meta.internal.mtags.CoursierComplete
-import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 class ScalaCliCompletions(
     coursierComplete: CoursierComplete,

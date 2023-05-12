@@ -1,23 +1,25 @@
 package dotty.tools.pc.utils
 
-import dotty.tools.dotc.util.DiffUtil
-import org.eclipse.lsp4j.{CompletionItem, CompletionList}
-import org.hamcrest
-import org.hamcrest.CoreMatchers.*
-import org.hamcrest.*
-import org.jline.utils.DiffHelper
-import org.junit.Assert.assertEquals
-import org.junit.*
-import org.junit.rules.{ExpectedException, RuleChain, TestRule, TestWatcher}
-import org.junit.runner.Description
-
 import java.nio.file.Paths
 import java.util.Collections
+
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.CancelToken
+
+import dotty.tools.dotc.util.DiffUtil
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j.{CompletionItem, CompletionList}
+import org.hamcrest
+import org.hamcrest.*
+import org.hamcrest.CoreMatchers.*
+import org.jline.utils.DiffHelper
+import org.junit.*
+import org.junit.Assert.assertEquals
+import org.junit.rules.{ExpectedException, RuleChain, TestRule, TestWatcher}
+import org.junit.runner.Description
 
 trait PcAssertions:
 
@@ -32,7 +34,8 @@ trait PcAssertions:
       actual.linesIterator.maxByOption(_.length).map(_.length).getOrElse(0)
 
     val actualMatcher =
-      if longestActual >= 40 || longestExpeceted >= 40 then lineByLineDiffMatcher(expected)
+      if longestActual >= 40 || longestExpeceted >= 40 then
+        lineByLineDiffMatcher(expected)
       else sideBySideDiffMatcher(expected)
 
     assertThat(actual, actualMatcher, snippet)
@@ -110,8 +113,12 @@ trait PcAssertions:
       snippet.map(addSnippet(description))
 
       description.appendText(System.lineSeparator)
-      description.appendText(" (" + Console.GREEN + "+++ Expected" + Console.RESET + ", ")
-      description.appendText(Console.RED + "--- Obtained" + Console.RESET + ", ")
+      description.appendText(
+        " (" + Console.GREEN + "+++ Expected" + Console.RESET + ", "
+      )
+      description.appendText(
+        Console.RED + "--- Obtained" + Console.RESET + ", "
+      )
       description.appendText("NO CHANGES" + ")")
       description.appendText(System.lineSeparator)
 

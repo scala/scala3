@@ -1,16 +1,21 @@
 package dotty.tools.pc.utils
 
+import java.io.File
+import java.nio.file.Paths
+
+import scala.collection.mutable
+import scala.meta.internal.metals.{
+  CompilerVirtualFileParams,
+  Fuzzy,
+  WorkspaceSymbolQuery
+}
+import scala.meta.pc.SymbolSearchVisitor
+
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.semanticdb.SemanticSymbolBuilder
-
-import java.io.File
-import java.nio.file.Paths
-import scala.collection.mutable
-import scala.meta.internal.metals.{CompilerVirtualFileParams, Fuzzy, WorkspaceSymbolQuery}
 import dotty.tools.pc.CompilerSearchVisitor
-import scala.meta.pc.SymbolSearchVisitor
 
 object TestingWorkspaceSearch:
   def empty: TestingWorkspaceSearch = new TestingWorkspaceSearch(Nil)
@@ -40,7 +45,10 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
           val nioPath = Paths.get(path)
           val uri = nioPath.toUri()
           val symbols =
-            DefSymbolCollector(driver, CompilerVirtualFileParams(uri, text)).namedDefSymbols
+            DefSymbolCollector(
+              driver,
+              CompilerVirtualFileParams(uri, text)
+            ).namedDefSymbols
 
           // We have to map symbol from this Context, to one in PresentationCompiler
           // To do it we are searching it with semanticdb symbol
@@ -49,6 +57,8 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
             .filter((symbol, _) => filter(symbol))
             .filter((_, name) => Fuzzy.matches(query.query, name))
             .map(symbol => semanticSymbolBuilder.symbolName(symbol._1))
-            .map(visitor.visitWorkspaceSymbol(Paths.get(""), _, null, null)) // adjust it
+            .map(
+              visitor.visitWorkspaceSymbol(Paths.get(""), _, null, null)
+            ) // adjust it
         }
       case _ =>

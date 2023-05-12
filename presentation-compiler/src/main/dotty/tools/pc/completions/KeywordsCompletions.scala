@@ -2,15 +2,15 @@ package dotty.tools.pc.completions
 
 import scala.meta.internal.pc.Keyword
 
+import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.core.Comments
 import dotty.tools.dotc.core.Comments.Comment
-import dotty.tools.dotc.ast.NavigateAST
-import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Spans.Span
 
 object KeywordsCompletions:
 
@@ -161,8 +161,8 @@ object KeywordsCompletions:
    *
    * @note This method requires a typed path. The rest of the metals functionalities.
    */
-  def checkTemplateForNewParents(enclosing: List[Tree], pos: CompletionPos)(using
-      ctx: Context
+  def checkTemplateForNewParents(enclosing: List[Tree], pos: CompletionPos)(
+      using ctx: Context
   ): TemplateKeywordAvailability =
     /*
      * Finds tree which ends just before cursor positions, that may be extended or derive.

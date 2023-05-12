@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.highlight
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseDocumentHighlightSuite
+
+import org.junit.Test
 
 class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
 
@@ -742,7 +743,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
     )
 
   @Test def `for-comp-bind` =
-   check(
+    check(
       """
         |object Main {
         |  case class Bar(fooBar: Int, goo: Int)
@@ -755,7 +756,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |    val x = foo + <<foo@@Bar>> + baz
         |    x
         |  }
-        |}""".stripMargin,
+        |}""".stripMargin
     )
 
   @Test def `enum1` =
@@ -948,14 +949,14 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|extension [<<E@@F>>](xs: List[<<EF>>])
          |    def double(ys: List[<<EF>>]) = xs ++ ys
          |    def double2(ys: List[<<EF>>]) = xs ++ ys
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )
 
   @Test def `extension-with-type-param2` =
     check(
       """|extension [EF, <<E@@M>>](xs: Either[<<EM>>, EF])
          |    def id() = xs
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )
 
   @Test def `extension-with-type-param3` =
@@ -963,7 +964,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|extension [<<EF>>](xs: List[<<E@@F>>])
          |    def double(ys: List[<<EF>>]) = xs ++ ys
          |    def double2(ys: List[<<EF>>]) = xs ++ ys
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )
 
   @Test def `extension-with-type-param4` =
@@ -971,7 +972,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|val i: <<Int>> = 3
          |extension (xs: List[<<In@@t>>])
          |  def id() = xs
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )
 
   @Test def `extension-with-type-param5` =
@@ -979,7 +980,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|extension [<<EF>>](xs: List[<<EF>>])
          |    def double(ys: List[<<E@@F>>]) = xs ++ ys
          |    def double2(ys: List[<<EF>>]) = xs ++ ys
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )
 
   @Test def `extension-with-type-param6` =
@@ -987,7 +988,7 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|extension [EF](xs: List[EF])
          |    def double(<<y@@s>>: List[EF]) = xs ++ <<ys>>
          |    def double2(ys: List[EF]) = xs ++ ys
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )
 
   @Test def `extension-with-type-param7` =
@@ -995,5 +996,5 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
       """|extension [EF](<<xs>>: List[EF])
          |    def double(ys: List[EF]) = <<x@@s>> ++ ys
          |    def double2(ys: List[EF]) = <<xs>> ++ ys
-         |end extension""".stripMargin,
+         |end extension""".stripMargin
     )

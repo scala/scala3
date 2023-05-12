@@ -1,14 +1,15 @@
 package dotty.tools.pc.tests
 
-import org.junit.{After, Assert, Before, Test}
-
 import java.util.concurrent.CompletableFuture
+
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future, Promise}
 import scala.meta.internal.pc.CompilerJobQueue
 import scala.util.Try
+
+import org.junit.{After, Assert, Before, Test}
 
 class CompilerJobQueueSuite:
   var jobs: CompilerJobQueue = null

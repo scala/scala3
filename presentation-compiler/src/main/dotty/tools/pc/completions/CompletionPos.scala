@@ -3,17 +3,18 @@ package completions
 
 import java.net.URI
 
-import dotty.tools.pc.utils.MtagsEnrichments.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
-import org.eclipse.{lsp4j as l}
-import dotty.tools.dotc.util.Chars
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j as l
 
 enum CompletionKind:
   case Empty, Scope, Members
@@ -118,7 +119,8 @@ object CompletionPos:
               case Import(_, sel) =>
                 sel
                   .collectFirst {
-                    case ImportSelector(imported, renamed, _) if imported.sourcePos.contains(pos) =>
+                    case ImportSelector(imported, renamed, _)
+                        if imported.sourcePos.contains(pos) =>
                       imported.sourcePos.point
                   }
                   .getOrElse(fallback)

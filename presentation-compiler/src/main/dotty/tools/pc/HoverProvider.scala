@@ -1,15 +1,13 @@
 package dotty.tools.pc
 
-import java.{util as ju}
+import java.util as ju
 
 import scala.meta.internal.metals.Report
 import scala.meta.internal.metals.ReportContext
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.printer.MetalsPrinter
+import scala.meta.internal.pc.ScalaHover
 import scala.meta.pc.HoverSignature
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolSearch
-import scala.meta.internal.pc.ScalaHover
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.*
@@ -22,6 +20,8 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 object HoverProvider:
 
@@ -151,7 +151,8 @@ object HoverProvider:
     end if
   end hover
 
-  extension (pos: SourcePosition) private def isPoint: Boolean = pos.start == pos.end
+  extension (pos: SourcePosition)
+    private def isPoint: Boolean = pos.start == pos.end
 
   private def fallbackToDynamics(
       path: List[Tree],

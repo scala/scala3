@@ -11,6 +11,9 @@ object TestExtensions:
   extension (range: dotty.tools.dotc.semanticdb.Range)
     def getOffsets(text: String): (Int, Int) =
       val lines = text.linesWithSeparators.toList
-      val startOffset = lines.take(range.startLine).foldRight(0)(_.size + _) + range.startCharacter
-      val endOffset = lines.take(range.endLine).foldRight(0)(_.size + _) + range.endCharacter
+      val startOffset = lines
+        .take(range.startLine)
+        .foldRight(0)(_.size + _) + range.startCharacter
+      val endOffset =
+        lines.take(range.endLine).foldRight(0)(_.size + _) + range.endCharacter
       (startOffset, endOffset)

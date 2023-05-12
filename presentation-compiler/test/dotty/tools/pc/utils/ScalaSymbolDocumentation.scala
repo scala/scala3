@@ -1,7 +1,7 @@
 package dotty.tools.pc.utils
 
-import scala.meta.pc.SymbolDocumentation
 import scala.jdk.CollectionConverters._
+import scala.meta.pc.SymbolDocumentation
 
 case class ScalaSymbolDocumentation(
     symbol: String,

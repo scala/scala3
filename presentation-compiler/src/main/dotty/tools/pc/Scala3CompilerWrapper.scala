@@ -1,8 +1,9 @@
 package dotty.tools.pc
 
-import dotty.tools.dotc.reporting.StoreReporter
 import scala.meta.internal.pc.CompilerWrapper
 import scala.meta.internal.pc.ReporterAccess
+
+import dotty.tools.dotc.reporting.StoreReporter
 
 class Scala3CompilerWrapper(driver: MetalsDriver)
     extends CompilerWrapper[StoreReporter, MetalsDriver]:

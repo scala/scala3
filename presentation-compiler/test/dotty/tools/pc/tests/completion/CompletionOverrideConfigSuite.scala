@@ -1,11 +1,12 @@
 package dotty.tools.pc.tests.completion
 
-import org.junit.Test
-import dotty.tools.pc.base.BaseCompletionSuite
-
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.PresentationCompilerConfig.OverrideDefFormat
+
+import dotty.tools.pc.base.BaseCompletionSuite
+
+import org.junit.Test
 
 class CompletionOverrideConfigSuite extends BaseCompletionSuite:
 

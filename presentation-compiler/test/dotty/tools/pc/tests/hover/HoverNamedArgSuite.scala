@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.hover
 
-import org.junit.{Ignore, Test}
 import dotty.tools.pc.base.BaseHoverSuite
+
+import org.junit.{Ignore, Test}
 
 class HoverNamedArgSuite extends BaseHoverSuite:
   override protected def requiresScalaLibrarySources: Boolean = true

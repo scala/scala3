@@ -1,10 +1,11 @@
 package dotty.tools.pc.base
 
-import dotty.tools.pc.utils.TestSemanticTokens
-
 import java.net.URI
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerVirtualFileParams
+
+import dotty.tools.pc.utils.TestSemanticTokens
 
 class BaseSemanticTokensSuite extends BasePCSuite:
 

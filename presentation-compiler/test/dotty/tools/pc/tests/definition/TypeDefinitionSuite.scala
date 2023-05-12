@@ -1,11 +1,12 @@
 package dotty.tools.pc.tests.definition
 
-import org.eclipse.lsp4j.Location
-import org.junit.Test
-import dotty.tools.pc.base.BasePcDefinitionSuite
-
 import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
+
+import dotty.tools.pc.base.BasePcDefinitionSuite
+
+import org.eclipse.lsp4j.Location
+import org.junit.Test
 
 class TypeDefinitionSuite extends BasePcDefinitionSuite:
 

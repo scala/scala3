@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.completion
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseCompletionSuite
+
+import org.junit.Test
 
 class CompletionScaladocSuite extends BaseCompletionSuite:
 

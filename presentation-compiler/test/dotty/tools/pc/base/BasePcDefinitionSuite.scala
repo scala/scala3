@@ -1,15 +1,17 @@
 package dotty.tools.pc.base
 
-import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import java.net.URI
+
+import scala.meta.internal.metals.CompilerOffsetParams
+import scala.meta.pc.OffsetParams
+
 import dotty.tools.dotc.util.Spans.Span
-import org.eclipse.lsp4j as l
-import org.eclipse.lsp4j.TextEdit
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.pc.utils.MtagsEnrichments.toLsp
 import dotty.tools.pc.utils.TextEdits
 
-import java.net.URI
-import scala.meta.internal.metals.CompilerOffsetParams
-import dotty.tools.pc.utils.MtagsEnrichments.toLsp
-import scala.meta.pc.OffsetParams
+import org.eclipse.lsp4j.TextEdit
+import org.eclipse.lsp4j as l
 
 abstract class BasePcDefinitionSuite extends BasePCSuite:
 

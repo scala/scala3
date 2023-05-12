@@ -1,13 +1,15 @@
 package dotty.tools.pc.tests.edit
 
-import org.eclipse.lsp4j as l
-import org.junit.Test
+import java.net.URI
+
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.CompilerOffsetParams
+
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
 
-import java.net.URI
-import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.CompilerOffsetParams
+import org.eclipse.lsp4j as l
+import org.junit.Test
 
 class InsertInferredTypeSuite extends BaseCodeActionSuite:
 

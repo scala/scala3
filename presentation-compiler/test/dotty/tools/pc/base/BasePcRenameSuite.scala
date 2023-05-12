@@ -1,10 +1,11 @@
 package dotty.tools.pc.base
 
-import dotty.tools.pc.utils.{RangeReplace, TextEdits}
-
 import java.net.URI
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
+
+import dotty.tools.pc.utils.{RangeReplace, TextEdits}
 
 class BasePcRenameSuite extends BasePCSuite with RangeReplace:
 

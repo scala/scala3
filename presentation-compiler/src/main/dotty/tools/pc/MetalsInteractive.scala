@@ -43,7 +43,8 @@ object MetalsInteractive:
           case tree: DefDef =>
             assert(tree.symbol.exists)
             val localCtx = outer.localContext(tree, tree.symbol).setNewScope
-            for params <- tree.paramss; param <- params do localCtx.enter(param.symbol)
+            for params <- tree.paramss; param <- params do
+              localCtx.enter(param.symbol)
             // Note: this overapproximates visibility a bit, since value parameters are only visible
             // in subsequent parameter sections
             localCtx
@@ -193,10 +194,14 @@ object MetalsInteractive:
           List((sym, sym.info))
 
       case (_: untpd.ImportSelector) :: (imp: Import) :: _ =>
-        importedSymbols(imp, _.span.contains(pos.span)).map(sym => (sym, sym.info))
+        importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
+          (sym, sym.info)
+        )
 
       case (imp: Import) :: _ =>
-        importedSymbols(imp, _.span.contains(pos.span)).map(sym => (sym, sym.info))
+        importedSymbols(imp, _.span.contains(pos.span)).map(sym =>
+          (sym, sym.info)
+        )
 
       // wildcard param
       case head :: _ if (head.symbol.is(Param) && head.symbol.is(Synthetic)) =>
@@ -245,13 +250,15 @@ object MetalsInteractive:
        * this most likely means that the type tree is synthetic, since it has efectively
        * span of 0.
        */
-      case (tpt: TypeTree) :: parent :: _ if tpt.span != parent.span && !tpt.symbol.is(Synthetic) =>
+      case (tpt: TypeTree) :: parent :: _
+          if tpt.span != parent.span && !tpt.symbol.is(Synthetic) =>
         List((tpt.symbol, tpt.tpe))
 
       /* TypeTest class https://dotty.epfl.ch/docs/reference/other-new-features/type-test.html
        * compiler automatically adds unapply if possible, we need to find the type symbol
        */
-      case (head @ CaseDef(pat, _, _)) :: _ if defn.TypeTestClass == pat.symbol.owner =>
+      case (head @ CaseDef(pat, _, _)) :: _
+          if defn.TypeTestClass == pat.symbol.owner =>
         pat match
           case UnApply(fun, _, pats) =>
             val tpeSym = pats.head.typeOpt.typeSymbol

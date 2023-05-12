@@ -1,6 +1,18 @@
 package dotty.tools.pc.base
 
+import java.awt.image.PackedColorModel
+import java.nio.file.Paths
+import java.util.Collections
+
+import scala.jdk.CollectionConverters.*
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
+import scala.meta.pc.CancelToken
+
 import dotty.tools.dotc.util.DiffUtil
+import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.pc.utils.{TestCompletions, TextEdits}
+
 import org.eclipse.lsp4j.{CompletionItem, CompletionList}
 import org.hamcrest
 import org.hamcrest.CoreMatchers.*
@@ -9,16 +21,6 @@ import org.jline.utils.DiffHelper
 import org.junit.*
 import org.junit.rules.{ExpectedException, RuleChain, TestRule, TestWatcher}
 import org.junit.runner.Description
-import dotty.tools.pc.utils.{TestCompletions, TextEdits}
-
-import java.awt.image.PackedColorModel
-import java.nio.file.Paths
-import java.util.Collections
-import scala.jdk.CollectionConverters.*
-import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import scala.meta.pc.CancelToken
 
 abstract class BaseCompletionSuite extends BasePCSuite:
 
@@ -132,7 +134,8 @@ abstract class BaseCompletionSuite extends BasePCSuite:
         s"expected single completion item, obtained ${items.length} items.\n${items}"
       )
 
-    if (items.size <= itemIndex) then fail(s"Not enough completion items: $items")
+    if (items.size <= itemIndex) then
+      fail(s"Not enough completion items: $items")
     val item = items(itemIndex)
     val (code, _) = params(original)
     val obtained = TextEdits.applyEdits(code, item)

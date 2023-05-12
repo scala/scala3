@@ -1,14 +1,15 @@
 package dotty.tools.pc
 package completions
 
-import dotty.tools.pc.printer.MetalsPrinter
+import scala.meta.internal.pc.CompletionItemData
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.transform.SymUtils.*
-import scala.meta.internal.pc.CompletionItemData
+import dotty.tools.pc.printer.MetalsPrinter
+
 import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionItemTag
 import org.eclipse.lsp4j.InsertTextMode
@@ -230,7 +231,8 @@ object CompletionValue:
     ): String = label
   end CaseKeyword
 
-  case class Document(label: String, doc: String, description: String) extends CompletionValue:
+  case class Document(label: String, doc: String, description: String)
+      extends CompletionValue:
     override def filterText: Option[String] = Some(description)
 
     override def insertText: Option[String] = Some(doc)

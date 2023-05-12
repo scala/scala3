@@ -1,14 +1,16 @@
 package dotty.tools.pc.base
 
-import org.eclipse.lsp4j as l
-
 import java.nio.file.Paths
 import java.util as ju
+
 import scala.collection.immutable
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
 import scala.meta.pc.OffsetParams
+
 import dotty.tools.pc.utils.TestExtensions._
+
+import org.eclipse.lsp4j as l
 
 abstract class BaseSelectionRangeSuite extends BasePCSuite:
 

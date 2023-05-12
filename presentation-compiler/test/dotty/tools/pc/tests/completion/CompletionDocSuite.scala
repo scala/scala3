@@ -1,7 +1,8 @@
 package dotty.tools.pc.tests.completion
 
-import org.junit.{Ignore, Test}
 import dotty.tools.pc.base.BaseCompletionSuite
+
+import org.junit.{Ignore, Test}
 
 @Ignore
 class CompletionDocSuite extends BaseCompletionSuite:

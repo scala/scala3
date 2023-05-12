@@ -5,23 +5,19 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.collection.mutable
-
 import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.mtags.CoursierComplete
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
-import scala.meta.pc.*
 import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering}
+import scala.meta.pc.*
 
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
-import dotty.tools.pc.util.BuildInfo
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
@@ -33,7 +29,10 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.dotc.core.Comments.Comment
+import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
+import dotty.tools.pc.util.BuildInfo
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 class Completions(
     pos: SourcePosition,
@@ -158,9 +157,11 @@ class Completions(
         tail match
           case (v: ValOrDefDef) :: _ if v.tpt.sourcePos.contains(pos) =>
             typePos
-          case New(selectOrIdent: (Select | Ident)) :: _ if selectOrIdent.sourcePos.contains(pos) =>
+          case New(selectOrIdent: (Select | Ident)) :: _
+              if selectOrIdent.sourcePos.contains(pos) =>
             newTypePos
-          case (a @ AppliedTypeTree(_, args)) :: _ if args.exists(_.sourcePos.contains(pos)) =>
+          case (a @ AppliedTypeTree(_, args)) :: _
+              if args.exists(_.sourcePos.contains(pos)) =>
             typePos
           case (templ @ Template(constr, _, self, _)) :: _
               if (constr :: self :: templ.parents).exists(
@@ -184,7 +185,8 @@ class Completions(
     val (all, result) =
       if exclusive then (advanced, SymbolSearch.Result.COMPLETE)
       else
-        val keywords = KeywordsCompletions.contribute(path, completionPos, comments)
+        val keywords =
+          KeywordsCompletions.contribute(path, completionPos, comments)
         val allAdvanced = advanced ++ keywords
         path match
           // should not show completions for toplevel
@@ -306,7 +308,8 @@ class Completions(
     // find the apply completion that would need a snippet
     val methodSymbols =
       if shouldAddSnippet &&
-        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
+        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) && !sym
+          .is(Flags.JavaDefined)
       then
         val info =
           /* Companion will be added even for normal classes now,
@@ -555,7 +558,9 @@ class Completions(
     completionPos.kind match
       case CompletionKind.Empty =>
         val filtered = indexedContext.scopeSymbols
-          .filter(sym => !sym.isConstructor && (!sym.is(Synthetic) || sym.is(Module)))
+          .filter(sym =>
+            !sym.isConstructor && (!sym.is(Synthetic) || sym.is(Module))
+          )
 
         filtered.map { sym =>
           visit(CompletionValue.scope(sym.decodedName, sym))
@@ -704,7 +709,8 @@ class Completions(
     def symbolRelevance(sym: Symbol): Int =
       var relevance = 0
       // symbols defined in this file are more relevant
-      if pos.source != sym.source || sym.is(Package) then relevance |= IsNotDefinedInFile
+      if pos.source != sym.source || sym.is(Package) then
+        relevance |= IsNotDefinedInFile
 
       // fields are more relevant than non fields (such as method)
       completion match
@@ -731,7 +737,8 @@ class Completions(
       // public symbols are more relevant
       if !sym.isPublic then relevance |= IsNotCaseAccessor
       // synthetic symbols are less relevant (e.g. `copy` on case classes)
-      if sym.is(Synthetic) && !sym.isAllOf(EnumCase) then relevance |= IsSynthetic
+      if sym.is(Synthetic) && !sym.isAllOf(EnumCase) then
+        relevance |= IsSynthetic
       if sym.isDeprecated then relevance |= IsDeprecated
       if isEvilMethod(sym.name) then relevance |= IsEvilMethod
 
@@ -786,7 +793,8 @@ class Completions(
           isMember(symbol) && symbol.owner != tpe.typeSymbol
         def postProcess(items: List[CompletionValue]): List[CompletionValue] =
           items.map {
-            case CompletionValue.Compiler(label, sym, suffix) if isMember(sym) =>
+            case CompletionValue.Compiler(label, sym, suffix)
+                if isMember(sym) =>
               CompletionValue.Compiler(
                 label,
                 substituteTypeVars(sym),

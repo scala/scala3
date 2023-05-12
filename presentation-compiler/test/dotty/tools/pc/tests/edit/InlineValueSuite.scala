@@ -1,17 +1,18 @@
 package dotty.tools.pc.tests.edit
 
-import dotty.tools.pc.base.BaseCodeActionSuite
-import dotty.tools.pc.utils.TextEdits
-
 import java.net.URI
+
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
-import org.eclipse.lsp4j as l
-import org.junit.Test
-
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.pc.InlineValueProvider.Errors as InlineErrors
 import scala.meta.pc.DisplayableException
+
+import dotty.tools.pc.base.BaseCodeActionSuite
+import dotty.tools.pc.utils.TextEdits
+
+import org.eclipse.lsp4j as l
+import org.junit.Test
 
 class InlineValueSuite extends BaseCodeActionSuite with CommonMtagsEnrichments:
 

@@ -1,12 +1,13 @@
 package dotty.tools.pc.tests
 
-import org.junit.Test
 import dotty.tools.pc.base.BaseSelectionRangeSuite
+
 import org.junit.Ignore
+import org.junit.Test
 
 class SelectionRangeCommentSuite extends BaseSelectionRangeSuite:
 
-  //FIXME requires latest implementation from mtags for SelectionRangeProvider
+  // FIXME requires latest implementation from mtags for SelectionRangeProvider
   @Ignore
   @Test def `match` =
     check(
@@ -32,6 +33,6 @@ class SelectionRangeCommentSuite extends BaseSelectionRangeSuite:
            |    b <- Some(2)
            |  } yield a + b<<region<<
            |}
-           |""".stripMargin,
-      ),
+           |""".stripMargin
+      )
     )

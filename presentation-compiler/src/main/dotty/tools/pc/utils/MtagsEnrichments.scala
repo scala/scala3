@@ -1,15 +1,15 @@
 package dotty.tools.pc.utils
 
 import scala.annotation.tailrec
-import scala.util.control.NonFatal
-
 import scala.meta.internal.jdk.CollectionConverters.*
-import dotty.tools.pc.MetalsInteractive
-import dotty.tools.pc.SemanticdbSymbols
+import scala.meta.internal.metals.WorkspaceSymbolQuery
+import scala.meta.internal.mtags.CommonMtagsEnrichments
+import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
+import scala.util.control.NonFatal
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
@@ -24,15 +24,15 @@ import dotty.tools.dotc.core.Types.AppliedType
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.semanticdb.SymbolInformation
+import dotty.tools.dotc.semanticdb.SymbolInformation.Kind
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
-import org.eclipse.{lsp4j as l}
-import dotty.tools.dotc.semanticdb.SymbolInformation
-import scala.meta.internal.metals.WorkspaceSymbolQuery
-import scala.meta.internal.mtags.CommonMtagsEnrichments
-import dotty.tools.dotc.semanticdb.SymbolInformation.Kind
-import scala.meta.internal.mtags.KeywordWrapper
+import dotty.tools.pc.MetalsInteractive
+import dotty.tools.pc.SemanticdbSymbols
+
+import org.eclipse.lsp4j as l
 
 object MtagsEnrichments extends CommonMtagsEnrichments:
 
@@ -169,7 +169,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
       }
   end extension
 
-  extension (name: Name)(using Context) def decoded: String = name.stripModuleClassSuffix.show
+  extension (name: Name)(using Context)
+    def decoded: String = name.stripModuleClassSuffix.show
 
   extension (s: String)
     def backticked: String =
@@ -183,7 +184,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     ): Option[SymbolDocumentation] =
       def toSemanticdbSymbol(symbol: Symbol) =
         SemanticdbSymbols.symbolName(
-          if !symbol.is(JavaDefined) && symbol.isPrimaryConstructor then symbol.owner
+          if !symbol.is(JavaDefined) && symbol.isPrimaryConstructor then
+            symbol.owner
           else symbol
         )
       val sym = toSemanticdbSymbol(symbol)
@@ -280,8 +282,8 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
   extension (kind: Kind)
     def isRelevantKind: Boolean =
       kind match
-        case Kind.OBJECT | Kind.PACKAGE_OBJECT | Kind.CLASS | Kind.TRAIT | Kind.INTERFACE |
-            Kind.METHOD | Kind.TYPE =>
+        case Kind.OBJECT | Kind.PACKAGE_OBJECT | Kind.CLASS | Kind.TRAIT |
+            Kind.INTERFACE | Kind.METHOD | Kind.TYPE =>
           true
         case _ => false
 
