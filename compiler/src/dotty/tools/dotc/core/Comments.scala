@@ -62,6 +62,7 @@ object Comments {
       expanded.map(removeSections(_, "@usecase", "@define"))
 
     val isDocComment: Boolean = Comment.isDocComment(raw)
+    val isHeaderComment: Boolean = Comment.isHeaderComment(raw)
 
     /**
      * Expands this comment by giving its content to `f`, and then parsing the `@usecase` sections.
@@ -78,8 +79,12 @@ object Comments {
   }
 
   object Comment {
+    val usingDirectives: List[String] = List("// using", "//> using")
+    val ammoniteHeaders: List[String] = List("// scala", "// ammonite")
 
     def isDocComment(comment: String): Boolean = comment.startsWith("/**")
+    def isHeaderComment(comment: String): Boolean =
+      (usingDirectives ++ ammoniteHeaders).exists(comment.startsWith)
 
     def apply(span: Span, raw: String): Comment =
       Comment(span, raw, None, Nil, Map.empty)

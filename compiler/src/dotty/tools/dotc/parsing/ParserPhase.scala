@@ -30,6 +30,7 @@ class Parser extends Phase {
         val p = new Parsers.Parser(unit.source)
         //  p.in.debugTokenStream = true
         val tree = p.parse()
+        ctx.compilationUnit.comments = p.in.comments
         if (p.firstXmlPos.exists && !firstXmlPos.exists)
           firstXmlPos = p.firstXmlPos
         tree
