@@ -11,3 +11,6 @@ tagless.scala
 safeThrowsStrawman2.scala
 t7584.scala
 function-arity.scala
+
+# InvocationTargetException
+i9270.scala
