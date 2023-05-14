@@ -1,6 +1,6 @@
 package scala
 
-import annotation.showAsInfix
+import annotation.{experimental, showAsInfix}
 import compiletime._
 import compiletime.ops.int._
 
@@ -195,11 +195,16 @@ object Tuple {
 
   /** Type of the reversed tuple */
   @experimental
-  type Reverse[X <: Tuple] <: Tuple = X match {
-    case EmptyTuple => EmptyTuple
-    case x *: xs =>
-      Concat[Reverse[xs], x *: EmptyTuple]
-  }
+  type Reverse[X <: Tuple] = Helpers.ReverseImpl[EmptyTuple, X]
+
+  @experimental
+  object Helpers:
+
+    /** Type of the reversed tuple */
+    @experimental
+    type ReverseImpl[Acc <: Tuple, X <: Tuple] <: Tuple = X match
+      case x *: xs => ReverseImpl[x *: Acc, xs]
+      case EmptyTuple => Acc
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
@@ -310,7 +315,7 @@ sealed trait NonEmptyTuple extends Tuple {
    * consisting all its elements.
    */
   @experimental
-  inline def reverse[This >: this.type <: NonEmptyTuple]: Reverse[This] =
+  inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
     runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
