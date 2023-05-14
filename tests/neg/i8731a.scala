@@ -7,4 +7,4 @@ object test:
   for
     a <- Seq()
   end for    // error: `yield` or `do` expected
-  do ()            // error: expression expected but eof found
+  do ()

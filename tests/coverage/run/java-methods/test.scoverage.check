@@ -1,0 +1,156 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+61
+83
+4
+simple
+Apply
+false
+0
+false
+StaticMethods.simple()
+
+1
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+86
+127
+5
+withTypeParam
+Apply
+false
+0
+false
+StaticMethods.withTypeParam[Any](a => ())
+
+2
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+140
+152
+6
+<init>
+Apply
+false
+0
+false
+JavaObject()
+
+3
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+155
+162
+7
+f
+Apply
+false
+0
+false
+obj.f()
+
+4
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+165
+194
+8
+println
+Apply
+false
+0
+false
+println(obj.identity[Int](0))
+
+5
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+173
+193
+8
+identity
+Apply
+false
+0
+false
+obj.identity[Int](0)
+
+6
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+197
+211
+9
+println
+Apply
+false
+0
+false
+println("ok!")
+
+7
+java-methods/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+36
+50
+3
+Test
+DefDef
+false
+0
+false
+@main\ndef Test
+

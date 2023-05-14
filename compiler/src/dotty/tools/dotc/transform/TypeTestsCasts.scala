@@ -2,9 +2,10 @@ package dotty.tools
 package dotc
 package transform
 
+import scala.language.unsafeNulls as _
+
 import core._
 import Contexts._, Symbols._, Types._, Constants._, StdNames._, Decorators._
-import ast.Trees._
 import ast.untpd
 import Erasure.Boxing._
 import TypeErasure._
@@ -14,6 +15,8 @@ import core.Flags._
 import util.Spans._
 import reporting._
 import config.Printers.{ transforms => debug }
+
+import patmat.Typ
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -30,26 +33,33 @@ object TypeTestsCasts {
   import typer.Inferencing.maximizeType
   import typer.ProtoTypes.constrained
 
-  /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
+  /** Tests whether `(x: X).isInstanceOf[P]` is uncheckable at runtime, returning the reason,
+   *  or the empty string if it is checkable.
    *
    *  First do the following substitution:
    *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
    *
    *  Then check:
    *
-   *  1. if `X <:< P`, TRUE
-   *  2. if `P` is a singleton type, TRUE
-   *  3. if `P` refers to an abstract type member or type parameter, FALSE
+   *  1. if `X <:< P`, ""
+   *  2. if `P` is a singleton type, ""
+   *  3. if `P` refers to an abstract type member or type parameter, "it refers to an abstract type member or type parameter"
    *  4. if `P = Array[T]`, checkable(E, T) where `E` is the element type of `X`, defaults to `Any`.
    *  5. if `P` is `pre.F[Ts]` and `pre.F` refers to a class which is not `Array`:
    *     (a) replace `Ts` with fresh type variables `Xs`
    *     (b) constrain `Xs` with `pre.F[Xs] <:< X`
-   *     (c) maximize `pre.F[Xs]` and check `pre.F[Xs] <:< P`
+   *     (c) maximize `pre.F[Xs]`
+   *     (d) if !`pre.F[Xs] <:< P`, "its type arguments can't be determined from $X"
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
-   *  7. if `P` is a refinement type, FALSE
-   *  8. otherwise, TRUE
+   *  7. if `P` is a refinement type, "it's a refinement type"
+   *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
+   *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P) or (isCheckDefinitelyFalse(T1, P) && checkable(T2, P)) or (checkable(T1, P) && isCheckDefinitelyFalse(T2, P)).
+   *  10. otherwise, ""
    */
-  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = atPhase(Phases.refchecksPhase.next) {
+  def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
+    extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
+    extension (inline b: Boolean) inline def |||(inline s: String): String = if b then "" else s
+
     // Run just before ElimOpaque transform (which follows RefChecks)
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
@@ -108,7 +118,7 @@ object TypeTestsCasts {
       // which conform to the skeleton pre.F[_] and X. Then we have to make
       // sure all of them are actually of the type P, which implies that the
       // type arguments in P are trivial (no runtime check needed).
-      maximizeType(P1, span, fromScala2x = false)
+      maximizeType(P1, span)
 
       debug.println("after " + ctx.typerState.constraint.show)
 
@@ -122,10 +132,45 @@ object TypeTestsCasts {
 
     }
 
-    def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
-      case _: SingletonType     => true
+    /** Whether the check X.isInstanceOf[P] is definitely false? */
+    def isCheckDefinitelyFalse(X: Type, P: Type)(using Context): Boolean = trace(s"isCheckDefinitelyFalse(${X.show}, ${P.show})") {
+      X.widenDealias match
+      case AndType(x1, x2) =>
+        isCheckDefinitelyFalse(x1, P) || isCheckDefinitelyFalse(x2, P)
+
+      case x =>
+        P.widenDealias match
+        case AndType(p1, p2) =>
+          isCheckDefinitelyFalse(x, p1) || isCheckDefinitelyFalse(x, p2)
+
+        case p =>
+          val pSpace = Typ(p)
+          val xSpace = Typ(x)
+          if pSpace.canDecompose then
+            val ps = pSpace.decompose.map(_.tp)
+            ps.forall(p => isCheckDefinitelyFalse(x, p))
+          else if xSpace.canDecompose then
+            val xs = xSpace.decompose.map(_.tp)
+            xs.forall(x => isCheckDefinitelyFalse(x, p))
+          else
+            if x.typeSymbol.isClass && p.typeSymbol.isClass then
+              val xClass = effectiveClass(x)
+              val pClass = effectiveClass(p)
+
+              val bothAreClasses = !xClass.is(Trait) && !pClass.is(Trait)
+              val notXsubP = !xClass.derivesFrom(pClass)
+              val notPsubX = !pClass.derivesFrom(xClass)
+              bothAreClasses && notXsubP && notPsubX
+              || xClass.is(Final) && notXsubP
+              || pClass.is(Final) && notPsubX
+            else
+              false
+    }
+
+    def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
+      case _: SingletonType     => ""
       case _: TypeProxy
-      if isAbstract(P)          => false
+      if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
       case defn.ArrayOf(tpT)    =>
         X match {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
@@ -139,23 +184,42 @@ object TypeTestsCasts {
             //   - T1 <:< T2 | T3
             //   - T1 & T2 <:< T3
             // See TypeComparer#either
-            recur(tp1, P) && recur(tp2, P)
+            val res1 = recur(tp1, P)
+            val res2 = recur(tp2, P)
+
+            if res1.isEmpty && res2.isEmpty then
+              res1
+            else if res2.isEmpty then
+              if isCheckDefinitelyFalse(tp1, P) then res2
+              else res1
+            else if res1.isEmpty then
+              if isCheckDefinitelyFalse(tp2, P) then res1
+              else res2
+            else
+              res1
+
           case _ =>
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists &&
               !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
             || typeArgsTrivial(X, tpe)
+            ||| i"its type arguments can't be determined from $X"
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
       case AnnotatedType(t, _)  => recur(X, t)
-      case _: RefinedType       => false
-      case _                    => true
+      case tp2: RefinedType     => recur(X, tp2.parent)
+        && (TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2) ||| i"it's a refinement type")
+      case tp2: RecType         => recur(X, tp2.parent)
+      case _
+      if P.classSymbol.isLocal && foundClasses(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
+        i"it's a local class"
+      case _                    => ""
     })
 
     val res = recur(X.widen, replaceP(P))
 
-    debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
+    debug.println(i"checking  $X isInstanceOf $P = $res")
 
     res
   }
@@ -171,15 +235,6 @@ object TypeTestsCasts {
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
           cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
-
-        def effectiveClass(tp: Type): Symbol =
-          if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
-          else if tp.isRef(defn.AnyValClass) then defn.AnyClass
-          else tp.classSymbol
-
-        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp.dealias match
-          case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
-          case _ => effectiveClass(tp) :: acc
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
@@ -217,7 +272,7 @@ object TypeTestsCasts {
            *  can be true in some cases. Issues a warning or an error otherwise.
            */
           def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
-            def exprType = i"type ${expr.tpe.widen.stripAnnots}"
+            def exprType = i"type ${expr.tpe.widen.stripped}"
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {
@@ -237,20 +292,19 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
+              report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
 
-          if (expr.tpe <:< testType)
-            if (expr.tpe.isNotNull) {
-              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
-              constant(expr, Literal(Constant(true)))
-            }
+          if (expr.tpe <:< testType) && inMatch then
+            if expr.tpe.isNotNull then constant(expr, Literal(Constant(true)))
             else expr.testNotNull
           else {
+            if expr.tpe.isBottomType then
+              report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
-            val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
+            val foundClsSyms = foundClasses(expr.tpe.widen)
             val sensical = checkSensical(foundClsSyms)(using nestedCtx)
             if (!sensical) {
               nestedCtx.typerState.commit()
@@ -271,7 +325,7 @@ object TypeTestsCasts {
         def transformAsInstanceOf(testType: Type): Tree = {
           def testCls = effectiveClass(testType.widen)
           def foundClsSymPrimitive = {
-            val foundClsSyms = foundClasses(expr.tpe.widen, Nil)
+            val foundClsSyms = foundClasses(expr.tpe.widen)
             foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass
           }
           if (erasure(expr.tpe) <:< testType)
@@ -299,8 +353,8 @@ object TypeTestsCasts {
 
         /** Transform isInstanceOf
          *
-         *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
-         *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A | B]          ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A & B]          ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
          *    expr.isInstanceOf[Tuple]          ~~>  scala.runtime.Tuples.isInstanceOfTuple(expr)
          *    expr.isInstanceOf[EmptyTuple]     ~~>  scala.runtime.Tuples.isInstanceOfEmptyTuple(expr)
          *    expr.isInstanceOf[NonEmptyTuple]  ~~>  scala.runtime.Tuples.isInstanceOfNonEmptyTuple(expr)
@@ -342,7 +396,7 @@ object TypeTestsCasts {
             val testWidened = testType.widen
             defn.untestableClasses.find(testWidened.isRef(_)) match
               case Some(untestable) =>
-                report.error(i"$untestable cannot be used in runtime type tests", tree.srcPos)
+                report.error(em"$untestable cannot be used in runtime type tests", tree.srcPos)
                 constant(expr, Literal(Constant(false)))
               case _ =>
                 val erasedTestType = erasure(testType)
@@ -352,9 +406,13 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
-            report.uncheckedWarning(i"the type test for $argType cannot be checked at runtime", expr.srcPos)
-          transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
+          val isUnchecked = expr.tpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
+          if !isTrusted && !isUnchecked then
+            val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
+            if whyNot.nonEmpty then
+              report.uncheckedWarning(em"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
+          transformTypeTest(expr, argType,
+            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
@@ -370,4 +428,16 @@ object TypeTestsCasts {
     }
     interceptWith(expr)
   }
+
+  private def effectiveClass(tp: Type)(using Context): Symbol =
+    if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
+    else if tp.isRef(defn.AnyValClass) then defn.AnyClass
+    else tp.classSymbol
+
+  private[transform] def foundClasses(tp: Type)(using Context): List[Symbol] =
+    def go(tp: Type, acc: List[Type])(using Context): List[Type] = tp.dealias match
+      case  OrType(tp1, tp2) => go(tp2, go(tp1, acc))
+      case AndType(tp1, tp2) => (for t1 <- go(tp1, Nil); t2 <- go(tp2, Nil) yield AndType(t1, t2)) ::: acc
+      case _                 => tp :: acc
+    go(tp, Nil).map(effectiveClass)
 }

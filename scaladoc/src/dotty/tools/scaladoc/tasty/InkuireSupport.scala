@@ -1,9 +1,10 @@
 package dotty.tools.scaladoc.tasty
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 import dotty.tools.scaladoc.Inkuire
+import dotty.tools.scaladoc.renderers.Resources
 
 import scala.util.Random
 import scala.quoted._
@@ -13,9 +14,12 @@ import SymOps._
 import NameNormalizer._
 import SyntheticsSupport._
 
-trait InkuireSupport:
+trait InkuireSupport(using DocContext) extends Resources:
   self: TastyParser =>
   import qctx.reflect._
+
+  // Unused in InkuireSupport, required for Resources
+  override def effectiveMembers: Map[DRI, Member] = Map.empty
 
   private given qctx.type = qctx
 
@@ -110,7 +114,8 @@ trait InkuireSupport:
             ),
             name = name,
             packageName = ownerName,
-            uri = methodSymbol.dri.externalLink.getOrElse(""),
+            uri = methodSymbol.dri.externalLink.getOrElse(escapedAbsolutePathWithAnchor(methodSymbol.dri)),
+            isLocationExternal = methodSymbol.dri.externalLink.isDefined,
             entryType = "def"
           )
           val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
@@ -138,7 +143,8 @@ trait InkuireSupport:
             ),
             name = name,
             packageName = ownerName,
-            uri = valSymbol.dri.externalLink.getOrElse(""),
+            uri = valSymbol.dri.externalLink.getOrElse(escapedAbsolutePathWithAnchor(valSymbol.dri)),
+            isLocationExternal = valSymbol.dri.externalLink.isDefined,
             entryType = "val"
           )
           val curriedSgn = sgn.copy(signature = Inkuire.curry(sgn.signature))
@@ -311,6 +317,8 @@ trait InkuireSupport:
         inner(tpe, vars)
       case tl @ TypeLambda(paramNames, _, resType) =>
         Inkuire.TypeLambda(paramNames.map(Inkuire.TypeLambda.argument), inner(resType, vars)) //TODO [Inkuire] Type bounds
+      case pt @ PolyType(paramNames, _, resType) =>
+        Inkuire.TypeLambda(paramNames.map(Inkuire.TypeLambda.argument), inner(resType, vars)) //TODO [Inkuire] Type bounds
       case r: Refinement =>
         inner(r.info, vars) //TODO [Inkuire] Refinements
       case t @ AppliedType(tpe, typeList) =>
@@ -351,10 +359,8 @@ trait InkuireSupport:
         Inkuire.Type.unresolved //TODO [Inkuire] <- should be handled by Singleton case, but didn't work
       case MatchType(bond, sc, cases) =>
         inner(sc, vars)
-      case ParamRef(TypeLambda(names, _, _), i) =>
-        Inkuire.TypeLambda.argument(names(i))
-      case ParamRef(m: MethodType, i) =>
-        inner(m.paramTypes(i), vars)
+      case ParamRef(binder: LambdaType, i) =>
+        Inkuire.TypeLambda.argument(binder.paramNames(i))
       case RecursiveType(tp) =>
         inner(tp, vars)
       case m@MethodType(_, typeList, resType) =>

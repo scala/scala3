@@ -40,7 +40,7 @@ final class CallbackTo[+A] {
 object CallbackTo {
 
   type MapGuard[A] = { type Out = A }
-  erased given MapGuard[A]: MapGuard[A] = ???
+  erased given MapGuard[A]: MapGuard[A] = compiletime.erasedValue
 
   def traverse[A, B](ta: List[A]): CallbackTo[List[B]] =
     val x: CallbackTo[List[A] => List[B]] = ???

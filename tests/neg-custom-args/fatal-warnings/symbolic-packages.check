@@ -1,0 +1,16 @@
+-- Error: tests/neg-custom-args/fatal-warnings/symbolic-packages.scala:1:8 ---------------------------------------------
+1 |package `with spaces` { // error
+  |        ^^^^^^^^^^^^^
+  |        The package name `with spaces` will be encoded on the classpath, and can lead to undefined behaviour.
+-- Error: tests/neg-custom-args/fatal-warnings/symbolic-packages.scala:5:10 --------------------------------------------
+5 |package +.* { // error // error
+  |          ^
+  |          The package name `*` will be encoded on the classpath, and can lead to undefined behaviour.
+-- Error: tests/neg-custom-args/fatal-warnings/symbolic-packages.scala:5:8 ---------------------------------------------
+5 |package +.* { // error // error
+  |        ^
+  |        The package name `+` will be encoded on the classpath, and can lead to undefined behaviour.
+-- Error: tests/neg-custom-args/fatal-warnings/symbolic-packages.scala:9:16 --------------------------------------------
+9 |package object `mixed_*` { // error
+  |                ^^^^^^^
+  |                The package name `mixed_*` will be encoded on the classpath, and can lead to undefined behaviour.

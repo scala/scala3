@@ -1,0 +1,4 @@
+-- Error: tests/neg/fEscapes.scala:5:18 --------------------------------------------------------------------------------
+5 |  val fEscape = f"\u$octal%04x" // error
+  |                  ^^
+  |                  invalid unicode escape at index 1 of \u

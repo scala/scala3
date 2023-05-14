@@ -1,0 +1,241 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+28
+36
+3
+<init>
+DefDef
+false
+0
+false
+def this
+
+1
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+69
+72
+5
+g
+Apply
+false
+0
+false
+g()
+
+2
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+80
+88
+8
+<init>
+DefDef
+false
+0
+false
+def this
+
+3
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+108
+128
+9
++
+Apply
+false
+0
+false
+x.toString() + "foo"
+
+4
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+f
+133
+138
+11
+f
+DefDef
+false
+0
+false
+def f
+
+5
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+x
+153
+158
+12
+x
+DefDef
+false
+0
+false
+def x
+
+6
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+165
+169
+13
+f
+Apply
+false
+0
+false
+f(x)
+
+7
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+<init>
+167
+168
+13
+x
+Select
+false
+0
+false
+x
+
+8
+Constructor.scala
+covtest
+C
+Class
+covtest.C
+g
+173
+178
+15
+g
+DefDef
+false
+0
+false
+def g
+
+9
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+g
+203
+208
+18
+g
+DefDef
+false
+0
+false
+def g
+
+10
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+y
+223
+228
+19
+y
+DefDef
+false
+0
+false
+def y
+
+11
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+<init>
+235
+239
+20
+g
+Apply
+false
+0
+false
+g(y)
+
+12
+Constructor.scala
+covtest
+O$
+Object
+covtest.O$
+<init>
+237
+238
+20
+y
+Ident
+false
+0
+false
+y
+

@@ -12,8 +12,8 @@
   |
   |                                              import concurrent.duration.pairIntToDuration
   |
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E008] Not Found Error: tests/neg/missing-implicit-3.scala:8:48 -----------------------------------------------------
 8 |val d2: scala.concurrent.duration.Duration = 10.days // error
   |                                             ^^^^^^^

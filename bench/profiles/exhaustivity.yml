@@ -1,77 +1,86 @@
 charts:
     - name: "exhaustivity check"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/patmatexhaust.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/patmatexhaust.scala
       lines:
         - key: patmatexhaust
           label: bootstrapped
 
     - name: "exhaustivity I"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/exhaustivity-I.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/exhaustivity-I.scala
       lines:
         - key: exhaustivity-I
           label: bootstrapped
 
     - name: "exhaustivity S"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/exhaustivity-S.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/exhaustivity-S.scala
       lines:
         - key: exhaustivity-S
           label: bootstrapped
 
     - name: "exhaustivity T"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/exhaustivity-T.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/exhaustivity-T.scala
       lines:
         - key: exhaustivity-T
           label: bootstrapped
 
     - name: "exhaustivity V"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/bench/exhaustivity-V.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/bench/exhaustivity-V.scala
       lines:
         - key: exhaustivity-V
           label: bootstrapped
 
     - name: "exhaustivity MIPS"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/patmat/i7186.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/patmat/i7186.scala
       lines:
         - key: exhaustivity-mips
           label: bootstrapped
 
     - name: "exhaustivity i12241"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/patmat/i12241.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/patmat/i12241.scala
       lines:
         - key: exhaustivity-i12241
           label: bootstrapped
 
     - name: "exhaustivity i12358"
-      url: https://github.com/lampepfl/dotty/blob/master/tests/patmat/i12358.scala
+      url: https://github.com/lampepfl/dotty/blob/main/tests/patmat/i12358.scala
       lines:
         - key: exhaustivity-i12358
+          label: bootstrapped
+
+    - name: "exhaustivity i13565"
+      url: https://github.com/lampepfl/dotty/blob/main/tests/pos/i13565.scala
+      lines:
+        - key: exhaustivity-i13565
           label: bootstrapped
 
 scripts:
 
     patmatexhaust:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/patmatexhaust.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/patmatexhaust.scala
 
     exhaustivity-I:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-I.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-I.scala
 
     exhaustivity-S:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-S.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-S.scala
 
     exhaustivity-T:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-T.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-T.scala
 
     exhaustivity-V:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/bench/exhaustivity-V.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/bench/exhaustivity-V.scala
 
     exhaustivity-mips:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i7186.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i7186.scala
 
     exhaustivity-i12241:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i12241.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i12241.scala
 
     exhaustivity-i12358:
-        - measure -wi 20 -i 40 -f 3 -- $PROG_HOME/dotty/tests/patmat/i12358.scala
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i12358.scala
+
+    exhaustivity-i13565:
+        - measure 20 40 3 $PROG_HOME/dotty/tests/pos/i13565.scala
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"

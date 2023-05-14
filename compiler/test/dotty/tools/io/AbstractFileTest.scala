@@ -1,5 +1,7 @@
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import org.junit.Test
 
 import dotty.tools.io.AbstractFile

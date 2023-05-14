@@ -1,5 +1,7 @@
 package dotty.tools.dotc.core.tasty
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile, ByteArrayOutputStream, IOException}
 import java.nio.file.{Files, NoSuchFileException, Paths}
 

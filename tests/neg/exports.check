@@ -11,7 +11,7 @@
 25 |    export printUnit.bitmap         // error: no eligible member
    |                     ^
    |                     non-private given instance bitmap in class Copier refers to private value printUnit
-   |                     in its type signature => Copier.this.printUnit.bitmap
+   |                     in its type signature => object Copier.this.printUnit.bitmap
 -- [E120] Naming Error: tests/neg/exports.scala:23:33 ------------------------------------------------------------------
 23 |    export printUnit.{stat => _, _} // error: double definition
    |                                 ^
@@ -58,3 +58,9 @@
    |               Double definition:
    |               val bar: Bar in class Baz at line 45 and
    |               final def bar: (Baz.this.bar.bar : => (Baz.this.bar.baz.bar : Bar)) in class Baz at line 46
+-- [E083] Type Error: tests/neg/exports.scala:57:11 --------------------------------------------------------------------
+57 |    export printer.*  // error: not stable
+   |           ^^^^^^^
+   |           (No.printer : => Printer) is not a valid export prefix, since it is not an immutable path
+   |
+   | longer explanation available when compiling with `-explain`

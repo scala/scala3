@@ -40,17 +40,17 @@ object Eq {
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
         val elemInstances = summonAll[elementTypes]
-        def eqProductBody(x: Expr[T], y: Expr[T])(using Quotes): Expr[Boolean] = {
-          elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
-            case (acc, (elem, index)) =>
-              val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
-              val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
-
-              '{ $acc && $elem.asInstanceOf[Eq[Any]].eqv($e1, $e2) }
+        def eqProductBody(x: Expr[Product], y: Expr[Product])(using Quotes): Expr[Boolean] = {
+          elemInstances.zipWithIndex.foldLeft(Expr(true)) {
+            case (acc, ('{ $elem: Eq[t]}, index)) =>
+              val indexExpr = Expr(index)
+              val e1 = '{ $x.productElement($indexExpr).asInstanceOf[t] }
+              val e2 = '{ $y.productElement($indexExpr).asInstanceOf[t] }
+              '{ $acc && $elem.eqv($e1, $e2) }
           }
         }
         '{
-          eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)})
+          eqProduct((x: T, y: T) => ${eqProductBody('x.asExprOf[Product], 'y.asExprOf[Product])})
         }
 
       case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes }} =>

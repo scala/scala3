@@ -3,7 +3,7 @@ package dotty.tools.languageserver.util.actions
 import dotty.tools.languageserver.util.{CodeRange, PositionContext}
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import org.junit.Assert.assertEquals
 

@@ -5,6 +5,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import java.io.{
   IOException, InputStream, OutputStream, BufferedOutputStream,
   ByteArrayOutputStream
@@ -258,8 +260,10 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
 
         // a race condition in creating the entry after the failed lookup may throw
         val path = jpath.resolve(name)
-        if (isDir) Files.createDirectory(path)
-        else Files.createFile(path)
+        try
+          if (isDir) Files.createDirectory(path)
+          else Files.createFile(path)
+        catch case _: FileAlreadyExistsException => ()
         new PlainFile(new File(path))
       case lookup => lookup
     }

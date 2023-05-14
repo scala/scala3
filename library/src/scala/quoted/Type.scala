@@ -30,18 +30,17 @@ object Type:
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
-   *  import quotes.reflect.*
-   *  val expr: Expr[Any] = ???
+   *    import quotes.reflect.*
+   *    val expr: Expr[Any] = ???
    *  //}
-   *  expr match {
-   *    case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
-   *      Type.valueOfConstant[label] // Option[String]
-   *  }
+   *    expr match {
+   *      case '{ $mirrorExpr : Mirror.Sum { type MirroredLabel = label } } =>
+   *        Type.valueOfConstant[label] // Option[String]
+   *    }
    *  //{
    *  }
    *  //}
    *  ```
-   *  @syntax markdown
    */
   def valueOfConstant[T](using Type[T])(using Quotes): Option[T] =
     ValueOf.unapply(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]
@@ -55,18 +54,17 @@ object Type:
    *  //{
    *  import scala.deriving.*
    *  def f(using Quotes) = {
-   *  import quotes.reflect.*
-   *  val expr: Expr[Any] = ???
+   *    import quotes.reflect.*
+   *    val expr: Expr[Any] = ???
    *  //}
-   *  expr match {
-   *    case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
-   *      Type.valueOfTuple[label] // Option[Tuple]
-   *  }
+   *    expr match {
+   *      case '{ type label <: Tuple; $mirrorExpr : Mirror.Sum { type MirroredElemLabels = `label` } } =>
+   *        Type.valueOfTuple[label] // Option[Tuple]
+   *    }
    *  //{
    *  }
    *  //}
    *  ```
-   *  @syntax markdown
    */
   def valueOfTuple[T <: Tuple](using Type[T])(using Quotes): Option[T] =
     valueOfTuple(quotes.reflect.TypeRepr.of[T]).asInstanceOf[Option[T]]

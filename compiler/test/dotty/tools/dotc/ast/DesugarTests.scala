@@ -6,7 +6,6 @@ import core._
 import Names._, Types._ , Symbols._, StdNames._, Flags._, Contexts._
 
 import org.junit.Test
-import org.junit.Assert._
 
 class DesugarTests extends DottyTest {
   import tpd._
@@ -27,7 +26,7 @@ class DesugarTests extends DottyTest {
       val ccTree = tree.find(tree => tree.symbol.name == typeName("Foo")).get
       val List(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
 
-      val x :: y :: rest = foo.decls.toList
+      val x :: y :: rest = foo.decls.toList: @unchecked
 
       // Make sure we extracted the correct values from foo:
       assert(x.name == termName("x"))

@@ -1,0 +1,10 @@
+> compile
+> recordPreviousIterations
+# Force recompilation of B because C.inlinedAny, called by B.delegated, has changed
+# the order of its parameters.
+$ copy-file changes/C1.scala C.scala
+> compile
+# 1 to recompile C, then 1 more to recompile B due to C.inlinedAny change,
+# then 1 more to recompile A due to B.delegated change, then 1 final compilation
+# to recompile D due to A.callInline change
+> checkIterations 4

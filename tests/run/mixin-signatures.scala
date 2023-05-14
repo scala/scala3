@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 trait Base[T, R] {
   def f(x: T): R
   def g(x: T): R

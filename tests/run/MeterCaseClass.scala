@@ -57,9 +57,9 @@ object Test extends App {
   val v: Double = b.asInstanceOf[Double]
   }
 
-  val x = new Meter(1)
+  val x = new Meter(1.4)
   val y = x
-  println((x + x) / x)
+  println((x + new Meter(1.5)) / x)
   println((x + x) / 0.5)
   println((x < x).toString)
   println("x.isInstanceOf[Meter]: "+x.isInstanceOf[Meter])
@@ -68,7 +68,7 @@ object Test extends App {
   println("x.hashCode: "+x.hashCode)
   // println("x == 1: "+(x == 1)) // error: Values of types a.Meter and Int cannot be compared with == or !=
   println("x == y: "+(x == y))
-  assert(x.hashCode == (1.0).hashCode)
+  assert(x.hashCode == (1.4).hashCode)
 
   val a: Any = x
   val b: Any = y

@@ -1,0 +1,7 @@
+scala> enum I14540 { case A }
+// defined class I14540
+scala> summon[scala.deriving.Mirror.SumOf[I14540]] eq I14540
+val res0: Boolean = true
+scala> enum I14540B { case A }; summon[scala.deriving.Mirror.SumOf[I14540B]] eq I14540B
+// defined class I14540B
+val res1: Boolean = true

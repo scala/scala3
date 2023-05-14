@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream, PrintWriter, StringWriter}
 import java.lang.invoke.{MethodHandleInfo, SerializedLambda}
 

@@ -2,10 +2,10 @@ package foo
 
 // Multi-line only cases: make sure trailing commas are only supported when multi-line
 
-trait ArgumentExprs1 { validMethod(23, "bar", )(Ev0, Ev1) } // error // error
-trait ArgumentExprs2 { validMethod(23, "bar")(Ev0, Ev1, ) } // error // error
-trait ArgumentExprs3 { new ValidClass(23, "bar", )(Ev0, Ev1) } // error // error
-trait ArgumentExprs4 { new ValidClass(23, "bar")(Ev0, Ev1, ) } // error // error
+trait ArgumentExprs1 { validMethod(23, "bar", )(Ev0, Ev1) } // error
+trait ArgumentExprs2 { validMethod(23, "bar")(Ev0, Ev1, ) } // error
+trait ArgumentExprs3 { new ValidClass(23, "bar", )(Ev0, Ev1) } // error
+trait ArgumentExprs4 { new ValidClass(23, "bar")(Ev0, Ev1, ) } // error
 
 trait Params1 { def f(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1, ) = 1 } // error // error
 
@@ -56,3 +56,27 @@ object `package` {
   case class Foo(foo: Any)
   case class Bar(foo: Any)
 }
+
+// Unparenthesized lists
+trait Deriv1[T]
+object Deriv1 {
+  def derived[T]: Deriv1[T] = new Deriv1[T] {}
+}
+
+trait Deriv2[T]
+object Deriv2 {
+  def derived[T]: Deriv2[T] = new Deriv2[T] {}
+}
+
+class Derives1 derives Deriv1, Deriv2,
+object End // error: an identifier expected, but 'object' found
+
+class Derives2 derives Deriv1,
+     Deriv2,
+object End2 // error: an identifier expected, but 'object' found
+
+val a,
+    b,
+    c,
+    = (1, 2, 3) // error
+val x, y, z, = (1, 2, 3) // error

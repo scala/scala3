@@ -39,7 +39,9 @@ class PackageObjectSymbolSignatures extends SignatureTest("packageObjectSymbolSi
 class MergedPackageSignatures extends SignatureTest("mergedPackage", SignatureTest.all.filterNot(_ == "object"),
   sourceFiles = List("mergedPackage1", "mergedPackage2", "mergedPackage3"))
 
-class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures", SignatureTest.all)
+class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures", SignatureTest.all.filterNot(_ == "extension"))
+
+class ExtensionMethodParamsSignature extends SignatureTest("extensionParams", SignatureTest.all)
 
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
@@ -57,6 +59,8 @@ class InheritanceLoop extends SignatureTest("inheritanceLoop", SignatureTest.all
 
 class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.all.filter(_ != "class"),
   sourceFiles = List("inheritedMembers1", "inheritedMembers2"))
+
+class InheritedFromHiddenClasslike extends SignatureTest("inheritedMembersFromHidden", SignatureTest.all)
 
 class ComplexNames extends SignatureTest("complexNames", Seq("def", "class"))
 
@@ -88,3 +92,21 @@ class SpecializedSignature extends SignatureTest("specializedSignature", Signatu
 class ContextBounds extends SignatureTest("contextBounds", SignatureTest.all)
 
 class FBoundedTypeParameters extends SignatureTest("fboundedTypeParameters", SignatureTest.all)
+
+class Exports extends SignatureTest("exports2", SignatureTest.all, sourceFiles = List("exports1", "exports2"))
+
+class ContextFunctions extends SignatureTest("contextfunctions", SignatureTest.all)
+
+class MarkdownCode extends SignatureTest("markdowncode", SignatureTest.all)
+
+class FunctionTypeSignatures extends SignatureTest("functionTypeSignatures", SignatureTest.all)
+
+class ImplicitMembers extends SignatureTest(
+  "implicitMembers",
+  Seq("def"),
+  filterFunc = _.toString.endsWith("OuterClass$ImplicitMemberTarget.html")
+)
+
+class NonScala3Parent extends SignatureTest("nonScala3Parent", SignatureTest.all)
+
+class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)

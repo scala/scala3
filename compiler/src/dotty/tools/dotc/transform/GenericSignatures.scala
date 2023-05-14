@@ -5,20 +5,21 @@ package transform
 import core.Annotations._
 import core.Contexts._
 import core.Phases._
+import core.Decorators.*
 import core.Definitions
 import core.Flags._
-import core.Names.{DerivedName, Name, SimpleName, TypeName}
+import core.Names.Name
 import core.Symbols._
-import core.TypeApplications.TypeParamInfo
-import core.TypeErasure.{erasedGlb, erasure, isGenericArrayElement}
+import core.TypeApplications.{EtaExpansion, TypeParamInfo}
+import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement}
 import core.Types._
 import core.classfile.ClassfileConstants
-import ast.Trees._
 import SymUtils._
 import TypeUtils._
+import config.Printers.transforms
+import reporting.trace
 import java.lang.StringBuilder
 
-import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
 /** Helper object to generate generic java signatures, as defined in
@@ -78,7 +79,7 @@ object GenericSignatures {
      *        of `AndType` in `jsig` which already supports `def foo(x: A & Object)`.
      */
     def boundsSig(bounds: List[Type]): Unit = {
-      val (repr :: _, others) = splitIntersection(bounds)
+      val (repr :: _, others) = splitIntersection(bounds): @unchecked
       builder.append(':')
 
       // In Java, intersections always erase to their first member, so put
@@ -132,12 +133,12 @@ object GenericSignatures {
           else
             Right(parent))
 
-    def paramSig(param: LambdaParam): Unit = {
-      builder.append(sanitizeName(param.paramName))
+    def paramSig(param: TypeParamInfo): Unit = {
+      builder.append(sanitizeName(param.paramName.lastPart))
       boundsSig(hiBounds(param.paramInfo.bounds))
     }
 
-    def polyParamSig(tparams: List[LambdaParam]): Unit =
+    def polyParamSig(tparams: List[TypeParamInfo]): Unit =
       if (tparams.nonEmpty) {
         builder.append('<')
         tparams.foreach(paramSig)
@@ -168,8 +169,9 @@ object GenericSignatures {
     // a type parameter or similar) must go through here or the signature is
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
     def fullNameInSig(sym: Symbol): Unit = {
+      assert(sym.isClass)
       val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
-      builder.append('L').append(name)
+      builder.append('L').nn.append(name)
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
@@ -185,13 +187,14 @@ object GenericSignatures {
               boxedSig(bounds.lo)
             }
             else builder.append('*')
-          case PolyType(_, res) =>
-            builder.append('*') // scala/bug#7932
+          case EtaExpansion(tp) =>
+            argSig(tp)
           case _: HKTypeLambda =>
-            fullNameInSig(tp.typeSymbol)
-            builder.append(';')
+            builder.append('*')
           case _ =>
-            boxedSig(tp)
+            boxedSig(tp.widenDealias.widenNullaryMethod)
+              // `tp` might be a singleton type referring to a getter.
+              // Hence the widenNullaryMethod.
         }
 
       if (pre.exists) {
@@ -213,7 +216,7 @@ object GenericSignatures {
 
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
             val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
-            builder.append(delimiter).append(sanitizeName(sym.name))
+            builder.append(delimiter).nn.append(sanitizeName(sym.name))
           }
           else fullNameInSig(sym)
         }
@@ -236,7 +239,11 @@ object GenericSignatures {
       tp match {
 
         case ref @ TypeParamRef(_: PolyType, _) =>
-          typeParamSig(ref.paramName.lastPart)
+          val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
+          // don't emit type param name if the param is upper-bounded by a primitive type (including via a value class)
+          if erasedUnderlying.isPrimitiveValueType then
+            jsig(erasedUnderlying, toplevel, primitiveOK)
+          else typeParamSig(ref.paramName.lastPart)
 
         case defn.ArrayOf(elemtp) =>
           if (isGenericArrayElement(elemtp, isScala2 = false))
@@ -255,7 +262,7 @@ object GenericSignatures {
             typeParamSig(sym.name.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
-            jsig(defn.specialErasure(sym).typeRef)
+            jsig(defn.specialErasure(sym).nn.typeRef)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
             jsig(defn.BoxedUnitClass.typeRef)
           else if (sym == defn.NothingClass)
@@ -267,17 +274,17 @@ object GenericSignatures {
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (ValueClasses.isDerivedValueClass(sym)) {
-            val erasedUnderlying = core.TypeErasure.fullErasure(tp)
+            val erasedUnderlying = fullErasure(tp)
             if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
               classSig(sym, pre, args)
             else
               jsig(erasedUnderlying, toplevel, primitiveOK)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
-            val erasedSym = defn.erasedFunctionClass(sym)
+            val erasedSym = defn.functionTypeErasure(sym).typeSymbol
             classSig(erasedSym, pre, if (erasedSym.typeParams.isEmpty) Nil else args)
           }
-          else if (sym.isClass)
+          else if sym.isClass then
             classSig(sym, pre, args)
           else
             jsig(erasure(tp), toplevel, primitiveOK)
@@ -304,7 +311,9 @@ object GenericSignatures {
         case mtpe: MethodType =>
           // erased method parameters do not make it to the bytecode.
           def effectiveParamInfoss(t: Type)(using Context): List[List[Type]] = t match {
-            case t: MethodType if t.isErasedMethod => effectiveParamInfoss(t.resType)
+            case t: MethodType if t.hasErasedParams =>
+              t.paramInfos.zip(t.erasedParams).collect{ case (i, false) => i }
+                :: effectiveParamInfoss(t.resType)
             case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
             case _ => Nil
           }
@@ -334,15 +343,6 @@ object GenericSignatures {
           jsig(repr, primitiveOK = primitiveOK)
 
         case ci: ClassInfo =>
-          def polyParamSig(tparams: List[TypeParamInfo]): Unit =
-            if (tparams.nonEmpty) {
-              builder.append('<')
-              tparams.foreach { tp =>
-                builder.append(sanitizeName(tp.paramName.lastPart))
-                boundsSig(hiBounds(tp.paramInfo.bounds))
-              }
-              builder.append('>')
-            }
           val tParams = tp.typeParams
           if (toplevel) polyParamSig(tParams)
           superSig(ci.typeSymbol, ci.parents)
@@ -471,6 +471,8 @@ object GenericSignatures {
             foldOver(tp.typeParams.nonEmpty, parents)
           case AnnotatedType(tpe, _) =>
             foldOver(x, tpe)
+          case ExprType(tpe) =>
+            true
           case tp =>
             foldOver(x, tp)
         }

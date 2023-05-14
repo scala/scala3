@@ -1,6 +1,8 @@
 package dotty.tools
 package vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile}
 import org.junit.Assert._
 import org.junit.{ Test, AfterClass }
@@ -104,8 +106,9 @@ object VulpixUnitTests extends ParallelTesting {
   def numberOfSlaves = 5
   def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = !sys.env.contains("DRONE")
-  def testFilter = None
+  def testFilter = Nil
   def updateCheckFiles: Boolean = false
+  def failedTests = None
 
   @AfterClass
   def tearDown() = this.cleanup()

@@ -3,7 +3,7 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.{semanticdb => s}
 
 import scala.collection.mutable
-import dotty.tools.dotc.semanticdb.Scala3.{_, given}
+import dotty.tools.dotc.semanticdb.Scala3.given
 import SymbolInformation.Kind._
 import dotty.tools.dotc.util.SourceFile
 class SymbolInformationPrinter (symtab: PrinterSymtab):
@@ -35,6 +35,9 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
       case Reference, Definition
     def pprint(info: SymbolInformation): String =
       val sb = new StringBuilder()
+      val annotStr = info.annotations.map(pprint).mkString(" ")
+      if annotStr.nonEmpty then
+        sb.append(annotStr + " ")
       sb.append(accessString(info.access))
       if info.isAbstract then sb.append("abstract ")
       if info.isFinal then sb.append("final ")
@@ -188,7 +191,16 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           s"=> ${normal(utpe)}"
         case RepeatedType(utpe) =>
           s"${normal(utpe)}*"
-        case _ =>
+        case MatchType(scrutinee, cases) =>
+          val casesStr = cases.map { caseType =>
+            s"${pprint(caseType.key)} => ${pprint(caseType.body)}"
+          }.mkString(", ")
+          s"${pprint(scrutinee)} match { ${casesStr} }"
+        case LambdaType(tparams, res) =>
+          val params = tparams.infos.map(_.displayName).mkString("[", ", ", "]")
+          val resType = normal(res)
+          s"$params =>> $resType"
+        case x =>
           "<?>"
 
       def normal(tpe: Type): String = tpe match

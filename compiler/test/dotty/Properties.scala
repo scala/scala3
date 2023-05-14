@@ -1,19 +1,30 @@
 package dotty
 
+import scala.language.unsafeNulls
+
 import java.nio.file._
 
 /** Runtime properties from defines or environmnent */
 object Properties {
 
   /** If property is unset or "TRUE" we consider it `true` */
-  private def propIsNullOrTrue(prop: String): Boolean = {
-    val prop = System.getProperty("dotty.tests.interactive")
+  private def propIsNullOrTrue(name: String): Boolean = {
+    val prop = System.getProperty(name)
     prop == null || prop == "TRUE"
   }
+
+  /** If property is unset or FALSE we consider it `false` */
+  private def propIsTrue(name: String): Boolean =
+    sys.props.getOrElse(name, "FALSE") == "TRUE"
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
   || sys.env.isDefinedAt("DRONE")  // TODO remove this when we drop Drone
+
+  val testCache: Path =
+    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
+      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
+    }
 
   /** Tests should run interactive? */
   val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
@@ -21,11 +32,13 @@ object Properties {
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
    */
-  val testsFilter: Option[String] = sys.props.get("dotty.tests.filter")
+  val testsFilter: List[String] = sys.props.get("dotty.tests.filter").fold(Nil)(_.split(',').toList)
+
+  /** Run only failed tests */
+  val rerunFailed: Boolean = propIsTrue("dotty.tests.rerunFailed")
 
   /** Tests should override the checkfiles with the current output */
-  val testsUpdateCheckfile: Boolean =
-    sys.props.getOrElse("dotty.tests.updateCheckfiles", "FALSE") == "TRUE"
+  val testsUpdateCheckfile: Boolean = propIsTrue("dotty.tests.updateCheckfiles")
 
   /** When set, the run tests are only compiled - not run, a warning will be
    *  issued
@@ -77,6 +90,9 @@ object Properties {
 
   /** jline-reader jar */
   def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+
+  /** scalajs-javalib jar */
+  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
 
   /** scalajs-library jar */
   def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")

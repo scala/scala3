@@ -22,6 +22,9 @@ class Annotations[@TypeParameterAnnotation T](@ParameterAnnotation x: T) { self:
 class B @ConstructorAnnotation()(x: Int) {
   @ConstructorAnnotation
   def this() = this(42)
+
+  @throws[Exception]
+  def throwing = throw new Exception("")
 }
 
 @ObjectAnnotation

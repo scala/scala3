@@ -4,9 +4,9 @@
   |MyEnum extends scala.reflect.Enum which does not extend js.Any.
 5 |  case Foo
 -- Error: tests/neg-scalajs/js-enums.scala:9:5 -------------------------------------------------------------------------
-7 |@js.native
-8 |@JSGlobal
-9 |enum MyEnumNative extends js.Object: // error
+ 7 |@js.native
+ 8 |@JSGlobal
+ 9 |enum MyEnumNative extends js.Object: // error
    |^
    |MyEnumNative extends scala.reflect.Enum which does not extend js.Any.
 10 |  case Bar

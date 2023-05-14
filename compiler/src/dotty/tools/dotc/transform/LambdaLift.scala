@@ -13,7 +13,6 @@ import core.StdNames.nme
 import core.Names._
 import core.NameOps._
 import core.NameKinds.ExpandPrefixName
-import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Store
@@ -23,6 +22,7 @@ object LambdaLift:
   import ast.tpd._
 
   val name: String = "lambdaLift"
+  val description: String = "lifts out nested functions to class scope"
 
   /** The core lambda lift functionality. */
   class Lifter(thisPhase: MiniPhase & DenotTransformer)(using Context):
@@ -70,7 +70,7 @@ object LambdaLift:
     private def generateProxies()(using Context): Unit =
       for owner <- deps.tracked do
         val fvs = deps.freeVars(owner).toList
-        val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
+        val newFlags = Synthetic | (if (owner.isClass) PrivateParamAccessor else Param)
         report.debuglog(i"free var proxy of ${owner.showLocated}: $fvs%, %")
         val freeProxyPairs =
           for fv <- fvs yield
@@ -94,20 +94,7 @@ object LambdaLift:
     private def liftLocals()(using Context): Unit = {
       for ((local, lOwner) <- deps.logicalOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package) {
-            val encClass = local.enclosingClass
-            val topClass = local.topLevelClass
-            val preferEncClass =
-              encClass.isStatic &&
-                // non-static classes can capture owners, so should be avoided
-              (encClass.isProperlyContainedIn(topClass) ||
-                // can be false for symbols which are defined in some weird combination of supercalls.
-               encClass.is(ModuleClass, butNot = Package)
-                // needed to not cause deadlocks in classloader. see t5375.scala
-              )
-            if (preferEncClass) (encClass, EmptyFlags)
-            else (topClass, JavaStatic)
-          }
+          if lOwner is Package then (local.topLevelClass, JavaStatic)
           else (lOwner, EmptyFlags)
         // Drop Module because class is no longer a singleton in the lifted context.
         var initFlags = local.flags &~ Module | Private | Lifted | maybeStatic
@@ -265,8 +252,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   import LambdaLift._
   import ast.tpd._
 
-  /** the following two members override abstract members in Transform */
-  val phaseName: String = LambdaLift.name
+  override def phaseName: String = LambdaLift.name
+
+  override def description: String = LambdaLift.description
 
   override def relaxedTypingInGroup: Boolean = true
     // Because it adds free vars as additional proxy parameters

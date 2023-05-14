@@ -26,9 +26,10 @@ object Test {
   xs.lazyZip(xs).lazyZip(xs)
     .map( (x: (Int, Int, Int)) => x match { case (x, y, z) => x + y + z })     // now also OK
 
-  // 5. If we leave out the parameter type, it now works as well.
-  xs.lazyZip(xs).lazyZip(xs)
-    .map( x => x match { case (x, y, z) => x + y + z })     // now also OK
+  // 5. But if that pone is deeper nested, it does not work since we don't retypecheck
+  //    arguments deeply.
+  //xs.lazyZip(xs).lazyZip(xs)
+  //  .map( x => x match { case (x, y, z) => x + y + z })     // now also OK
 
   // This means that the following works in Dotty 3.0 as well as 3.x
   for ((x, y, z) <- xs.lazyZip(xs).lazyZip(xs)) yield x + y + z

@@ -1,3 +1,4 @@
+// scalajs: --skip
 
 import scala.language.higherKinds
 

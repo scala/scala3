@@ -5,26 +5,22 @@ import core._
 import Contexts._
 import Periods._
 import Symbols._
-import Types._
 import Scopes._
 import Names.Name
 import Denotations.Denotation
 import typer.Typer
-import typer.ImportInfo._
+import typer.ImportInfo.withRootImports
 import Decorators._
-import io.{AbstractFile, PlainFile, VirtualFile}
+import io.AbstractFile
 import Phases.unfusedPhases
 
 import util._
-import reporting.{Reporter, Suppression, Action}
+import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
 import reporting.Diagnostic
 import reporting.Diagnostic.Warning
 import rewrites.Rewrites
-
 import profile.Profiler
 import printing.XprintMode
-import parsing.Parsers.Parser
-import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
 import config.Feature
 import StdNames.nme
@@ -59,43 +55,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   @volatile var isCancelled = false
 
-  /** Produces the following contexts, from outermost to innermost
-   *
-   *    bootStrap:   A context with next available runId and a scope consisting of
-   *                 the RootPackage _root_
-   *    start        A context with RootClass as owner and the necessary initializations
-   *                 for type checking.
-   *    imports      For each element of RootImports, an import context
-   */
-  protected def rootContext(using Context): Context = {
-    ctx.initialize()
-    ctx.base.setPhasePlan(comp.phases)
-    val rootScope = new MutableScope
-    val bootstrap = ctx.fresh
-      .setPeriod(Period(comp.nextRunId, FirstPhaseId))
-      .setScope(rootScope)
-    rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
-    var start = bootstrap.fresh
-      .setOwner(defn.RootClass)
-      .setTyper(new Typer)
-      .addMode(Mode.ImplicitsEnabled)
-      .setTyperState(ctx.typerState.fresh(ctx.reporter))
-    if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
-      start = start.addMode(Mode.SafeNulls)
-    ctx.initialize()(using start) // re-initialize the base context with start
-    start.setRun(this)
-  }
-
   private var compiling = false
 
-  private var myCtx = rootContext(using ictx)
-
-  /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx
-  assert(runContext.runId <= Periods.MaxPossibleRunId)
-
-  private var myUnits: List[CompilationUnit] = _
-  private var myUnitsCached: List[CompilationUnit] = _
+  private var myUnits: List[CompilationUnit] = Nil
+  private var myUnitsCached: List[CompilationUnit] = Nil
   private var myFiles: Set[AbstractFile] = _
 
   // `@nowarn` annotations by source file, populated during typer
@@ -109,7 +72,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
     // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
     // Same as scala/scala/commit/79ca1408c7.
-    def initSuspendedMessages(oldRun: Run) = if oldRun != null then
+    def initSuspendedMessages(oldRun: Run | Null) = if oldRun != null then
       mySuspendedMessages.clear()
       mySuspendedMessages ++= oldRun.mySuspendedMessages
 
@@ -200,15 +163,24 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a pureFunctions language import.
+   */
+  var pureFunsImportEncountered = false
+
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a captureChecking language import.
+   */
+  var ccImportEncountered = false
+
+  private var myEnrichedErrorMessage = false
+
   def compile(files: List[AbstractFile]): Unit =
-    try
-      val sources = files.map(runContext.getSource(_))
-      compileSources(sources)
-    catch
-      case NonFatal(ex) =>
-        if units != null then report.echo(i"exception occurred while compiling $units%, %")
-        else report.echo(s"exception occurred while compiling ${files.map(_.name).mkString(", ")}")
-        throw ex
+    try compileSources(files.map(runContext.getSource(_)))
+    catch case NonFatal(ex) if !this.enrichedErrorMessage =>
+      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
+      throw ex
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
@@ -233,11 +205,20 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileUnits()(using ctx)
   }
 
+  var profile: Profile = NoProfile
+
   private def compileUnits()(using Context) = Stats.maybeMonitored {
     if (!ctx.mode.is(Mode.Interactive)) // IDEs might have multi-threaded access, accesses are synchronized
       ctx.base.checkSingleThreaded()
 
     compiling = true
+
+    profile =
+      if ctx.settings.Vprofile.value
+        || !ctx.settings.VprofileSortedBy.value.isEmpty
+        || ctx.settings.VprofileDetails.value != 0
+      then ActiveProfile(ctx.settings.VprofileDetails.value.max(0).min(1000))
+      else NoProfile
 
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
@@ -249,9 +230,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)
 
+    if ctx.settings.YnoDoubleBindings.value then
+      ctx.base.checkNoDoubleBindings = true
+
     def runPhases(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
+      var phasesWereAdjusted = false
 
       for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
@@ -270,6 +255,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
             ctx.typerState.gc()
           }
+          if !phasesWereAdjusted then
+            phasesWereAdjusted = true
+            if !Feature.ccEnabledSomewhere then
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase.prev)
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase)
 
       profiler.finished()
     }
@@ -302,19 +292,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         .setCompilationUnit(unit)
         .withRootImports
 
-      def process()(using Context) = {
-        unit.untpdTree =
-          if (unit.isJava) new JavaParser(unit.source).parse()
-          else new Parser(unit.source).parse()
-        ctx.typer.lateEnter(unit.untpdTree)
-        def processUnit() = {
-          unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-          val phase = new transform.SetRootTree()
-          phase.run
-        }
-        if (typeCheck)
-          if (compiling) finalizeActions += (() => processUnit()) else processUnit()
-      }
+      def process()(using Context) =
+        ctx.typer.lateEnterUnit(doTypeCheck =>
+          if typeCheck then
+            if compiling then finalizeActions += doTypeCheck
+            else doTypeCheck()
+        )
+
       process()(using unitCtx)
     }
 
@@ -324,11 +308,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private def printTree(last: PrintedTree)(using Context): PrintedTree = {
     val unit = ctx.compilationUnit
-    val prevPhase = ctx.phase.prev // can be a mini-phase
-    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    val fusedPhase = ctx.phase.prevMega
     val echoHeader = f"[[syntax trees at end of $fusedPhase%25s]] // ${unit.source}"
     val tree = if ctx.isAfterTyper then unit.tpdTree else unit.untpdTree
-    val treeString = tree.show(using ctx.withProperty(XprintMode, Some(())))
+    val treeString = fusedPhase.show(tree)
 
     last match {
       case SomePrintedTree(phase, lastTreeString) if lastTreeString == treeString =>
@@ -349,12 +332,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def compileFromStrings(scalaSources: List[String], javaSources: List[String] = Nil): Unit = {
     def sourceFile(source: String, isJava: Boolean): SourceFile = {
       val uuid = java.util.UUID.randomUUID().toString
-      val ext = if (isJava) ".java" else ".scala"
-      val virtualFile = new VirtualFile(s"compileFromString-$uuid.$ext")
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name)) // buffering is still advised by javadoc
-      writer.write(source)
-      writer.close()
-      new SourceFile(virtualFile, Codec.UTF8)
+      val ext = if (isJava) "java" else "scala"
+      val name = s"compileFromString-$uuid.$ext"
+      SourceFile.virtual(name, source)
     }
     val sources =
       scalaSources.map(sourceFile(_, isJava = false)) ++
@@ -363,18 +343,70 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compileSources(sources)
   }
 
-  /** Print summary; return # of errors encountered */
+  /** Print summary of warnings and errors encountered */
   def printSummary(): Unit = {
     printMaxConstraint()
     val r = runContext.reporter
-    r.printSummary
+    if !r.errorsReported then
+      profile.printSummary()
+    r.summarizeUnreportedWarnings()
+    r.printSummary()
   }
 
   override def reset(): Unit = {
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     myCtx = null
-    myUnits = null
-    myUnitsCached = null
+    myUnits = Nil
+    myUnitsCached = Nil
   }
+
+  /** Produces the following contexts, from outermost to innermost
+   *
+   *    bootStrap:   A context with next available runId and a scope consisting of
+   *                 the RootPackage _root_
+   *    start        A context with RootClass as owner and the necessary initializations
+   *                 for type checking.
+   *    imports      For each element of RootImports, an import context
+   */
+  protected def rootContext(using Context): Context = {
+    ctx.initialize()
+    ctx.base.setPhasePlan(comp.phases)
+    val rootScope = new MutableScope(0)
+    val bootstrap = ctx.fresh
+      .setPeriod(Period(comp.nextRunId, FirstPhaseId))
+      .setScope(rootScope)
+    rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
+    var start = bootstrap.fresh
+      .setOwner(defn.RootClass)
+      .setTyper(new Typer)
+      .addMode(Mode.ImplicitsEnabled)
+      .setTyperState(ctx.typerState.fresh(ctx.reporter))
+    if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
+      start = start.addMode(Mode.SafeNulls)
+    ctx.initialize()(using start) // re-initialize the base context with start
+
+    // `this` must be unchecked for safe initialization because by being passed to setRun during
+    // initialization, it is not yet considered fully initialized by the initialization checker
+    start.setRun(this: @unchecked)
+  }
+
+  private var myCtx: Context | Null = rootContext(using ictx)
+
+  /** The context created for this run */
+  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
+  assert(runContext.runId <= Periods.MaxPossibleRunId)
+}
+
+object Run {
+  extension (run: Run | Null)
+    def enrichedErrorMessage: Boolean = if run == null then false else run.myEnrichedErrorMessage
+    def enrichErrorMessage(errorMessage: String)(using Context): String =
+      if run == null then
+        report.enrichErrorMessage(errorMessage)
+      else if !run.enrichedErrorMessage then
+        run.myEnrichedErrorMessage = true
+        report.enrichErrorMessage(errorMessage)
+      else
+        errorMessage
 }

@@ -1,0 +1,26 @@
+.arrow-navigation {
+  display: flex;
+  margin-bottom: calc(6 * var(--base-spacing));
+  margin-top: calc(6 * var(--base-spacing));
+  gap: 24px;
+}
+
+.arrow-navigation > div {
+  width: 100%;
+}
+
+.arrow-navigation > div .arrow-navigation--next {
+  text-align: right;
+}
+
+.arrow-navigation > div .arrow-navigation--next ~ a {
+  display: inline-block;
+  width: 100%;
+  text-align: right;
+}
+
+.arrow-navigation > div > span {
+  display: block;
+  margin-bottom: calc(1 * var(--base-spacing));
+  color: var(--text-secondary);
+}

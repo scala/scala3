@@ -10,7 +10,7 @@ class RenameTest {
 
   @Test def rename0: Unit = {
     def testRenameFrom(m: CodeMarker) =
-      code"class ${m1}Foo$m2 { new ${m3}Foo$m4 }".withSource.rename(m, "Bar", Set(m1 to m2, m3 to m4))
+      code"class ${m1}Foo$m2 { new ${m3}Foo$m4 }".rename(m, "Bar", Set(m1 to m2, m3 to m4))
     testRenameFrom(m1)
     testRenameFrom(m3)
   }

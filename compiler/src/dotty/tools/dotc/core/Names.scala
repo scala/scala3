@@ -7,8 +7,6 @@ import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
-import util.Chars.isIdentifierStart
-import collection.immutable
 import config.Config
 import util.{LinearMap, HashSet}
 
@@ -17,8 +15,8 @@ import scala.annotation.internal.sharable
 object Names {
   import NameKinds._
 
-  /** Things that can be turned into names with `totermName` and `toTypeName`
-   *  Decorators defines implements these as extension methods for strings.
+  /** Things that can be turned into names with `toTermName` and `toTypeName`.
+   *  Decorators implements these as extension methods for strings.
    */
   type PreName = Name | String
 
@@ -27,7 +25,7 @@ object Names {
    */
   abstract class Designator
 
-  /** A name if either a term name or a type name. Term names can be simple
+  /** A name is either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
@@ -71,10 +69,17 @@ object Names {
 
     /** Apply rewrite rule given by `f` to some part of this name, skipping and rewrapping
      *  other decorators.
-     *  Stops at derived names whose kind has `definesNewName = true`.
+     *  Stops at DerivedNames with infos of kind QualifiedInfo.
      *  If `f` does not apply to any part, return name unchanged.
      */
     def replace(f: PartialFunction[Name, Name]): ThisName
+
+    /** Same as replace, but does not stop at DerivedNames with infos of kind QualifiedInfo. */
+    def replaceDeep(f: PartialFunction[Name, Name]): ThisName =
+      replace(f.orElse {
+        case DerivedName(underlying, info: QualifiedInfo) =>
+          underlying.replaceDeep(f).derived(info)
+      })
 
     /** If partial function `f` is defined for some part of this name, apply it
      *  in a Some, otherwise None.
@@ -165,7 +170,7 @@ object Names {
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
-    private var myTypeName: TypeName = null
+    private var myTypeName: TypeName | Null = null
       // Note: no @volatile needed since type names are immutable and therefore safely published
 
     override def toTypeName: TypeName =
@@ -173,7 +178,7 @@ object Names {
         synchronized {
           if myTypeName == null then myTypeName = new TypeName(this)
         }
-      myTypeName
+      myTypeName.nn
 
     override def likeSpaced(name: Name): TermName = name.toTermName
 
@@ -184,13 +189,13 @@ object Names {
     private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
 
     private def add(info: NameInfo): TermName = synchronized {
-      derivedNames.lookup(info) match
+      val dnOpt = derivedNames.lookup(info)
+      dnOpt match
         case null =>
           val derivedName = new DerivedName(this, info)
           derivedNames = derivedNames.updated(info, derivedName)
           derivedName
-        case derivedName =>
-          derivedName
+        case _ => dnOpt
     }
 
     private def rewrap(underlying: TermName) =
@@ -227,10 +232,10 @@ object Names {
     }
 
     @sharable // because it's just a cache for performance
-    private var myMangledString: String = null
+    private var myMangledString: String | Null = null
 
     @sharable // because it's just a cache for performance
-    private var myMangled: Name = null
+    private var myMangled: Name | Null = null
 
     protected[Names] def mangle: ThisName
 
@@ -242,10 +247,10 @@ object Names {
     final def mangledString: String = {
       if (myMangledString == null)
         myMangledString = qualToString(_.mangledString, _.mangled.toString)
-      myMangledString
+      myMangledString.nn
     }
 
-    /** If this a qualified name, split it into underlyng, last part, and separator
+    /** If this a qualified name, split it into underlying, last part, and separator
      *  Otherwise return an empty name, the name itself, and "")
      */
     def split: (TermName, TermName, String)
@@ -261,11 +266,11 @@ object Names {
 
     protected def computeToString: String
 
-    @sharable private var myToString: String = null
+    @sharable private var myToString: String | Null = null
 
-    override def toString =
+    override def toString: String =
       if myToString == null then myToString = computeToString
-      myToString
+      myToString.nn
 
   }
 
@@ -388,7 +393,7 @@ object Names {
             // because asserts are caught in exception handlers which might
             // cause other failures. In that case the first, important failure
             // is lost.
-            System.err.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
+            System.err.nn.println("Backend should not call Name#toString, Name#mangledString should be used instead.")
             Thread.dumpStack()
             assert(false)
           }
@@ -399,8 +404,8 @@ object Names {
      *  from GenBCode or it also contains one of the whitelisted methods below.
      */
     private def toStringOK = {
-      val trace = Thread.currentThread.getStackTrace
-      !trace.exists(_.getClassName.endsWith("GenBCode")) ||
+      val trace: Array[StackTraceElement] = Thread.currentThread.nn.getStackTrace.asInstanceOf[Array[StackTraceElement]]
+      !trace.exists(_.getClassName.nn.endsWith("GenBCode")) ||
       trace.exists(elem =>
           List(
               "mangledString",
@@ -544,13 +549,13 @@ object Names {
       Stats.record(statsItem("put"))
       val myTable = currentTable // could be outdated under parallel execution
       var idx = hashValue(cs, offset, len) & (myTable.length - 1)
-      var name = myTable(idx).asInstanceOf[SimpleName]
+      var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
       while name != null do
-        if name.length == len && Names.equals(name.start, cs, offset, len) then
-          return name
+        if name.nn.length == len && Names.equals(name.nn.start, cs, offset, len) then
+          return name.nn
         Stats.record(statsItem("miss"))
         idx = (idx + 1) & (myTable.length - 1)
-        name = myTable(idx).asInstanceOf[SimpleName]
+        name = myTable(idx).asInstanceOf[SimpleName | Null]
       Stats.record(statsItem("addEntryAt"))
       synchronized {
         if (myTable eq currentTable) && myTable(idx) == null then
@@ -565,12 +570,12 @@ object Names {
           ensureCapacity(nc + len)
           Array.copy(cs, offset, chrs, nc, len)
           nc += len
-          addEntryAt(idx, name)
+          addEntryAt(idx, name.nn)
         else
           enterIfNew(cs, offset, len)
       }
 
-    addEntryAt(0, EmptyTermName)
+    addEntryAt(0, EmptyTermName: @unchecked)
   end NameTable
 
   /** Hashtable for finding term names quickly. */
@@ -628,10 +633,10 @@ object Names {
    *  See `sliceToTermName` in `Decorators` for a more efficient version
    *  which however requires a Context for its operation.
    */
-  def termName(s: String): SimpleName = termName(s.toCharArray, 0, s.length)
+  def termName(s: String): SimpleName = termName(s.toCharArray.nn, 0, s.length)
 
   /** Create a type name from a string */
-  def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
+  def typeName(s: String): TypeName = typeName(s.toCharArray.nn, 0, s.length)
 
   /** The type name represented by the empty string */
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName

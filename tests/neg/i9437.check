@@ -2,5 +2,5 @@
 7 |  println(x.f1())  // error
   |          ^^^^
   |          method selectDynamic in trait Selectable does not take parameters
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

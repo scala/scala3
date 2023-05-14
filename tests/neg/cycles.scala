@@ -38,6 +38,6 @@ class T2 {
   type U = X | Int
 }
 object T12 {
-  ??? : (T1 {})#U // old-error: conflicting bounds
+  val _ : (T1 {})#U = ??? // old-error: conflicting bounds
   ??? : (T2 {})#U // old-error: conflicting bounds
 }

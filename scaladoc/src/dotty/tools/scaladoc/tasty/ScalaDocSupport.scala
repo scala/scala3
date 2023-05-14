@@ -3,8 +3,8 @@ package tasty
 
 import scala.jdk.CollectionConverters._
 
-import dotty.tools.scaladoc.Scaladoc.CommentSyntax
-import dotty.tools.scaladoc.tasty.comments.Comment
+import dotty.tools.scaladoc.tasty.comments.{Comment, CommentSyntax}
+import dotty.tools.scaladoc.tasty.SymOps.source
 
 import scala.quoted._
 
@@ -14,17 +14,23 @@ object ScaladocSupport:
     import reflect.report
     val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(comment))
 
+    def pathBasedCommentSyntax(): CommentSyntax =
+      val path = sym.source.map(_.path)
+      summon[DocContext].commentSyntaxArgs.get(path)
+
     val commentSyntax =
       preparsed.syntax.headOption match {
         case Some(commentSetting) =>
-          CommentSyntax.parse(commentSetting).getOrElse {
-            val msg = s"not a valid comment syntax: $commentSetting, defaulting to Markdown syntax."
+          CommentSyntax.CommentSyntaxParser.parse(commentSetting).getOrElse {
+            val defaultSyntax = pathBasedCommentSyntax()
+            val msg = s"not a valid comment syntax: $commentSetting, defaulting to ${defaultSyntax} syntax."
             // we should update pos with span from documentation
             pos.fold(report.warning(msg))(report.warning(msg, _))
 
-            CommentSyntax.default
+            defaultSyntax
           }
-        case None => summon[DocContext].args.defaultSyntax
+        case None =>
+          pathBasedCommentSyntax()
       }
 
     val parser = commentSyntax match {
@@ -35,17 +41,20 @@ object ScaladocSupport:
     }
     parser.parse(preparsed)
 
-  def parseComment(using Quotes, DocContext)(docstring: String,  tree: reflect.Tree): Comment =
+  def parseComment(using Quotes, DocContext)(docstring: String, tree: reflect.Tree): Option[Comment] =
     val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
+        import dotty.tools.dotc.core.Comments.CommentsContext
         given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+
+        val docCtx = ctx.docCtx.get
 
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 
-        comments.CommentExpander.cookComment(sym)(using ctx)
-          .get.expanded.get
+        docCtx.templateExpander.expand(sym, sym.owner)
       else
         docstring
-
-    parseCommentString(commentString, tree.symbol, Some(tree.pos))
+    if commentString == ""
+    then None
+    else Some(parseCommentString(commentString, tree.symbol, Some(tree.pos)))

@@ -2,5 +2,5 @@
 13 |  val x = new outer2.Inner(2) // error (at typer)
    |              ^^^^^^
    |              (Test.outer2 : => Outer2) is not a valid type prefix, since it is not an immutable path
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

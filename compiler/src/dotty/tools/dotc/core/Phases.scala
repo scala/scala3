@@ -13,10 +13,12 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
-import parsing.{ Parser}
+import parsing.Parser
+import printing.XprintMode
 import typer.{TyperPhase, RefChecks}
+import cc.CheckCaptures
 import typer.ImportInfo.withRootImports
-import ast.tpd
+import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
 import scala.util.control.NonFatal
 
@@ -195,18 +197,28 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
+    /** Unlink `phase` from Denot transformer chain. This means that
+     *  any denotation transformer defined by the phase will not be executed.
+     */
+    def unlinkPhaseAsDenotTransformer(phase: Phase)(using Context) =
+      for i <- 0 until nextDenotTransformerId.length do
+        if nextDenotTransformerId(i) == phase.id then
+          nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
+
     private var myParserPhase: Phase = _
     private var myTyperPhase: Phase = _
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
     private var myInliningPhase: Phase = _
-    private var myPickleQuotesPhase: Phase = _
+    private var myStagingPhase: Phase = _
+    private var mySplicingPhase: Phase = _
     private var myFirstTransformPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
     private var myRefChecksPhase: Phase = _
     private var myPatmatPhase: Phase = _
     private var myElimRepeatedPhase: Phase = _
+    private var myElimByNamePhase: Phase = _
     private var myExtensionMethodsPhase: Phase = _
     private var myExplicitOuterPhase: Phase = _
     private var myGettersPhase: Phase = _
@@ -216,6 +228,7 @@ object Phases {
     private var myCountOuterAccessesPhase: Phase = _
     private var myFlattenPhase: Phase = _
     private var myGenBCodePhase: Phase = _
+    private var myCheckCapturesPhase: Phase = _
 
     final def parserPhase: Phase = myParserPhase
     final def typerPhase: Phase = myTyperPhase
@@ -223,12 +236,14 @@ object Phases {
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def inliningPhase: Phase = myInliningPhase
-    final def pickleQuotesPhase: Phase = myPickleQuotesPhase
+    final def stagingPhase: Phase = myStagingPhase
+    final def splicingPhase: Phase = mySplicingPhase
     final def firstTransformPhase: Phase = myFirstTransformPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
     final def refchecksPhase: Phase = myRefChecksPhase
     final def patmatPhase: Phase = myPatmatPhase
     final def elimRepeatedPhase: Phase = myElimRepeatedPhase
+    final def elimByNamePhase: Phase = myElimByNamePhase
     final def extensionMethodsPhase: Phase = myExtensionMethodsPhase
     final def explicitOuterPhase: Phase = myExplicitOuterPhase
     final def gettersPhase: Phase = myGettersPhase
@@ -238,6 +253,7 @@ object Phases {
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
     final def genBCodePhase: Phase = myGenBCodePhase
+    final def checkCapturesPhase: Phase = myCheckCapturesPhase
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -248,11 +264,13 @@ object Phases {
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myInliningPhase = phaseOfClass(classOf[Inlining])
-      myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
+      myStagingPhase = phaseOfClass(classOf[Staging])
+      mySplicingPhase = phaseOfClass(classOf[Splicing])
       myFirstTransformPhase = phaseOfClass(classOf[FirstTransform])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
+      myElimByNamePhase = phaseOfClass(classOf[ElimByName])
       myExtensionMethodsPhase = phaseOfClass(classOf[ExtensionMethods])
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
@@ -262,7 +280,8 @@ object Phases {
       myFlattenPhase = phaseOfClass(classOf[Flatten])
       myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
       myGettersPhase = phaseOfClass(classOf[Getters])
-      myGenBCodePhase =  phaseOfClass(classOf[GenBCode])
+      myGenBCodePhase = phaseOfClass(classOf[GenBCode])
+      myCheckCapturesPhase = phaseOfClass(classOf[CheckCaptures])
     }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
@@ -305,9 +324,16 @@ object Phases {
     def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
       units.map { unit =>
         val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        run(using unitCtx)
+        try run(using unitCtx)
+        catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+          println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
+          throw ex
         unitCtx.compilationUnit
       }
+
+    /** Convert a compilation unit's tree to a string; can be overridden */
+    def show(tree: untpd.Tree)(using Context): String =
+      tree.show(using ctx.withProperty(XprintMode, Some(())))
 
     def description: String = phaseName
 
@@ -341,7 +367,7 @@ object Phases {
     def initContext(ctx: FreshContext): Unit = ()
 
     private var myPeriod: Period = Periods.InvalidPeriod
-    private var myBase: ContextBase = null
+    private var myBase: ContextBase = _
     private var myErasedTypes = false
     private var myFlatClasses = false
     private var myRefChecked = false
@@ -399,6 +425,9 @@ object Phases {
     final def prev: Phase =
       if (id > FirstPhaseId) myBase.phases(start - 1) else NoPhase
 
+    final def prevMega(using Context): Phase =
+      ctx.base.fusedContaining(ctx.phase.prev)
+
     final def next: Phase =
       if (hasNext) myBase.phases(end + 1) else NoPhase
 
@@ -423,10 +452,12 @@ object Phases {
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
   def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
-  def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
+  def stagingPhase(using Context): Phase               = ctx.base.stagingPhase
+  def splicingPhase(using Context): Phase               = ctx.base.splicingPhase
   def firstTransformPhase(using Context): Phase         = ctx.base.firstTransformPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
   def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
+  def elimByNamePhase(using Context): Phase             = ctx.base.elimByNamePhase
   def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase
   def explicitOuterPhase(using Context): Phase          = ctx.base.explicitOuterPhase
   def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
@@ -435,6 +466,7 @@ object Phases {
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
   def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
+  def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
 
   def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
 

@@ -1,0 +1,287 @@
+.snippet {
+  position: relative;
+  flex-direction: row;
+  gap: calc(2 * var(--base-spacing));
+  padding: calc(3 * var(--base-spacing)) calc(3 * var(--base-spacing))
+    calc(1.5 * var(--base-spacing)) calc(1 * var(--base-spacing));
+  background-color: var(--action-primary-background-default-solid);
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  overflow-x: scroll;
+  margin-bottom: calc(3 * var(--base-spacing));
+  margin-top: calc(3 * var(--base-spacing));
+  border-radius: 4px;
+}
+
+.snippet pre {
+  margin: 0;
+  line-height: 20px;
+}
+
+.snippet pre code {
+  font-family: "FiraCode-Regular";
+}
+
+.snippet pre code > span {
+  padding-right: calc(2* var(--base-spacing));
+}
+
+dd .snippet {
+  margin: 0;
+}
+
+.snippet .hidden {
+  display: none;
+}
+
+.snippet .hidden:first-child {
+  display: block;
+  visibility: hidden;
+}
+
+.snippet .hidden[line-number]:first-child::before {
+  visibility: visible;
+  color: var(--code-syntax-highlighting-line-number);
+  font-size: calc(1.5 * var(--base-spacing));
+  content: "...";
+  margin-left: calc(0.5 * var(--base-spacing));
+}
+
+.snippet .hidden[line-number]:last-child {
+  display: block;
+  visibility: hidden;
+}
+
+.snippet .hidden[line-number]:last-child::before {
+  visibility: visible;
+  color: var(--code-syntax-highlighting-line-number);
+  font-size: calc(1.5 * var(--base-spacing));
+  content: "...";
+  margin-left: calc(0.5 * var(--base-spacing));
+}
+
+.snippet > pre > code > span::before {
+  margin-left: 0;
+  content: attr(line-number);
+  color: var(--code-syntax-highlighting-line-number);
+  margin-right: calc(2 * var(--base-spacing));
+  display: inline-block;
+  text-align: right;
+  min-width: calc(3 * var(--base-spacing));
+}
+
+.snippet-showhide-container {
+  margin-top: calc(2 * var(--base-spacing));
+}
+
+.snippet-showhide {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.snippet-showhide::after {
+  margin-left: calc(5 * var(--base-spacing));
+  visibility: visible;
+  content: "Show all lines";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.snippet-showhide:checked::after {
+  visibility: visible;
+  content: "Hide";
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.snippet-showhide-label:hover::before {
+  color: var(--action-primary-content-hover);
+}
+
+.snippet-showhide-label:active::before {
+  color: var(--action-primary-content-active);
+}
+
+.snippet:hover {
+  border: 1px solid var(--border-default);
+}
+
+.snippet:hover::-webkit-scrollbar-thumb {
+  border: 3px solid var(--action-primary-background-default-solid);
+}
+
+.snippet .copy-button {
+  position: absolute;
+  top: calc(3 * var(--base-spacing));
+  right: calc(3 * var(--base-spacing));
+}
+
+.snippet .run-button {
+  position: absolute;
+  top: calc(3 * var(--base-spacing));
+  right: calc(6 * var(--base-spacing));
+}
+
+.snippet .run-button {
+  color: var(--icon-default);
+}
+
+.snippet .run-button:hover {
+  color: var(--icon-hover);
+}
+
+.snippet .icon-button {
+  display: none;
+}
+
+.snippet:hover .icon-button {
+  display: block;
+}
+
+.snippet-popup-content {
+  position: fixed;
+  top: 20%;
+  left: 50%;
+  margin-left: -25%;
+  background-color: rgba(245, 245, 245, 1);
+  padding: calc(2 * var(--base-spacing));
+  border-radius: 4px;
+  width: 50%;
+}
+
+.snippet-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.569);
+  z-index: 3;
+}
+
+.scastie.embedded {
+  width: unset !important;
+}
+
+.tooltip-container {
+  display: none;
+}
+.tooltip:hover .tooltip-container {
+  display: unset;
+}
+.tooltip:hover .tooltip-container::after {
+  content: attr(label);
+  padding: 4px 8px;
+  color: white;
+  background-color:black;
+  position: absolute;
+  z-index:10;
+  box-shadow:0 0 3px #444;
+  opacity: 0.8;
+}
+
+.snippet .buttons .tooltip::after {
+  top: 32px;
+}
+
+.snippet-error {
+  border-bottom: 2px dotted red;
+}
+.snippet-warn {
+  border-bottom: 2px dotted orange;
+}
+.snippet-info {
+  border-bottom: 2px dotted teal;
+}
+.snippet-debug {
+  border-bottom: 2px dotted pink;
+}
+
+.hljs-keyword {
+  color: var(--code-method-highlighting-keyword);
+}
+
+.hljs-comment {
+  color: var(--code-syntax-highlighting-comment);
+}
+
+.hljs-quote {
+  color: var(--code-syntax-highlighting-quote);
+}
+
+.hljs-line-number {
+  color: var(--code-syntax-highlighting-line-number);
+}
+
+.hljs-title {
+  color: var(--code-syntax-highlighting-title);
+}
+
+.hljs-keyword {
+  color: var(--code-syntax-highlighting-keyword);
+}
+
+.hljs-code-fg {
+  color: var(--code-syntax-highlighting-code-fg);
+}
+
+.hljs-literal {
+  color: var(--code-syntax-highlighting-literal);
+}
+
+.hljs-type {
+  color: var(--code-syntax-highlighting-type);
+}
+
+.hljs-subst {
+  color: var(--code-syntax-highlighting-subst);
+}
+
+.hljs-meta {
+  color: var(--code-syntax-highlighting-meta);
+}
+
+.hljs-string {
+  color: var(--code-syntax-highlighting-string);
+}
+
+.hljs-deletion {
+  color: var(--code-syntax-highlighting-deletion);
+}
+
+.hljs-addition {
+  color: var(--code-syntax-highlighting-addition);
+}
+
+.hljs-variable {
+  color: var(--code-syntax-highlighting-variable);
+}
+
+/* Scrollbar */
+
+/*   For Firefox */
+.snippet {
+  scrollbar-color: var(--code-syntax-highlighting-scrollbar);
+  scrollbar-width: thin;
+}
+
+/*   For Chrome */
+
+.snippet::-webkit-scrollbar-thumb {
+  background-color: var(--code-syntax-highlighting-scrollbar);
+  opacity: 0.75;
+  border-radius: 100px;
+  border: 3px solid var(--action-primary-background-default-solid);
+}
+
+.snippet::-webkit-scrollbar-thumb:hover {
+  background-color: var(--code-syntax-highlighting-scrollbar-hover);
+   border: 3px solid var(--action-primary-background-default-solid);;
+}
+
+.snippet::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}

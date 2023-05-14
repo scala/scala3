@@ -1,13 +1,15 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
-import Types._, Symbols._, Contexts._, Decorators._
+import Types._, Symbols._, Contexts._
+import cc.CaptureSet.IdempotentCaptRefMap
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
  */
 object Substituters:
 
-  final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap)(using Context): Type =
+  final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
         if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
@@ -23,7 +25,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map)(using Context): Type =
+  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -37,7 +39,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map)(using Context): Type =
+  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map  | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -52,7 +54,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap)(using Context): Type =
+  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -72,7 +74,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap)(using Context): Type =
+  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -103,7 +105,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substThis(tp: Type, from: ClassSymbol, to: Type, theMap: SubstThisMap)(using Context): Type =
+  final def substThis(tp: Type, from: ClassSymbol, to: Type, theMap: SubstThisMap | Null)(using Context): Type =
     tp match {
       case tp: ThisType =>
         if (tp.cls eq from) to else tp
@@ -117,7 +119,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substRecThis(tp: Type, from: Type, to: Type, theMap: SubstRecThisMap)(using Context): Type =
+  final def substRecThis(tp: Type, from: Type, to: Type, theMap: SubstRecThisMap | Null)(using Context): Type =
     tp match {
       case tp @ RecThis(binder) =>
         if (binder eq from) to else tp
@@ -131,7 +133,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap)(using Context): Type =
+  final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
         if (tp == from) to else tp
@@ -145,7 +147,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap)(using Context): Type =
+  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap | Null)(using Context): Type =
     tp match {
       case tp: ParamRef =>
         if (tp.binder == from) to(tp.paramNum) else tp
@@ -161,8 +163,9 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap {
+  final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
+    def inverse(tp: Type): Type = tp.subst(to, from)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
@@ -177,8 +180,9 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
+  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
+    def inverse(tp: Type) = tp.substSym(to, from) // implicitly requires that `to` contains no duplicates.
   }
 
   final class SubstThisMap(from: ClassSymbol, to: Type)(using Context) extends DeepTypeMap {
@@ -189,11 +193,11 @@ object Substituters:
     def apply(tp: Type): Type = substRecThis(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap {
+  final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
     def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
+  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap, IdempotentCaptRefMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
   }
 

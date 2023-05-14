@@ -51,6 +51,7 @@ object language:
     /** Experimental support for using indentation for arguments
      */
     @compileTimeOnly("`fewerBraces` can only be used at compile time in import statements")
+    @deprecated("`fewerBraces` is now standard, no language import is needed", since = "3.3")
     object fewerBraces
 
     /** Experimental support for typechecked exception capabilities
@@ -60,6 +61,43 @@ object language:
     @compileTimeOnly("`saferExceptions` can only be used at compile time in import statements")
     object saferExceptions
 
+    /** Adds support for clause interleaving:
+      * Methods can now have as many type clauses as they like, this allows to have type bounds depend on terms: `def f(x: Int)[A <: x.type]: A`
+      *
+      * @see [[http://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html]]
+      */
+    @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
+    object clauseInterleaving
+
+    /** Adds support for relaxed imports of extension methods.
+      * Extension methods with the same name can be imported from several places.
+      *
+      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
+      */
+    @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
+    object relaxedExtensionImports
+
+    /** Experimental support for pure function type syntax
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
+     */
+    @compileTimeOnly("`pureFunctions` can only be used at compile time in import statements")
+    object pureFunctions
+
+    /** Experimental support for capture checking; implies support for pureFunctions
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     */
+    @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
+    object captureChecking
+
+    /** Experimental support for automatic conversions of arguments, without requiring
+     *  a langauge import `import scala.language.implicitConversions`.
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/into-modifier]]
+     */
+    @compileTimeOnly("`into` can only be used at compile time in import statements")
+    object into
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
@@ -136,29 +174,61 @@ object language:
 
   /** Set source version to 3.0-migration.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.0-migration` can only be used at compile time in import statements")
   object `3.0-migration`
 
   /** Set source version to 3.0.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
   @compileTimeOnly("`3.0` can only be used at compile time in import statements")
   object `3.0`
 
-/* This can be added when we go to 3.1
   /** Set source version to 3.1-migration.
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * This is a no-op, and should not be used. A syntax error will be reported upon import.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
+  @compileTimeOnly("`3.1-migration` can only be used at compile time in import statements")
+  @deprecated("`3.1-migration` is not valid, use `3.1` instead", since = "3.2")
   object `3.1-migration`
 
   /** Set source version to 3.1
     *
-    * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
     */
+  @compileTimeOnly("`3.1` can only be used at compile time in import statements")
   object `3.1`
-*/
+
+  /** Set source version to 3.2-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.2-migration` can only be used at compile time in import statements")
+  object `3.2-migration`
+
+  /** Set source version to 3.2
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.2` can only be used at compile time in import statements")
+  object `3.2`
+
+  /** Set source version to 3.3-migration.
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.3-migration` can only be used at compile time in import statements")
+  object `3.3-migration`
+
+  /** Set source version to 3.3
+    *
+    * @see [[https://docs.scala-lang.org/scala3/guides/migration/compatibility-intro.html]]
+    */
+  @compileTimeOnly("`3.3` can only be used at compile time in import statements")
+  object `3.3`
+
 end language

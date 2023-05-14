@@ -33,9 +33,8 @@ object TestNoAutoTupling {
 
 // t0851 is essentially the same:
 object test1 {
-  case class Foo[T,T2](f : (T,T2) => String) extends (((T,T2)) => String){
+  case class Foo[T,T2](f : (T,T2) => String) {
     def apply(t : T) = (s:T2) => f(t,s)
-    def apply(p : (T,T2)) = f(p._1,p._2)
   }
   implicit def g[T](f : (T,String) => String): test1.Foo[T,String] = Foo(f)
   def main(args : Array[String]) : Unit = {

@@ -21,7 +21,7 @@ def bar: Int raises Exception =
 
 @main def Test =
   try
-    erased given CanThrow[Fail] = ???
+    erased given CanThrow[Fail] = compiletime.erasedValue
     println(foo(true))
     println(foo(false))
     println(bar)        // error

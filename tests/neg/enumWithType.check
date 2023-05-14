@@ -2,5 +2,5 @@
 2 |  case C[U](u: U) // error
   |  ^
   |  explicit extends clause needed because both enum case and enum class have type parameters
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

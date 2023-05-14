@@ -1,4 +1,4 @@
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.util.{ Map => JMap }
 
 class A {

@@ -1,0 +1,9 @@
+> compile
+> recordPreviousIterations
+# Force recompilation of A because B.inlinedAny, called by A.callInline, has changed
+# the type of its parameters.
+$ copy-file changes/B1.scala B.scala
+> compile
+# 1 to recompile B, then 1 more to recompile A due to B.inlinedAny change,
+# then 1 final compilation to recompile C due to A.callInline change
+> checkIterations 3

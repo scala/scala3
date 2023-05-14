@@ -19,7 +19,6 @@ class Foo(using TC) {
 
 object Test extends App {
   new C(using tc)
-  new C()(using tc)
   new C(using tc) {}
   new C2(1)(using tc)(using List(tc))
   new C2(1)(using tc)(using List(tc)) {}

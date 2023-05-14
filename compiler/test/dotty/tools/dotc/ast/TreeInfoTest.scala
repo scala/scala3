@@ -5,10 +5,9 @@ package ast
 import org.junit.Test
 import core.Names._
 import core.StdNames.nme
-import core.Types._
 import core.Symbols._
 import org.junit.Assert._
-import core.Contexts.{Context, ctx}
+import core.Contexts.Context
 
 class TreeInfoTest extends DottyTest {
 

@@ -2,11 +2,20 @@ package dotty.tools
 package dotc
 package reporting
 
-import core.Contexts._
-import config.Config
-import config.Printers
-import core.Mode
+import scala.language.unsafeNulls
 
+import core.*, Contexts.*, Decorators.*
+import config.*
+import printing.Formatting.*
+
+import scala.compiletime.*
+
+/** Exposes the {{{ trace("question") { op } }}} syntax.
+ *
+ * Traced operations will print indented messages if enabled.
+ * Tracing depends on [[Config.tracingEnabled]] and [[dotty.tools.dotc.config.ScalaSettings.Ylog]].
+ * Tracing can be forced by replacing [[trace]] with [[trace.force]] or [[trace.log]] (see below).
+ */
 object trace extends TraceSyntax:
   inline def isEnabled = Config.tracingEnabled
   protected val isForced = false
@@ -14,6 +23,10 @@ object trace extends TraceSyntax:
   object force extends TraceSyntax:
     inline def isEnabled: true = true
     protected val isForced = true
+
+  object log extends TraceSyntax:
+    inline def isEnabled: true = true
+    protected val isForced = false
 end trace
 
 /** This module is carefully optimized to give zero overhead if Config.tracingEnabled
@@ -39,9 +52,20 @@ trait TraceSyntax:
     else op
 
   inline def apply[T](inline question: String, inline printer: Printers.Printer, inline show: Boolean)(inline op: T)(using Context): T =
-    inline if isEnabled then
-      doTrace[T](question, printer, if show then showShowable(_) else alwaysToString)(op)
-    else op
+    apply(question, printer, {
+      val showOp: T => String = inline if show == true then
+        val showT = summonInline[Show[T]]
+        {
+          given Show[T] = showT
+          t => i"$t"
+        }
+      else
+        summonFrom {
+          case given Show[T] => t => i"$t"
+          case _             => alwaysToString
+        }
+      showOp
+    })(op)
 
   inline def apply[T](inline question: String, inline printer: Printers.Printer)(inline op: T)(using Context): T =
     apply[T](question, printer, false)(op)
@@ -52,15 +76,11 @@ trait TraceSyntax:
   inline def apply[T](inline question: String)(inline op: T)(using Context): T =
     apply[T](question, false)(op)
 
-  private def showShowable(x: Any)(using Context) = x match
-    case x: printing.Showable => x.show
-    case _ => String.valueOf(x)
-
   private val alwaysToString = (x: Any) => String.valueOf(x)
 
   private def doTrace[T](question: => String,
                          printer: Printers.Printer = Printers.default,
-                         showOp: T => String = alwaysToString)
+                         showOp: T => String)
                         (op: => T)(using Context): T =
     if ctx.mode.is(Mode.Printing) || !isForced && (printer eq Printers.noPrinter) then op
     else
@@ -73,7 +93,7 @@ trait TraceSyntax:
       var logctx = ctx
       while logctx.reporter.isInstanceOf[StoreReporter] do logctx = logctx.outer
       def margin = ctx.base.indentTab * ctx.base.indent
-      def doLog(s: String) = if isForced then println(s) else report.log(s)
+      def doLog(s: String) = if isForced then println(s) else report.log(s)(using logctx)
       def finalize(msg: String) =
         if !finalized then
           ctx.base.indent -= 1

@@ -6,6 +6,7 @@ import org.junit.{ Test, BeforeClass, AfterClass }
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
+import reporting.TestReporter
 import vulpix._
 
 @Category(Array(classOf[ScalaJSCompilationTests]))
@@ -23,6 +24,7 @@ class ScalaJSCompilationTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   // Negative tests ------------------------------------------------------------
 
@@ -31,6 +33,34 @@ class ScalaJSCompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/neg-scalajs", scalaJSOptions),
     ).checkExpectedErrors()
+  }
+
+  // Run tests -----------------------------------------------------------------
+
+  override protected def shouldSkipTestSource(testSource: TestSource): Boolean =
+    testSource.allToolArgs.get(ToolName.ScalaJS).exists(_.contains("--skip"))
+
+  override def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val scalaJSOptions = toolArgs.getOrElse(ToolName.ScalaJS, Nil)
+
+    try
+      val useCompliantSemantics = scalaJSOptions.contains("--compliant-semantics")
+      val sjsCode = ScalaJSLink.link(classPath, useCompliantSemantics)
+      JSRun.runJSCode(sjsCode)
+    catch
+      case t: Exception =>
+        val writer = new java.io.StringWriter()
+        t.printStackTrace(new java.io.PrintWriter(writer))
+        Failure(writer.toString())
+  end runMain
+
+  @Test def runScalaJS: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("runScalaJS")
+    aggregateTests(
+      compileFilesInDir("tests/run", scalaJSOptions),
+    ).checkRuns()
   }
 }
 

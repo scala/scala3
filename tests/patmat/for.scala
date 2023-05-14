@@ -3,5 +3,5 @@ object Test {
     for ((a, b) <- l) yield a
   }
 
-  def bar(xs: List[(Int, List[Int])]): Unit = for ( (_, x :: y :: xs) <- xs) yield x
+  def bar(xs: List[(Int, List[Int])]): Unit = for (case (_, x :: y :: xs) <- xs) yield x
 }

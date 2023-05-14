@@ -1,0 +1,105 @@
+.attributes {
+  display: grid;
+  grid-template-columns: 184px 1fr;
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+}
+
+.attributes .attributes {
+  border-bottom: none;
+}
+
+.attributes p {
+  margin-block: calc(3 * var(--base-spacing));
+}
+
+.attributes p:has(span:empty) {
+  display: none;
+}
+
+.membersList .attributes p {
+  margin-block: calc(1 * var(--base-spacing));
+}
+
+.attributes p:first-child {
+  margin-block-start: 0;
+}
+
+.attributes p:last-child {
+  margin-block-end: 0;
+}
+
+.attributes > dt {
+ padding: calc(2.5 * var(--base-spacing)) calc(6 * var(--base-spacing)) calc(2.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  border-top: 1px solid var(--border-default);
+  text-align: right;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.attributes > dd {
+  padding-left: 10%;
+  margin: 0;
+  border-top: 1px solid var(--border-default);
+  overflow: hidden;
+  padding: calc(2 * var(--base-spacing)) 0;
+}
+
+.attributes .memberList dt {
+ padding: calc(1.5 * var(--base-spacing)) calc(6 * var(--base-spacing)) calc(1.5 * var(--base-spacing)) calc(2 * var(--base-spacing));
+  border-top: 1px solid var(--border-default);
+  text-align: right;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.attributes .memberList dd {
+  padding-left: 10%;
+  margin: 0;
+  border-top: 1px solid var(--border-default);
+  overflow: hidden;
+  padding: var(--base-spacing) 0;
+}
+
+.attributes > dt:first-child,
+.attributes > dd:first-of-type {
+  border-top: none;
+}
+
+.attributes > dd > .attributes > dt {
+  border: none;
+  padding: 0;
+  text-align: initial;
+  width: 20%;
+}
+
+.attributes > dd > .attributes > dd {
+  border: none;
+  padding: 0;
+  text-align: initial;
+  width: 80%;
+}
+
+@media (max-width: 1376px) {
+  .attributes {
+    display: flex;
+    flex-flow: column;
+  }
+
+  .attributes > dt {
+    padding-left: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+    text-align: left;
+  }
+
+  .attributes > dd {
+    border-top: 0;
+  }
+
+  .attributes.attributes-small {
+    padding-left: 40px;
+  }
+}

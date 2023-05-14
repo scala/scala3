@@ -1,35 +1,18 @@
 package dotty.tools.scaladoc
 
-import java.util.ServiceLoader
 import java.io.File
 import java.io.FileWriter
-import java.util.jar._
-import collection.JavaConverters._
-import collection.immutable.ArraySeq
+import java.nio.file.Paths
 
-import java.nio.file.{ Files, Paths }
+import collection.immutable.ArraySeq
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
-
-import dotty.tools.scaladoc.Inkuire
 import dotty.tools.scaladoc.Inkuire._
 
 object Scaladoc:
-  enum CommentSyntax:
-    case Wiki
-    case Markdown
-
-  object CommentSyntax:
-    def parse(str: String) = str match
-        case "wiki" => Some(CommentSyntax.Wiki)
-        case "markdown" => Some(CommentSyntax.Markdown)
-        case _ => None
-
-    val default = CommentSyntax.Markdown
-
   case class Args(
     name: String,
     tastyDirs: Seq[File] = Nil,
@@ -41,7 +24,7 @@ object Scaladoc:
     projectVersion: Option[String] = None,
     projectLogo: Option[String] = None,
     projectFooter: Option[String] = None,
-    defaultSyntax: CommentSyntax = CommentSyntax.Markdown,
+    defaultSyntax: List[String] = Nil,
     sourceLinks: List[String] = Nil,
     revision: Option[String] = None,
     externalMappings: List[ExternalDocLink] = Nil,
@@ -60,7 +43,8 @@ object Scaladoc:
     generateInkuire : Boolean = false,
     apiSubdirectory : Boolean = false,
     scastieConfiguration: String = "",
-    projectFormat: String = "html",
+    defaultTemplate: Option[String] = None,
+    quickLinks: List[QuickLink] = List.empty
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -164,12 +148,6 @@ object Scaladoc:
         report.warning("Destination is not provided, please provide '-d' parameter pointing to directory where docs should be created")
         File("output")
 
-      val parseSyntax: CommentSyntax = syntax.nonDefault.fold(CommentSyntax.default){ str =>
-        CommentSyntax.parse(str).getOrElse{
-          report.error(s"unrecognized value for -syntax option: $str")
-          CommentSyntax.default
-        }
-      }
       val legacySourceLinkList = if legacySourceLink.get.nonEmpty then List(legacySourceLink.get) else Nil
 
       val externalMappings =
@@ -198,6 +176,15 @@ object Scaladoc:
           },right => Some(right))
         }
 
+      val quickLinksParsed =
+        quickLinks.get.flatMap { s =>
+          QuickLink.parse(s) match
+            case Left(err) =>
+              report.warning(err)
+              None
+            case Right(value) => Some(value)
+        }
+
       unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
         report.warning(s"Setting ${s.name} is currently not supported.")
       }
@@ -219,7 +206,7 @@ object Scaladoc:
         projectVersion.nonDefault,
         projectLogo.nonDefault,
         projectFooter.nonDefault,
-        parseSyntax,
+        syntax.get,
         sourceLinks.get ++ legacySourceLinkList,
         revision.nonDefault,
         externalMappings ++ legacyExternalMappings,
@@ -238,7 +225,8 @@ object Scaladoc:
         generateInkuire.get,
         apiSubdirectory.get,
         scastieConfiguration.get,
-        projectFormat.get,
+        defaultTemplate.nonDefault,
+        quickLinksParsed
       )
       (Some(docArgs), newContext)
     }
@@ -246,11 +234,7 @@ object Scaladoc:
   private [scaladoc] def run(args: Args)(using ctx: CompilerContext): DocContext =
     given docContext: DocContext = new DocContext(args, ctx)
     val module = ScalaModuleProvider.mkModule()
-
-    val renderer = args.projectFormat match
-      case "html" => new dotty.tools.scaladoc.renderers.HtmlRenderer(module.rootPackage, module.members)
-      case "md" => new dotty.tools.scaladoc.renderers.MarkdownRenderer(module.rootPackage, module.members)
-
-    renderer.render()
+    new dotty.tools.scaladoc.renderers.HtmlRenderer(module.rootPackage, module.members).render()
+    docContext.reportPathCompatIssues()
     report.inform("generation completed successfully")
     docContext

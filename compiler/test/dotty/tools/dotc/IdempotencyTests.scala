@@ -2,6 +2,8 @@ package dotty
 package tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile}
 import java.nio.file.{Files, Path, Paths}
 
@@ -10,6 +12,7 @@ import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
+import reporting.TestReporter
 import vulpix._
 
 
@@ -74,6 +77,7 @@ object IdempotencyTests extends ParallelTesting {
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  def failedTests = TestReporter.lastRunFailedTests
 
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {

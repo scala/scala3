@@ -14,7 +14,7 @@ public class ChildJVMMain {
 
     private static void runMain(String dir) throws Exception {
         Method meth = null;
-        Object[] args = new Object[]{ new String[]{ "jvm" } };
+        Object[] args = new Object[]{ new String[]{ } };
         try {
             String jcp = System.getProperty("java.class.path");
             String sep = File.pathSeparator;

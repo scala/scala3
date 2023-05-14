@@ -1,0 +1,241 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+foo
+61
+68
+4
+foo
+DefDef
+false
+0
+false
+def foo
+
+1
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+get
+114
+121
+7
+get
+DefDef
+false
+0
+false
+def get
+
+2
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+tap
+170
+173
+8
+???
+Ident
+false
+0
+false
+???
+
+3
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+tap
+139
+146
+8
+tap
+DefDef
+false
+0
+false
+def tap
+
+4
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+<init>
+177
+189
+10
+foo
+Apply
+false
+0
+false
+"str".foo(0)
+
+5
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+<init>
+177
+186
+10
+foo
+Apply
+false
+0
+false
+"str".foo
+
+6
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+<init>
+277
+287
+11
+get
+Apply
+false
+0
+false
+123.get(0)
+
+7
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+foo
+370
+377
+13
+foo
+DefDef
+false
+0
+false
+def foo
+
+8
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+bar
+405
+421
+14
+tap
+Apply
+false
+0
+false
+foo.tap(println)
+
+9
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+bar
+405
+412
+14
+tap
+Apply
+false
+0
+false
+foo.tap
+
+10
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+bar
+405
+408
+14
+foo
+Ident
+false
+0
+false
+foo
+
+11
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+$anonfun
+413
+420
+14
+println
+Apply
+false
+0
+false
+println
+
+12
+PolymorphicExtensions.scala
+covtest
+PolyExt$
+Object
+covtest.PolyExt$
+bar
+390
+397
+14
+bar
+DefDef
+false
+0
+false
+def bar
+

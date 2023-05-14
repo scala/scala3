@@ -15,12 +15,12 @@ object lrutest {
 	cache.last                                //> res4: Int = 6
 	cache lookup "hi"                         //> res5: String = x
 	cache.indices.take(10).toList             //> res6: List[Int] = List(7, 0, 1, 2, 3, 4, 5, 6, 7, 0)
-	
+
 	for (i <- 1 to 10) {
 	  if (cache.lookup(i.toString) == null)
 		  cache.enter(i.toString, i.toString)
 	}
-	  
+
   cache.indices.take(10).toList                   //> res7: List[Int] = List(5, 6, 7, 0, 1, 2, 3, 4, 5, 6)
 	cache                                     //> res8: dotty.tools.dotc.util.LRUCache[String,String] = LRUCache(10 -> 10, 9 -
                                                   //| > 9, 8 -> 8, 7 -> 7, 6 -> 6, 5 -> 5, 4 -> 4, 3 -> 3)
@@ -35,6 +35,6 @@ object lrutest {
                                                   //| > 10, 7 -> 7, 9 -> 9, 8 -> 8, 6 -> 6, 4 -> 4, 3 -> 3)
   cache.lookup("11")                              //> res16: String = null
   cache.enter("11", "!!")
-  cache                                           //> res17: dotty.tools.dotc.util.LRUCache[String,String] = LRUCache(11 -> !!, 5 
+  cache                                           //> res17: dotty.tools.dotc.util.LRUCache[String,String] = LRUCache(11 -> !!, 5
                                                   //| -> 5, 10 -> 10, 7 -> 7, 9 -> 9, 8 -> 8, 6 -> 6, 4 -> 4)
 }

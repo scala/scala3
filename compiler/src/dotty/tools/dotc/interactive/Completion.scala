@@ -1,29 +1,30 @@
 package dotty.tools.dotc.interactive
 
-import java.nio.charset.Charset
+import scala.language.unsafeNulls
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.CheckRealizable
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, TermSymbol, defn, newSymbol}
-import dotty.tools.dotc.core.Scopes.Scope
-import dotty.tools.dotc.core.StdNames.{nme, tpnme}
+import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.core.Scopes._
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.TypeComparer
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NamedType, NoType, PolyType, TermRef, Type}
-import dotty.tools.dotc.printing.Texts._
-import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
+import dotty.tools.dotc.core.Phases
+import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
+import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.util.Chars
+import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 /**
  * One of the results of a completion query.
@@ -46,7 +47,7 @@ object Completion {
    */
   def completions(pos: SourcePosition)(using Context): (Int, List[Completion]) = {
     val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
-    computeCompletions(pos, path)(using Interactive.contextOfPath(path))
+    computeCompletions(pos, path)(using Interactive.contextOfPath(path).withPhase(Phases.typerPhase))
   }
 
   /**
@@ -61,35 +62,57 @@ object Completion {
    */
   def completionMode(path: List[Tree], pos: SourcePosition): Mode =
     path match {
+      case Ident(_) :: Import(_, _) :: _ => Mode.ImportOrExport
       case (ref: RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
 
       case (sel: untpd.ImportSelector) :: _ =>
-        if sel.imported.span.contains(pos.span) then Mode.Import
+        if sel.imported.span.contains(pos.span) then Mode.ImportOrExport
         else Mode.None // Can't help completing the renaming
 
-      case Import(_, _) :: _ =>
-        Mode.Import
-
-      case _ =>
-        Mode.None
+      case (_: ImportOrExport) :: _ => Mode.ImportOrExport
+      case _ => Mode.None
     }
+
+  /** When dealing with <errors> in varios palces we check to see if they are
+   *  due to incomplete backticks. If so, we ensure we get the full prefix
+   *  including the backtick.
+   *
+   * @param content The source content that we'll check the positions for the prefix
+   * @param start The start position we'll start to look for the prefix at
+   * @param end The end position we'll look for the prefix at
+   * @return Either the full prefix including the ` or an empty string
+   */
+  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String =
+    content.lift(start) match
+      case Some(char) if char == '`' =>
+        content.slice(start, end).mkString
+      case _ =>
+        ""
 
   /**
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
-    path match {
+  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
+    path match
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
 
-      case Import(expr, selectors) :: _ =>
-        selectors.find(_.span.contains(pos.span)).map { selector =>
+      case (tree: untpd.ImportOrExport) :: _ =>
+        tree.selectors.find(_.span.contains(pos.span)).map { selector =>
           completionPrefix(selector :: Nil, pos)
         }.getOrElse("")
+
+      // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
+      case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
+        checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
+
+      // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
+      case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
+        checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
 
       case (ref: untpd.RefTree) :: _ =>
         if (ref.name == nme.ERROR) ""
@@ -97,7 +120,7 @@ object Completion {
 
       case _ =>
         ""
-    }
+  end completionPrefix
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(path: List[Tree]): Int =
@@ -108,7 +131,11 @@ object Completion {
 
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
     val mode = completionMode(path, pos)
-    val prefix = completionPrefix(path, pos)
+    val rawPrefix = completionPrefix(path, pos)
+
+    val hasBackTick = rawPrefix.headOption.contains('`')
+    val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
+
     val completer = new Completer(mode, prefix, pos)
 
     val completions = path match {
@@ -117,21 +144,54 @@ object Completion {
         case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
         case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
         case Select(qual, _) :: _                                     => Map.empty
-        case Import(expr, _) :: _                                     => completer.directMemberCompletions(expr)
+        case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
         case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
         case _                                                        => completer.scopeCompletions
       }
 
     val describedCompletions = describeCompletions(completions)
+    val backtickedCompletions =
+      describedCompletions.map(completion => backtickCompletions(completion, hasBackTick))
+
     val offset = completionOffset(path)
 
     interactiv.println(i"""completion with pos     = $pos,
                           |                prefix  = ${completer.prefix},
                           |                term    = ${completer.mode.is(Mode.Term)},
                           |                type    = ${completer.mode.is(Mode.Type)}
-                          |                results = $describedCompletions%, %""")
-    (offset, describedCompletions)
+                          |                results = $backtickedCompletions%, %""")
+    (offset, backtickedCompletions)
   }
+
+  def backtickCompletions(completion: Completion, hasBackTick: Boolean) =
+    if hasBackTick || needsBacktick(completion.label) then
+      completion.copy(label = s"`${completion.label}`")
+    else
+      completion
+
+  // This borrows from Metals, which itself borrows from Ammonite. This uses
+  // the same approach, but some of the utils that already exist in Dotty.
+  // https://github.com/scalameta/metals/blob/main/mtags/src/main/scala/scala/meta/internal/mtags/KeywordWrapper.scala
+  // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
+  private def needsBacktick(s: String) =
+    val chunks = s.split("_", -1)
+
+    val validChunks = chunks.zipWithIndex.forall { case (chunk, index) =>
+      chunk.forall(Chars.isIdentifierPart) ||
+      (chunk.forall(Chars.isOperatorPart) &&
+        index == chunks.length - 1 &&
+        !(chunks.lift(index - 1).contains("") && index - 1 == 0))
+    }
+
+    val validStart =
+      Chars.isIdentifierStart(s(0)) || chunks(0).forall(Chars.isOperatorPart)
+
+    val valid = validChunks && validStart && !keywords.contains(s)
+
+    !valid
+  end needsBacktick
+
+  private lazy val keywords = Tokens.keywords.map(Tokens.tokenString)
 
   /**
    * Return the list of code completions with descriptions based on a mapping from names to the denotations they refer to.
@@ -174,10 +234,8 @@ object Completion {
       val mappings = collection.mutable.Map.empty[Name, List[ScopedDenotations]].withDefaultValue(List.empty)
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
-      var ctx = context
 
-      while ctx ne NoContext do
-        given Context = ctx
+      ctx.outersIterator.foreach { case ctx @ given Context =>
         if ctx.isImportContext then
           importedCompletions.foreach { (name, denots) =>
             addMapping(name, ScopedDenotations(denots, ctx))
@@ -187,28 +245,57 @@ object Completion {
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx))
             }
-        else if ctx.scope != null then
+        else if ctx.scope ne EmptyScope then
           ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
             .flatMap(_.alternatives)
             .groupByName.foreach { (name, denots) =>
               addMapping(name, ScopedDenotations(denots, ctx))
             }
-
-        ctx = ctx.outer
-      end while
+      }
 
       var resultMappings = Map.empty[Name, Seq[SingleDenotation]]
 
       mappings.foreach { (name, denotss) =>
         val first = denotss.head
+
+        // import a.c
+        def isSingleImport =  denotss.length < 2
+        // import a.C
+        // locally {  import b.C }
+        def isImportedInDifferentScope =  first.ctx.scope ne denotss(1).ctx.scope
+        // import a.C
+        // import a.C
+        def isSameSymbolImportedDouble =  denotss.forall(_.denots == first.denots)
+
+        def isScalaPackage(scopedDenots: ScopedDenotations) =
+          scopedDenots.denots.exists(_.info.typeSymbol.owner == defn.ScalaPackageClass)
+
+        def isJavaLangPackage(scopedDenots: ScopedDenotations) =
+          scopedDenots.denots.exists(_.info.typeSymbol.owner == defn.JavaLangPackageClass)
+
+        // For example
+        // import java.lang.annotation
+        //    is shadowed by
+        // import scala.annotation
+        def isJavaLangAndScala =
+          try
+            denotss.forall(denots => isScalaPackage(denots) || isJavaLangPackage(denots))
+          catch
+            case NonFatal(_) => false
+
         denotss.find(!_.ctx.isImportContext) match {
           // most deeply nested member or local definition if not shadowed by an import
           case Some(local) if local.ctx.scope == first.ctx.scope =>
             resultMappings += name -> local.denots
 
-          // most deeply nested import if not shadowed by another import
-          case None if denotss.length < 2 || (denotss(1).ctx.scope ne first.ctx.scope) =>
+          case None if isSingleImport || isImportedInDifferentScope || isSameSymbolImportedDouble =>
             resultMappings += name -> first.denots
+          case None if isJavaLangAndScala =>
+            denotss.foreach{
+              denots =>
+                if isScalaPackage(denots) then
+                  resultMappings += name -> denots.denots
+            }
 
           case _ =>
         }
@@ -217,20 +304,30 @@ object Completion {
       resultMappings
     }
 
+    /** Widen only those types which are applied or are exactly nothing
+     */
+    def widenQualifier(qual: Tree)(using Context): Tree =
+      qual.tpe.widenDealias match
+        case widenedType if widenedType.isExactlyNothing => qual.withType(widenedType)
+        case appliedType: AppliedType => qual.withType(appliedType)
+        case _ => qual
+
     /** Completions for selections from a term.
      *  Direct members take priority over members from extensions
      *  and so do members from extensions over members from implicit conversions
      */
     def selectionCompletions(qual: Tree)(using Context): CompletionMap =
-      implicitConversionMemberCompletions(qual) ++
-        extensionCompletions(qual) ++
-        directMemberCompletions(qual)
+      val adjustedQual = widenQualifier(qual)
+
+      implicitConversionMemberCompletions(adjustedQual) ++
+        extensionCompletions(adjustedQual) ++
+        directMemberCompletions(adjustedQual)
 
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
     def directMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing then
+      if qual.tpe.isExactlyNothing then
         Map.empty
       else
         accessibleMembers(qual.tpe).groupByName
@@ -277,12 +374,13 @@ object Completion {
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
-      if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
+      if qual.tpe.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
-        val membersFromConversion =
-          implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState()).flatMap(accessibleMembers)
-        membersFromConversion.toSeq.groupByName
+        implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
+          .flatMap(accessibleMembers)
+          .toSeq
+          .groupByName
 
     /** Completions from extension methods */
     private def extensionCompletions(qual: Tree)(using Context): CompletionMap =
@@ -315,7 +413,7 @@ object Completion {
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val termCompleter = new Completer(Mode.Term, prefix, pos)
       val extMethodsInScope = termCompleter.scopeCompletions.toList.flatMap {
-        case (name, denots) => denots.collect { case d: SymDenotation => (d.termRef, name.asTermName) }
+        case (name, denots) => denots.collect { case d: SymDenotation if d.isTerm => (d.termRef, name.asTermName) }
       }
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
@@ -323,7 +421,7 @@ object Completion {
       val extMethodsFromGivensInScope = extractMemberExtensionMethods(givensInScope)
 
       // 3. The reference is of the form r.m and the extension method is defined in the implicit scope of the type of r.
-      val implicitScopeCompanions = ctx.run.implicitScope(qual.tpe).companionRefs.showAsList
+      val implicitScopeCompanions = ctx.run.nn.implicitScope(qual.tpe).companionRefs.showAsList
       val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.
@@ -354,6 +452,7 @@ object Completion {
     private def include(denot: SingleDenotation, nameInScope: Name)(using Context): Boolean =
       val sym = denot.symbol
 
+
       nameInScope.startsWith(prefix) &&
       sym.exists &&
       completionsFilter(NoType, nameInScope) &&
@@ -365,9 +464,21 @@ object Completion {
       !sym.isPackageObject &&
       !sym.is(Artifact) &&
       (
-           (mode.is(Mode.Term) && sym.isTerm)
-        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember))
+           (mode.is(Mode.Term) && (sym.isTerm || sym.is(ModuleClass))
+        || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember)))
       )
+
+    private def extractRefinements(site: Type)(using Context): Seq[SingleDenotation] =
+      site match
+        case RefinedType(parent, name, info) =>
+          val flags = info match
+            case _: (ExprType | MethodOrPoly) => Method
+            case _ => EmptyFlags
+          val symbol = newSymbol(owner = NoSymbol, name, flags, info)
+          val denot = SymDenotation(symbol, NoSymbol, name, flags, info)
+          denot +: extractRefinements(parent)
+        case tp: TypeProxy => extractRefinements(tp.superType)
+        case _ => List.empty
 
     /** @param site The type to inspect.
      *  @return The members of `site` that are accessible and pass the include filter.
@@ -375,27 +486,35 @@ object Completion {
     private def accessibleMembers(site: Type)(using Context): Seq[SingleDenotation] = {
       def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
         try
-          buf ++= site.member(name).alternatives
+          val member = site.member(name)
+          if member.symbol.is(ParamAccessor) && !member.symbol.isAccessibleFrom(site) then
+            buf ++= site.nonPrivateMember(name).alternatives
+          else
+            buf ++= member.alternatives
         catch
           case ex: TypeError =>
 
-      site.memberDenots(completionsFilter, appendMemberSyms).collect {
+      val members = site.memberDenots(completionsFilter, appendMemberSyms).collect {
         case mbr if include(mbr, mbr.name)
                     && mbr.symbol.isAccessibleFrom(site) => mbr
       }
+      val refinements = extractRefinements(site).filter(mbr => include(mbr, mbr.name))
+
+      members ++ refinements
     }
 
     /**
      * Given `qual` of type T, finds all the types S such that there exists an implicit conversion
-     * from T to S.
+     * from T to S. It then applies conversion method for proper type parameter resolution.
      *
      * @param qual The argument to which the implicit conversion should be applied.
-     * @return The set of types that `qual` can be converted to.
+     * @return The set of types after `qual` implicit conversion.
      */
     private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] = {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-      val targets = conversions.map(_.widen.finalResultType)
+      val targets = conversions.map(_.tree.tpe)
+
       interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
       targets
     }
@@ -441,7 +560,7 @@ object Completion {
     val Type: Mode = new Mode(2)
 
     /** Both term and type symbols are allowed */
-    val Import: Mode = new Mode(4) | Term | Type
+    val ImportOrExport: Mode = new Mode(4) | Term | Type
   }
 }
 

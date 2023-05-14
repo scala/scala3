@@ -2,56 +2,61 @@ package dotty.tools.backend.sjs
 
 import dotty.tools.dotc.core._
 import Names.TermName
-import StdNames._
 import Types._
 import Contexts._
 import Symbols._
+import Decorators.em
 
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.ReadOnlyMap
 
-import scala.collection.mutable
-
 object JSPrimitives {
 
-  final val FirstJSPrimitiveCode = 300
+  inline val FirstJSPrimitiveCode = 300
 
-  final val DYNNEW = FirstJSPrimitiveCode + 1 // Instantiate a new JavaScript object
+  inline val DYNNEW = FirstJSPrimitiveCode + 1 // Instantiate a new JavaScript object
 
-  final val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
+  inline val ARR_CREATE = DYNNEW + 1 // js.Array.apply (array literal syntax)
 
-  final val TYPEOF = ARR_CREATE + 1 // typeof x
-  final val JS_NATIVE = TYPEOF + 1  // js.native. Marker method. Fails if tried to be emitted.
+  inline val TYPEOF = ARR_CREATE + 1 // typeof x
+  inline val JS_NATIVE = TYPEOF + 1  // js.native. Marker method. Fails if tried to be emitted.
 
-  final val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
+  inline val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
-  final val JS_IMPORT = UNITVAL + 1        // js.import.apply(specifier)
-  final val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
+  inline val JS_NEW_TARGET = UNITVAL + 1 // js.new.target
 
-  final val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
-  final val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
-  final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
-  final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
-  final val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
+  inline val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
+  inline val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
-  final val STRICT_EQ = LINKING_INFO + 1 // js.special.strictEquals
-  final val IN = STRICT_EQ + 1           // js.special.in
-  final val INSTANCEOF = IN + 1          // js.special.instanceof
-  final val DELETE = INSTANCEOF + 1      // js.special.delete
-  final val FORIN = DELETE + 1           // js.special.forin
-  final val DEBUGGER = FORIN + 1         // js.special.debugger
+  inline val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
+  inline val CREATE_INNER_JS_CLASS = CONSTRUCTOROF + 1                  // runtime.createInnerJSClass
+  inline val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
+  inline val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
+  inline val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
+  inline val DYNAMIC_IMPORT = LINKING_INFO + 1                          // runtime.dynamicImport
 
-  final val THROW = DEBUGGER + 1
+  inline val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
+  inline val IN = STRICT_EQ + 1                            // js.special.in
+  inline val INSTANCEOF = IN + 1                           // js.special.instanceof
+  inline val DELETE = INSTANCEOF + 1                       // js.special.delete
+  inline val FORIN = DELETE + 1                            // js.special.forin
+  inline val JS_THROW = FORIN + 1                          // js.special.throw
+  inline val JS_TRY_CATCH = JS_THROW + 1                   // js.special.tryCatch
+  inline val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1          // js.special.wrapAsThrowable
+  inline val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
+  inline val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
-  final val UNION_FROM = THROW + 1                       // js.|.from
-  final val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
+  inline val THROW = DEBUGGER + 1
 
-  final val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
-  final val REFLECT_SELECTABLE_APPLYDYN = REFLECT_SELECTABLE_SELECTDYN + 1 // scala.reflect.Selectable.applyDynamic
+  inline val UNION_FROM = THROW + 1                       // js.|.from
+  inline val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
 
-  final val LastJSPrimitiveCode = REFLECT_SELECTABLE_APPLYDYN
+  inline val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
+  inline val REFLECT_SELECTABLE_APPLYDYN = REFLECT_SELECTABLE_SELECTDYN + 1 // scala.reflect.Selectable.applyDynamic
+
+  inline val LastJSPrimitiveCode = REFLECT_SELECTABLE_APPLYDYN
 
   def isJSPrimitive(code: Int): Boolean =
     code >= FirstJSPrimitiveCode && code <= LastJSPrimitiveCode
@@ -60,7 +65,6 @@ object JSPrimitives {
 
 class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   import JSPrimitives._
-  import dotty.tools.backend.ScalaPrimitivesOps._
 
   private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
 
@@ -91,7 +95,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty) {
-        report.error(s"Unknown primitive method $cls.$method")
+        report.error(em"Unknown primitive method $cls.$method")
       } else {
         for (s <- alts)
           addPrimitive(s, code)
@@ -109,6 +113,8 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
 
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
 
+    addPrimitive(jsdefn.JSNew_target, JS_NEW_TARGET)
+
     addPrimitive(jsdefn.JSImport_apply, JS_IMPORT)
     addPrimitive(jsdefn.JSImport_meta, JS_IMPORT_META)
 
@@ -117,12 +123,17 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
     addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
+    addPrimitive(jsdefn.Runtime_dynamicImport, DYNAMIC_IMPORT)
 
     addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)
     addPrimitive(jsdefn.Special_in, IN)
     addPrimitive(jsdefn.Special_instanceof, INSTANCEOF)
     addPrimitive(jsdefn.Special_delete, DELETE)
     addPrimitive(jsdefn.Special_forin, FORIN)
+    addPrimitive(jsdefn.Special_throw, JS_THROW)
+    addPrimitive(jsdefn.Special_tryCatch, JS_TRY_CATCH)
+    addPrimitive(jsdefn.Special_wrapAsThrowable, WRAP_AS_THROWABLE)
+    addPrimitive(jsdefn.Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
     addPrimitive(defn.throwMethod, THROW)

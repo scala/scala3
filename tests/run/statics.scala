@@ -1,3 +1,5 @@
+// scalajs: --skip --pending
+
 import scala.annotation.static
 
 class Foo {

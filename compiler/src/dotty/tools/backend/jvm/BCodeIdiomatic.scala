@@ -2,9 +2,10 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm
 import scala.annotation.switch
-import scala.collection.mutable
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
 import dotty.tools.dotc.report
@@ -18,48 +19,12 @@ import dotty.tools.dotc.report
  */
 trait BCodeIdiomatic {
   val int: DottyBackendInterface
-  final lazy val bTypes = new BTypesFromSymbols[int.type](int)
+  val bTypes: BTypesFromSymbols[int.type]
 
   import int.{_, given}
   import bTypes._
   import coreBTypes._
 
-
-
-  lazy val target =
-    val releaseValue = Option(ctx.settings.release.value).filter(_.nonEmpty)
-    val targetValue = Option(ctx.settings.Xtarget.value).filter(_.nonEmpty)
-    val defaultTarget = "8"
-    (releaseValue, targetValue) match
-      case (Some(release), None) => release
-      case (None, Some(target)) => target
-      case (Some(release), Some(_)) =>
-        report.warning(s"The value of ${ctx.settings.Xtarget.name} was overridden by ${ctx.settings.release.name}")
-        release
-      case (None, None) => "8" // least supported version by default
-
-
-  // Keep synchronized with `minTargetVersion` and `maxTargetVersion` in ScalaSettings
-  lazy val classfileVersion: Int = target match {
-    case "8"  => asm.Opcodes.V1_8
-    case "9"  => asm.Opcodes.V9
-    case "10" => asm.Opcodes.V10
-    case "11" => asm.Opcodes.V11
-    case "12" => asm.Opcodes.V12
-    case "13" => asm.Opcodes.V13
-    case "14" => asm.Opcodes.V14
-    case "15" => asm.Opcodes.V15
-    case "16" => asm.Opcodes.V16
-    case "17" => asm.Opcodes.V17
-  }
-
-  lazy val majorVersion: Int = (classfileVersion & 0xFF)
-  lazy val emitStackMapFrame = (majorVersion >= 50)
-
-  val extraProc: Int =
-    import GenBCodeOps.addFlagIf
-    asm.ClassWriter.COMPUTE_MAXS
-      .addFlagIf(emitStackMapFrame, asm.ClassWriter.COMPUTE_FRAMES)
 
   lazy val JavaStringBuilderClassName = jlStringBuilderRef.internalName
 
@@ -251,7 +216,7 @@ trait BCodeIdiomatic {
         case ct: ClassBType if ct.isSubtypeOf(jlCharSequenceRef)  => jlCharSequenceRef
         // Don't match for `ArrayBType(CHAR)`, even though StringBuilder has such an overload:
         // `"a" + Array('b')` should NOT be "ab", but "a[C@...".
-        case _: RefBType                                              => ObjectReference
+        case _: RefBType                                              => ObjectRef
         // jlStringBuilder does not have overloads for byte and short, but we can just use the int version
         case BYTE | SHORT                                             => INT
         case pt: PrimitiveBType                                       => pt
@@ -265,8 +230,10 @@ trait BCodeIdiomatic {
      * can-multi-thread
      */
     final def genStringBuilderEnd: Unit = {
-      invokevirtual(JavaStringBuilderClassName, "toString", "()Ljava/lang/String;")
+      invokevirtual(JavaStringBuilderClassName, "toString", genStringBuilderEndDesc)
     }
+    // Use ClassBType refs instead of plain string literal to make sure that needed ClassBTypes are initialized and reachable
+    private lazy val genStringBuilderEndDesc = MethodBType(Nil, StringRef).descriptor
 
     /* Concatenate top N arguments on the stack with `StringConcatFactory#makeConcatWithConstants`
      * (only works for JDK 9+)
@@ -281,13 +248,7 @@ trait BCodeIdiomatic {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
         asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes:_*),
-        new asm.Handle(
-          asm.Opcodes.H_INVOKESTATIC,
-          "java/lang/invoke/StringConcatFactory",
-          "makeConcatWithConstants",
-          "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;",
-          false
-        ),
+        coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
         (recipe +: constants):_*
       )
     }
@@ -619,6 +580,16 @@ trait BCodeIdiomatic {
 
     // can-multi-thread
     final def drop(tk: BType): Unit = { emit(if (tk.isWideType) Opcodes.POP2 else Opcodes.POP) }
+
+    // can-multi-thread
+    final def dropMany(size: Int): Unit = {
+      var s = size
+      while s >= 2 do
+        emit(Opcodes.POP2)
+        s -= 2
+      if s > 0 then
+        emit(Opcodes.POP)
+    }
 
     // can-multi-thread
     final def dup(tk: BType): Unit =  { emit(if (tk.isWideType) Opcodes.DUP2 else Opcodes.DUP) }

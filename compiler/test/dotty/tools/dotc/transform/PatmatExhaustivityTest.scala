@@ -3,6 +3,8 @@ package tools
 package dotc
 package transform
 
+import scala.language.unsafeNulls
+
 import vulpix.FileDiff
 import vulpix.TestConfiguration
 import reporting.TestReporter
@@ -10,19 +12,18 @@ import reporting.TestReporter
 import dotty.tools.io.Directory
 
 import java.io._
-import java.nio.file.{Files, Path => JPath}
+import java.nio.file.{Path => JPath}
 
-import scala.io.Source._
 import org.junit.Test
 
 class PatmatExhaustivityTest {
   val testsDir = "tests/patmat"
   // pagewidth/color: for a stable diff as the defaults are based on the terminal (e.g size)
   // stop-after: patmatexhaust-huge.scala crash compiler (but also hides other warnings..)
-  val options = List("-pagewidth", "80", "-color:never", "-Ystop-after:explicitSelf", "-classpath", TestConfiguration.basicClasspath)
+  val options = List("-pagewidth", "80", "-color:never", "-Ystop-after:explicitSelf", "-Ycheck-constraint-deps", "-classpath", TestConfiguration.basicClasspath)
 
   private def compile(files: List[JPath]): Seq[String] = {
-    val opts         = toolArgsFor(files)
+    val opts         = toolArgsFor(files).get(ToolName.Scalac).getOrElse(Nil)
     val stringBuffer = new StringWriter()
     val printWriter  = new PrintWriter(stringBuffer)
     val reporter = TestReporter.simplifiedReporter(printWriter)
@@ -34,7 +35,7 @@ class PatmatExhaustivityTest {
         e.printStackTrace(printWriter)
     }
 
-    stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
+    stringBuffer.toString.trim.nn.replaceAll("\\s+\n", "\n") match {
       case "" => Nil
       case s  => s.linesIterator.toSeq
     }
@@ -66,7 +67,7 @@ class PatmatExhaustivityTest {
       .filter(f => f.extension == "scala" || f.isDirectory)
       .filter { f =>
         val path = if f.isDirectory then f.path + "/" else f.path
-        path.contains(Properties.testsFilter.getOrElse(""))
+        Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
       }
       .map(f => if f.isDirectory then compileDir(f.jpath) else compileFile(f.jpath))
 
@@ -78,23 +79,5 @@ class PatmatExhaustivityTest {
     assert(failed.length == 0, msg)
 
     println(msg)
-  }
-
-  // inspect given files for tool args of the form `tool: args`
-  // if args string ends in close comment, drop the `*` `/`
-  // if split, parse the args string as command line.
-  // (from scala.tools.partest.nest.Runner#toolArgsFor)
-  private def toolArgsFor(files: List[JPath]): List[String] = {
-    import scala.jdk.OptionConverters._
-    import config.CommandLineParser.tokenize
-    files.flatMap { path =>
-      val tag  = "scalac:"
-      val endc = "*" + "/"    // be forgiving of /* scalac: ... */
-      def stripped(s: String) = s.substring(s.indexOf(tag) + tag.length).stripSuffix(endc)
-      val args = scala.util.Using.resource(Files.lines(path, scala.io.Codec.UTF8.charSet))(
-        _.limit(10).filter(_.contains(tag)).map(stripped).findAny.toScala
-      )
-      args.map(tokenize).getOrElse(Nil)
-    }
   }
 }

@@ -10,9 +10,9 @@ import Symbols._
 import Decorators._
 import DenotTransformers._
 import Names._
-import StdNames._
 import NameOps._
 import NameKinds._
+import NullOpsDecorator._
 import ResolveSuper._
 import reporting.IllegalSuperAccessor
 
@@ -35,6 +35,8 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def phaseName: String = ResolveSuper.name
 
+  override def description: String = ResolveSuper.description
+
   override def runsAfter: Set[String] = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
                                PruneErasedDefs.name) // Erased decls make `isCurrent` work incorrectly
 
@@ -46,11 +48,12 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     import ops._
 
     def superAccessors(mixin: ClassSymbol): List[Tree] =
-      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor))
-        yield {
-          util.Stats.record("super accessors")
-          DefDef(mkForwarderSym(superAcc.asTerm), forwarderRhsFn(rebindSuper(cls, superAcc)))
-      }
+      for superAcc <- mixin.info.decls.filter(_.isSuperAccessor)
+      yield
+        util.Stats.record("super accessors")
+        val fwd = mkForwarderSym(superAcc.asTerm)
+        DefDef(fwd, forwarderRhsFn(rebindSuper(cls, superAcc))
+          .andThen(_.etaExpandCFT(using ctx.withOwner(fwd))))
 
     val overrides = mixins.flatMap(superAccessors)
 
@@ -72,6 +75,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
 object ResolveSuper {
   val name: String = "resolveSuper"
+  val description: String = "implement super accessors"
 
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *
@@ -108,18 +112,20 @@ object ResolveSuper {
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
         // Since the super class can be Java defined,
-        // we use releaxed overriding check for explicit nulls if one of the symbols is Java defined.
-        // This forces `Null` being a subtype of reference types during override checking.
-        val relaxedCtxForNulls =
-        if ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined)) then
-          ctx.retractMode(Mode.SafeNulls)
-        else ctx
-        if (!(otherTp.overrides(accTp, matchLoosely = true)(using relaxedCtxForNulls)))
+        // we use relaxed overriding check for explicit nulls if one of the symbols is Java defined.
+        // This forces `Null` to be a subtype of non-primitive value types during override checking.
+        val relaxedOverriding = ctx.explicitNulls && (sym.is(JavaDefined) || acc.is(JavaDefined))
+        if !otherTp.overrides(accTp, relaxedOverriding, matchLoosely = true) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
-
       bcs = bcs.tail
     }
-    assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")
-    sym
+    if sym.is(Accessor) then
+      report.error(
+        em"parent ${acc.owner} has a super call which binds to the value ${sym.showFullName}. Super calls can only target methods.", base)
+    sym.orElse {
+      val originalName = acc.name.asTermName.originalOfSuperAccessorName
+      report.error(em"Member method ${originalName.debugString} of mixin ${acc.owner} is missing a concrete super implementation in $base.", base.srcPos)
+      acc
+    }
   }
 }

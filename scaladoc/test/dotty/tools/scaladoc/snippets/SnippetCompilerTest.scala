@@ -12,10 +12,8 @@ class SnippetCompilerTest {
   def wrapFn: String => WrappedSnippet = (str: String) => WrappedSnippet(
     str,
     Some("test"),
-    Nil,
-    Nil,
     0,
-    0
+    0,
   )
 
   def runTest(str: String) = compiler.compile(wrapFn(str), SnippetCompilerArg(SCFlags.Compile), dotty.tools.dotc.util.SourceFile.virtual("test", str))

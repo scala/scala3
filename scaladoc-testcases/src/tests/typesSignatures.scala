@@ -35,6 +35,10 @@ class Base
   type H = () => String
 
   type I = (Int, String, Int) => (String, Int)
+
+  type J = (a: A) => a.type
+
+  type K = [A] => (a: A) => a.type
 }
 
 class Operators
@@ -48,4 +52,9 @@ class Operators
 
   import scala.compiletime.ops.boolean.*
   type Unary = ![true]
+}
+
+trait ThisTypeTest
+{
+  def foo: this.type //expected: def foo: ThisTypeTest.this.type
 }

@@ -1,21 +1,17 @@
 package dotty.tools.dotc
 package transform
 
-import ast.Trees._
 import ast.{TreeTypeMap, tpd}
 import config.Printers.tailrec
-import core.Contexts._
-import core.Constants.Constant
-import core.Decorators._
-import core.Flags._
-import core.NameKinds.{TailLabelName, TailLocalName, TailTempName}
-import core.StdNames.nme
-import core.Symbols._
-import reporting._
+import core.*
+import Contexts.*, Flags.*, Symbols.*, Decorators.em
+import Constants.Constant
+import NameKinds.{TailLabelName, TailLocalName, TailTempName}
+import StdNames.nme
+import reporting.*
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
-
-import scala.collection.mutable
+import dotty.tools.uncheckedNN
 
 /** A Tail Rec Transformer.
  *
@@ -113,6 +109,8 @@ class TailRec extends MiniPhase {
 
   override def phaseName: String = TailRec.name
 
+  override def description: String = TailRec.description
+
   override def runsAfter: Set[String] = Set(Erasure.name) // tailrec assumes erased types
 
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
@@ -161,15 +159,26 @@ class TailRec extends MiniPhase {
         val rhsFullyTransformed = varForRewrittenThis match {
           case Some(localThisSym) =>
             val thisRef = localThisSym.termRef
-            new TreeTypeMap(
+            val substitute = new TreeTypeMap(
               typeMap = _.substThisUnlessStatic(enclosingClass, thisRef)
                 .subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef)),
               treeMap = {
                 case tree: This if tree.symbol == enclosingClass => Ident(thisRef)
                 case tree => tree
               }
-            ).transform(rhsSemiTransformed)
-
+            )
+            // The previous map will map `This` references to `Ident`s even under `Super`.
+            // This violates super's contract. We fix this by cleaning up `Ident`s under
+            // super, mapping them back to the original `This` reference. This is not
+            // very elegant, but I did not manage to find a cleaner way to handle this.
+            // See pos/tailrec-super.scala for a test case.
+            val cleanup = new TreeMap:
+              override def transform(t: Tree)(using Context) = t match
+                case Super(qual: Ident, mix) if !qual.tpe.isInstanceOf[Types.ThisType] =>
+                  cpy.Super(t)(This(enclosingClass), mix)
+                case _ =>
+                  super.transform(t)
+            cleanup.transform(substitute.transform(rhsSemiTransformed))
           case none =>
             new TreeTypeMap(
               typeMap = _.subst(rewrittenParamSyms, varsForRewrittenParamSyms.map(_.termRef))
@@ -223,11 +232,11 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private var myContinueLabel: Symbol = _
+    private var myContinueLabel: Symbol | Null = _
     def continueLabel(using Context): Symbol = {
       if (myContinueLabel == null)
         myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)
-      myContinueLabel
+      myContinueLabel.uncheckedNN
     }
 
     /** The local `var` that replaces `this`, if it is modified in at least one recursive call. */
@@ -244,7 +253,7 @@ class TailRec extends MiniPhase {
           val tpe =
             if (enclosingClass.is(Module)) enclosingClass.thisType
             else enclosingClass.classInfo.selfType
-          val sym = newSymbol(method, nme.SELF, Synthetic | Mutable, tpe)
+          val sym = newSymbol(method, TailLocalName.fresh(nme.SELF), Synthetic | Mutable, tpe)
           varForRewrittenThis = Some(sym)
           sym
       }
@@ -277,23 +286,11 @@ class TailRec extends MiniPhase {
     def yesTailTransform(tree: Tree)(using Context): Tree =
       transform(tree, tailPosition = true)
 
-    /** If not in tail position a tree traversal may not be needed.
-     *
-     *  A recursive  call may still be in tail position if within the return
-     *  expression of a labeled block.
-     *  A tree traversal may also be needed to report a failure to transform
-     *  a recursive call of a @tailrec annotated method (i.e. `isMandatory`).
-     */
-    private def isTraversalNeeded =
-      isMandatory || tailPositionLabeledSyms.size > 0
-
     def noTailTransform(tree: Tree)(using Context): Tree =
-      if (isTraversalNeeded) transform(tree, tailPosition = false)
-      else tree
+      transform(tree, tailPosition = false)
 
     def noTailTransforms[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
-      if (isTraversalNeeded) trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
-      else trees
+      trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
 
     override def transform(tree: Tree)(using Context): Tree = {
       /* Rewrite an Apply to be considered for tail call transformation. */
@@ -306,7 +303,7 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            report.error(s"Cannot rewrite recursive call: $reason", tree.srcPos)
+            report.error(em"Cannot rewrite recursive call: $reason", tree.srcPos)
           }
           else
             tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)
@@ -340,10 +337,13 @@ class TailRec extends MiniPhase {
             yield
               (getVarForRewrittenParam(param), arg)
 
-            val assignThisAndParamPairs =
-              if (prefix eq EmptyTree) assignParamPairs
-              else
-                // TODO Opt: also avoid assigning `this` if the prefix is `this.`
+            val assignThisAndParamPairs = prefix match
+              case EmptyTree =>
+                assignParamPairs
+              case prefix: This if prefix.symbol == enclosingClass =>
+                // Avoid assigning `this = this`
+                assignParamPairs
+              case _ =>
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
 
             val assignments = assignThisAndParamPairs match {
@@ -444,7 +444,7 @@ class TailRec extends MiniPhase {
 
         case Return(expr, from) =>
           val fromSym = from.symbol
-          val inTailPosition = fromSym.is(Label) && tailPositionLabeledSyms.contains(fromSym)
+          val inTailPosition = !fromSym.is(Label) || tailPositionLabeledSyms.contains(fromSym)
           cpy.Return(tree)(transform(expr, inTailPosition), from)
 
         case _ =>
@@ -456,4 +456,5 @@ class TailRec extends MiniPhase {
 
 object TailRec {
   val name: String = "tailrec"
+  val description: String = "rewrite tail recursion to loops"
 }

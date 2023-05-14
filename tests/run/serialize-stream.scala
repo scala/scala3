@@ -1,4 +1,4 @@
-
+// scalajs: --skip
 
 object Test {
   def ser[T](s: Seq[T]): Unit = {

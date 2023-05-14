@@ -27,7 +27,7 @@ object Test extends App {
   inits foreach {case (name, singleton) =>
     print(s"${name}: ")
     val one = singleton(1)
-    println(Seq(2,3,4).scanLeft(one)(_ + _) map sVarInfo toList)
+    println(Seq(2,3,4).scanLeft(one)(_ + _).map(sVarInfo).toList)
   }
 
   println(s"ValueSet: ${sVarInfo(SomeEnum.values)}")

@@ -5,9 +5,6 @@ import core._
 import Phases._
 import ast.Trees._
 import Contexts._
-import Symbols._
-import Flags.PackageVal
-import Decorators._
 
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.
@@ -29,18 +26,10 @@ abstract class MacroTransform extends Phase {
    */
   protected def transformPhase(using Context): Phase = this
 
-  class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
+  class Transformer extends TreeMapWithPreciseStatContexts(cpy = cpyBetweenPhases):
 
-    protected def localCtx(tree: Tree)(using Context): FreshContext = 
+    protected def localCtx(tree: Tree)(using Context): FreshContext =
       ctx.fresh.setTree(tree).setOwner(localOwner(tree))
-
-    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
-      def transformStat(stat: Tree): Tree = stat match {
-        case _: Import | _: DefTree => transform(stat)
-        case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))
-      }
-      flatten(trees.mapconserve(transformStat(_)))
-    }
 
     override def transform(tree: Tree)(using Context): Tree =
       try
@@ -49,10 +38,10 @@ abstract class MacroTransform extends Phase {
             tree
           case _: PackageDef | _: MemberDef =>
             super.transform(tree)(using localCtx(tree))
-          case impl @ Template(constr, parents, self, _) =>
+          case impl @ Template(constr, _, self, _) =>
             cpy.Template(tree)(
               transformSub(constr),
-              transform(parents)(using ctx.superCallContext),
+              transform(impl.parents)(using ctx.superCallContext),
               Nil,
               transformSelf(self),
               transformStats(impl.body, tree.symbol))
@@ -67,5 +56,5 @@ abstract class MacroTransform extends Phase {
 
     def transformSelf(vd: ValDef)(using Context): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))
-  }
+  end Transformer
 }

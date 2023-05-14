@@ -57,7 +57,6 @@ object SourceCode {
     if (flags.is(Flags.Scala2x)) flagList += "scala2x"
     if (flags.is(Flags.Sealed)) flagList += "sealed"
     if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
-    if (flags.is(Flags.Static)) flagList += "javaStatic"
     if (flags.is(Flags.Synthetic)) flagList += "synthetic"
     if (flags.is(Flags.Trait)) flagList += "trait"
     if (flags.is(Flags.Transparent)) flagList += "transparent"
@@ -230,7 +229,7 @@ object SourceCode {
           this += " {"
           indented {
             if (printSelf) {
-              val Some(ValDef(name, tpt, _)) = self
+              val Some(ValDef(name, tpt, _)) = self: @unchecked
               indented {
                 val name1 = if (name == "_") "this" else name
                 this += " " += highlightValDef(name1) += ": "
@@ -530,8 +529,11 @@ object SourceCode {
       case Closure(meth, _) =>
         printTree(meth)
 
-      case _:Unapply | _:Alternatives | _:Bind =>
+      case _:TypedOrTest | _:Unapply | _:Alternatives | _:Bind =>
         printPattern(tree)
+
+      case tree: CaseDef =>
+        printCaseDef(tree)
 
       case _ =>
         throw new MatchError(tree.show(using Printer.TreeStructure))
@@ -845,7 +847,7 @@ object SourceCode {
       val name = splicedName(arg.symbol).getOrElse(arg.symbol.name)
       val sym = arg.symbol.owner
       if sym.isDefDef && sym.name == "<init>" then
-        val ClassDef(_, _, _, _, body) = sym.owner.tree
+        val ClassDef(_, _, _, _, body) = sym.owner.tree: @unchecked
         body.collectFirst {
           case vdef @ ValDef(`name`, _, _) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
             if (!vdef.symbol.flags.is(Flags.Local)) {
@@ -1033,10 +1035,10 @@ object SourceCode {
         inSquare(printTrees(args, ", "))
 
       case Annotated(tpt, annot) =>
-        val Annotation(ref, args) = annot
+        val Annotation(ref, args) = annot: @unchecked
         ref.tpe match {
           case tpe: TypeRef if tpe.typeSymbol == Symbol.requiredClass("scala.annotation.internal.Repeated") =>
-            val Types.Sequence(tp) = tpt.tpe
+            val Types.Sequence(tp) = tpt.tpe: @unchecked
             printType(tp)
             this += highlightTypeDef("*")
           case _ =>
@@ -1056,7 +1058,7 @@ object SourceCode {
 
       case LambdaTypeTree(tparams, body) =>
         printTargsDefs(tparams.zip(tparams), isDef = false)
-        this += highlightTypeDef(" => ")
+        this += highlightTypeDef(" =>> ")
         printTypeOrBoundsTree(body)
 
       case TypeBind(name, _) =>
@@ -1142,7 +1144,7 @@ object SourceCode {
         }
 
       case AnnotatedType(tp, annot) =>
-        val Annotation(ref, args) = annot
+        val Annotation(ref, args) = annot: @unchecked
         printType(tp)
         this += " "
         printAnnotation(annot)
@@ -1259,7 +1261,7 @@ object SourceCode {
     }
 
     private def printAnnotation(annot: Term)(using elideThis: Option[Symbol]): this.type = {
-      val Annotation(ref, args) = annot
+      val Annotation(ref, args) = annot: @unchecked
       this += "@"
       printTypeTree(ref)
       if (args.isEmpty)
@@ -1343,18 +1345,22 @@ object SourceCode {
     }
 
     private def printBoundsTree(bounds: TypeBoundsTree)(using elideThis: Option[Symbol]): this.type = {
-      bounds.low match {
-        case Inferred() =>
-        case low =>
-          this += " >: "
-          printTypeTree(low)
-      }
-      bounds.hi match {
-        case Inferred() => this
-        case hi =>
-          this += " <: "
-          printTypeTree(hi)
-      }
+      if bounds.low.tpe == bounds.hi.tpe then
+        this += " = "
+        printTypeTree(bounds.low)
+      else
+        bounds.low match {
+          case Inferred() =>
+          case low =>
+            this += " >: "
+            printTypeTree(low)
+        }
+        bounds.hi match {
+          case Inferred() => this
+          case hi =>
+            this += " <: "
+            printTypeTree(hi)
+        }
     }
 
     private def printBounds(bounds: TypeBounds)(using elideThis: Option[Symbol]): this.type = {
@@ -1399,7 +1405,7 @@ object SourceCode {
           this += name += "."
         case _ =>
       }
-      val TypeRef(prefix, name) = tp
+      val TypeRef(prefix, name) = tp: @unchecked
       printClassPrefix(prefix)
       this += name
     }
@@ -1423,7 +1429,7 @@ object SourceCode {
       case '"' => "\\\""
       case '\'' => "\\\'"
       case '\\' => "\\\\"
-      case _ => if (ch.isControl) f"\u${ch.toInt}%04x" else String.valueOf(ch)
+      case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch).nn
     }
 
     private def escapedString(str: String): String = str flatMap escapedChar
@@ -1439,7 +1445,7 @@ object SourceCode {
         namesIndex(name0) = index + 1
         val name =
           if index == 1 then name0
-          else s"`$name0${index.toString.toCharArray.map {x => (x - '0' + '₀').toChar}.mkString}`"
+          else s"`$name0${index.toString.toCharArray.nn.map {x => (x - '0' + '₀').toChar}.mkString}`"
         names(sym) = name
         Some(name)
       }

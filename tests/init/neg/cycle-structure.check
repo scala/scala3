@@ -1,8 +1,30 @@
--- Error: tests/init/neg/cycle-structure.scala:9:14 --------------------------------------------------------------------
-9 |    val x = A(this) // error
-  |              ^^^^
-  |              Cannot prove that the value is fully initialized. May only use initialized value as arguments.
--- Error: tests/init/neg/cycle-structure.scala:3:14 --------------------------------------------------------------------
-3 |    val x = B(this) // error
-  |              ^^^^
-  |              Cannot prove that the value is fully initialized. May only use initialized value as arguments.
+-- Error: tests/init/neg/cycle-structure.scala:3:13 --------------------------------------------------------------------
+3 |    val x = B(this)   // error
+  |            ^^^^^^^
+  |            Problematic object instantiation: arg 1 is not transitively initialized (Hot). Calling trace:
+  |            -> case class A(b: B) {	[ cycle-structure.scala:1 ]
+  |               ^
+  |            -> val x = B(this)   // error	[ cycle-structure.scala:3 ]
+  |                       ^^^^^^^
+  |
+  |            It leads to the following error during object initialization:
+  |            Access field value x on an uninitialized (Cold) object. Calling trace:
+  |            -> case class B(a: A) {	[ cycle-structure.scala:7 ]
+  |               ^
+  |            -> val x1 = a.x	[ cycle-structure.scala:8 ]
+  |                        ^^^
+-- Error: tests/init/neg/cycle-structure.scala:9:13 --------------------------------------------------------------------
+9 |    val x = A(this)   // error
+  |            ^^^^^^^
+  |            Problematic object instantiation: arg 1 is not transitively initialized (Hot). Calling trace:
+  |            -> case class B(a: A) {	[ cycle-structure.scala:7 ]
+  |               ^
+  |            -> val x = A(this)   // error	[ cycle-structure.scala:9 ]
+  |                       ^^^^^^^
+  |
+  |            It leads to the following error during object initialization:
+  |            Access field value x on an uninitialized (Cold) object. Calling trace:
+  |            -> case class A(b: B) {	[ cycle-structure.scala:1 ]
+  |               ^
+  |            -> val x1 = b.x	[ cycle-structure.scala:2 ]
+  |                        ^^^

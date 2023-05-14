@@ -2,19 +2,13 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import collection.JavaConverters._
-import java.net.URI
-import java.net.URL
+import collection.mutable.ListBuffer
 import dotty.tools.scaladoc.site._
-import scala.util.Try
-import org.jsoup.Jsoup
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
-import java.nio.file.FileVisitOption
-import java.io.File
 
-case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page]):
+case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page], hidden: Boolean = false):
   def withNewChildren(newChildren: Seq[Page]) = copy(children = children ++ newChildren)
 
   def withTitle(newTitle: String) = copy(link = link.copy(name = newTitle))
@@ -34,65 +28,88 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
     val childrenPages = member.members.filter(_.needsOwnPage)
     Page(Link(member.name, member.dri), member, childrenPages.map(memberPage))
 
-  val navigablePage: Page =
-    val rootPckPage = memberPage(rootPackage)
-    staticSite match
-      case None => rootPckPage.withTitle(args.name)
+  val rootApiPage: Option[Page] = Some(memberPage(rootPackage)).filter(_.children.nonEmpty).map(_.withTitle(ctx.args.name))
+
+  val rootDocsPage: Option[Page] = staticSite match
+      case None => None
       case Some(siteContext) =>
-        val (indexes, templates) = siteContext.templates.partition(f =>
-          f.templateFile.isIndexPage() && f.file.toPath.getParent() == siteContext.docsPath)
-        if (indexes.size > 1)
-          val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.file)}"
-          report.error(msg)
+        val rootTemplate = siteContext.staticSiteRoot.rootTemplate
 
-        val templatePages = templates.map(templateToPage(_, siteContext))
+        // Below code is for walking in order the tree and modifing its nodes basing on its neighbours
 
-        indexes.headOption match
-          case None if templatePages.isEmpty=>
-            rootPckPage.withTitle(args.name)
-          case None =>
-            Page(Link(args.name, docsRootDRI),"", templatePages :+ rootPckPage.withTitle("API"))
-          case Some(indexPage) =>
-            val newChildren = templatePages :+ rootPckPage.withTitle("API")
-            templateToPage(indexPage, siteContext).withNewChildren(newChildren)
+        // We add dummy guards
+        val notHidden: Seq[Option[LoadedTemplate]] = None +: siteContext.allTemplates.filterNot(_.hidden).map(Some(_)) :+ None
 
-  val hiddenPages: Seq[Page] =
-    staticSite match
-      case None =>
-        Seq(navigablePage.copy( // Add index page that is a copy of api/index.html
-          link = navigablePage.link.copy(dri = docsRootDRI),
-          children = Nil
-        ))
-      case Some(siteContext) =>
-        // In case that we do not have an index page and we do not have any API entries
-        // we want to create empty index page, so there is one
-        val actualIndexTemplate = siteContext.indexTemplate() match {
-            case None if effectiveMembers.isEmpty => Seq(siteContext.emptyIndexTemplate)
-            case templates => templates.toSeq
-          }
+        // Let's gather the list of maps for each template with its in-order neighbours
+        val newSettings: List[Map[String, Object]] = notHidden.sliding(size = 3, step = 1).map {
+          case None :: None :: Nil =>
+            Map.empty
+          case prev :: mid :: next :: Nil =>
+            def link(sibling: Option[LoadedTemplate]): Option[String] =
+              def realPath(path: Path) = if Files.isDirectory(path) then Paths.get(path.toString, "index.html") else path
+              sibling.map { n =>
+                val realMidPath = realPath(mid.get.file.toPath)
+                val realSiblingPath = realPath(n.file.toPath)
+                realMidPath.relativize(realSiblingPath).toString.stripPrefix("../")
+              }
+            List(
+              for {
+                link <- link(prev)
+                p <- prev
+              } yield (
+                "previous" -> Map(
+                  "title" -> p.templateFile.title.name,
+                  "url" -> link
+                )
+              ),
+              for {
+                link <- link(next)
+                n <- next
+              } yield (
+                "next" -> Map(
+                  "title" -> n.templateFile.title.name,
+                  "url" -> link
+                )
+              ),
+            ).flatten.toMap
+        }.toList
 
-          (siteContext.orphanedTemplates ++ actualIndexTemplate).map(templateToPage(_, siteContext))
+        def updateSettings(templates: Seq[LoadedTemplate], additionalSettings: ListBuffer[Map[String, Object]]): List[LoadedTemplate] =
+          val updatedTemplates = List.newBuilder[LoadedTemplate]
+          for template <- templates do
+            val head: Map[String, Object] =
+              if template.hidden then Map.empty
+              else additionalSettings.remove(0)
+            val current: Map[String, Object] = template.templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
+            val updatedTemplateFile = template.templateFile.copy(settings = template.templateFile.settings.updated("page", head ++ current))
+            updatedTemplates += template.copy(
+              templateFile = updatedTemplateFile,
+              children = updateSettings(template.children, additionalSettings)
+            )
+          updatedTemplates.result()
+
+        val newTemplates = updateSettings(Seq(rootTemplate), newSettings.to(ListBuffer))
+        val templatePages = newTemplates.map(templateToPage(_, siteContext))
+
+        val newRoot = newTemplates.head
+
+        Some(newRoot).filter(r => r.children.nonEmpty || r.templateFile.rawCode.nonEmpty)
+          .map(templateToPage(_, siteContext))
+
+  val redirectPages: Seq[Page] = staticSite.fold(Seq.empty)(siteContext => siteContext.redirectTemplates.map {
+    case (template, driFrom, driTo) =>
+      val redirectTo = pathToPage(driFrom, driTo)
+      templateToPage(template.copy(templateFile = template.templateFile.copy(settings = template.templateFile.settings ++ Map("redirectTo" -> redirectTo))), siteContext)
+  })
 
   /**
    * Here we have to retrive index pages from hidden pages and replace fake index pages in navigable page tree.
    */
   val allPages: Seq[Page] =
-    def traversePages(page: Page): (Page, Seq[Page]) =
-      val (newChildren, newPagesToRemove): (Seq[Page], Seq[Page]) = page.children.map(traversePages(_)).foldLeft((Seq[Page](), Seq[Page]())) {
-        case ((pAcc, ptrAcc), (p, ptr)) => (pAcc :+ p, ptrAcc ++ ptr)
-      }
-      hiddenPages.find(_.link == page.link) match
-        case None =>
-          (page.copy(children = newChildren), newPagesToRemove)
-        case Some(newPage) =>
-          (newPage.copy(children = newChildren), newPagesToRemove :+ newPage)
-
-    val (newNavigablePage, pagesToRemove) = traversePages(navigablePage)
-
-    val all = newNavigablePage +: hiddenPages.filterNot(pagesToRemove.contains)
-    // We need to check for conflicts only if we have top-level member called blog or docs
+    val all = rootApiPage ++ rootDocsPage ++ redirectPages
+    // We need to check for conflicts only if we have top-level member called docs
     val hasPotentialConflict =
-      rootPackage.members.exists(m => m.name.startsWith("docs") || m.name.startsWith("blog"))
+      rootPackage.members.exists(m => m.name.startsWith("docs"))
 
     if hasPotentialConflict then
       def walk(page: Page): Unit =
@@ -104,18 +121,20 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
 
       all.foreach(walk)
 
-    all
+    all.toSeq
 
-  def renderContent(page: Page) = page.content match
+  def renderContent(page: Page): PageContent = page.content match
     case m: Member =>
       val signatureRenderer = new SignatureRenderer:
         def currentDri: DRI = page.link.dri
         def link(dri: DRI): Option[String] =
-          Some(pathToPage(currentDri, dri)).filter(_ != UnresolvedLocationLink)
+          dri.externalLink.orElse(
+            Some(pathToPage(currentDri, dri)).filter(_ != UnresolvedLocationLink)
+          )
 
       MemberRenderer(signatureRenderer).fullMember(m)
     case t: ResolvedTemplate => siteContent(page.link.dri, t)
-    case a: String =>  raw(a)
+    case a: String =>  PageContent(raw(a), Seq.empty)
 
 
 

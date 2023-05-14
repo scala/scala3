@@ -41,6 +41,8 @@ object Test{
     }
   }
 
+  val x = log[String]("some op", indentSetting)(_)
+
   def main(args: Array[String]): Unit =
     println(factorial(33))
 }

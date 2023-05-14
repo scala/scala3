@@ -5,7 +5,7 @@ package jvm
 import scala.tools.asm
 import scala.annotation.threadUnsafe
 import scala.collection.mutable
-import scala.collection.generic.Clearable
+import scala.collection.mutable.Clearable
 
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Contexts._
@@ -13,20 +13,15 @@ import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.core.StdNames
+import dotty.tools.dotc.core.Phases
 
 /**
  * This class mainly contains the method classBTypeFromSymbol, which extracts the necessary
  * information from a symbol and its type to create the corresponding ClassBType. It requires
  * access to the compiler (global parameter).
- *
- * The mixin CoreBTypes defines core BTypes that are used in the backend. Building these BTypes
- * uses classBTypeFromSymbol, hence requires access to the compiler (global).
- *
- * BTypesFromSymbols extends BTypes because the implementation of BTypes requires access to some
- * of the core btypes. They are declared in BTypes as abstract members. Note that BTypes does
- * not have access to the compiler instance.
  */
-class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
+class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAccess: PostProcessorFrontendAccess) extends BTypes {
   import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
 
@@ -36,39 +31,18 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
 
-  // Why the proxy, see documentation of class [[CoreBTypes]].
-  val coreBTypes: CoreBTypesProxy[this.type] = new CoreBTypesProxy[this.type](this)
+  val coreBTypes = new CoreBTypesFromSymbols[I]{
+    val bTypes: BTypesFromSymbols.this.type = BTypesFromSymbols.this
+  }
   import coreBTypes._
 
-  final def intializeCoreBTypes(): Unit = {
-    coreBTypes.setBTypes(new CoreBTypes[this.type](this))
-  }
-
-  private[this] val perRunCaches: Caches = new Caches {
-    def newAnyRefMap[K <: AnyRef, V](): mutable.AnyRefMap[K, V] = new mutable.AnyRefMap[K, V]()
-    def newWeakMap[K, V](): mutable.WeakHashMap[K, V] = new mutable.WeakHashMap[K, V]()
-    def recordCache[T <: Clearable](cache: T): T = cache
-    def newMap[K, V](): mutable.HashMap[K, V] = new mutable.HashMap[K, V]()
-    def newSet[K](): mutable.Set[K] = new mutable.HashSet[K]
-  }
-
-  // TODO remove abstraction
-  private abstract class Caches {
-    def recordCache[T <: Clearable](cache: T): T
-    def newWeakMap[K, V](): collection.mutable.WeakHashMap[K, V]
-    def newMap[K, V](): collection.mutable.HashMap[K, V]
-    def newSet[K](): collection.mutable.Set[K]
-    def newAnyRefMap[K <: AnyRef, V](): collection.mutable.AnyRefMap[K, V]
-  }
-
-  @threadUnsafe protected lazy val classBTypeFromInternalNameMap = {
-    perRunCaches.recordCache(collection.concurrent.TrieMap.empty[String, ClassBType])
-  }
+  @threadUnsafe protected lazy val classBTypeFromInternalNameMap =
+    collection.concurrent.TrieMap.empty[String, ClassBType]
 
   /**
    * Cache for the method classBTypeFromSymbol.
    */
-  @threadUnsafe private lazy val convertedClasses = perRunCaches.newMap[Symbol, ClassBType]()
+  @threadUnsafe private lazy val convertedClasses = collection.mutable.HashMap.empty[Symbol, ClassBType]
 
   /**
    * The ClassBType for a class symbol `sym`.
@@ -89,6 +63,20 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       convertedClasses(classSym) = classBType
       setClassInfo(classSym, classBType)
     })
+  }
+
+  final def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {
+    assert(moduleClassSym.isTopLevelModuleClass, s"not a top-level module class: $moduleClassSym")
+    val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
+    val bType = ClassBType(internalName)
+    bType.info = ClassInfo(
+      superClass = Some(ObjectRef),
+      interfaces = Nil,
+      flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
+      memberClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
+      nestedInfo = None
+    )
+    bType
   }
 
   private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
@@ -138,13 +126,6 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     /* The InnerClass table of a class C must contain all nested classes of C, even if they are only
      * declared but not otherwise referenced in C (from the bytecode or a method / field signature).
      * We collect them here.
-     *
-     * Nested classes that are also referenced in C will be added to the innerClassBufferASM during
-     * code generation, but those duplicates will be eliminated when emitting the InnerClass
-     * attribute.
-     *
-     * Why doe we need to collect classes into innerClassBufferASM at all? To collect references to
-     * nested classes, but NOT nested in C, that are used within C.
      */
     val nestedClassSymbols = {
       // The lambdalift phase lifts all nested classes to the enclosing class, so if we collect
@@ -296,9 +277,13 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    */
   final def javaFlags(sym: Symbol): Int = {
 
-    val privateFlag = sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+    // Classes are always emitted as public. This matches the behavior of Scala 2
+    // and is necessary for object deserialization to work properly, otherwise
+    // ModuleSerializationProxy may fail with an accessiblity error (see
+    // tests/run/serialize.scala and https://github.com/typelevel/cats-effect/pull/2360).
+    val privateFlag = !sym.isClass && (sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass))
 
-    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
+    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable, butNot = Accessor) && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes._
     import GenBCodeOps.addFlagIf

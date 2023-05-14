@@ -9,9 +9,11 @@ import Decorators._
 import Flags._
 import config.Config
 import config.Printers.typr
-import reporting.trace
-import typer.ProtoTypes.newTypeVar
-import StdNames.tpnme
+import typer.ProtoTypes.{newTypeVar, representedParamRef}
+import UnificationDirection.*
+import NameKinds.AvoidNameKind
+import util.SimpleIdentitySet
+import NullOpsDecorator.stripNull
 
 /** Methods for adding constraints and solving them.
  *
@@ -56,6 +58,68 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
+  /** Used for match type reduction: If false, we don't recognize an abstract type
+   *  to be a subtype type of any of its base classes. This is in place only at the
+   *  toplevel; it is turned on again when we add parts of the scrutinee to the constraint.
+   */
+  protected var canWidenAbstract: Boolean = true
+
+  protected var myNecessaryConstraintsOnly = false
+  /** When collecting the constraints needed for a particular subtyping
+   *  judgment to be true, we sometimes need to approximate the constraint
+   *  set (see `TypeComparer#either` for example).
+   *
+   *  Normally, this means adding extra constraints which may not be necessary
+   *  for the subtyping judgment to be true, but if this variable is set to true
+   *  we will instead under-approximate and keep only the constraints that must
+   *  always be present for the subtyping judgment to hold.
+   *
+   *  This is needed for GADT bounds inference to be sound, but it is also used
+   *  when constraining a method call based on its expected type to avoid adding
+   *  constraints that would later prevent us from typechecking method
+   *  arguments, see or-inf.scala and and-inf.scala for examples.
+   */
+  protected def necessaryConstraintsOnly(using Context): Boolean =
+    ctx.mode.is(Mode.GadtConstraintInference) || myNecessaryConstraintsOnly
+
+  /** If `trustBounds = false` we perform comparisons in a pessimistic way as follows:
+   *  Given an abstract type `A >: L <: H`, a subtype comparison of any type
+   *  with `A` will compare against both `L` and `H`. E.g.
+   *
+   *     T <:< A   if T <:< L and T <:< H
+   *     A <:< T   if L <:< T and H <:< T
+   *
+   *  This restricted form makes sure we don't "forget"  types when forming
+   *  unions and intersections with abstract types that have bad bounds. E.g.
+   *  the following example from neg/i8900.scala that @smarter came up with:
+   *  We have a type variable X with constraints
+   *
+   *     X >: 1, X >: x.M
+   *
+   *  where `x` is a locally nested variable and `x.M` has bad bounds
+   *
+   *     x.M >: Int | String <: Int & String
+   *
+   *  If we trust bounds, then the lower bound of `X` is `x.M` since `x.M >: 1`.
+   *  Then even if we correct levels on instantiation to eliminate the local `x`,
+   *  it is alreay too late, we'd get `Int & String` as instance, which does not
+   *  satisfy the original constraint `X >: 1`.
+   *
+   *  But if `trustBounds` is false, we do not conclude the `x.M >: 1` since
+   *  we compare both bounds and the upper bound `Int & String` is not a supertype
+   *  of `1`. So the lower bound is `1 | x.M` and when we level-avoid that we
+   *  get `1 | Int & String`, which simplifies to `Int`.
+   */
+  private var myTrustBounds = true
+
+  inline def withUntrustedBounds(op: => Type): Type =
+    val saved = myTrustBounds
+    myTrustBounds = false
+    try op finally myTrustBounds = saved
+
+  def trustBounds: Boolean =
+    !Config.checkLevelsOnInstantiation || myTrustBounds
+
   def checkReset() =
     assert(addConstraintInvocations == 0)
     assert(frozenConstraint == false)
@@ -63,13 +127,56 @@ trait ConstraintHandling {
     assert(homogenizeArgs == false)
     assert(comparedTypeLambdas == Set.empty)
 
+  def nestingLevel(param: TypeParamRef)(using Context) = constraint.typeVarOfParam(param) match
+    case tv: TypeVar => tv.nestingLevel
+    case _ =>
+      // This should only happen when reducing match types (in
+      // TrackingTypeComparer#matchCases) or in uncommitable TyperStates (as
+      // asserted in ProtoTypes.constrained) and is special-cased in `levelOK`
+      // below.
+      Int.MaxValue
+
+  /** Is `level` <= `maxLevel` or legal in the current context? */
+  def levelOK(level: Int, maxLevel: Int)(using Context): Boolean =
+    level <= maxLevel
+    || ctx.isAfterTyper || !ctx.typerState.isCommittable // Leaks in these cases shouldn't break soundness
+    || level == Int.MaxValue // See `nestingLevel` above.
+    || !Config.checkLevelsOnConstraints
+
+  /** If `param` is nested deeper than `maxLevel`, try to instantiate it to a
+   *  fresh type variable of level `maxLevel` and return the new variable.
+   *  If this isn't possible, throw a TypeError.
+   */
+  def atLevel(maxLevel: Int, param: TypeParamRef)(using Context): TypeParamRef =
+    if levelOK(nestingLevel(param), maxLevel) then
+      return param
+    LevelAvoidMap(0, maxLevel)(param) match
+      case freshVar: TypeVar => freshVar.origin
+      case _ => throw TypeError(
+        em"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
+
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds = constraint.nonParamBounds(param)
 
+  /** The full lower bound of `param` includes both the `nonParamBounds` and the
+   *  params in the constraint known to be `<: param`, except that
+   *  params with a `nestingLevel` higher than `param` will be instantiated
+   *  to a fresh param at a legal level. See the documentation of `TypeVar`
+   *  for details.
+   */
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
-    constraint.minLower(param).foldLeft(nonParamBounds(param).lo)(_ | _)
+    val maxLevel = nestingLevel(param)
+    var loParams = constraint.minLower(param)
+    if maxLevel != Int.MaxValue then
+      loParams = loParams.mapConserve(atLevel(maxLevel, _))
+    loParams.foldLeft(nonParamBounds(param).lo)(_ | _)
 
+  /** The full upper bound of `param`, see the documentation of `fullLowerBounds` above. */
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
-    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi)(_ & _)
+    val maxLevel = nestingLevel(param)
+    var hiParams = constraint.minUpper(param)
+    if maxLevel != Int.MaxValue then
+      hiParams = hiParams.mapConserve(atLevel(maxLevel, _))
+    hiParams.foldLeft(nonParamBounds(param).hi)(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
     *
@@ -79,10 +186,105 @@ trait ConstraintHandling {
   def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  /** If true, eliminate wildcards in bounds by avoidance, otherwise replace
-   *  them by fresh variables.
+  /** An approximating map that prevents types nested deeper than maxLevel as
+   *  well as WildcardTypes from leaking into the constraint.
    */
-  protected def approximateWildcards: Boolean = true
+  class LevelAvoidMap(topLevelVariance: Int, maxLevel: Int)(using Context) extends TypeOps.AvoidMap:
+    variance = topLevelVariance
+
+    def toAvoid(tp: NamedType): Boolean =
+      tp.prefix == NoPrefix && !tp.symbol.isStatic && !levelOK(tp.symbol.nestingLevel, maxLevel)
+
+    /** Return a (possibly fresh) type variable of a level no greater than `maxLevel` which is:
+     *  - lower-bounded by `tp` if variance >= 0
+     *  - upper-bounded by `tp` if variance <= 0
+     *  If this isn't possible, return the empty range.
+     */
+    def legalVar(tp: TypeVar): Type =
+      val oldParam = tp.origin
+      val nameKind =
+        if variance > 0 then AvoidNameKind.UpperBound
+        else if variance < 0 then AvoidNameKind.LowerBound
+        else AvoidNameKind.BothBounds
+
+      /** If it exists, return the first param in the list created in a previous call to `legalVar(tp)`
+       *  with the appropriate level and variance.
+       */
+      def findParam(params: List[TypeParamRef]): Option[TypeParamRef] =
+        params.find(p =>
+          nestingLevel(p) <= maxLevel && representedParamRef(p) == oldParam &&
+          (p.paramName.is(AvoidNameKind.BothBounds) ||
+           variance != 0 && p.paramName.is(nameKind)))
+
+      // First, check if we can reuse an existing parameter, this is more than an optimization
+      // since it avoids an infinite loop in tests/pos/i8900-cycle.scala
+      findParam(constraint.lower(oldParam)).orElse(findParam(constraint.upper(oldParam))) match
+        case Some(param) =>
+          constraint.typeVarOfParam(param)
+        case _ =>
+          // Otherwise, try to return a fresh type variable at `maxLevel` with
+          // the appropriate constraints.
+          val name = nameKind(oldParam.paramName.toTermName).toTypeName
+          val freshVar = newTypeVar(TypeBounds.upper(tp.topType), name,
+            nestingLevel = maxLevel, represents = oldParam)
+          val ok =
+            if variance < 0 then
+              addLess(freshVar.origin, oldParam)
+            else if variance > 0 then
+              addLess(oldParam, freshVar.origin)
+            else
+              unify(freshVar.origin, oldParam)
+          if ok then freshVar else emptyRange
+    end legalVar
+
+    override def apply(tp: Type): Type = tp match
+      case tp: TypeVar if !tp.isInstantiated && !levelOK(tp.nestingLevel, maxLevel) =>
+        legalVar(tp)
+      // TypeParamRef can occur in tl bounds
+      case tp: TypeParamRef =>
+        constraint.typeVarOfParam(tp) match
+          case tvar: TypeVar =>
+            apply(tvar)
+          case _ => super.apply(tp)
+      case _ =>
+        super.apply(tp)
+
+    override def mapWild(t: WildcardType) =
+      if ctx.mode.is(Mode.TypevarsMissContext) then super.mapWild(t)
+      else
+        val tvar = newTypeVar(apply(t.effectiveBounds).toBounds, nestingLevel = maxLevel)
+        tvar
+  end LevelAvoidMap
+
+  /** Approximate `rawBound` if needed to make it a legal bound of `param` by
+   *  avoiding cycles, wildcards and types with a level strictly greater than its
+   *  `nestingLevel`.
+   *
+   *  Note that level-checking must be performed here and cannot be delayed
+   *  until instantiation because if we allow level-incorrect bounds, then we
+   *  might end up reasoning with bad bounds outside of the scope where they are
+   *  defined. This can lead to level-correct but unsound instantiations as
+   *  demonstrated by tests/neg/i8900.scala.
+   */
+  protected def legalBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Type =
+    // Over-approximate for soundness.
+    var variance = if isUpper then -1 else 1
+    // ...unless we can only infer necessary constraints, in which case we
+    // flip the variance to under-approximate.
+    if necessaryConstraintsOnly then variance = -variance
+
+    val approx = new LevelAvoidMap(variance, nestingLevel(param)):
+      override def legalVar(tp: TypeVar): Type =
+        // `legalVar` will create a type variable whose bounds depend on
+        // `variance`, but whether the variance is positive or negative,
+        // we can still infer necessary constraints since just creating a
+        // type variable doesn't reduce the set of possible solutions.
+        // Therefore, we can safely "unflip" the variance flipped above.
+        // This is necessary for i8900-unflip.scala to typecheck.
+        val v = if necessaryConstraintsOnly then -this.variance else this.variance
+        atVariance(v)(super.legalVar(tp))
+    constraint.validBoundFor(param, approx(rawBound), isUpper)
+  end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
     if !constraint.contains(param) then true
@@ -91,12 +293,7 @@ trait ConstraintHandling {
       // so we shouldn't allow them as constraints either.
       false
     else
-      val dropWildcards = new AvoidWildcardsMap:
-        if !isUpper then variance = -1
-        override def mapWild(t: WildcardType) =
-          if approximateWildcards then super.mapWild(t)
-          else newTypeVar(apply(t.effectiveBounds).toBounds)
-      val bound = dropWildcards(rawBound)
+      val bound = legalBound(param, rawBound, isUpper)
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
       val equalBounds = (if isUpper then lo else hi) eq bound
       if equalBounds && !bound.existsPart(_ eq param, StopAt.Static) then
@@ -112,14 +309,17 @@ trait ConstraintHandling {
           val saved = homogenizeArgs
           homogenizeArgs = Config.alignArgsInAnd
           try
-            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-            else oldBounds.derivedTypeBounds(lo | bound, hi)
-          finally homogenizeArgs = saved
+            withUntrustedBounds(
+              if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+              else oldBounds.derivedTypeBounds(lo | bound, hi))
+          finally
+            homogenizeArgs = saved
+        //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
         || {
           constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param)
+          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
           isSub(lo, hi)
         }
   end addOneBound
@@ -191,19 +391,52 @@ trait ConstraintHandling {
 
   def location(using Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
 
-  /** Make p2 = p1, transfer all bounds of p2 to p1
-   *  @pre  less(p1)(p2)
+  /** Unify p1 with p2: one parameter will be kept in the constraint, the
+   *  other will be removed and its bounds transferred to the remaining one.
+   *
+   *  If p1 and p2 have different `nestingLevel`, the parameter with the lowest
+   *  level will be kept and the transferred bounds from the other parameter
+   *  will be adjusted for level-correctness.
    */
   private def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): Boolean = {
     constr.println(s"unifying $p1 $p2")
-    assert(constraint.isLess(p1, p2))
-    constraint = constraint.addLess(p2, p1)
+    if !constraint.isLess(p1, p2) then
+      constraint = constraint.addLess(p1, p2)
+
+    val level1 = nestingLevel(p1)
+    val level2 = nestingLevel(p2)
+    val pKept    = if level1 <= level2 then p1 else p2
+    val pRemoved = if level1 <= level2 then p2 else p1
+
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
-    constraint = constraint.unify(p1, p2)
-    val bounds = constraint.nonParamBounds(p1)
-    val lo = bounds.lo
-    val hi = bounds.hi
+
+    constraint = constraint.addLess(p2, p1, direction = if pKept eq p1 then KeepParam2 else KeepParam1)
+
+    val boundKept    = constraint.validBoundsFor(pKept,
+      constraint.nonParamBounds(   pKept).substParam(pRemoved, pKept).bounds)
+    var boundRemoved = constraint.validBoundsFor(pKept,
+      constraint.nonParamBounds(pRemoved).substParam(pRemoved, pKept).bounds)
+
+    if level1 != level2 then
+      boundRemoved = LevelAvoidMap(-1, math.min(level1, level2))(boundRemoved)
+      val TypeBounds(lo, hi) = boundRemoved: @unchecked
+      // After avoidance, the interval might be empty, e.g. in
+      // tests/pos/i8900-promote.scala:
+      //     >: x.type <: Singleton
+      // becomes:
+      //     >: Int <: Singleton
+      // In that case, we can still get a legal constraint
+      // by replacing the lower-bound to get:
+      //     >: Int & Singleton <: Singleton
+      if !isSub(lo, hi) then
+        boundRemoved = TypeBounds(lo & hi, hi)
+
+    val newBounds = (boundKept & boundRemoved).bounds
+    constraint = constraint.updateEntry(pKept, newBounds).replace(pRemoved, pKept)
+
+    val lo = newBounds.lo
+    val hi = newBounds.hi
     isSub(lo, hi) &&
     down.forall(addOneBound(_, hi, isUpper = true)) &&
     up.forall(addOneBound(_, lo, isUpper = false))
@@ -235,12 +468,66 @@ trait ConstraintHandling {
    */
   protected final def isSatisfiable(using Context): Boolean =
     constraint.forallParams { param =>
-      val TypeBounds(lo, hi) = constraint.entry(param)
+      val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
       isSub(lo, hi) || {
         report.log(i"sub fail $lo <:< $hi")
         false
       }
     }
+
+  /** Fix instance type `tp` by avoidance  so that it does not contain references
+   *  to types at level > `maxLevel`.
+   *  @param tp         the type to be fixed
+   *  @param fromBelow  whether type was obtained from lower bound
+   *  @param maxLevel   the maximum level of references allowed
+   *  @param param      the parameter that was instantiated
+   */
+  private def fixLevels(tp: Type, fromBelow: Boolean, maxLevel: Int, param: TypeParamRef)(using Context) =
+
+    def needsFix(tp: NamedType) =
+      (tp.prefix eq NoPrefix) && tp.symbol.nestingLevel > maxLevel
+
+    /** An accumulator that determines whether levels need to be fixed
+     *  and computes on the side sets of nested type variables that need
+     *  to be instantiated.
+     */
+    def needsLeveling = new TypeAccumulator[Boolean]:
+      if !fromBelow then variance = -1
+
+      def apply(need: Boolean, tp: Type) =
+        need || tp.match
+          case tp: NamedType =>
+            needsFix(tp)
+            || !stopBecauseStaticOrLocal(tp) && apply(need, tp.prefix)
+          case tp: TypeVar =>
+            val inst = tp.instanceOpt
+            if inst.exists then apply(need, inst)
+            else if tp.nestingLevel > maxLevel then
+              // Change the nesting level of inner type variable to `maxLevel`.
+              // This means that the type variable will be instantiated later to a
+              // less nested type. If there are other references to the same type variable
+              // that do not come from the type undergoing `fixLevels`, this could lead
+              // to coarser types than intended. An alternative is to instantiate the
+              // type variable right away, but this also loses information. See
+              // i15934.scala for a test where the current strategey works but an early instantiation
+              // of `tp` would fail.
+              constr.println(i"widening nesting level of type variable $tp from ${tp.nestingLevel} to $maxLevel")
+              ctx.typerState.setNestingLevel(tp, maxLevel)
+              true
+            else false
+          case _ =>
+            foldOver(need, tp)
+    end needsLeveling
+
+    def levelAvoid = new TypeOps.AvoidMap:
+      if !fromBelow then variance = -1
+      def toAvoid(tp: NamedType) = needsFix(tp)
+
+    if Config.checkLevelsOnInstantiation && !ctx.isAfterTyper && needsLeveling(false, tp) then
+      typr.println(i"instance $tp for $param needs leveling to $maxLevel")
+      levelAvoid(tp)
+    else tp
+  end fixLevels
 
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
@@ -248,22 +535,35 @@ trait ConstraintHandling {
    *  contains a reference to the parameter itself (such occurrences can arise
    *  for F-bounded types, `addOneBound` ensures that they never occur in the
    *  lower bound).
+   *  The solved type is not allowed to contain references to types nested deeper
+   *  than `maxLevel`.
    *  Wildcard types in bounds are approximated by their upper or lower bounds.
    *  The constraint is left unchanged.
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
    */
-  final def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
+  final def approximation(param: TypeParamRef, fromBelow: Boolean, maxLevel: Int)(using Context): Type =
     constraint.entry(param) match
       case entry: TypeBounds =>
         val useLowerBound = fromBelow || param.occursIn(entry.hi)
-        val inst = if useLowerBound then fullLowerBound(param) else fullUpperBound(param)
-        typr.println(s"approx ${param.show}, from below = $fromBelow, inst = ${inst.show}")
-        inst
+        val rawInst = withUntrustedBounds(
+          if useLowerBound then fullLowerBound(param) else fullUpperBound(param))
+        val levelInst = fixLevels(rawInst, fromBelow, maxLevel, param)
+        if levelInst ne rawInst then
+          typr.println(i"level avoid for $maxLevel: $rawInst --> $levelInst")
+        typr.println(i"approx $param, from below = $fromBelow, inst = $levelInst")
+        levelInst
       case inst =>
         assert(inst.exists, i"param = $param\nconstraint = $constraint")
         inst
   end approximation
+
+  private def isTransparent(tp: Type, traitOnly: Boolean)(using Context): Boolean = tp match
+    case AndType(tp1, tp2) =>
+      isTransparent(tp1, traitOnly) && isTransparent(tp2, traitOnly)
+    case _ =>
+      val cls = tp.underlyingClassRef(refinementOK = false).typeSymbol
+      cls.isTransparentClass && (!traitOnly || cls.is(Trait))
 
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
@@ -277,18 +577,17 @@ trait ConstraintHandling {
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
-      val tpd = tp.dealias
-      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
-        dropped = tpd :: dropped
+      if isTransparent(tp, traitOnly = true) && !kept.contains(tp) then
+        dropped = tp :: dropped
         defn.AnyType
-      else tpd match
+      else tp match
         case AndType(tp1, tp2) =>
           val tp1w = dropOneTransparentTrait(tp1)
           if tp1w ne tp1 then tp1w & tp2
           else
             val tp2w = dropOneTransparentTrait(tp2)
             if tp2w ne tp2 then tp1 & tp2w
-            else tpd
+            else tp
         case _ =>
           tp
 
@@ -327,10 +626,14 @@ trait ConstraintHandling {
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
-   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
-   *   2. If `inst` is a union type, approximate the union type from above by an intersection
-   *      of all common base types, provided the result is a subtype of `bound`.
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
+   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint) and
+   *      is not transparent according to `isTransparent`.
+   *   2a. If `inst` is a union type and `widenUnions` is true, approximate the union type
+   *      from above by an intersection of all common base types, provided the result
+   *      is a subtype of `bound`.
+   *   2b. If `inst` is a union type and `widenUnions` is false, turn it into a hard
+   *      union type (except for unions | Null, which are kept in the state they were).
    *   3. Widen some irreducible applications of higher-kinded types to wildcard arguments
    *      (see @widenIrreducible).
    *   4. Drop transparent traits from intersections (see @dropTransparentTraits).
@@ -343,10 +646,12 @@ trait ConstraintHandling {
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(inst: Type, bound: Type)(using Context): Type =
+  def widenInferred(inst: Type, bound: Type, widenUnions: Boolean)(using Context): Type =
     def widenOr(tp: Type) =
-      val tpw = tp.widenUnion
-      if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+      if widenUnions then
+        val tpw = tp.widenUnion
+        if (tpw ne tp) && !isTransparent(tpw, traitOnly = false) && (tpw <:< bound) then tpw else tp
+      else tp.hardenUnions
 
     def widenSingle(tp: Type) =
       val tpw = tp.widenSingletons
@@ -358,7 +663,12 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
+      else
+        val widenedFromSingle = widenSingle(inst)
+        val widenedFromUnion = widenOr(widenedFromSingle)
+        val widened = dropTransparentTraits(widenedFromUnion, bound)
+        widenIrreducible(widened)
+
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
@@ -366,16 +676,35 @@ trait ConstraintHandling {
         wideInst.dropRepeatedAnnot
   end widenInferred
 
+  /** Convert all toplevel union types in `tp` to hard unions */
+  extension (tp: Type) private def hardenUnions(using Context): Type = tp.widen match
+    case tp: AndType =>
+      tp.derivedAndType(tp.tp1.hardenUnions, tp.tp2.hardenUnions)
+    case tp: RefinedType =>
+      tp.derivedRefinedType(tp.parent.hardenUnions, tp.refinedName, tp.refinedInfo)
+    case tp: RecType =>
+      tp.rebind(tp.parent.hardenUnions)
+    case tp: HKTypeLambda =>
+      tp.derivedLambdaType(resType = tp.resType.hardenUnions)
+    case tp: OrType =>
+      val tp1 = tp.stripNull
+      if tp1 ne tp then tp.derivedOrType(tp1.hardenUnions, defn.NullType)
+      else tp.derivedOrType(tp.tp1.hardenUnions, tp.tp2.hardenUnions, soft = false)
+    case _ =>
+      tp
+
   /** The instance type of `param` in the current constraint (which contains `param`).
    *  If `fromBelow` is true, the instance type is the lub of the parameter's
    *  lower bounds; otherwise it is the glb of its upper bounds. However,
    *  a lower bound instantiation can be a singleton type only if the upper bound
    *  is also a singleton type.
+   *  The instance type is not allowed to contain references to types nested deeper
+   *  than `maxLevel`.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean)(using Context): Type = {
-    val approx = approximation(param, fromBelow).simplified
+  def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int)(using Context): Type = {
+    val approx = approximation(param, fromBelow, maxLevel).simplified
     if fromBelow then
-      val widened = widenInferred(approx, param)
+      val widened = widenInferred(approx, param, widenUnions)
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
@@ -383,7 +712,7 @@ trait ConstraintHandling {
       // (we do not check for non-toplevel occurences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
-        instanceType(param, fromBelow)
+        instanceType(param, fromBelow, widenUnions, maxLevel)
       else
         widened
     else
@@ -420,15 +749,7 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  def bounds(param: TypeParamRef)(using Context): TypeBounds = {
-    val e = constraint.entry(param)
-    if (e.exists) e.bounds
-    else {
-      val pinfos = param.binder.paramInfos
-      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
-      else TypeBounds.empty
-    }
-  }
+  def bounds(param: TypeParamRef)(using Context): TypeBounds = constraint.bounds(param)
 
   /** Add type lambda `tl`, possibly with type variables `tvars`, to current constraint
    *  and propagate all bounds.
@@ -450,11 +771,7 @@ trait ConstraintHandling {
           case x =>
             // Happens if param was already solved while processing earlier params of the same TypeLambda.
             // See #4720.
-
-            // Should propagate bounds even when param has been solved.
-            // See #11682.
-            lower.forall(addOneBound(_, x, isUpper = true)) &&
-              upper.forall(addOneBound(_, x, isUpper = false))
+            true
         }
       }
     }
@@ -500,6 +817,11 @@ trait ConstraintHandling {
             case t @ TypeParamRef(tl: TypeLambda, n) if comparedTypeLambdas contains tl =>
               val bounds = tl.paramInfos(n)
               range(bounds.lo, bounds.hi)
+            case tl: TypeLambda =>
+              val saved = comparedTypeLambdas
+              comparedTypeLambdas -= tl
+              try mapOver(tl)
+              finally comparedTypeLambdas = saved
             case _ =>
               mapOver(t)
           }
@@ -528,13 +850,17 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+      val saved = canWidenAbstract
+      canWidenAbstract = true
       try bound match
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
           kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
-      finally addConstraintInvocations -= 1
+      finally
+        canWidenAbstract = saved
+        addConstraintInvocations -= 1
     }
   end addConstraint
 

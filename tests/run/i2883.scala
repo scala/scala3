@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class Wrapper(val value: Int)
 
 abstract class Foo(val x: Int)

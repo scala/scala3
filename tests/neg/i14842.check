@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i14842.scala:11:35 ------------------------------------------------------------
+11 |  val x: Either[Int, Any] = node.as[Any] // error
+   |                            ^^^^^^^^^^^^
+   |                            Found:    Either[String, Any]
+   |                            Required: Either[Int, Any]
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,3 +1,5 @@
+import scala.language.implicitConversions
+
 class LazyList[A]
 
 object LazyList {

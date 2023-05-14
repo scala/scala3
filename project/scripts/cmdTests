@@ -7,7 +7,7 @@ echo "testing sbt scalac and scala"
 "$SBT" ";scalac $SOURCE -d $OUT ;scala -classpath $OUT $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
-# check that `sbt scalac` compiles and `sbt scala` runs it
+# check that `sbt scalac -from-tasty` compiles and `sbt scala` runs it
 echo "testing sbt scalac -from-tasty and scala -classpath"
 clear_out "$OUT"
 "$SBT" ";scalac $SOURCE -d $OUT ;scalac -from-tasty -d $OUT1 $OUT/$TASTY ;scala -classpath $OUT1 $MAIN" > "$tmp"
@@ -33,7 +33,7 @@ echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
 "$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
 "$SBT" "scalac -print-tasty -color:never $OUT/out.jar" > "$tmp"
-cat "$tmp" # for debugging
+# cat "$tmp" # for debugging
 grep -q ": i10430/lib.scala" "$tmp"
 grep -q ": i10430/app.scala" "$tmp"
 grep -q "[i10430/lib.scala]" "$tmp"
@@ -47,19 +47,16 @@ if grep -q "tests/pos/i10430/app.scala" "$tmp"; then
   exit 1
 fi
 
-echo "testing sbt scalac with suspension"
-clear_out "$OUT"
-"$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
-
 # check that missing source file does not crash message rendering
 echo "testing that missing source file does not crash message rendering"
 clear_out "$OUT"
 clear_out "$OUT1"
-cp tests/neg/i6371/A_1.scala $OUT/A.scala
-cp tests/neg/i6371/B_2.scala $OUT/B.scala
+cp tests/neg-macros/i6371/A_1.scala $OUT/A.scala
+cp tests/neg-macros/i6371/B_2.scala $OUT/B.scala
 "$SBT" "scalac $OUT/A.scala -d $OUT1"
 rm $OUT/A.scala
 "$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
+# cat "$tmp" # for debugging
 grep -qe "B.scala:2:7" "$tmp"
 grep -qe "This location contains code that was inlined from A.scala:3" "$tmp"
 

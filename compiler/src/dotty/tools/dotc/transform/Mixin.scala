@@ -10,7 +10,6 @@ import SymUtils._
 import Symbols._
 import SymDenotations._
 import Types._
-import Periods._
 import Decorators._
 import DenotTransformers._
 import StdNames._
@@ -18,13 +17,17 @@ import Names._
 import NameKinds._
 import NameOps._
 import ast.Trees._
-import collection.mutable
 
 object Mixin {
   val name: String = "mixin"
+  val description: String = "expand trait fields and trait initializers"
 
   def traitSetterName(getter: TermSymbol)(using Context): TermName =
+    extension (name: Name) def qualifiedToSimple = name.replace {
+      case n @ AnyQualifiedName(_, _) => n.toSimpleName
+    }
     getter.ensureNotPrivate.name
+      .qualifiedToSimple  // TODO: Find out why TraitSetterNames can't be defined over QualifiedNames
       .expandedName(getter.owner, TraitSetterName)
       .asTermName.syntheticSetterName
 }
@@ -111,6 +114,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = Mixin.name
+
+  override def description: String = Mixin.description
 
   override def relaxedTypingInGroup: Boolean = true
     // Because it changes number of parameters in trait initializers
@@ -213,10 +218,11 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
                 initFlags = stat.symbol.flags | PrivateLocal
               ).installAfter(thisPhase)
               stat.symbol.enteredAfter(thisPhase)
+            case _ =>
           }
           (scall, stats ::: inits, args)
       case _ =>
-        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
+        val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree: @unchecked
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
         (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
     }

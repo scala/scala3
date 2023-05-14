@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, NameOps._
+import Contexts._, Symbols._, Types._, Flags._
 import Denotations._, SymDenotations._
 import Names.Name, StdNames.nme
 import ast.untpd
@@ -30,7 +30,7 @@ object ContextOps:
         if (ctx.owner.isClass)
           if (ctx.outer.owner == ctx.owner) { // inner class scope; check whether we are referring to self
             if (ctx.scope.size == 1) {
-              val elem = ctx.scope.lastEntry
+              val elem = ctx.scope.lastEntry.nn
               if (elem.name == name) return elem.sym.denot // return self
             }
             val pre = ctx.owner.thisType

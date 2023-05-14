@@ -8,12 +8,14 @@ import Contexts._, Types._, Denotations._, Names._, StdNames._, NameOps._, Symbo
 import NameKinds.DepParamName
 import Trees._
 import Constants._
-import util.{Stats, SimpleIdentityMap}
+import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
 import Decorators._
 import Uniques._
+import inlines.Inlines
 import config.Printers.typr
+import Inferencing.*
+import ErrorReporting.*
 import util.SourceFile
-import util.Property
 import TypeComparer.necessarySubType
 
 import scala.annotation.internal.sharable
@@ -110,7 +112,7 @@ object ProtoTypes {
      *  achieved by replacing expected type parameters with wildcards.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
-      if (Inliner.isInlineable(meth)) {
+      if (Inlines.isInlineable(meth)) {
         constrainResult(mt, wildApprox(pt))
         true
       }
@@ -131,9 +133,17 @@ object ProtoTypes {
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
+    private var myWasDeepened = false
     override def revealIgnored = ignored
-    override def deepenProto(using Context): Type = ignored
+    override def deepenProto(using Context): Type =
+      myWasDeepened = true
+      ignored
     override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
+
+    /** Did someone look inside via deepenProto? Used for error deagniostics
+     *  to give a more extensive expected type.
+     */
+    def wasDeepened: Boolean = myWasDeepened
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
@@ -158,44 +168,64 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
-    /** Is the set of members of this type unknown? This is the case if:
-     *  1. The type has Nothing or Wildcard as a prefix or underlying type
-     *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
-     *  or as an upper bound of a prefix or underlying type.
+    /** Is the set of members of this type unknown, in the sense that we
+     *  cannot compute a non-trivial upper approximation? This is the case if:
+     *    1. The type has Nothing or Wildcard as a prefix or underlying type
+     *    2. The type is an abstract type with a lower bound that has a unknown
+     *       members and an upper bound that is both provisional and has unknown members.
+     *    3. The type is an uninstiated type var with a lower that has unknown members.
+     *    4. Type proxies have unknown members if their super types do
      */
-    private def hasUnknownMembers(tp: Type)(using Context): Boolean = tp match {
-      case tp: TypeVar => !tp.isInstantiated
+    private def hasUnknownMembers(tp: Type)(using Context): Boolean = tp match
       case tp: WildcardType => true
       case NoType => true
       case tp: TypeRef =>
         val sym = tp.symbol
-        sym == defn.NothingClass ||
-        !sym.isStatic && {
-          hasUnknownMembers(tp.prefix) || {
-            val bound = tp.info.hiBound
-            bound.isProvisional && hasUnknownMembers(bound)
-          }
-        }
+        sym == defn.NothingClass
+        ||     !sym.isClass
+            && !sym.isStatic
+            && {
+                hasUnknownMembers(tp.prefix)
+                || { val bound = tp.info.hiBound
+                     bound.isProvisional && hasUnknownMembers(bound)
+                  } && hasUnknownMembers(tp.info.loBound)
+              }
+      case tp: TypeVar if !tp.isInstantiated =>
+        hasUnknownMembers(TypeComparer.bounds(tp.origin).lo)
       case tp: AppliedType => hasUnknownMembers(tp.tycon) || hasUnknownMembers(tp.superType)
       case tp: TypeProxy => hasUnknownMembers(tp.superType)
+      // It woukd make sense to also include And/OrTypes, but that leads to
+      // infinite recursions, as observed for instance for t2399.scala.
       case _ => false
-    }
 
     override def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean =
-      name == nme.WILDCARD || hasUnknownMembers(tp1) ||
-      {
-        val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
-        def qualifies(m: SingleDenotation) =
-          val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
-          isAccessible
-          && (memberProto.isRef(defn.UnitClass)
-             || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
-              // Note: can't use `m.info` here because if `m` is a method, `m.info`
-              //       loses knowledge about `m`'s default arguments.
-        mbr match { // hasAltWith inlined for performance
-          case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
-          case _ => mbr hasAltWith qualifies
-        }
+      name == nme.WILDCARD
+      || hasUnknownMembers(tp1)
+      || {
+        try
+          val mbr = if privateOK then tp1.member(name) else tp1.nonPrivateMember(name)
+          def qualifies(m: SingleDenotation) =
+            val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+            isAccessible
+            && (memberProto.isRef(defn.UnitClass)
+              || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+                // Note: can't use `m.info` here because if `m` is a method, `m.info`
+                //       loses knowledge about `m`'s default arguments.
+          mbr match // hasAltWith inlined for performance
+            case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
+            case _ => mbr hasAltWith qualifies
+        catch case ex: TypeError =>
+          // A scenario where this can happen is in pos/15673.scala:
+          // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
+          // the current constraint stipulates CC <: SeqOps[...], where `SeqOps` defines
+          // the `C` parameter. We try to resolve this using `argDenot` but `argDenot`
+          // consults the base type of `CC`, which is not `SeqOps`, so it does not
+          // find a corresponding argument. In fact, `argDenot` is not allowed to
+          // consult short-lived things like the current constraint, so it has no other
+          // choice. The problem will be healed later, when normal selection fails
+          // and we try to instantiate type variables to compensate. But we have to make
+          // sure we do not issue a type error before we get there.
+          false
       }
 
     def underlying(using Context): Type = WildcardType
@@ -267,6 +297,8 @@ object ProtoTypes {
    */
   @sharable object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true)
 
+  @sharable object SingletonTypeProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed, true)
+
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed, true)
 
@@ -281,6 +313,9 @@ object ProtoTypes {
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.empty
+
+    /** The argument that produced errors during typing */
+    var errorArgs: SimpleIdentitySet[untpd.Tree] = SimpleIdentitySet.empty
 
     /** The tupled or untupled version of this prototype, if it has been computed */
     var tupledDual: Type = NoType
@@ -337,9 +372,33 @@ object ProtoTypes {
 
     private def isUndefined(tp: Type): Boolean = tp match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
+
+    /** Did an argument produce an error when typing? This means: an error was reported
+     *  and a tree got an error type. Errors of adaptation whree a tree has a good type
+     *  but that type does not conform to the expected type are not counted.
+     */
+    def hasErrorArg = !state.errorArgs.isEmpty
+
+    /** Does tree have embedded error trees that are not at the outside.
+     *  A nested tree t1 is "at the outside" relative to a tree t2 if
+     *    - t1 and t2 have the same span, or
+     *    - t2 is a ascription (t22: T) and t1 is at the outside of t22
+     *    - t2 is a closure (...) => t22 and t1 is at the outside of t22
+     */
+    def hasInnerErrors(t: Tree)(using Context): Boolean = t match
+      case Typed(expr, tpe) => hasInnerErrors(expr)
+      case closureDef(mdef) => hasInnerErrors(mdef.rhs)
+      case _ =>
+        t.existsSubTree { t1 =>
+          if t1.typeOpt.isError && t1.span.toSynthetic != t.span.toSynthetic then
+            typr.println(i"error subtree $t1 of $t with ${t1.typeOpt}, spans = ${t1.span}, ${t.span}")
+            true
+          else
+            false
+        }
 
     private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
       var targ = state.typedArg(arg)
@@ -357,10 +416,15 @@ object ProtoTypes {
             targ = arg.withType(WildcardType)
           case _ =>
             targ = typerFn(arg)
-            if (!ctx.reporter.hasUnreportedErrors)
-              state.typedArg = state.typedArg.updated(arg, targ)
+            // TODO: investigate why flow typing is not working on `targ`
+            if ctx.reporter.hasUnreportedErrors then
+              if hasInnerErrors(targ.nn) then
+                state.errorArgs += arg
+            else
+              state.typedArg = state.typedArg.updated(arg, targ.nn)
+              state.errorArgs -= arg
         }
-      targ
+      targ.nn
     }
 
     /** The typed arguments. This takes any arguments already typed using
@@ -430,7 +494,21 @@ object ProtoTypes {
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
         force = true)
-      typer.adapt(targ, wideFormal, locked)
+      val targ1 = typer.adapt(targ, wideFormal, locked)
+      if wideFormal eq formal then targ1
+      else checkNoWildcardCaptureForCBN(targ1)
+    }
+
+    def checkNoWildcardCaptureForCBN(targ1: Tree)(using Context): Tree = {
+      if hasCaptureConversionArg(targ1.tpe) then
+        val tp = stripCast(targ1).tpe
+        errorTree(targ1,
+          em"""argument for by-name parameter is not a value
+              |and contains wildcard arguments: $tp
+              |
+              |Assign it to a val and pass that instead.
+              |""")
+      else targ1
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before
@@ -582,7 +660,7 @@ object ProtoTypes {
     override def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
-    def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
+    def derivedPolyProto(targs: List[Tree], resType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
@@ -609,10 +687,12 @@ object ProtoTypes {
    *
    *    [] _
    */
-  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways:
+    override def toString = "AnyFunctionProto"
 
   /** A prototype for type constructors that are followed by a type application */
-  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways:
+    override def toString = "AnyTypeConstructorProto"
 
   extension (pt: Type)
     def isExtensionApplyProto: Boolean = pt match
@@ -628,7 +708,11 @@ object ProtoTypes {
    *  for each parameter.
    *  @return  The added type lambda, and the list of created type variables.
    */
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree, alwaysAddTypeVars: Boolean)(using Context): (TypeLambda, List[TypeTree]) = {
+  def constrained(using Context)(
+    tl: TypeLambda, owningTree: untpd.Tree,
+    alwaysAddTypeVars: Boolean,
+    nestingLevel: Int = ctx.nestingLevel
+  ): (TypeLambda, List[TypeTree]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
@@ -640,7 +724,7 @@ object ProtoTypes {
       for (paramRef <- tl.paramRefs)
       yield {
         val tt = InferredTypeTree().withSpan(owningTree.span)
-        val tvar = TypeVar(paramRef, state)
+        val tvar = TypeVar(paramRef, state, nestingLevel)
         state.ownedVars += tvar
         tt.withType(tvar)
       }
@@ -659,36 +743,47 @@ object ProtoTypes {
   def constrained(tl: TypeLambda)(using Context): TypeLambda =
     constrained(tl, EmptyTree)._1
 
-  /** A new type variable with given bounds for its origin.
-   *  @param  represents  If exists, the TermParamRef that the TypeVar represents
-   *                      in the substitution generated by `resultTypeApprox`
+  /** Instantiate `tl` with fresh type variables added to the constraint. */
+  def instantiateWithTypeVars(tl: TypeLambda)(using Context): Type =
+    val targs = constrained(tl, ast.tpd.EmptyTree, alwaysAddTypeVars = true)._2
+    tl.instantiate(targs.tpes)
+
+  /** A fresh type variable added to the current constraint.
+   *  @param  bounds        The initial bounds of the variable
+   *  @param  name          The name of the variable, defaults a fresh `DepParamName`
+   *  @param  nestingLevel  See `TypeVar#nestingLevel`
+   *  @param  represents    If it exists, a ParamRef that this TypeVar represents,
+   *                        to be retrieved using `representedParamRef`.
+   *                        in the substitution generated by `resultTypeApprox`
    *  If `represents` exists, it is stored in the result type of the PolyType
    *  that backs the TypeVar, to be retrieved by `representedParamRef`.
    */
-  def newTypeVar(bounds: TypeBounds, represents: Type = NoType)(using Context): TypeVar = {
-    val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
+  def newTypeVar(using Context)(
+      bounds: TypeBounds, name: TypeName = DepParamName.fresh().toTypeName,
+      nestingLevel: Int = ctx.nestingLevel, represents: Type = NoType): TypeVar =
+    val poly = PolyType(name :: Nil)(
         pt => bounds :: Nil,
         pt => represents.orElse(defn.AnyType))
-    constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true)
+    constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true, nestingLevel)
       ._2.head.tpe.asInstanceOf[TypeVar]
-  }
 
-  /** If `tvar` represents a parameter of a dependent function generated
-   *  by `newDepVar` called from `resultTypeApprox, the term parameter reference
-   *  for which the variable was substituted. Otherwise, NoType.
+  /** If `param` was created using `newTypeVar(..., represents = X)`, returns X.
+   *  This is used in:
+   *  - `Inferencing#constrainIfDependentParamRef` to retrieve the dependent function
+   *    parameter for which the variable was substituted.
+   *  - `ConstraintHandling#LevelAvoidMap#legalVar` to retrieve the type variable that was
+   *    avoided in a previous call to `legalVar`.
    */
-  def representedParamRef(tvar: TypeVar)(using Context): Type =
-    if tvar.origin.paramName.is(DepParamName) then
-      tvar.origin.binder.resultType match
-        case ref: TermParamRef => ref
-        case _ => NoType
-    else NoType
+  def representedParamRef(param: TypeParamRef)(using Context): Type =
+    param.binder.resultType match
+      case ref: ParamRef => ref
+      case _ => NoType
 
   /** Create a new TypeVar that represents a dependent method parameter singleton `ref` */
   def newDepTypeVar(ref: TermParamRef)(using Context): TypeVar =
     newTypeVar(
       TypeBounds.upper(AndType(ref.underlying.widenExpr, defn.SingletonClass.typeRef)),
-      ref)
+      represents = ref)
 
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards or TypeParamRefs.
@@ -707,7 +802,7 @@ object ProtoTypes {
     else mt.resultType
 
   /** The normalized form of a type
-   *   - unwraps polymorphic types, tracking their parameters in the current constraint
+   *   - instantiate polymorphic types with fresh type variables in the current constraint
    *   - skips implicit parameters of methods and functions;
    *     if result type depends on implicit parameter, replace with wildcard.
    *   - converts non-dependent method types to the corresponding function types
@@ -726,7 +821,7 @@ object ProtoTypes {
     Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
-        normalize(constrained(poly).resultType, pt)
+        normalize(instantiateWithTypeVars(poly), pt)
       case mt: MethodType =>
         if (mt.isImplicitMethod) normalize(resultTypeApprox(mt, wildcardOnly = true), pt)
         else if (mt.isResultDependent) tp
@@ -740,14 +835,14 @@ object ProtoTypes {
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
               val ft = defn.FunctionOf(mt.paramInfos, rt)
-              if (mt.paramInfos.nonEmpty || ft <:< pt) ft else rt
+              if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }
       case et: ExprType =>
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.functionArgInfos.last, pt)
         else tp
     }
   }
@@ -755,17 +850,23 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  private def wildApprox(tp: Type, theMap: WildApproxMap, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type = tp match {
+  private def wildApprox(tp: Type, theMap: WildApproxMap | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type =
+    tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
       if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen, internal))
     case tp @ AppliedType(tycon, args) =>
+      def wildArgs = args.mapConserve(arg => wildApprox(arg, theMap, seen, internal))
       wildApprox(tycon, theMap, seen, internal) match {
-        case _: WildcardType => WildcardType // this ensures we get a * type
-        case tycon1 => tp.derivedAppliedType(tycon1,
-          args.mapConserve(arg => wildApprox(arg, theMap, seen, internal)))
+        case WildcardType(TypeBounds(lo, hi)) if hi.typeParams.hasSameLengthAs(args) =>
+          val args1 = wildArgs
+          val lo1 = if lo.typeParams.hasSameLengthAs(args) then lo.appliedTo(args1) else lo
+          WildcardType(TypeBounds(lo1, hi.appliedTo(args1)))
+        case WildcardType(_) =>
+          WildcardType
+        case tycon1 => tp.derivedAppliedType(tycon1, wildArgs)
       }
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(
@@ -863,8 +964,8 @@ object ProtoTypes {
   object dummyTreeOfType {
     def apply(tp: Type)(implicit src: SourceFile): Tree =
       untpd.Literal(Constant(null)) withTypeUnchecked tp
-    def unapply(tree: untpd.Tree): Option[Type] = tree match {
-      case Literal(Constant(null)) => Some(tree.typeOpt)
+    def unapply(tree: untpd.Tree): Option[Type] = untpd.unsplice(tree) match {
+      case tree @ Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None
     }
   }

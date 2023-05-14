@@ -3,7 +3,6 @@ package dotty.tools.dotc.ast
 import dotty.tools.DottyTest
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.transform.PostTyper
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertTrue, fail}

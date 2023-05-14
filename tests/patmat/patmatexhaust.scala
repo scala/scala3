@@ -84,7 +84,7 @@ class TestSealedExhaustive { // compile only
     case class C3() extends C
     case object C4 extends C
 
-    def ma10(x: C) = x match {  // treat abstract sealed C1 is as inhabited.
+    def ma10(x: C) = x match {  // exhaustive: abstract sealed C1 is dead end.
       case C3()     => true
       case C2 | C4  => true
     }

@@ -75,8 +75,8 @@ object Test {
     f"ana${3}%.2f%2${true}%bb" // error
     f"ac{2c{2{c.ca "
 
-    f"b%c.%2ii%iin" // error
-    f"b}22%2.c<{%{"  // error
+    f"b%c.%2ii%iin" // error // error // error
+    f"b}22%2.c<{%{"  // error // error
     f"%%bci.2${'i'}%..2c2" // error
   }
 

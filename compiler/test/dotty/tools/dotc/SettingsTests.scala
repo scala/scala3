@@ -1,6 +1,8 @@
 package dotty.tools
 package dotc
 
+import scala.language.unsafeNulls
+
 import reporting.StoreReporter
 import vulpix.TestConfiguration
 
@@ -104,7 +106,7 @@ class SettingsTests {
         false
 
     val default = Settings.defaultState
-    assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
+    dotty.tools.assertThrows[IllegalArgumentException](checkMessage("found: not an option of type java.lang.String, required: Boolean")) {
       Settings.option.updateIn(default, "not an option")
     }
 
@@ -175,6 +177,25 @@ class SettingsTests {
     assertTrue(s"Setting args errors:\n  ${summary.errors.take(5).mkString("\n  ")}", summary.errors.isEmpty)
     withProcessedArgs(summary) {
       assertEquals(100, foo.value)
+    }
+
+  @Test def `Set BooleanSettings correctly`: Unit =
+    object Settings extends SettingGroup:
+      val foo = BooleanSetting("-foo", "foo", false)
+      val bar = BooleanSetting("-bar", "bar", true)
+      val baz = BooleanSetting("-baz", "baz", false)
+      val qux = BooleanSetting("-qux", "qux", false)
+    import Settings._
+
+    val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
+    val summary = processArguments(args, processAll = true)
+    assertTrue(s"Setting args errors:\n  ${summary.errors.take(5).mkString("\n  ")}", summary.errors.isEmpty)
+    withProcessedArgs(summary) {
+      assertEquals(true, foo.value)
+      assertEquals(false, bar.value)
+      assertEquals(true, baz.value)
+      assertEquals(false, qux.value)
+      assertEquals(List("Flag -qux set repeatedly"), summary.warnings)
     }
 
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)

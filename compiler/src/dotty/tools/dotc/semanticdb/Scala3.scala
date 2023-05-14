@@ -12,8 +12,7 @@ import core.StdNames.nme
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.{semanticdb => s}
+import dotty.tools.dotc.core.Names.Designator
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 
@@ -36,7 +35,7 @@ object Scala3:
     val (endLine, endCol) = lineCol(span.end)
     Some(Range(startLine, startCol, endLine, endCol))
 
-  def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
+  def namePresentInSource(desig: Designator, span: Span, source:SourceFile)(using Context): Boolean =
     if !span.exists then false
     else
       val content = source.content()
@@ -46,13 +45,19 @@ object Scala3:
         else (span.start, span.end)
       val nameInSource = content.slice(start, end).mkString
       // for secondary constructors `this`
-      if sym.isConstructor && nameInSource == nme.THISkw.toString then
-        true
-      else
-        val target =
-          if sym.isPackageObject then sym.owner
-          else sym
-        nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
+      desig match
+        case sym: Symbol =>
+          if sym.isConstructor && nameInSource == nme.THISkw.toString then
+            true
+          else
+            val target =
+              if sym.isPackageObject then sym.owner
+              else sym
+            nameInSource == target.name.stripModuleClassSuffix.lastPart.toString
+        case name: Name =>
+          // println(nameInSource)
+          // println(name.mangledString)
+          nameInSource == name.mangledString
 
   sealed trait FakeSymbol {
     private[Scala3] var sname: Option[String] = None
@@ -95,6 +100,10 @@ object Scala3:
             val kind = s.symbolKind(symkinds)
             val sname = sym.symbolName
             val signature = s.info.toSemanticSig(s)
+            val symbolAnnotations = s.annotations.collect{
+              case annot if annot.symbol != defn.BodyAnnot && annot.symbol != defn.ChildAnnot =>
+                Annotation(annot.tree.tpe.toSemanticType(annot.symbol))
+            }
             SymbolInformation(
               symbol = sname,
               language = Language.SCALA,
@@ -104,6 +113,7 @@ object Scala3:
               signature = signature,
               access = s.symbolAccess(kind),
               overriddenSymbols = s.overriddenSymbols,
+              annotations = symbolAnnotations
             )
           case s: WildcardTypeSymbol =>
             SymbolInformation(
@@ -150,12 +160,13 @@ object Scala3:
   enum SymbolKind derives CanEqual:
     kind =>
 
-    case Val, Var, Setter, Abstract
+    case Val, Var, Setter, Abstract, TypeVal
 
     def isVar: Boolean = kind match
       case Var | Setter => true
       case _            => false
     def isVal: Boolean = kind == Val
+    def isTypeVal: Boolean = kind == TypeVal
     def isVarOrVal: Boolean = kind.isVar || kind.isVal
 
   end SymbolKind
@@ -172,8 +183,8 @@ object Scala3:
     val EmptyPackage: String = "_empty_/"
     val LocalPrefix: String = "local"
     val PackageObjectDescriptor: String = "package."
-    val s"${RootPackageName @ _}/" = RootPackage
-    val s"${EmptyPackageName @ _}/" = EmptyPackage
+    val s"${RootPackageName @ _}/" = RootPackage: @unchecked
+    val s"${EmptyPackageName @ _}/" = EmptyPackage: @unchecked
 
     def displaySymbol(symbol: Symbol)(using Context): String =
       if symbol.isPackageObject then
@@ -210,6 +221,12 @@ object Scala3:
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false
         }
+
+      def isDynamic(using Context): Boolean =
+        name == nme.applyDynamic ||
+        name == nme.selectDynamic ||
+        name == nme.updateDynamic ||
+        name == nme.applyDynamicNamed
   end NameOps
 
   given SymbolOps: AnyRef with
@@ -306,7 +323,9 @@ object Scala3:
           props |= SymbolInformation.Property.IMPLICIT.value
         if sym.is(Lazy, butNot=Module) then
           props |= SymbolInformation.Property.LAZY.value
-        if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase) then
+        if sym.isAllOf(Case | Module) ||
+          (sym.is(CaseClass) && !symkinds.exists(_.isTypeVal)) || // `t` of `case List[t] =>` (which has `CaseClass` flag) shouldn't be `CASE`
+          sym.isAllOf(EnumCase) then
           props |= SymbolInformation.Property.CASE.value
         if sym.is(Covariant) then
           props |= SymbolInformation.Property.COVARIANT.value
@@ -399,10 +418,10 @@ object Scala3:
         else Descriptor.None
 
       def unescapeUnicode =
-        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
+        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar).nn)
 
       def isJavaIdent =
-        isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
+        symbol.nonEmpty && isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
   end StringOps
 
   given InfoOps: AnyRef with

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 class B(member: Int) extends SubA(member) {
   def getMember = member
 }

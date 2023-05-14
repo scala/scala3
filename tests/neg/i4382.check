@@ -2,23 +2,23 @@
 3 |  def v1: Id[_] = ??? // error
   |          ^^^^^
   |          unreducible application of higher-kinded type App.Id to wildcard arguments
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E043] Type Error: tests/neg/i4382.scala:6:10 -----------------------------------------------------------------------
 6 |  def v2: HkL[_] = ??? // error
   |          ^^^^^^
   |          unreducible application of higher-kinded type App.HkL to wildcard arguments
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E043] Type Error: tests/neg/i4382.scala:9:10 -----------------------------------------------------------------------
 9 |  def v3: HkU[_] = ???  // error
   |          ^^^^^^
   |          unreducible application of higher-kinded type App.HkU to wildcard arguments
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E043] Type Error: tests/neg/i4382.scala:12:10 ----------------------------------------------------------------------
 12 |  def v4: HkAbs[_] = ??? // error
    |          ^^^^^^^^
    |          unreducible application of higher-kinded type App.HkAbs to wildcard arguments
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

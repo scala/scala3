@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 

@@ -1,9 +1,9 @@
 -- Error: tests/neg-custom-args/fatal-warnings/enum-variance.scala:2:12 ------------------------------------------------
 2 |  case Refl(f: T => T) // error: enum case Refl requires explicit declaration of type T
   |            ^^^^^^^^^
-  |            contravariant type T occurs in covariant position in type T => T of value f
-  |            enum case Refl requires explicit declaration of type T to resolve this issue.
-  |            See an example at http://dotty.epfl.ch/docs/reference/enums/adts.html#parameter-variance-of-enums
+  |        contravariant type T occurs in covariant position in type T => T of value f
+  |        enum case Refl requires explicit declaration of type T to resolve this issue.
+  |        See an example at https://docs.scala-lang.org/scala3/reference/enums/adts.html#parameter-variance-of-enums
 -- Error: tests/neg-custom-args/fatal-warnings/enum-variance.scala:5:16 ------------------------------------------------
 5 |  case Refl[-T](f: T => T) extends ExplicitView[T] // error: contravariant type T occurs in covariant position
   |                ^^^^^^^^^

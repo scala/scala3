@@ -7,5 +7,5 @@
   |          both match arguments ((23 : Int))
   |
   |          Note: Overloaded definitions introduced by refinements cannot be resolved
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

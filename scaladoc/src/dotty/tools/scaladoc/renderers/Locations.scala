@@ -1,18 +1,11 @@
 package dotty.tools.scaladoc
 package renderers
 
-import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.net.URI
-import java.net.URL
 import dotty.tools.scaladoc.site._
-import scala.util.Try
-import org.jsoup.Jsoup
 import java.nio.file.Paths
-import java.nio.file.Path
-import java.nio.file.Files
-import java.io.File
-import scala.util.matching._
+import dotty.tools.scaladoc.util.Escape._
 
 val UnresolvedLocationLink = "#"
 
@@ -33,9 +26,8 @@ trait Locations(using ctx: DocContext):
     cache.get(dri) match
       case null =>
         val path = dri match
-          case `docsRootDRI` => List("docs", "index")
           case `apiPageDRI` =>
-            if ctx.staticSiteContext.fold(false)(_.hasIndexFile)
+            if ctx.args.apiSubdirectory && ctx.staticSiteContext.nonEmpty
               then List("api", "index")
               else List("index")
           case dri if dri.isStaticFile =>
@@ -47,6 +39,7 @@ trait Locations(using ctx: DocContext):
               case "<empty>" :: tail => "_empty_" :: tail
               case other => other
             if ctx.args.apiSubdirectory then "api" :: fqn else fqn
+        ctx.checkPathCompat(path)
         cache.put(dri, path)
         path
       case cached => cached
@@ -82,11 +75,17 @@ trait Locations(using ctx: DocContext):
   def resolveRoot(dri: DRI, path: String): String = resolveRoot(rawLocation(dri), path)
   def absolutePath(dri: DRI, extension: String = "html"): String = rawLocation(dri).mkString("", "/", s".$extension")
 
+  def escapedAbsolutePathWithAnchor(dri: DRI, extension: String = "html"): String =
+    s"${escapeUrl(absolutePath(dri, extension))}#${dri.anchor}"
+
+  def relativeInternalOrAbsoluteExternalPath(dri: DRI): String =
+    dri.externalLink.getOrElse(escapedAbsolutePathWithAnchor(dri))
+
   def resolveLink(dri: DRI, url: String): String =
     if URI(url).isAbsolute then url else resolveRoot(dri, url)
 
   def pathToRoot(dri: DRI): String = rawLocation(dri).drop(1).map(_ => "..") match
     case Nil => ""
-    case seq => seq.mkString("", "/", "/")
+    case seq => seq.mkString("", "/" , "/")
 
   def driExists(dri: DRI) = effectiveMembers.get(dri).isDefined || dri.isStaticFile

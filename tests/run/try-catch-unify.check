@@ -1,4 +1,4 @@
 Failure(java.lang.NumberFormatException: For input string: "Hi")
-Success(5.0)
+Success(5.5)
 O NOES
 Failure(java.lang.NumberFormatException: For input string: "Hi")

@@ -8,6 +8,9 @@ import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
 
+import java.io.OutputStreamWriter
+import java.nio.charset.StandardCharsets.UTF_8
+
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
   private class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
@@ -20,10 +23,7 @@ object Rewrites {
     private[Rewrites] val pbuf = new mutable.ListBuffer[Patch]()
 
     def addPatch(span: Span, replacement: String): Unit =
-      pbuf.indexWhere(p => p.span.start == span.start && p.span.end == span.end) match {
-        case i if i >= 0 => pbuf.update(i, Patch(span, replacement))
-        case _           => pbuf += Patch(span, replacement)
-      }
+      pbuf += Patch(span, replacement)
 
     def apply(cs: Array[Char]): Array[Char] = {
       val delta = pbuf.map(_.delta).sum
@@ -54,13 +54,11 @@ object Rewrites {
       ds
     }
 
-    def writeBack(): Unit = {
+    def writeBack(): Unit =
       val chars = apply(source.underlying.content)
-      val bytes = new String(chars).getBytes
-      val out = source.file.output
-      out.write(bytes)
-      out.close()
-    }
+      val osw = OutputStreamWriter(source.file.output, UTF_8)
+      try osw.write(chars, 0, chars.length)
+      finally osw.close()
   }
 
   /** If -rewrite is set, record a patch that replaces the range

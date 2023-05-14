@@ -132,4 +132,9 @@ object equality1 {
       println("empty")
   }
 
+  Map("k1" -> 1) == Map("k2" -> 2, "k3" -> 3)
+  Map(Color.Red -> Status.Inactive) == Map(Color.Green -> Status.Active(5))
+
+  Map("k1" -> 5) == Map('k' -> 5) // error
+  Map("k1" -> new A) == Map("k2" -> new B) // error
 }

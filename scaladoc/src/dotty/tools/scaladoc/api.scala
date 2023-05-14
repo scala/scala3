@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import dotty.tools.scaladoc.tasty.comments.Comment
+import util.HTML.AppliedTag
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")
@@ -43,31 +44,33 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Transparent extends Modifier("transparent", true)
   case Infix extends Modifier("infix", true)
 
-case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList], signature: Signature, dri: DRI, position: Long)
+case class ExtensionTarget(name: String, typeParams: Seq[TypeParameter], argsLists: Seq[TermParameterList], signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
-trait Classlike
+trait Classlike:
+  def typeParams: Seq[TypeParameter] = Seq.empty
+  def argsLists: Seq[TermParameterList] = Seq.empty
 
 enum Kind(val name: String):
   case RootPackage extends Kind("")
   case Package extends Kind("package")
-  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Class(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList])
     extends Kind("class") with Classlike
   case Object extends Kind("object") with Classlike
-  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Trait(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList])
     extends Kind("trait") with Classlike
-  case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
+  case Enum(override val typeParams: Seq[TypeParameter], override val argsLists: Seq[TermParameterList]) extends Kind("enum") with Classlike
   case EnumCase(kind: Object.type | Kind.Type | Val.type | Class) extends Kind("case")
-  case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
+  case Def(paramLists: Seq[Either[TermParameterList,TypeParameterList]])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
   case Constructor(base: Kind.Def) extends Kind("def")
   case Var extends Kind("var")
   case Val extends Kind("val")
-  case Exported(m: Kind.Def) extends Kind("export")
+  case Exported(base: Kind) extends Kind("export")
   case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter])
     extends Kind("type") // should we handle opaque as modifier?
-  case Given(kind: Def | Class, as: Option[Signature], conversion: Option[ImplicitConversion])
+  case Given(kind: Def | Class | Val.type, as: Option[Signature], conversion: Option[ImplicitConversion])
     extends Kind("given") with ImplicitConversionProvider
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
@@ -76,13 +79,13 @@ enum Kind(val name: String):
 enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
-  case ExportedFrom(name: String, dri: Option[DRI])
+  case ExportedFrom(link: Option[Link])
   case Overrides(overriddenMembers: Seq[Overridden])
   case RegularlyDefined
 
 case class Overridden(name: String, dri: DRI)
 
-case class InheritedFrom(name: String, dri: DRI)
+case class InheritedFrom(name: String, dri: DRI, isSourceSuperclassHidden: Boolean)
 
 case class Annotation(val dri: DRI, val params: List[Annotation.AnnotationParameter])
 
@@ -94,12 +97,12 @@ object Annotation:
   case class LinkParameter(name: Option[String] = None, dri: DRI, value: String) extends AnnotationParameter
   case class UnresolvedParameter(name: Option[String] = None, unresolvedText: String) extends AnnotationParameter
 
-case class ParametersList(
-  parameters: Seq[Parameter],
+case class TermParameterList(
+  parameters: Seq[TermParameter],
   modifiers: String
 )
 
-case class Parameter(
+case class TermParameter(
   annotations: Seq[Annotation],
   modifiers: String,
   name: Option[String],
@@ -108,6 +111,8 @@ case class Parameter(
   isExtendedSymbol: Boolean = false,
   isGrouped: Boolean = false
 )
+
+type TypeParameterList = Seq[TypeParameter]
 
 case class TypeParameter(
   annotations: Seq[Annotation],
@@ -123,11 +128,14 @@ sealed trait SignaturePart:
   val name: String
 
 // TODO (longterm) properly represent signatures
+case class Name(override val name: String, dri: DRI) extends SignaturePart
 case class Type(override val name: String, dri: Option[DRI]) extends SignaturePart
 case class Keyword(override val name: String) extends SignaturePart
 case class Plain(override val name: String) extends SignaturePart
 
 type Signature = List[SignaturePart]
+
+case class MemberSignature(prefix: Signature, kind: Signature, name: Signature, suffix: Signature)
 
 object Signature:
   def apply(names: (SignaturePart)*): Signature = names.toList
@@ -147,6 +155,7 @@ object HierarchyGraph:
 
 case class Member(
   name: String,
+  fullName: String,
   dri: DRI,
   kind: Kind,
   visibility: Visibility = Visibility.Unrestricted,
@@ -163,8 +172,9 @@ case class Member(
   parents: Seq[LinkToType] = Nil,
   selfType: Option[LinkToType] = None,
   knownChildren: Seq[LinkToType] = Nil,
-  companion: Option[DRI] = None,
+  companion: Option[(Kind, DRI)] = None,
   deprecated: Option[Annotation] = None,
+  experimental: Option[Annotation] = None
 ):
   def needsOwnPage: Boolean =
     def properKind(kind: Kind): Boolean = kind match
@@ -186,7 +196,11 @@ extension[T] (member: Member)
   def asLink: LinkToType = LinkToType(member.signature, member.dri, member.kind)
   def membersBy(op: Member => Boolean): Seq[Member] = member.members.filter(op)
 
+  def withDRI(dri: DRI): Member = member.copy(dri = dri)
+
   def withMembers(newMembers: Seq[Member]): Member = member.copy(members = newMembers)
+
+  def withName(name: String): Member = member.copy(name = name)
 
   def updateRecusivly(op: Member => Member): Member =
     val newMembers = member.members.map(_.updateRecusivly(op))
@@ -237,6 +251,7 @@ extension (m: Module)
 extension (s: Signature)
   def getName: String =
     s.map {
+      case Name(s, _) => s
       case Plain(s) => s
       case Type(s, _) => s
       case Keyword(s) => s
@@ -246,11 +261,22 @@ case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
 
 object SnippetCompilerData:
   case class Position(line: Int, column: Int)
-  case class ClassInfo(tpe: Option[String], names: Seq[String], generics: Option[String])
-
 case class SnippetCompilerData(
   packageName: String,
-  classInfos: Seq[SnippetCompilerData.ClassInfo],
-  imports: List[String],
   position: SnippetCompilerData.Position
 )
+
+case class PageContent(content: AppliedTag, toc: Seq[TocEntry])
+
+case class TocEntry(level: Int, content: String, anchor: String)
+
+object TocEntry:
+  val tagLevels: Map[String, Int] = Map(
+    ("h1" -> 1),
+    ("h2" -> 2),
+    ("h3" -> 3),
+    ("h4" -> 4),
+    ("h5" -> 5),
+    ("h6" -> 6)
+  )
+  def apply(tag: String, content: String, anchor: String): TocEntry = TocEntry(tagLevels(tag), content, anchor)

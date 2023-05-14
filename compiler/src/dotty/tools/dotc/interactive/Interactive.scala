@@ -2,7 +2,8 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.annotation.tailrec
+import scala.language.unsafeNulls
+
 import scala.collection._
 
 import ast.{NavigateAST, Trees, tpd, untpd}
@@ -11,10 +12,6 @@ import Decorators._, ContextOps._
 import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
 import transform.SymUtils._
 import util.Spans._, util.SourceFile, util.SourcePosition
-import core.Denotations.SingleDenotation
-import NameKinds.SimpleNameKind
-import config.Printers.interactiv
-import StdNames.nme
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *
@@ -82,7 +79,7 @@ object Interactive {
   def enclosingTree(trees: List[SourceTree], pos: SourcePosition)(using Context): Tree =
     enclosingTree(pathTo(trees, pos))
 
-  /** The closes enclosing tree with a symbol, or the `EmptyTree`.
+  /** The closest enclosing tree with a symbol, or the `EmptyTree`.
    */
   def enclosingTree(path: List[Tree])(using Context): Tree =
     path.dropWhile(!_.symbol.exists).headOption.getOrElse(tpd.EmptyTree)
@@ -111,7 +108,7 @@ object Interactive {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
             for {
-              DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              case DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             }
             yield param.symbol
@@ -250,16 +247,21 @@ object Interactive {
   /** The reverse path to the node that closest encloses position `pos`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
    *  the tree closest enclosing `pos` and ends with an element of `trees`.
+   *
+   *  Note that if the given `pos` points out places for incomplete parses,
+   *  this method returns `errorTermTree` (`Literal(Consotant(null)`).
+   *
+   *  @see https://github.com/lampepfl/dotty/issues/15294
    */
   def pathTo(trees: List[SourceTree], pos: SourcePosition)(using Context): List[Tree] =
-    trees.find(_.pos.contains(pos)) match {
-      case Some(tree) => pathTo(tree.tree, pos.span)
-      case None => Nil
-    }
+    pathTo(trees.map(_.tree), pos.span)
 
   def pathTo(tree: Tree, span: Span)(using Context): List[Tree] =
-    if (tree.span.contains(span))
-      NavigateAST.pathTo(span, tree, skipZeroExtent = true)
+    pathTo(List(tree), span)
+
+  private def pathTo(trees: List[Tree], span: Span)(using Context): List[Tree] =
+    if (trees.exists(_.span.contains(span)))
+      NavigateAST.pathTo(span, trees, skipZeroExtent = true)
         .collect { case t: untpd.Tree => t }
         .dropWhile(!_.hasType).asInstanceOf[List[tpd.Tree]]
     else Nil
@@ -293,8 +295,10 @@ object Interactive {
             // in subsequent parameter sections
           localCtx
         case tree: MemberDef =>
-          assert(tree.symbol.exists)
-          outer.localContext(tree, tree.symbol)
+          if (tree.symbol.exists)
+            outer.localContext(tree, tree.symbol)
+          else
+            outer
         case tree @ Block(stats, expr) =>
           val localCtx = outer.fresh.setNewScope
           stats.foreach {
@@ -302,15 +306,15 @@ object Interactive {
             case _ =>
           }
           contextOfStat(stats, nested, ctx.owner, localCtx)
-        case tree @ CaseDef(pat, guard, rhs) if nested `eq` rhs =>
+        case tree @ CaseDef(pat, _, _) =>
           val localCtx = outer.fresh.setNewScope
           pat.foreachSubTree {
             case bind: Bind => localCtx.enter(bind.symbol)
             case _ =>
           }
           localCtx
-        case tree @ Template(constr, parents, self, _) =>
-          if ((constr :: self :: parents).contains(nested)) ctx
+        case tree @ Template(constr, _, self, _) =>
+          if ((constr :: self :: tree.parentsOrDerived).contains(nested)) outer
           else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer

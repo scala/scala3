@@ -6,19 +6,17 @@ import core._
 import StdNames.nme
 import Types._
 import transform.MegaPhase._
-import ast.Trees._
 import Flags._
 import Contexts._
 import Symbols._
-import Constants._
 import Decorators._
 import Denotations._, SymDenotations._
-import TypeErasure.erasure
 import DenotTransformers._
 import NullOpsDecorator._
 
 object ElimRepeated {
   val name: String = "elimRepeated"
+  val description: String = "rewrite vararg parameters and arguments"
 }
 
 /** A transformer that eliminates repeated parameters (T*) from all types, replacing
@@ -29,6 +27,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = ElimRepeated.name
+
+  override def description: String = ElimRepeated.description
 
   override def changesMembers: Boolean = true // the phase adds vararg forwarders
 
@@ -51,10 +51,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           // see https://github.com/scala/bug/issues/11714
           val validJava = isValidJavaVarArgs(sym.info)
           if !validJava then
-            report.error("""To generate java-compatible varargs:
+            report.error(em"""To generate java-compatible varargs:
                       |  - there must be a single repeated parameter
                       |  - it must be the last argument in the last parameter list
-                      |""".stripMargin,
+                      |""",
               sym.sourcePos)
           else
             addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation, parentHasAnnotation)
@@ -87,7 +87,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  signatures of a Java varargs method and a Scala varargs override are not the same.
    */
   private def overridesJava(sym: Symbol)(using Context) =
-    sym.owner.info.baseClasses.drop(1).exists { bc =>
+    sym.memberCanMatchInheritedSymbols
+    && sym.owner.info.baseClasses.drop(1).exists { bc =>
       bc.is(JavaDefined) && {
         val other = bc.info.nonPrivateDecl(sym.name)
         other.hasAltWith { alt =>
@@ -124,17 +125,21 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       tp
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    val args = tree.args.mapConserve {
-      case arg: Typed if isWildcardStarArg(arg) =>
+    val args = tree.args.mapConserve { arg =>
+      if isWildcardStarArg(arg) then
+        val expr = arg match
+          case t: Typed => t.expr
+          case _ => arg // if the argument has been lifted it's not a Typed (often it's an Ident)
+
         val isJavaDefined = tree.fun.symbol.is(JavaDefined)
-        val tpe = arg.expr.tpe
         if isJavaDefined then
-          adaptToArray(arg.expr)
-        else if tpe.derivesFrom(defn.ArrayClass) then
-          arrayToSeq(arg.expr)
+          adaptToArray(expr)
+        else if expr.tpe.derivesFrom(defn.ArrayClass) then
+          arrayToSeq(expr)
         else
-          arg.expr
-      case arg => arg
+          expr
+      else
+        arg
     }
     cpy.Apply(tree)(tree.fun, args)
 
@@ -179,7 +184,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .symbol.asTerm
       // Generate the method
       val forwarderDef = DefDef(forwarderSym, prefss => {
-        val init :+ (last :+ vararg) = prefss
+        val init :+ (last :+ vararg) = prefss: @unchecked
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head
@@ -200,7 +205,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    */
   private def isValidJavaVarArgs(tp: Type)(using Context): Boolean = tp match
     case mt: MethodType =>
-      val initp :+ lastp = mt.paramInfoss
+      val initp :+ lastp = mt.paramInfoss: @unchecked
       initp.forall(_.forall(!_.isRepeatedParam)) &&
       lastp.nonEmpty &&
       lastp.init.forall(!_.isRepeatedParam) &&
@@ -272,7 +277,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         case m: MethodType => // multiple param lists
           tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
         case _ =>
-          val init :+ last = tp.paramInfos
+          val init :+ last = tp.paramInfos: @unchecked
           val vararg = varargArrayType(last)
           tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
 
@@ -287,9 +292,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     val array = tp.translateFromRepeated(toArray = true) // Array[? <: T]
     val element = array.elemType.hiBound // T
 
-
     if element <:< defn.AnyRefType
       || ctx.mode.is(Mode.SafeNulls) && element.stripNull <:< defn.AnyRefType
-      || element.typeSymbol.isPrimitiveValueClass then array
+      || element.typeSymbol.isPrimitiveValueClass
+    then array
     else defn.ArrayOf(TypeBounds.upper(AndType(element, defn.AnyRefType))) // Array[? <: T & AnyRef]
 }

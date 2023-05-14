@@ -3,29 +3,29 @@
   |             ^
   |             Found:    Test.C.type
   |             Required: Test.C
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:9:15 --------------------------------------------------
 9 |  val y: C = f(C) // error
   |               ^
   |               Found:    Test.C.type
   |               Required: Test.C
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:12:14 -------------------------------------------------
 12 |  val z1: C = z    // error
    |              ^
    |              Found:    Test.C.type
    |              Required: Test.C
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/module-class-name.scala:13:16 -------------------------------------------------
 13 |  val z2: Int = z  // error
    |                ^
    |                Found:    Test.C.type
    |                Required: Int
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E008] Not Found Error: tests/neg/module-class-name.scala:15:4 ------------------------------------------------------
 15 |  C.foo  // error: value foo is not a member of object Test.C
    |  ^^^^^

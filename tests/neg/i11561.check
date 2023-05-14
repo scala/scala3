@@ -9,5 +9,5 @@
 3 |  val updateText2 = copy(text = (_: String)) // error
   |                         ^^^^^^^^^^^^^^^^^^
   |                         Reassignment to val text
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

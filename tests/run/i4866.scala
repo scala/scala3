@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 // Test that try-finally aren't lifted, but try-catch are.
 
 class Foo {

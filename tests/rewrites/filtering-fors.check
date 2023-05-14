@@ -1,0 +1,6 @@
+val xs: List[Any] = ???
+val as = for case (x: String) <- xs yield x
+val bs =
+  for
+    case (x: String) <- xs
+  yield x

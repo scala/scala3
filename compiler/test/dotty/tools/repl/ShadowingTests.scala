@@ -1,6 +1,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.nio.file.{Path, Files}
 import java.util.Comparator
@@ -31,7 +33,7 @@ object ShadowingTests:
     val subdir = dir.resolve(name)
     try Files.createDirectory(subdir)
     catch case _: java.nio.file.FileAlreadyExistsException =>
-    assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
+      assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
     subdir
 
   // The directory on the classpath containing artifacts to be shadowed
@@ -74,11 +76,23 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     Files.delete(file)
   end compileShadowed
 
+  @Test def io = shadowedScriptedTest(name = "io",
+    shadowed = """|package io.foo
+                  |
+                  |object Bar {
+                  |  def baz: Int = 42
+                  |}
+                  |""".stripMargin,
+    script = """|scala> io.foo.Bar.baz
+                |val res0: Int = 42
+                |""".stripMargin
+  )
+
   @Test def i7635 = shadowedScriptedTest(name = "<i7635>",
     shadowed = "class C(val c: Int)",
     script =
       """|scala> new C().c
-         |-- Error: ----------------------------------------------------------------------
+         |-- [E171] Type Error: ----------------------------------------------------------
          |1 | new C().c
          |  | ^^^^^^^
          |  | missing argument for parameter c of constructor C in class C: (c: Int): C
@@ -95,7 +109,6 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |""".stripMargin
   )
 
-  @Ignore("not yet fixed")
   @Test def `shadow subdirectories on classpath` =
     // NB: Tests of shadowing of subdirectories on the classpath are only valid
     // when the subdirectories exist prior to initialization of the REPL driver.
@@ -121,16 +134,18 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |val y: String = foo
          |
          |scala> if (true) x else y
-         |val res0: Matchable = 42
+         |val res0: Int | String = 42
          |""".stripMargin.linesIterator.toList
     )
 
     ShadowingTests.createSubDir("util")
     testScript(name = "<shadow-subdir-util>",
       """|scala> import util.Try
+         |-- [E008] Not Found Error: -----------------------------------------------------
          |1 | import util.Try
          |  |             ^^^
          |  |             value Try is not a member of util
+         |1 error found
          |
          |scala> object util { class Try { override def toString = "you've gotta try!" }  }
          |// defined object util

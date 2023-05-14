@@ -1,6 +1,6 @@
 package scala
 
-import annotation.{experimental, showAsInfix}
+import annotation.showAsInfix
 import compiletime._
 import compiletime.ops.int._
 
@@ -8,21 +8,20 @@ import compiletime.ops.int._
 sealed trait Tuple extends Product {
   import Tuple._
 
-  /** Create a copy this tuple as an Array */
+  /** Create a copy of this tuple as an Array */
   inline def toArray: Array[Object] =
     runtime.Tuples.toArray(this)
 
-  /** Create a copy this tuple as a List */
+  /** Create a copy of this tuple as a List */
   inline def toList: List[Union[this.type]] =
     this.productIterator.toList
       .asInstanceOf[List[Union[this.type]]]
 
-  /** Create a copy this tuple as an IArray */
+  /** Create a copy of this tuple as an IArray */
   inline def toIArray: IArray[Object] =
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
-  @experimental
   inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
     runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
 
@@ -84,8 +83,7 @@ sealed trait Tuple extends Product {
 object Tuple {
 
   /** Type of a tuple with an element appended */
-  @experimental
-  type Append[X <: Tuple, Y] <: Tuple = X match {
+  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match {
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
   }
@@ -96,7 +94,6 @@ object Tuple {
   }
 
   /** Type of the initial part of the tuple without its last element */
-  @experimental
   type Init[X <: Tuple] <: Tuple = X match {
     case _ *: EmptyTuple => EmptyTuple
     case x *: xs =>
@@ -109,7 +106,6 @@ object Tuple {
   }
 
   /** Type of the last element of a tuple */
-  @experimental
   type Last[X <: Tuple] = X match {
     case x *: EmptyTuple => x
     case _ *: xs => Last[xs]
@@ -156,11 +152,11 @@ object Tuple {
   /** Filters out those members of the tuple for which the predicate `P` returns `false`.
    *  A predicate `P[X]` is a type that can be either `true` or `false`. For example:
    *  ```scala
-   *  type IsString[x] = x match {
+   *  type IsString[x] <: Boolean = x match {
    *    case String => true
    *    case _ => false
    *  }
-   *  Filter[(1, "foo", 2, "bar"), IsString] =:= ("foo", "bar")
+   *  summon[Tuple.Filter[(1, "foo", 2, "bar"), IsString] =:= ("foo", "bar")]
    *  ```
    *  @syntax markdown
    */
@@ -278,15 +274,7 @@ object Tuple {
 type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
-object EmptyTuple extends Tuple {
-  override def productArity: Int = 0
-
-  @throws(classOf[IndexOutOfBoundsException])
-  override def productElement(n: Int): Any =
-    throw new IndexOutOfBoundsException(n.toString())
-
-  def canEqual(that: Any): Boolean = this == that
-
+case object EmptyTuple extends Tuple {
   override def toString(): String = "()"
 }
 
@@ -305,12 +293,10 @@ sealed trait NonEmptyTuple extends Tuple {
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the initial part of the tuple without its last element */
-  @experimental
   inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
     runtime.Tuples.init(this).asInstanceOf[Init[This]]
 
   /** Get the last of this tuple */
-  @experimental
   inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
     runtime.Tuples.last(this).asInstanceOf[Last[This]]
 

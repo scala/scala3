@@ -3,7 +3,6 @@ package dotc
 package transform
 package sjs
 
-import scala.collection.mutable
 
 import MegaPhase._
 import core.Annotations._
@@ -12,7 +11,6 @@ import core.Denotations._
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
-import core.Phases._
 import core.Types._
 import core.Flags._
 import core.Decorators._
@@ -20,10 +18,7 @@ import core.StdNames.nme
 import core.SymDenotations.SymDenotation
 import core.Names._
 import core.NameKinds._
-import core.NameOps._
-import ast.Trees._
 import SymUtils._
-import dotty.tools.dotc.ast.tpd
 
 import util.Store
 
@@ -239,6 +234,8 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def phaseName: String = ExplicitJSClasses.name
 
+  override def description: String = ExplicitJSClasses.description
+
   private var MyState: Store.Location[MyState] = _
   private def myState(using Context) = ctx.store(MyState)
 
@@ -367,7 +364,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
           }
 
           val fieldName = jsclassFieldName(innerJSClass.name.asTypeName)
-          val fieldFlags = Synthetic | Artifact
+          val fieldFlags = SyntheticArtifact
           val field = newSymbol(cls, fieldName, fieldFlags, defn.AnyRefType, coord = innerJSClass.coord)
           addAnnotsIfInJSClass(field)
           decls1.enter(field)
@@ -379,7 +376,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
               i"trying to ad-hoc expose objects in non-JS static object ${cls.fullName}")
 
           val getterName = jsobjectGetterNameFor(innerObject)
-          val getterFlags = Method | Synthetic | Artifact
+          val getterFlags = Method | SyntheticArtifact
           val getter = newSymbol(cls, getterName, getterFlags, ExprType(defn.AnyRefType), coord = innerObject.coord)
           addAnnots(getter, innerObject)
           decls1.enter(getter)
@@ -654,7 +651,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       case typeRef: TypeRef => typeRef
       case _ =>
         // This should not have passed the checks in PrepJSInterop
-        report.error(i"class type required but found $tpe0", tree)
+        report.error(em"class type required but found $tpe0", tree)
         jsdefn.JSObjectType
     }
     val cls = tpe.typeSymbol
@@ -670,7 +667,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         val jsclassAccessor = jsclassAccessorFor(cls)
         ref(NamedType(prefix, jsclassAccessor.name, jsclassAccessor.denot))
       } else {
-        report.error(i"stable reference to a JS class required but $tpe found", tree)
+        report.error(em"stable reference to a JS class required but $tpe found", tree)
         ref(defn.Predef_undefined)
       }
     } else if (isLocalJSClass(cls)) {
@@ -720,6 +717,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
 object ExplicitJSClasses {
   val name: String = "explicitJSClasses"
+  val description: String = "make all JS classes explicit"
 
   val LocalJSClassValueName: UniqueNameKind = new UniqueNameKind("$jsclass")
 

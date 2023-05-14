@@ -1,5 +1,4 @@
-import Predef.{assert as _}
-
+// scalac: -Yno-predef
 object Test {
   assert("asdf" == "asdf") // error: not found assert
 }

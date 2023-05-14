@@ -2,6 +2,8 @@ package dotty
 package tools
 package backend.jvm
 
+import scala.language.unsafeNulls
+
 import vulpix.TestConfiguration
 
 import dotc.core.Contexts.{Context, ContextBase, ctx}
@@ -13,10 +15,9 @@ import dotty.tools.io.{VirtualDirectory => Directory}
 import scala.tools.asm
 import asm._
 import asm.tree._
-import scala.collection.JavaConverters._
 
 import io.{AbstractFile, JavaClassPath, VirtualDirectory}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._
 import java.io.{File => JFile, InputStream}
@@ -120,7 +121,7 @@ trait DottyBytecodeTest {
   def assertSameCode(method: MethodNode, expected: List[Instruction]): Unit =
     assertSameCode(instructionsFromMethod(method).dropNonOp, expected)
   def assertSameCode(actual: List[Instruction], expected: List[Instruction]): Unit = {
-    assert(actual === expected, s"\nExpected: $expected\nActual  : $actual")
+    assert(actual === expected, "\n" + diffInstructions(actual, expected))
   }
 
   def assertInvoke(m: MethodNode, receiver: String, method: String): Unit =
@@ -294,4 +295,3 @@ trait DottyBytecodeTest {
 object DottyBytecodeTest {
   extension [T](l: List[T]) def stringLines = l.mkString("\n")
 }
-

@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 package util
+
 import language.implicitConversions
 
 /** The offsets part of a full position, consisting of 2 or 3 entries:
@@ -15,9 +16,9 @@ import language.implicitConversions
  */
 object Spans {
 
-  private final val StartEndBits = 26
-  private final val StartEndMask = (1L << StartEndBits) - 1
-  private final val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
+  private inline val StartEndBits = 26
+  private inline val StartEndMask = (1L << StartEndBits) - 1
+  private inline val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
   /** The maximal representable offset in a span */
   final val MaxOffset = StartEndMask.toInt
@@ -85,7 +86,6 @@ object Spans {
       || containsInner(this, that.end)
       || containsInner(that, this.start)
       || containsInner(that, this.end)
-      || this.start == that.start && this.end == that.end   // exact match in one point
       )
     }
 
@@ -181,6 +181,7 @@ object Spans {
       assert(isSpan)
       if (this == NoCoord) NoSpan else Span(-1 - encoding)
     }
+    override def toString = if isSpan then s"$toSpan" else s"Coord(idx=$toIndex)"
   }
 
   /** An index coordinate */

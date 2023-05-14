@@ -1,0 +1,45 @@
+-- [E007] Type Mismatch Error: tests/neg/i15939.scala:19:16 ------------------------------------------------------------
+19 |  mkFoo.andThen(mkBarString)  // error
+   |                ^^^^^^^^^^^
+   |                Found:    String
+   |                Required: ?1.Bar
+   |
+   |                where:    ?1 is an unknown value of type Test.Foo
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i15939.scala:20:2 -------------------------------------------------------------
+20 |  mkBarString andThen_: mkFoo  // error
+   |  ^^^^^^^^^^^
+   |  Found:    String
+   |  Required: ?2.Bar
+   |
+   |  where:    ?2 is an unknown value of type Test.Foo
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i15939.scala:21:18 ------------------------------------------------------------
+21 |  mkFoo.andThen_:(mkBarString)  // error
+   |                  ^^^^^^^^^^^
+   |                  Found:    String
+   |                  Required: ?3.Bar
+   |
+   |                  where:    ?3 is an unknown value of type Test.Foo
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i15939.scala:22:2 -------------------------------------------------------------
+22 |  mkBarString andThenByName_: mkFoo // error
+   |  ^^^^^^^^^^^
+   |  Found:    String
+   |  Required: ?4.Bar
+   |
+   |  where:    ?4 is an unknown value of type Test.Foo
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i15939.scala:23:24 ------------------------------------------------------------
+23 |  mkFoo.andThenByName_:(mkBarString) // error
+   |                        ^^^^^^^^^^^
+   |                        Found:    String
+   |                        Required: ?5.Bar
+   |
+   |                        where:    ?5 is an unknown value of type Test.Foo
+   |
+   | longer explanation available when compiling with `-explain`

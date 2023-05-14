@@ -2,5 +2,5 @@
 4 |  def foo =   // error
   |         ^
   |         Type argument Nothing does not conform to lower bound Null in inferred type Contra[Nothing]
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

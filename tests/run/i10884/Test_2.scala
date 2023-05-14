@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Exporter:
   export JavaExporter_1._
 

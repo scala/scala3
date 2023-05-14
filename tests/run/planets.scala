@@ -19,6 +19,9 @@ object Test {
     val earthWeight = 100
     val mass = earthWeight/EARTH.surfaceGravity
     for (p <- values)
-      println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+      println(s"Your weight on $p is ${portableToString(p.surfaceWeight(mass))}")
   }
+
+  def portableToString(x: Double): String =
+    x.toString.stripSuffix(".0")
 }

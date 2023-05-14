@@ -8,5 +8,6 @@ scala> val x: Foo[String] = res0
   |                      ^^^^
   |                      Found:    (res0 : Foo[Int])
   |                      Required: Foo[String]
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 1 error found

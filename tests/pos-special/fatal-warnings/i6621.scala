@@ -4,5 +4,5 @@ object Unapply {
 }
 
 object Test {
-  val Unapply(x, y) = ""
+  val Unapply(x, y) = "": @unchecked
 }

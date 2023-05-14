@@ -4,6 +4,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import scala.collection.mutable
 import java.io.{InputStream, OutputStream}
 /**
@@ -54,7 +56,7 @@ extends AbstractFile {
 
   override def fileNamed(name: String): AbstractFile =
     Option(lookupName(name, directory = false)) getOrElse {
-      val newFile = new VirtualFile(name, path + '/' + name)
+      val newFile = new VirtualFile(name, s"$path/$name")
       files(name) = newFile
       newFile
     }

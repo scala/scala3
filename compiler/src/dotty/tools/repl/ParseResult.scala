@@ -80,10 +80,16 @@ case object Imports extends Command {
   val command: String = ":imports"
 }
 
+case class Settings(arg: String) extends Command
+object Settings {
+  val command: String = ":settings"
+}
+
 /** Reset the session to the initial state from when the repl program was
  *  started
  */
-case object Reset extends Command {
+case class Reset(arg: String) extends Command
+object Reset {
   val command: String = ":reset"
 }
 
@@ -105,7 +111,8 @@ case object Help extends Command {
       |:type <expression>       evaluate the type of the given expression
       |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
-      |:reset                   reset the repl to its initial state, forgetting all session entries
+      |:reset [options]         reset the repl to its initial state, forgetting all session entries
+      |:settings <options>      update compiler options, if possible
     """.stripMargin
 }
 
@@ -120,18 +127,19 @@ object ParseResult {
     stats
   }
 
-  private val commands: List[(String, String => ParseResult)] = List(
+  private[repl] val commands: List[(String, String => ParseResult)] = List(
     Quit.command -> (_ => Quit),
     Quit.alias -> (_ => Quit),
     Help.command -> (_  => Help),
-    Reset.command -> (_  => Reset),
+    Reset.command -> (arg  => Reset(arg)),
     Imports.command -> (_  => Imports),
     Load.command -> (arg => Load(arg)),
     TypeOf.command -> (arg => TypeOf(arg)),
-    DocOf.command -> (arg => DocOf(arg))
+    DocOf.command -> (arg => DocOf(arg)),
+    Settings.command -> (arg => Settings(arg)),
   )
 
-  def apply(source: SourceFile)(implicit state: State): ParseResult = {
+  def apply(source: SourceFile)(using state: State): ParseResult = {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
@@ -159,8 +167,14 @@ object ParseResult {
     }
   }
 
-  def apply(sourceCode: String)(implicit state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = true))
+  def apply(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = true)
+
+  def complete(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = false)
+
+  private def maybeIncomplete(sourceCode: String, maybeIncomplete: Boolean)(using state: State): ParseResult =
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = maybeIncomplete))
 
   /** Check if the input is incomplete.
    *

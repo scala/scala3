@@ -19,20 +19,20 @@ object B {
 }
 
 def foo[T](b: B[T]) = b match {
-  case B(A1(t)) ⇒ t
-  case B(A2(t, _)) ⇒ t
+  case B(A1(t)) => t
+  case B(A2(t, _)) => t
 }
 
 def foo2[_A[+U] <: A[U], T](b: B.Aux[_A, T]) = b match {
-  case B.Aux(a @ A1(_   )) ⇒ a.t
-  case B.Aux(a @ A2(_, _)) ⇒ a.t1  // 👎 (false-positive): unreachable code
+  case B.Aux(a @ A1(_   )) => a.t
+  case B.Aux(a @ A2(_, _)) => a.t1  // 👎 (false-positive): unreachable code
 }
 
 def foo3[_A[+U] <: A[U], T](b: B.Aux[_A, T]) = b match {
-  case B.Aux(a: A1[T]) ⇒ a.t
-  case B.Aux(a: A2[T]) ⇒ a.t1  // 👎 (false-positive): unreachable code
+  case B.Aux(a: A1[T]) => a.t
+  case B.Aux(a: A2[T]) => a.t1  // 👎 (false-positive): unreachable code
 }
 
 def foo4[T](b: B[T]) = b match {
-  case B(A1(t)) ⇒ t  // 👎 (false-negative): incomplete match
+  case B(A1(t)) => t  // 👎 (false-negative): incomplete match
 }

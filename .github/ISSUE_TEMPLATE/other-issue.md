@@ -1,9 +1,10 @@
 ---
-name: "Other issue"
+name: Other issue
 about: Report an issue about the Dotty Compiler (not bug or crash)
 title: ''
-labels:
+labels: stat:needs triage
 assignees: ''
+
 ---
 
 ## Compiler version

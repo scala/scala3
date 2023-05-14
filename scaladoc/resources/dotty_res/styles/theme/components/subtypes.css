@@ -1,0 +1,29 @@
+.subtypes {
+  background-color: var(--action-primary-background-default-solid);
+  padding: calc(3 * var(--base-spacing));
+  padding-bottom: calc(1.5 * var(--base-spacing));
+  overflow-x: scroll;
+  position: relative;
+   border-radius: 4px;
+}
+
+.subtypes > div {
+  display: block;
+}
+
+.subtypes > div {
+  display: none;
+}
+
+
+.subtypes > div:nth-child(1),
+.subtypes > div:nth-child(2),
+.subtypes > div:nth-child(3),
+.subtypes > div:nth-child(4),
+.subtypes > div:nth-child(5) {
+  display: block;
+}
+
+.subtypes.collapsed > div {
+  display: block;
+}

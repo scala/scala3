@@ -4,11 +4,9 @@ package parsing
 
 import dotty.tools.io._
 import util._
-import core._
 import scala.io.Codec
 import Tokens._, Parsers._
 import ast.untpd._
-import org.junit.Test
 import scala.collection.mutable.ListBuffer
 
 class ParserTest extends DottyTest {
@@ -23,7 +21,7 @@ class ParserTest extends DottyTest {
     parsedTrees.clear()
   }
 
-  def parse(file: PlainFile): Tree = parseSource(new SourceFile(file, Codec.UTF8))
+  def parse(file: PlainFile): Tree = parseSource(SourceFile(file, Codec.UTF8))
 
   private def parseSource(source: SourceFile): Tree = {
     //println("***** parsing " + source.file)

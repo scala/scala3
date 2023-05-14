@@ -5,6 +5,11 @@ object Test1:
   val z: Int | String = y
 
 object Test2:
+  val x: 3 | "a" = 3
+  val y = x
+  val z: Int | String = y
+
+object Test3:
   type Sig = Int | String
   def consistent(x: Sig, y: Sig): Boolean = ???// x == y
 
@@ -12,7 +17,7 @@ object Test2:
        xs.corresponds(ys)(consistent)        // OK
     || xs.corresponds(ys)(consistent(_, _))  // error, found: Any, required: Int | String
 
-object Test3:
+object Test4:
 
   def g[X](x: X | String): Int = ???
   def y: Boolean | String = ???

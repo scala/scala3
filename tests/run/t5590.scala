@@ -1,10 +1,7 @@
-
-
+// scalajs: --skip
 
 import java.io.*
 import collection.*
-
-
 
 object Test {
 

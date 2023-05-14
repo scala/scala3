@@ -1,4 +1,4 @@
--- Error: tests/neg/missing-implicit-2.scala:4:24 ----------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/missing-implicit-2.scala:4:24 ----------------------------------------------------------
 4 |val f = Future[Unit] { } // error
   |                        ^
   |                     Cannot find an implicit ExecutionContext. You might add
@@ -26,5 +26,5 @@
   |
   |                         where:    Byte  is a class in package scala
   |                                   Byte² is a class in package java.lang
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

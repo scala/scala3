@@ -19,7 +19,7 @@ class TastyHashTest {
     testHash(0X202020202L, Array(2, 2, 2, 2, 2))
     testHash(0X1010101L, Array.fill(1024)(1))
     testHash(0xaafefeaaab54ffL, Array.tabulate(1024)(_.toByte))
-    testHash(0x34545c16020230L, "abcdefghijklmnopqrstuvwxyz1234567890".getBytes)
+    testHash(0x34545c16020230L, "abcdefghijklmnopqrstuvwxyz1234567890".getBytes.nn)
   }
 
   def testHash(expected: Long, arr: Array[Byte]): Unit = {

@@ -10,7 +10,7 @@ class Y {
 
  val n = 10
  val x = new X
- List(x.b)      // unsafe promotion
+ println(x.b)      // unsafe promotion
 
 }
 
@@ -24,7 +24,7 @@ class A { // checking A
     def c = new C
   }
   val b = new B()
-  List(b) // error: the checker simply issue warnings for objects that contain inner classes
+  println(b) // error: the checker simply issue warnings for objects that contain inner classes
   val af = 42
 }
 

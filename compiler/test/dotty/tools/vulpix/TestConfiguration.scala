@@ -2,12 +2,16 @@ package dotty
 package tools
 package vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.File
 
 object TestConfiguration {
 
+  val pageWidth = 120
+
   val noCheckOptions = Array(
-    "-pagewidth", "120",
+    "-pagewidth", pageWidth.toString,
     "-color:never",
     "-Xtarget", defaultTarget
   )
@@ -45,6 +49,7 @@ object TestConfiguration {
     withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
 
   lazy val scalaJSClasspath = mkClasspath(List(
+    Properties.scalaJSJavalib,
     Properties.scalaJSLibrary,
     Properties.dottyLibraryJS
   ))
@@ -58,7 +63,7 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent", "-language:postfixOps") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
+  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
   val withCompilerOptions =
@@ -68,7 +73,7 @@ object TestConfiguration {
   lazy val withTastyInspectorOptions =
     defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
   lazy val scalaJSOptions =
-    defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath)
+    defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath).withRunClasspath(scalaJSClasspath)
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultOptions and (
@@ -79,6 +84,7 @@ object TestConfiguration {
   )
   val picklingWithCompilerOptions =
     picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  val recheckOptions = defaultOptions.and("-Yrecheck-test")
   val scala2CompatMode = defaultOptions.and("-source", "3.0-migration")
   val explicitUTF8 = defaultOptions and ("-encoding", "UTF8")
   val explicitUTF16 = defaultOptions and ("-encoding", "UTF16")

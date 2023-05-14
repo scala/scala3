@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package config
 
+import scala.language.unsafeNulls
+
 import WrappedProperties.AccessControl
 import io.{ClassPath, Directory, Path}
 import classpath.{AggregateClassPath, ClassPathFactory, JrtClassPath}
 import ClassPath.split
 import PartialFunction.condOpt
-import scala.language.postfixOps
 import core.Contexts._
 import Settings._
 import dotty.tools.io.File
@@ -29,7 +30,7 @@ object PathResolver {
   def ppcp(s: String): String = split(s) match {
     case Nil      => ""
     case Seq(x)   => x
-    case xs       => xs map ("\n" + _) mkString
+    case xs       => xs.map("\n" + _).mkString
   }
 
   /** Values found solely by inspecting environment or property variables.
@@ -130,7 +131,9 @@ object PathResolver {
 
   def fromPathString(path: String)(using Context): ClassPath = {
     val settings = ctx.settings.classpath.update(path)
-    new PathResolver()(using ctx.fresh.setSettings(settings)).result
+    inContext(ctx.fresh.setSettings(settings)) {
+      new PathResolver().result
+    }
   }
 
   /** Show values in Environment and Defaults when no argument is provided.
@@ -146,7 +149,9 @@ object PathResolver {
       val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true, ctx.settingsState)
       errors.foreach(println)
-      val pr = new PathResolver()(using ctx.fresh.setSettings(sstate))
+      val pr = inContext(ctx.fresh.setSettings(sstate)) {
+        new PathResolver()
+      }
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
 
@@ -206,8 +211,8 @@ class PathResolver(using c: Context) {
     import classPathFactory._
 
     // Assemble the elements!
-    def basis: List[Traversable[ClassPath]] =
-      val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+    def basis: List[Iterable[ClassPath]] =
+      val release = Option(ctx.settings.javaOutputVersion.value).filter(_.nonEmpty)
 
       List(
         JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)

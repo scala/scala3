@@ -86,7 +86,8 @@ object Rule {
   type RuleN[+L <: HList]   = Rule[HNil, L]
 
   def rule[I <: HList, O <: HList](r: Rule[I, O]): Rule[I, O] = ???
-  implicit def valueMap[T](m: Map[String, T])(implicit h: HListable[T]): RuleN[h.Out] = ???
+
+  implicit def valueMap[T, Out0 <: HList](m: Map[String, T])(implicit h: HListable[T]): RuleN[h.Out] = ???
 }
 
 object Test {

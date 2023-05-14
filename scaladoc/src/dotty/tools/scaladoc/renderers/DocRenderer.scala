@@ -2,6 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import dotty.tools.scaladoc.tasty.comments.wiki._
+import dotty.tools.scaladoc.tasty.comments.markdown.SnippetRenderer
 import util.HTML._
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
@@ -42,19 +43,38 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
         val tooltip = s"Problem linking $query: $msg"
         signatureRenderer.unresolvedLink(linkBody(query), titleAttr :=  tooltip)
 
+  private def renderHeader(header: Row): AppliedTag =
+    tr(
+      header.cells.map(c => th(c.blocks.map(renderElement)))
+    )
+
+  private def renderRow(row: Row): AppliedTag =
+    tr(
+      row.cells.map(c => td(c.blocks.map(renderElement)))
+    )
+
   private def renderElement(e: WikiDocElement): AppliedTag = e match
     case Title(text, level) =>
       val content = renderElement(text)
       level match
-          case 1 => h1(content)
-          case 2 => h2(content)
-          case 3 => h3(content)
-          case 4 => h4(content)
-          case 5 => h5(content)
-          case 6 => h6(content)
+          case 1 => h1(cls := "h600")(content)
+          case 2 => h2(cls := "h500")(content)
+          case 3 => h3(cls := "h400")(content)
+          case 4 => h4(cls := "h300")(content)
+          case 5 => h5(cls := "h200")(content)
+          case 6 => h6(cls := "h100")(content)
     case Paragraph(text) => p(renderElement(text))
-    case Code(data: String) => pre(code(raw(data.escapeReservedTokens))) // TODO add classes
+    case Code(data: String) => raw(SnippetRenderer.renderSnippet(data))
     case HorizontalRule => hr
+    case Table(header, columns, rows) =>
+      table(
+        thead(
+          renderHeader(header)
+        ),
+        tbody(
+          rows.map(renderRow)
+        )
+      )
 
     case UnorderedList(items) => ul(listItems(items))
     case OrderedList(items, style) => ol(listItems(items)) // TODO use style
@@ -67,7 +87,7 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
     case Subscript(text) => span(cls:="subscript")(renderElement(text))  // TODO implement style
     case Link(target, body) =>
       renderLink(target, default => body.fold[TagArg](default)(renderElement))
-    case Text(text) => raw(text)
+    case Text(text) => raw(text.escapeReservedTokens)
     case Summary(text) => renderElement(text)
     case HtmlTag(content) => raw(content)
 

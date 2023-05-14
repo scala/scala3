@@ -4,5 +4,5 @@ import scala.annotation.experimental
 inline def g() = ()
 
 def test: Unit =
-  g() // errors
+  g() // error
   ()

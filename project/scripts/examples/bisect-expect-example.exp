@@ -1,0 +1,17 @@
+#!/usr/local/bin/expect -f
+
+# Don't use this example script modified in place as it might disappear from the repo during a checkout.
+# Instead copy it to a different location first.
+
+set scalaVersion [lindex $argv 0] ;# Get the script argument
+
+set timeout 30 ;# Give scala-cli some time to download the compiler
+spawn scala-cli repl -S "$scalaVersion" --server=false ;# Start the REPL
+expect "scala>" ;# REPL has started
+set timeout 5
+send -- "Seq.empty.len\t" ;# Tab pressed to trigger code completion
+expect {
+	"length" { exit 0 } ;# Exit with success if the expected string appeared somewhere in stdout
+}
+
+exit 1 ;# Otherwise fail - the timeout was exceeded or the REPL crashed

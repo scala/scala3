@@ -6,9 +6,12 @@ setlocal enabledelayedexpansion
 
 set _EXITCODE=0
 
-set "_PROG_HOME=%~dp0"
-
-call "%_PROG_HOME%\common.bat"
+for %%f in ("%~dp0.") do (
+    set "_PROG_HOME=%%~dpf"
+    @rem get rid of the trailing slash
+    set "_PROG_HOME=!_PROG_HOME:~0,-1!"
+)
+call "%_PROG_HOME%\bin\common.bat"
 if not %_EXITCODE%==0 goto end
 
 set _DEFAULT_JAVA_OPTS=-Xmx768m -Xms768m
@@ -98,7 +101,7 @@ goto :eof
 
 @rem output parameter: _CLASS_PATH
 :classpathArgs
-for /f %%f in ("%_PROG_HOME%\.") do set "_LIB_DIR=%%~dpflib"
+set "_LIB_DIR=%_PROG_HOME%\lib"
 set _CLASS_PATH=
 @rem keep list in sync with bash script `bin\scaladoc` !
 call :updateClasspath "scaladoc"
@@ -120,6 +123,8 @@ call :updateClasspath "flexmark-ext-yaml-front-matter"
 call :updateClasspath "liqp"
 call :updateClasspath "jsoup"
 call :updateClasspath "jackson-dataformat-yaml"
+call :updateClasspath "jackson-datatype-jsr310"
+call :updateClasspath "strftime4j"
 call :updateClasspath "scala-asm"
 call :updateClasspath "compiler-interface"
 call :updateClasspath "jline-reader"
@@ -129,7 +134,7 @@ call :updateClasspath "flexmark-util"
 call :updateClasspath "flexmark-formatter"
 call :updateClasspath "autolink-0.6"
 call :updateClasspath "flexmark-jira-converter"
-call :updateClasspath "antlr-3"
+call :updateClasspath "antlr4"
 call :updateClasspath "jackson-annotations"
 call :updateClasspath "jackson-core"
 call :updateClasspath "jackson-databind"
@@ -141,15 +146,14 @@ call :updateClasspath "jna-5"
 call :updateClasspath "flexmark-ext-tables"
 call :updateClasspath "flexmark-ext-ins"
 call :updateClasspath "flexmark-ext-superscript"
-call :updateClasspath "antlr-runtime-3"
-call :updateClasspath "ST4"
+call :updateClasspath "antlr4-runtime"
 goto :eof
 
 @rem input parameter: %1=pattern for library file
 @rem output parameter: _CLASS_PATH
 :updateClasspath
 set "__PATTERN=%~1"
-for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*"') do (
+for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*%__PATTERN%*" 2^>NUL') do (
     set "_CLASS_PATH=!_CLASS_PATH!%_LIB_DIR%\%%f%_PSEP%"
 )
 goto :eof

@@ -1,0 +1,207 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+foo
+181
+203
+6
+println
+Apply
+false
+0
+false
+println(s"foo(a)($b)")
+
+1
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+foo
+189
+202
+6
+s
+Apply
+false
+0
+false
+s"foo(a)($b)"
+
+2
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+foo
+132
+139
+5
+foo
+DefDef
+false
+0
+false
+def foo
+
+3
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+identity
+245
+269
+10
+println
+Apply
+false
+0
+false
+println(s"identity($s)")
+
+4
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+identity
+253
+268
+10
+s
+Apply
+false
+0
+false
+s"identity($s)"
+
+5
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+identity
+209
+221
+9
+identity
+DefDef
+false
+0
+false
+def identity
+
+6
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+300
+323
+15
+foo
+Apply
+false
+0
+false
+foo(parameterless)("b")
+
+7
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+326
+342
+16
+foo
+Apply
+false
+0
+false
+foo(e("a"))("b")
+
+8
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+345
+374
+17
+foo
+Apply
+false
+0
+false
+foo(e("a"))(identity("idem"))
+
+9
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+357
+373
+17
+identity
+Apply
+false
+0
+false
+identity("idem")
+
+10
+erased/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+275
+289
+14
+Test
+DefDef
+false
+0
+false
+@main\ndef Test
+

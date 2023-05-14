@@ -3,25 +3,25 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.TastyFormat._
 import dotty.tools.tasty.TastyBuffer._
 
 import ast.Trees._
 import ast.{untpd, tpd}
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
-import Denotations.MultiDenotation
 import Comments.{Comment, CommentsContext}
-import typer.Inliner
 import NameKinds._
 import StdNames.nme
 import transform.SymUtils._
-import printing.Printer
-import printing.Texts._
-import util.SourceFile
-import annotation.constructorOnly
+import config.Config
 import collection.mutable
+import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
+object TreePickler:
+  class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
@@ -29,6 +29,7 @@ class TreePickler(pickler: TastyPickler) {
   import buf._
   import pickler.nameBuffer.nameIndex
   import tpd._
+  import TreePickler.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
   private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
@@ -46,6 +47,8 @@ class TreePickler(pickler: TastyPickler) {
    */
   private val docStrings = util.EqHashMap[untpd.MemberDef, Comment]()
 
+  private var profile: Profile = NoProfile
+
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
     if ts == null then Nil else ts.toList
@@ -53,7 +56,7 @@ class TreePickler(pickler: TastyPickler) {
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
 
-  private def withLength(op: => Unit) = {
+  private inline def withLength(inline op: Unit) = {
     val lengthAddr = reserveRef(relative = true)
     op
     fillRef(lengthAddr, currentAddr, relative = true)
@@ -68,15 +71,12 @@ class TreePickler(pickler: TastyPickler) {
     case _ =>
   }
 
-  def registerDef(sym: Symbol): Unit = {
+  def registerDef(sym: Symbol): Unit =
     symRefs(sym) = currentAddr
-    forwardSymRefs.get(sym) match {
-      case Some(refs) =>
-        refs.foreach(fillRef(_, currentAddr, relative = false))
-        forwardSymRefs -= sym
-      case None =>
-    }
-  }
+    val refs = forwardSymRefs.lookup(sym)
+    if refs != null then
+      refs.foreach(fillRef(_, currentAddr, relative = false))
+      forwardSymRefs -= sym
 
   def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
@@ -85,17 +85,19 @@ class TreePickler(pickler: TastyPickler) {
       if (sig eq Signature.NotAMethod) name
       else SignedName(name.toTermName, sig, target.asTermName))
 
-  private def pickleSymRef(sym: Symbol)(using Context) = symRefs.get(sym) match {
-    case Some(label) =>
-      if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
-    case None =>
+  private def pickleSymRef(sym: Symbol)(using Context) =
+    val label: Addr | Null = symRefs.lookup(sym)
+    if label == null then
       // See pos/t1957.scala for an example where this can happen.
       // I believe it's a bug in typer: the type of an implicit argument refers
       // to a closure parameter outside the closure itself. TODO: track this down, so that we
       // can eliminate this case.
       report.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.srcPos)
       pickleForwardSymRef(sym)
-  }
+    else if label == NoAddr then
+      pickleForwardSymRef(sym)
+    else
+      writeRef(label.uncheckedNN) // !!! Dotty problem: Not clear why nn or uncheckedNN is needed here
 
   private def pickleForwardSymRef(sym: Symbol)(using Context) = {
     val ref = reserveRef(relative = false)
@@ -206,6 +208,8 @@ class TreePickler(pickler: TastyPickler) {
       }
       else if (tpe.prefix == NoPrefix) {
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+        if Config.checkLevelsOnConstraints && !symRefs.contains(sym) && !sym.isPatternBound && !sym.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) then
+          report.error(em"pickling reference to as yet undefined $tpe with symbol ${sym}", sym.srcPos)
         pickleSymRef(sym)
       }
       else tpe.designator match {
@@ -283,7 +287,6 @@ class TreePickler(pickler: TastyPickler) {
       var mods = EmptyFlags
       if tpe.isContextualMethod then mods |= Given
       else if tpe.isImplicitMethod then mods |= Implicit
-      if tpe.isErasedMethod then mods |= Erased
       pickleMethodic(METHODtype, tpe, mods)
     case tpe: ParamRef =>
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
@@ -325,21 +328,31 @@ class TreePickler(pickler: TastyPickler) {
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
-    withLength {
-      pickleName(sym.name)
-      pickleParams
-      tpt match {
-        case _: Template | _: Hole => pickleTree(tpt)
-        case _ if tpt.isType => pickleTpt(tpt)
+    val addr = currentAddr
+    try
+      withLength {
+        pickleName(sym.name)
+        pickleParams
+        tpt match {
+          case _: Template | _: Hole => pickleTree(tpt)
+          case _ if tpt.isType => pickleTpt(tpt)
+        }
+        pickleTreeUnlessEmpty(rhs)
+        pickleModifiers(sym, mdef)
       }
-      pickleTreeUnlessEmpty(rhs)
-      pickleModifiers(sym, mdef)
-    }
-    for
-      docCtx <- ctx.docCtx
-      comment <- docCtx.docstring(sym)
-    do
-      docStrings(mdef) = comment
+    catch
+      case ex: Throwable =>
+        if !ctx.settings.YnoDecodeStacktraces.value
+          && handleRecursive.underlyingStackOverflowOrNull(ex) != null then
+          throw StackSizeExceeded(mdef)
+        else
+          throw ex
+    if sym.is(Method) && sym.owner.isClass then
+      profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
+    for docCtx <- ctx.docCtx do
+      val comment = docCtx.docstrings.lookup(sym)
+      if comment != null then
+        docStrings(mdef) = comment
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {
@@ -382,7 +395,7 @@ class TreePickler(pickler: TastyPickler) {
           if (qual.isEmpty) pickleType(tree.tpe)
           else {
             writeByte(QUALTHIS)
-            val ThisType(tref) = tree.tpe
+            val ThisType(tref) = tree.tpe: @unchecked
             pickleTree(qual.withType(tref))
           }
         case Select(qual, name) =>
@@ -392,7 +405,7 @@ class TreePickler(pickler: TastyPickler) {
               withLength {
                 writeNat(levels)
                 pickleTree(qual)
-                val SkolemType(tp) = tree.tpe
+                val SkolemType(tp) = tree.tpe: @unchecked
                 pickleType(tp)
               }
             case _ =>
@@ -421,6 +434,13 @@ class TreePickler(pickler: TastyPickler) {
             writeByte(THROW)
             pickleTree(args.head)
           }
+          else if fun.symbol.originalSignaturePolymorphic.exists then
+            writeByte(APPLYsigpoly)
+            withLength {
+              pickleTree(fun)
+              pickleType(fun.tpe.widenTermRefExpr, richTypes = true) // this widens to a MethodType, so need richTypes
+              args.foreach(pickleTree)
+            }
           else {
             writeByte(APPLY)
             withLength {
@@ -446,7 +466,8 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleTree(qual);
             if (!mix.isEmpty) {
-              val SuperType(_, mixinType: TypeRef) = tree.tpe
+              // mixinType being a TypeRef when mix is non-empty is enforced by TreeChecker#checkSuper
+              val SuperType(_, mixinType: TypeRef) = tree.tpe: @unchecked
               pickleTree(mix.withType(mixinType))
             }
           }
@@ -567,7 +588,7 @@ class TreePickler(pickler: TastyPickler) {
           withLength {
             pickleParams(params)
             tree.parents.foreach(pickleTree)
-            val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
+            val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info: @unchecked
             if (!tree.self.isEmpty) {
               writeByte(SELFDEF)
               pickleName(tree.self.name)
@@ -644,7 +665,27 @@ class TreePickler(pickler: TastyPickler) {
               pickleTree(hi)
               pickleTree(alias)
           }
-        case Hole(_, idx, args) =>
+        case tree @ Quote(body, Nil) =>
+          // TODO: Add QUOTE tag to TASTy
+          assert(body.isTerm,
+            """Quote with type should not be pickled.
+              |Quote with type should only exists after staging phase at staging level 0.""".stripMargin)
+          pickleTree(
+            // scala.quoted.runtime.Expr.quoted[<tree.bodyType>](<body>)
+            ref(defn.QuotedRuntime_exprQuote)
+              .appliedToType(tree.bodyType)
+              .appliedTo(body)
+              .withSpan(tree.span)
+          )
+        case Splice(expr) =>
+          pickleTree( // TODO: Add SPLICE tag to TASTy
+            // scala.quoted.runtime.Expr.splice[<tree.tpe>](<expr>)
+            ref(defn.QuotedRuntime_exprSplice)
+              .appliedToType(tree.tpe)
+              .appliedTo(expr)
+              .withSpan(tree.span)
+          )
+        case Hole(_, idx, args, _) =>
           writeByte(HOLE)
           withLength {
             writeNat(idx)
@@ -770,18 +811,40 @@ class TreePickler(pickler: TastyPickler) {
 // ---- main entry points ---------------------------------------
 
   def pickle(trees: List[Tree])(using Context): Unit = {
-    trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
+    profile = Profile.current
+    for tree <- trees do
+      try
+        if !tree.isEmpty then pickleTree(tree)
+      catch case ex: StackSizeExceeded =>
+        report.error(
+          em"""Recursion limit exceeded while pickling ${ex.mdef}
+              |in ${ex.mdef.symbol.showLocated}.
+              |You could try to increase the stacksize using the -Xss JVM option.
+              |For the unprocessed stack trace, compile with -Yno-decode-stacktraces.""",
+          ex.mdef.srcPos)
+
     def missing = forwardSymRefs.keysIterator
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")
       .toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 
-  def compactify(): Unit = {
-    buf.compactify()
+  def compactify(scratch: ScratchData = new ScratchData): Unit = {
+    buf.compactify(scratch)
 
     def updateMapWithDeltas(mp: MutableSymbolMap[Addr]) =
-      for (key <- mp.keysIterator.toBuffer[Symbol]) mp(key) = adjusted(mp(key))
+      val keys = new Array[Symbol](mp.size)
+      val it = mp.keysIterator
+      var i = 0
+      while i < keys.length do
+        keys(i) = it.next
+        i += 1
+      assert(!it.hasNext)
+      i = 0
+      while i < keys.length do
+        val key = keys(i)
+        mp(key) = adjusted(mp(key), scratch)
+        i += 1
 
     updateMapWithDeltas(symRefs)
   }

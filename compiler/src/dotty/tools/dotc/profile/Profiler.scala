@@ -1,5 +1,8 @@
 package dotty.tools.dotc.profile
 
+import scala.annotation.*
+import scala.language.unsafeNulls
+
 import java.io.{FileWriter, PrintWriter}
 import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
 import java.util.concurrent.TimeUnit
@@ -10,6 +13,7 @@ import javax.management.{Notification, NotificationEmitter, NotificationListener
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.io.AbstractFile
+import annotation.internal.sharable
 
 object Profiler {
   def apply()(using Context): Profiler =
@@ -79,7 +83,7 @@ private [profile] object NoOpProfiler extends Profiler {
   override def finished(): Unit = ()
 }
 private [profile] object RealProfiler {
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
   val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
   val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
   val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
@@ -97,13 +101,10 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   def outDir: AbstractFile = ctx.settings.outputDir.value
 
   val id: Int = RealProfiler.idGen.incrementAndGet()
-  RealProfiler.gcMx foreach {
-    case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
-    case gc => println(s"Cant connect gcListener to ${gc.getClass}")
-  }
 
   private val mainThread = Thread.currentThread()
 
+  @nowarn("cat=deprecation")
   private[profile] def snapThread(idleTimeNanos: Long): ProfileSnap = {
     import RealProfiler._
     val current = Thread.currentThread()
@@ -121,9 +122,15 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
   }
   private def readHeapUsage() = RealProfiler.memoryMx.getHeapMemoryUsage.getUsed
 
+  @nowarn
   private def doGC: Unit = {
     System.gc()
     System.runFinalization()
+  }
+
+  RealProfiler.gcMx foreach {
+    case emitter: NotificationEmitter => emitter.addNotificationListener(this, null, null)
+    case gc => println(s"Cant connect gcListener to ${gc.getClass}")
   }
 
   reporter.header(this)
@@ -211,14 +218,16 @@ sealed trait ProfileReporter {
 }
 
 object ConsoleProfileReporter extends ProfileReporter {
-
+  @sharable var totalAlloc = 0L
 
   override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
-  // TODO
-    ???
+    reportCommon(EventType.BACKGROUND, profiler, threadRange)
   override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
-  // TODO
-    ???
+    reportCommon(EventType.MAIN, profiler, threadRange)
+  @nowarn("cat=deprecation")
+  private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit =
+    totalAlloc += threadRange.allocatedBytes
+    println(s"${threadRange.phase.phaseName.replace(',', ' ')},run ns = ${threadRange.runNs},idle ns = ${threadRange.idleNs},cpu ns = ${threadRange.cpuNs},user ns = ${threadRange.userNs},allocated = ${threadRange.allocatedBytes},heap at end = ${threadRange.end.heapBytes}, total allocated = $totalAlloc ")
 
   override def close(profiler: RealProfiler): Unit = ()
 
@@ -240,6 +249,7 @@ class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
     reportCommon(EventType.BACKGROUND, profiler, threadRange)
   override def reportForeground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
     reportCommon(EventType.MAIN, profiler, threadRange)
+  @nowarn("cat=deprecation")
   private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit =
     out.println(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.taskCount},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${threadRange.end.heapBytes} ")
 

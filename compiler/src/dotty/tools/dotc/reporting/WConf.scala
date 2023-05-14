@@ -2,12 +2,13 @@ package dotty.tools
 package dotc
 package reporting
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
 import scala.annotation.internal.sharable
-import scala.collection.mutable.ListBuffer
 import scala.util.matching.Regex
 
 enum MessageFilter:
@@ -17,7 +18,7 @@ enum MessageFilter:
     case Feature => message.isInstanceOf[Diagnostic.FeatureWarning]
     case Unchecked => message.isInstanceOf[Diagnostic.UncheckedWarning]
     case MessagePattern(pattern) =>
-      val noHighlight = message.msg.rawMessage.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
+      val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]","")
       pattern.findFirstIn(noHighlight).nonEmpty
     case MessageID(errorId) => message.msg.errorId == errorId
     case None => false
@@ -69,8 +70,9 @@ object WConf:
       case "id" => conf match
         case ErrorId(num) =>
           ErrorMessageID.fromErrorNumber(num.toInt) match
-            case Some(errId) => Right(MessageID(errId))
-            case _ => Left(s"unknonw error message number: E$num")
+            case Some(errId) if errId.isActive => Right(MessageID(errId))
+            case Some(errId) => Left(s"E${num} is marked as inactive.")
+            case _ => Left(s"Unknown error message number: E${num}")
         case _ =>
           Left(s"invalid error message id: $conf")
       case "name" =>

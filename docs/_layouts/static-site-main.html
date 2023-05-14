@@ -1,0 +1,57 @@
+---
+layout: main
+---
+
+<div class="site-container">
+  <div id="site-header"></div>
+  {% if page.nightlyOf %}
+  <aside class="warning">
+    <div class='icon'></div>
+    <div class='content'>
+    This is a nightly documentation. The content of this page may not be
+    consistent with the current stable version of language. Click
+    <a href="{{ page.nightlyOf }}">here</a> to find the stable version of this
+    page.
+    </div>
+  </aside>
+  {% endif %} {{ content }}
+  <div class="divider" />
+  <nav class="arrow-navigation" aria-label="Page navigation">
+    {% if page.previous %}
+    <div>
+      <span class="body-small">Previous</span>
+      <a
+        rel="prev"
+        href="{{ page.previous.url }}"
+        aria-keyshortcuts="Left"
+        class="body-medium"
+      >
+        <span class="body-medium">{{ page.previous.title }}</span>
+      </a>
+    </div>
+    {% endif %} {% if page.next %}
+    <div>
+      <span class="body-small arrow-navigation--next">Next</span>
+      <a
+        rel="next"
+        href="{{ page.next.url }}"
+        aria-keyshortcuts="Right"
+        class="body-medium"
+      >
+        <span class="body-medium">{{ page.next.title }}</span>
+      </a>
+    </div>
+    {% endif %}
+  </nav>
+  <div class="content-contributors hidden">
+    <h1 class="h200">Contributors to this page</h1>
+    <div id="documentation-contributors" class="contributors-container"></div>
+    {% if urls.editSource %}
+    <div class="github-edit-button">
+      <a class="text-button with-link body-small" href="{{ urls.editSource }}">
+        Edit this page on GitHub
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>

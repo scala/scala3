@@ -1,0 +1,30 @@
+-- [E178] Type Error: tests/neg/i16820.scala:5:11 ----------------------------------------------------------------------
+5 |  val x1 = f  // error
+  |           ^
+  |           missing argument list for method f in object Test
+  |
+  |             def f(xs: Int*): Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E100] Syntax Error: tests/neg/i16820.scala:6:11 --------------------------------------------------------------------
+6 |  val x2 = g  // error
+  |           ^
+  |           method g in object Test must be called with () argument
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i16820.scala:7:40 ----------------------------------------------------------------------
+7 |  val x3 = java.nio.file.Paths.get(".").toRealPath // error
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |           missing argument list for method toRealPath in trait Path
+  |
+  |             def toRealPath(x$0: java.nio.file.LinkOption*): java.nio.file.Path
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i16820.scala:11:14 ---------------------------------------------------------------------
+11 |def test = Foo(3)  // error
+   |           ^^^^^^
+   |           missing argument list for method apply in object Foo
+   |
+   |             def apply(x: Int)(xs: String*): Foo
+   |
+   | longer explanation available when compiling with `-explain`

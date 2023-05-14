@@ -3,15 +3,17 @@
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E008] Not Found Error: tests/neg/i6779.scala:12:31 -----------------------------------------------------------------
 12 |  def g2[T](x: T): F[G[T]] = x.f // error
    |                             ^^^
    |                             value f is not a member of T.
    |                             An extension method was tried, but could not be fully constructed:
    |
-   |                                 Test.f[G[T]](x)(given_Stuff)    failed with
+   |                                 Test.f[G[T]](x)(given_Stuff)
+   |
+   |                                 failed with:
    |
    |                                     Found:    (x : T)
    |                                     Required: G[T]
@@ -20,5 +22,5 @@ longer explanation available when compiling with `-explain`
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

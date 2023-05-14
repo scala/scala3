@@ -1,24 +1,8 @@
 package dotty
 
 package object tools {
-  // Ensure this object is already classloaded, since it's only actually used
-  // when handling stack overflows and every operation (including class loading)
-  // risks failing.
-  dotty.tools.dotc.core.handleRecursive
 
   val ListOfNil: List[Nil.type] = Nil :: Nil
-
-  /** True if two lists have the same length.  Since calling length on linear sequences
-   *  is O(n), it is an inadvisable way to test length equality.
-   */
-  final def sameLength[T](xs: List[T], ys: List[T]): Boolean = xs match {
-    case _ :: xs1 =>
-      ys match {
-        case _ :: ys1 => sameLength(xs1, ys1)
-        case _ => false
-      }
-    case _ => ys.isEmpty
-  }
 
   /** Throws an `UnsupportedOperationException` with the given method name. */
   def unsupported(methodName: String): Nothing =
@@ -26,21 +10,22 @@ package object tools {
 
   /** Forward-ported from the explicit-nulls branch. */
   extension [T](x: T | Null)
-
-    /** Assert `x` is non null and strip `Null` from type */
-    inline def nn: T =
-      assert(x != null)
-      x.asInstanceOf[T]
-
     /** Should be used when we know from the context that `x` is not null.
      *  Flow-typing under explicit nulls will automatically insert many necessary
      *  occurrences of uncheckedNN.
      */
-    inline def uncheckedNN: T = x.asInstanceOf[T]
+    transparent inline def uncheckedNN: T = x.asInstanceOf[T]
 
     inline def toOption: Option[T] =
       if x == null then None else Some(x.asInstanceOf[T])
   end extension
+
+  /** Nullable eq and ne. */
+  extension [T <: AnyRef](x: T | Null)
+    inline def eqn (y: T | Null) =
+      x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
+
+    inline def nen(y: T | Null): Boolean = !eqn(y)
 
   object resultWrapper {
     opaque type WrappedResult[T] = T
@@ -53,4 +38,16 @@ package object tools {
 
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
-}
+
+  transparent inline def assertShort(inline assertion: Boolean, inline message: Any = null): Unit =
+    if !assertion then
+      val msg = message
+      val e = if msg == null then AssertionError() else AssertionError("assertion failed: " + msg)
+      e.setStackTrace(Array())
+      throw e
+
+  // Ensure this object is already classloaded, since it's only actually used
+  // when handling stack overflows and every operation (including class loading)
+  // risks failing.
+  dotty.tools.dotc.core.handleRecursive
+ }

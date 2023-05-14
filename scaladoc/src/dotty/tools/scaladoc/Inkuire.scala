@@ -114,6 +114,7 @@ object Inkuire {
     name:         String,
     packageName:  String,
     uri:          String,
+    isLocationExternal: Boolean,
     entryType:    String
   )
 
@@ -333,7 +334,7 @@ object Inkuire {
         ("signature", serialize(e.signature)),
         ("name", serialize(e.name)),
         ("packageName", serialize(e.packageName)),
-        ("uri", serialize(e.uri)),
+        ("uri", serialize((if e.isLocationExternal then "e" else "i") + e.uri)),
         ("entryType", serialize(e.entryType))
       )
     }

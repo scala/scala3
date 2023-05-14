@@ -12,6 +12,8 @@
 
 package dotty.tools.dotc.util
 
+import scala.language.unsafeNulls
+
 import collection.mutable, mutable.ListBuffer
 import scala.util.chaining.given
 import java.lang.System.lineSeparator
@@ -27,7 +29,6 @@ object StackTraceOps:
      *  If a stack trace is truncated, it will be followed by a line of the form
      *  `... 3 elided`, by analogy to the lines `... 3 more` which indicate
      *  shared stack trace segments.
-     *  @param e the exception
      *  @param p the predicate to select the prefix
      */
     def formatStackTracePrefix(p: StackTraceElement => Boolean): String =

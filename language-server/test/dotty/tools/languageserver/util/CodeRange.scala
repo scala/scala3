@@ -3,7 +3,7 @@ package dotty.tools.languageserver.util
 import dotty.tools.languageserver.util.embedded.{CodeInRange, CodeMarker}
 import dotty.tools.languageserver.util.server.TestFile
 
-import org.eclipse.lsp4j._
+import org.eclipse.lsp4j.{Location, Range, SymbolKind}
 
 import PositionContext._
 

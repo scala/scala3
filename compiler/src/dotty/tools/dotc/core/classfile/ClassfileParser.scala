@@ -3,25 +3,25 @@ package dotc
 package core
 package classfile
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
 import Phases._
-import NameKinds.DefaultGetterName
 import ast.{ tpd, untpd }
 import ast.tpd._, util._
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, IOException }
+import java.io.{ ByteArrayOutputStream, IOException }
 
 import java.lang.Integer.toHexString
-import java.net.URLClassLoader
 import java.util.UUID
 
 import scala.collection.immutable
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
-import io.{AbstractFile, PlainFile, ZipArchive}
+import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 
 object ClassfileParser {
@@ -62,8 +62,8 @@ class ClassfileParser(
 
   protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 
-  protected val instanceScope: MutableScope = newScope     // the scope of all instance definitions
-  protected val staticScope: MutableScope = newScope       // the scope of all static definitions
+  protected val instanceScope: MutableScope = newScope(0)     // the scope of all instance definitions
+  protected val staticScope: MutableScope = newScope(0)       // the scope of all static definitions
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
   protected var currentClassName: SimpleName = _      // JVM name of the current class
@@ -110,10 +110,39 @@ class ClassfileParser(
   }
 
   /** Return the class symbol of the given name. */
-  def classNameToSymbol(name: Name)(using Context): Symbol = innerClasses.get(name.toString) match {
-    case Some(entry) => innerClasses.classSymbol(entry)
-    case None => requiredClass(name)
-  }
+  def classNameToSymbol(name: Name)(using Context): Symbol =
+    val nameStr = name.toString
+    innerClasses.get(nameStr) match
+      case Some(entry) => innerClasses.classSymbol(entry)
+      case None =>
+        def lookupTopLevel(): Symbol = requiredClass(name)
+        // For inner classes we usually don't get to this branch: `innerClasses.classSymbol` already returns the symbol
+        // of the inner class based on the InnerClass table. However, if the classfile is missing the
+        // InnerClass entry for `name`, it might still be that there exists an inner symbol (because
+        // some other classfile _does_ have an InnerClass entry for `name`). In this case, we want to
+        // return the actual inner symbol (C.D, with owner C), not the top-level symbol C$D. This is
+        // what the logic below is for (see scala/bug#9937 / lampepfl/dotty#12086).
+        val split = nameStr.lastIndexOf('$')
+        if split < 0 || split >= nameStr.length - 1 then
+          lookupTopLevel()
+        else
+          val outerNameStr = nameStr.substring(0, split)
+          val innerNameStr = nameStr.substring(split + 1, nameStr.length)
+          val outerSym = classNameToSymbol(outerNameStr.toTypeName)
+          outerSym.denot.infoOrCompleter match
+            case _: StubInfo =>
+              // If the outer class C cannot be found, look for a top-level class C$D
+              lookupTopLevel()
+            case _ =>
+              // We have a java-defined class name C$D and look for a member D of C. But we don't know if
+              // D is declared static or not, so we have to search both in class C and its companion.
+              val innerName = innerNameStr.toTypeName
+              val r =
+                if outerSym eq classRoot.symbol then
+                  instanceScope.lookup(innerName).orElse(staticScope.lookup(innerName))
+                else
+                  outerSym.info.member(innerName).orElse(outerSym.asClass.companionModule.info.member(innerName)).symbol
+              r.orElse(lookupTopLevel())
 
   var sawPrivateConstructor: Boolean = false
 
@@ -136,11 +165,7 @@ class ClassfileParser(
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
       val superType =
-        if (isAnnotation) {
-          in.nextChar
-          defn.AnnotationClass.typeRef
-        }
-        else if (classRoot.symbol == defn.ComparableClass ||
+        if (classRoot.symbol == defn.ComparableClass ||
                  classRoot.symbol == defn.JavaCloneableClass ||
                  classRoot.symbol == defn.JavaSerializableClass) {
           // Treat these interfaces as universal traits
@@ -157,7 +182,6 @@ class ClassfileParser(
         // Consequently, no best implicit for the "Integral" evidence parameter of "range"
         // is found. Previously, this worked because of weak conformance, which has been dropped.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
 
@@ -246,6 +270,9 @@ class ClassfileParser(
     def complete(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
       val isEnum = (jflags & JAVA_ACC_ENUM) != 0
+      val isNative = (jflags & JAVA_ACC_NATIVE) != 0
+      val isTransient = (jflags & JAVA_ACC_TRANSIENT) != 0
+      val isVolatile = (jflags & JAVA_ACC_VOLATILE) != 0
       val isConstructor = name eq nme.CONSTRUCTOR
 
       /** Strip leading outer param from constructor and trailing access tag for
@@ -253,7 +280,7 @@ class ClassfileParser(
         */
       def normalizeConstructorParams() = innerClasses.get(currentClassName.toString) match {
         case Some(entry) if !isStatic(entry.jflags) =>
-          val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info
+          val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info: @unchecked
           var normalizedParamNames = paramNames.tail
           var normalizedParamTypes = paramTypes.tail
           if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {
@@ -284,6 +311,12 @@ class ClassfileParser(
       val isVarargs = denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0
       denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
+      if isNative then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Nil))
+      if isTransient then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Nil))
+      if isVolatile then
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Nil))
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
@@ -293,7 +326,7 @@ class ClassfileParser(
       if (isEnum) {
         val enumClass = sym.owner.linkedClass
         if (!enumClass.exists)
-          report.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
+          report.warning(em"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
         else {
           if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
           enumClass.addAnnotation(Annotation.Child(sym, NoSpan))
@@ -623,7 +656,7 @@ class ClassfileParser(
       case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
         // Silently ignore missing annotation classes like javac
         if ctx.debug then
-          report.warning(i"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+          report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
         None
       case _ =>
         if (hasError || skip) None
@@ -638,7 +671,7 @@ class ClassfileParser(
       // the classpath would *not* end up here. A class not found is signaled
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
-      report.warning("Caught: " + ex + " while parsing annotations in " + classfile)
+      report.warning(em"Caught: $ex while parsing annotations in $classfile")
       if (ctx.debug) ex.printStackTrace()
 
       None // ignore malformed annotations
@@ -720,7 +753,7 @@ class ClassfileParser(
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
           if (c ne null) res.constant = c
-          else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
+          else report.warning(em"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
 
         case tpnme.MethodParametersATTR =>
           val paramCount = in.nextByte
@@ -731,7 +764,7 @@ class ClassfileParser(
               res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
@@ -807,7 +840,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
+      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
@@ -841,7 +874,7 @@ class ClassfileParser(
 
   /** Parse inner classes. Expects `in.bp` to point to the superclass entry.
    *  Restores the old `bp`.
-   *  @return true iff classfile is from Scala, so no Java info needs to be read.
+   *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
   def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
@@ -934,7 +967,7 @@ class ClassfileParser(
                 }
               }
               else {
-                report.error(s"Could not find $path in ${classfile.underlyingSource}")
+                report.error(em"Could not find $path in ${classfile.underlyingSource}")
                 Array.empty
               }
             case _ =>
@@ -942,7 +975,7 @@ class ClassfileParser(
               val name = classfile.name.stripSuffix(".class") + ".tasty"
               val tastyFileOrNull = dir.lookupName(name, false)
               if (tastyFileOrNull == null) {
-                report.error(s"Could not find TASTY file $name under $dir")
+                report.error(em"Could not find TASTY file $name under $dir")
                 Array.empty
               } else
                 tastyFileOrNull.toByteArray
@@ -959,7 +992,10 @@ class ClassfileParser(
         else return unpickleTASTY(bytes)
       }
 
-      if (scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name))
+      if scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)
+        && !(classRoot.name.startsWith("Tuple") && classRoot.name.endsWith("$sp"))
+        && !(classRoot.name.startsWith("Product") && classRoot.name.endsWith("$sp"))
+      then
         // To understand the situation, it's helpful to know that:
         // - Scalac emits the `ScalaSig` attribute for classfiles with pickled information
         // and the `Scala` attribute for everything else.
@@ -970,7 +1006,7 @@ class ClassfileParser(
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
 
-      if (scan(tpnme.RuntimeVisibleAnnotationATTR) || scan(tpnme.RuntimeInvisibleAnnotationATTR)) {
+      if (scan(tpnme.ScalaSignatureATTR) && scan(tpnme.RuntimeVisibleAnnotationATTR)) {
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
         var i = 0
@@ -981,14 +1017,10 @@ class ClassfileParser(
           while (j < nArgs) {
             val argName = pool.getName(in.nextChar)
             if (argName.name == nme.bytes) {
-              if (attrClass == defn.ScalaSignatureAnnot)
+              if attrClass == defn.ScalaSignatureAnnot then
                 return unpickleScala(parseScalaSigBytes)
-              else if (attrClass == defn.ScalaLongSignatureAnnot)
+              else if attrClass == defn.ScalaLongSignatureAnnot then
                 return unpickleScala(parseScalaLongSigBytes)
-              else if (attrClass == defn.TASTYSignatureAnnot)
-                return unpickleTASTY(parseScalaSigBytes)
-              else if (attrClass == defn.TASTYLongSignatureAnnot)
-                return unpickleTASTY(parseScalaLongSigBytes)
             }
             parseAnnotArg(skip = true)
             j += 1
@@ -1054,10 +1086,10 @@ class ClassfileParser(
           if (sym == classRoot.symbol)
             staticScope.lookup(name)
           else {
-            var module = sym.companionModule
-            if (!module.exists && sym.isAbsent())
-              module = sym.scalacLinkedClass
-            module.info.member(name).symbol
+            var moduleClass = sym.registeredCompanion
+            if (!moduleClass.exists && sym.isAbsent())
+              moduleClass = sym.scalacLinkedClass
+            moduleClass.info.member(name).symbol
           }
         else if (sym == classRoot.symbol)
           instanceScope.lookup(name)
@@ -1069,7 +1101,16 @@ class ClassfileParser(
       val outerName = entry.strippedOuter
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
-      val result = atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
+      val result = owner.denot.infoOrCompleter match
+        case _: StubInfo if hasAnnotation(entry.jflags) =>
+          requiredClass(innerName.toTypeName)
+            // It's okay for the classfiles of Java annotations to be missing
+            // from the classpath. If an annotation is defined as an inner class
+            // we need to avoid forcing the outer class symbol here, and instead
+            // return a new stub symbol for the inner class. This is tested by
+            // `surviveMissingInnerClassAnnot` in AnnotationsTests.scala
+        case _ =>
+          atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
       assert(result ne NoSymbol,
         i"""failure to resolve inner class:
            |externalName = ${entry.externalName},

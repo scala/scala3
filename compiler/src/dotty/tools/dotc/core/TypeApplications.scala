@@ -9,10 +9,11 @@ import SymDenotations.LazyType
 import Decorators._
 import util.Stats._
 import Names._
-import NameOps._
-import Flags.Module
-import Variances.variancesConform
+import StdNames.nme
+import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
+import cc.boxedUnlessFun
+import dotty.tools.dotc.transform.TypeUtils.isErasedValueType
 
 object TypeApplications {
 
@@ -205,6 +206,12 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
+  /** Substitute in `self` the type parameters of `tycon` by some other types. */
+  final def substTypeParams(tycon: Type, to: List[Type])(using Context): Type =
+    (tycon.typeParams: @unchecked) match
+      case LambdaParam(lam, _) :: _ => self.substParams(lam, to)
+      case params: List[Symbol @unchecked] => self.subst(params, to)
+
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
   final def hkTypeParams(using Context): List[TypeParamInfo] =
     if (isLambdaSub) typeParams else Nil
@@ -230,6 +237,20 @@ class TypeApplications(val self: Type) extends AnyVal {
       val alias = self.dealias
       (alias ne self) && alias.hasSimpleKind
     }
+
+  /** The top type with the same kind as `self`. This is largest type capturing
+   *  the parameter shape of a type without looking at precise bounds.
+   *    - The top-type of simple-kinded types is Any
+   *    - A kind like (* -> *) -> * is represented by the top type [X1 <: [X2] =>> Any] =>> Any
+   */
+  def topType(using Context): Type =
+    if self.hasSimpleKind then
+      defn.AnyType
+    else EtaExpand(self.typeParams) match
+      case tp: HKTypeLambda =>
+        tp.derivedLambdaType(resType = tp.resultType.topType)
+      case _ =>
+        defn.AnyKindType
 
   /** If self type is higher-kinded, its result type, otherwise NoType.
    *  Note: The hkResult of an any-kinded type is again AnyKind.
@@ -272,7 +293,8 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Dealias type if it can be done without forcing the TypeRef's info */
   def safeDealias(using Context): Type = self match {
-    case self: TypeRef if self.denot.exists && self.symbol.isAliasType =>
+    case self: TypeRef
+    if self.denot.exists && self.symbol.isAliasType && !self.symbol.isProvisional =>
       self.superType.stripTypeVar.safeDealias
     case _ =>
       self
@@ -331,11 +353,15 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if ((dealiased eq stripped) || followAlias)
-              try {
-                val instantiated = dealiased.instantiate(args)
+              try
+                val instantiated = dealiased.instantiate(args.mapConserve(_.boxedUnlessFun(self)))
                 if (followAlias) instantiated.normalized else instantiated
-              }
-              catch { case ex: IndexOutOfBoundsException => AppliedType(self, args) }
+              catch
+                case ex: IndexOutOfBoundsException =>
+                  AppliedType(self, args)
+                case ex: Throwable =>
+                  handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
+
             else AppliedType(self, args)
           }
           else dealiased.resType match {
@@ -475,10 +501,17 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(using Context): List[Type] = self.stripped match {
-    case AppliedType(tycon, args) => args
+  final def argInfos(using Context): List[Type] = self.stripped match
+    case AppliedType(tycon, args) => args.boxedUnlessFun(tycon)
     case _ => Nil
-  }
+
+  /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
+   *  Handles `ErasedFunction`s and poly functions gracefully.
+   */
+  final def functionArgInfos(using Context): List[Type] = self.dealias match
+    case RefinedType(parent, nme.apply, mt: MethodType) if defn.isErasedFunctionType(parent) => (mt.paramInfos :+ mt.resultType)
+    case RefinedType(parent, nme.apply, mt: MethodType) if parent.typeSymbol eq defn.PolyFunctionClass => (mt.paramInfos :+ mt.resultType)
+    case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds
@@ -510,6 +543,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     case JavaArrayType(elemtp) => elemtp
     case tp: OrType if tp.tp1.isBottomType => tp.tp2.elemType
     case tp: OrType if tp.tp2.isBottomType => tp.tp1.elemType
-    case _ => self.baseType(defn.SeqClass).argInfos.headOption.getOrElse(NoType)
+    case _ =>
+      self.baseType(defn.SeqClass)
+      .orElse(self.baseType(defn.ArrayClass))
+      .argInfos.headOption.getOrElse(NoType)
   }
 }

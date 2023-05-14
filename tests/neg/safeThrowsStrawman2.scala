@@ -20,11 +20,11 @@ def bar(x: Boolean)(using CanThrow[Fail]): Int =
 
 @main def Test =
   try
-    given ctf: CanThrow[Fail] = ???
+    given ctf: CanThrow[Fail] = new CanThrow[Fail]
     val x = new CanThrow[Fail]()      // OK, x is erased
     val y: Any = new CanThrow[Fail]() // error: illegal reference to erased class CanThrow
     val y2: Any = new CTF()       // error: illegal reference to erased class CanThrow
-    println(foo(true, ctf))       // error: ctf is declared as erased, but is in fact used
+    println(foo(true, ctf))       // not error: ctf will be erased at erasure
     val a = (1, new CanThrow[Fail]()) // error: illegal reference to erased class CanThrow
     def b: (Int, CanThrow[Fail]) = ???
     def c = b._2                  // ok; we only check creation sites

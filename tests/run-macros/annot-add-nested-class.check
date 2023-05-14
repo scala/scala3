@@ -1,0 +1,4 @@
+macro generated main
+executed in: Foo$Bar$macro$1
+macro generated main
+executed in: Foo$Bar$macro$2

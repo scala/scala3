@@ -1,0 +1,309 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceGravity
+338
+356
+14
+surfaceGravity
+DefDef
+false
+0
+false
+def surfaceGravity
+
+1
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceWeight
+444
+458
+15
+surfaceGravity
+Select
+false
+0
+false
+surfaceGravity
+
+2
+Enum.scala
+covtest
+Planet
+Class
+covtest.Planet
+surfaceWeight
+392
+409
+15
+surfaceWeight
+DefDef
+false
+0
+false
+def surfaceWeight
+
+3
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1043
+1077
+30
+println
+Apply
+false
+0
+false
+println("Example 1: \\n"+emptyList)
+
+4
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1051
+1076
+30
++
+Apply
+false
+0
+false
+"Example 1: \\n"+emptyList
+
+5
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1082
+1103
+31
+println
+Apply
+false
+0
+false
+println(s"${list}\\n")
+
+6
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1090
+1102
+31
+s
+Apply
+false
+0
+false
+s"${list}\\n"
+
+7
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+calculateEarthWeightOnPlanets
+1195
+1222
+34
+surfaceGravity
+Select
+false
+0
+false
+Planet.Earth.surfaceGravity
+
+8
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+calculateEarthWeightOnPlanets
+1229
+1320
+35
+foreach
+Apply
+false
+0
+false
+for p <- Planet.values do\n        println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+
+9
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+calculateEarthWeightOnPlanets
+1238
+1251
+35
+refArrayOps
+Apply
+false
+0
+false
+Planet.values
+
+10
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+$anonfun
+1263
+1320
+36
+println
+Apply
+false
+0
+false
+println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+
+11
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+$anonfun
+1271
+1319
+36
+s
+Apply
+false
+0
+false
+s"Your weight on $p is ${p.surfaceWeight(mass)}"
+
+12
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+$anonfun
+1296
+1317
+36
+surfaceWeight
+Apply
+false
+0
+false
+p.surfaceWeight(mass)
+
+13
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+calculateEarthWeightOnPlanets
+1109
+1142
+33
+calculateEarthWeightOnPlanets
+DefDef
+false
+0
+false
+def calculateEarthWeightOnPlanets
+
+14
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1326
+1347
+38
+println
+Apply
+false
+0
+false
+println("Example 2:")
+
+15
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+1352
+1385
+39
+calculateEarthWeightOnPlanets
+Apply
+false
+0
+false
+calculateEarthWeightOnPlanets(80)
+
+16
+Enum.scala
+covtest
+EnumTypes$
+Object
+covtest.EnumTypes$
+test
+901
+909
+27
+test
+DefDef
+false
+0
+false
+def test
+

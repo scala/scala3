@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 object Test extends App {
 
   val x = "abc"

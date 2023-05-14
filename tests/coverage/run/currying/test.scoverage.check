@@ -1,0 +1,292 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+f1
+15
+21
+1
+f1
+DefDef
+false
+0
+false
+def f1
+
+1
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+f2
+56
+62
+2
+f2
+DefDef
+false
+0
+false
+def f2
+
+2
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+g1
+114
+120
+5
+g1
+DefDef
+false
+0
+false
+def g1
+
+3
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+g2
+175
+181
+8
+g2
+DefDef
+false
+0
+false
+def g2
+
+4
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+277
+297
+11
+println
+Apply
+false
+0
+false
+println(f1(0)(1)(2))
+
+5
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+285
+296
+11
+f1
+Apply
+false
+0
+false
+f1(0)(1)(2)
+
+6
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+302
+322
+12
+println
+Apply
+false
+0
+false
+println(f2(0)(1)(2))
+
+7
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+310
+321
+12
+apply
+Apply
+false
+0
+false
+f2(0)(1)(2)
+
+8
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+310
+318
+12
+apply
+Apply
+false
+0
+false
+f2(0)(1)
+
+9
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+310
+315
+12
+apply
+Apply
+false
+0
+false
+f2(0)
+
+10
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+310
+312
+12
+f2
+Ident
+false
+0
+false
+f2
+
+11
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+327
+365
+13
+println
+Apply
+false
+0
+false
+println(g1(using 0)(using 1)(using 2))
+
+12
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+335
+364
+13
+apply
+Apply
+false
+0
+false
+g1(using 0)(using 1)(using 2)
+
+13
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+370
+408
+14
+println
+Apply
+false
+0
+false
+println(g2(using 0)(using 1)(using 2))
+
+14
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+378
+407
+14
+g2
+Apply
+false
+0
+false
+g2(using 0)(using 1)(using 2)
+
+15
+currying/test.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+main
+235
+243
+10
+main
+DefDef
+false
+0
+false
+def main
+

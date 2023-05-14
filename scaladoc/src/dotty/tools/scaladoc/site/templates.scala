@@ -4,7 +4,6 @@ package site
 import java.io.File
 import java.nio.file.{Files, Paths}
 
-import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
@@ -12,18 +11,27 @@ import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisitor, YamlFrontMatterExtension}
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
-import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.formatter.Formatter
 import liqp.Template
+import liqp.ParseSettings
+import liqp.parser.Flavor
 import liqp.TemplateContext
 import liqp.tags.Tag
 import liqp.nodes.LNode
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import scala.io.Source
 import dotty.tools.scaladoc.snippets._
+import scala.util.chaining._
 
+/** RenderingContext stores information about defined properties, layouts and sites being resolved
+ *
+ * @param properties  Map containing defined properties
+ * @param layouts     Map containing defined site layouts
+ * @param resolving   Set containing names of sites being resolved in this context. This information is useful for cycle detection
+ * @param resources   List of resources that need to be appended to sites
+ */
 case class RenderingContext(
   properties: Map[String, Object],
   layouts: Map[String, TemplateFile] = Map(),
@@ -77,8 +85,6 @@ case class TemplateFile(
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
           val compilerData = SnippetCompilerData(
             "staticsitesnippet",
-            Seq(SnippetCompilerData.ClassInfo(None, Nil, None)),
-            Nil,
             SnippetCompilerData.Position(configOffset - 1, 0)
           )
           ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset, sourceFile).collect {
@@ -92,8 +98,9 @@ case class TemplateFile(
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
-    val layoutTemplate = layout.filter(_ => ssctx.args.projectFormat == "html").map(name =>
-      ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}")))
+    val layoutTemplate = layout.map(name =>
+      ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}"))
+    )
 
     def asJavaElement(o: Object): Object = o match
       case m: Map[_, _] => m.transform {
@@ -105,38 +112,23 @@ case class TemplateFile(
     // Library requires mutable maps..
     val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
 
-    // Register escaping {% link ... %} in markdown
-    val tag = new Tag("link"):
-      override def render(context: TemplateContext, nodes: Array[? <: LNode]): Object =
-        val link = super.asString(nodes(0).render(context))
-        s"{% link $link %}"
+    val parseSettings = ParseSettings.Builder().withFlavor(Flavor.JEKYLL).build()
 
-    val rendered = ssctx.args.projectFormat match
-        case "html" => Template.parse(this.rawCode).`with`(tag).render(mutableProperties)
-        case "md" => this.rawCode
-
-    val sourceLinks = if !file.exists() then Nil else
-      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
-      // toRealPath is used to turn symlinks into proper paths
-      val actualPath = Paths.get("").toAbsolutePath.relativize(file.toPath.toRealPath())
-      ssctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
-        // List("editSource" -> ssctx.sourceLinks.pathTo(actualPath))
-        ssctx.sourceLinks.pathTo(actualPath, operation = "edit", optionalRevision = Some("master")).map("editSource" -> _ )
+    val rendered = Template.parse(this.rawCode, parseSettings).render(mutableProperties)
 
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       // Snippet compiler currently supports markdown only
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
-      val parsedMd = parser.parse(rendered)
-      val processed = FlexmarkSnippetProcessor.processSnippets(parsedMd, None, snippetCheckingFunc, withContext = false)(using ssctx.outerCtx)
+      val parsedMd = parser.parse(rendered).pipe { md =>
+        FlexmarkSnippetProcessor.processSnippets(md, None, snippetCheckingFunc)(using ssctx.outerCtx)
+      }.pipe { md =>
+        FlexmarkSectionWrapper(md)
+      }
+      HtmlRenderer.builder(defaultMarkdownOptions).build().render(parsedMd)
 
-      ssctx.args.projectFormat match
-        case "html" => HtmlRenderer.builder(defaultMarkdownOptions).build().render(processed)
-        case "md" => FrontMatterRenderer.render(settings + ("urls" -> sourceLinks.toMap)) +
-                      Formatter.builder(defaultMarkdownOptions).build().render(processed)
-
-
-    if layoutTemplate.isEmpty || ssctx.args.projectFormat == "md" then
-      ResolvedPage(code, resources ++ ctx.resources)
-    else
-      layoutTemplate.get.resolveInner(ctx.nest(code, file, resources))
+    // If we have a layout template, we need to embed rendered content in it. Otherwise, we just leave the content as is.
+    layoutTemplate match {
+      case Some(t) => t.resolveInner(ctx.nest(code, file, resources))
+      case None => ResolvedPage(code, resources ++ ctx.resources)
+    }

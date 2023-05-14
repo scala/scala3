@@ -10,5 +10,6 @@ object Test {
   val x: Int = "abc"
     // OK, since -feature warnings are not enabled.
     // The program compiles with final line
-    // there were 1 feature warning(s); re-run with -feature for details
+    // there was 1 feature warning; re-run with -feature for details
+    // nopos-error
 }

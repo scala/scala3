@@ -2,6 +2,8 @@ package dotty.tools.dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler}
 import TastyFormat.NameTags._, TastyFormat.nameTagToString
 import TastyBuffer.NameRef
@@ -52,9 +54,7 @@ class TastyUnpickler(reader: TastyReader) {
     val end = start + length
     def readSignedRest(original: TermName, target: TermName): TermName =
       val result = readName().toTypeName
-      // DOTTY: we shouldn't have to give an explicit type to paramsSig,
-      // see https://github.com/lampepfl/dotty/issues/4867
-      val paramsSig: List[Signature.ParamSig] = until(end)(readParamSig())
+      val paramsSig = until(end)(readParamSig())
       val sig = Signature(paramsSig, result)
       SignedName(original, sig, target)
 

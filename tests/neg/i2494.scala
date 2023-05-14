@@ -1,3 +1,2 @@
 enum
 object // error
-// error

@@ -2,23 +2,19 @@ package dotty.tools
 package dotc
 package core
 
-import annotation.tailrec
-import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
-import util.Spans.Span
-import collection.mutable.ListBuffer
-import dotty.tools.dotc.transform.MegaPhase
-import ast.tpd._
-import scala.language.implicitConversions
-import printing.Formatting._
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
+import scala.util.control.NonFatal
 
-/** This object provides useful implicit decorators for types defined elsewhere */
+import Contexts._, Names._, Phases._, Symbols._
+import printing.{ Printer, Showable }, printing.Formatting._, printing.Texts._
+import transform.MegaPhase
+import reporting.{Message, NoExplanation}
+
+/** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
 
-  /** Extension methods for toType/TermName methods on strings.
-   *  They are in an implicit object for now, so that we can import decorators
-   *  with a normal wildcard. In the future, once #9255 is in trunk, replace with
-   *  a simple collective extension.
+  /** Extension methods for toType/TermName methods on PreNames.
    */
   extension (pn: PreName)
     def toTermName: TermName = pn match
@@ -55,12 +51,18 @@ object Decorators {
         if name.length != 0 then name.getChars(0, name.length, chars, s.length)
         termName(chars, 0, len)
       case name: TypeName => s.concat(name.toTermName)
-      case _ => termName(s.concat(name.toString))
+      case _ => termName(s.concat(name.toString).nn)
 
     def indented(width: Int): String =
       val padding = " " * width
       padding + s.replace("\n", "\n" + padding)
   end extension
+
+  /** Convert lazy string to message. To be with caution, since no message-defined
+   *  formatting will be done on the string.
+   */
+  extension (str: => String)
+    def toMessage: Message = NoExplanation(str)(using NoContext)
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
@@ -74,18 +76,18 @@ object Decorators {
       NoSymbol
     }
 
-  final val MaxFilterRecursions = 10
+  inline val MaxFilterRecursions = 10
 
   /** Implements filterConserve, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.
    */
-  implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
+  extension [T](xs: List[T])
 
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
-      def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
+      def loop(mapped: ListBuffer[U] | Null, unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
-          if (mapped eq null) unchanged
+          if (mapped == null) unchanged
           else mapped.prependToList(unchanged)
         else {
           val head0 = pending.head
@@ -94,7 +96,7 @@ object Decorators {
           if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
             loop(mapped, unchanged, pending.tail)
           else {
-            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            val b = if (mapped == null) new ListBuffer[U] else mapped
             var xc = unchanged
             while (xc ne pending) {
               b += xc.head
@@ -147,13 +149,13 @@ object Decorators {
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.
      */
-    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
+    def zipWithConserve[U, V <: T](ys: List[U])(f: (T, U) => V): List[V] =
       if (xs.isEmpty || ys.isEmpty) Nil
       else {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eq xs.tail)) xs
+        if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) && (xs1 eq xs.tail)
+          then xs.asInstanceOf[List[V]]
         else x1 :: xs1
       }
 
@@ -186,6 +188,9 @@ object Decorators {
       loop(xs, xs, 0)
     end mapWithIndexConserve
 
+    /** True if two lists have the same length.  Since calling length on linear sequences
+     *  is Θ(n), it is an inadvisable way to test length equality.  This method is Θ(n min m).
+     */
     final def hasSameLengthAs[U](ys: List[U]): Boolean = {
       @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
         if (xs.isEmpty) ys.isEmpty
@@ -205,11 +210,18 @@ object Decorators {
     }
 
     /** Union on lists seen as sets */
-    def | (ys: List[T]): List[T] = xs ::: (ys filterNot (xs contains _))
+    def setUnion (ys: List[T]): List[T] = xs ::: ys.filterNot(xs contains _)
 
-    /** Intersection on lists seen as sets */
-    def & (ys: List[T]): List[T] = xs filter (ys contains _)
-  }
+    /** Reduce left with `op` as long as list `xs` is not longer than `seqLimit`.
+     *  Otherwise, split list in two half, reduce each, and combine with `op`.
+     */
+    def reduceBalanced(op: (T, T) => T, seqLimit: Int = 100): T =
+      val len = xs.length
+      if len > seqLimit then
+        val (leading, trailing) = xs.splitAt(len / 2)
+        op(leading.reduceBalanced(op, seqLimit), trailing.reduceBalanced(op, seqLimit))
+      else
+        xs.reduceLeft(op)
 
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
@@ -249,19 +261,37 @@ object Decorators {
       }
 
   extension [T](x: T)
-    def showing(
-        op: WrappedResult[T] ?=> String,
-        printer: config.Printers.Printer = config.Printers.default): T = {
-      printer.println(op(using WrappedResult(x)))
+    def showing[U](
+        op: WrappedResult[U] ?=> String,
+        printer: config.Printers.Printer = config.Printers.default)(using c: Conversion[T, U] | Null = null): T = {
+      // either the use of `$result` was driven by the expected type of `Shown`
+      // which led to the summoning of `Conversion[T, Shown]` (which we'll invoke)
+      // or no such conversion was found so we'll consume the result as it is instead
+      val obj = if c == null then x.asInstanceOf[U] else c(x)
+      printer.println(op(using WrappedResult(obj)))
       x
     }
+
+    /** Instead of `toString` call `show` on `Showable` values, falling back to `toString` if an exception is raised. */
+    def tryToShow(using Context): String = x match
+      case x: Showable =>
+        try x.show
+        catch
+          case ex: CyclicReference => "... (caught cyclic reference) ..."
+          case NonFatal(ex)
+          if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
+            s"... (cannot display due to ${ex.className} ${ex.getMessage}) ..."
+      case _ => String.valueOf(x).nn
+
+    /** Returns the simple class name of `x`. */
+    def className: String = x.getClass.getSimpleName.nn
 
   extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
       assert(ctx.reporter.errorsReported)
       x
     }
-    def assertingErrorsReported(msg: => String)(using Context): T = {
+    def assertingErrorsReported(msg: Message)(using Context): T = {
       assert(ctx.reporter.errorsReported, msg)
       x
     }
@@ -271,23 +301,18 @@ object Decorators {
       if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
 
   extension (sc: StringContext)
+
     /** General purpose string formatting */
-    def i(args: Any*)(using Context): String =
+    def i(args: Shown*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
-    /** Formatting for error messages: Like `i` but suppress follow-on
-     *  error messages after the first one if some of their arguments are "non-sensical".
+    /** Interpolator yielding an error message, which undergoes
+     *  the formatting defined in Message.
      */
-    def em(args: Any*)(using Context): String =
-      new ErrorMessageFormatter(sc).assemble(args)
-
-    /** Formatting with added explanations: Like `em`, but add explanations to
-     *  give more info about type variables and to disambiguate where needed.
-     */
-    def ex(args: Any*)(using Context): String =
-      explained(em(args: _*))
+    def em(args: Shown*)(using Context): NoExplanation =
+      NoExplanation(i(args*))
 
   extension [T <: AnyRef](arr: Array[T])
-    def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
+    def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
 }

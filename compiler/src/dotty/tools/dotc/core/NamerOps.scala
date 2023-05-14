@@ -3,10 +3,8 @@ package dotc
 package core
 
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, Names._, NameOps._
-import Denotations._
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
-import config.Config
-import ast.untpd
+import TypeApplications.EtaExpansion
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -20,14 +18,23 @@ object NamerOps:
       case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
       case _ => ctor.owner.typeRef
 
-  /** if isConstructor, make sure it has one leading non-implicit parameter list */
+  /** If isConstructor, make sure it has at least one non-implicit parameter list
+   *  This is done by adding a () in front of a leading old style implicit parameter,
+   *  or by adding a () as last -- or only -- parameter list if the constructor has
+   *  only using clauses as parameters.
+   */
   def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
     if !isConstructor then paramss
     else paramss match
-      case Nil :: _ => paramss
-      case TermSymbols(vparam :: _) :: _ if !vparam.isOneOf(GivenOrImplicit) => paramss
       case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
-      case _ => Nil :: paramss
+      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) => Nil :: paramss
+      case _ =>
+        if paramss.forall {
+          case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
+          case _ => true
+        }
+        then paramss :+ Nil
+        else paramss
 
   /** The method type corresponding to given parameters and result type */
   def methodType(paramss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
@@ -35,10 +42,10 @@ object NamerOps:
       case Nil =>
         resultType
       case TermSymbols(params) :: paramss1 =>
-        val (isContextual, isImplicit, isErased) =
-          if params.isEmpty then (false, false, false)
-          else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
-        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
+        val (isContextual, isImplicit) =
+          if params.isEmpty then (false, false)
+          else (params.head.is(Given), params.head.is(Implicit))
+        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit)
         if isJava then
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
@@ -60,11 +67,11 @@ object NamerOps:
       completer.withSourceModule(findModuleBuddy(name.sourceModuleName, scope))
 
   /** Find moduleClass/sourceModule in effective scope */
-  def findModuleBuddy(name: Name, scope: Scope)(using Context) = {
-    val it = scope.lookupAll(name).filter(_.is(Module))
-    if (it.hasNext) it.next()
-    else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
-  }
+  def findModuleBuddy(name: Name, scope: Scope, alternate: Name = EmptyTermName)(using Context): Symbol =
+    var it = scope.lookupAll(name).filter(_.is(Module))
+    if !alternate.isEmpty then it ++= scope.lookupAll(alternate).filter(_.is(Module))
+    if it.hasNext then it.next()
+    else NoSymbol.assertingErrorsReported(em"no companion $name in $scope")
 
   /** If a class has one of these flags, it does not get a constructor companion */
   private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
@@ -75,6 +82,15 @@ object NamerOps:
   /** The flags of an `apply` method that serves as a constructor proxy */
   val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
 
+  /** If this is a reference to a class and the reference has a stable prefix, the reference
+   *  otherwise NoType
+   */
+  private def underlyingStableClassRef(tp: Type)(using Context): TypeRef | NoType.type = tp match
+    case EtaExpansion(tp1) => underlyingStableClassRef(tp1)
+    case _ => tp.underlyingClassRef(refinementOK = false) match
+      case ref: TypeRef if ref.prefix.isStable => ref
+      case _ => NoType
+
   /** Does symbol `sym` need constructor proxies to be generated? */
   def needsConstructorProxies(sym: Symbol)(using Context): Boolean =
     sym.isClass
@@ -82,9 +98,7 @@ object NamerOps:
     && !sym.isAnonymousClass
     ||
     sym.isType && sym.is(Exported)
-    && sym.info.loBound.underlyingClassRef(refinementOK = false).match
-      case tref: TypeRef => tref.prefix.isStable
-      case _ => false
+    && underlyingStableClassRef(sym.info.loBound).exists
 
   /** The completer of a constructor proxy apply method */
   class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
@@ -155,7 +169,7 @@ object NamerOps:
             then
               classConstructorCompanion(mbr).entered
           case _ =>
-            mbr.info.loBound.underlyingClassRef(refinementOK = false) match
+            underlyingStableClassRef(mbr.info.loBound): @unchecked match
               case ref: TypeRef =>
                 val proxy = ref.symbol.registeredCompanion
                 if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then
@@ -176,5 +190,33 @@ object NamerOps:
     modcls.info = constructorCompanionCompleter(cls)(modul, modcls)
     cls.registeredCompanion = modcls
     modcls.registeredCompanion = cls
+
+  /** For secondary constructors, make it known in the context that their type parameters
+   *  are aliases of the class type parameters.
+   *  @return  if `sym` is a secondary constructor, a fresh context that
+   *           contains GADT constraints linking the type parameters.
+   */
+  def linkConstructorParams(sym: Symbol)(using Context): Context =
+    if sym.isConstructor && !sym.isPrimaryConstructor then
+      sym.rawParamss match
+        case (tparams @ (tparam :: _)) :: _ if tparam.isType =>
+          val rhsCtx = ctx.fresh.setFreshGADTBounds
+          linkConstructorParams(sym, tparams, rhsCtx)
+          rhsCtx
+        case _ =>
+          ctx
+    else ctx
+
+  /** For secondary constructor `sym`, make it known in the given context `rhsCtx`
+   *  that their type parameters are aliases of the class type parameters. This is done
+   *  by (ab?)-using GADT constraints. See pos/i941.scala.
+   */
+  def linkConstructorParams(sym: Symbol, tparams: List[Symbol], rhsCtx: Context)(using Context): Unit =
+    rhsCtx.gadtState.addToConstraint(tparams)
+    tparams.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
+      val tr = tparam.typeRef
+      rhsCtx.gadtState.addBound(psym, tr, isUpper = false)
+      rhsCtx.gadtState.addBound(psym, tr, isUpper = true)
+    }
 
 end NamerOps

@@ -7,8 +7,8 @@
    |                                   ^^^^^^^
    |                                   Found:    Unit
    |                                   Required: String
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg/i2033.scala:6:37 ---------------------------------------------------------------------------------
 6 |    val out = new ObjectOutputStream(println)
   |                                     ^^^^^^^

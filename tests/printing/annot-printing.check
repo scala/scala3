@@ -12,9 +12,9 @@ package <empty> {
   final module class Xyz() extends AnyRef() { this: Xyz.type =>
     def $lessinit$greater$default$1: Int @uncheckedVariance = 23
   }
-  final lazy module val annot-printing$package: annot-printing$package = 
+  final lazy module val annot-printing$package: annot-printing$package =
     new annot-printing$package()
-  final module class annot-printing$package() extends Object() { 
+  final module class annot-printing$package() extends Object() {
     this: annot-printing$package.type =>
     def x: Int @nowarn() @main @Xyz() @Foo @Bar("hello") = ???
   }

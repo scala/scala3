@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 trait NoOuter:
   val outerFields = getClass.getDeclaredFields.filter(_.getName.contains("$outer"))
   if outerFields.nonEmpty then println(s"$getClass has outer fields")

@@ -20,12 +20,12 @@ object EqUtil {
   extension [T](x: T)
     def ===[U](y: U)(using erased PhantomEq[T, U]) = x.equals(y)
 
-  erased given eqString: PhantomEqEq[String] = ???
-  erased given eqInt: PhantomEqEq[Int]       = ???
-  erased given eqDouble: PhantomEqEq[Double] = ???
+  erased given eqString: PhantomEqEq[String] = compiletime.erasedValue
+  erased given eqInt: PhantomEqEq[Int]       = compiletime.erasedValue
+  erased given eqDouble: PhantomEqEq[Double] = compiletime.erasedValue
 
-  erased given eqByteNum: PhantomEq[Byte, Number] = ???
-  erased given eqNumByte: PhantomEq[Number, Byte] = ???
+  erased given eqByteNum: PhantomEq[Byte, Number] = compiletime.erasedValue
+  erased given eqNumByte: PhantomEq[Number, Byte] = compiletime.erasedValue
 
-  erased given eqSeq[T, U](using erased PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = ???
+  erased given eqSeq[T, U](using erased PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = compiletime.erasedValue
 }

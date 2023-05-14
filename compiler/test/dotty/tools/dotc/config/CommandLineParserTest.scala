@@ -1,11 +1,13 @@
 
 package dotty.tools.dotc.config
 
+import scala.language.unsafeNulls
+
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 
 class CommandLineParserTest:
-  import CommandLineParser.{tokenize, ParseException}
+  import CommandLineParser.tokenize
 
   private def check(tokens: String*)(input: String): Unit = assertEquals(tokens, tokenize(input))
 
@@ -42,3 +44,11 @@ class CommandLineParserTest:
     // missing quotes
     checkFails(""""x""", "Unmatched quote [0](\")")  // was assertEquals(List("\"x"), tokenize(""""x"""))
     checkFails("""x'""", "Unmatched quote [1](')")
+
+  @Test def `leading quote is escaped`: Unit =
+    check("echo", "hello, world!")("""echo "hello, world!" """)
+    check("echo", "hello, world!")("""echo hello,' 'world! """)
+    check("echo", """\"hello,""", """world!\"""")("""echo \"hello, world!\" """)
+    check("""a\"b\"c""")("""a\"b\"c""")
+    check("a", "\\'b", "\\'", "c")("""a \'b \' c""")
+    check("a", "\\\\b ", "c")("""a \\'b ' c""")

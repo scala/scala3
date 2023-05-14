@@ -5,7 +5,7 @@ final class TupleXXL private (es: IArray[Object]) extends Product {
 
   def productElement(n: Int): Any = es(n)
   def productArity: Int = es.length
-  override def productPrefix: String = "TupleXXL"
+  override def productPrefix: String = "Tuple"
 
   override def toString: String =
     elems.asInstanceOf[Array[Object]].mkString("(", ",", ")")

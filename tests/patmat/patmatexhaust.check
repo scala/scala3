@@ -5,7 +5,6 @@
 53: Pattern Match Exhaustivity: _: Gp
 59: Pattern Match Exhaustivity: Nil
 75: Pattern Match Exhaustivity: _: B
-87: Pattern Match Exhaustivity: _: C1
 100: Pattern Match Exhaustivity: _: C1
 114: Pattern Match Exhaustivity: D1, D2()
 126: Pattern Match Exhaustivity: _: C1

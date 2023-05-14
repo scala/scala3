@@ -2,9 +2,9 @@ package dotty.tools
 package dotc
 package reporting
 
-import dotty.tools.dotc.ast.{Trees, tpd}
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.reporting.Diagnostic._
@@ -14,7 +14,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
 import scala.collection.mutable
-import scala.util.chaining._
+import core.Decorators.em
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -137,49 +137,56 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   var unreportedWarnings: Map[String, Int] = Map.empty
 
+  def addUnreported(key: String, n: Int): Unit =
+    val count = unreportedWarnings.getOrElse(key, 0)
+    unreportedWarnings = unreportedWarnings.updated(key, count + n)
+
+  /** Issue the diagnostic, ignoring `-Wconf` and `@nowarn` configurations,
+   *  but still honouring `-nowarn`, `-Werror`, and conditional warnings. */
+  def issueUnconfigured(dia: Diagnostic)(using Context): Unit = dia match
+    case w: Warning if ctx.settings.silentWarnings.value    =>
+    case w: ConditionalWarning if w.isSummarizedConditional =>
+      val key = w.enablingOption.name
+      addUnreported(key, 1)
+    case _                                                  =>
+      // conditional warnings that are not enabled are not fatal
+      val d = dia match
+        case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
+        case _                                               => dia
+      if !isHidden(d) then // avoid isHidden test for summarized warnings so that message is not forced
+        markReported(d)
+        withMode(Mode.Printing)(doReport(d))
+        d match {
+          case _: Warning => _warningCount += 1
+          case e: Error   =>
+            errors = e :: errors
+            _errorCount += 1
+            if ctx.typerState.isGlobalCommittable then
+              ctx.base.errorsToBeReported = true
+          case _: Info    => // nothing to do here
+          // match error if d is something else
+        }
+  end issueUnconfigured
+
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
     def go() =
       import Action._
-
-      val toReport = dia match
-        case w: Warning =>
-          def fatal(w: Warning) = if ctx.settings.XfatalWarnings.value && !w.isSummarizedConditional then Some(w.toError) else Some(w)
-          if ctx.settings.silentWarnings.value then None
-          else WConf.parsed.action(dia) match
-            case Silent  => None
-            case Info    => Some(w.toInfo)
-            case Warning => fatal(w)
-            case Verbose => fatal(w).tap(_.foreach(_.setVerbose()))
-            case Error   => Some(w.toError)
-        case _ => Some(dia)
-
-      toReport foreach {
-        case cw: ConditionalWarning if cw.isSummarizedConditional =>
-          val key = cw.enablingOption.name
-          unreportedWarnings =
-            unreportedWarnings.updated(key, unreportedWarnings.getOrElse(key, 0) + 1)
-        case d if !isHidden(d) =>
-          withMode(Mode.Printing)(doReport(d))
-          d match {
-            case _: Warning => _warningCount += 1
-            case e: Error =>
-              errors = e :: errors
-              _errorCount += 1
-              if ctx.typerState.isGlobalCommittable then
-                ctx.base.errorsToBeReported = true
-            case _: Info => // nothing to do here
-            // match error if d is something else
-          }
-        case _ => // hidden
-      }
-    end go
+      dia match
+        case w: Warning => WConf.parsed.action(w) match
+          case Error   => issueUnconfigured(w.toError)
+          case Warning => issueUnconfigured(w)
+          case Verbose => issueUnconfigured(w.setVerbose())
+          case Info    => issueUnconfigured(w.toInfo)
+          case Silent  =>
+        case _ => issueUnconfigured(dia)
 
     // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
     // only created in ReplDriver.compile when a line is submitted. This means that `@nowarn` doesnt work on parser
     // warnings in the first line.
+    val run = ctx.run
     dia match
-      case w: Warning if ctx.run != null =>
-        val sup = ctx.run.suppressions
+      case w: Warning if run != null =>
+        val sup = run.suppressions
         if sup.suppressionsComplete(w.pos.source) then sup.nowarnAction(w) match
           case Action.Warning => go()
           case Action.Verbose => w.setVerbose(); go()
@@ -205,13 +212,17 @@ abstract class Reporter extends interfaces.ReporterResult {
       b += countString(warningCount, "warning") + " found"
     if (errorCount > 0)
       b += countString(errorCount, "error") + " found"
-    for ((settingName, count) <- unreportedWarnings)
-      b += s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details"
     b.mkString("\n")
   }
 
+  def summarizeUnreportedWarnings()(using Context): Unit =
+    for (settingName, count) <- unreportedWarnings do
+      val were = if count == 1 then "was" else "were"
+      val msg = em"there $were ${countString(count, settingName.tail + " warning")}; re-run with $settingName for details"
+      report(Warning(msg, NoSourcePosition))
+
   /** Print the summary of warnings and errors */
-  def printSummary(using Context): Unit = {
+  def printSummary()(using Context): Unit = {
     val s = summary
     if (s != "") report(new Info(s, NoSourcePosition))
   }
@@ -227,18 +238,30 @@ abstract class Reporter extends interfaces.ReporterResult {
   def isHidden(dia: Diagnostic)(using Context): Boolean =
     ctx.mode.is(Mode.Printing)
 
+  def markReported(dia: Diagnostic)(using Context): Unit = ()
+
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
    *  Note: this is always false when there is no outer reporter.
    */
   def hasUnreportedErrors: Boolean = false
 
+  /** Does this reporter contain any message that have yet to be reported by its outer reporter ?
+   *  This includes any warning stored in `unreportedWarnings` which need to be propagated to
+   *  get an accurate count of unreported warnings in the outer reporter.
+   */
+  def hasUnreportedMessages(using Context): Boolean =
+    pendingMessages.nonEmpty || unreportedWarnings.nonEmpty
+
   /** If this reporter buffers messages, remove and return all buffered messages. */
   def removeBufferedMessages(using Context): List[Diagnostic] = Nil
 
-  /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
+  /** Issue all messages in this reporter to next outer one, or make sure they are written. */
   def flush()(using Context): Unit =
     val msgs = removeBufferedMessages
     if msgs.nonEmpty then msgs.foreach(ctx.reporter.report)
+    for (key, count) <- unreportedWarnings do
+      ctx.reporter.addUnreported(key, count)
+    unreportedWarnings = Map.empty
 
   /** If this reporter buffers messages, all buffered messages, otherwise Nil */
   def pendingMessages(using Context): List[Diagnostic] = Nil

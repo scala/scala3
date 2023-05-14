@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.sys.process.*
 import scala.util.Try
 import scala.util.Properties.{ javaHome, javaClassPath }

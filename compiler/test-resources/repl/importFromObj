@@ -10,7 +10,8 @@ scala> buf += xs
   |        ^^
   |        Found:    (o.xs : List[Int])
   |        Required: Int
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 1 error found
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)

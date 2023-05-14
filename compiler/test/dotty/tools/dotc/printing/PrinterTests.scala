@@ -1,23 +1,15 @@
-package dotty.tools.dotc.printing
+package dotty.tools
+package dotc
+package printing
 
-import dotty.tools.DottyTest
-import dotty.tools.dotc.ast.{Trees,tpd}
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Contexts.{Context, ctx}
+import core.*, Contexts.*, Decorators.*, Names.*, Symbols.*
+import ast.tpd.*
 
-import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.Assert.*
 
 class PrinterTests extends DottyTest {
-
-  private def newContext = {
-    initialCtx.setSetting(ctx.settings.color, "never")
-  }
-  ctx = newContext
-
-  import tpd._
+  override def initializeCtx(fc: FreshContext) = super.initializeCtx(fc.setSetting(fc.settings.color, "never"))
 
   @Test
   def packageObject: Unit = {
@@ -46,7 +38,7 @@ class PrinterTests extends DottyTest {
 
     checkCompile("typer", source) { (tree, context) =>
       given Context = context
-      val bar @ Trees.DefDef(_, _, _, _) = tree.find(tree => tree.symbol.name == termName("bar2")).get
+      val bar @ DefDef(_, _, _, _) = tree.find(tree => tree.symbol.name == termName("bar2")).get: @unchecked
       assertEquals("Int & (Boolean | String)", bar.tpt.show)
     }
   }

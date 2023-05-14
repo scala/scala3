@@ -1,0 +1,7 @@
+(42: scala.Int)
+((x: scala.Int) => x.+(x)).apply(1)
+
+(42: scala.Int)
+((x: scala.Int) => x.+(x)).apply(1)
+((y: scala.Int) => y.+(y)).apply(2)
+((x: scala.Int, y: scala.Int) => x.+(y)).apply(1, 2)

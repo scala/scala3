@@ -8,4 +8,4 @@ object Main {
 
 object Foo {
   val a = ""); // error: `}` expected but `)` found
-}
+} // error: eof expected but `}` found

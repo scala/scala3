@@ -1,0 +1,20 @@
+# Cannot compensate dealiasing due to false result dependency
+i6635a.scala
+i6682a.scala
+
+# unknown reason
+patmatch-in-catch.scala
+t0095.scala
+i8344-1.scala
+i8900-promote.scala
+i6199c.scala
+gadt-TailCalls.scala
+i13349.scala
+bynamefuns.scala
+i15174.scala
+gadt-cast-singleton.scala
+6709.scala
+11463.scala
+i11247.scala
+i6199b.scala
+t3440.scala

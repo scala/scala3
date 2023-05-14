@@ -9,11 +9,15 @@ import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
 import ast.{tpd, untpd}
 import tpd.{Tree, TreeTraverser}
-import typer.PrepareInlineable.InlineAccessors
+import ast.Trees.{Import, Ident}
 import typer.Nullables
 import transform.SymUtils._
 import core.Decorators._
-import config.SourceVersion
+import config.{SourceVersion, Feature}
+import StdNames.nme
+import scala.annotation.internal.sharable
+import scala.util.control.NoStackTrace
+import transform.MacroAnnotations
 
 class CompilationUnit protected (val source: SourceFile) {
 
@@ -43,18 +47,21 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   var needsInlining: Boolean = false
 
+  var hasMacroAnnotations: Boolean = false
+
   /** Set to `true` if inliner added anonymous mirrors that need to be completed */
   var needsMirrorSupport: Boolean = false
 
   /** Will be set to `true` if contains `Quote`.
-   *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
+   *  The information is used in phase `Staging`/`Splicing`/`PickleQuotes` in order to avoid traversing trees that need no transformations.
    */
   var needsStaging: Boolean = false
 
-  /** Will be set to `true` if contains `Quote` that needs to be pickled
-   *  The information is used in phase `PickleQuotes` in order to avoid traversing trees that need no transformations.
-   */
-  var needsQuotePickling: Boolean = false
+  /** Will be set to true if the unit contains a captureChecking language import */
+  var needsCaptureChecking: Boolean = false
+
+  /** Will be set to true if the unit contains a pureFunctions language import */
+  var knowsPureFuns: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
@@ -71,12 +78,12 @@ class CompilationUnit protected (val source: SourceFile) {
       if (ctx.settings.XprintSuspension.value)
         report.echo(i"suspended: $this")
       suspended = true
-      ctx.run.suspendedUnits += this
+      ctx.run.nn.suspendedUnits += this
       if ctx.phase == Phases.inliningPhase then
         suspendedAtInliningPhase = true
     throw CompilationUnit.SuspendException()
 
-  private var myAssignmentSpans: Map[Int, List[Span]] = null
+  private var myAssignmentSpans: Map[Int, List[Span]] | Null = null
 
   /** A map from (name-) offsets of all local variables in this compilation unit
    *  that can be tracked for being not null to the list of spans of assignments
@@ -84,16 +91,27 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   def assignmentSpans(using Context): Map[Int, List[Span]] =
     if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
-    myAssignmentSpans
+    myAssignmentSpans.nn
+}
+
+@sharable object NoCompilationUnit extends CompilationUnit(NoSource) {
+
+  override def isJava: Boolean = false
+
+  override def suspend()(using Context): Nothing =
+    throw CompilationUnit.SuspendException()
+
+  override def assignmentSpans(using Context): Map[Int, List[Span]] = Map.empty
 }
 
 object CompilationUnit {
 
-  class SuspendException extends Exception
+  class SuspendException extends Exception with NoStackTrace
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
-    apply(new SourceFile(clsd.symbol.associatedFile, Array.empty[Char]), unpickled, forceTrees)
+    val file = clsd.symbol.associatedFile.nn
+    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit = {
@@ -104,8 +122,8 @@ object CompilationUnit {
       val force = new Force
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
-      unit1.needsQuotePickling = force.containsQuote
       unit1.needsInlining = force.containsInline
+      unit1.hasMacroAnnotations = force.containsMacroAnnotation
     }
     unit1
   }
@@ -118,11 +136,11 @@ object CompilationUnit {
       if (!mustExist)
         source
       else if (source.file.isDirectory) {
-        report.error(s"expected file, received directory '${source.file.path}'")
+        report.error(em"expected file, received directory '${source.file.path}'")
         NoSource
       }
       else if (!source.file.exists) {
-        report.error(s"not found: ${source.file.path}")
+        report.error(em"source file not found: ${source.file.path}")
         NoSource
       }
       else source
@@ -133,11 +151,26 @@ object CompilationUnit {
   private class Force extends TreeTraverser {
     var containsQuote = false
     var containsInline = false
+    var containsCaptureChecking = false
+    var containsMacroAnnotation = false
     def traverse(tree: Tree)(using Context): Unit = {
-      if (tree.symbol.isQuote)
-        containsQuote = true
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
+      tree match
+        case _: tpd.Quote =>
+          containsQuote = true
+        case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
+          containsQuote = true
+        case Import(qual, selectors) =>
+          tpd.languageImport(qual) match
+            case Some(prefix) =>
+              for case untpd.ImportSelector(untpd.Ident(imported), untpd.EmptyTree, _) <- selectors do
+                Feature.handleGlobalLanguageImport(prefix, imported)
+            case _ =>
+        case _ =>
+      for annot <- tree.symbol.annotations do
+        if MacroAnnotations.isMacroAnnotation(annot) then
+          ctx.compilationUnit.hasMacroAnnotations = true
       traverseChildren(tree)
     }
   }

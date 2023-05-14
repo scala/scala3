@@ -56,4 +56,13 @@ package endmarkers:
 
   end TestObj/*->endmarkers::TestObj.*/
 
+  trait Stuff/*<-endmarkers::Stuff#*/[A/*<-endmarkers::Stuff#[A]*/]:
+    def `do/*<-endmarkers::Stuff#do().*/`: A/*->endmarkers::Stuff#[A]*/
+  end Stuff/*->endmarkers::Stuff#*/
+
+  // end given shouldn't have Symbol Occurrence
+  given Stuff/*->endmarkers::Stuff#*/[String/*->scala::Predef.String#*/] with
+    def `do/*<-endmarkers::EndMarkers$package.given_Stuff_String.do().*/`: String/*->scala::Predef.String#*/ = "done"
+  end given
+
 end endmarkers

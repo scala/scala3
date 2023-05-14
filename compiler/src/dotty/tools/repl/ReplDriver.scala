@@ -1,12 +1,16 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.config.CommandLineParser.tokenize
 import dotty.tools.dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Phases.{unfusedPhases, typerPhase}
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags._
@@ -20,17 +24,20 @@ import dotty.tools.dotc.core.Symbols.{Symbol, defn}
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.printing.SyntaxHighlighting
-import dotty.tools.dotc.reporting.{ConsoleReporter, MessageRendering, StoreReporter}
-import dotty.tools.dotc.reporting.{Message, Diagnostic}
+import dotty.tools.dotc.reporting.{ConsoleReporter, StoreReporter}
+import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
 import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io._
+import dotty.tools.runner.ScalaClassLoader.*
 import org.jline.reader._
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.collection.mutable
+import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -50,17 +57,20 @@ import scala.util.Using
  *  @param objectIndex the index of the next wrapper
  *  @param valIndex    the index of next value binding for free expressions
  *  @param imports     a map from object index to the list of user defined imports
+ *  @param invalidObjectIndexes the set of object indexes that failed to initialize
  *  @param context     the latest compiler context
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
-                 context: Context)
+                 invalidObjectIndexes: Set[Int],
+                 context: Context):
+  def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
                  out: PrintStream = Console.out,
-                 classLoader: Option[ClassLoader] = None) extends Driver {
+                 classLoader: Option[ClassLoader] = None) extends Driver:
 
   /** Overridden to `false` in order to not have to give sources on the
    *  commandline
@@ -68,22 +78,28 @@ class ReplDriver(settings: Array[String],
   override def sourcesRequired: Boolean = false
 
   /** Create a fresh and initialized context with IDE mode enabled */
-  private def initialCtx = {
+  private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+    setupRootCtx(this.settings ++ settings, rootCtx)
+  }
+
+  private def setupRootCtx(settings: Array[String], rootCtx: Context) = {
     setup(settings, rootCtx) match
-      case Some((files, ictx)) =>
+      case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
-        ictx.base.initialize()(using ictx)
+        if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
+        ictx.base.initialize()
         ictx
+      }
       case None =>
         shouldStart = false
         rootCtx
   }
 
   /** the initial, empty state of the REPL session */
-  final def initialState: State = State(0, 0, Map.empty, rootCtx)
+  final def initialState: State = State(0, 0, Map.empty, Set.empty, rootCtx)
 
   /** Reset state of repl to the initial state
    *
@@ -91,8 +107,8 @@ class ReplDriver(settings: Array[String],
    *  such, when the user enters `:reset` this method should be called to reset
    *  everything properly
    */
-  protected def resetToInitial(): Unit = {
-    rootCtx = initialCtx
+  protected def resetToInitial(settings: List[String] = Nil): Unit = {
+    rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
         .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
@@ -103,7 +119,7 @@ class ReplDriver(settings: Array[String],
   private var rootCtx: Context = _
   private var shouldStart: Boolean = _
   private var compiler: ReplCompiler = _
-  private var rendering: Rendering = _
+  protected var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
@@ -123,7 +139,7 @@ class ReplDriver(settings: Array[String],
    *  observable outside of the CLI, for this reason, most helper methods are
    *  `protected final` to facilitate testing.
    */
-  final def runUntilQuit(initialState: State = initialState): State = {
+  def runUntilQuit(using initialState: State = initialState)(): State = {
     val terminal = new JLineTerminal
 
     out.println(
@@ -131,7 +147,7 @@ class ReplDriver(settings: Array[String],
          |Type in expressions for evaluation. Or try :help.""".stripMargin)
 
     /** Blockingly read a line, getting back a parse result */
-    def readLine(state: State): ParseResult = {
+    def readLine()(using state: State): ParseResult = {
       val completer: Completer = { (_, line, candidates) =>
         val comps = completions(line.cursor, line.line, state)
         candidates.addAll(comps.asJava)
@@ -139,7 +155,7 @@ class ReplDriver(settings: Array[String],
       given Context = state.context
       try {
         val line = terminal.readLine(completer)
-        ParseResult(line)(state)
+        ParseResult(line)
       } catch {
         case _: EndOfFileException |
             _: UserInterruptException => // Ctrl+D or Ctrl+C
@@ -147,37 +163,58 @@ class ReplDriver(settings: Array[String],
       }
     }
 
-    @tailrec def loop(state: State): State = {
-      val res = readLine(state)
+    @tailrec def loop(using state: State)(): State = {
+      val res = readLine()
       if (res == Quit) state
-      else loop(interpret(res)(state))
+      else loop(using interpret(res))()
     }
 
-    try withRedirectedOutput { loop(initialState) }
+    try runBody { loop() }
     finally terminal.close()
   }
 
-  final def run(input: String)(implicit state: State): State = withRedirectedOutput {
-    val parsed = ParseResult(input)(state)
-    interpret(parsed)
+  final def run(input: String)(using state: State): State = runBody {
+    interpret(ParseResult.complete(input))
   }
 
+  final def runQuietly(input: String)(using State): State = runBody {
+    val parsed = ParseResult(input)
+    interpret(parsed, quiet = true)
+  }
+
+  protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
+
   // TODO: i5069
-  final def bind(name: String, value: Any)(implicit state: State): State = state
+  final def bind(name: String, value: Any)(using state: State): State = state
+
+  /**
+   * Controls whether the `System.out` and `System.err` streams are set to the provided constructor parameter instance
+   * of [[java.io.PrintStream]] during the execution of the repl. On by default.
+   *
+   * Disabling this can be beneficial when executing a repl instance inside a concurrent environment, for example a
+   * thread pool (such as the Scala compile server in the Scala Plugin for IntelliJ IDEA).
+   *
+   * In such environments, indepently executing `System.setOut` and `System.setErr` without any synchronization can
+   * lead to unpredictable results when restoring the original streams (dependent on the order of execution), leaving
+   * the Java process in an inconsistent state.
+   */
+  protected def redirectOutput: Boolean = true
 
   // redirecting the output allows us to test `println` in scripted tests
   private def withRedirectedOutput(op: => State): State = {
-    val savedOut = System.out
-    val savedErr = System.err
-    try {
-      System.setOut(out)
-      System.setErr(out)
-      op
-    }
-    finally {
-      System.setOut(savedOut)
-      System.setErr(savedErr)
-    }
+    if redirectOutput then
+      val savedOut = System.out
+      val savedErr = System.err
+      try {
+        System.setOut(out)
+        System.setErr(out)
+        op
+      }
+      finally {
+        System.setOut(savedOut)
+        System.setErr(savedErr)
+      }
+    else op
   }
 
   private def newRun(state: State, reporter: StoreReporter = newStoreReporter) = {
@@ -185,12 +222,19 @@ class ReplDriver(settings: Array[String],
     state.copy(context = run.runContext)
   }
 
+  private def stripBackTicks(label: String) =
+    if label.startsWith("`") && label.endsWith("`") then
+      label.drop(1).dropRight(1)
+    else
+      label
+
   /** Extract possible completions at the index of `cursor` in `expr` */
-  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
+  protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] =
     def makeCandidate(label: String) = {
+
       new Candidate(
         /* value    = */ label,
-        /* displ    = */ label, // displayed value
+        /* displ    = */ stripBackTicks(label), // displayed value
         /* group    = */ null,  // can be used to group completions together
         /* descr    = */ null,  // TODO use for documentation?
         /* suffix   = */ null,
@@ -198,25 +242,31 @@ class ReplDriver(settings: Array[String],
         /* complete = */ false  // if true adds space when completing
       )
     }
-    implicit val state = newRun(state0)
-    compiler
-      .typeCheck(expr, errorsAllowed = true)
-      .map { tree =>
-        val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
-        val unit = CompilationUnit(file)(using state.context)
-        unit.tpdTree = tree
-        given Context = state.context.fresh.setCompilationUnit(unit)
-        val srcPos = SourcePosition(file, Span(cursor))
-        val (_, completions) = Completion.completions(srcPos)
-        completions.map(_.label).distinct.map(makeCandidate)
-      }
-      .getOrElse(Nil)
-  }
 
-  private def interpret(res: ParseResult)(implicit state: State): State = {
+    if expr.startsWith(":") then
+      ParseResult.commands.collect {
+        case command if command._1.startsWith(expr) => makeCandidate(command._1)
+      }
+    else
+      given state: State = newRun(state0)
+      compiler
+        .typeCheck(expr, errorsAllowed = true)
+        .map { tree =>
+          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
+          val unit = CompilationUnit(file)(using state.context)
+          unit.tpdTree = tree
+          given Context = state.context.fresh.setCompilationUnit(unit)
+          val srcPos = SourcePosition(file, Span(cursor))
+          val completions = try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
+          completions.map(_.label).distinct.map(makeCandidate)
+        }
+        .getOrElse(Nil)
+  end completions
+
+  protected def interpret(res: ParseResult, quiet: Boolean = false)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.trees.nonEmpty =>
-        compile(parsed, state)
+        compile(parsed, state, quiet)
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs)
@@ -234,7 +284,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Compile `parsed` trees and evolve `state` in accordance */
-  private def compile(parsed: Parsed, istate: State): State = {
+  private def compile(parsed: Parsed, istate: State, quiet: Boolean = false): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
       case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
       case _ => nme.NO_NAME
@@ -243,7 +293,13 @@ class ReplDriver(settings: Array[String],
     def extractTopLevelImports(ctx: Context): List[tpd.Import] =
       unfusedPhases(using ctx).collectFirst { case phase: CollectTopLevelImports => phase.imports }.get
 
-    implicit val state = {
+    def contextWithNewImports(ctx: Context, imports: List[tpd.Import]): Context =
+      if imports.isEmpty then ctx
+      else
+        imports.foldLeft(ctx.fresh.setNewScope)((ctx, imp) =>
+          ctx.importContext(imp, imp.symbol(using ctx)))
+
+    given State = {
       val state0 = newRun(istate, parsed.reporter)
       state0.copy(context = state0.context.withSource(parsed.source))
     }
@@ -258,7 +314,10 @@ class ReplDriver(settings: Array[String],
             var allImports = newState.imports
             if (newImports.nonEmpty)
               allImports += (newState.objectIndex -> newImports)
-            val newStateWithImports = newState.copy(imports = allImports)
+            val newStateWithImports = newState.copy(
+              imports = allImports,
+              context = contextWithNewImports(newState.context, newImports)
+            )
 
             val warnings = newState.context.reporter
               .removeBufferedMessages(using newState.context)
@@ -266,19 +325,21 @@ class ReplDriver(settings: Array[String],
             inContext(newState.context) {
               val (updatedState, definitions) =
                 if (!ctx.settings.XreplDisableDisplay.value)
-                  renderDefinitions(unit.tpdTree, newestWrapper)(newStateWithImports)
+                  renderDefinitions(unit.tpdTree, newestWrapper)(using newStateWithImports)
                 else
                   (newStateWithImports, Seq.empty)
 
               // output is printed in the order it was put in. warnings should be
               // shown before infos (eg. typedefs) for the same line. column
               // ordering is mostly to make tests deterministic
-              implicit val diagnosticOrdering: Ordering[Diagnostic] =
+              given Ordering[Diagnostic] =
                 Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              (definitions ++ warnings)
-                .sorted
-                .foreach(printDiagnostic)
+              if (!quiet) {
+                (definitions ++ warnings)
+                  .sorted
+                  .foreach(printDiagnostic)
+              }
 
               updatedState
             }
@@ -286,7 +347,7 @@ class ReplDriver(settings: Array[String],
       )
   }
 
-  private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(implicit state: State): (State, Seq[Diagnostic]) = {
+  private def renderDefinitions(tree: tpd.Tree, newestWrapper: Name)(using state: State): (State, Seq[Diagnostic]) = {
     given Context = state.context
 
     def resAndUnit(denot: Denotation) = {
@@ -318,14 +379,33 @@ class ReplDriver(settings: Array[String],
       val typeAliases =
         info.bounds.hi.typeMembers.filter(_.symbol.info.isTypeAlias)
 
-      val formattedMembers =
-        typeAliases.map(rendering.renderTypeAlias) ++
-        defs.map(rendering.renderMethod) ++
-        vals.flatMap(rendering.renderVal)
+      // The wrapper object may fail to initialize if the rhs of a ValDef throws.
+      // In that case, don't attempt to render any subsequent vals, and mark this
+      // wrapper object index as invalid.
+      var failedInit = false
+      val renderedVals =
+        val buf = mutable.ListBuffer[Diagnostic]()
+        for d <- vals do if !failedInit then rendering.renderVal(d) match
+          case Right(Some(v)) =>
+            buf += v
+          case Left(e) =>
+            buf += rendering.renderError(e, d)
+            failedInit = true
+          case _ =>
+        buf.toList
 
-      val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
-
-      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
+      if failedInit then
+        // We limit the returned diagnostics here to `renderedVals`, which will contain the rendered error
+        // for the val which failed to initialize. Since any other defs, aliases, imports, etc. from this
+        // input line will be inaccessible, we avoid rendering those so as not to confuse the user.
+        (state.copy(invalidObjectIndexes = state.invalidObjectIndexes + state.objectIndex), renderedVals)
+      else
+        val formattedMembers =
+          typeAliases.map(rendering.renderTypeAlias)
+          ++ defs.map(rendering.renderMethod)
+          ++ renderedVals
+        val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+        (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
     }
     else (state, Seq.empty)
 
@@ -343,8 +423,10 @@ class ReplDriver(settings: Array[String],
       tree.symbol.info.memberClasses
         .find(_.symbol.name == newestWrapper.moduleClassName)
         .map { wrapperModule =>
-          val formattedTypeDefs = typeDefs(wrapperModule.symbol)
           val (newState, formattedMembers) = extractAndFormatMembers(wrapperModule.symbol)
+          val formattedTypeDefs =  // don't render type defs if wrapper initialization failed
+            if newState.invalidObjectIndexes.contains(state.objectIndex) then Seq.empty
+            else typeDefs(wrapperModule.symbol)
           val highlighted = (formattedTypeDefs ++ formattedMembers)
             .map(d => new Diagnostic(d.msg.mapMsg(SyntaxHighlighting.highlight), d.pos, d.level))
           (newState, highlighted)
@@ -357,7 +439,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Interpret `cmd` to action and propagate potentially new `state` */
-  private def interpretCommand(cmd: Command)(implicit state: State): State = cmd match {
+  private def interpretCommand(cmd: Command)(using state: State): State = cmd match {
     case UnknownCommand(cmd) =>
       out.println(s"""Unknown command: "$cmd", run ":help" for a list of commands""")
       state
@@ -370,13 +452,22 @@ class ReplDriver(settings: Array[String],
       out.println(Help.text)
       state
 
-    case Reset =>
-      resetToInitial()
+    case Reset(arg) =>
+      val tokens = tokenize(arg)
+
+      if tokens.nonEmpty then
+        out.println(s"""|Resetting REPL state with the following settings:
+                        |  ${tokens.mkString("\n  ")}
+                        |""".stripMargin)
+      else
+        out.println("Resetting REPL state.")
+
+      resetToInitial(tokens)
       initialState
 
     case Imports =>
       for {
-        objectIndex <- 1 to state.objectIndex
+        objectIndex <- state.validObjectIndexes
         imp <- state.imports.getOrElse(objectIndex, Nil)
       } out.println(imp.show(using state.context))
       state
@@ -396,7 +487,7 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":type <expression>")
         case _  =>
-          compiler.typeOf(expr)(newRun(state)).fold(
+          compiler.typeOf(expr)(using newRun(state)).fold(
             displayErrors,
             res => out.println(res)  // result has some highlights
           )
@@ -407,12 +498,22 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":doc <expression>")
         case _  =>
-          compiler.docOf(expr)(newRun(state)).fold(
+          compiler.docOf(expr)(using newRun(state)).fold(
             displayErrors,
             res => out.println(res)
           )
       }
       state
+
+    case Settings(arg) => arg match
+      case "" =>
+        given ctx: Context = state.context
+        for (s <- ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name))
+          out.println(s"${s.name} = ${if s.value == "" then "\"\"" else s.value}")
+        state
+      case _  =>
+        rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
+        state.copy(context = rootCtx)
 
     case Quit =>
       // end of the world!
@@ -420,7 +521,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** shows all errors nicely formatted */
-  private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
+  private def displayErrors(errs: Seq[Diagnostic])(using state: State): State = {
     errs.foreach(printDiagnostic)
     state
   }
@@ -434,7 +535,8 @@ class ReplDriver(settings: Array[String],
   }
 
   /** Print warnings & errors using ReplConsoleReporter, and info straight to out */
-  private def printDiagnostic(dia: Diagnostic)(implicit state: State) = dia.level match
+  private def printDiagnostic(dia: Diagnostic)(using state: State) = dia.level match
     case interfaces.Diagnostic.INFO => out.println(dia.msg) // print REPL's special info diagnostics directly to out
     case _                          => ReplConsoleReporter.doReport(dia)(using state.context)
-}
+
+end ReplDriver

@@ -13,6 +13,7 @@ val `scala3-tasty-inspector` = Build.`scala3-tasty-inspector`
 val `scala3-language-server` = Build.`scala3-language-server`
 val `scala3-bench` = Build.`scala3-bench`
 val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
+val `scala3-bench-micro` = Build.`scala3-bench-micro`
 val `stdlib-bootstrapped` = Build.`stdlib-bootstrapped`
 val `stdlib-bootstrapped-tasty-tests` = Build.`stdlib-bootstrapped-tasty-tests`
 val `tasty-core` = Build.`tasty-core`
@@ -20,7 +21,9 @@ val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
 val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val scaladoc = Build.scaladoc
 val `scaladoc-testcases` = Build.`scaladoc-testcases`
-val `scaladoc-js` = Build.`scaladoc-js`
+val `scaladoc-js-common` = Build.`scaladoc-js-common`
+val `scaladoc-js-main` = Build.`scaladoc-js-main`
+val `scaladoc-js-contributors` = Build.`scaladoc-js-contributors`
 val `scala3-bench-run` = Build.`scala3-bench-run`
 val dist = Build.dist
 val `community-build` = Build.`community-build`
@@ -31,7 +34,6 @@ val sjsJUnitTests = Build.sjsJUnitTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
 val `sbt-test` = Build.`sbt-test`
-val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)
 inScope(Global)(Build.globalSettings)

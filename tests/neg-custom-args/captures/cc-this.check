@@ -1,0 +1,15 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/cc-this.scala:8:15 ---------------------------------------
+8 |    val y: C = this // error
+  |               ^^^^
+  |               Found:    (C.this : C^{C.this.x})
+  |               Required: C
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/cc-this.scala:10:15 -----------------------------------------------------------
+10 |  class C2(val x: () => Int): // error
+   |               ^
+   |        reference (C2.this.x : () => Int) is not included in allowed capture set {} of the self type of class C2
+-- Error: tests/neg-custom-args/captures/cc-this.scala:17:8 ------------------------------------------------------------
+17 |  class C4(val f: () => Int) extends C3 // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  reference (C4.this.f : () => Int) is not included in allowed capture set {} of pure base class class C3

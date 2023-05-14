@@ -8,16 +8,16 @@ import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
+import Decorators.*
 import Definitions._
 import nme._
-import Decorators._
 
 object NameOps {
 
   object compactify {
-    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5")
+    lazy val md5: MessageDigest = MessageDigest.getInstance("MD5").nn
 
-    final val CLASSFILE_NAME_CHAR_LIMIT = 240
+    inline val CLASSFILE_NAME_CHAR_LIMIT = 240
 
     /** COMPACTIFY
      *
@@ -43,9 +43,9 @@ object NameOps {
         val suffix = s.takeRight(edge)
 
         val cs = s.toArray
-        val bytes = Codec.toUTF8(CharBuffer.wrap(cs))
+        val bytes = Codec.toUTF8(CharBuffer.wrap(cs).nn)
         md5.update(bytes)
-        val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
+        val md5chars = md5.digest().nn.map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
       }
@@ -86,11 +86,17 @@ object NameOps {
     def isVarPattern: Boolean =
       testSimple { n =>
         n.length > 0 && {
+          def isLowerLetterSupplementary: Boolean =
+            import Character.{isHighSurrogate, isLowSurrogate, isLetter, isLowerCase, isValidCodePoint, toCodePoint}
+            isHighSurrogate(n(0)) && n.length > 1 && isLowSurrogate(n(1)) && {
+              val codepoint = toCodePoint(n(0), n(1))
+              isValidCodePoint(codepoint) && isLetter(codepoint) && isLowerCase(codepoint)
+            }
           val first = n.head
-          (((first.isLower && first.isLetter) || first == '_')
-            && (n != false_)
-            && (n != true_)
-            && (n != null_))
+          ((first.isLower && first.isLetter || first == '_' || isLowerLetterSupplementary)
+            && n != false_
+            && n != true_
+            && n != null_)
         }
       } || name.is(PatMatGivenVarName)
 
@@ -98,7 +104,7 @@ object NameOps {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
       case name: SimpleName =>
-        name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
+        name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.firstCodePoint)
       case _ =>
         false
     }
@@ -124,10 +130,9 @@ object NameOps {
      *  it is also called from the backend.
      */
     def stripModuleClassSuffix: N = likeSpacedN {
-      val semName = name.toTermName match {
-        case name: SimpleName if name.endsWith("$") => name.unmangleClassName
+      val semName = name.toTermName match
+        case name: SimpleName if name.endsWith(str.MODULE_SUFFIX) && name.lastPart != MODULE_SUFFIX => name.unmangleClassName
         case _ => name
-      }
       semName.exclude(ModuleClassName)
     }
 
@@ -146,7 +151,9 @@ object NameOps {
 
     /** Revert the expanded name. */
     def unexpandedName: N = likeSpacedN {
-      name.replace { case ExpandedName(_, unexp) => unexp }
+      name.replaceDeep {
+        case ExpandedName(_, unexp) => unexp
+      }
     }
 
     def errorName: N = likeSpacedN(name ++ nme.ERROR)
@@ -197,57 +204,56 @@ object NameOps {
           else collectDigits(acc * 10 + d, idx + 1)
       collectDigits(0, suffixStart + 8)
 
-    /** name[0..suffixStart) == `str` */
-    private def isPreceded(str: String, suffixStart: Int) =
-      str.length == suffixStart && name.firstPart.startsWith(str)
+    private def isFunctionPrefix(suffixStart: Int, mustHave: String = "")(using Context): Boolean =
+      suffixStart >= 0
+      && {
+        val first = name.firstPart
+        var found = mustHave.isEmpty
+        def skip(idx: Int, str: String) =
+          if first.startsWith(str, idx) then
+            if str == mustHave then found = true
+            idx + str.length
+          else idx
+        skip(skip(0, "Impure"), "Context") == suffixStart
+        && found
+      }
 
     /** Same as `funArity`, except that it returns -1 if the prefix
-     *  is not one of "", "Context", "Erased", "ErasedContext"
+     *  is not one of a (possibly empty) concatenation of a subset of
+     *  "Impure" (only under pureFunctions), "Erased" and "Context" (in that order).
      */
-    private def checkedFunArity(suffixStart: Int): Int =
-      if suffixStart == 0
-         || isPreceded("Context", suffixStart)
-         || isPreceded("Erased", suffixStart)
-         || isPreceded("ErasedContext", suffixStart)
-      then funArity(suffixStart)
-      else -1
+    private def checkedFunArity(suffixStart: Int)(using Context): Int =
+      if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1
 
-    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ErasedFunctionN, ErasedContextFunctionN for N >= 0
+    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ImpureFunctionN, ImpureContextFunctionN for N >= 0
      */
-    def isFunction: Boolean =
-      (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
+    def isFunction(using Context): Boolean =
+      (name eq tpnme.FunctionXXL)
+      || checkedFunArity(functionSuffixStart) >= 0
 
     /** Is a function name
      *    - FunctionN for N >= 0
      */
-    def isPlainFunction: Boolean = functionArity >= 0
+    def isPlainFunction(using Context): Boolean = functionArity >= 0
 
-    /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
-     */
-    def isContextFunction: Boolean =
+    /** Is a function name that contains `mustHave` as a substring */
+    private def isSpecificFunction(mustHave: String)(using Context): Boolean =
       val suffixStart = functionSuffixStart
-      (isPreceded("Context", suffixStart) || isPreceded("ErasedContext", suffixStart))
-      && funArity(suffixStart) >= 0
+      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
 
-    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N >= 0
-      */
-    def isErasedFunction: Boolean =
-      val suffixStart = functionSuffixStart
-      (isPreceded("Erased", suffixStart) || isPreceded("ErasedContext", suffixStart))
-      && funArity(suffixStart) >= 0
+    def isContextFunction(using Context): Boolean = isSpecificFunction("Context")
+    def isImpureFunction(using Context): Boolean = isSpecificFunction("Impure")
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
      *    - ContextFunctionN for N >= 0
-     *    - ErasedFunctionN for N >= 0
-     *    - ErasedContextFunctionN for N >= 0
      */
-    def isSyntheticFunction: Boolean =
+    def isSyntheticFunction(using Context): Boolean =
       val suffixStart = functionSuffixStart
       if suffixStart == 0 then funArity(suffixStart) > MaxImplementedFunctionArity
       else checkedFunArity(suffixStart) >= 0
 
-    def functionArity: Int =
+    def functionArity(using Context): Int =
       val suffixStart = functionSuffixStart
       if suffixStart >= 0 then checkedFunArity(suffixStart) else -1
 
@@ -278,6 +284,29 @@ object NameOps {
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
+
+    /** Determines if the current name is the specialized name of the given base name.
+     *  For example `typeName("Tuple2$mcII$sp").isSpecializedNameOf(tpnme.Tuple2) == true`
+     */
+    def isSpecializedNameOf(base: N)(using Context): Boolean =
+      var i = 0
+      inline def nextString(str: String) = name.startsWith(str, i) && { i += str.length; true }
+      nextString(base.toString)
+        && nextString(nme.specializedTypeNames.prefix.toString)
+        && nextString(nme.specializedTypeNames.separator.toString)
+        && name.endsWith(nme.specializedTypeNames.suffix.toString)
+
+    /** Returns the name of the class specialised to the provided types,
+     *  in the given order.  Used for the specialized tuple classes.
+     */
+    def specializedName(args: List[Type])(using Context): N =
+      val sb = new StringBuilder
+      sb.append(name.toString)
+      sb.append(nme.specializedTypeNames.prefix.toString)
+      sb.append(nme.specializedTypeNames.separator)
+      args.foreach { arg => sb.append(defn.typeTag(arg)) }
+      sb.append(nme.specializedTypeNames.suffix)
+      likeSpacedN(termName(sb.toString))
 
     /** Use for specializing function names ONLY and use it if you are **not**
      *  creating specialized name from type parameters. The order of names will
@@ -327,6 +356,14 @@ object NameOps {
       val unmangled = kinds.foldLeft(name)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
     }
+
+    def firstCodePoint: Int =
+      val first = name.firstPart
+      import Character.{isHighSurrogate, isLowSurrogate, isValidCodePoint, toCodePoint}
+      if isHighSurrogate(first(0)) && first.length > 1 && isLowSurrogate(first(1)) then
+        val codepoint = toCodePoint(first(0), first(1))
+        if isValidCodePoint(codepoint) then codepoint else first(0)
+      else first(0)
   }
 
   extension (name: TermName) {
@@ -362,5 +399,14 @@ object NameOps {
       case raw.BANG  => UNARY_!
       case _ => name
     }
+
+    /** If this is a super accessor name, its underlying name, which is the name
+     *  of the method that the super accessor forwards to.
+     */
+    def originalOfSuperAccessorName: TermName = name match
+      case SuperAccessorName(name1)   => name1.originalOfSuperAccessorName
+      case ExpandedName(_, name1)     => name1.originalOfSuperAccessorName
+      case ExpandPrefixName(_, name1) => name1.originalOfSuperAccessorName
+      case _ => name
   }
 }

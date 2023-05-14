@@ -1,6 +1,8 @@
-package tests.externalScaladoc3
+package tests
+package externalScaladoc3
 
 import scala.util.matching.*
+import externalStubs._
 
 class Test {
   def a: String = ???
@@ -9,4 +11,6 @@ class Test {
 
   def c: Regex.Match = ???
 }
+
+class Test2 extends \/ with /\
 

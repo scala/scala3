@@ -3,9 +3,9 @@ package dotc
 package config
 
 import core._
-import Contexts._, Symbols._, Names._, NameOps._, Phases._
+import Contexts._, Symbols._, Names._
 import StdNames.nme
-import Decorators.{_, given}
+import Decorators.*
 import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
@@ -28,6 +28,13 @@ object Feature:
   val symbolLiterals = deprecated("symbolLiterals")
   val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
+  val clauseInterleaving = experimental("clauseInterleaving")
+  val relaxedExtensionImports = experimental("relaxedExtensionImports")
+  val pureFunctions = experimental("pureFunctions")
+  val captureChecking = experimental("captureChecking")
+  val into = experimental("into")
+
+  val globalOnlyImports: Set[TermName] = Set(pureFunctions, captureChecking)
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -50,7 +57,8 @@ object Feature:
    */
   def enabledByImport(feature: TermName)(using Context): Boolean =
     //atPhase(typerPhase) {
-      ctx.importInfo != null && ctx.importInfo.featureImported(feature)
+      val info = ctx.importInfo
+      info != null && info.featureImported(feature)
     //}
 
   /** Is `feature` enabled by either a command line setting or an import?
@@ -70,26 +78,52 @@ object Feature:
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
+  def clauseInterleavingEnabled(using Context) = enabled(clauseInterleaving)
+
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
+
+  /** Is pureFunctions enabled for this compilation unit? */
+  def pureFunsEnabled(using Context) =
+    enabledBySetting(pureFunctions)
+    || ctx.compilationUnit.knowsPureFuns
+    || ccEnabled
+
+  /** Is captureChecking enabled for this compilation unit? */
+  def ccEnabled(using Context) =
+    enabledBySetting(captureChecking)
+    || ctx.compilationUnit.needsCaptureChecking
+
+  /** Is pureFunctions enabled for any of the currently compiled compilation units? */
+  def pureFunsEnabledSomewhere(using Context) =
+    enabledBySetting(pureFunctions)
+    || ctx.run != null && ctx.run.nn.pureFunsImportEncountered
+    || ccEnabledSomewhere
+
+  /** Is captureChecking enabled for any of the currently compiled compilation units? */
+  def ccEnabledSomewhere(using Context) =
+    enabledBySetting(captureChecking)
+    || ctx.run != null && ctx.run.nn.ccImportEncountered
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
 
   def sourceVersion(using Context): SourceVersion =
-    if ctx.compilationUnit == null then sourceVersionSetting
-    else ctx.compilationUnit.sourceVersion match
+    ctx.compilationUnit.sourceVersion match
       case Some(v) => v
       case none => sourceVersionSetting
 
-  def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
+  def migrateTo3(using Context): Boolean =
+    sourceVersion == `3.0-migration`
+
+  def fewerBracesEnabled(using Context) =
+    sourceVersion.isAtLeast(`3.3`) || enabled(fewerBraces)
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
    */
-  def warnOnMigration(msg: Message, pos: SrcPos,
-      version: SourceVersion = defaultSourceVersion)(using Context): Boolean =
+  def warnOnMigration(msg: Message, pos: SrcPos, version: SourceVersion)(using Context): Boolean =
     if sourceVersion.isMigrating && sourceVersion.stable == version
        || (version == `3.0` || version == `3.1`) && migrateTo3
     then
@@ -100,7 +134,7 @@ object Feature:
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
-      report.error(i"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
+      report.error(em"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     if !isExperimentalEnabled then
@@ -111,7 +145,7 @@ object Feature:
           i"${sym.owner} is marked @experimental"
         else
           i"$sym inherits @experimental"
-      report.error(s"$symMsg and therefore may only be used in an experimental scope.", srcPos)
+      report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
   def checkExperimentalSettings(using Context): Unit =
@@ -122,4 +156,21 @@ object Feature:
   def isExperimentalEnabled(using Context): Boolean =
     Properties.experimental && !ctx.settings.YnoExperimental.value
 
+  /** Handle language import `import language.<prefix>.<imported>` if it is one
+   *  of the global imports `pureFunctions` or `captureChecking`. In this case
+   *  make the compilation unit's and current run's fields accordingly.
+   *  @return true iff import that was handled
+   */
+  def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
+    val fullFeatureName = QualifiedName(prefix, imported.asTermName)
+    if fullFeatureName == pureFunctions then
+      ctx.compilationUnit.knowsPureFuns = true
+      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+      true
+    else if fullFeatureName == captureChecking then
+      ctx.compilationUnit.needsCaptureChecking = true
+      if ctx.run != null then ctx.run.nn.ccImportEncountered = true
+      true
+    else
+      false
 end Feature

@@ -1,7 +1,7 @@
 {
-  type T = scala.Predef.String
+  type T = java.lang.String
   val x: java.lang.String = "foo"
-  val z: T = x
+  val z: java.lang.String = x
 
   (x: java.lang.String)
 }

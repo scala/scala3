@@ -5,15 +5,13 @@ import com.vladsch.flexmark.html._
 import util.HTML._
 
 import dotty.tools.scaladoc.snippets._
-import dotty.tools.scaladoc.util.HTML._
 
 case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.empty, messages: Seq[String] = Seq.empty, attributes: Map[String, String] = Map.empty):
   def withClass(cls: String) = this.copy(classes = classes + cls)
   def withAttribute(name: String, value: String) = this.copy(attributes = attributes.updated(name, value))
-  private def attributesToString: String = attributes.updated("id", lineNo).map((key, value) => s"""$key="$value"""").mkString(" ")
   def toHTML =
     val label = if messages.nonEmpty then s"""label="${messages.map(_.escapeReservedTokens).mkString("\n")}"""" else ""
-    s"""<span $attributesToString class="${classes.mkString(" ")}" $label>$content</span>"""
+    s"""<span line-number="${lineNo + 1}" class="${classes.mkString(" ")}"><span class="tooltip-container" $label></span>$content</span>"""
 
 object SnippetRenderer:
   val hiddenStartSymbol = "//{"
@@ -96,6 +94,11 @@ object SnippetRenderer:
         line.copy(content = begin + s"""<span class="hideable">$comment</span>""" + end)
       case _ => line
 
+  private def reindexLines(lines: Seq[SnippetLine]) =
+    lines.zipWithIndex.map {
+      case (line, newIdx) => line.copy(lineNo = newIdx)
+    }
+
   private def wrapCodeLines(codeLines: Seq[String]): Seq[SnippetLine] =
     val snippetLines = codeLines.zipWithIndex.map {
       case (content, idx) => SnippetLine(content.escapeReservedTokens, idx)
@@ -134,15 +137,36 @@ object SnippetRenderer:
     div(cls := "snippet-label")(name)
   ).toString
 
-  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], hasContext: Boolean): String =
-    val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).apply(codeLines).map(_.toHTML)
+  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean): String =
+    val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).andThen(reindexLines).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
-    s"""<div class="snippet" ${if hasContext then "hasContext" else ""}><div class="buttons"></div><pre>$codeHTML</pre>${snippetName.fold("")(snippetLabel(_))}</div>"""
+    val isRunnable = success
+    val attrs = Seq(
+      Option.when(isRunnable)(Attr("runnable") := "")
+    ).flatten
+    div(cls := "snippet mono-small-block", Attr("scala-snippet") := "", attrs)(
+      pre(
+        raw(codeHTML)
+      ),
+      raw(snippetName.fold("")(snippetLabel(_))),
+      div(cls := "buttons")()
+    ).toString
 
   def renderSnippetWithMessages(node: ExtendedFencedCodeBlock): String =
     renderSnippetWithMessages(
       node.name,
       node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
       node.compilationResult.toSeq.flatMap(_.messages),
-      node.hasContext
+      node.compilationResult.fold(false)(_.isSuccessful)
     )
+
+  def renderSnippet(content: String, language: Option[String] = None): String =
+    val codeLines = content.split("\n").map(_ + "\n").toSeq
+    div(cls := "snippet mono-small-block")(
+      pre(
+        code(language.fold(Nil)(l => Seq(cls := s"language-$l")))(
+          raw(wrapCodeLines(codeLines).map(_.toHTML).mkString)
+        )
+      ),
+      div(cls := "buttons")()
+    ).toString

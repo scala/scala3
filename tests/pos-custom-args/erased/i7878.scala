@@ -2,7 +2,7 @@ object Boom {
   import scala.compiletime.*
   trait Fail[A <: Int, B <: Int]
 
-  erased transparent inline given fail[X <: Int, Y <: Int]: Fail[X, Y] = {
+  transparent inline given fail[X <: Int, Y <: Int]: Fail[X, Y] = {
      scala.compiletime.summonFrom {
        case t: Fail[X, y] if constValue[y] < constValue[Y] => ???
     }

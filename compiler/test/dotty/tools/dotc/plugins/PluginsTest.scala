@@ -1,5 +1,7 @@
 package dotty.tools.dotc.plugins
 
+import scala.language.unsafeNulls
+
 import org.junit.Test
 
 import dotty.tools.dotc._

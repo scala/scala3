@@ -25,9 +25,9 @@ object o:
 @nowarn("id=E129") def t3a = { 1; 2 }
 @nowarn("name=PureExpressionInStatementPosition") def t3b = { 1; 2 }
 
-@nowarn("id=E000") def t4a = try 1
-@nowarn("id=E0") def t4b = try 1
-@nowarn("id=0") def t4c = try 1
+@nowarn("id=E002") def t4a = try 1
+@nowarn("id=E2") def t4b = try 1
+@nowarn("id=2") def t4c = try 1
 @nowarn("id=1") def t4d = try 1 // error and warning (unused nowarn, wrong id)
 
 @nowarn("verbose") def t5 = try 1 // warning with details
@@ -42,10 +42,10 @@ def t6a = f // warning (refchecks, deprecation)
 @nowarn def t6f = f
 
 def t7a = f: @nowarn("cat=deprecation")
-def t7b = f:
-  @nowarn("msg=deprecated")
-def t7c = f:          // warning (deprecation)
-  @nowarn("msg=fish") // error (unused nowarn)
+def t7b = f
+  : @nowarn("msg=deprecated")
+def t7c = f             // warning (deprecation)
+  : @nowarn("msg=fish") // error (unused nowarn)
 def t7d = f: @nowarn("")
 def t7e = f: @nowarn
 

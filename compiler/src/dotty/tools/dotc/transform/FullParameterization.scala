@@ -8,9 +8,7 @@ import Symbols._
 import Decorators._
 import TypeUtils._
 import StdNames.nme
-import NameOps._
 import ast._
-import ast.Trees._
 
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading
@@ -154,7 +152,7 @@ trait FullParameterization {
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
       val origOtherParamSyms = originalDef.trailingParamss.flatten.map(_.symbol)
-      val thisRef :: argRefs = vrefss.flatten
+      val thisRef :: argRefs = vrefss.flatten: @unchecked
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.

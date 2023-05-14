@@ -7,5 +7,9 @@ object Test {
     implicitly[Type[List[Int]]]
     implicitly[Type[T]]
     implicitly[Type[List[T]]]
+    Type.of[Int]
+    Type.of[List[Int]]
+    Type.of[T]
+    Type.of[List[T]]
   }
 }

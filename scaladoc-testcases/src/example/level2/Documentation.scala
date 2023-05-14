@@ -149,6 +149,19 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
     */
   def loremIpsum[T](a: T): Map[T, T] = ???
 
+  /**
+    *  &nbsp;
+    * | How to convert ... | to a [[PartialFunction]] | to an optional [[Function]] | to an extractor |
+    * | :---:  | ---  | --- | --- |
+    * | from a [[PartialFunction]] | [[Predef.identity]] | [[lift]] | [[Predef.identity]] |
+    * | from optional [[Function]] | [[Function1.UnliftOps#unlift]] or [[Function.unlift]] | [[Predef.identity]] | [[Function1.UnliftOps#unlift]] |
+    * | from an extractor | `{ case extractor(x) => x }` | `extractor.unapply _` | [[Predef.identity]] |
+    *  &nbsp;
+    *
+    * @syntax wiki
+    */
+  def table(foo: String) = ???
+
   protected[example] val valWithScopeModifier = ???
   protected[this] val valWithScopeModifierThis = ???
 

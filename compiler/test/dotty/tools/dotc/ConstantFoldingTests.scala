@@ -1,5 +1,7 @@
 package dotty.tools.dotc
 
+import scala.language.unsafeNulls
+
 import org.junit.Assert._
 import org.junit.Test
 import dotty.tools.backend.jvm._
@@ -7,7 +9,7 @@ import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.dotc.core.Contexts.FreshContext
 import scala.tools.asm.tree.MethodNode
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class ConstantFoldingTests extends DottyBytecodeTest {
 

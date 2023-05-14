@@ -1,0 +1,102 @@
+/* Loading */
+.loading-wrapper {
+  text-align: center;
+  padding: 4px;
+}
+
+.loading,
+.loading::before,
+.loading::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: var(--leftbar-bg);
+  color: var(--leftbar-bg);
+  animation-name: dotFlashing;
+  animation-duration: 1.6s;
+  animation-iteration-count: infinite;
+  animation-direction: normal;
+  animation-timing-function: ease-in-out;
+  display: inline-block;
+  position: absolute;
+  top: 0;
+}
+
+.loading {
+  position: relative;
+  animation-delay: 0.2s;
+}
+
+.loading::before {
+  left: -15px;
+  animation-delay: 0s;
+}
+
+.loading::after {
+  left: 15px;
+  animation-delay: 0.4s;
+}
+
+@keyframes dotFlashing {
+  0% {
+    background-color: var(--leftbar-bg);
+  }
+  25% {
+    background-color: var(--shadow);
+  }
+  50% {
+    background-color: var(--leftbar-bg);
+  }
+}
+
+.scaladoc-searchbar-inkuire-package {
+  display: none;
+  color: var(--symbol-fg);
+}
+
+div[selected] > .scaladoc-searchbar-inkuire-package {
+  display: flex;
+}
+
+#scaladoc-searchbar.hidden {
+  display: none;
+}
+
+.scaladoc-searchbar-row.hidden {
+  display: none;
+}
+
+.scaladoc-searchbar-row[result] {
+  flex-direction: column;
+}
+
+.scaladoc-searchbar-row[result] a {
+  text-indent: -20px;
+  padding-left: 20px;
+}
+
+.scaladoc-searchbar-row[loadmore] {
+  align-items: center;
+  cursor: pointer;
+}
+
+.scaladoc-searchbar-row[loadmore] > a {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.scaladoc-searchbar-row[loadmore] .i {
+  margin-left: 4px;
+  margin-right: 4px;
+}
+
+#searchBar {
+  display: inline-flex;
+}
+
+.pull-right {
+  float: right;
+  margin-left: auto;
+}

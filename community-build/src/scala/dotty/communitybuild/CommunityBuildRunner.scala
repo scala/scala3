@@ -34,7 +34,7 @@ trait CommunityBuildRunner:
   /** Build the given project with the published local compiler and sbt plugin.
    *
    *  This test reads the compiler version from community-build/dotty-bootstrapped.version
-   *  and expects community-build/sbt-dotty-sbt to set the compiler plugin.
+   *  and expects community-build/sbt-injected-plugins to set any necessary plugins.
    *
    *  @param project    The project name, should be a git submodule in community-build/
    *  @param command    The binary file of the program used to test the project – usually

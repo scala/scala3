@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import language.implicitConversions
-
 class ScopedVar[A](init: A) {
   import ScopedVar.Assignment
 

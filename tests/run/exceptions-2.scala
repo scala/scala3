@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 /*
  * Try exception handling and finally blocks.
  */

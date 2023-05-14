@@ -1,0 +1,121 @@
+* {
+  /*text-rendering: geometricPrecision;*/
+  font-weight: initial;
+}
+
+@font-face {
+  font-family: "Inter-Bold";
+  src: url("../../fonts/Inter-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter-SemiBold";
+  src: url("../../fonts/Inter-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter-Medium";
+  src: url("../../fonts/Inter-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter-Regular";
+  src: url("../../fonts/Inter-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "FiraCode-Regular";
+  src: url("../../fonts/FiraCode-Regular.ttf");
+}
+
+.h700 {
+  font-size: 40px;
+  line-height: 40px;
+  font-family: "Inter-Bold", sans-serif;
+}
+
+.h600 {
+  font-size: 32px;
+  line-height: 40px;
+  font-family: "Inter-SemiBold", sans-serif;
+}
+
+.h600 .single {
+  padding-left: 16px;
+}
+
+.h500 {
+  font-size: 28px;
+  line-height: 32px;
+  font-family: "Inter-Medium", sans-serif;
+}
+
+.h400 {
+  font-size: 24px;
+  line-height: 32px;
+  font-family: "Inter-Medium", sans-serif;
+}
+
+.h300 {
+  font-size: 20px;
+  line-height: 24px;
+  font-family: "Inter-Bold", sans-serif;
+}
+
+.h200 {
+  font-size: 16px;
+  line-height: 24px;
+  font-family: "Inter-SemiBold", sans-serif;
+}
+
+.h100 {
+  font-size: 13px;
+  line-height: 16px;
+  font-family: "Inter-SemiBold", sans-serif;
+}
+
+.h50 {
+  font-size: 9px;
+  line-height: 12px;
+  font-family: "Inter-SemiBold", sans-serif;
+}
+
+.body-large {
+  font-size: 20px;
+  line-height: 32px;
+  font-family: "Inter-Regular", sans-serif;
+}
+
+.body-medium {
+  font-size: 16px;
+  line-height: 24px;
+  font-family: "Inter-Regular", sans-serif;
+}
+
+.body-small {
+  font-size: 13px;
+  line-height: 16px;
+  font-family: "Inter-Regular", sans-serif;
+}
+
+.mono-medium {
+  font-size: 16px;
+  line-height: 24px;
+  font-family: "FiraCode-Regular", monospace;
+}
+
+.mono-small-inline {
+  font-size: 13px;
+  line-height: 16px;
+  font-family: "FiraCode-Regular", monospace;
+}
+
+.mono-small-block {
+  font-size: 13px;
+  line-height: 20px;
+  font-family: "FiraCode-Regular", monospace;
+}
+
+:root {
+  font-variant-ligatures: none;
+}

@@ -9,12 +9,11 @@ import Types._
 import Flags._
 import Symbols._
 import Names._
-import StdNames._
 import NameKinds.UniqueName
 import util.Spans._
+import util.Property
 import collection.mutable
 import Trees._
-import Decorators._
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -50,7 +49,10 @@ abstract class Lifter {
       // don't instantiate here, as the type params could be further constrained, see tests/pos/pickleinf.scala
       var liftedType = expr.tpe.widen.deskolemized
       if (liftedFlags.is(Method)) liftedType = ExprType(liftedType)
-      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span))
+      val lifted = newSymbol(ctx.owner, name, liftedFlags | Synthetic, liftedType, coord = spanCoord(expr.span),
+        // Lifted definitions will be added to a local block, so they need to be
+        // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
+        nestingLevel = ctx.nestingLevel + 1)
       defs += liftedDef(lifted, expr)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
@@ -157,6 +159,43 @@ class LiftComplex extends Lifter {
 }
 object LiftComplex extends LiftComplex
 
+/** Lift impure + lift the prefixes */
+object LiftCoverage extends LiftImpure {
+
+  // Property indicating whether we're currently lifting the arguments of an application
+  private val LiftingArgs = new Property.Key[Boolean]
+
+  private inline def liftingArgs(using Context): Boolean =
+    ctx.property(LiftingArgs).contains(true)
+
+  private def liftingArgsContext(using Context): Context =
+    ctx.fresh.setProperty(LiftingArgs, true)
+
+  /** Variant of `noLift` for the arguments of applications.
+   *  To produce the right coverage information (especially in case of exceptions), we must lift:
+   *  - all the applications, except the erased ones
+   *  - all the impure arguments
+   *
+   * There's no need to lift the other arguments.
+   */
+  private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
+    arg match
+      case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
+      case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
+      case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
+      case tpd.Typed(expr, _) => noLiftArg(expr)
+      case _ => super.noLift(arg)
+
+  override def noLift(expr: tpd.Tree)(using Context) =
+    if liftingArgs then noLiftArg(expr) else super.noLift(expr)
+
+  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
+    val liftedFun = liftApp(defs, tree.fun)
+    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
+    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+  }
+}
+
 object LiftErased extends LiftComplex:
   override def isErased = true
 
@@ -235,7 +274,7 @@ object EtaExpansion extends LiftImpure {
     val paramTypes: List[Tree] =
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
-    var paramFlag = Synthetic | Param
+    var paramFlag = SyntheticParam
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
@@ -246,8 +285,9 @@ object EtaExpansion extends LiftImpure {
     val body = Apply(lifted, ids)
     if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
-      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
-      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
+      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.erasedParams)
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.erasedParams)
+      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.erasedParams)
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

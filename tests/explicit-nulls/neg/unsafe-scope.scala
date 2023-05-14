@@ -17,7 +17,7 @@ class S {
 
       {
         // disable unsafeNulls here
-        import scala.language.{unsafeNulls => _}
+        import scala.language.unsafeNulls as _
         val z: String = s // error
         val zl = s.length // error
         val zs: Array[String | Null] | Null = s // error

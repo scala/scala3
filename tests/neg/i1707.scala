@@ -1,3 +1,4 @@
+import language.postfixOps
 object DepBug {
   class A {
     class B

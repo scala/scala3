@@ -1,0 +1,8 @@
+-- [E040] Syntax Error: tests/neg/t1625.scala:2:20 ---------------------------------------------------------------------
+2 |  def foo(x: String*, y: String*, c: String*): Int // error: an identifier expected, but ',' found // error: an identifier expected, but ',' found
+  |                    ^
+  |                    an identifier expected, but ',' found
+-- [E040] Syntax Error: tests/neg/t1625.scala:2:32 ---------------------------------------------------------------------
+2 |  def foo(x: String*, y: String*, c: String*): Int // error: an identifier expected, but ',' found // error: an identifier expected, but ',' found
+  |                                ^
+  |                                an identifier expected, but ',' found

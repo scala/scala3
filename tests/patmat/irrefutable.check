@@ -1,2 +1,2 @@
 22: Pattern Match Exhaustivity: _: A, _: B, C(_, _)
-65: Pattern Match Exhaustivity: ExM(_, _)
+65: Pattern Match Exhaustivity: _: M

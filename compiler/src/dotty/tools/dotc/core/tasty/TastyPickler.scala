@@ -3,13 +3,14 @@ package dotc
 package core
 package tasty
 
+import scala.language.unsafeNulls
+
 import dotty.tools.tasty.{TastyBuffer, TastyFormat, TastyHash}
 import TastyFormat._
 import TastyBuffer._
 
 import collection.mutable
-import core.Symbols.{Symbol, ClassSymbol}
-import ast.tpd
+import core.Symbols.ClassSymbol
 import Decorators._
 
 object TastyPickler {
@@ -37,8 +38,9 @@ class TastyPickler(val rootCls: ClassSymbol) {
     nameBuffer.assemble()
     sections.foreach(_._2.assemble())
 
-    val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes)
-    val treeSectionHash +: otherSectionHashes = sections.map(x => TastyHash.pjwHash64(x._2.bytes))
+    val nameBufferHash = TastyHash.pjwHash64(nameBuffer.bytes, nameBuffer.length)
+    val treeSectionHash +: otherSectionHashes =
+      sections.map(x => TastyHash.pjwHash64(x._2.bytes, x._2.length)): @unchecked
 
     // Hash of name table and tree
     val uuidLow: Long = nameBufferHash ^ treeSectionHash
@@ -76,6 +78,4 @@ class TastyPickler(val rootCls: ClassSymbol) {
     assert(all.length == totalSize && all.bytes.length == totalSize, s"totalSize = $totalSize, all.length = ${all.length}, all.bytes.length = ${all.bytes.length}")
     all.bytes
   }
-
-  val treePkl: TreePickler = new TreePickler(this)
 }

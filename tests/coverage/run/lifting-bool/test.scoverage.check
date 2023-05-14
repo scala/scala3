@@ -1,0 +1,309 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+notCalled
+19
+22
+1
+???
+Ident
+false
+0
+false
+???
+
+1
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+notCalled
+1
+14
+1
+notCalled
+DefDef
+false
+0
+false
+def notCalled
+
+2
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+f
+24
+29
+3
+f
+DefDef
+false
+0
+false
+def f
+
+3
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+109
+120
+7
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+4
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+159
+170
+8
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+5
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+219
+230
+9
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+6
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+267
+278
+10
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+7
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+318
+329
+11
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+8
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+341
+367
+12
+println
+Apply
+false
+0
+false
+println(s"$a $b $c $d $e")
+
+9
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+349
+366
+12
+s
+Apply
+false
+0
+false
+s"$a $b $c $d $e"
+
+10
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+379
+393
+14
+f
+Apply
+false
+0
+false
+f(true, false)
+
+11
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+396
+406
+15
+println
+Apply
+false
+0
+false
+println(x)
+
+12
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+422
+466
+17
+f
+Apply
+false
+0
+false
+f(true || notCalled(), false && notCalled())
+
+13
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+432
+443
+17
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+14
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+454
+465
+17
+notCalled
+Apply
+false
+0
+false
+notCalled()
+
+15
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+469
+479
+18
+println
+Apply
+false
+0
+false
+println(x)
+
+16
+lifting-bool/test.scala
+<empty>
+test$package$
+Object
+<empty>.test$package$
+Test
+68
+82
+6
+Test
+DefDef
+false
+0
+false
+@main\ndef Test
+

@@ -1,0 +1,10 @@
+-- [E032] Syntax Error: tests/neg/t5702-neg-bad-brace.scala:8:21 -------------------------------------------------------
+8 |      case List(1, _*} => // error: pattern expected
+  |                     ^
+  |                     pattern expected
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/t5702-neg-bad-brace.scala:11:0 -------------------------------------------------------
+11 |} // error: eof expected, but '}' found
+   |^
+   |eof expected, but '}' found

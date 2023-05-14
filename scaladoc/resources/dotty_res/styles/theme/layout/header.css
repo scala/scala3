@@ -1,0 +1,120 @@
+#header {
+  --header-height: calc(8 * var(--base-spacing));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(2 * var(--base-spacing)) calc(3 * var(--base-spacing));
+  position: absolute;
+  height: var(--header-height);
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  background: var(--background-header);
+  border-bottom: 1px solid var(--border-default);
+  z-index: 101;
+}
+
+#header .project-name {
+  color: var(--text-primary);
+}
+
+#dark-project-logo {
+  display: none;
+}
+
+:root.theme-dark #dark-project-logo {
+  display: unset;
+}
+
+:root.theme-dark #project-logo {
+  display: none;
+}
+
+.header-container-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-container-left span {
+  margin-right: calc(2 * var(--base-spacing));
+}
+
+.header-container-left span.hidden {
+  display: none;
+}
+
+.header-container-right {
+  display: flex;
+  align-items: center;
+}
+
+.header-container-right .text-button {
+  margin-left: calc(3 * var(--base-spacing));
+}
+
+.header-container-right #theme-toggle {
+  margin-left: calc(3 * var(--base-spacing));
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo-container .project-logo {
+  max-width: 40px;
+}
+
+.logo-container .project-logo img {
+  max-width: 100%;
+}
+
+#mobile-menu-toggle {
+  display: none;
+}
+
+.projectVersion {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  width: auto;
+}
+
+.single {
+  padding-left: 16px;
+}
+
+@media (max-width: 950px) {
+  .header-container-right .text-button {
+    margin-left: calc(2 * var(--base-spacing));
+  }
+}
+
+@media (max-width: 768px) {
+  #mobile-menu-toggle {
+    margin-left: calc(3 * var(--base-spacing));
+    display: block;
+    padding: 16px;
+  }
+
+  .header-container-right .text-button {
+    display: none;
+  }
+
+  #theme-toggle {
+    display: none;
+  }
+
+  #search-toggle {
+    display: none;
+  }
+
+  .projectVersion{
+    max-width: calc(12 * var(--base-spacing));
+  }
+}
+
+

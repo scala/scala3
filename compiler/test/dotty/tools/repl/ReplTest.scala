@@ -1,6 +1,8 @@
 package dotty.tools
 package repl
 
+import scala.language.unsafeNulls
+
 import vulpix.TestConfiguration
 import vulpix.FileDiff
 
@@ -12,12 +14,13 @@ import scala.io.Source
 import scala.util.Using
 import scala.collection.mutable.ArrayBuffer
 
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.reporting.MessageRendering
 import org.junit.{After, Before}
 import org.junit.Assert._
 
 class ReplTest(options: Array[String] = ReplTest.defaultOptions, out: ByteArrayOutputStream = new ByteArrayOutputStream)
-extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.name)) with MessageRendering {
+extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.name)) with MessageRendering:
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
     val output = stripColor(out.toString(StandardCharsets.UTF_8.name))
@@ -33,11 +36,12 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   @After def cleanup: Unit =
     storedOutput()
 
-  def fromInitialState[A](op: State => A): A =
-    op(initialState)
+  def initially[A](op: State ?=> A): A = op(using initialState)
+
+  def contextually[A](op: Context ?=> A): A = op(using initialState.context)
 
   extension [A](state: State)
-    def andThen(op: State => A): A = op(state)
+    infix def andThen(op: State ?=> A): A = op(using state)
 
   def testFile(f: JFile): Unit = testScript(f.toString, readLines(f), Some(f))
 
@@ -46,7 +50,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
     def evaluate(state: State, input: String) =
       try {
-        val nstate = run(input.drop(prompt.length))(state)
+        val nstate = run(input.drop(prompt.length))(using state)
         val out = input + EOL + storedOutput()
         (out, nstate)
       }
@@ -61,14 +65,17 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         case "" => Nil
         case nonEmptyLine => nonEmptyLine :: Nil
       }
+    def nonBlank(line: String): Boolean = line.exists(!Character.isWhitespace(_))
 
-    val expectedOutput = lines.flatMap(filterEmpties)
+    val expectedOutput = lines.filter(nonBlank)
     val actualOutput = {
-      resetToInitial()
+      val opts = toolArgsFor(ToolName.Scalac)(lines.take(1))
+      val (optsLine, inputLines) = if opts.isEmpty then ("", lines) else (lines.head, lines.drop(1))
+      resetToInitial(opts)
 
-      assert(lines.head.startsWith(prompt),
+      assert(inputLines.head.startsWith(prompt),
         s"""Each script must start with the prompt: "$prompt"""")
-      val inputRes = lines.filter(_.startsWith(prompt))
+      val inputRes = inputLines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
@@ -76,7 +83,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         out.linesIterator.foreach(buf.append)
         nstate
       }
-      buf.toList.flatMap(filterEmpties)
+      (optsLine :: buf.toList).filter(nonBlank)
     }
 
     if !FileDiff.matches(actualOutput, expectedOutput) then
@@ -95,7 +102,6 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         fail(s"Error in script $name, expected output did not match actual")
     end if
   }
-}
 
 object ReplTest:
   val commonOptions = Array("-color:never", "-language:experimental.erasedDefinitions", "-pagewidth", "80")

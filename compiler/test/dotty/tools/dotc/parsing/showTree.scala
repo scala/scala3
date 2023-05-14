@@ -2,16 +2,11 @@ package dotty.tools
 package dotc
 package parsing
 
-import ast.Trees._
-import ast.desugar
-import ast.desugar._
-import core.Mode
 
 object showTree extends DeSugarTest {
 
   import dotty.tools.dotc.ast.untpd._
 
-  import Mode._
 
   def test(arg: String) = {
     val tree: Tree = parse(arg)

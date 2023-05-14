@@ -2,11 +2,11 @@
 2 |  foo() // error
   |  ^^^
   |  Not found: foo
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E006] Not Found Error: tests/neg/multi-file-error/B.scala:2:2 ------------------------------------------------------
 2 |  bar() // error
   |  ^^^
   |  Not found: bar
-
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`

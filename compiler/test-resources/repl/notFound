@@ -3,12 +3,14 @@ scala>  Foo
 1 |  Foo
   |  ^^^
   |  Not found: Foo
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 1 error found
 scala>  Bar
 -- [E006] Not Found Error: -----------------------------------------------------
 1 |  Bar
   |  ^^^
   |  Not found: Bar
-longer explanation available when compiling with `-explain`
+  |
+  | longer explanation available when compiling with `-explain`
 1 error found

@@ -12,7 +12,10 @@ class logged extends EntryPoint.Adapter:
         case args: Unit => "()"
         case args => args.toString
       val result = op(args)
-      println(s"[log] ${finalWrapped.entryPointName}($argsString) -> $result")
+      val resultString: String = result match
+        case result: Unit => "()"
+        case _ => result.toString
+      println(s"[log] ${finalWrapped.entryPointName}($argsString) -> $resultString")
       result
   end LoggedWrapper
 end logged

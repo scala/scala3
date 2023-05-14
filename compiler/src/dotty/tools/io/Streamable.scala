@@ -5,6 +5,8 @@
 
 package dotty.tools.io
 
+import scala.language.unsafeNulls
+
 import java.net.URL
 import java.io.{ BufferedInputStream, InputStream }
 import java.io.{ BufferedReader, InputStreamReader, Closeable => JCloseable }

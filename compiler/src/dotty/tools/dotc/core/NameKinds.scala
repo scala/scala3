@@ -85,7 +85,7 @@ object NameKinds {
       case _ => None
     }
 
-    simpleNameKinds(tag) = this
+    simpleNameKinds(tag) = this: @unchecked
   }
 
   /** The kind of names that get formed by adding a prefix to an underlying name */
@@ -152,7 +152,7 @@ object NameKinds {
 
     def infoString: String = s"Qualified $separator"
 
-    qualifiedNameKinds(tag) = this
+    qualifiedNameKinds(tag) = this: @unchecked
   }
 
   /** An extractor for qualified names of an arbitrary kind */
@@ -190,7 +190,7 @@ object NameKinds {
       else -1
     }
 
-    numberedNameKinds(tag) = this
+    numberedNameKinds(tag) = this: @unchecked
   }
 
   /** An extractor for numbered names of arbitrary kind */
@@ -225,7 +225,7 @@ object NameKinds {
     def fresh(prefix: TypeName)(using Context): TypeName =
       fresh(prefix.toTermName).toTypeName
 
-    uniqueNameKinds(separator) = this
+    uniqueNameKinds(separator) = this: @unchecked
   }
 
   /** An extractor for unique names of arbitrary kind */
@@ -300,6 +300,7 @@ object NameKinds {
   val UniqueInlineName: UniqueNameKind       = new UniqueNameKind("$i")
   val InlineScrutineeName: UniqueNameKind    = new UniqueNameKind("$scrutinee")
   val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$proxy")
+  val MacroNames: UniqueNameKind             = new UniqueNameKind("$macro$")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.
@@ -323,6 +324,8 @@ object NameKinds {
   val PatMatGivenVarName: UniqueNameKind     = new UniqueNameKind("$given")
 
   val LocalOptInlineLocalObj: UniqueNameKind = new UniqueNameKind("ilo")
+
+  val BoundaryName: UniqueNameKind           = new UniqueNameKind("boundary")
 
   /** The kind of names of default argument getters */
   val DefaultGetterName: NumberedNameKind = new NumberedNameKind(DEFAULTGETTER, "DefaultGetter") {
@@ -358,14 +361,22 @@ object NameKinds {
   val ProtectedAccessorName: PrefixNameKind = new PrefixNameKind(PROTECTEDACCESSOR, "protected$")
   val InlineAccessorName: PrefixNameKind = new PrefixNameKind(INLINEACCESSOR, "inline$")
 
+  /** See `ConstraintHandling#LevelAvoidMap`. */
+  enum AvoidNameKind(tag: Int, prefix: String) extends PrefixNameKind(tag, prefix):
+    override def definesNewName = true
+    case UpperBound extends AvoidNameKind(AVOIDUPPER, "(upper)")
+    case LowerBound extends AvoidNameKind(AVOIDLOWER, "(lower)")
+    case BothBounds extends AvoidNameKind(AVOIDBOTH, "(avoid)")
+
   val BodyRetainerName: SuffixNameKind = new SuffixNameKind(BODYRETAINER, "$retainedBody")
   val FieldName: SuffixNameKind = new SuffixNameKind(FIELD, "$$local") {
       override def mkString(underlying: TermName, info: ThisInfo) = underlying.toString
   }
+  val ExplicitFieldName: SuffixNameKind = new SuffixNameKind(EXPLICITFIELD, "$field")
   val ExtMethName: SuffixNameKind = new SuffixNameKind(EXTMETH, "$extension")
   val ParamAccessorName: SuffixNameKind = new SuffixNameKind(PARAMACC, "$accessor")
   val ModuleClassName: SuffixNameKind = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
-  val ImplMethName: SuffixNameKind = new SuffixNameKind(IMPLMETH, "$")
+  val DirectMethName: SuffixNameKind = new SuffixNameKind(DIRECT, "$direct")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
   val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
 

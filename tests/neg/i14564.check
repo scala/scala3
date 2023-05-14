@@ -1,0 +1,17 @@
+-- [E018] Syntax Error: tests/neg/i14564.scala:5:28 --------------------------------------------------------------------
+5 |def test = sum"${ List(42)* }" // error // error
+  |                            ^
+  |                            expression expected but [31m'}'[0m found
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E008] Not Found Error: tests/neg/i14564.scala:5:26 -----------------------------------------------------------------
+5 |def test = sum"${ List(42)* }" // error // error
+  |                  ^^^^^^^^^
+  |                  value * is not a member of List[Int], but could be made available as an extension method.
+  |
+  |                  One of the following imports might make progress towards fixing the problem:
+  |
+  |                    import math.Fractional.Implicits.infixFractionalOps
+  |                    import math.Integral.Implicits.infixIntegralOps
+  |                    import math.Numeric.Implicits.infixNumericOps
+  |

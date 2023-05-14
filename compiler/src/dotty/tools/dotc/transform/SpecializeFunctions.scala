@@ -6,14 +6,17 @@ import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
 import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
 import MegaPhase.MiniPhase
 
-import scala.collection.mutable
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
  *  specialized form.
  */
 class SpecializeFunctions extends MiniPhase {
   import ast.tpd._
-  val phaseName = "specializeFunctions"
+
+  override def phaseName: String = SpecializeFunctions.name
+
+  override def description: String = SpecializeFunctions.description
+
   override def runsAfter = Set(ElimByName.name)
 
   override def isEnabled(using Context): Boolean =
@@ -32,7 +35,7 @@ class SpecializeFunctions extends MiniPhase {
     val sym = ddef.symbol
     val cls = ctx.owner.asClass
 
-    var specName: Name = null
+    var specName: Name | Null = null
 
     def isSpecializable = {
       val paramTypes = ddef.termParamss.head.map(_.symbol.info)
@@ -45,7 +48,7 @@ class SpecializeFunctions extends MiniPhase {
 
     val specializedApply = newSymbol(
         cls,
-        specName,
+        specName.nn,
         sym.flags | Flags.Synthetic,
         sym.info
       ).entered
@@ -67,7 +70,7 @@ class SpecializeFunctions extends MiniPhase {
   /** Dispatch to specialized `apply`s in user code when available */
   override def transformApply(tree: Apply)(using Context) =
     tree match {
-      case Apply(fun: NameTree, args) if fun.name == nme.apply && args.size <= 3 && fun.symbol.owner.isType =>
+      case Apply(fun: NameTree, args) if fun.name == nme.apply && args.size <= 3 && fun.symbol.maybeOwner.isType =>
         val argTypes = fun.tpe.widen.firstParamTypes.map(_.widenSingleton.dealias)
         val retType  = tree.tpe.widenSingleton.dealias
         val isSpecializable =
@@ -76,24 +79,27 @@ class SpecializeFunctions extends MiniPhase {
             argTypes,
             retType
           )
-
-        if (!isSpecializable || argTypes.exists(_.isInstanceOf[ExprType])) return tree
-
-        val specializedApply = nme.apply.specializedFunction(retType, argTypes)
-        val newSel = fun match {
-          case Select(qual, _) =>
-            qual.select(specializedApply)
-          case _ =>
-            (fun.tpe: @unchecked) match {
-              case TermRef(prefix: ThisType, name) =>
-                tpd.This(prefix.cls).select(specializedApply)
-              case TermRef(prefix: NamedType, name) =>
-                tpd.ref(prefix).select(specializedApply)
-            }
-        }
-
-        newSel.appliedToTermArgs(args)
-
+        if isSpecializable then
+          val specializedApply = nme.apply.specializedFunction(retType, argTypes)
+          val newSel = fun match
+            case Select(qual, _) =>
+              val qual1 = qual.tpe.widen match
+                case defn.ByNameFunction(res) =>
+                  // Need to cast to regular function, since specialied apply methods
+                  // are not members of ContextFunction0. The cast will be eliminated in
+                  // erasure.
+                  qual.cast(defn.FunctionOf(Nil, res))
+                case _ =>
+                  qual
+              qual1.select(specializedApply)
+            case _ =>
+              (fun.tpe: @unchecked) match
+                case TermRef(prefix: ThisType, name) =>
+                  tpd.This(prefix.cls).select(specializedApply)
+                case TermRef(prefix: NamedType, name) =>
+                  tpd.ref(prefix).select(specializedApply)
+          newSel.appliedToTermArgs(args)
+        else tree
       case _ => tree
     }
 
@@ -102,3 +108,7 @@ class SpecializeFunctions extends MiniPhase {
       p == defn.Function0 || p == defn.Function1 || p == defn.Function2
     }
 }
+
+object SpecializeFunctions:
+  val name: String = "specializeFunctions"
+  val description: String = "specialize Function{0,1,2} by replacing super with specialized super"

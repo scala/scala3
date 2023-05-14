@@ -1,41 +1,31 @@
 package dotty.tools.backend.jvm
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.Trees
-import dotty.tools.dotc
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.transform.{Erasure, GenericSignatures}
 import dotty.tools.dotc.transform.SymUtils._
 import java.io.{File => _}
 
-import scala.annotation.threadUnsafe
-import scala.collection.generic.Clearable
-import scala.collection.mutable
 import scala.reflect.ClassTag
 import dotty.tools.io.AbstractFile
-import scala.tools.asm.AnnotationVisitor
 import dotty.tools.dotc.core._
 import Contexts._
 import Types._
 import Symbols._
 import Phases._
+import Decorators.em
 
-import dotty.tools.dotc.util
-import dotty.tools.dotc.util.{Spans, ReadOnlyMap}
+import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.report
 
-import Decorators._
-import Constants._
 import tpd._
 
-import scala.tools.asm
-import StdNames.{nme, str}
-import NameKinds.{DefaultGetterName, ExpandedName, LazyBitMapName}
-import Names.TermName
-import Annotations.Annotation
+import StdNames.nme
+import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
-class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
+class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
@@ -82,7 +72,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        report.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
+        report.error(em"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
@@ -139,10 +129,11 @@ object DottyBackendInterface {
        *        the new lazy val encoding: https://github.com/lampepfl/dotty/issues/7140
        */
       def isStaticModuleField(using Context): Boolean =
-        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName)
+        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName) && !sym.name.is(LazyLocalName)
 
       def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-        (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
+          (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
+
         // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
       /**

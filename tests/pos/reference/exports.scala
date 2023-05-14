@@ -1,3 +1,4 @@
+object exports:
   class BitMap
   class InkJet
 
@@ -22,7 +23,22 @@
     def status: List[String] = printUnit.status ++ scanUnit.status
   }
 
-  class C22 { type T }
-  object O22 { val c: C22 = ??? }
-  export O22.c
-  def f22: c.T = ???
+  class C { type T }
+  object O { val c: C = ??? }
+  export O.c
+  def f: c.T = ???
+
+  class StringOps(x: String):
+    def *(n: Int): String = ???
+    def ::(c: Char) = c.toString + x
+    def capitalize: String = ???
+
+  extension (x: String)
+    def take(n: Int): String = x.substring(0, n)
+    def drop(n: Int): String = x.substring(n)
+    private def moreOps = new StringOps(x)
+    export moreOps.*
+
+  val s = "abc"
+  val t1 = (s.take(1) + s.drop(1)).capitalize * 2
+  val t2 = 'a' :: s

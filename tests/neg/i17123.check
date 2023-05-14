@@ -1,0 +1,86 @@
+-- [E100] Syntax Error: tests/neg/i17123.scala:7:2 ---------------------------------------------------------------------
+7 |  m1 // error
+  |  ^^
+  |  method m1 in object ConfusingErrorMessage must be called with () argument
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:9:2 -----------------------------------------------------------------------
+9 |  m2 // error
+  |  ^^
+  |  missing argument list for method m2 in object ConfusingErrorMessage
+  |
+  |    def m2()(): Unit
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:10:4 ----------------------------------------------------------------------
+10 |  m2() // error
+   |  ^^^^
+   |  missing argument list for method m2 in object ConfusingErrorMessage
+   |
+   |    def m2()(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:11:2 ----------------------------------------------------------------------
+11 |  m3 // error
+   |  ^^
+   |  missing argument list for method m3 in object ConfusingErrorMessage
+   |
+   |    def m3()()(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:12:4 ----------------------------------------------------------------------
+12 |  m3() // error
+   |  ^^^^
+   |  missing argument list for method m3 in object ConfusingErrorMessage
+   |
+   |    def m3()()(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:13:6 ----------------------------------------------------------------------
+13 |  m3()() // error
+   |  ^^^^^^
+   |  missing argument list for method m3 in object ConfusingErrorMessage
+   |
+   |    def m3()()(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:15:2 ----------------------------------------------------------------------
+15 |  f3 // error
+   |  ^^
+   |  missing argument list for method f3 in object ConfusingErrorMessage
+   |
+   |    def f3()(i: Int)(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:16:2 ----------------------------------------------------------------------
+16 |  f3() // error
+   |  ^^^^
+   |  missing argument list for method f3 in object ConfusingErrorMessage
+   |
+   |    def f3()(i: Int)(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:17:6 ----------------------------------------------------------------------
+17 |  f3()(2) // error
+   |  ^^^^^^^
+   |  missing argument list for method f3 in object ConfusingErrorMessage
+   |
+   |    def f3()(i: Int)(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:19:2 ----------------------------------------------------------------------
+19 |  i3 // error
+   |  ^^
+   |  missing argument list for method i3 in object ConfusingErrorMessage
+   |
+   |    def i3()(using d: DummyImplicit)(): Unit
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/i17123.scala:20:2 ----------------------------------------------------------------------
+20 |  i3() // error
+   |  ^^^^
+   |  missing argument list for method i3 in object ConfusingErrorMessage
+   |
+   |    def i3()(using d: DummyImplicit)(): Unit
+   |
+   | longer explanation available when compiling with `-explain`

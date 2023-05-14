@@ -2,5 +2,5 @@
 14 |  f[C] // error: missing type parameter(s)
    |    ^
    |    Missing type parameter for Test.C
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

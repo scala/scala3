@@ -1,5 +1,7 @@
 package dotty.tools.repl
 
+import scala.language.unsafeNulls
+
 import java.nio.file.{Path, Files}
 import java.util.Comparator
 import java.util.regex.Pattern
@@ -45,16 +47,27 @@ class LoadTests extends ReplTest {
                  |""".stripMargin
   )
 
+  @Test def truncated = loadTest(
+    file    = """|def f: Unit =
+                 |  for i <- 1 to 2
+                 |  do
+                 |    println(i)""".stripMargin, // was: unindent expected, but eof found
+    defs    = """|def f: Unit
+                 |""".stripMargin,
+    runCode = """f""",
+    output  = """|1
+                 |2
+                 |""".stripMargin
+  )
+
   def loadTest(file: String, defs: String, runCode: String, output: String) =
-    eval(s":load ${writeFile(file)}").andThen { implicit s =>
+    eval(s":load ${writeFile(file)}") andThen {
       assertMultiLineEquals(defs, storedOutput())
       run(runCode)
       assertMultiLineEquals(output, storedOutput())
     }
 
-  private def eval(code: String): State =
-    fromInitialState { implicit s => run(code) }
-
+  private def eval(code: String): State = initially(run(code))
 }
 
 object LoadTests {

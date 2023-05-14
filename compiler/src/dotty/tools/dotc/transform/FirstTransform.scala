@@ -4,7 +4,6 @@ package transform
 import core._
 import Names._
 import dotty.tools.dotc.transform.MegaPhase._
-import ast.Trees._
 import ast.untpd
 import Flags._
 import Types._
@@ -17,15 +16,18 @@ import DenotTransformers._
 import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
-import NullOpsDecorator._
 import TypeUtils.isErasedValueType
+import config.Feature
+import inlines.Inlines.inInlineMethod
 
 object FirstTransform {
   val name: String = "firstTransform"
+  val description: String = "some transformations to put trees into a canonical form"
 }
 
 /** The first tree transform
- *   - eliminates some kinds of trees: Imports, NamedArgs
+ *   - eliminates some kinds of trees: Imports other than language imports,
+ *     Exports, NamedArgs, type trees other than TypeTree
  *   - stubs out native methods
  *   - eliminates self tree in Template and self symbol in ClassInfo
  *   - collapses all type trees to trees of class TypeTree
@@ -38,6 +40,8 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = FirstTransform.name
+
+  override def description: String = FirstTransform.description
 
   /** eliminate self symbol in ClassInfo */
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
@@ -58,7 +62,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
             tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
           i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>
-      case _: Import | _: NamedArg | _: TypTree =>
+      case _: Export | _: NamedArg | _: TypTree =>
         assert(false, i"illegal tree: $tree")
       case _ =>
     }
@@ -99,9 +103,21 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     reorder(stats, Nil)
   }
 
-  /** eliminate self in Template */
+  /** Eliminate self in Template
+   *  Under captureChecking, we keep the self type `S` around in a type definition
+   *
+   *     private[this] type $this = S
+   *
+   *  This is so that the type can be checked for well-formedness in the CaptureCheck phase.
+   */
   override def transformTemplate(impl: Template)(using Context): Tree =
-    cpy.Template(impl)(self = EmptyValDef)
+    impl.self match
+      case self: ValDef if !self.tpt.isEmpty && Feature.ccEnabled =>
+        val tsym = newSymbol(ctx.owner, tpnme.SELF, PrivateLocal, TypeAlias(self.tpt.tpe))
+        val tdef = untpd.cpy.TypeDef(self)(tpnme.SELF, self.tpt).withType(tsym.typeRef)
+        cpy.Template(impl)(self = EmptyValDef, body = tdef :: impl.body)
+      case _ =>
+        cpy.Template(impl)(self = EmptyValDef)
 
   override def transformDefDef(ddef: DefDef)(using Context): Tree =
     val meth = ddef.symbol.asTerm
@@ -136,7 +152,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformOther(tree: Tree)(using Context): Tree = tree match {
-    case tree: ImportOrExport => EmptyTree
+    case tree: Export => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }

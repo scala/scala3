@@ -1,15 +1,14 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
-import Symbols._, Types._, Contexts._, Constants._, ast.tpd._, Phases._
-import config.ScalaVersion
-import StdNames._
-import dotty.tools.dotc.ast.tpd
-import scala.util.Try
+import Symbols._, Types._, Contexts._, Constants._, Phases.*
+import ast.tpd, tpd.*
 import util.Spans.Span
 import printing.{Showable, Printer}
 import printing.Texts.Text
-import annotation.internal.sharable
+
+import scala.annotation.internal.sharable
 
 object Annotations {
 
@@ -22,6 +21,8 @@ object Annotations {
 
     def symbol(using Context): Symbol = annotClass(tree)
 
+    def hasSymbol(sym: Symbol)(using Context) = symbol == sym
+
     def matches(cls: Symbol)(using Context): Boolean = symbol.derivesFrom(cls)
 
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
@@ -30,17 +31,17 @@ object Annotations {
       if (tree eq this.tree) this else Annotation(tree)
 
     /** All arguments to this annotation in a single flat list */
-    def arguments(using Context): List[Tree] = ast.tpd.allArguments(tree)
+    def arguments(using Context): List[Tree] = tpd.allArguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
       if (i < args.length) Some(args(i)) else None
     }
     def argumentConstant(i: Int)(using Context): Option[Constant] =
-      for (ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
+      for (case ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
 
     def argumentConstantString(i: Int)(using Context): Option[String] =
-      for (Constant(s: String) <- argumentConstant(i)) yield s
+      for (case Constant(s: String) <- argumentConstant(i)) yield s
 
     /** The tree evaluaton is in progress. */
     def isEvaluating: Boolean = false
@@ -48,7 +49,7 @@ object Annotations {
     /** The tree evaluation has finished. */
     def isEvaluated: Boolean = true
 
-    /** Normally, type map over all tree nodes of this annotation, but can
+    /** Normally, applies a type map to all tree nodes of this annotation, but can
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
@@ -61,7 +62,7 @@ object Annotations {
             if tm.isRange(x) then x
             else
               val tp1 = tm(tree.tpe)
-              foldOver(if tp1 =:= tree.tpe then x else tp1, tree)
+              foldOver(if tp1 frozen_=:= tree.tpe then x else tp1, tree)
         val diff = findDiff(NoType, args)
         if tm.isRange(diff) then EmptyAnnotation
         else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -72,7 +73,7 @@ object Annotations {
       val args = arguments
       if args.isEmpty then false
       else tree.existsSubTree {
-        case id: Ident => id.tpe match
+        case id: Ident => id.tpe.stripped match
           case TermParamRef(tl1, _) => tl eq tl1
           case _ => false
         case _ => false
@@ -86,13 +87,33 @@ object Annotations {
 
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
+
+    def hasOneOfMetaAnnotation(metaSyms: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Boolean = atPhaseNoLater(erasurePhase) {
+      def go(metaSyms: Set[Symbol]) =
+        def recTp(tp: Type): Boolean = tp.dealiasKeepAnnots match
+          case AnnotatedType(parent, metaAnnot) => metaSyms.exists(metaAnnot.matches) || recTp(parent)
+          case _ => false
+        def rec(tree: Tree): Boolean = methPart(tree) match
+          case New(tpt) => rec(tpt)
+          case Select(qual, _) => rec(qual)
+          case Annotated(arg, metaAnnot) => metaSyms.exists(metaAnnot.tpe.classSymbol.derivesFrom) || rec(arg)
+          case t @ Ident(_) => recTp(t.tpe)
+          case Typed(expr, _) => rec(expr)
+          case _ => false
+        metaSyms.exists(symbol.hasAnnotation) || rec(tree)
+      go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
+    }
+
+    /** Operations for hash-consing, can be overridden */
+    def hash: Int = System.identityHashCode(this)
+    def eql(that: Annotation) = this eq that
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
 
   abstract class LazyAnnotation extends Annotation {
-    protected var mySym: Symbol | (Context ?=> Symbol)
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null
     override def symbol(using parentCtx: Context): Symbol =
       assert(mySym != null)
       mySym match {
@@ -110,7 +131,7 @@ object Annotations {
       }
       mySym.asInstanceOf[Symbol]
 
-    protected var myTree: Tree | (Context ?=> Tree)
+    protected var myTree: Tree | (Context ?=> Tree) | Null
     def tree(using Context): Tree =
       assert(myTree != null)
       myTree match {
@@ -124,6 +145,11 @@ object Annotations {
     override def isEvaluating: Boolean = myTree == null
     override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
   }
+
+  class DeferredSymAndTree(symFn: Context ?=> Symbol, treeFn: Context ?=> Tree)
+  extends LazyAnnotation:
+    protected var mySym: Symbol | (Context ?=> Symbol) | Null = ctx ?=> symFn(using ctx)
+    protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
 
   /** An annotation indicating the body of a right-hand side,
    *  typically of an inline method. Treated specially in
@@ -144,7 +170,7 @@ object Annotations {
 
   abstract class LazyBodyAnnotation extends BodyAnnotation {
     // Copy-pasted from LazyAnnotation to avoid having to turn it into a trait
-    protected var myTree: Tree | (Context ?=> Tree)
+    protected var myTree: Tree | (Context ?=> Tree) | Null
     def tree(using Context): Tree =
       assert(myTree != null)
       myTree match {
@@ -162,47 +188,38 @@ object Annotations {
   object LazyBodyAnnotation {
     def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
       new LazyBodyAnnotation:
-        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> bodyFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> bodyFn(using ctx)
   }
 
   object Annotation {
 
     def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
 
-    def apply(cls: ClassSymbol)(using Context): Annotation =
-      apply(cls, Nil)
+    def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
+      apply(cls, Nil, span)
 
-    def apply(cls: ClassSymbol, arg: Tree)(using Context): Annotation =
-      apply(cls, arg :: Nil)
+    def apply(cls: ClassSymbol, arg: Tree, span: Span)(using Context): Annotation =
+      apply(cls, arg :: Nil, span)
 
-    def apply(cls: ClassSymbol, arg1: Tree, arg2: Tree)(using Context): Annotation =
-      apply(cls, arg1 :: arg2 :: Nil)
+    def apply(cls: ClassSymbol, args: List[Tree], span: Span)(using Context): Annotation =
+      apply(cls.typeRef, args, span)
 
-    def apply(cls: ClassSymbol, args: List[Tree])(using Context): Annotation =
-      apply(cls.typeRef, args)
+    def apply(atp: Type, arg: Tree, span: Span)(using Context): Annotation =
+      apply(atp, arg :: Nil, span)
 
-    def apply(atp: Type, arg: Tree)(using Context): Annotation =
-      apply(atp, arg :: Nil)
-
-    def apply(atp: Type, arg1: Tree, arg2: Tree)(using Context): Annotation =
-      apply(atp, arg1 :: arg2 :: Nil)
-
-    def apply(atp: Type, args: List[Tree])(using Context): Annotation =
-      apply(New(atp, args))
+    def apply(atp: Type, args: List[Tree], span: Span)(using Context): Annotation =
+      apply(New(atp, args).withSpan(span))
 
     /** Create an annotation where the tree is computed lazily. */
-    def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
+    def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
       new LazyAnnotation {
-        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> treeFn(using ctx)
-        protected var mySym: Symbol | (Context ?=> Symbol) = sym
+        protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
+        protected var mySym: Symbol | (Context ?=> Symbol) | Null = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
-    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
-      new LazyAnnotation {
-        protected var mySym: Symbol | (Context ?=> Symbol) = ctx ?=> symFn(using ctx)
-        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> treeFn(using ctx)
-      }
+    def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree): Annotation =
+      DeferredSymAndTree(symFn, treeFn)
 
     /** Extractor for child annotations */
     object Child {
@@ -222,21 +239,21 @@ object Annotations {
 
       def unapply(ann: Annotation)(using Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
-          val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe
+          val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe: @unchecked
           Some(arg.symbol)
         }
         else None
     }
 
-    def makeSourceFile(path: String)(using Context): Annotation =
-      apply(defn.SourceFileAnnot, Literal(Constant(path)))
+    def makeSourceFile(path: String, span: Span)(using Context): Annotation =
+      apply(defn.SourceFileAnnot, Literal(Constant(path)), span)
   }
 
   @sharable val EmptyAnnotation = Annotation(EmptyTree)
 
   def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
     val tref = cls.typeRef
-    Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
+    Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref), cls.span)
   }
 
   /** Extracts the type of the thrown exception from an annotation.

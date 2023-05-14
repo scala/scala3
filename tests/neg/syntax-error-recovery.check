@@ -1,0 +1,144 @@
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:3:16 -----------------------------------------------------
+3 |      if (x < 0 then // error
+  |                ^^^^
+  |                ')' expected, but 'then' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:11:16 ----------------------------------------------------
+11 |      if (x < 0 then // error
+   |                ^^^^
+   |                ')' expected, but 'then' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:19:4 -----------------------------------------------------
+19 |    if x == 0 then println(bar) // error
+   |    ^^
+   |    ')' expected, but 'if' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:23:12 ----------------------------------------------------
+23 |    if x < 0) then // error
+   |            ^
+   |            'then' expected, but ')' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:32:16 ----------------------------------------------------
+32 |      if (x < 0 then // error
+   |                ^^^^
+   |                ')' expected, but 'then' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:40:16 ----------------------------------------------------
+40 |      if (x < 0 then // error
+   |                ^^^^
+   |                ')' expected, but 'then' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:48:4 -----------------------------------------------------
+48 |    if x == 0 then println(bar) // error
+   |    ^^
+   |    ')' expected, but 'if' found
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:52:12 ----------------------------------------------------
+52 |    if x < 0) then // error
+   |            ^
+   |            'then' expected, but ')' found
+-- [E018] Syntax Error: tests/neg/syntax-error-recovery.scala:59:14 ----------------------------------------------------
+59 |    foo2(foo2(,) // error // error
+   |              ^
+   |              expression expected but [31m','[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E018] Syntax Error: tests/neg/syntax-error-recovery.scala:59:15 ----------------------------------------------------
+59 |    foo2(foo2(,) // error // error
+   |               ^
+   |               expression expected but [31m')'[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E040] Syntax Error: tests/neg/syntax-error-recovery.scala:62:8 -----------------------------------------------------
+62 |// error
+   |        ^
+   |        ')' expected, but eof found
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:8:10 --------------------------------------------------
+8 |  println(bar) // error
+  |          ^^^
+  |          Not found: bar
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:15:10 -------------------------------------------------
+15 |  println(baz) // error
+   |          ^^^
+   |          Not found: baz
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:20:10 -------------------------------------------------
+20 |  println(bar) // error
+   |          ^^^
+   |          Not found: bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:27:10 -------------------------------------------------
+27 |  println(bam) // error
+   |          ^^^
+   |          Not found: bam
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:37:10 -------------------------------------------------
+37 |  println(bar) // error
+   |          ^^^
+   |          Not found: bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:44:10 -------------------------------------------------
+44 |  println(baz) // error
+   |          ^^^
+   |          Not found: baz
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:49:10 -------------------------------------------------
+49 |  println(bar) // error
+   |          ^^^
+   |          Not found: bar
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:56:10 -------------------------------------------------
+56 |  println(bam) // error
+   |          ^^^
+   |          Not found: bam
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:61:10 -------------------------------------------------
+61 |  println(bam) // error
+   |          ^^^
+   |          Not found: bam
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:7:2 -------------------------------------------
+6 |        2
+7 |  }
+  |         ^
+  |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:15:2 ------------------------------------------
+14 |        2
+15 |  println(baz) // error
+   |         ^
+   |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:27:2 ------------------------------------------
+26 |      2
+27 |  println(bam) // error
+   |       ^
+   |       A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:36:2 ------------------------------------------
+35 |        2
+36 |  }
+   |         ^
+   |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:44:2 ------------------------------------------
+43 |        2
+44 |  println(baz) // error
+   |         ^
+   |         A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:56:2 ------------------------------------------
+55 |      2
+56 |  println(bam) // error
+   |       ^
+   |       A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`

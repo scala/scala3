@@ -2,6 +2,8 @@ package dotty
 package tools
 package vulpix
 
+import scala.language.unsafeNulls
+
 import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
 import java.nio.file.Paths
 import java.nio.charset.StandardCharsets
@@ -46,7 +48,7 @@ trait RunnerOrchestration {
   def safeMode: Boolean
 
   /** Running a `Test` class's main method from the specified `dir` */
-  def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
+  def runMain(classPath: String, toolArgs: ToolArgs)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
   /** Kill all processes */

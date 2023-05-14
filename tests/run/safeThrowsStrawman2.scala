@@ -18,7 +18,7 @@ object scalax:
   def try2[R, E <: Exception](body: => R raises E)(c: E => Unit)(f: => Unit): R =
     val res = new Result[R]
     try
-      given CanThrow[E] = ???
+      given CanThrow[E] = new CanThrow
       res.value = body
     catch c.asInstanceOf[Throwable => Unit]
     finally f

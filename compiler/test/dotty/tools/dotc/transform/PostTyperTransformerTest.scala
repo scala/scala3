@@ -2,17 +2,8 @@ package dotty.tools
 package dotc
 package transform
 
-import org.junit.{Assert, Test}
 import core._
 import ast.Trees
-import Contexts._
-import Flags._
-import Denotations._
-import NameOps._
-import Symbols._
-import Types._
-import Decorators._
-import Trees._
 
 class PostTyperTransformerTest extends DottyTest {
   /* FIXME: re-enable after adapting to new scheme

@@ -9,11 +9,11 @@ class Synthetic {
 
   // See https://github.com/scalameta/scalameta/issues/977
   val Name = "name:(.*)".r
-  val x #:: xs = LazyList(1, 2)
-  val Name(name) = "name:foo"
+  val x #:: xs = LazyList(1, 2): @unchecked
+  val Name(name) = "name:foo": @unchecked
   1 #:: 2 #:: LazyList.empty
 
-  val a1 #:: a2 #:: as = LazyList(1, 2)
+  val a1 #:: a2 #:: as = LazyList(1, 2): @unchecked
 
   val lst = 1 #:: 2 #:: LazyList.empty
 

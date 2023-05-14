@@ -18,24 +18,25 @@ class HoverTest {
            |$comment""").stripMargin)
 
   @Test def hoverOnWhiteSpace0: Unit =
-    code"$m1 $m2".withSource.hover(m1 to m2, None)
+    code"$m1 $m2"
+      .hover(m1 to m2, None)
 
   @Test def hoverOnClassShowsDoc: Unit = {
-    code"""$m1 /** foo */ ${m2}class Foo $m3 $m4""".withSource
+    code"""$m1 /** foo */ ${m2}class Foo $m3 $m4"""
       .hover(m1 to m2, None)
       .hover(m2 to m3, hoverContent("Foo", "foo"))
       .hover(m3 to m4, None)
   }
 
   @Test def hoverOnClass0: Unit = {
-    code"""$m1 ${m2}class Foo $m3 $m4""".withSource
+    code"""$m1 ${m2}class Foo $m3 $m4"""
       .hover(m1 to m2, None)
       .hover(m2 to m3, hoverContent("Foo"))
       .hover(m3 to m4, None)
   }
 
   @Test def hoverOnClass1: Unit = {
-    code"""$m1 ${m2}class Foo { } $m3 $m4""".withSource
+    code"""$m1 ${m2}class Foo { } $m3 $m4"""
       .hover(m1 to m2, None)
       .hover(m2 to m3, hoverContent("Foo"))
       .hover(m3 to m4, None)
@@ -44,7 +45,7 @@ class HoverTest {
   @Test def hoverOnValDef0: Unit = {
     code"""class Foo {
           |  ${m1}val x = ${m2}8$m3; ${m4}x$m5
-          |}""".withSource
+          |}"""
       .hover(m1 to m2, hoverContent("Int"))
       .hover(m2 to m3, hoverContent("(8 : Int)"))
       .hover(m4 to m5, hoverContent("Int"))
@@ -53,7 +54,7 @@ class HoverTest {
   @Test def hoverOnValDef1: Unit = {
     code"""class Foo {
           |  ${m1}final val x = 8$m2; ${m3}x$m4
-          |}""".withSource
+          |}"""
       .hover(m1 to m2, hoverContent("(8 : Int)"))
       .hover(m3 to m4, hoverContent("(8 : Int)"))
   }
@@ -61,7 +62,7 @@ class HoverTest {
   @Test def hoverOnDefDef0: Unit = {
     code"""class Foo {
           |  ${m1}def x = ${m2}8$m3; ${m4}x$m5
-          |}""".withSource
+          |}"""
       .hover(m1 to m2, hoverContent("Int"))
       .hover(m2 to m3, hoverContent("(8 : Int)"))
       .hover(m4 to m5, hoverContent("Int"))
@@ -70,7 +71,7 @@ class HoverTest {
   @Test def hoverMissingRef0: Unit = {
     code"""class Foo {
           |  ${m1}x$m2
-          |}""".withSource
+          |}"""
       .hover(m1 to m2, None)
   }
 
@@ -82,7 +83,7 @@ class HoverTest {
           |  def y(): Int = 9
           |  ${m5}y($m6)$m7
           |}
-        """.withSource
+        """
       .hover(m1 to m2, hoverContent("(\"abc\" : String)"))
       .hover(m3 to m4, hoverContent("String"))
       .hover(m5 to m6, hoverContent("(): Int"))
@@ -96,7 +97,7 @@ class HoverTest {
           |class ${m1}Foo${m2}
           |/** $$Variable */
           |class ${m3}Bar${m4} extends Foo
-        """.withSource
+        """
       .hover(m1 to m2, hoverContent("Foo", "A class: Test"))
       .hover(m3 to m4, hoverContent("Bar", "Test"))
   }
@@ -123,7 +124,7 @@ class HoverTest {
           |   * @usecase def bar(fizz: Int, buzz: String): Any
           |   */
           |  def ${m1}bar${m2}[T, U](fizz: Int, buzz: String)(implicit ev: Boolean): Any = ???
-          |}""".withSource
+          |}"""
       .hover(
         m1 to m2,
         hoverContent("[T, U](fizz: Int, buzz: String)(implicit ev: Boolean): Any",
@@ -171,22 +172,26 @@ class HoverTest {
           |  def bar: Int = 2 / 1
           |  /** hello */
           |  def ${m1}baz${m2}: Int = ???
-          |}""".withSource
+          |}"""
       .hover(m1 to m2, hoverContent("Int", "hello"))
   }
 
   @Test def i4678: Unit = {
     code"""class Foo {
-          |  val x: Int = (${m1}1:${m2} ${m3}@annot1 @annot2 @annot3 @annot4 @annot5${m4})
+          |  val x: Int = (${m1}1:${m2} ${m3}@annot1${m4} ${m5}@annot2${m6} ${m7}@annot3${m8} ${m9}@annot4${m10} ${m11}@annot5${m12})
           |}
           |class annot1 extends scala.annotation.Annotation
           |class annot2 extends scala.annotation.Annotation
           |class annot3 extends scala.annotation.Annotation
           |class annot4 extends scala.annotation.Annotation
           |class annot5 extends scala.annotation.Annotation
-          |""".withSource
+          |"""
       .hover(m1 to m2, hoverContent("(1 : Int)"))
-      .hover(m3 to m4, hoverContent("(1 : Int) @annot1 @annot2 @annot3 @annot4 @annot5"))
+      .hover(m3 to m4, hoverContent("annot1"))
+      .hover(m5 to m6, hoverContent("annot2"))
+      .hover(m7 to m8, hoverContent("annot3"))
+      .hover(m9 to m10, hoverContent("annot4"))
+      .hover(m11 to m12, hoverContent("annot5"))
   }
 
   @Test def unicodeChar: Unit = {
@@ -195,7 +200,7 @@ class HoverTest {
           |  type `🤪`
           |  def ${m1}bar${m2}: → = ???
           |  def ${m3}baz${m4}: `🤪` = ???
-          |}""".withSource
+          |}"""
       .hover(m1 to m2, hoverContent("Test.→"))
       .hover(m3 to m4, hoverContent("Test.🤪"))
 
@@ -204,9 +209,45 @@ class HoverTest {
   @Test def topLevel: Unit = {
     code"""package hello
           |val x: Int = 1
-          |val y = ${m1}this${m2}.x""".withSource
+          |val y = ${m1}this${m2}.x"""
       // The test framework will place the code above in a virtual file called Source0.scala,
       // sp the top-level definitions should be enclosed in an object called `Source0$package`.
       .hover(m1 to m2, hoverContent("(hello.Source0$package : hello.Source0$package.type)"))
+  }
+
+  @Test def enumsRepeated: Unit = {
+    code"""|package example
+           |object SimpleEnum:
+           |  enum Color:
+           |    case ${m1}Red${m2}, Green, Blue
+           |"""
+      .hover(m1 to m2, hoverContent("example.SimpleEnum.Color"))
+  }
+
+  @Test def enums: Unit = {
+    code"""|package example
+           |enum TestEnum3:
+           | case ${m1}A${m2} // no tooltip
+           |
+           |"""
+      .hover(m1 to m2, hoverContent("example.TestEnum3"))
+  }
+
+  @Test def tuple: Unit = {
+    code"""|object A:
+           |  val (${m1}first${m2}, second) = (1.0, 2)"""
+      .hover(m1 to m2, hoverContent("Double"))
+  }
+
+  @Test def multiAssigment: Unit = {
+    code"""|val ${m1}x${m2}, ${m3}y${m4} = 42.0"""
+      .hover(m1 to m2, hoverContent("Double"))
+      .hover(m3 to m4, hoverContent("Double"))
+  }
+
+  @Test def annotation: Unit = {
+    code"""|@${m1}deprecated${m2} def ${m3}x${m4} = 42.0"""
+      .hover(m1 to m2, hoverContent("deprecated"))
+      .hover(m3 to m4, hoverContent("Double"))
   }
 }

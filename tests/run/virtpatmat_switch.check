@@ -4,4 +4,4 @@ many
 got a
 got b
 got some letter
-scala.MatchError: 5 (of class java.lang.Integer)
+scala.MatchError: 100000 (of class java.lang.Integer)

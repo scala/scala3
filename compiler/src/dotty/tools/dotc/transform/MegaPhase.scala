@@ -3,9 +3,9 @@ package dotc
 package transform
 
 import core._
-import ast.Trees._
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
+import staging.StagingLevel.*
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.
@@ -67,6 +67,8 @@ object MegaPhase {
     def prepareForTry(tree: Try)(using Context): Context = ctx
     def prepareForSeqLiteral(tree: SeqLiteral)(using Context): Context = ctx
     def prepareForInlined(tree: Inlined)(using Context): Context = ctx
+    def prepareForQuote(tree: Quote)(using Context): Context = ctx
+    def prepareForSplice(tree: Splice)(using Context): Context = ctx
     def prepareForTypeTree(tree: TypeTree)(using Context): Context = ctx
     def prepareForBind(tree: Bind)(using Context): Context = ctx
     def prepareForAlternative(tree: Alternative)(using Context): Context = ctx
@@ -101,6 +103,8 @@ object MegaPhase {
     def transformTry(tree: Try)(using Context): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(using Context): Tree = tree
     def transformInlined(tree: Inlined)(using Context): Tree = tree
+    def transformQuote(tree: Quote)(using Context): Tree = tree
+    def transformSplice(tree: Splice)(using Context): Tree = tree
     def transformTypeTree(tree: TypeTree)(using Context): Tree = tree
     def transformBind(tree: Bind)(using Context): Tree = tree
     def transformAlternative(tree: Alternative)(using Context): Tree = tree
@@ -296,9 +300,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
       case tree: Block =>
         inContext(prepBlock(tree, start)(using outerCtx)) {
-          val stats = transformStats(tree.stats, ctx.owner, start)
-          val expr = transformTree(tree.expr, start)
-          goBlock(cpy.Block(tree)(stats, expr), start)
+          transformBlock(tree, start)
         }
       case tree: TypeApply =>
         inContext(prepTypeApply(tree, start)(using outerCtx)) {
@@ -397,6 +399,16 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
           goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
         }
+      case tree: Quote =>
+        inContext(prepQuote(tree, start)(using outerCtx)) {
+          val body = transformTree(tree.body, start)(using quoteContext)
+          goQuote(cpy.Quote(tree)(body, Nil), start)
+        }
+      case tree: Splice =>
+        inContext(prepSplice(tree, start)(using outerCtx)) {
+          val expr = transformTree(tree.expr, start)(using spliceContext)
+          goSplice(cpy.Splice(tree)(expr), start)
+        }
       case tree: Return =>
         inContext(prepReturn(tree, start)(using outerCtx)) {
           val expr = transformTree(tree.expr, start)
@@ -421,27 +433,36 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
     }
 
-    if (tree.source != ctx.source && tree.source.exists)
-      transformTree(tree, start)(using ctx.withSource(tree.source))
-    else if (tree.isInstanceOf[NameTree])
-      transformNamed(tree, start, ctx)
-    else
-      transformUnnamed(tree, start, ctx)
+    // try
+      if (tree.source != ctx.source && tree.source.exists)
+        transformTree(tree, start)(using ctx.withSource(tree.source))
+      else if (tree.isInstanceOf[NameTree])
+        transformNamed(tree, start, ctx)
+      else
+        transformUnnamed(tree, start, ctx)
+    // catch case ex: AssertionError =>
+    //  println(i"error while transforming $tree")
+    //  throw ex
   }
 
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
     transformTree(tree, start).asInstanceOf[T]
 
-  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] = {
-    def transformStat(stat: Tree)(using Context): Tree = stat match {
-      case _: Import | _: DefTree => transformTree(stat, start)
-      case Thicket(stats) => cpy.Thicket(stat)(stats.mapConserve(transformStat))
-      case _ => transformTree(stat, start)(using ctx.exprContext(stat, exprOwner))
-    }
+  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] =
     val nestedCtx = prepStats(trees, start)
-    val trees1 = trees.mapInline(transformStat(_)(using nestedCtx))
+    val trees1 = trees.mapStatements(exprOwner, transformTree(_, start), stats1 => stats1)(using nestedCtx)
     goStats(trees1, start)(using nestedCtx)
-  }
+
+  def transformBlock(tree: Block, start: Int)(using Context): Tree =
+    val nestedCtx = prepStats(tree.stats, start)
+    val block1 = tree.stats.mapStatements(ctx.owner,
+      transformTree(_, start),
+      stats1 => ctx ?=> {
+        val stats2 = goStats(stats1, start)(using nestedCtx)
+        val expr2 = transformTree(tree.expr, start)
+        cpy.Block(tree)(stats2, expr2)
+      })(using nestedCtx)
+    goBlock(block1, start)
 
   def transformUnit(tree: Tree)(using Context): Tree = {
     val nestedCtx = prepUnit(tree, 0)
@@ -450,7 +471,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    trees.mapInline(transformTree(_, start))
+    trees.flattenedMapConserve(transformTree(_, start))
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
@@ -461,13 +482,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   // Initialization code
 
-  for ((phase, idx) <- miniPhases.zipWithIndex) {
-    phase.superPhase = this
-    phase.idxInGroup = idx
-  }
-
   /** Class#getDeclaredMethods is slow, so we cache its output */
-  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method]]
+  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method | Null]]
 
   /** Does `phase` contain a redefinition of method `name`?
    *  (which is a method of MiniPhase)
@@ -477,21 +493,21 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       if (cls.eq(classOf[MiniPhase])) false
       else {
         var clsMethods = clsMethodsCache.get(cls)
-        if (clsMethods eq null) {
+        if (clsMethods == null) {
           clsMethods = cls.getDeclaredMethods
           clsMethodsCache.put(cls, clsMethods)
         }
-        clsMethods.exists(_.getName == name) ||
-        hasRedefinedMethod(cls.getSuperclass)
+        clsMethods.nn.exists(_.nn.getName == name) ||
+        hasRedefinedMethod(cls.getSuperclass.nn)
       }
     hasRedefinedMethod(phase.getClass)
   }
 
-  private def newNxArray = new Array[MiniPhase](miniPhases.length + 1)
+  private def newNxArray = new Array[MiniPhase | Null](miniPhases.length + 1)
   private val emptyNxArray = newNxArray
 
-  private def init(methName: String): Array[MiniPhase] = {
-    var nx: Array[MiniPhase] = emptyNxArray
+  private def init(methName: String): Array[MiniPhase | Null] = {
+    var nx: Array[MiniPhase | Null] = emptyNxArray
     for (idx <- miniPhases.length - 1 to 0 by -1) {
       val subPhase = miniPhases(idx)
       if (defines(subPhase, methName)) {
@@ -545,6 +561,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxSeqLiteralTransPhase = init("transformSeqLiteral")
   private val nxInlinedPrepPhase = init("prepareForInlined")
   private val nxInlinedTransPhase = init("transformInlined")
+  private val nxQuotePrepPhase = init("prepareForQuote")
+  private val nxQuoteTransPhase = init("transformQuote")
+  private val nxSplicePrepPhase = init("prepareForPrep")
+  private val nxSpliceTransPhase = init("transformSplice")
   private val nxTypeTreePrepPhase = init("prepareForTypeTree")
   private val nxTypeTreeTransPhase = init("transformTypeTree")
   private val nxBindPrepPhase = init("prepareForBind")
@@ -569,6 +589,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxUnitTransPhase = init("transformUnit")
   private val nxOtherPrepPhase = init("prepareForOther")
   private val nxOtherTransPhase = init("transformOther")
+
+  for ((phase, idx) <- miniPhases.zipWithIndex) {
+    phase.superPhase = this
+    phase.idxInGroup = idx
+  }
 
   // Boilerplate snippets
 
@@ -883,6 +908,36 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     if (phase == null) tree
     else phase.transformInlined(tree) match {
       case tree1: Inlined => goInlined(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepQuote(tree: Quote, start: Int)(using Context): Context = {
+    val phase = nxQuotePrepPhase(start)
+    if (phase == null) ctx
+    else prepQuote(tree, phase.idxInGroup + 1)(using phase.prepareForQuote(tree))
+  }
+
+  def goQuote(tree: Quote, start: Int)(using Context): Tree = {
+    val phase = nxQuoteTransPhase(start)
+    if (phase == null) tree
+    else phase.transformQuote(tree) match {
+      case tree1: Quote => goQuote(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepSplice(tree: Splice, start: Int)(using Context): Context = {
+    val phase = nxSplicePrepPhase(start)
+    if (phase == null) ctx
+    else prepSplice(tree, phase.idxInGroup + 1)(using phase.prepareForSplice(tree))
+  }
+
+  def goSplice(tree: Splice, start: Int)(using Context): Tree = {
+    val phase = nxSpliceTransPhase(start)
+    if (phase == null) tree
+    else phase.transformSplice(tree) match {
+      case tree1: Splice => goSplice(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }

@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import scala.language.unsafeNulls
+
 import scala.tools.asm
 
 /**
@@ -12,10 +14,12 @@ import scala.tools.asm
  * This representation is immutable and independent of the compiler data structures, hence it can
  * be queried by concurrent threads.
  */
-abstract class BTypes {
+abstract class BTypes { self =>
+  val frontendAccess: PostProcessorFrontendAccess
+  import frontendAccess.{frontendSynch}
 
   val int: DottyBackendInterface
-  import int.{_, given}
+  import int.given
   /**
    * A map from internal names to ClassBTypes. Every ClassBType is added to this map on its
    * construction.
@@ -35,10 +39,7 @@ abstract class BTypes {
    */
   def classBTypeFromInternalName(internalName: String) = classBTypeFromInternalNameMap(internalName)
 
-  // Some core BTypes are required here, in class BType, where no Global instance is available.
-  // The Global is only available in the subclass BTypesFromSymbols. We cannot depend on the actual
-  // implementation (CoreBTypesProxy) here because it has members that refer to global.Symbol.
-  val coreBTypes: CoreBTypesProxyGlobalIndependent[this.type]
+  val coreBTypes: CoreBTypes { val bTypes: self.type}
   import coreBTypes._
 
   /**
@@ -87,8 +88,8 @@ abstract class BTypes {
 
     final def isNonVoidPrimitiveType = isPrimitive && this != UNIT
 
-    final def isNullType             = this == RT_NULL
-    final def isNothingType          = this == RT_NOTHING
+    final def isNullType             = this == srNullRef
+    final def isNothingType          = this == srNothingRef
 
     final def isBoxed = this.isClass && boxedClasses(this.asClassBType)
 
@@ -111,7 +112,7 @@ abstract class BTypes {
 
       this match {
         case ArrayBType(component) =>
-          if (other == ObjectReference || other == jlCloneableReference || other == jioSerializableReference) true
+          if (other == ObjectRef || other == jlCloneableRef || other == jiSerializableRef) true
           else other match {
             case ArrayBType(otherComponoent) => component.conformsTo(otherComponoent)
             case _ => false
@@ -120,7 +121,7 @@ abstract class BTypes {
         case classType: ClassBType =>
           if (isBoxed) {
             if (other.isBoxed) this == other
-            else if (other == ObjectReference) true
+            else if (other == ObjectRef) true
             else other match {
               case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType) // e.g., java/lang/Double conforms to java/lang/Number
               case _ => false
@@ -163,7 +164,7 @@ abstract class BTypes {
 
         assert(other.isRef, s"Cannot compute maxType: $this, $other")
         // Approximate `lub`. The common type of two references is always ObjectReference.
-        ObjectReference
+        ObjectRef
     }
 
     /**
@@ -666,7 +667,7 @@ abstract class BTypes {
       if (this == other) return true
 
       if (isInterface) {
-        if (other == ObjectReference) return true // interfaces conform to Object
+        if (other == ObjectRef) return true // interfaces conform to Object
         if (!other.isInterface) return false // this is an interface, the other is some class other than object. interfaces cannot extend classes, so the result is false.
         // else: this and other are both interfaces. continue to (*)
       } else {
@@ -696,13 +697,13 @@ abstract class BTypes {
           // exercised by test/files/run/t4761.scala
           if      (other.isSubtypeOf(this)) this
           else if (this.isSubtypeOf(other)) other
-          else ObjectReference
+          else ObjectRef
 
         case (true, false) =>
-          if (other.isSubtypeOf(this)) this else ObjectReference
+          if (other.isSubtypeOf(this)) this else ObjectRef
 
         case (false, true) =>
-          if (this.isSubtypeOf(other)) other else ObjectReference
+          if (this.isSubtypeOf(other)) other else ObjectRef
 
         case _ =>
           // TODO @lry I don't really understand the reasoning here.
@@ -859,4 +860,13 @@ abstract class BTypes {
    * Just a named pair, used in CoreBTypes.asmBoxTo/asmUnboxTo.
    */
   /*final*/ case class MethodNameAndType(name: String, methodType: MethodBType)
+}
+
+object BTypes {
+  /**
+   * A marker for strings that represent class internal names.
+   * Ideally the type would be incompatible with String, for example by making it a value class.
+   * But that would create overhead in a Collection[InternalName].
+   */
+  type InternalName = String
 }

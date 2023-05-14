@@ -10,9 +10,15 @@ import Symbols.defn
 import Constants._
 import Types._
 import Decorators._
+import Flags._
+
+import scala.collection.mutable
 
 class RepeatableAnnotations extends MiniPhase:
-  override def phaseName = "repeatableAnnotations"
+
+  override def phaseName: String = RepeatableAnnotations.name
+
+  override def description: String = RepeatableAnnotations.description
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree = transformDef(tree)
   override def transformValDef(tree: ValDef)(using Context): Tree = transformDef(tree)
@@ -25,10 +31,10 @@ class RepeatableAnnotations extends MiniPhase:
     tree
 
   private def aggregateAnnotations(annotations: Seq[Annotation])(using Context): List[Annotation] =
-    val annsByType = annotations.groupBy(_.symbol)
+    val annsByType = stableGroupBy(annotations, _.symbol)
     annsByType.flatMap {
       case (_, a :: Nil) => a :: Nil
-      case (sym, anns) if sym.derivesFrom(defn.ClassfileAnnotationClass) =>
+      case (sym, anns) if sym.is(JavaDefined) =>
         sym.getAnnotation(defn.JavaRepeatableAnnot).flatMap(_.argumentConstant(0)) match
           case Some(Constant(containerTpe: Type)) =>
             val clashingAnns = annsByType.getOrElse(containerTpe.classSymbol, Nil)
@@ -39,10 +45,22 @@ class RepeatableAnnotations extends MiniPhase:
               Nil
             else
               val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
-              Annotation(containerTpe, NamedArg("value".toTermName, aggregated)) :: Nil
+              Annotation(containerTpe, NamedArg("value".toTermName, aggregated), sym.span) :: Nil
           case _ =>
             val pos = anns.head.tree.srcPos
             report.error("Not repeatable annotation repeated", pos)
             Nil
       case (_, anns) => anns
     }.toList
+
+  private def stableGroupBy[A, K](ins: Seq[A], f: A => K): scala.collection.MapView[K, List[A]] =
+    val out = new mutable.LinkedHashMap[K, mutable.ListBuffer[A]]()
+    for (in <- ins) {
+      val buffer = out.getOrElseUpdate(f(in), new mutable.ListBuffer)
+      buffer += in
+    }
+    out.view.mapValues(_.toList)
+
+object RepeatableAnnotations:
+  val name: String = "repeatableAnnotations"
+  val description: String = "aggregate repeatable annotations"

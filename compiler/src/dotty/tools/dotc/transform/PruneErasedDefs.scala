@@ -7,13 +7,13 @@ import DenotTransformers.SymTransformer
 import Flags._
 import SymDenotations._
 import Symbols._
-import Types._
 import typer.RefChecks
 import MegaPhase.MiniPhase
-import StdNames.nme
 import ast.tpd
 import SymUtils._
 import config.Feature
+import Decorators.*
+import dotty.tools.dotc.core.Types.MethodType
 
 /** This phase makes all erased term members of classes private so that they cannot
  *  conflict with non-erased members. This is needed so that subsequent phases like
@@ -28,6 +28,8 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
 
   override def phaseName: String = PruneErasedDefs.name
 
+  override def description: String = PruneErasedDefs.description
+
   override def changesMembers: Boolean = true   // makes erased members private
 
   override def runsAfterGroupsOf: Set[String] = Set(RefChecks.name, ExplicitOuter.name)
@@ -37,8 +39,11 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     else sym.copySymDenotation(initFlags = sym.flags | Private)
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    if !tree.fun.tpe.widen.isErasedMethod then tree
-    else cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
+    tree.fun.tpe.widen match
+      case mt: MethodType if mt.hasErasedParams =>
+        cpy.Apply(tree)(tree.fun, tree.args.zip(mt.erasedParams).map((a, e) => if e then trivialErasedTree(a) else a))
+      case _ =>
+        tree
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     checkErasedInExperimental(tree.symbol)
@@ -55,7 +60,8 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     tree
 
   def checkErasedInExperimental(sym: Symbol)(using Context): Unit =
-    if sym.is(Erased) && sym != defn.Compiletime_erasedValue && !sym.isInExperimentalScope then
+    // Make an exception for Scala 2 experimental macros to allow dual Scala 2/3 macros under non experimental mode
+    if sym.is(Erased, butNot = Macro) && sym != defn.Compiletime_erasedValue && !sym.isInExperimentalScope then
       Feature.checkExperimentalFeature("erased", sym.sourcePos)
 }
 
@@ -63,6 +69,7 @@ object PruneErasedDefs {
   import tpd._
 
   val name: String = "pruneErasedDefs"
+  val description: String = "drop erased definitions and simplify erased expressions"
 
   def trivialErasedTree(tree: Tree)(using Context): Tree =
     ref(defn.Compiletime_erasedValue).appliedToType(tree.tpe).withSpan(tree.span)

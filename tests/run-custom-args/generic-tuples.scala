@@ -7,7 +7,7 @@ class HNil extends Tuple
 case object HNil extends HNil
 
 trait Pair[H, T <: Tuple] {
-  erased inline def size = ???
+  erased inline def size = compiletime.erasedValue
 }
 }
 

@@ -25,7 +25,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     args.classpath
   ).mkString(sep)
 
-  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[_]] = cctx.settings.userSetSettings(cctx.settingsState).filter(_ != cctx.settings.classpath).map( s =>
+  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[?]] = cctx.settings.userSetSettings(cctx.settingsState).filter(_ != cctx.settings.classpath)
+  .map[SnippetCompilerSetting[?]]( s =>
     SnippetCompilerSetting(s, s.valueIn(cctx.settingsState))
   ) :+ SnippetCompilerSetting(cctx.settings.classpath, fullClasspath)
 
@@ -47,14 +48,13 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
       val wrapped = WrappedSnippet(
         snippet,
         data.map(_.packageName),
-        data.fold(Nil)(_.classInfos),
-        data.map(_.imports).getOrElse(Nil),
         lineOffset + data.fold(0)(_.position.line) + constantLineOffset,
         data.fold(0)(_.position.column) + constantColumnOffset
       )
-      val res = compiler.compile(wrapped, arg, sourceFile)
-      Some(res)
-    else None
+      Some(compiler.compile(wrapped, arg, sourceFile))
+    else
+      None
+
   }
 
 object SnippetChecker:

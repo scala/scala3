@@ -1,0 +1,11 @@
+> compile
+> recordPreviousIterations
+# Force recompilation of A because B.isOdd, called by A.isEven,
+# has changed, this should force C to recompile
+$ copy-file changes/B1.scala B.scala
+> compile
+# 1 to recompile B, then 1 more to recompile:
+# - A due to B.isOdd change
+# - B due to A.isEven change
+# - C due to A.isEven change
+> checkIterations 2

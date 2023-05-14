@@ -1,5 +1,5 @@
 /* Theme inspired by nordtheme. The colors have been darkened to work on light backgrounds. */
-:root {
+/* :root {
   --hljs-bg: var(--code-bg);
   --hljs-fg: var(--code-fg);
   --hljs-comment: #90A1C1;
@@ -11,6 +11,8 @@
   --hljs-keyword: hsl(213, 60%, 45%);
   --hljs-string: hsl(92, 46%, 43%);
   --hljs-literal: hsl(311, 30%, 47%);
+  --hljs-addition: hsl(122, 40.97%, 44.51%);
+  --hljs-deletion: hsl(1 , 66% , 64%);
 }
 :root.theme-dark {
   --hljs-meta: hsl(40, 100%, 49%);
@@ -65,3 +67,12 @@ pre, .hljs {
 .hljs-built_in, .hljs-number, .hljs-literal {
   color: var(--hljs-literal);
 }
+.hljs-addition {
+  color: var(--hljs-addition);
+}
+.hljs-deletion {
+  color: var(--hljs-deletion);
+}
+.hljs-attribute {
+  color: var(--hljs-type);
+} */

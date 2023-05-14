@@ -1,3 +1,5 @@
+import scala.language.unsafeNulls
+
 import scala.io.Source
 import scala.collection.mutable.ListBuffer
 import scala.util.Using

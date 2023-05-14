@@ -1,3 +1,3 @@
 object A {
-    for // error // error
+    for // error
 }

@@ -1,0 +1,8 @@
+-- [E156] Syntax Error: tests/neg/i15266.scala:5:13 --------------------------------------------------------------------
+5 |opaque class A // error
+  |^^^^^^^^^^^^^^
+  |Modifier opaque is not allowed for this definition
+-- Error: tests/neg/i15266.scala:1:12 ----------------------------------------------------------------------------------
+1 |opaque type Type0 // error
+  |^^^^^^^^^^^^^^^^^
+  |opaque type must have a right-hand side

@@ -1,3 +1,5 @@
+// scalajs: --skip
+
 import scala.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 

@@ -1,13 +1,13 @@
 enum Ordinalled {
 
-  case A // error: method ordinal of type => Int needs `override` modifier
+  case A
 
-  def ordinal: Int = -1
+  def ordinal: Int = -1 // error: the ordinal method of enum class Ordinalled can not be defined by the user
 
 }
 
 trait HasOrdinal { def ordinal: Int = 23 }
 
-enum MyEnum extends HasOrdinal {
-  case Foo // error: method ordinal of type => Int needs `override` modifier
+enum MyEnum extends HasOrdinal { // error: enum class MyEnum can not inherit the concrete ordinal method of trait HasOrdinal
+  case Foo
 }

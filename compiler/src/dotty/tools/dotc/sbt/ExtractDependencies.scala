@@ -1,10 +1,11 @@
 package dotty.tools.dotc
 package sbt
 
+import scala.language.unsafeNulls
+
 import java.io.File
 import java.util.{Arrays, EnumSet}
 
-import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
@@ -12,7 +13,6 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Phases._
-import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types._
@@ -49,7 +49,9 @@ import scala.collection.{Set, mutable}
 class ExtractDependencies extends Phase {
   import ExtractDependencies._
 
-  override def phaseName: String = "sbt-deps"
+  override def phaseName: String = ExtractDependencies.name
+
+  override def description: String = ExtractDependencies.description
 
   override def isRunnable(using Context): Boolean = {
     def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
@@ -141,34 +143,7 @@ class ExtractDependencies extends Phase {
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
-
-        // The fully qualified name on the JVM of the class corresponding to `dep.to`
-        val binaryClassName = {
-          val builder = new StringBuilder
-          val pkg = dep.to.enclosingPackageClass
-          if (!pkg.isEffectiveRoot) {
-            builder.append(pkg.fullName.mangledString)
-            builder.append(".")
-          }
-          val flatName = dep.to.flatName
-          // Some companion objects are fake (that is, they're a compiler fiction
-          // that doesn't correspond to a class that exists at runtime), this
-          // can happen in two cases:
-          // - If a Java class has static members.
-          // - If we create constructor proxies for a class (see NamerOps#addConstructorProxies).
-          //
-          // In both cases it's vital that we don't send the object name to
-          // zinc: when sbt is restarted, zinc will inspect the binary
-          // dependencies to see if they're still on the classpath, if it
-          // doesn't find them it will invalidate whatever referenced them, so
-          // any reference to a fake companion will lead to extra recompilations.
-          // Instead, use the class name since it's guaranteed to exist at runtime.
-          val clsFlatName = if (dep.to.isOneOf(JavaDefined | ConstructorProxy)) flatName.stripModuleClassSuffix else flatName
-          builder.append(clsFlatName.mangledString)
-          builder.toString
-        }
-
-        processExternalDependency(depFile, binaryClassName)
+        processExternalDependency(depFile, dep.to.binaryClassName)
       } else if (allowLocal || depFile.file != sourceFile) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
@@ -180,12 +155,15 @@ class ExtractDependencies extends Phase {
 }
 
 object ExtractDependencies {
+  val name: String = "sbt-deps"
+  val description: String = "sends information on classes' dependencies to sbt"
+
   def classNameAsString(sym: Symbol)(using Context): String =
     sym.fullName.stripModuleClassSuffix.toString
 
   /** Report an internal error in incremental compilation. */
   def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
-    report.error(s"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
+    report.error(em"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
@@ -328,6 +306,13 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       }
     }
 
+  private def addInheritanceDependencies(tree: Closure)(using Context): Unit =
+    // If the tpt is empty, this is a non-SAM lambda, so no need to register
+    // an inheritance relationship.
+    if !tree.tpt.isEmpty then
+      val from = resolveDependencySource
+      _dependencies += ClassDependency(from, tree.tpt.tpe.classSymbol, LocalDependencyByInheritance)
+
   private def addInheritanceDependencies(tree: Template)(using Context): Unit =
     if (tree.parents.nonEmpty) {
       val depContext = depContextOf(tree.symbol.owner)
@@ -391,6 +376,8 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
       case ref: RefTree =>
         addMemberRefDependency(ref.symbol)
         addTypeDependency(ref.tpe)
+      case t: Closure =>
+        addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
       case _ =>

@@ -8,12 +8,16 @@ import com.vladsch.flexmark.parser._
 import com.vladsch.flexmark.ext.wikilink._
 import com.vladsch.flexmark.ext.wikilink.internal.WikiLinkLinkRefProcessor
 import com.vladsch.flexmark.util.ast._
+import com.vladsch.flexmark.ast._
 import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
 
 import dotty.tools.scaladoc.snippets._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
+import com.vladsch.flexmark.util.data.MutableDataHolder
+import com.vladsch.flexmark.util.data.DataHolder
+import com.vladsch.flexmark.html.renderer.NodeRenderingHandler.CustomNodeRenderer
 
 class DocLinkNode(
   val target: DocLink,
@@ -24,9 +28,13 @@ class DocLinkNode(
 case class ExtendedFencedCodeBlock(
   name: Option[String],
   codeBlock: ast.FencedCodeBlock,
-  compilationResult: Option[SnippetCompilationResult],
-  hasContext: Boolean
+  compilationResult: Option[SnippetCompilationResult]
 ) extends BlankLine(codeBlock.getContentChars())
+
+case class Section(
+  header: Heading,
+  body: List[Node]
+) extends BlankLine(header.getContentChars())
 
 class DocFlexmarkParser(resolveLink: String => DocLink) extends Parser.ParserExtension:
 
@@ -35,7 +43,7 @@ class DocFlexmarkParser(resolveLink: String => DocLink) extends Parser.ParserExt
   class Factory extends LinkRefProcessorFactory:
     override def getBracketNestingLevel(options: DataHolder) = 1
     override def getWantExclamationPrefix(options: DataHolder) = false
-    override def create(doc: Document): LinkRefProcessor =
+    override def apply(doc: Document): LinkRefProcessor =
       new WikiLinkLinkRefProcessor(doc):
         override def createNode(nodeChars: BasedSequence): Node =
           val chars = nodeChars.toString.substring(2, nodeChars.length - 2)
@@ -70,7 +78,7 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
         )
 
     object Factory extends NodeRendererFactory:
-      override def create(options: DataHolder): NodeRenderer = Render
+      override def apply(options: DataHolder): NodeRenderer = Render
 
     def extend(htmlRendererBuilder: HtmlRenderer.Builder, tpe: String): Unit =
       htmlRendererBuilder.nodeRendererFactory(Factory)
@@ -80,7 +88,8 @@ object DocFlexmarkRenderer:
     val opts = MarkdownParser.mkMarkdownOptions(
       Seq(
         DocFlexmarkRenderer(renderLink),
-        SnippetRenderingExtension
+        SnippetRenderingExtension,
+        SectionRenderingExtension
       )
     )
     HtmlRenderer.builder(opts).build().render(node)

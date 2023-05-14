@@ -2,7 +2,7 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import java.net.URI
 import java.net.URL
 import java.util.{List => JList, Set => JSet}
@@ -15,7 +15,7 @@ trait SignatureRenderer:
   def currentDri: DRI
   def link(dri: DRI): Option[String]
 
-  def renderElement(e: SignaturePart) = renderElementWith(e)
+  def renderElement(e: SignaturePart, modifiers: AppliedAttr*): AppliedTag = renderElementWith(e, modifiers*)
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
     renderLinkContent(name, dri, modifiers:_*)
@@ -29,6 +29,9 @@ trait SignatureRenderer:
       case _ => unresolvedLink(content, modifiers:_*)
 
   def renderElementWith(e: SignaturePart, modifiers: AppliedAttr*) = e match
+    case Name(name, dri) =>
+      val attrs = Seq(Attr("t") := "n") ++ modifiers
+      renderLink(name, dri, attrs*)
     case Type(name, Some(dri)) =>
       val attrs = Seq(Attr("t") := "t") ++ modifiers
       renderLink(name, dri, attrs:_*)

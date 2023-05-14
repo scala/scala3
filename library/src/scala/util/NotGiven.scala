@@ -31,11 +31,13 @@ trait LowPriorityNotGiven {
 }
 object NotGiven extends LowPriorityNotGiven {
 
+  private val cachedValue = new NotGiven[Nothing]()
+
   /** A value of type `NotGiven` to signal a successful search for `NotGiven[C]` (i.e. a failing
    *  search for `C`). A reference to this value will be explicitly constructed by Dotty's
    *  implicit search algorithm
    */
-  def value: NotGiven[Nothing] = new NotGiven[Nothing]()
+  def value: NotGiven[Nothing] = cachedValue
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
   given amb1[T](using ev: T): NotGiven[T] = ???

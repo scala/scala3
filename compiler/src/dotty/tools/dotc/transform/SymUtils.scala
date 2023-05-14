@@ -11,7 +11,6 @@ import NameOps._
 import StdNames._
 import NameKinds._
 import Flags._
-import Annotations._
 import ValueClasses.isDerivedValueClass
 import Decorators._
 import Constants.Constant
@@ -19,7 +18,6 @@ import Annotations.Annotation
 import Phases._
 import ast.tpd.Literal
 
-import language.implicitConversions
 import scala.annotation.tailrec
 
 object SymUtils:
@@ -66,6 +64,11 @@ object SymUtils:
 
     def isSuperAccessor(using Context): Boolean = self.name.is(SuperAccessorName)
 
+    def isNoValue(using Context): Boolean = self.is(Package) || self.isAllOf(JavaModule)
+
+    def isUniversalTrait(using Context): Boolean =
+      self.is(Trait) && self.asClass.parentSyms.head == defn.AnyClass
+
     /** Is this a type or term parameter or a term parameter accessor? */
     def isParamOrAccessor(using Context): Boolean =
       self.is(Param) || self.is(ParamAccessor)
@@ -79,11 +82,26 @@ object SymUtils:
     *  parameter section.
     */
     def whyNotGenericProduct(using Context): String =
+      /** for a case class, if it will have an anonymous mirror,
+       *  check that its constructor can be accessed
+       *  from the calling scope.
+       */
+      def canAccessCtor: Boolean =
+        def isAccessible(sym: Symbol): Boolean = ctx.owner.isContainedIn(sym)
+        def isSub(sym: Symbol): Boolean = ctx.owner.ownersIterator.exists(_.derivesFrom(sym))
+        val ctor = self.primaryConstructor
+        (!ctor.isOneOf(Private | Protected) || isSub(self)) // we cant access the ctor because we do not extend cls
+        && (!ctor.privateWithin.exists || isAccessible(ctor.privateWithin)) // check scope is compatible
+
+
+      def companionMirror = self.useCompanionAsProductMirror
       if (!self.is(CaseClass)) "it is not a case class"
       else if (self.is(Abstract)) "it is an abstract class"
       else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
       else if (isDerivedValueClass(self)) "it is a value class"
+      else if (!(companionMirror || canAccessCtor)) s"the constructor of $self is innaccessible from the calling scope."
       else ""
+    end whyNotGenericProduct
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
@@ -110,9 +128,32 @@ object SymUtils:
           isCodefined(mt.resultType)
         case res =>
           self.isCoDefinedGiven(res.typeSymbol)
-      self.isAllOf(Given | Method) && isCodefined(self.info)
+      self.isAllOf(GivenMethod) && isCodefined(self.info)
 
-    def useCompanionAsMirror(using Context): Boolean = self.linkedClass.exists && !self.is(Scala2x)
+    // TODO Scala 3.x: only check for inline vals (no final ones)
+    def isInlineVal(using Context) =
+      self.isOneOf(FinalOrInline, butNot = Mutable)
+      && (!self.is(Method) || self.is(Accessor))
+
+    def useCompanionAsProductMirror(using Context): Boolean =
+      self.linkedClass.exists && !self.is(Scala2x) && !self.linkedClass.is(Case)
+
+    def useCompanionAsSumMirror(using Context): Boolean =
+      def companionExtendsSum(using Context): Boolean =
+        self.linkedClass.isSubClass(defn.Mirror_SumClass)
+      !self.is(Scala2x)
+        && self.linkedClass.exists
+        && !self.linkedClass.is(Case)
+        && (
+          // If the sum type is compiled from source, and `self` is a "generic sum"
+          // then its companion object will become a sum mirror in `posttyper`. (This method
+          // can be called from `typer` when summoning a Mirror.)
+          // However if `self` is from a binary file, then we should check that its companion
+          // subclasses `Mirror.Sum`. e.g. before Scala 3.1, hierarchical sum types were not
+          // considered "generic sums", so their companion would not cache the mirror.
+          // Companions from TASTy will already be typed as `Mirror.Sum`.
+          self.isDefinedInSource || companionExtendsSum
+        )
 
     /** Is this a sealed class or trait for which a sum mirror is generated?
     *  It must satisfy the following conditions:
@@ -122,39 +163,53 @@ object SymUtils:
     *     and also the location of the generated mirror.
     *   - all of its children are generic products, singletons, or generic sums themselves.
     */
-    def whyNotGenericSum(declScope: Symbol)(using Context): String =
+    def whyNotGenericSum(pre: Type)(using Context): String =
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
-        s"it is not an abstract class"
+        "it is not an abstract class"
       else {
         val children = self.children
-        val companionMirror = self.useCompanionAsMirror
-        assert(!(companionMirror && (declScope ne self.linkedClass)))
+        val companionMirror = self.useCompanionAsSumMirror
+        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbol else NoSymbol
         def problem(child: Symbol) = {
 
-          def isAccessible(sym: Symbol): Boolean =
-            (self.isContainedIn(sym) && (companionMirror || declScope.isContainedIn(sym)))
-            || sym.is(Module) && isAccessible(sym.owner)
+          def accessibleMessage(sym: Symbol): String =
+            def inherits(sym: Symbol, scope: Symbol): Boolean =
+              !scope.is(Package) && (scope.derivesFrom(sym) || inherits(sym, scope.owner))
+            def isVisibleToParent(sym: Symbol): Boolean =
+              self.isContainedIn(sym) || sym.is(Module) && isVisibleToParent(sym.owner)
+            def isVisibleToScope(sym: Symbol): Boolean =
+              def isReachable: Boolean = ctx.owner.isContainedIn(sym)
+              def isMemberOfPrefix: Boolean =
+                ownerScope.exists && inherits(sym, ownerScope)
+              isReachable || isMemberOfPrefix || sym.is(Module) && isVisibleToScope(sym.owner)
+            if !isVisibleToParent(sym) then i"to its parent $self"
+            else if !companionMirror && !isVisibleToScope(sym) then i"to call site ${ctx.owner}"
+            else ""
+          end accessibleMessage
+
+          val childAccessible = accessibleMessage(child.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
-          else if (!isAccessible(child.owner)) i"its child $child is not accessible"
-          else if (!child.isClass) ""
+          else if (!childAccessible.isEmpty) i"its child $child is not accessible $childAccessible"
+          else if (!child.isClass) "" // its a singleton enum value
           else {
             val s = child.whyNotGenericProduct
-            if (s.isEmpty) s
-            else if (child.is(Sealed)) {
-              val s = child.whyNotGenericSum(if child.useCompanionAsMirror then child.linkedClass else ctx.owner)
-              if (s.isEmpty) s
+            if s.isEmpty then s
+            else if child.is(Sealed) then
+              val s = child.whyNotGenericSum(pre)
+              if s.isEmpty then s
               else i"its child $child is not a generic sum because $s"
-            } else i"its child $child is not a generic product because $s"
+            else
+              i"its child $child is not a generic product because $s"
           }
         }
         if (children.isEmpty) "it does not have subclasses"
         else children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 
-    def isGenericSum(declScope: Symbol)(using Context): Boolean = whyNotGenericSum(declScope).isEmpty
+    def isGenericSum(pre: Type)(using Context): Boolean = whyNotGenericSum(pre).isEmpty
 
     /** If this is a constructor, its owner: otherwise this. */
     final def skipConstructor(using Context): Symbol =
@@ -215,11 +270,8 @@ object SymUtils:
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)
 
-    def annotationsCarrying(meta: ClassSymbol)(using Context): List[Annotation] =
-      self.annotations.filter(_.symbol.hasAnnotation(meta))
-
-    def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(using Context): self.type = {
-      self.addAnnotations(from.annotationsCarrying(meta))
+    def withAnnotationsCarrying(from: Symbol, meta: Symbol, orNoneOf: Set[Symbol] = Set.empty)(using Context): self.type = {
+      self.addAnnotations(from.annotationsCarrying(Set(meta), orNoneOf))
       self
     }
 
@@ -263,14 +315,6 @@ object SymUtils:
     def reachableRawTypeRef(using Context) =
       self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
 
-    /** Is symbol a quote operation? */
-    def isQuote(using Context): Boolean =
-      self == defn.QuotedRuntime_exprQuote || self == defn.QuotedTypeModule_of
-
-    /** Is symbol a term splice operation? */
-    def isExprSplice(using Context): Boolean =
-      self == defn.QuotedRuntime_exprSplice || self == defn.QuotedRuntime_exprNestedSplice
-
     /** Is symbol a type splice operation? */
     def isTypeSplice(using Context): Boolean =
       self == defn.QuotedType_splice
@@ -308,6 +352,8 @@ object SymUtils:
       self.hasAnnotation(defn.ExperimentalAnnot)
       || isDefaultArgumentOfExperimentalMethod
       || (!self.is(Package) && self.owner.isInExperimentalScope)
+      || self.topLevelClass.ownersIterator.exists(p =>
+          p.is(Package) && p.owner.isRoot && p.name == tpnme.dotty)
 
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.
@@ -327,7 +373,7 @@ object SymUtils:
       if original.hasAnnotation(defn.TargetNameAnnot) then
         self.addAnnotation(
           Annotation(defn.TargetNameAnnot,
-            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span)))
+            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span), original.span))
 
     /** The return type as seen from the body of this definition. It is
      *  computed from the symbol's type by replacing param refs by param symbols.

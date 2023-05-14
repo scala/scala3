@@ -10,7 +10,7 @@ import org.eclipse.lsp4j.{MessageActionItem, ShowMessageRequestParams}
 
 import java.util.concurrent.CompletableFuture
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * An action requesting for a rename of the symbol at `marker`.

@@ -2,17 +2,8 @@ package dotty.tools
 package dotc
 package transform
 
-import org.junit.{Assert, Test}
 import core._
-import ast.{tpd, Trees}
-import Contexts._
-import Flags._
-import Denotations._
-import NameOps._
-import Symbols._
-import Types._
-import Decorators._
-import Trees._
+import ast.Trees
 
 
 class CreateCompanionObjectsTest extends DottyTest {

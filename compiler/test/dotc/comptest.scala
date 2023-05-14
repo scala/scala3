@@ -10,8 +10,9 @@ object comptest extends ParallelTesting {
   def numberOfSlaves = 5
   def safeMode = false
   def isInteractive = true
-  def testFilter = None
+  def testFilter = Nil
   def updateCheckFiles: Boolean = false
+  def failedTests = None
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"

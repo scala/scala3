@@ -1,5 +1,7 @@
 package dotty.tools.dotc.semanticdb
 
+import scala.language.unsafeNulls
+
 import java.net.URLClassLoader
 import java.util.regex.Pattern
 import java.io.File

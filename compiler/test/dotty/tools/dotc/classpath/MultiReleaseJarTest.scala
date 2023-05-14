@@ -1,19 +1,22 @@
 package dotty.tools.dotc.classpath
 
+import scala.language.unsafeNulls
+
 import dotty.tools.dotc.core.Contexts.Context
 
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.{FileSystems, Files, Path}
 import java.util.jar.Attributes
 import java.util.jar.Attributes.Name
 
-import org.junit.Test
 import org.junit.Assert._
+import org.junit.Test
 
+import scala.jdk.CollectionConverters._
 import scala.util.Properties
-import scala.collection.JavaConverters._
 
 class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
+
   @Test
   def mrJar(): Unit = {
     if (!Properties.isJavaAtLeast("9")) { println("skipping mrJar() on old JDK"); return }
@@ -37,7 +40,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
       given ctx: Context = initCtx.fresh
       ctx.settings.usejavacp.update(true)
       ctx.settings.classpath.update(jarPath.toAbsolutePath.toString)
-      ctx.settings.release.update(release)
+      ctx.settings.javaOutputVersion.update(release)
       ctx.initialize()
       val classNames = Seq("p1.Foo",  "p2.Bar")
       val classFiles = classNames.flatMap(ctx.platform.classPath.findClassFile)
@@ -61,7 +64,10 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
       if Properties.isJavaAtLeast("10") then
         assertEquals(Set("foo1", "foo2", "bar1", "bar2"), apiMethods(jar3, "10"))
     } finally
-      List(jar1, jar2, jar3).foreach(Files.deleteIfExists)
+      List(jar1, jar2, jar3).forall(path =>
+        try Files.deleteIfExists(path)
+        catch case _: IOException => false
+      )
   }
 
   @Test
@@ -71,7 +77,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
     def classExists(className: String, release: String): Boolean = {
       given ctx: Context = initCtx.fresh
       ctx.settings.usejavacp.update(true)
-      ctx.settings.release.update(release)
+      ctx.settings.javaOutputVersion.update(release)
       ctx.initialize()
       val classFile = ctx.platform.classPath.findClassFile(className)
       classFile.isDefined
@@ -82,7 +88,6 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
     assertTrue(classExists("java.lang.invoke.LambdaMetafactory", "9"))
   }
 
-
   private def createManifest = {
     val manifest = new java.util.jar.Manifest()
     manifest.getMainAttributes.put(Name.MANIFEST_VERSION, "1.0")
@@ -92,6 +97,7 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
     val manifestBytes = os.toByteArray
     manifestBytes
   }
+
   private def createZip(zipLocation: Path, content: List[(String, Array[Byte])]): Unit = {
     val env = new java.util.HashMap[String, String]()
     Files.deleteIfExists(zipLocation)
@@ -113,4 +119,5 @@ class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
       zipfs.close()
     }
   }
+
 }

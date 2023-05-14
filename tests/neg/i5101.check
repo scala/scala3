@@ -2,5 +2,5 @@
 11 |      case A0(_) =>     // error
    |           ^^
    |           Not found: A0
-
-longer explanation available when compiling with `-explain`
+   |
+   | longer explanation available when compiling with `-explain`

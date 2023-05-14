@@ -1,0 +1,23 @@
+.byline {
+  font-size: 14px;
+  display: flex;
+  margin-top: 10px;
+}
+
+.byline img#author-img {
+  width: auto;
+  height: auto;
+  max-width: 50px;
+  border-radius: 10px;
+}
+
+.byline, .byline a {
+  color: grey;
+}
+.byline .author {
+  display: block;
+}
+
+.byline .secondary-infos{
+  margin-left: 10px;
+}

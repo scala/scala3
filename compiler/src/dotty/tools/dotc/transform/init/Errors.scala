@@ -4,103 +4,97 @@ package transform
 package init
 
 import ast.tpd._
-
 import core._
-import Decorators._, printing.SyntaxHighlighting
+import util.Property
+import util.SourcePosition
 import Types._, Symbols._, Contexts._
 
-object Errors {
-  type Errors = Seq[Error]
-  val empty: Errors = Nil
+import Trace.Trace
 
-  def show(errs: Errors)(using Context): String =
-    errs.map(_.show).mkString(", ")
+object Errors:
+  private val IsFromPromotion = new Property.Key[Boolean]
 
-  sealed trait Error {
-    def source: Tree
-    def trace: Seq[Tree]
+  sealed trait Error:
+    def trace: Trace
     def show(using Context): String
 
+    def pos(using Context): SourcePosition = Trace.position(using trace).sourcePos
+
+    def stacktrace(using Context): String =
+      val preamble: String =
+        if ctx.property(IsFromPromotion).nonEmpty
+        then " Promotion trace:\n"
+        else " Calling trace:\n"
+      Trace.buildStacktrace(trace, preamble)
+
     def issue(using Context): Unit =
-      report.warning(show + stacktrace, source.srcPos)
+      report.warning(show, this.pos)
+  end Error
 
-    def toErrors: Errors = this :: Nil
-
-    def stacktrace(using Context): String = if (trace.isEmpty) "" else " Calling trace:\n" + {
-      var indentCount = 0
-      var last: String = ""
-      val sb = new StringBuilder
-      trace.foreach { tree =>
-        indentCount += 1
-        val pos = tree.sourcePos
-        val prefix = s"${ " " * indentCount }-> "
-        val line =
-          if pos.source.exists then
-            val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
-            i"$code\t$loc"
-          else
-            tree.show
-
-        if (last != line)  sb.append(prefix + line + "\n")
-
-        last = line
-      }
-      sb.toString
-    }
-
-    /** Flatten UnsafePromotion errors
-     */
-    def flatten: Errors = this match {
-      case unsafe: UnsafePromotion => unsafe.errors.flatMap(_.flatten)
-      case _ => this :: Nil
-    }
-
-    override def toString() = this.getClass.getName
-  }
+  override def toString() = this.getClass.getName.nn
 
   /** Access non-initialized field */
-  case class AccessNonInit(field: Symbol, trace: Seq[Tree]) extends Error {
-    def source: Tree = trace.last
+  case class AccessNonInit(field: Symbol)(val trace: Trace) extends Error:
+    def source: Tree = Trace.position(using trace)
     def show(using Context): String =
-      "Access non-initialized " + field.show + "."
+      "Access non-initialized " + field.show + "." + stacktrace
 
-    override def issue(using Context): Unit =
-      report.warning(show + stacktrace, field.srcPos)
-  }
-
-  /** Promote `this` under initialization to fully-initialized */
-  case class PromoteError(msg: String, source: Tree, trace: Seq[Tree]) extends Error {
-    def show(using Context): String = "Cannot prove that the value is fully initialized. " + msg + "."
-  }
-
-  case class AccessCold(field: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
-    def show(using Context): String =
-      "Access field " + source.show + " on a value with an unknown initialization status."
-  }
-
-  case class CallCold(meth: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
-    def show(using Context): String =
-      "Call method " + source.show + " on a value with an unknown initialization" + "."
-  }
-
-  case class CallUnknown(meth: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
-    def show(using Context): String =
-      val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
-      prefix + meth.show + " may cause initialization errors" + "."
-  }
+    override def pos(using Context): SourcePosition = field.sourcePos
 
   /** Promote a value under initialization to fully-initialized */
-  case class UnsafePromotion(msg: String, source: Tree, trace: Seq[Tree], errors: Errors) extends Error {
-    assert(errors.nonEmpty)
-    override def issue(using Context): Unit =
-      report.warning(show, source.srcPos)
+  case class PromoteError(msg: String)(val trace: Trace) extends Error:
+    def show(using Context): String = msg + stacktrace
 
-    def show(using Context): String = {
-      var index = 0
-      "Cannot prove that the value is fully-initialized. " + msg + ".\n" + stacktrace +
-        "\nThe unsafe promotion may cause the following problem:\n" +
-        errors.head.show + errors.head.stacktrace
-    }
-  }
-}
+  case class AccessCold(field: Symbol)(val trace: Trace) extends Error:
+    def show(using Context): String =
+      "Access field " + field.show +  " on an uninitialized (Cold) object." + stacktrace
+
+  case class CallCold(meth: Symbol)(val trace: Trace) extends Error:
+    def show(using Context): String =
+      "Call method " + meth.show + " on an uninitialized (Cold) object." + stacktrace
+
+  case class CallUnknown(meth: Symbol)(val trace: Trace) extends Error:
+    def show(using Context): String =
+      val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
+      prefix + meth.show + " may cause initialization errors." + stacktrace
+
+  /** Promote a value under initialization to fully-initialized */
+  case class UnsafePromotion(msg: String, error: Error)(val trace: Trace) extends Error:
+    def show(using Context): String =
+      msg + stacktrace + "\n" +
+        "Promoting the value to transitively initialized (Hot) failed due to the following problem:\n" + {
+          val ctx2 = ctx.withProperty(IsFromPromotion, Some(true))
+          error.show(using ctx2)
+        }
+
+  /** Unsafe leaking a non-hot value as constructor arguments
+   *
+   *  Invariant: argsIndices.nonEmpty
+   */
+  case class UnsafeLeaking(error: Error, nonHotOuterClass: Symbol, argsIndices: List[Int])(val trace: Trace) extends Error:
+    def show(using Context): String =
+      "Problematic object instantiation: " + argumentInfo() + stacktrace + "\n" +
+        "It leads to the following error during object initialization:\n" +
+        error.show
+
+    private def punctuation(i: Int): String =
+      if i == argsIndices.size - 2 then " and "
+      else if i == argsIndices.size - 1 then ""
+      else ", "
+
+    private def argumentInfo()(using Context): String =
+      val multiple = argsIndices.size > 1 || nonHotOuterClass.exists
+      val init =
+        if nonHotOuterClass.exists
+        then  "the outer " + nonHotOuterClass.name.show + ".this" + punctuation(-1)
+        else ""
+
+      val subject =
+        argsIndices.zipWithIndex.foldLeft(init) { case (acc, (pos, i)) =>
+          val text1 = "arg " + pos.toString
+          val text2 = text1 + punctuation(i)
+          acc + text2
+        }
+      val verb = if multiple then " are " else " is "
+      val adjective = "not transitively initialized (Hot)."
+      subject + verb + adjective

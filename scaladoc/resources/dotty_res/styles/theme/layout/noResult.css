@@ -1,0 +1,34 @@
+#no-results-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  margin: calc(10 * var(--base-spacing));
+}
+
+#no-results-container .no-result-icon {
+  height: 30px;
+  width: 30px;
+}
+
+#no-results-container .no-result-icon::before {
+  content: url('../../../images/no-results-icon.svg');
+}
+
+#no-results-container .no-result-header {
+margin-block-start: 27px;
+  margin-block-end: var(--base-spacing);
+  color: var(--text-primary);
+}
+
+#no-results-container .no-result-content {
+   margin-top: 0;
+  margin-bottom: 34px;
+  color: var(--text-secondary);
+}
+
+#no-results-container .no-result-content p{
+  margin: 0;
+}
+

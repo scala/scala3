@@ -3,6 +3,6 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     new T[(Int, Int)].foo((ii) => 0)
-    new T[(Int, Int)].foo((x, y) => 0) // check that this does not run into ???
+    //new T[(Int, Int)].foo((x, y) => 0) // not allowed anymore
   }
 }

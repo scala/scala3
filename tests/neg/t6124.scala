@@ -1,4 +1,4 @@
-
+import language.postfixOps
 trait T {
   def f = 3_14_E-2 // error
   def e = 3_14E-_2 // error

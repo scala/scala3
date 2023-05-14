@@ -1,6 +1,6 @@
 object ProdNonEmpty {
   def _1: Int = 0
-  def _2: String = "???" // Slight variation with scalac: this test passes
+  def _2: String = "???" // Slight variation with nsc: this test passes
                          // with ??? here. I think dotty behavior is fine
                          // according to the spec given that methods involved
                          // in pattern matching should be pure.

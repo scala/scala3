@@ -1,55 +1,55 @@
 scripts:
 
     re2s:
-        - measure -wi 1 -i 1 -f 1 -- $(find $PROG_HOME/tests/re2s/src -name *.scala)
+        - measure 1 1 1 $(find $PROG_HOME/tests/re2s/src -name *.scala)
 
     implicit-cache:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/implicit_cache.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/implicit_cache.scala
 
     implicit-cache-from-tasty:
         - source $PROG_HOME/dotty/bench/scripts/implicit-cache-from-tasty
 
     implicit-scope-loop:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/implicit-scope-loop.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/implicit-scope-loop.scala
 
     i1535:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/i1535.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/i1535.scala
 
     i1687:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/i1687.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/i1687.scala
 
     empty-class:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/empty-class.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/empty-class.scala
 
     empty-object:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/empty-object.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/empty-object.scala
 
     empty-file:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/empty-file.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/empty-file.scala
 
     patmatexhaust:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/patmatexhaust.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/patmatexhaust.scala
 
     exhaustivity-I:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/exhaustivity-I.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/exhaustivity-I.scala
 
     exhaustivity-S:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/exhaustivity-S.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/exhaustivity-S.scala
 
     exhaustivity-T:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/exhaustivity-T.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/exhaustivity-T.scala
 
     exhaustivity-V:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/exhaustivity-V.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/exhaustivity-V.scala
 
     implicitNums:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/implicitNums.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/implicitNums.scala
 
     implicitNums-from-tasty:
         - source $PROG_HOME/dotty/bench/scripts/implicitNums-from-tasty
 
     inductive-implicits:
-        - measure -wi 1 -i 1 -f 1 -- $PROG_HOME/dotty/tests/bench/inductive-implicits.scala
+        - measure 1 1 1 $PROG_HOME/dotty/tests/bench/inductive-implicits.scala
 
     scalap:
         - source $PROG_HOME/dotty/bench/scripts/scalap

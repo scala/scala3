@@ -18,7 +18,6 @@ import Signature.MatchDegree._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
-import config.Feature.migrateTo3
 import config.Config
 import config.Printers.overload
 import util.common._
@@ -176,7 +175,7 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type) extends PreDenotation with printing.Showable {
+  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
     /** The type info.
@@ -194,12 +193,6 @@ object Denotations {
      *  is not yet completed, the completer
      */
     def infoOrCompleter: Type
-
-    /** The period during which this denotation is valid. */
-    def validFor: Period
-
-    /** Is this a reference to a type symbol? */
-    def isType: Boolean
 
     /** Is this a reference to a term symbol? */
     def isTerm: Boolean = !isType
@@ -229,6 +222,15 @@ object Denotations {
      *  at its first point of definition.
      */
     def current(using Context): Denotation
+
+    /** The period during which this denotation is valid. */
+    private var myValidFor: Period = Nowhere
+
+    final def validFor: Period = myValidFor
+    final def validFor_=(p: Period): Unit = {
+      myValidFor = p
+      symbol.invalidateDenotCache()
+    }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
@@ -290,7 +292,7 @@ object Denotations {
                        name: Name,
                        site: Denotation = NoDenotation,
                        args: List[Type] = Nil,
-                       source: AbstractFile = null,
+                       source: AbstractFile | Null = null,
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
@@ -301,9 +303,9 @@ object Denotations {
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
-            if (site.exists) i"$site does not have a member $kind $name$argStr"
-            else i"missing: $kind $name$argStr"
-          throw new TypeError(msg)
+            if site.exists then em"$site does not have a member $kind $name$argStr"
+            else em"missing: $kind $name$argStr"
+          throw TypeError(msg)
         case denot =>
           denot.symbol
       }
@@ -404,7 +406,7 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else if (denot1.matches(denot2)) mergeSingleDenot(denot1, denot2)
+          else if denot1.matches(denot2) then mergeSingleDenot(denot1, denot2)
           else NoDenotation
       }
 
@@ -439,8 +441,11 @@ object Denotations {
             else defn.RootClass)
 
         def isHidden(sym: Symbol) = sym.exists && !sym.isAccessibleFrom(pre)
-        val hidden1 = isHidden(sym1)
-        val hidden2 = isHidden(sym2)
+        // In typer phase filter out denotations with symbols that are not
+        // accessible. After typer, this is not possible since we cannot guarantee
+        // that the current owner is set correctly. See pos/14660.scala.
+        val hidden1 = isHidden(sym1) && ctx.isTyper
+        val hidden2 = isHidden(sym2) && ctx.isTyper
         if hidden1 && !hidden2 then denot2
         else if hidden2 && !hidden1 then denot1
         else
@@ -467,11 +472,12 @@ object Denotations {
                 else if sym1.is(Method) && !sym2.is(Method) then 1
                 else 0
 
+          val relaxedOverriding = ctx.explicitNulls && (sym1.is(JavaDefined) || sym2.is(JavaDefined))
           val matchLoosely = sym1.matchNullaryLoosely || sym2.matchNullaryLoosely
 
-          if symScore <= 0 && info2.overrides(info1, matchLoosely, checkClassInfo = false) then
+          if symScore <= 0 && info2.overrides(info1, relaxedOverriding, matchLoosely, checkClassInfo = false) then
             denot2
-          else if symScore >= 0 && info1.overrides(info2, matchLoosely, checkClassInfo = false) then
+          else if symScore >= 0 && info1.overrides(info2, relaxedOverriding, matchLoosely, checkClassInfo = false) then
             denot1
           else
             val jointInfo = infoMeet(info1, info2, safeIntersection)
@@ -539,8 +545,7 @@ object Denotations {
         tp2 match
           case tp2: MethodType
           if TypeComparer.matchingMethodParams(tp1, tp2)
-             && tp1.isImplicitMethod == tp2.isImplicitMethod
-             && tp1.isErasedMethod == tp2.isErasedMethod =>
+             && tp1.isImplicitMethod == tp2.isImplicitMethod =>
             val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
             if resType.exists then
               tp1.derivedLambdaType(mergeParamNames(tp1, tp2), tp1.paramInfos, resType)
@@ -548,7 +553,7 @@ object Denotations {
           case _ => NoType
       case tp1: PolyType =>
         tp2 match
-          case tp2: PolyType if sameLength(tp1.paramNames, tp2.paramNames) =>
+          case tp2: PolyType if tp1.paramNames.hasSameLengthAs(tp2.paramNames) =>
             val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
             if resType.exists then
               tp1.derivedLambdaType(
@@ -568,7 +573,7 @@ object Denotations {
   end infoMeet
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
+  abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
@@ -607,16 +612,13 @@ object Denotations {
      */
     def signature(sourceLanguage: SourceLanguage)(using Context): Signature =
       if (isType) Signature.NotAMethod // don't force info if this is a type denotation
-      else info match {
+      else info match
         case info: MethodOrPoly =>
           try info.signature(sourceLanguage)
-          catch { // !!! DEBUG
-            case scala.util.control.NonFatal(ex) =>
-              report.echo(s"cannot take signature of $info")
-              throw ex
-          }
+          catch case ex: Exception =>
+            if ctx.debug then report.echo(s"cannot take signature of $info")
+            throw ex
         case _ => Signature.NotAMethod
-      }
 
     def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix, isRefinedMethod: Boolean = this.isRefinedMethod)(using Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix) && (isRefinedMethod == this.isRefinedMethod)) this
@@ -641,15 +643,19 @@ object Denotations {
 
     def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val sigMatches = sig.matchDegree(situated.signature) match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          // See comment in `matches`
-          relaxed && !symbol.is(JavaDefined)
-        case ParamMatch =>
-          relaxed
-        case noMatch =>
+      val sigMatches =
+        try
+          sig.matchDegree(situated.signature) match
+            case FullMatch =>
+              true
+            case MethodNotAMethodMatch =>
+              // See comment in `matches`
+              relaxed && !symbol.is(JavaDefined)
+            case ParamMatch =>
+              relaxed
+            case noMatch =>
+              false
+        catch case ex: MissingType =>
           false
       if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 
@@ -659,14 +665,6 @@ object Denotations {
       else NoViewsAllowed.normalizedCompatible(info, bound, keepConstraint = false)
 
     // ------ Transformations -----------------------------------------
-
-    private var myValidFor: Period = Nowhere
-
-    def validFor: Period = myValidFor
-    def validFor_=(p: Period): Unit = {
-      myValidFor = p
-      symbol.invalidateDenotCache()
-    }
 
     /** The next SingleDenotation in this run, with wrap-around from last to first.
      *
@@ -691,7 +689,7 @@ object Denotations {
       if (validFor.firstPhaseId <= 1) this
       else {
         var current = nextInRun
-        while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
+        while (current.validFor.code > this.validFor.code) current = current.nextInRun
         current
       }
 
@@ -772,7 +770,7 @@ object Denotations {
      *  are otherwise undefined.
      */
     def skipRemoved(using Context): SingleDenotation =
-      if (myValidFor.code <= 0) nextDefined else this
+      if (validFor.code <= 0) nextDefined else this
 
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
@@ -789,14 +787,12 @@ object Denotations {
     def current(using Context): SingleDenotation =
       util.Stats.record("current")
       val currentPeriod = ctx.period
-      val valid = myValidFor
+      val valid = validFor
 
       def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
         case d: ClassDenotation =>
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
         case _ =>
-
-      def escapeToNext = nextDefined.ensuring(_.validFor != Nowhere)
 
       def toNewRun =
         util.Stats.record("current.bringForward")
@@ -833,9 +829,6 @@ object Denotations {
                 // creations that way, and also avoid phase caches in contexts to get large.
                 // To work correctly, we need to demand that the context with the new phase
                 // is not retained in the result.
-            catch case ex: CyclicReference =>
-              // println(s"error while transforming $this")
-              throw ex
             finally
               mutCtx.setPeriod(savedPeriod)
             if next eq cur then
@@ -872,7 +865,7 @@ object Denotations {
         // can happen if we sit on a stale denotation which has been replaced
         // wholesale by an installAfter; in this case, proceed to the next
         // denotation and try again.
-        escapeToNext
+        nextDefined
       else if valid.runId != currentPeriod.runId then
         toNewRun
       else if currentPeriod.code > valid.code then
@@ -959,7 +952,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
+      s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${validFor}, is referred to in run ${ctx.period}"
     }
 
     /** The period (interval of phases) for which there exists
@@ -1073,6 +1066,7 @@ object Denotations {
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
     type AsSeenFromResult = SingleDenotation
+
     protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
       val symbol = this.symbol
       val owner = this match {
@@ -1115,13 +1109,38 @@ object Denotations {
       if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
          || symbol.is(NonMember)
       then this
+      else if symbol.isAllOf(ClassTypeParam) then
+        val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
+        if arg.exists
+        then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
+        else derived(symbol.info)
       else derived(symbol.info)
     }
+
+    /** The argument bounds, possibly intersected with the parameter's info TypeBounds,
+     *  if the latter is not F-bounded and does not refer to other type parameters
+     *  of the same class, and the intersection is provably nonempty.
+     */
+    private def normalizedArgBounds(argBounds: TypeBounds)(using Context): TypeBounds =
+      if symbol.isCompleted && !hasBoundsDependingOnParamsOf(symbol.owner) then
+        val combined @ TypeBounds(lo, hi) = symbol.info.bounds & argBounds
+        if (lo frozen_<:< hi) then combined
+        else argBounds
+      else argBounds
+
+    private def hasBoundsDependingOnParamsOf(cls: Symbol)(using Context): Boolean =
+      val acc = new TypeAccumulator[Boolean]:
+        def apply(x: Boolean, tp: Type): Boolean = tp match
+          case _: LazyRef => true
+          case tp: TypeRef
+          if tp.symbol.isAllOf(ClassTypeParam) && tp.symbol.owner == cls => true
+          case _ => foldOver(x, tp)
+      acc(false, symbol.info)
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
+  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type)
+  extends SingleDenotation(symbol, initInfo, initInfo.isInstanceOf[TypeType]) {
     def infoOrCompleter: Type = initInfo
-    def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
 
   class UniqueRefDenotation(
@@ -1217,10 +1236,10 @@ object Denotations {
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType, isType = false) with MultiPreDenotation {
+    validFor = denot1.validFor & denot2.validFor
+
     final def infoOrCompleter: Type = multiHasNot("info")
-    final def validFor: Period = denot1.validFor & denot2.validFor
-    final def isType: Boolean = false
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
     final def signature(using Context): Signature = Signature.OverloadedSignature
@@ -1318,8 +1337,10 @@ object Denotations {
         }
         recurSimple(path.length, wrap)
     }
-    if ctx.run == null then recur(path)
-    else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
+
+    val run = ctx.run
+    if run == null then recur(path)
+    else run.staticRefs.getOrElseUpdate(path, recur(path))
   }
 
   /** If we are looking for a non-existing term name in a package,

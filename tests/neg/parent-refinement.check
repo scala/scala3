@@ -1,0 +1,4 @@
+-- Error: tests/neg/parent-refinement.scala:5:2 ------------------------------------------------------------------------
+5 |  with Ordered[Year] { // error
+  |  ^^^^
+  |  end of toplevel definition expected but 'with' found

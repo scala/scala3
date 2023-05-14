@@ -4,7 +4,10 @@ package ast
 import core.Contexts._
 import core.Decorators._
 import util.Spans._
-import Trees.{MemberDef, DefTree, WithLazyField}
+import Trees.{MemberDef, DefTree, WithLazyFields}
+import dotty.tools.dotc.core.Types.AnnotatedType
+import dotty.tools.dotc.core.Types.ImportType
+import dotty.tools.dotc.core.Types.Type
 
 /** Utility functions to go from typed to untyped ASTs */
 // TODO: Handle trees with mixed source files
@@ -56,19 +59,19 @@ object NavigateAST {
    *  the given `span`.
    */
   def untypedPath(span: Span)(using Context): List[Positioned] =
-    pathTo(span, ctx.compilationUnit.untpdTree)
+    pathTo(span, List(ctx.compilationUnit.untpdTree))
 
 
-  /** The reverse path from node `from` to the node that closest encloses `span`,
+  /** The reverse path from any node in `from` to the node that closest encloses `span`,
    *  or `Nil` if no such path exists. If a non-empty path is returned it starts with
-   *  the node closest enclosing `span` and ends with `from`.
+   *  the node closest enclosing `span` and ends with one of the nodes in `from`.
    *
    *  @param skipZeroExtent  If true, skip over zero-extent nodes in the search. These nodes
    *                         do not correspond to code the user wrote since their start and
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(span: Span, from: Positioned, skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
+  def pathTo(span: Span, from: List[Positioned], skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       var bestFit: List[Positioned] = path
       while (it.hasNext) {
@@ -86,19 +89,39 @@ object NavigateAST {
       }
       bestFit
     }
+    /*
+     * Annotations trees are located in the Type
+     */
+    def unpackAnnotations(t: Type, path: List[Positioned]): List[Positioned] =
+      t match {
+        case ann: AnnotatedType =>
+            unpackAnnotations(ann.parent, childPath(ann.annot.tree.productIterator, path))
+        case imp: ImportType =>
+          childPath(imp.expr.productIterator, path)
+        case other =>
+          path
+    }
     def singlePath(p: Positioned, path: List[Positioned]): List[Positioned] =
       if (p.span.exists && !(skipZeroExtent && p.span.isZeroExtent) && p.span.contains(span)) {
         // FIXME: We shouldn't be manually forcing trees here, we should replace
         // our usage of `productIterator` by something in `Positioned` that takes
         // care of low-level details like this for us.
-        p match {
-          case p: WithLazyField[?] =>
-            p.forceIfLazy
+        p match
+          case p: WithLazyFields => p.forceFields()
           case _ =>
-        }
-        childPath(p.productIterator, p :: path)
+        val iterator = p match
+          case defdef: DefTree[?] =>
+            p.productIterator ++ defdef.mods.productIterator
+          case _ =>
+            p.productIterator
+        childPath(iterator, p :: path)
       }
-      else path
-    singlePath(from, Nil)
+      else {
+        p match {
+          case t: untpd.TypeTree => unpackAnnotations(t.typeOpt, path)
+          case _ => path
+        }
+      }
+    childPath(from.iterator, Nil)
   }
 }
