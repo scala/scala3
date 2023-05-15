@@ -297,9 +297,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def paramsText(lam: LambdaType): Text = {
     val erasedParams = lam.erasedParams
-    def paramText(name: Name, tp: Type, erased: Boolean) =
-      keywordText("erased ").provided(erased) ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
-    Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(erasedParams).map(paramText), ", ")
+    def paramText(ref: ParamRef, erased: Boolean) =
+      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
+    Text(lam.paramRefs.lazyZip(erasedParams).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
@@ -363,7 +363,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp @ ConstantType(value) =>
         toText(value)
       case pref: TermParamRef =>
-        nameString(pref.binder.paramNames(pref.paramNum)) ~ lambdaHash(pref.binder)
+        ParamRefNameString(pref) ~ lambdaHash(pref.binder)
       case tp: RecThis =>
         val idx = openRecs.reverse.indexOf(tp.binder)
         if (idx >= 0) selfRecName(idx + 1)
