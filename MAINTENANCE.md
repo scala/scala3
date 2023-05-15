@@ -61,28 +61,36 @@ At the end of their supervision period, the supervisor reports to the team durin
 
 The following is the list of all the principal areas of the compiler and the core team members who are responsible for their maintenance:
 
+### Compiler
 - Parser: @odersky
 - Typer: @odersky, @smarter, (@dwijnand)
 - Erasure: @smarter, @odersky
 - Enums: @bishabosha
+- Derivation & Mirrors: @bishabosha, (@dwijnand)
 - Export: @bishabosha, @odersky
 - Pattern Matching: @dwijnand, (@liufengyun), @sjrd
 - Inline: @nicolasstucki, @odersky
-- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @aherlihy
-- Match types: @OlivierBlanvillain, @dwijnand
-- GADT: @abgruszecki, @dwijnand
-- Scaladoc: @KacperFKorban,  @BarkingBad, @pikinier20
-- Initialization checker: @olhotak, @liufengyun, @anatoliykmetyuk
+- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb
+- Match types: @sjrd, @dwijnand, @Decel
+- GADT: @dwijnand, @Linyxus
+- Initialization checker: @olhotak, @liufengyun
 - Safe nulls: @noti0na1, @olhotak
+- Lazy vals: @szymon-rd, @sjrd
 - tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
-- forward compat (-scala-release): @prolativ, @Kordyjan, (@nicolasstucki)
-- Benchmarks: @anatoliykmetyuk, @mbovel
-- REPL: @dwijnand, @anatoliykmetyuk, @prolativ
+- JVM backend: @sjrd
+- Java-compat: @smarter
+
+### Tooling
+- REPL: @dwijnand, @prolativ
+- Scaladoc: @Florian3k
+- SemanticDB: @tanishiking
+- Coverage: @TheElectronWill
+- Linting (especially unused warnings) / Reporting UX: @szymon-rd
+
+### Infrastructure
 - CI: @anatoliykmetyuk
 - Community Build: @anatoliykmetyuk
+- Open Community Build: @WojciechMazur
 - Vulpix: @dwijnand, @prolativ
-- JVM backend: @Kordyjan, (@sjrd)
-- Derivation & Mirrors: @bishabosha, (@dwijnand)
-- Linting (especially unused warnings) / Reporting UX: VirtusLab TBD?
-- Java-compat: @Kordyjan
+- Benchmarks: @mbovel
