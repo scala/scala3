@@ -150,7 +150,7 @@ class SubUniverse extends Universe {
 
 trait Whole {
   trait MixinA {
-    lazy val mixinB = new MixinB() {}
+    final lazy val mixinB = new MixinB() {}
   }
   trait MixinB {
     object A extends MixinB { // by inheriting `MixinB`, we should not check for inheritance from the right

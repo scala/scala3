@@ -283,16 +283,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol.is(Inline) && !Inlines.inInlineMethod then
-              ctx.compilationUnit.needsInlining = true
             checkNoConstructorProxy(tree)
+            registerNeedsInlining(tree)
             tree.tpe match {
               case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
               case _ => tree
             }
         case tree @ Select(qual, name) =>
-          if tree.symbol.is(Inline) then
-            ctx.compilationUnit.needsInlining = true
+          registerNeedsInlining(tree)
           if name.isTypeName then
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
@@ -344,8 +342,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
-          if tree.symbol.is(Inline) then
-            ctx.compilationUnit.needsInlining = true
+          registerNeedsInlining(tree)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
             checkInferredWellFormed(arg)
@@ -363,6 +360,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
+          withMode(Mode.InlinedCall)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
@@ -506,6 +504,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def registerNeedsInlining(tree: Tree)(using Context): Unit =
+      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.InlinedCall) then
+        ctx.compilationUnit.needsInlining = true
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
     private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =
