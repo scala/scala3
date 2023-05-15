@@ -1761,15 +1761,9 @@ object desugar {
           // where R2 is R, with all references to S_1..S_M replaced with T1..T_M.
 
           def typeTree(tp: Type) = tp match
-            case RefinedType(parent, nme.apply, PolyType(_, mt)) if parent.typeSymbol eq defn.PolyFunctionClass =>
-              var bail = false
-              def mapper(tp: Type, topLevel: Boolean = false): Tree = tp match
-                case tp: TypeRef              => ref(tp)
-                case tp: TypeParamRef         => Ident(applyTParams(tp.paramNum).name)
-                case AppliedType(tycon, args) => AppliedTypeTree(mapper(tycon), args.map(mapper(_)))
-                case _                        => if topLevel then TypeTree() else { bail = true; genericEmptyTree }
-              val mapped = mapper(mt.resultType, topLevel = true)
-              if bail then TypeTree() else mapped
+            case RefinedType(parent, nme.apply, poly @ PolyType(_, mt: MethodType)) if parent.classSymbol eq defn.PolyFunctionClass =>
+              untpd.DependentTypeTree((tsyms, vsyms) =>
+                mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
             case _ => TypeTree()
 
           val applyVParams = vargs.asInstanceOf[List[ValDef]]

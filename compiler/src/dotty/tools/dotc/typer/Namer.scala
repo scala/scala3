@@ -1692,7 +1692,6 @@ class Namer { typer: Typer =>
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
-    lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
@@ -1700,7 +1699,10 @@ class Namer { typer: Typer =>
       case TypeTree() =>
         checkMembersOK(inferredType, mdef.srcPos)
       case DependentTypeTree(tpFun) =>
-        val tpe = tpFun(termParamss.head)
+        // A lambda has at most one type parameter list followed by exactly one term parameter list.
+        val tpe = (paramss: @unchecked) match
+          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+          case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
@@ -1724,7 +1726,8 @@ class Namer { typer: Typer =>
             // So fixing levels at instantiation avoids the soundness problem but apparently leads
             // to type inference problems since it comes too late.
             if !Config.checkLevelsOnConstraints then
-              val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
+              val termParams = paramss.collect { case TermSymbols(vparams) => vparams }.flatten
+              val hygienicType = TypeOps.avoid(rhsType, termParams)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
                 report.error(
                   em"""return type ${tpt.tpe} of lambda cannot be made hygienic
