@@ -27,4 +27,4 @@ end Trait
 @main def Test() =
   println(Obj.length[(Int, Int, String)]) // OK
   new Trait:
-    println(length[(Int, Int, String)]) // ERROR
+    println(length[(Int, Int, String)])
