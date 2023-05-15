@@ -95,3 +95,6 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
+
+# recursion limit exceeded
+i7445b.scala
