@@ -119,10 +119,13 @@ object PrepareInlineable {
               else InlineAccessorName(accessed.name.asTermName).expandedName(accessorClass)
             accessor.owner == accessed.owner && accessor.name == binaryAccessorName
           if !inlineAccessorMatches then
+            val within =
+              if accessor.owner.name.isPackageObjectName then accessor.owner.owner.name.stripModuleClassSuffix
+              else accessor.owner.name.stripModuleClassSuffix
             s"""Adding $annot may break binary compatibility if a previous version of this
                 |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
                 |using MiMa. To keep binary compatibility you can add the following accessor to ${accessor.owner.showKind} ${accessor.owner.name.stripModuleClassSuffix}:
-                |  @binaryAPI private[${accessor.owner.name.stripModuleClassSuffix}] ${accessorDefTree.show}
+                |  @binaryAPI private[$within] ${accessorDefTree.show}
                 |
                 |""".stripMargin
           else if !accessed.is(Private) then

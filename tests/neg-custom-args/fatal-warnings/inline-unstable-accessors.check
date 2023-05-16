@@ -94,3 +94,71 @@
    |    using MiMa. To keep binary compatibility you can add the following accessor to object F:
    |      @binaryAPI private[F] def inline$valBinaryAPI2$i3(x$0: foo.E): Int = x$0.valBinaryAPI2
    |
+-- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:54:4 ------------------------------------
+54 |    valBinaryAPI1 + // error
+   |    ^^^^^^^^^^^^^
+   |    Generated unstable inline accessor for value valBinaryAPI1 defined in package object G.
+   |
+   |    Annotate valBinaryAPI1 with `@binaryAPI` to make it accessible.
+   |
+   |    Adding @binaryAPI may break binary compatibility if a previous version of this
+   |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+   |    using MiMa. To keep binary compatibility you can use @binaryAPIAccessor on
+   |    val valBinaryAPI1.
+-- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:55:4 ------------------------------------
+55 |    valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^
+   |    Generated unstable inline accessor for value valBinaryAPI2 defined in package object G.
+   |
+   |    Annotate valBinaryAPI2 with `@binaryAPI` to make it accessible.
+   |
+   |    Adding @binaryAPI may break binary compatibility if a previous version of this
+   |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+   |    using MiMa. To keep binary compatibility you can use @binaryAPIAccessor on
+   |    val valBinaryAPI2.
+-- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:60:6 ------------------------------------
+60 |    G.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |    Generated unstable inline accessor for value valBinaryAPI2 defined in package object G.
+   |
+   |    Annotate valBinaryAPI2 with `@binaryAPI` to make it accessible.
+   |
+   |    Adding @binaryAPI may break binary compatibility if a previous version of this
+   |    library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+   |    using MiMa. To keep binary compatibility you can add the following accessor to package object package:
+   |      @binaryAPI private[H] def inline$valBinaryAPI2$i4(x$0: foo.G): Int = x$0.valBinaryAPI2
+   |
+-- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:69:4 ------------------------------------
+69 |    valBinaryAPI1 + // error
+   |    ^^^^^^^^^^^^^
+   |Generated unstable inline accessor for value valBinaryAPI1 defined in package object inline-unstable-accessors$package.
+   |
+   |Annotate valBinaryAPI1 with `@binaryAPI` to make it accessible.
+   |
+   |Adding @binaryAPI may break binary compatibility if a previous version of this
+   |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+   |using MiMa. To keep binary compatibility you can use @binaryAPIAccessor on
+   |val valBinaryAPI1.
+-- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:70:4 ------------------------------------
+70 |    valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^
+   |Generated unstable inline accessor for value valBinaryAPI2 defined in package object inline-unstable-accessors$package.
+   |
+   |Annotate valBinaryAPI2 with `@binaryAPI` to make it accessible.
+   |
+   |Adding @binaryAPI may break binary compatibility if a previous version of this
+   |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+   |using MiMa. To keep binary compatibility you can use @binaryAPIAccessor on
+   |val valBinaryAPI2.
+-- Error: tests/neg-custom-args/fatal-warnings/inline-unstable-accessors.scala:75:6 ------------------------------------
+75 |    I.valBinaryAPI2 + // error
+   |    ^^^^^^^^^^^^^^^
+   |Generated unstable inline accessor for value valBinaryAPI2 defined in package object inline-unstable-accessors$package.
+   |
+   |Annotate valBinaryAPI2 with `@binaryAPI` to make it accessible.
+   |
+   |Adding @binaryAPI may break binary compatibility if a previous version of this
+   |library was compiled with Scala 3.0-3.3, Binary compatibility should be checked
+   |using MiMa. To keep binary compatibility you can add the following accessor to package object inline-unstable-accessors$package:
+   |  @binaryAPI private[J] def inline$valBinaryAPI2$i5(x$0: foo.I): Int = x$0.valBinaryAPI2
+   |

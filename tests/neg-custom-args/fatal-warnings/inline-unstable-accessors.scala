@@ -44,3 +44,33 @@ object F:
   inline def inlined =
     E.valBinaryAPI2 + // error
     E.valBinaryAPI4
+
+package object G:
+  private val valBinaryAPI1: Int = 1
+  private[foo] val valBinaryAPI2: Int = 1
+  @binaryAPIAccessor private val valBinaryAPI3: Int = 1
+  @binaryAPI private[foo] val valBinaryAPI4: Int = 1
+    inline def inlined =
+    valBinaryAPI1 + // error
+    valBinaryAPI2 + // error
+    valBinaryAPI3 +
+    valBinaryAPI4
+package object H:
+  inline def inlined =
+    G.valBinaryAPI2 + // error
+    G.valBinaryAPI4
+
+package I:
+  private val valBinaryAPI1: Int = 1
+  private[foo] val valBinaryAPI2: Int = 1
+  @binaryAPIAccessor private val valBinaryAPI3: Int = 1
+  @binaryAPI private[foo] val valBinaryAPI4: Int = 1
+    inline def inlined =
+    valBinaryAPI1 + // error
+    valBinaryAPI2 + // error
+    valBinaryAPI3 +
+    valBinaryAPI4
+package J:
+  inline def inlined =
+    I.valBinaryAPI2 + // error
+    I.valBinaryAPI4
