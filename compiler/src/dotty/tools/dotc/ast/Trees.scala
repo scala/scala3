@@ -737,6 +737,22 @@ object Trees {
     type ThisTree[+T <: Untyped] = Splice[T]
   }
 
+  /** A tree representing a pattern splice `${ pattern }`, `$ident` or `$ident(args*)` in a quote pattern.
+   *
+   *  Parser will only create `${ pattern }` and `$ident`, hence they will not have args.
+   *  While typing, the `$ident(args*)` the args are identified and desugared into a `SplicePattern`
+   *  containing them.
+   *
+   *  SplicePattern are removed after typing the pattern and are not present in TASTy.
+   *
+   *  @param body  The tree that was spliced
+   *  @param args  The arguments of the splice (the HOAS arguments)
+   */
+  case class SplicePattern[+T <: Untyped] private[ast] (body: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+    extends TermTree[T] {
+    type ThisTree[+T <: Untyped] = SplicePattern[T]
+  }
+
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[+T <: Untyped]()(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TypTree[T] {
@@ -1147,6 +1163,7 @@ object Trees {
     type Inlined = Trees.Inlined[T]
     type Quote = Trees.Quote[T]
     type Splice = Trees.Splice[T]
+    type SplicePattern = Trees.SplicePattern[T]
     type TypeTree = Trees.TypeTree[T]
     type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
@@ -1324,6 +1341,10 @@ object Trees {
       def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Splice(expr)(sourceFile(tree)))
+      }
+      def SplicePattern(tree: Tree)(body: Tree, args: List[Tree])(using Context): SplicePattern = tree match {
+        case tree: SplicePattern if (body eq tree.body) && (args eq tree.args) => tree
+        case _ => finalize(tree, untpd.SplicePattern(body, args)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
@@ -1566,6 +1587,8 @@ object Trees {
               cpy.Quote(tree)(transform(body)(using quoteContext), transform(tags))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr)(using spliceContext))
+            case tree @ SplicePattern(body, args) =>
+              cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(args))
             case tree @ Hole(isTerm, idx, args, content) =>
               cpy.Hole(tree)(isTerm, idx, transform(args), transform(content))
             case _ =>
@@ -1711,6 +1734,8 @@ object Trees {
               this(this(x, body)(using quoteContext), tags)
             case Splice(expr) =>
               this(x, expr)(using spliceContext)
+            case SplicePattern(body, args) =>
+              this(this(x, body)(using spliceContext), args)
             case Hole(_, _, args, content) =>
               this(this(x, args), content)
             case _ =>

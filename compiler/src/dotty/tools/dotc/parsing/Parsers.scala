@@ -1750,10 +1750,10 @@ object Parsers {
     def splice(isType: Boolean): Tree =
       val start = in.offset
       atSpan(in.offset) {
+        val inPattern = (staged & StageKind.QuotedPattern) != 0
         val expr =
           if (in.name.length == 1) {
             in.nextToken()
-            val inPattern = (staged & StageKind.QuotedPattern) != 0
             withinStaged(StageKind.Spliced)(if (inPattern) inBraces(pattern()) else stagedBlock())
           }
           else atSpan(in.offset + 1) {
@@ -1769,6 +1769,8 @@ object Parsers {
             else "To use a given Type[T] in a quote just write T directly"
           syntaxError(em"$msg\n\nHint: $hint", Span(start, in.lastOffset))
           Ident(nme.ERROR.toTypeName)
+        else if inPattern then
+          SplicePattern(expr, Nil)
         else
           Splice(expr)
       }

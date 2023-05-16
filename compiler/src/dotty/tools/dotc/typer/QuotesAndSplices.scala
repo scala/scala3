@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.inlines.PrepareInlineable
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.typer.ErrorReporting.errorTree
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.util.Spans._
@@ -74,45 +75,55 @@ trait QuotesAndSplices {
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
     checkSpliceOutsideQuote(tree)
+    assert(!ctx.mode.is(Mode.QuotedPattern))
     tree.expr match {
       case untpd.Quote(innerExpr, Nil) if innerExpr.isTerm =>
         report.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.srcPos)
         return typed(innerExpr, pt)
       case _ =>
     }
-    if (ctx.mode.is(Mode.QuotedPattern))
-      if (isFullyDefined(pt, ForceDegree.flipBottom)) {
-        def spliceOwner(ctx: Context): Symbol =
-          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-        val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
-          using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(spliceOwner(ctx)))
-        val baseType = pat.tpe.baseType(defn.QuotedExprClass)
-        val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
-        Splice(pat, argType).withSpan(tree.span)
-      }
-      else {
-        report.error(em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
-        tree.withType(UnspecifiedErrorType)
-      }
-    else {
-      if (level == 0) {
-        // Mark the first inline method from the context as a macro
-        def markAsMacro(c: Context): Unit =
-          if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-          else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
-          else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
-          else assert(ctx.reporter.hasErrors) // Did not find inline def to mark as macro
-        markAsMacro(ctx)
-      }
-
-      // TODO typecheck directly (without `exprSplice`)
-      val internalSplice =
-        untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
-      typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
-        case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
-          cpy.Splice(tree)(spliced)
-        case tree => tree
+    if (level == 0) {
+      // Mark the first inline method from the context as a macro
+      def markAsMacro(c: Context): Unit =
+        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+        else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+        else assert(ctx.reporter.hasErrors) // Did not find inline def to mark as macro
+      markAsMacro(ctx)
     }
+
+    // TODO typecheck directly (without `exprSplice`)
+    val internalSplice =
+      untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
+    typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
+      case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
+        cpy.Splice(tree)(spliced)
+      case tree => tree
+  }
+
+  def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree = {
+    record("typedSplicePattern")
+    if isFullyDefined(pt, ForceDegree.flipBottom) then
+      def patternOuterContext(ctx: Context): Context =
+        if (ctx.mode.is(Mode.QuotedPattern)) patternOuterContext(ctx.outer) else ctx
+      val typedArgs = tree.args.map {
+        case arg: untpd.Ident =>
+          typedExpr(arg)
+        case arg =>
+          report.error("Open pattern expected an identifier", arg.srcPos)
+          EmptyTree
+      }
+      for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
+        report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val patType = if tree.args.isEmpty then pt else defn.FunctionOf(argTypes, pt)
+      val pat = typedPattern(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patType))(
+        using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(patternOuterContext(ctx).owner))
+      val baseType = pat.tpe.baseType(defn.QuotedExprClass)
+      val argType = if baseType.exists then baseType.argTypesHi.head else defn.NothingType
+      untpd.cpy.SplicePattern(tree)(pat, typedArgs).withType(pt)
+    else
+      errorTree(tree, em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.body.srcPos)
   }
 
   def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
@@ -127,29 +138,17 @@ trait QuotesAndSplices {
    */
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
-    val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
-    def isInBraces: Boolean = splice.span.end != splice.expr.span.end
-    if !isFullyDefined(pt, ForceDegree.flipBottom) then
-      report.error(em"Type must be fully defined.", splice.srcPos)
-      tree.withType(UnspecifiedErrorType)
-    else if isInBraces then // ${x}(...) match an application
+    val untpd.Apply(splice: untpd.SplicePattern, args) = tree: @unchecked
+    def isInBraces: Boolean = splice.span.end != splice.body.span.end
+    if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-      Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
+      val splice1 = typedSplicePattern(splice, defn.FunctionOf(argTypes, pt))
+      untpd.cpy.Apply(tree)(splice1.select(nme.apply), typedArgs).withType(pt)
     else // $x(...) higher-order quasipattern
-      val typedArgs = args.map {
-        case arg: untpd.Ident =>
-          typedExpr(arg)
-        case arg =>
-          report.error("Open pattern expected an identifier", arg.srcPos)
-          EmptyTree
-      }
       if args.isEmpty then
-        report.error("Missing arguments for open pattern", tree.srcPos)
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-      ref(defn.QuotedRuntimePatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
+         report.error("Missing arguments for open pattern", tree.srcPos)
+      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, args), pt)
   }
 
   /** Type a pattern variable name `t` in quote pattern as `${given t$giveni: Type[t @ _]}`.
@@ -227,29 +226,16 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(splice: Splice, tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(splice @ SplicePattern(pat, Nil), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           transform(tpt) // Collect type bindings
           transform(splice)
-        case Apply(TypeApply(fn, targs), Splice(pat) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
-          args match // TODO support these patterns. Possibly using scala.quoted.util.Var
-            case SeqLiteral(args, _) =>
-              for arg <- args; if arg.symbol.is(Mutable) do
-                report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
-          try ref(defn.QuotedRuntimePatterns_higherOrderHole.termRef).appliedToTypeTrees(targs).appliedTo(args).withSpan(tree.span)
-          finally {
-            val patType = pat.tpe.widen
-            val patType1 = patType.translateFromRepeated(toArray = false)
-            val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
-            patBuf += pat1
-          }
-        case Splice(pat) =>
-          try ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
-          finally {
-            val patType = pat.tpe.widen
-            val patType1 = patType.translateFromRepeated(toArray = false)
-            val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
-            patBuf += pat1
-          }
+        case SplicePattern(pat, args) =>
+          val patType = pat.tpe.widen
+          val patType1 = patType.translateFromRepeated(toArray = false)
+          val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
+          patBuf += pat1
+          if args.isEmpty then ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
+          else ref(defn.QuotedRuntimePatterns_higherOrderHole.termRef).appliedToType(tree.tpe).appliedTo(SeqLiteral(args, TypeTree(defn.AnyType))).withSpan(tree.span)
         case Select(pat: Bind, _) if tree.symbol.isTypeSplice =>
           val sym = tree.tpe.dealias.typeSymbol
           if sym.exists then
