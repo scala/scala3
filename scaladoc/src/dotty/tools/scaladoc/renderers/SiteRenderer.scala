@@ -47,13 +47,14 @@ trait SiteRenderer(using DocContext) extends Locations:
       )
       def asStaticSite: Option[String] = tryAsDri(str)
       def asApiLink: Option[String] =
-        {
-        val strWithoutHtml = str.stripSuffix(".html").stripPrefix("/")
+        val strWithoutHtml = if str.endsWith("$.html") then
+          str.stripSuffix("$.html")
+          else
+            str.stripSuffix(".html")
         val sourceDir = Paths.get("src", "main", "scala")
         val scalaPath = sourceDir.resolve(s"$strWithoutHtml.scala")
         val scalaDirPath = sourceDir.resolve(strWithoutHtml)
         Option.when(Files.exists(scalaPath)|| Files.exists(scalaDirPath))(resolveLink(pageDri, str))
-      }
 
       /* Link resolving checks performs multiple strategies with following priority:
         1. We check if the link is a valid URL e.g. http://dotty.epfl.ch
