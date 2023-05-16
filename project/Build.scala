@@ -926,7 +926,6 @@ object Build {
   lazy val `stdlib-bootstrapped` = project.in(file("stdlib-bootstrapped")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    dependsOn(`scala3-tasty-inspector` % "test->test").
     settings(commonBootstrappedSettings).
     settings(
       moduleName := "scala-library",
