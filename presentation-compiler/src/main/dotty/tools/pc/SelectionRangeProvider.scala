@@ -6,6 +6,7 @@ import java.util as ju
 import scala.jdk.CollectionConverters._
 import scala.meta.pc.OffsetParams
 
+import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -36,7 +37,7 @@ class SelectionRangeProvider(
   def selectionRange(): List[SelectionRange] =
     given ctx: Context = driver.currentCtx
 
-    val selectionRanges = params.asScala.toList.map { param =>
+    params.asScala.toList.map { param =>
 
       val uri = param.uri
       val filePath = Paths.get(uri)
@@ -53,10 +54,22 @@ class SelectionRangeProvider(
           selectionRange
         }
 
-      bareRanges.reduceRight(setParent)
-    }
+      val comments = driver.compilationUnits.get(uri).map(_.comments).toList.flatten
 
-    selectionRanges
+      val commentRanges = comments.find(_.span.contains(pos.span)).map { comment =>
+        val startLine = source.offsetToLine(comment.span.start)
+        val endLine = source.offsetToLine(comment.span.end)
+        val startChar = source.column(comment.span.start)
+        val endChar = source.column(comment.span.end)
+
+        new SelectionRange():
+          setRange(new lsp4j.Range(lsp4j.Position(startLine, startChar), lsp4j.Position(endLine, endChar)))
+      }.toList
+
+      (commentRanges ++ bareRanges)
+        .reduceRightOption(setParent)
+        .getOrElse(new SelectionRange())
+    }
   end selectionRange
 
   private def setParent(
@@ -88,55 +101,3 @@ class SelectionRangeProvider(
       child
 
 end SelectionRangeProvider
-
-// FIXME: update with latest mtags implementation, requires rewrite to dotty because fo scalameta
-
-// object SelectionRangeProvider:
-
-//   import dotty.tools.dotc.ast.tpd
-
-//   def commentRangesFromTokens(
-//       tokenList: List[Token],
-//       cursorStart: SourcePosition,
-//       offsetStart: Int
-//   ) =
-//     val cursorStartShifted = cursorStart.start - offsetStart
-
-//     tokenList
-//       .collect { case x: Comment =>
-//         (x.start, x.end, x.pos)
-//       }
-//       .collect {
-//         case (commentStart, commentEnd, _)
-//             if commentStart <= cursorStartShifted && cursorStartShifted <= commentEnd =>
-//           cursorStart
-//             .withStart(commentStart + offsetStart)
-//             .withEnd(commentEnd + offsetStart)
-//             .toLsp
-
-//       }
-//   end commentRangesFromTokens
-
-//   /** get comments under cursor */
-//   def getCommentRanges(
-//       cursor: SourcePosition,
-//       path: List[tpd.Tree],
-//       srcText: String
-//   )(using Context): List[lsp4j.Range] =
-//     val (treeStart, treeEnd) = path.headOption
-//       .map(t => (t.sourcePos.start, t.sourcePos.end))
-//       .getOrElse((0, srcText.size))
-
-//     // only parse comments from first range to reduce computation
-//     val srcSliced = srcText.slice(treeStart, treeEnd)
-
-//     val tokens = srcSliced.tokenize.toOption
-//     if tokens.isEmpty then Nil
-//     else
-//       commentRangesFromTokens(
-//         tokens.toList.flatten,
-//         cursor,
-//         treeStart
-//       )
-//   end getCommentRanges
-// end SelectionRangeProvider

@@ -7,8 +7,6 @@ import org.junit.Test
 
 class SelectionRangeCommentSuite extends BaseSelectionRangeSuite:
 
-  // FIXME requires latest implementation from mtags for SelectionRangeProvider
-  @Ignore
   @Test def `match` =
     check(
       """|object Main extends App {
