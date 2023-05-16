@@ -522,8 +522,10 @@ object Inlines:
     import Inlines.*
 
     private val parentSym = symbolFromParent(parent)
+    private val paramAccessorsMapper = ParamAccessorsMapper()
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
+      paramAccessorsMapper.registerParamValuesOf(parent)
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
       val inlinedSymbols = stats.map(stat => inlinedSym(stat.symbol))
       stats.zip(inlinedSymbols).map(expandStat)
@@ -538,8 +540,13 @@ object Inlines:
 
     protected class InlineTraitTreeMap extends InlinerTreeMap {
       override def apply(tree: Tree) = tree match {
-        case tree @ Select(This(ident), name) if ident.name == parentSym.name && localParamAccessorsNames.contains(name) =>
-          Inlined(EmptyTree, Nil, Select(This(ctx.owner.asClass), localParamAccessorsNames(name)).withSpan(parent.span)).withSpan(tree.span)
+        case This(ident) if ident.name == parentSym.name =>
+          Inlined(EmptyTree, Nil, This(ctx.owner.asClass).withSpan(parent.span)).withSpan(tree.span)
+        case Select(qual, name) =>
+          paramAccessorsMapper.getParamAccessorName(qual.symbol, name) match {
+            case Some(newName) => Select(apply(qual), newName).withSpan(tree.span)
+            case None => super.apply(tree)
+          }
         case tree =>
           super.apply(tree)
       }
@@ -550,22 +557,6 @@ object Inlines:
 
     override protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
       ctx.fresh.setTyper(inlineTyper).setNewScope
-
-    private val paramAccessorsValueOf: Map[Name, Tree] =
-      def allArgs(tree: Tree, acc: Vector[List[Tree]]): List[List[Tree]] = tree match
-        case Apply(fun, args) => allArgs(fun, acc :+ args)
-        case TypeApply(fun, _) => allArgs(fun, acc)
-        case _ => acc.toList
-      def allParams(info: Type, acc: List[List[Name]]): List[List[Name]] = info match
-        case mt: MethodType => allParams(mt.resultType, mt.paramNames :: acc)
-        case pt: PolyType => allParams(pt.resultType, acc)
-        case _ => acc
-      val info =
-        if parent.symbol.isClass then parent.symbol.primaryConstructor.info
-        else parent.symbol.info
-      allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
-
-    private val localParamAccessorsNames = new mutable.HashMap[Name, Name]
 
     extension (sym: Symbol)
       private def isTermParamAccessor: Boolean = !sym.isType && sym.is(ParamAccessor)
@@ -610,8 +601,7 @@ object Inlines:
       if sym.isTermParamAccessor then
         flags &~= ParamAccessor
         if sym.is(Local) then
-          name = name.expandedName(parentSym)
-          localParamAccessorsNames(sym.name) = name
+          name = paramAccessorsMapper.registerNewName(sym)
       sym.copy(
         owner = ctx.owner,
         name = name,
@@ -621,10 +611,9 @@ object Inlines:
 
     private def inlinedValDef(vdef: ValDef, inlinedSym: Symbol)(using Context): ValDef =
       val rhs =
-        if vdef.symbol.isTermParamAccessor then
-          paramAccessorsValueOf(vdef.symbol.name)
-        else
-          inlinedRhs(vdef, inlinedSym)
+        paramAccessorsMapper
+          .getParamAccessorRhs(vdef.symbol.owner, vdef.symbol.name)
+          .getOrElse(inlinedRhs(vdef, inlinedSym))
       tpd.ValDef(inlinedSym.asTerm, rhs).withSpan(parent.span)
 
     private def inlinedDefDef(ddef: DefDef, inlinedSym: Symbol)(using Context): DefDef =
@@ -665,5 +654,36 @@ object Inlines:
         val inlinedRhs = inContext(ctx.withOwner(inlinedSym)) { inlined(rhs)._2 }
         Inlined(tpd.ref(parentSym), Nil, inlinedRhs).withSpan(parent.span)
 
+    private class ParamAccessorsMapper:
+      private val paramAccessorsTrees: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
+      private val paramAccessorsNewNames: mutable.Map[(Symbol, Name), Name] = mutable.Map.empty
+
+      def registerParamValuesOf(parent: Tree): Unit =
+        def allArgs(tree: Tree, acc: Vector[List[Tree]]): List[List[Tree]] = tree match
+          case Apply(fun, args) => allArgs(fun, acc :+ args)
+          case TypeApply(fun, _) => allArgs(fun, acc)
+          case _ => acc.toList
+        def allParams(info: Type, acc: List[List[Name]]): List[List[Name]] = info match
+          case mt: MethodType => allParams(mt.resultType, mt.paramNames :: acc)
+          case pt: PolyType => allParams(pt.resultType, acc)
+          case _ => acc
+        val info =
+          if parent.symbol.isClass then parent.symbol.primaryConstructor.info
+          else parent.symbol.info
+        val paramAccessors = allParams(info, Nil).flatten.zip(allArgs(parent, Vector.empty).flatten).toMap
+        paramAccessorsTrees.put(symbolFromParent(parent), paramAccessors)
+
+      def registerNewName(paramAccessorSym: Symbol): paramAccessorSym.ThisName =
+        val oldName = paramAccessorSym.name
+        val newName = oldName.expandedName(parentSym)
+        paramAccessorsNewNames.put((paramAccessorSym.owner, oldName), newName)
+        newName
+
+      def getParamAccessorRhs(parent: Symbol, paramAccessorName: Name): Option[Tree] =
+        paramAccessorsTrees.get(parent).flatMap(_.get(paramAccessorName))
+
+      def getParamAccessorName(parent: Symbol, paramAccessorName: Name): Option[Name] =
+        paramAccessorsNewNames.get(parent, paramAccessorName)
+    end ParamAccessorsMapper
   end InlineParentTrait
 end Inlines
