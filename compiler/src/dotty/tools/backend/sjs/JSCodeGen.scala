@@ -36,6 +36,7 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils._
 
 import JSEncoding._
 import ScopedVar.withScopedVars
+import dotty.tools.dotc.inlines.Inlines
 
 /** Main codegen for Scala.js IR.
  *
@@ -1929,6 +1930,9 @@ class JSCodeGen()(using genCtx: Context) {
 
       case EmptyTree =>
         js.Skip()
+
+      case inlined @ Inlined(_, _, _) =>
+        genStatOrExpr(Inlines.dropInlined(inlined), isStat)
 
       case _ =>
         throw new FatalError("Unexpected tree in genExpr: " +
