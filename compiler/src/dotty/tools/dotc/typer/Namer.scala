@@ -1698,13 +1698,16 @@ class Namer { typer: Typer =>
         WildcardType
       case TypeTree() =>
         checkMembersOK(inferredType, mdef.srcPos)
-      case DependentTypeTree(tpFun) =>
+
+      // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
+      case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
         // A lambda has at most one type parameter list followed by exactly one term parameter list.
         val tpe = (paramss: @unchecked) match
           case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
           case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
+
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
