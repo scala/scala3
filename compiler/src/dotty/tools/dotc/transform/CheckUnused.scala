@@ -27,6 +27,7 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.StdNames.nme
 import scala.math.Ordering
 
+
 /**
  * A compiler phase that checks for unused imports or definitions
  *
@@ -146,6 +147,13 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
     if !tree.isInstanceOf[tpd.InferredTypeTree] then typeTraverser(unusedDataApply).traverse(tree.tpe)
     ctx
 
+  override def prepareForAssign(tree: tpd.Assign)(using Context): Context =
+    unusedDataApply{ ud =>
+      val sym = tree.lhs.symbol
+      if sym.exists then
+        ud.registerSetVar(sym)
+    }
+
   // ========== MiniPhase Transform ==========
 
   override def transformBlock(tree: tpd.Block)(using Context): tpd.Tree =
@@ -171,6 +179,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
     unusedDataApply(_.removeIgnoredUsage(tree.symbol))
     tree
+
 
   // ---------- MiniPhase HELPERS -----------
 
@@ -215,11 +224,11 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         case sel: Select =>
           prepareForSelect(sel)
           traverseChildren(tree)(using newCtx)
-        case _: (tpd.Block | tpd.Template | tpd.PackageDef) =>
+        case tree: (tpd.Block | tpd.Template | tpd.PackageDef) =>
           //! DIFFERS FROM MINIPHASE
-          unusedDataApply { ud =>
-            ud.inNewScope(ScopeType.fromTree(tree))(traverseChildren(tree)(using newCtx))
-          }
+          pushInBlockTemplatePackageDef(tree)
+          traverseChildren(tree)(using newCtx)
+          popOutBlockTemplatePackageDef()
         case t:tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
@@ -235,6 +244,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         case t: tpd.Bind =>
           prepareForBind(t)
           traverseChildren(tree)(using newCtx)
+        case t:tpd.Assign =>
+          prepareForAssign(t)
+          traverseChildren(tree)
         case _: tpd.InferredTypeTree =>
         case t@tpd.TypeTree() =>
           //! DIFFERS FROM MINIPHASE
@@ -278,6 +290,10 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
           report.warning(s"unused private member", t)
         case UnusedSymbol(t, _, WarnTypes.PatVars) =>
           report.warning(s"unused pattern variable", t)
+        case UnusedSymbol(t, _, WarnTypes.UnsetLocals) =>
+          report.warning(s"unset local variable", t)
+        case UnusedSymbol(t, _, WarnTypes.UnsetPrivates) =>
+          report.warning(s"unset private variable", t)
     }
 
 end CheckUnused
@@ -297,6 +313,8 @@ object CheckUnused:
     case ImplicitParams
     case PrivateMembers
     case PatVars
+    case UnsetLocals
+    case UnsetPrivates
 
   /**
    * The key used to retrieve the "unused entity" analysis metadata,
@@ -343,12 +361,8 @@ object CheckUnused:
     private val implicitParamInScope = MutSet[tpd.MemberDef]()
     private val patVarsInScope = MutSet[tpd.Bind]()
 
-    /* Unused collection collected at the end */
-    private val unusedLocalDef = MutSet[tpd.MemberDef]()
-    private val unusedPrivateDef = MutSet[tpd.MemberDef]()
-    private val unusedExplicitParams = MutSet[tpd.MemberDef]()
-    private val unusedImplicitParams = MutSet[tpd.MemberDef]()
-    private val unusedPatVars = MutSet[tpd.Bind]()
+    /** All variables sets*/
+    private val setVars = MutSet[Symbol]()
 
     /** All used symbols */
     private val usedDef = MutSet[Symbol]()
@@ -360,15 +374,6 @@ object CheckUnused:
 
     private val paramsToSkip = MutSet[Symbol]()
 
-    /**
-     * Push a new Scope of the given type, executes the given Unit and
-     * pop it back to the original type.
-     */
-    def inNewScope(newScope: ScopeType)(execInNewScope: => Unit)(using Context): Unit =
-      val prev = currScopeType
-      pushScope(newScope)
-      execInNewScope
-      popScope()
 
     def finishAggregation(using Context)(): Unit =
       val unusedInThisStage = this.getUnused
@@ -443,6 +448,9 @@ object CheckUnused:
       impInScope.push(MutSet())
       usedInScope.push(MutSet())
 
+    def registerSetVar(sym: Symbol): Unit =
+      setVars += sym
+
     /**
      * leave the current scope and do :
      *
@@ -501,15 +509,19 @@ object CheckUnused:
           unusedImport.map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
         else
           Nil
-      val sortedLocalDefs =
+      // Partition to extract unset local variables from usedLocalDefs
+      val (usedLocalDefs, unusedLocalDefs) =
         if ctx.settings.WunusedHas.locals then
-          localDefInScope
-            .filterNot(d => d.symbol.usedDefContains)
-            .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
-            .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs)).toList
+          localDefInScope.partition(d => d.symbol.usedDefContains)
         else
-          Nil
+          (Nil, Nil)
+      val sortedLocalDefs =
+        unusedLocalDefs
+          .filterNot(d => usedInPosition.exists { case (pos, name) => d.span.contains(pos.span) && name == d.symbol.name})
+          .filterNot(d => containsSyntheticSuffix(d.symbol))
+          .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.LocalDefs)).toList
+      val unsetLocalDefs = usedLocalDefs.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetLocals)).toList
+
       val sortedExplicitParams =
         if ctx.settings.WunusedHas.explicits then
           explicitParamInScope
@@ -527,14 +539,14 @@ object CheckUnused:
             .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.ImplicitParams)).toList
         else
           Nil
-      val sortedPrivateDefs =
+      // Partition to extract unset private variables from usedPrivates
+      val (usedPrivates, unusedPrivates) =
         if ctx.settings.WunusedHas.privates then
-          privateDefInScope
-            .filterNot(d => d.symbol.usedDefContains)
-            .filterNot(d => containsSyntheticSuffix(d.symbol))
-            .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PrivateMembers)).toList
+          privateDefInScope.partition(d => d.symbol.usedDefContains)
         else
-          Nil
+          (Nil, Nil)
+      val sortedPrivateDefs = unusedPrivates.filterNot(d => containsSyntheticSuffix(d.symbol)).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PrivateMembers)).toList
+      val unsetPrivateDefs = usedPrivates.filter(isUnsetVarDef).map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.UnsetPrivates)).toList
       val sortedPatVars =
         if ctx.settings.WunusedHas.patvars then
           patVarsInScope
@@ -544,7 +556,9 @@ object CheckUnused:
             .map(d => UnusedSymbol(d.namePos, d.name, WarnTypes.PatVars)).toList
         else
           Nil
-      val warnings = List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams, sortedPrivateDefs, sortedPatVars).flatten.sortBy { s =>
+      val warnings =
+        List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams,
+                  sortedPrivateDefs, sortedPatVars, unsetLocalDefs, unsetPrivateDefs).flatten.sortBy { s =>
         val pos = s.pos.sourcePos
         (pos.line, pos.column)
       }
@@ -731,9 +745,12 @@ object CheckUnused:
         !isSyntheticMainParam(sym) &&
         !sym.shouldNotReportParamOwner
 
-
       private def shouldReportPrivateDef(using Context): Boolean =
         currScopeType.top == ScopeType.Template && !memDef.symbol.isConstructor && memDef.symbol.is(Private, butNot = SelfName | Synthetic | CaseAccessor)
+
+      private def isUnsetVarDef(using Context): Boolean =
+        val sym = memDef.symbol
+        sym.is(Mutable) && !setVars(sym)
 
     extension (imp: tpd.Import)
       /** Enum generate an import for its cases (but outside them), which should be ignored */
