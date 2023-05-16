@@ -582,24 +582,17 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     end emitNr
 
     def lineNumber(tree: Tree): Unit = {
-
       if (!emitLines || !tree.span.exists) return;
-      if tree.source != cunit.source then
-        tree.getAttachment(InliningPosition) match
-          case Some(pos) => 
-            val sourcePosition = pos.targetPos.find(p => p._1.source == cunit.source) 
-            if sourcePosition.nonEmpty then 
-              val offset = sourcePosition.get._1.span.point
-              lastRealLineNr = ctx.source.offsetToLine(offset) + 1
-          case None => ()
-        sourceMap.lineFor(tree.sourcePos, lastRealLineNr, tree.getAttachment(InliningPosition)) match
+      // Use JSR-45 mapping for inlined trees defined outside of the current compilation unit
+      if tree.source != cunit.source || (tree.isInstanceOf[Inlined] && tree.asInstanceOf[Inlined].expansion.source != cunit.source) then
+        sourceMap.lineFor(tree) match
           case Some(nr) => 
-            emitNr(nr)
+            return emitNr(nr)
           case None => ()
       else
         val nr = ctx.source.offsetToLine(tree.span.point) + 1
         lastRealLineNr = nr
-        emitNr(nr)
+        return emitNr(nr)
     }
 
     // on entering a method
