@@ -33,11 +33,11 @@ import scala.annotation.constructorOnly
  *      val x1: U1 = ???
  *      val x2: U2 = ???
  *      ...
- *      {{{ 3 | x1 | contents0 | T0 }}} // hole
+ *      {{{ 3 | x1 | holeContents0 | T0 }}} // hole
  *      ...
- *      {{{ 4 | x2 | contents1 | T1 }}} // hole
+ *      {{{ 4 | x2 | holeContents1 | T1 }}} // hole
  *      ...
- *      {{{ 5 | x1, x2 | contents2 | T2 }}} // hole
+ *      {{{ 5 | x1, x2 | holeContents2 | T2 }}} // hole
  *      ...
  *    }
  *    ```
@@ -59,9 +59,9 @@ import scala.annotation.constructorOnly
  *       ]],
  *       typeHole = Seq(a, b),
  *       termHole = (idx: Int, args: List[Any], quotes: Quotes) => idx match {
- *         case 3 => content0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
- *         case 4 => content1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
- *         case 5 => content2.apply(args(0).asInstanceOf[Expr[U1]], args(1).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
+ *         case 3 => holeContents0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
+ *         case 4 => holeContents1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
+ *         case 5 => holeContents2.apply(args(0).asInstanceOf[Expr[U1]], args(1).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
  *       },
  *     )
  *    ```
@@ -93,26 +93,25 @@ class PickleQuotes extends MacroTransform {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
-          val (contents, quote1) = makeHoles(quote)
+          val (holeContents, quote1) = extractHolesContents(quote)
           val quote2 = encodeTypeArgs(quote1)
-          val contents1 = contents ::: quote.tags
-          val pickled = PickleQuotes.pickle(quote2, quotes, contents1)
-          transform(pickled) // pickle quotes that are in the contents
+          val holeContents1 = holeContents.map(transform(_))
+          PickleQuotes.pickle(quote2, quotes, holeContents1)
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
         case _ =>
           super.transform(tree)
   }
 
-  private def makeHoles(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
+  private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
-      private val contents = List.newBuilder[Tree]
+      private val holeContents = List.newBuilder[Tree]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
           case tree @ Hole(isTerm, _, _, content) =>
             assert(isTerm)
             assert(!content.isEmpty)
-            contents += content
+            holeContents += content
             val holeType = getTermHoleType(tree.tpe)
             val hole = untpd.cpy.Hole(tree)(content = EmptyTree).withType(holeType)
             cpy.Inlined(tree)(EmptyTree, Nil, hole)
@@ -148,10 +147,10 @@ class PickleQuotes extends MacroTransform {
             mapOver(tp)
       }
 
-      /** Get the contents of the transformed tree */
+      /** Get the holeContents of the transformed tree */
       def getContents() =
-        val res = contents.result
-        contents.clear()
+        val res = holeContents.result
+        holeContents.clear()
         res
     end HoleContentExtractor
 
@@ -160,7 +159,7 @@ class PickleQuotes extends MacroTransform {
     val quote1 = cpy.Quote(quote)(body1, quote.tags)
 
     (holeMaker.getContents(), quote1)
-  end makeHoles
+  end extractHolesContents
 
   /** Encode quote tags as holes in the quote body.
    *
@@ -237,7 +236,7 @@ object PickleQuotes {
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"
 
-  def pickle(quote: Quote, quotes: Tree, contents: List[Tree])(using Context) = {
+  def pickle(quote: Quote, quotes: Tree, holeContents: List[Tree])(using Context) = {
     val body = quote.body
     val bodyType = quote.bodyType
 
@@ -335,19 +334,14 @@ object PickleQuotes {
         case x :: Nil => Literal(Constant(x))
         case xs => tpd.mkList(xs.map(x => Literal(Constant(x))), TypeTree(defn.StringType))
 
-      // TODO split holes earlier into types and terms. This all holes in each category can have consecutive indices
-      val (typeSplices, termSplices) = contents.zipWithIndex.partition {
-        _._1.tpe.derivesFrom(defn.QuotedTypeClass)
-      }
-
       // This and all closures in typeSplices are removed by the BetaReduce phase
       val types =
-        if typeSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without contents as small as possible
-        else SeqLiteral(typeSplices.map(_._1), TypeTree(defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)))
+        if quote.tags.isEmpty then Literal(Constant(null)) // keep pickled quote without holeContents as small as possible
+        else SeqLiteral(quote.tags, TypeTree(defn.QuotedTypeClass.typeRef.appliedTo(TypeBounds.emptyPolyKind)))
 
       // This and all closures in termSplices are removed by the BetaReduce phase
       val termHoles =
-        if termSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without contents as small as possible
+        if holeContents.isEmpty then Literal(Constant(null)) // keep pickled quote without holeContents as small as possible
         else
           Lambda(
             MethodType(
@@ -355,7 +349,7 @@ object PickleQuotes {
               List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuotesClass.typeRef),
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
-              val cases = termSplices.map { case (splice, idx) =>
+              val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
                 val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
@@ -414,7 +408,7 @@ object PickleQuotes {
       case _ => None
 
     if body.isType then
-      if contents.isEmpty && body.symbol.isPrimitiveValueClass then taggedType()
+      if holeContents.isEmpty && body.symbol.isPrimitiveValueClass then taggedType()
       else pickleAsTasty()
     else
       getLiteral(body) match
