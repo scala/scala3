@@ -152,6 +152,11 @@ object Test23:
   val _ = 1 `+`:  // ok
     x
 
+  // leading infix op
+  val _ = 1
+  `+` :
+    x
+
   val r = 1 to:
     100
 
