@@ -493,7 +493,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  from its `originalOwner`, and, if it comes from outside the inlined method
    *  itself, it has to be marked as an inlined argument.
    */
-  private def integrate(tree: Tree, originalOwner: Symbol)(using Context): Tree =
+  protected def integrate(tree: Tree, originalOwner: Symbol)(using Context): Tree =
     // assertAllPositioned(tree)   // debug
     tree.changeOwner(originalOwner, ctx.owner)
 
@@ -523,10 +523,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       case tree: This =>
         tree.tpe match {
           case thistpe: ThisType =>
-            val cls = thistpe.cls
-            if cls.isInlineTrait then
-              integrate(This(ctx.owner.asClass).withSpan(call.span), cls)
-            else thisProxy.get(cls) match {
+            thisProxy.get(thistpe.cls) match {
               case Some(t) =>
                 val thisRef = ref(t).withSpan(call.span)
                 inlinedFromOutside(thisRef)(tree.span)

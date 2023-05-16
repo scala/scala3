@@ -540,8 +540,14 @@ object Inlines:
 
     protected class InlineTraitTreeMap extends InlinerTreeMap {
       override def apply(tree: Tree) = tree match {
-        case This(ident) if ident.name == parentSym.name =>
+        case tree: This if tree.qual.name == parentSym.name =>
           Inlined(EmptyTree, Nil, This(ctx.owner.asClass).withSpan(parent.span)).withSpan(tree.span)
+        case tree: This =>
+          tree.tpe match {
+            case thisTpe: ThisType if thisTpe.cls.isInlineTrait =>
+              integrate(This(ctx.owner.asClass).withSpan(call.span), thisTpe.cls)
+            case _ => super.apply(tree)
+          }
         case Select(qual, name) =>
           paramAccessorsMapper.getParamAccessorName(qual.symbol, name) match {
             case Some(newName) => Select(apply(qual), newName).withSpan(tree.span)
