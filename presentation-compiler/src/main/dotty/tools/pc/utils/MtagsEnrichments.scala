@@ -275,16 +275,4 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
           AppliedType(tycon, params.map(_.metalsDealias))
         case dealised => dealised
 
-  extension (query: WorkspaceSymbolQuery)
-    def matches(info: SymbolInformation) =
-      info.kind.isRelevantKind && query.matches(info.symbol)
-
-  extension (kind: Kind)
-    def isRelevantKind: Boolean =
-      kind match
-        case Kind.OBJECT | Kind.PACKAGE_OBJECT | Kind.CLASS | Kind.TRAIT |
-            Kind.INTERFACE | Kind.METHOD | Kind.TYPE =>
-          true
-        case _ => false
-
 end MtagsEnrichments

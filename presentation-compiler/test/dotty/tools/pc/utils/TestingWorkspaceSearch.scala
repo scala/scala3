@@ -59,6 +59,6 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
             .map(symbol => semanticSymbolBuilder.symbolName(symbol._1))
             .map(
               visitor.visitWorkspaceSymbol(Paths.get(""), _, null, null)
-            ) // adjust it
+            )
         }
       case _ =>
