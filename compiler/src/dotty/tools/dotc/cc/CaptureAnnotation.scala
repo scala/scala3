@@ -78,5 +78,7 @@ end CaptureAnnotation
 object CaptureAnnotation:
   /** Capture annotation with an additional field which is a set of
    *  captures that are known to be separated from. */
-  final class SeparationCaptureAnnotation(refs: CaptureSet, val seps: CaptureSet, boxed: Boolean)(cls: Symbol) extends CaptureAnnotation(refs, boxed)(cls)
+  final class SeparationCaptureAnnotation(refs: CaptureSet, val seps: CaptureSet, boxed: Boolean)(cls: Symbol) extends CaptureAnnotation(refs, boxed)(cls) {
+    override def hash: Int = seps.hashCode * 31 + super.hash
+  }
 

@@ -21,21 +21,8 @@ import CaptureSet.*
 
 object SeparationSet:
 
-  def isReader(tp: Type)(using Context): Boolean =
-    def recur(tp: Type): Boolean = trace(i"isReader $tp") {
-      tp.dealias match
-        case tp: TermRef => recur(tp.underlying)
-        case tp: TermParamRef => recur(tp.underlying)
-        case tp: TypeRef =>
-          tp.classSymbol.hasAnnotation(defn.ReaderAnnot)
-        case CapturingType(parent, _) => recur(parent)
-        case AppliedType(tycon, _) => recur(tycon)
-        case tp: TypeProxy => recur(tp.underlying)
-        case AndType(tp1, tp2) => recur(tp1) || recur(tp2)
-        case OrType(tp1, tp2) => recur(tp1) && recur(tp2)
-        case _ => false
-    }
-    recur(tp)
+  def isReader(x: CaptureRef)(using Context): Boolean =
+    x.singletonCaptureSet.subCaptures(CaptureSet.universalReader, frozen = true).isOK
 
   def ofType(tp: Type)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType($tp)", show = true) {

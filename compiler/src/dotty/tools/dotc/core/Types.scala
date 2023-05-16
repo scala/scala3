@@ -2099,6 +2099,9 @@ object Types {
     /** Is this reference the root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
 
+    /** Is this reference the reader capability `rdr` ? */
+    def isReaderCapability(using Context): Boolean = false
+
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
 
@@ -2818,10 +2821,14 @@ object Types {
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
+      || isReaderCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
+
+    override def isReaderCapability(using Context): Boolean =
+      name == nme.CAPTURE_READER && symbol == defn.readerRoot
 
     override def normalizedRef(using Context): CaptureRef =
       if canBeTracked then symbol.termRef else this
@@ -3828,7 +3835,8 @@ object Types {
           case tp: AnnotatedType =>
             tp match
               case CapturingType(parent, refs) =>
-                (compute(status, parent, theAcc) /: refs.elems) {
+                val allRefs = refs.elems ++ tp.separationSet.elems
+                (compute(status, parent, theAcc) /: allRefs) {
                   (s, ref) => ref match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, CaptureDeps)
                     case _ => s
@@ -5685,8 +5693,17 @@ object Types {
 
     protected def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, seps: CaptureSet, v: Int): Type =
       val saved = variance
+
       variance = v
-      try derivedCapturingType(tp, this(parent), refs.map(this), seps.map(this))
+      try derivedCapturingType(
+        tp,
+        this(parent),
+        refs.map(this),
+        try
+          variance = -v
+          seps.map(this)
+        finally
+          variance = v)
       finally variance = saved
 
     /** Map this function over given type */

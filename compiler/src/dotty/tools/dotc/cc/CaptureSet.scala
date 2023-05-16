@@ -70,12 +70,17 @@ sealed abstract class CaptureSet extends Showable:
     assert(!isConst)
     asInstanceOf[Var]
 
-  /** Does this capture set contain the root reference `cap` as element? */
-  final def isUniversal(using Context) =
+  final private inline def containsSymbol(sym: Symbol)(using Context): Boolean =
     elems.exists {
-      case ref: TermRef => ref.symbol == defn.captureRoot
+      case ref: TermRef => ref.symbol == sym
       case _ => false
     }
+
+  /** Does this capture set contain the root reference `cap` as element? */
+  final def isUniversal(using Context) = containsSymbol(defn.captureRoot)
+
+  /** Does this capture set contain the reader capability `rdr` as element? */
+  final def isUniversalReader(using Context) = containsSymbol(defn.readerRoot)
 
   /** Add new elements to this capture set if allowed.
    *  @pre `newElems` is not empty and does not overlap with `this.elems`.
@@ -167,6 +172,8 @@ sealed abstract class CaptureSet extends Showable:
         var result = that.tryInclude(elem, this)
         if !result.isOK && !elem.isRootCapability && summon[VarState] != FrozenState then
           result = elem.captureSetOfInfo.subCaptures(that)
+        if !result.isOK && that.isUniversalReader && elem.baseClasses.exists(_ == defn.Caps_ReadOnlyAnnot) then
+          result = CompareResult.OK
         if result.isOK then
           recur(elems1)
         else
@@ -322,6 +329,10 @@ object CaptureSet:
   /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
+
+  /** The universal reader capture set `{rdr}` */
+  def universalReader(using Context): CaptureSet =
+    defn.readerRoot.termRef.singletonCaptureSet
 
   /** Used as a recursion brake */
   @sharable private[dotc] val Pending = Const(SimpleIdentitySet.empty)
