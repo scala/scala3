@@ -897,7 +897,7 @@ object Erasure {
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
       super.typedInlined(tree, pt) match {
-        case tree: Inlined => Inlines.dropInlined(tree)
+        case tree: Inlined => tree //Inlines.dropInlined(tree)
       }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =

@@ -479,6 +479,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case t: TypeApply => // dotty specific
           generatedType = genTypeApply(t)
 
+        case inlined @ Inlined(call, bindings, expansion) => 
+          if(bindings.isEmpty)
+            genLoadTo(expansion, expectedType, dest)
+          else
+            genInlinedTo(inlined, expectedType, dest)
+          generatedDest = dest
+
         case _ => abort(s"Unexpected tree in genLoad: $tree/${tree.getClass} at: ${tree.span}")
       }
 
@@ -1086,6 +1093,17 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       varsInScope = Nil
       stats foreach genStat
       genLoadTo(expr, expectedType, dest)
+      emitLocalVarScopes()
+      varsInScope = savedScope
+    }
+
+    def genInlinedTo(tree: Inlined, expectedType: BType, dest: LoadDestination): Unit = tree match {
+      case Inlined(call, bindings, expansion) =>
+
+      val savedScope = varsInScope
+      varsInScope = Nil
+      bindings foreach genStat
+      genLoadTo(expansion, expectedType, dest)
       emitLocalVarScopes()
       varsInScope = savedScope
     }
