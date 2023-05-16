@@ -275,6 +275,11 @@ sealed abstract class CaptureSet extends Showable:
     if isUniversal then handler()
     this
 
+  /** Invoke handler on the elements to check wellformedness of the capture set */
+  def ensureWellformed(handler: List[CaptureRef] => Context ?=> Unit)(using Context): this.type =
+    handler(elems.toList)
+    this
+
   /** An upper approximation of this capture set, i.e. a constant set that is
    *  subcaptured by this set. If the current set is a variable
    *  it is the intersection of all upper approximations of known supersets
@@ -375,6 +380,9 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
+    /** A handler to be invoked when new elems are added to this set */
+    var newElemAddedHandler: List[CaptureRef] => Context ?=> Unit = _ => ()
+
     var description: String = ""
 
     /** Record current elements in given VarState provided it does not yet
@@ -405,7 +413,8 @@ object CaptureSet:
       if !isConst && recordElemsState() then
         elems ++= newElems
         if isUniversal then rootAddedHandler()
-        // assert(id != 2 || elems.size != 2, this)
+        newElemAddedHandler(newElems.toList)
+        // assert(id != 5 || elems.size != 3, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
         }
@@ -424,6 +433,10 @@ object CaptureSet:
     override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
+
+    override def ensureWellformed(handler: List[CaptureRef] => (Context) ?=> Unit)(using Context): this.type =
+      newElemAddedHandler = handler
+      super.ensureWellformed(handler)
 
     private var computingApprox = false
 
