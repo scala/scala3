@@ -3880,7 +3880,8 @@ object Types {
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
      */
-    def isParamDependent(using Context): Boolean = paramDependencyStatus == TrueDeps
+    def isParamDependent(using Context): Boolean =
+      paramDependencyStatus == TrueDeps || paramDependencyStatus == CaptureDeps
 
     /** Is there a dependency involving a reference in a capture set, but
      *  otherwise no true result dependency?
