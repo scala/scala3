@@ -1036,6 +1036,40 @@ object desugar {
     name
   }
 
+  /** Strip parens and empty blocks around the body of `tree`. */
+  def normalizePolyFunction(tree: PolyFunction)(using Context): PolyFunction =
+    def stripped(body: Tree): Tree = body match
+      case Parens(body1) =>
+        stripped(body1)
+      case Block(Nil, body1) =>
+        stripped(body1)
+      case _ => body
+    cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
+
+  /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
+   *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
+   */
+  def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree =
+    val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) = tree: @unchecked
+    val funFlags = fun match
+      case fun: FunctionWithMods =>
+        fun.mods.flags
+      case _ => EmptyFlags
+
+    // TODO: make use of this in the desugaring when pureFuns is enabled.
+    // val isImpure = funFlags.is(Impure)
+
+    // Function flags to be propagated to each parameter in the desugared method type.
+    val paramFlags = funFlags.toTermFlags & Given
+    val vparams = vparamTypes.zipWithIndex.map:
+      case (p: ValDef, _) => p.withAddedFlags(paramFlags)
+      case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
+
+    RefinedTypeTree(ref(defn.PolyFunctionType), List(
+       DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree).withFlags(Synthetic)
+    )).withSpan(tree.span)
+  end makePolyFunctionType
+
   /** Invent a name for an anonympus given of type or template `impl`. */
   def inventGivenOrExtensionName(impl: Tree)(using Context): SimpleName =
     val str = impl match
@@ -1429,14 +1463,17 @@ object desugar {
   }
 
   /** Make closure corresponding to function.
-   *      params => body
+   *      [tparams] => params => body
    *  ==>
-   *      def $anonfun(params) = body
+   *      def $anonfun[tparams](params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree | Null = null, span: Span)(using Context): Block =
+  def makeClosure(tparams: List[TypeDef], vparams: List[ValDef], body: Tree, tpt: Tree | Null = null, span: Span)(using Context): Block =
+    val paramss: List[ParamClause] =
+      if tparams.isEmpty then vparams :: Nil
+      else tparams :: vparams :: Nil
     Block(
-      DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+      DefDef(nme.ANON_FUN, paramss, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
@@ -1728,56 +1765,6 @@ object desugar {
       }
     }
 
-    def makePolyFunction(targs: List[Tree], body: Tree, pt: Type): Tree = body match {
-      case Parens(body1) =>
-        makePolyFunction(targs, body1, pt)
-      case Block(Nil, body1) =>
-        makePolyFunction(targs, body1, pt)
-      case Function(vargs, res) =>
-        assert(targs.nonEmpty)
-        // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
-        val mods = body match {
-          case body: FunctionWithMods => body.mods
-          case _ => untpd.EmptyModifiers
-        }
-        val polyFunctionTpt = ref(defn.PolyFunctionType)
-        val applyTParams = targs.asInstanceOf[List[TypeDef]]
-        if (ctx.mode.is(Mode.Type)) {
-          // Desugar [T_1, ..., T_M] -> (P_1, ..., P_N) => R
-          // Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
-
-          val applyVParams = vargs.zipWithIndex.map {
-            case (p: ValDef, _) => p.withAddedFlags(mods.flags)
-            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags.toTermFlags)
-          }
-          RefinedTypeTree(polyFunctionTpt, List(
-            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree).withFlags(Synthetic)
-          ))
-        }
-        else {
-          // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
-          // with pt [S_1, ..., S_M] -> (O_1, ..., O_N) => R
-          // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N): R2 = body }
-          // where R2 is R, with all references to S_1..S_M replaced with T1..T_M.
-
-          def typeTree(tp: Type) = tp match
-            case RefinedType(parent, nme.apply, poly @ PolyType(_, mt: MethodType)) if parent.classSymbol eq defn.PolyFunctionClass =>
-              untpd.DependentTypeTree((tsyms, vsyms) =>
-                mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
-            case _ => TypeTree()
-
-          val applyVParams = vargs.asInstanceOf[List[ValDef]]
-            .map(varg => varg.withAddedFlags(mods.flags | Param))
-            New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-              List(DefDef(nme.apply, applyTParams :: applyVParams :: Nil, typeTree(pt), res))
-              ))
-        }
-      case _ =>
-        // may happen for erroneous input. An error will already have been reported.
-        assert(ctx.reporter.errorsReported)
-        EmptyTree
-    }
-
     // begin desugar
 
     // Special case for `Parens` desugaring: unlike all the desugarings below,
@@ -1790,8 +1777,6 @@ object desugar {
     }
 
     val desugared = tree match {
-      case PolyFunction(targs, body) =>
-        makePolyFunction(targs, body, pt) orElse tree
       case SymbolLit(str) =>
         Apply(
           ref(defn.ScalaSymbolClass.companionModule.termRef),

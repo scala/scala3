@@ -1625,11 +1625,31 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 )
               cpy.ValDef(param)(tpt = paramTpt)
           if isErased then param0.withAddedFlags(Flags.Erased) else param0
-      desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, tree.span)
+      desugared = desugar.makeClosure(Nil, inferredParams, fnBody, resultTpt, tree.span)
 
     typed(desugared, pt)
       .showing(i"desugared fun $tree --> $desugared with pt = $pt", typr)
   }
+
+
+  def typedPolyFunction(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
+    val tree1 = desugar.normalizePolyFunction(tree)
+    if (ctx.mode is Mode.Type) typed(desugar.makePolyFunctionType(tree1), pt)
+    else typedPolyFunctionValue(tree1, pt)
+
+  def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
+    val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
+    val untpd.Function(vparams: List[untpd.ValDef] @unchecked, body) = fun: @unchecked
+
+    val resultTpt = pt.dealias match
+      case RefinedType(parent, nme.apply, poly @ PolyType(_, mt: MethodType)) if parent.classSymbol eq defn.PolyFunctionClass =>
+        untpd.DependentTypeTree((tsyms, vsyms) =>
+          mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
+      case _ => untpd.TypeTree()
+
+    val desugared = desugar.makeClosure(tparams, vparams, body, resultTpt, tree.span)
+    typed(desugared, pt)
+  end typedPolyFunctionValue
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
     val env1 = tree.env mapconserve (typed(_))
@@ -1668,6 +1688,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else
                   EmptyTree
             }
+          case _: PolyType =>
+            // Polymorphic SAMs are not currently supported (#6904).
+            EmptyTree
           case tp =>
             if !tp.isErroneous then
               throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.span}")
@@ -2425,7 +2448,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case rhs => typedExpr(rhs, tpt1.tpe.widenExpr)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    postProcessInfo(sym)
+    postProcessInfo(vdef1, sym)
     vdef1.setDefTree
   }
 
@@ -2534,19 +2557,31 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
-    postProcessInfo(sym)
+    postProcessInfo(ddef2, sym)
     ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
   /** (1) Check that the signature of the class member does not return a repeated parameter type
    *  (2) If info is an erased class, set erased flag of member
+   *  (3) Check that erased classes are not parameters of polymorphic functions.
    */
-  private def postProcessInfo(sym: Symbol)(using Context): Unit =
+  private def postProcessInfo(mdef: MemberDef, sym: Symbol)(using Context): Unit =
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
+    if
+      sym.info.isInstanceOf[PolyType] &&
+      ((sym.name eq nme.ANON_FUN) ||
+       (sym.name eq nme.apply) && sym.owner.derivesFrom(defn.PolyFunctionClass))
+    then
+      mdef match
+        case DefDef(_, _ :: vparams :: Nil, _, _) =>
+          vparams.foreach: vparam =>
+            if vparam.symbol.is(Erased) then
+              report.error(em"Implementation restriction: erased classes are not allowed in a poly function definition", vparam.srcPos)
+        case _ =>
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
     val TypeDef(name, rhs) = tdef
@@ -2692,19 +2727,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       // check value class constraints
       checkDerivedValueClass(cls, body1)
-
-      // check PolyFunction constraints (no erased functions!)
-      if parents1.exists(_.tpe.classSymbol eq defn.PolyFunctionClass) then
-        body1.foreach {
-          case ddef: DefDef =>
-            ddef.paramss.foreach { params =>
-              val erasedParam = params.collectFirst { case vdef: ValDef if vdef.symbol.is(Erased) => vdef }
-              erasedParam.foreach { p =>
-                report.error(em"Implementation restriction: erased classes are not allowed in a poly function definition", p.srcPos)
-              }
-            }
-          case _ =>
-        }
 
       val effectiveOwner = cls.owner.skipWeakOwner
       if !cls.isRefinementClass
@@ -3057,6 +3079,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(using ctx.fresh.setNewScope)
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
+          case tree: untpd.PolyFunction => typedPolyFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
           case tree: untpd.Import => typedImport(tree)
           case tree: untpd.Export => typedExport(tree)
