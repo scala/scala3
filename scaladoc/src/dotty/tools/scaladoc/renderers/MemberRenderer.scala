@@ -9,6 +9,9 @@ import scala.jdk.CollectionConverters.*
 import dotty.tools.scaladoc.translators.FilterAttributes
 import org.jsoup.Jsoup
 import translators.*
+import java.net.URL
+import scala.util.Try
+import java.nio.file.{Files, Paths}
 
 class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._
@@ -100,6 +103,63 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   def typeParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.typeParams))
   def valueParams(m: Member): Seq[AppliedTag] = m.docs.fold(Nil)(d => flattenedDocPart(d.valueParams))
 
+  def processLocalLinkWithGuard(str: String): String =
+  if str.startsWith("#") || str.isEmpty then
+    str
+  else
+    validationLink(str)
+
+  def validationLink(str: String): String =
+    def asValidURL = Try(URL(str)).toOption.map(_ => str)
+
+    def asAsset =
+      Option.when(
+      Files.exists(Paths.get("src/main/ressources").resolve(str.stripPrefix("/")))
+    )(
+      s"src/main/ressources/$str"
+    )
+
+    def asStaticSite: Option[String] =
+      Option.when(
+      Files.exists(Paths.get("docs/_docs").resolve(str.stripPrefix("/")))
+    )(
+      s"docs/_docs/$str"
+    )
+
+    def asApiLink: Option[String] =
+      val strWithoutHtml = if str.endsWith("$.html") then
+        str.stripSuffix("$.html")
+        else
+          str.stripSuffix(".html")
+      val sourceDir = Paths.get("src", "main", "scala")
+      val scalaPath = sourceDir.resolve(s"$strWithoutHtml.scala")
+      val scalaDirPath = sourceDir.resolve(strWithoutHtml)
+      Option.when(
+        Files.exists(scalaPath) || Files.exists(scalaDirPath))
+        (
+          s"api/$strWithoutHtml.html"
+          )
+
+
+    asValidURL
+      .orElse(asStaticSite)
+      .orElse(asAsset)
+      .orElse(asApiLink)
+      .getOrElse{
+        report.warning(s"Unable to resolve link '$str'")
+        str
+      }
+
+    // println(asValidURL)
+
+    // println(Paths.get("src/main/ressources").resolve(str.stripPrefix("/")).toAbsolutePath)
+    // println(Files.exists(Paths.get("src/main/ressources").resolve(str.stripPrefix("/"))))
+    // def asAsset = Option.when(
+    //   Files.exists(Paths.get("docs/_assets").resolve(str.stripPrefix("/")))
+    // )(
+    //   s"docs/_assets/$str"
+    // )
+
   def memberInfo(m: Member, withBrief: Boolean = false, full: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
@@ -121,6 +181,21 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       case Nil => false
       case _ => true
     }
+
+    val document = Jsoup.parse(bodyContents.mkString)
+    val document2 = Jsoup.parse(attributes.mkString)
+
+    document.select("img").forEach(element =>
+      element.attr("src", validationLink(element.attr("src")))
+    )
+
+    document.select("a").forEach(element =>
+      element.attr("href", processLocalLinkWithGuard(element.attr("href")))
+    )
+
+    // document2.select("a").forEach(element =>
+    //   println("BONJOUR"+element.attr("href"))
+    // ) <--- Take some href that I don't want
 
     Seq(
       Option.when(withBrief && comment.flatMap(_.short).nonEmpty)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
