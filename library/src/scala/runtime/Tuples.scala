@@ -450,19 +450,8 @@ object Tuples {
   }
 
   // Reverse for TupleXXL
-  private def xxlReverse(xxl: TupleXXL): Tuple = {
-    if (xxl.productArity == 22) {
-      val elems = xxl.elems
-      Tuple22(
-        elems(21), elems(20), elems(19), elems(18), elems(17), elems(16),
-        elems(15), elems(14), elems(13), elems(12), elems(11), elems(10),
-        elems(9), elems(8), elems(7), elems(6), elems(5), elems(4),
-        elems(3), elems(2), elems(1), elems(0)
-      )
-    } else {
-      TupleXXL.fromIArray(xxl.elems.reverse.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
-    }
-  }
+  private def xxlReverse(xxl: TupleXXL): Tuple =
+    TupleXXL.fromIArray(xxl.elems.reverse.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
 
   // Reverse for Tuple0 to Tuple22
   private def specialCaseReverse(self: Tuple): Tuple = {
