@@ -89,9 +89,9 @@ object InlinedSourceMaps:
     class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
         tree match
-          case Inlined(call, bindings, expansion) =>
+          case inlined @ Inlined(call, bindings, expansion) =>
             if expansion.source != enclosingFile && expansion.source != cunit.source then
-              requests += tree.asInstanceOf[Inlined]
+              requests += inlined
               val topLevelClass = Option.when(!call.isEmpty)(call.symbol.topLevelClass)
 
               topLevelClass match
@@ -131,23 +131,15 @@ object InlinedSourceMaps:
 
     def debugExtension: Option[String] = Some("TODO")
 
-    private val inlines = mutable.ListBuffer.empty[Inlined]
-
     def lineFor(tree: Tree): Option[Int] =
 
-      tree match
-        case Inlined(call, binding, expansion) =>
-          inlines += tree.asInstanceOf[Inlined]
+      val sourcePos = tree.sourcePos
+      requests.findLast(r => r.inline.expansion.contains(tree)) match
+        case Some(request) =>
+          val offset = sourcePos.startLine - request.inline.expansion.sourcePos.startLine
+          val virtualLine = request.firstFakeLine + offset
+          if requests.filter(_.inline.expansion.contains(tree)).size > 1 then None
+          else Some(virtualLine + 1) // + 1 because the first line is 1 in the LineNumberTable
+        case None =>
+          // report.warning(s"${sourcePos.show} was inlined in ${cunit.source} but its inlining position was not recorded.")
           None
-        case _ => 
-          val sourcePos = tree.sourcePos
-          val inline = inlines.findLast(_.expansion.contains(tree))
-          requests.findLast(r => r.inline.expansion.contains(tree)) match
-            case Some(request) =>
-              val offset = sourcePos.startLine - request.inline.expansion.sourcePos.startLine
-              val virtualLine = request.firstFakeLine + offset
-              if requests.filter(_.inline.expansion.contains(tree)).size > 1 then None
-              else Some(virtualLine + 1) // + 1 because the first line is 1 in the LineNumberTable
-            case None =>
-              // report.warning(s"${sourcePos.show} was inlined in ${cunit.source} but its inlining position was not recorded.")
-              None
