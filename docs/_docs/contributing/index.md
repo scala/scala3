@@ -19,9 +19,9 @@ if you notice anything out of date, or report any issues
 ### Get the Most from This Guide
 
 `dotc` is built with Scala 3, fully utilising its [new
-features](/scala3/new-in-scala3.html). It is recommended that you first have
+features](https://docs.scala-lang.org/scala3/new-in-scala3.html). It is recommended that you first have
 some familiarity with Scala 3 to get the most out of this guide. You can learn
-more in the [language reference]({{ site.scala3ref }}).
+more in the [language reference](../reference/overview.md).
 
 Many code snippets in this guide make use of shell commands (a line beginning
 with `$`), and in this case a `bash` compatible shell is assumed. You may have
