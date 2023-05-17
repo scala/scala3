@@ -584,7 +584,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
       // Use JSR-45 mapping for inlined trees defined outside of the current compilation unit
-      if tree.source != cunit.source || (tree.isInstanceOf[Inlined] && tree.asInstanceOf[Inlined].expansion.source != cunit.source) then
+      if tree.source != cunit.source then
         sourceMap.lineFor(tree) match
           case Some(nr) => 
             return emitNr(nr)
