@@ -1930,6 +1930,9 @@ class JSCodeGen()(using genCtx: Context) {
       case EmptyTree =>
         js.Skip()
 
+      case Inlined(call, bindings, expansion) =>
+        genStatOrExpr(Block(bindings, expansion), isStat)
+
       case _ =>
         throw new FatalError("Unexpected tree in genExpr: " +
             tree + "/" + tree.getClass + " at: " + (tree.span: Position))
