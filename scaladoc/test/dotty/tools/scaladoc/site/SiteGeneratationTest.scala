@@ -96,6 +96,22 @@ class SiteGeneratationTest extends BaseHtmlTest:
   }
 
   @Test
+  def emptyPage() = withGeneratedSite(testDocPath.resolve("emptyPage")){
+    withHtmlFile("docs/hello.html") { content =>
+      // There should be no content as the page body is empty.
+      content.assertTextsIn("#content", Nil*)
+    }
+  }
+
+  @Test
+  def noConfigEnd() = withGeneratedSite(testDocPath.resolve("noConfigEnd")){
+    withHtmlFile("docs/hello.html") { content =>
+      // There should be no content as the page body is empty.
+      content.assertTextsIn("#content", Nil*)
+    }
+  }
+
+  @Test
   def staticLinking() = withGeneratedSite(testDocPath.resolve("static-links")){
 
     withHtmlFile("docs/Adoc.html"){ content  =>
