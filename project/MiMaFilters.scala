@@ -75,9 +75,6 @@ object MiMaFilters {
         // trait $init$
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.$init$"),
 
-        // Case class unapply
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.*.unapply"),
-
         // Value class extension methods
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*$extension"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.*$extension"),
@@ -187,9 +184,6 @@ object MiMaFilters {
 
         // Companion module class: Missing type java.io.Serializable
         ProblemFilters.exclude[MissingTypesProblem]("scala.*$"),
-
-        // Case class unapply
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.*.unapply"),
 
         // Mirrors
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.ordinal"),
