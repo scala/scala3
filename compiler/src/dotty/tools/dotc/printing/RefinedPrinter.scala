@@ -168,7 +168,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       ~ " " ~ argText(args.last)
     }
 
-  private def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
+  private def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str(""), sepsText: Text = Str("")): Text = info match
     case info: MethodType =>
       val capturesRoot = refs == rootSetText
       changePrec(GlobalPrec) {
@@ -176,7 +176,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         ~ paramsText(info)
         ~ ") "
         ~ arrow(info.isImplicitMethod, isPure && !capturesRoot)
-        ~ (refs provided !capturesRoot)
+        ~ (refs provided !capturesRoot) ~ sepsText
         ~ " "
         ~ toTextMethodAsFunction(info.resultType, isPure)
       }
@@ -758,7 +758,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     case tp: AppliedType if defn.isFunctionSymbol(tp.typeSymbol) && !printDebug =>
       boxText ~ toTextFunction(tp, refsText, sepsText)
     case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
-      boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refsText)
+      boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refsText, sepsText)
     case _ =>
       super.toTextCapturing(tp, refsText, sepsText, boxText)
 

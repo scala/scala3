@@ -225,7 +225,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
         val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
         val seps = tp.separationSet
-        val sepsText = (Str(" sep") ~ toTextCaptureSet(seps)) provided !seps.isAlwaysEmpty
+        val sepsText = (Str("!") ~ toTextCaptureSet(seps)) provided !seps.isAlwaysEmpty
         toTextCapturing(parent, refsText, sepsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
@@ -391,6 +391,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
+      case tp: TermParamRef => "TermParamRef(" ~ toTextRef(tp) ~ ")"
       case tp: SingletonType => toTextRef(tp)
       case _ => toText(tp)
 
