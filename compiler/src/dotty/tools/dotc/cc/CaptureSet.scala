@@ -176,7 +176,7 @@ sealed abstract class CaptureSet extends Showable:
 
         var result = tryReader
         if !result.isOK then
-          result = tryInclude(elem, this)
+          result = that.tryInclude(elem, this)
         if !result.isOK && !elem.isRootCapability && summon[VarState] != FrozenState then
           result = elem.captureSetOfInfo.subCaptures(that)
 

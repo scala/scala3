@@ -398,7 +398,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       // !cc! the cache of isResultDependent may not be reliable
       //      because of capture set inference, so here we always do
       //      the substitution
-      val ownType = SubstParamsMap(mt, argTypes)(mt.resType)
+      val ownType =
+        if mt.isResultDependent then
+          SubstParamsMap(mt, argTypes)(mt.resType)
+        else mt.resType
 
       if sym.isConstructor then
         val cls = sym.owner.asClass
