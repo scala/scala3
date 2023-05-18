@@ -169,11 +169,17 @@ sealed abstract class CaptureSet extends Showable:
   private def subCaptures(that: CaptureSet)(using Context, VarState): CompareResult =
     def recur(elems: List[CaptureRef]): CompareResult = elems match
       case elem :: elems1 =>
-        var result = that.tryInclude(elem, this)
+        def tryReader: CompareResult =
+          if that.isUniversalReader && elem.baseClasses.exists(_ == defn.Caps_ReadOnlyAnnot) then
+            CompareResult.OK
+          else CompareResult.fail(this)
+
+        var result = tryReader
+        if !result.isOK then
+          result = tryInclude(elem, this)
         if !result.isOK && !elem.isRootCapability && summon[VarState] != FrozenState then
           result = elem.captureSetOfInfo.subCaptures(that)
-        if !result.isOK && that.isUniversalReader && elem.baseClasses.exists(_ == defn.Caps_ReadOnlyAnnot) then
-          result = CompareResult.OK
+
         if result.isOK then
           recur(elems1)
         else

@@ -203,6 +203,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         interpolator().traverse(tpt.knownType)
           .showing(i"solved vars in ${tpt.knownType}", capt)
 
+    private def solveSeparationSetVarsIn(t: Type)(using Context) = new TypeTraverser:
+      override def traverse(t: Type) =
+        t.separationSet match
+          case seps: CaptureSet.Var => seps.solve()
+          case _ =>
+        traverseChildren(t)
+
     /** Assert subcapturing `cs1 <: cs2` */
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
@@ -388,9 +395,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      - add capture set of instantiated class to capture set of result type.
      */
     override def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
-      val ownType =
-        if mt.isResultDependent then SubstParamsMap(mt, argTypes)(mt.resType)
-        else mt.resType
+      // !cc! the cache of isResultDependent may not be reliable
+      //      because of capture set inference, so here we always do
+      //      the substitution
+      val ownType = SubstParamsMap(mt, argTypes)(mt.resType)
 
       if sym.isConstructor then
         val cls = sym.owner.asClass
@@ -504,6 +512,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         try super.recheckDefDef(tree, sym)
         finally
           interpolateVarsIn(tree.tpt)
+
+          sym.paramSymss.flatMap(syms => syms).foreach { sym =>
+            //println(i"FREEZE sepset vars in $sym with info ${sym.info} after checking $tree")
+            solveSeparationSetVarsIn(sym.info)
+          }
+
           curEnv = saved
 
     /** Class-specific capture set relations:
