@@ -53,7 +53,7 @@ object TypeTestsCasts {
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, "it's a refinement type"
    *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
-   *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P) or (isCheckDefinitelyFalse(T1, P) && checkable(T2, P)) or (checkable(T1, P) && isCheckDefinitelyFalse(T2, P)).
+   *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P).
    *  10. otherwise, ""
    */
   def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
@@ -132,42 +132,8 @@ object TypeTestsCasts {
 
     }
 
-    /** Whether the check X.isInstanceOf[P] is definitely false? */
-    def isCheckDefinitelyFalse(X: Type, P: Type)(using Context): Boolean = trace(s"isCheckDefinitelyFalse(${X.show}, ${P.show})") {
-      X.widenDealias match
-      case AndType(x1, x2) =>
-        isCheckDefinitelyFalse(x1, P) || isCheckDefinitelyFalse(x2, P)
-
-      case x =>
-        P.widenDealias match
-        case AndType(p1, p2) =>
-          isCheckDefinitelyFalse(x, p1) || isCheckDefinitelyFalse(x, p2)
-
-        case p =>
-          val pSpace = Typ(p)
-          val xSpace = Typ(x)
-          if pSpace.canDecompose then
-            val ps = pSpace.decompose.map(_.tp)
-            ps.forall(p => isCheckDefinitelyFalse(x, p))
-          else if xSpace.canDecompose then
-            val xs = xSpace.decompose.map(_.tp)
-            xs.forall(x => isCheckDefinitelyFalse(x, p))
-          else
-            if x.typeSymbol.isClass && p.typeSymbol.isClass then
-              val xClass = effectiveClass(x)
-              val pClass = effectiveClass(p)
-
-              val bothAreClasses = !xClass.is(Trait) && !pClass.is(Trait)
-              val notXsubP = !xClass.derivesFrom(pClass)
-              val notPsubX = !pClass.derivesFrom(xClass)
-              bothAreClasses && notXsubP && notPsubX
-              || xClass.is(Final) && notXsubP
-              || pClass.is(Final) && notPsubX
-            else
-              false
-    }
-
-    def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
+    def recur(X: Type, P: Type): String = trace(s"recur(${X.show}, ${P.show})") {
+      (X <:< P) ||| P.dealias.match
       case _: SingletonType     => ""
       case _: TypeProxy
       if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
@@ -176,7 +142,7 @@ object TypeTestsCasts {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     =>
+      case tpe @ AppliedType(tycon, targs)     =>
         X.widenDealias match {
           case OrType(tp1, tp2) =>
             // This case is required to retrofit type inference,
@@ -184,24 +150,11 @@ object TypeTestsCasts {
             //   - T1 <:< T2 | T3
             //   - T1 & T2 <:< T3
             // See TypeComparer#either
-            val res1 = recur(tp1, P)
-            val res2 = recur(tp2, P)
+            recur(tp1, P) && recur(tp2, P)
 
-            if res1.isEmpty && res2.isEmpty then
-              res1
-            else if res2.isEmpty then
-              if isCheckDefinitelyFalse(tp1, P) then res2
-              else res1
-            else if res1.isEmpty then
-              if isCheckDefinitelyFalse(tp2, P) then res1
-              else res2
-            else
-              res1
-
-          case _ =>
+          case x =>
             // always false test warnings are emitted elsewhere
-            X.classSymbol.exists && P.classSymbol.exists &&
-              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
+            TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
             || typeArgsTrivial(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
@@ -215,7 +168,7 @@ object TypeTestsCasts {
       if P.classSymbol.isLocal && foundClasses(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
         i"it's a local class"
       case _                    => ""
-    })
+    }
 
     val res = recur(X.widen, replaceP(P))
 
