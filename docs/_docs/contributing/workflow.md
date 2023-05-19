@@ -115,6 +115,8 @@ The basics of working with Dotty codebase are documented [here](https://dotty.ep
 | `testOnly dotty.tools.dotc.CompilationTests -- *pos` | Run test (method) `pos` from `CompilationTests` suite.                                                                        |
 | `testCompilation sample`                             | In all test suites, run test files containing the word `sample` in their title.                                               |
 | `scala3-compiler/Test/runMain dotty.tools.printTypes`|  Print types underlying representation                                                                                        |
+| `scaladoc/generateScalaDocumentation`                | Build the documentation website (published to https://dotty.epfl.ch)                                                          |
+| `scaladoc/generateReferenceDocumentation`            | Build the reference documentation website (published to https://docs.scala-lang.org/scala3/reference)                         |
 
 
 ## Shell Commands
