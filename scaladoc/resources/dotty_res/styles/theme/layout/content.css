@@ -229,6 +229,15 @@
   vertical-align: top;
 }
 
+/* content blockquote */
+#content blockquote {
+  color: var(--text-secondary);
+  border-left: 4px solid var(--border-default);
+  padding: 0 calc(2 * var(--base-spacing));
+  margin-inline-start: calc(2 * var(--base-spacing));
+  margin-inline-end: calc(2 * var(--base-spacing));
+}
+
 /* content link */
 #content a {
   color: var(--text-primary);
