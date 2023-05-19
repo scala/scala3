@@ -185,10 +185,6 @@ object MiMaFilters {
         // Companion module class: Missing type java.io.Serializable
         ProblemFilters.exclude[MissingTypesProblem]("scala.*$"),
 
-        // Mirrors
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.ordinal"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.fromProduct"),
-
         // Case class product accessors
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._1"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._2"),

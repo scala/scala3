@@ -1,6 +1,7 @@
 package hello
 
-import scala.util.Right
+import scala.util.*
+import scala.compiletime.testing.typeChecks
 
 enum Color:
   case Red, Green, Blue
@@ -13,6 +14,7 @@ object HelloWorld:
     println(Color.Blue)
 
     testScala2UnapplySignatures()
+    testScala2ObjectParents()
   }
 
   def testScala2UnapplySignatures() = {
@@ -23,4 +25,9 @@ object HelloWorld:
     val _: Option[Int] = Tuple1.unapply(Tuple1(1))
     val _: Option[(Int, Int)] = Tuple2.unapply((1, 2))
     val _: Option[(Int, Int, Int)] = Tuple3.unapply((1, 2, 3))
+  }
+
+  def testScala2ObjectParents() = {
+    assert(!typeChecks("Either: scala.deriving.Mirror.Sum"))
+    assert(!typeChecks("Either: scala.deriving.Mirror"))
   }

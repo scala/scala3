@@ -639,8 +639,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val clazz = ctx.owner.asClass
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
-    addMirrorSupport(
-      cpy.Template(impl)(body = syntheticMembers ::: impl.body))
+    val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
+    if ctx.settings.Yscala2Stdlib.value then impl1
+    else addMirrorSupport(impl1)
   }
 
   private def checkInlining(syntheticMembers: List[Tree])(using Context): Unit =
