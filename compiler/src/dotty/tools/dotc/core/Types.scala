@@ -3499,7 +3499,10 @@ object Types {
           case head :: tail =>
             head match
               case OrType(l: OrType, r: OrType) =>
-                unvisitedSubtrees = l :: r :: tail
+                if (l.isSoft && r.isSoft)
+                  unvisitedSubtrees = l :: r :: tail
+                else if (!l.isSoft && r.isSoft)
+                  unvisitedSubtrees = l :: r :: tail
               case OrType(l, r: OrType) =>
                 unvisitedSubtrees = r :: tail
                 if !l.isNothingType then uniqueTreeMembers += l
@@ -3520,20 +3523,21 @@ object Types {
      *  Nothing types, if present. Weaker than LUB.
      */
     def deduplicatedAbsorbingNothingTypes(using Context): Type = {
+      if tp1 eq tp2 then tp1
+      else
+        val uniqueTreeMembers = this.gatherTreeUniqueMembersAbsorbingNothingTypes
+        val factorCount = orFactorCount(isSoft) // TODO replace this by an actual softness check
 
-      val uniqueTreeMembers = this.gatherTreeUniqueMembersAbsorbingNothingTypes
-      val factorCount = orFactorCount(isSoft)
-
-      uniqueTreeMembers.size match {
-        case 1 =>
-          uniqueTreeMembers.iterator.next()
-        case uniqueMembersCount if uniqueMembersCount < factorCount =>
-          val members = uniqueTreeMembers.iterator
-          val startingUnion = OrType(members.next(), members.next(), isSoft)
-          members.foldLeft(startingUnion)(OrType(_, _, isSoft))
-        case _ =>
-          this
-      }
+        uniqueTreeMembers.size match {
+          case 1 =>
+            uniqueTreeMembers.iterator.next()
+          case uniqueMembersCount if uniqueMembersCount < factorCount =>
+            val members = uniqueTreeMembers.iterator
+            val startingUnion = OrType(members.next(), members.next(), isSoft)
+            members.foldLeft(startingUnion)(OrType(_, _, isSoft))
+          case _ =>
+            this
+        }
     }
   }
 
