@@ -1625,7 +1625,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 )
               cpy.ValDef(param)(tpt = paramTpt)
           if isErased then param0.withAddedFlags(Flags.Erased) else param0
-      desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
+      desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, tree.span)
 
     typed(desugared, pt)
       .showing(i"desugared fun $tree --> $desugared with pt = $pt", typr)
@@ -1661,9 +1661,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   errorTree(tree,
                     em"""cannot turn method type $mt into closure
                         |because it has internal parameter dependencies""")
-                else if ((tree.tpt `eq` untpd.ContextualEmptyTree) && mt.paramNames.isEmpty)
-                  // Note implicitness of function in target type since there are no method parameters that indicate it.
-                  TypeTree(defn.FunctionOf(Nil, mt.resType, isContextual = true))
                 else if hasCaptureConversionArg(mt.resType) then
                   errorTree(tree,
                     em"""cannot turn method type $mt into closure
@@ -3104,6 +3101,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val ifpt = defn.asContextFunctionType(pt)
           val result =
             if ifpt.exists
+              && defn.functionArity(ifpt) > 0 // ContextFunction0 is only used after ElimByName
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
