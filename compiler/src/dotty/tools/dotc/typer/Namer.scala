@@ -862,7 +862,6 @@ class Namer { typer: Typer =>
      *  with a user-defined method in the same scope with a matching type.
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
-
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
@@ -879,10 +878,19 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic, butNot = ConstructorProxy)
-        && desugar.isRetractableCaseClassMethodName(denot.name)
-        && isCaseClassOrCompanion(denot.owner)
-        && (definesMember || inheritsConcreteMember)
+        denot.is(Synthetic, butNot = ConstructorProxy) &&
+        (
+          (desugar.isRetractableCaseClassMethodName(denot.name)
+            && isCaseClassOrCompanion(denot.owner)
+            && (definesMember || inheritsConcreteMember)
+          )
+          ||
+          // remove synthetic constructor of a java Record if it clashes with a non-synthetic constructor
+          (denot.isConstructor
+            && denot.owner.is(JavaDefined) && denot.owner.derivesFrom(defn.JavaRecordClass)
+            && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
+          )
+        )
 
       if isClashingSynthetic then
         typr.println(i"invalidating clashing $denot in ${denot.owner}")

@@ -29,7 +29,7 @@ class CompilationTests {
 
   @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    aggregateTests(
+    var tests = List(
       compileFile("tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")),
       compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8),
       compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16),
@@ -65,8 +65,13 @@ class CompilationTests {
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
       compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
       compileFile("tests/pos-custom-args/i13044.scala", defaultOptions.and("-Xmax-inlines:33")),
-      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8")),
-    ).checkCompile()
+      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8"))
+    )
+
+    if scala.util.Properties.isJavaAtLeast("16") then
+      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init"))
+
+    aggregateTests(tests*).checkCompile()
   }
 
   @Test def rewrites: Unit = {
