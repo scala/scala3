@@ -526,6 +526,9 @@ object Build {
 
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
+       // Note: bench/profiles/projects.yml should be updated accordingly.
+       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._
@@ -803,9 +806,6 @@ object Build {
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
       )
     },
-
-    // Note: bench/profiles/projects.yml should be updated accordingly.
-    Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
     repl := (Compile / console).value,
     Compile / console / scalacOptions := Nil, // reset so that we get stock REPL behaviour!  E.g. avoid -unchecked being enabled
