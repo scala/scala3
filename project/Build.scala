@@ -974,6 +974,13 @@ object Build {
         file.getPath.endsWith("scala-library-src/scala/Nothing.scala") ||
         file.getPath.endsWith("scala-library-src/scala/Null.scala") ||
         file.getPath.endsWith("scala-library-src/scala/Singleton.scala"))),
+      (Compile / sources) := {
+        val files = (Compile / sources).value
+        val overwritenSourcesDir = (Compile / scalaSource).value
+        val overwritenSources = files.flatMap(_.relativeTo(overwritenSourcesDir)).toSet
+        val reference = (Compile/sourceManaged).value / "scala-library-src"
+        files.filterNot(_.relativeTo(reference).exists(overwritenSources))
+      },
       (Test / managedClasspath) ~= {
         _.filterNot(file => file.data.getName == s"scala-library-${stdlibVersion(Bootstrapped)}.jar")
       },
