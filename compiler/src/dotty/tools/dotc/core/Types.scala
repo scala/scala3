@@ -376,7 +376,7 @@ object Types {
       case _ => false
     }
 
-    /** Returns the annoation that is an instance of `cls` carried by the type. */
+    /** Returns the annotation that is an instance of `cls` carried by the type. */
     @tailrec final def getAnnotation(cls: ClassSymbol)(using Context): Option[Annotation] = stripTypeVar match {
       case AnnotatedType(tp, annot) =>
         if annot.matches(cls) then Some(annot)

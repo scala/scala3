@@ -123,7 +123,7 @@ object Objects:
     def show(using Context) = "ObjectRef(" + klass.show + ")"
 
   /**
-   * Rerepsents values that are instances of the specified class.
+   * Represents values that are instances of the specified class.
    *
    * Note that the 2nd parameter block does not take part in the definition of equality.
    */
@@ -150,7 +150,7 @@ object Objects:
       instance
 
   /**
-   * Rerepsents arrays.
+   * Represents arrays.
    *
    * Note that the 2nd parameter block does not take part in the definition of equality.
    *
@@ -289,7 +289,7 @@ object Objects:
       val level = outer.level + 1
 
       if (level > 3)
-        report.warning("[Internal error] Deeply nested environemnt, level =  " + level + ", " + meth.show + " in " + meth.enclosingClass.show, meth.defTree)
+        report.warning("[Internal error] Deeply nested environment, level =  " + level + ", " + meth.show + " in " + meth.enclosingClass.show, meth.defTree)
 
       private[Env] val vals: mutable.Map[Symbol, Value] = valsMap
       private[Env] val vars: mutable.Map[Symbol, Heap.Addr] = varsMap
@@ -418,7 +418,7 @@ object Objects:
      */
     opaque type Data = Map[Addr, Value]
 
-    /** Store the heap as a mutable field to avoid thread through it in the program. */
+    /** Store the heap as a mutable field to avoid threading it through the program. */
     class MutableData(private[Heap] var heap: Data):
       private[Heap] def update(addr: Addr, value: Value): Unit =
         heap.get(addr) match

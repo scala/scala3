@@ -21,13 +21,13 @@ object init:
    *
    *  By default, method and constructor arguments are widened to height 1.
    */
-  final class widen(hight: Int) extends StaticAnnotation
+  final class widen(height: Int) extends StaticAnnotation
 
   /** Introduce a region context.
    *
    *  The same mutable field in the same region have the same abstract representation.
    *
-   *  The concept of regions is intended to make context-sensitivity tuable for complex use cases.
+   *  The concept of regions is intended to make context-sensitivity tunable for complex use cases.
    *
    *  Example:
    *
@@ -41,7 +41,7 @@ object init:
    *         val box2: Box = region { new Box(new D(10)) }
    *         val m: Int = box1.value.foo()
    *
-   *  In the above, without the two region annotation, the two objects `box1` and `box2` are in the same region.
+   *  In the above, without the two region annotations, the two objects `box1` and `box2` are in the same region.
    *  Therefore, the field `box1.value` and `box2.value` points to both instances of `C` and `D`. Consequently,
    *  the method call `box1.value.foo()` will be invalid, because it reaches `A.m`, which is not yet initialized.
    *  The explicit context annotation solves the problem.
