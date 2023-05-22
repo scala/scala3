@@ -14,12 +14,18 @@ object init:
    *     class A(x: Int):
    *       def square(): Int = x*x
    *
+   *     class C(val a: A)
+   *
    *     object B:
-   *       val a = build(new A(10): @init.expose)   // <-- usage
+   *       val a = build(new C(new A(10)): @widen(2))      // <-- usage
    *
-   *       def build(o: A) = new A(o.square())        // calling methods on parameter
+   *       def build(c: C) = new A(c.a.square())           // calling methods on parameter
    *
-   *  By default, method and constructor arguments are widened to height 1.
+   *  By default, method and constructor arguments are widened to height 1. In
+   *  the code above, without using `@widen(2)` we will have the abstract value
+   *  `C(a = Cold)` for the argument `c` of the method `build`. Consequently,
+   *  the checker will issue a warning for the method call `c.a.square()` because
+   *  it is forbidden to call methods or access fields on cold values.
    */
   final class widen(height: Int) extends StaticAnnotation
 

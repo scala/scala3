@@ -132,7 +132,7 @@ object Objects:
     valsMap: mutable.Map[Symbol, Value], varsMap: mutable.Map[Symbol, Heap.Addr], outersMap: mutable.Map[ClassSymbol, Value])
   extends Ref(valsMap, varsMap, outersMap):
     def widenedCopy(outer: Value, args: List[Value], env: Env.Data): OfClass =
-      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, outersMap)
+      new OfClass(klass, outer, ctor, args, env)(this.valsMap, this.varsMap, this.outersMap)
 
     def show(using Context) =
       val valFields = vals.map(_.show +  " -> " +  _.show)
@@ -379,6 +379,8 @@ object Objects:
      * @param meth  The method which owns the environment
      * @param thisV The value for `this` of the enclosing class where the local variable is referenced.
      * @param env   The local environment where the local variable is referenced.
+     *
+     * @return the environment and value for `this` owned by the given method.
      */
     def resolveEnv(meth: Symbol, thisV: Value, env: Data)(using Context): Option[(Value, Data)] = log("Resolving env for " + meth.show + ", this = " + thisV.show + ", env = " + env.show, printer) {
       env match
@@ -528,6 +530,15 @@ object Objects:
 
     def widen(height: Int): Contextual[List[Value]] = values.map(_.widen(height)).toList
 
+  /** Handle method calls `e.m(args)`.
+   *
+   * @param value        The value for the receiver.
+   * @param meth         The symbol of the target method (could be virtual or abstract method).
+   * @param args         Arguments of the method call (all parameter blocks flatten to a list).
+   * @param receiver     The type of the receiver.
+   * @param superType    The type of the super in a super call. NoType for non-super calls.
+   * @param needResolve  Whether the target of the call needs resolution?
+   */
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case Cold =>
@@ -618,6 +629,12 @@ object Objects:
       vs.map(v => call(v, meth, args, receiver, superType)).join
   }
 
+  /** Handle constructor calls `<init>(args)`.
+   *
+   * @param thisV        The value for the receiver.
+   * @param ctor         The symbol of the target method.
+   * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
+   */
   def callConstructor(thisV: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
 
     thisV match
@@ -643,6 +660,13 @@ object Objects:
       Bottom
   }
 
+  /** Handle selection `e.f`.
+   *
+   * @param value        The value for the receiver.
+   * @param field        The symbol of the target field (could be virtual or abstract).
+   * @param receiver     The type of the receiver.
+   * @param needResolve  Whether the target of the selection needs resolution?
+   */
   def select(thisV: Value, field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + thisV.show, printer, (_: Value).show) {
     thisV match
     case Cold =>
@@ -700,8 +724,15 @@ object Objects:
       refs.map(ref => select(ref, field, receiver)).join
   }
 
-  def assign(receiver: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + receiver.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
-    receiver match
+  /** Handle assignment `lhs.f = rhs`.
+   *
+   * @param lhs         The value of the object to be mutated.
+   * @param field       The symbol of the target field.
+   * @param lhs         The value to be assigned.
+   * @param rhsTyp      The type of the right-hand side.
+   */
+  def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
+    lhs match
     case fun: Fun =>
       report.error("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
@@ -727,6 +758,13 @@ object Objects:
     Bottom
   }
 
+  /** Handle new expression `new p.C(args)`.
+   *
+   * @param outer       The value for `p`.
+   * @param klass       The symbol of the class `C`.
+   * @param ctor        The symbol of the target constructor.
+   * @param args        The arguments passsed to the constructor.
+   */
   def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer match
 
@@ -758,6 +796,12 @@ object Objects:
       refs.map(ref => instantiate(ref, klass, ctor, args)).join
   }
 
+  /** Handle local variable definition, `val x = e` or `var x = e`.
+   *
+   * @param ref          The value for `this` where the variable is defined.
+   * @param sym          The symbol of the variable.
+   * @param value        The value of the initializer.
+   */
   def initLocal(ref: Ref, sym: Symbol, value: Value): Contextual[Unit] = log("initialize local " + sym.show + " with " + value.show, printer) {
     if sym.is(Flags.Mutable) then
       val addr = Heap.localVarAddr(summon[Regions.Data], sym, State.currentObject)
@@ -767,6 +811,11 @@ object Objects:
       Env.setLocalVal(sym, value)
   }
 
+  /** Read local variable `x`.
+   *
+   * @param thisV        The value for `this` where the variable is used.
+   * @param sym          The symbol of the variable.
+   */
   def readLocal(thisV: Value, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
@@ -814,6 +863,12 @@ object Objects:
         Cold
   }
 
+  /** Handle local variable assignmenbt, `x = e`.
+   *
+   * @param thisV        The value for `this` where the assignment locates.
+   * @param sym          The symbol of the variable.
+   * @param value        The value of the rhs of the assignment.
+   */
   def writeLocal(thisV: Value, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
 
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
@@ -1010,7 +1065,8 @@ object Objects:
         eval(expr, thisV, klass)
 
       case If(cond, thenp, elsep) =>
-        evalExprs(cond :: thenp :: elsep :: Nil, thisV, klass).join
+        eval(cond, thisV, klass)
+        evalExprs(thenp :: elsep :: Nil, thisV, klass).join
 
       case Annotated(arg, annot) =>
         if expr.tpe.hasAnnotation(defn.UncheckedAnnot) then
@@ -1309,7 +1365,7 @@ object Objects:
       Bottom
     else if target.isStaticObject then
       val res = ObjectRef(target.moduleClass.asClass)
-      if target == klass || elideObjectAccess then res
+      if elideObjectAccess then res
       else accessObject(target)
     else
       thisV match
