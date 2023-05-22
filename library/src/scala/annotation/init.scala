@@ -12,7 +12,7 @@ object init:
    *  It can be used to mark method or constructor arguments, as the following example shows:
    *
    *     class A(x: Int):
-   *       def squre(): Int = x*x
+   *       def square(): Int = x*x
    *
    *     object B:
    *       val a = build(new A(10): @init.expose)   // <-- usage
