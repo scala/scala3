@@ -1462,6 +1462,32 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedFunctionValue(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree: @unchecked
 
+    if Feature.enabled(Feature.typeClauseInference) then
+      // If the expected type is a polymorphic function type:
+      //
+      //    [S_1, ..., S_m] => (T_1, ..., T_n) => R
+      //    (where each S_i might have type bounds)
+      //
+      // and we are typing a lambda of the form:
+      //
+      //    (x_1, ..., x_n) => e
+      //    (where each x_i might have a type ascription)
+      //
+      // then continue with an inferred type parameter clause:
+      //
+      //    [S'_1, ..., S'_m] => (x_1, ..., x_n) => e
+      //    (where each S'_i is fresh and has the bounds of S_i after substituting S_j by S'_j for all j)
+      pt match
+        case defn.PolyFunctionOf(poly @ PolyType(_, mt: MethodType))
+        if params.lengthCompare(mt.paramNames) == 0 =>
+          val tparams = poly.paramNames.lazyZip(poly.paramInfos).map: (name, info) =>
+            untpd.TypeDef(UniqueName.fresh(name), untpd.InLambdaTypeTree(isResult = false, (tsyms, vsyms) =>
+              info.substParams(poly, tsyms.map(_.typeRef))
+            )).withFlags(SyntheticParam)
+              .withSpan(tree.span.startPos)
+          return typed(untpd.PolyFunction(tparams, tree), pt)
+        case _ =>
+
     val (isContextual, isDefinedErased) = tree match {
       case tree: untpd.FunctionWithMods => (tree.mods.is(Given), tree.erasedParams)
       case _ => (false, tree.args.map(_ => false))
