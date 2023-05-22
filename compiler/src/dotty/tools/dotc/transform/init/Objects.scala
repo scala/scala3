@@ -1330,7 +1330,7 @@ object Objects:
           Bottom
   }
 
-  /** Compute the outer value that correspond to `tref.prefix`
+  /** Compute the outer value that corresponds to `tref.prefix`
    *
    * @param tref    The type whose prefix is to be evaluated.
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
