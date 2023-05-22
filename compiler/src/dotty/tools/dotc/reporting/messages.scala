@@ -2920,3 +2920,10 @@ class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
   extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
     def explain(using Context) = ""
+
+class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
+  extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
+    def msg(using Context) =
+      i"""cannot turn method type $mt into closure
+         |because it has internal parameter dependencies"""
+    def explain(using Context) = ""

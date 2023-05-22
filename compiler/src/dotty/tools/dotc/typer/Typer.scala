@@ -1678,9 +1678,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent)
-                  errorTree(tree,
-                    em"""cannot turn method type $mt into closure
-                        |because it has internal parameter dependencies""")
+                  errorTree(tree, ClosureCannotHaveInternalParameterDependencies(mt))
                 else if hasCaptureConversionArg(mt.resType) then
                   errorTree(tree,
                     em"""cannot turn method type $mt into closure
@@ -1688,9 +1686,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else
                   EmptyTree
             }
-          case _: PolyType =>
-            // Polymorphic SAMs are not currently supported (#6904).
-            EmptyTree
+          case poly @ PolyType(_, mt: MethodType) =>
+            if (mt.isParamDependent)
+              errorTree(tree, ClosureCannotHaveInternalParameterDependencies(poly))
+            else
+              // Polymorphic SAMs are not currently supported (#6904).
+              EmptyTree
           case tp =>
             if !tp.isErroneous then
               throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.span}")
