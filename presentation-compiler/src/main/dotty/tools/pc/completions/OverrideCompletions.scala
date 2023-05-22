@@ -188,7 +188,7 @@ object OverrideCompletions:
         case path => path
 
     val indexedContext = IndexedContext(
-      MetalsInteractive.contextOfPath(path)(using newctx)
+      Interactive.contextOfPath(path)(using newctx)
     )
     import indexedContext.ctx
 

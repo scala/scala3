@@ -19,6 +19,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.printer.MetalsPrinter
 import dotty.tools.pc.utils.MtagsEnrichments.*
@@ -31,7 +32,7 @@ object HoverProvider:
       search: SymbolSearch
   )(implicit reportContext: ReportContext): ju.Optional[HoverSignature] =
     val uri = params.uri
-    val sourceFile = CompilerInterfaces.toSource(params.uri, params.text)
+    val sourceFile = SourceFile.virtual(params.uri, params.text)
     driver.run(uri, sourceFile)
 
     given ctx: Context = driver.currentCtx
@@ -85,7 +86,7 @@ object HoverProvider:
           case Some(unit) =>
             val newctx =
               ctx.fresh.setCompilationUnit(unit)
-            MetalsInteractive.contextOfPath(enclosing)(using newctx)
+            Interactive.contextOfPath(enclosing)(using newctx)
           case None => ctx
       val printer = MetalsPrinter.standard(
         IndexedContext(printerContext),

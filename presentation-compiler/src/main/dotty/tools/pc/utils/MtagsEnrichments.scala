@@ -29,7 +29,6 @@ import dotty.tools.dotc.semanticdb.SymbolInformation.Kind
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.pc.MetalsInteractive
 import dotty.tools.pc.SemanticdbSymbols
 
 import org.eclipse.lsp4j as l
@@ -70,7 +69,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
         Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using
           newctx
         )
-      MetalsInteractive.contextOfPath(tpdPath)(using newctx)
+      Interactive.contextOfPath(tpdPath)(using newctx)
     end localContext
 
   end extension

@@ -45,7 +45,7 @@ final class AutoImportsProvider(
       Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
 
     val indexedContext = IndexedContext(
-      MetalsInteractive.contextOfPath(path)(using newctx)
+      Interactive.contextOfPath(path)(using newctx)
     )
     import indexedContext.ctx
 

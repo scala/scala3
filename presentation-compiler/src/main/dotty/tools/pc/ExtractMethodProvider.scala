@@ -20,7 +20,6 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.MetalsInteractive.*
 import dotty.tools.pc.printer.MetalsPrinter
 import dotty.tools.pc.printer.MetalsPrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
@@ -48,7 +47,7 @@ final class ExtractMethodProvider(
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
     given locatedCtx: Context =
       val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-      MetalsInteractive.contextOfPath(path)(using newctx)
+      Interactive.contextOfPath(path)(using newctx)
     val indexedCtx = IndexedContext(locatedCtx)
     val printer =
       MetalsPrinter.standard(indexedCtx, search, IncludeDefaultParam.Never)

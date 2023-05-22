@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.pc.AutoImports.AutoImportEdits
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.printer.MetalsPrinter
@@ -42,7 +43,7 @@ class CompletionProvider(
     val uri = params.uri
 
     val code = applyCompletionCursor(params)
-    val sourceFile = CompilerInterfaces.toSource(params.uri, code)
+    val sourceFile = SourceFile.virtual(params.uri, code)
     driver.run(uri, sourceFile)
 
     val ctx = driver.currentCtx
@@ -58,7 +59,7 @@ class CompletionProvider(
             newctx
           )
         val locatedCtx =
-          MetalsInteractive.contextOfPath(tpdPath)(using newctx)
+          Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
         val completionPos =
           CompletionPos.infer(pos, params, path)(using newctx)

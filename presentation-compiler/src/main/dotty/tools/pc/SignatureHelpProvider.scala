@@ -16,6 +16,7 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.Signatures
 import dotty.tools.dotc.util.Signatures.Signature
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
@@ -29,7 +30,7 @@ object SignatureHelpProvider:
       search: SymbolSearch
   ) =
     val uri = params.uri
-    val sourceFile = CompilerInterfaces.toSource(params.uri, params.text)
+    val sourceFile = SourceFile.virtual(params.uri, params.text)
     driver.run(uri, sourceFile)
 
     given ctx: Context = driver.currentCtx

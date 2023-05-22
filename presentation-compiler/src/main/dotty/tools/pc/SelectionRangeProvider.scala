@@ -54,17 +54,26 @@ class SelectionRangeProvider(
           selectionRange
         }
 
-      val comments = driver.compilationUnits.get(uri).map(_.comments).toList.flatten
+      val comments =
+        driver.compilationUnits.get(uri).map(_.comments).toList.flatten
 
-      val commentRanges = comments.find(_.span.contains(pos.span)).map { comment =>
-        val startLine = source.offsetToLine(comment.span.start)
-        val endLine = source.offsetToLine(comment.span.end)
-        val startChar = source.column(comment.span.start)
-        val endChar = source.column(comment.span.end)
+      val commentRanges = comments
+        .find(_.span.contains(pos.span))
+        .map { comment =>
+          val startLine = source.offsetToLine(comment.span.start)
+          val endLine = source.offsetToLine(comment.span.end)
+          val startChar = source.column(comment.span.start)
+          val endChar = source.column(comment.span.end)
 
-        new SelectionRange():
-          setRange(new lsp4j.Range(lsp4j.Position(startLine, startChar), lsp4j.Position(endLine, endChar)))
-      }.toList
+          new SelectionRange():
+            setRange(
+              new lsp4j.Range(
+                lsp4j.Position(startLine, startChar),
+                lsp4j.Position(endLine, endChar)
+              )
+            )
+        }
+        .toList
 
       (commentRanges ++ bareRanges)
         .reduceRightOption(setParent)

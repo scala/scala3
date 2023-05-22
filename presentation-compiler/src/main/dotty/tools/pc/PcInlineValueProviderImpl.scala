@@ -162,7 +162,7 @@ final class PcInlineValueProviderImpl(
       val path =
         Interactive.pathTo(unit.tpdTree, occurence.pos.span)(using newctx)
       val indexedContext = IndexedContext(
-        MetalsInteractive.contextOfPath(path)(using newctx)
+        Interactive.contextOfPath(path)(using newctx)
       )
       import indexedContext.ctx
       val conflictingSymbols = symbols
