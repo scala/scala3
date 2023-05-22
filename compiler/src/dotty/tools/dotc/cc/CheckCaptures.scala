@@ -976,8 +976,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           recur(refs, Nil)
 
         private def healCaptureSet(cs: CaptureSet): Unit =
-          val toInclude = widenParamRefs(cs.elems.toList.filter(!isAllowed(_)).asInstanceOf)
-          toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+          def avoidance(elems: List[CaptureRef])(using Context): Unit =
+            val toInclude = widenParamRefs(elems.filter(!isAllowed(_)).asInstanceOf)
+            //println(i"HEAL $cs by widening to $toInclude")
+            toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+          cs.ensureWellformed(avoidance)
 
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
