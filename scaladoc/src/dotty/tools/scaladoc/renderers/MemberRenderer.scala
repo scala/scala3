@@ -112,53 +112,18 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   def validationLink(str: String): String =
     def asValidURL = Try(URL(str)).toOption.map(_ => str)
 
-    def asAsset =
-      Option.when(
-      Files.exists(Paths.get("src/main/ressources").resolve(str.stripPrefix("/")))
-    )(
-      s"src/main/ressources/$str"
-    )
-
-    def asStaticSite: Option[String] =
-      Option.when(
-      Files.exists(Paths.get("docs/_docs").resolve(str.stripPrefix("/")))
-    )(
-      s"docs/_docs/$str"
-    )
-
-    def asApiLink: Option[String] =
-      val strWithoutHtml = if str.endsWith("$.html") then
-        str.stripSuffix("$.html")
-        else
-          str.stripSuffix(".html")
-      val sourceDir = Paths.get("src", "main", "scala")
-      val scalaPath = sourceDir.resolve(s"$strWithoutHtml.scala")
-      val scalaDirPath = sourceDir.resolve(strWithoutHtml)
-      Option.when(
-        Files.exists(scalaPath) || Files.exists(scalaDirPath))
-        (
-          s"api/$strWithoutHtml.html"
-          )
-
+    def asAsset: Option[String] = Option.when(
+      Files.exists(Paths.get("docs/_assets").resolve(str))
+      )(
+        s"docs/_assets/$str"
+        )
 
     asValidURL
-      .orElse(asStaticSite)
       .orElse(asAsset)
-      .orElse(asApiLink)
       .getOrElse{
         report.warning(s"Unable to resolve link '$str'")
         str
       }
-
-    // println(asValidURL)
-
-    // println(Paths.get("src/main/ressources").resolve(str.stripPrefix("/")).toAbsolutePath)
-    // println(Files.exists(Paths.get("src/main/ressources").resolve(str.stripPrefix("/"))))
-    // def asAsset = Option.when(
-    //   Files.exists(Paths.get("docs/_assets").resolve(str.stripPrefix("/")))
-    // )(
-    //   s"docs/_assets/$str"
-    // )
 
   def memberInfo(m: Member, withBrief: Boolean = false, full: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
@@ -188,14 +153,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     document.select("img").forEach(element =>
       element.attr("src", validationLink(element.attr("src")))
     )
-
-    document.select("a").forEach(element =>
-      element.attr("href", processLocalLinkWithGuard(element.attr("href")))
-    )
-
-    // document2.select("a").forEach(element =>
-    //   println("BONJOUR"+element.attr("href"))
-    // ) <--- Take some href that I don't want
 
     Seq(
       Option.when(withBrief && comment.flatMap(_.short).nonEmpty)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
