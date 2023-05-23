@@ -33,6 +33,7 @@ import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
 import scala.jdk.CollectionConverters.*
+import dotty.tools.dotc.util.SourceFile
 
 /**  Messages
   *  ========
@@ -497,7 +498,7 @@ extends SyntaxMsg(ObjectMayNotHaveSelfTypeID) {
   }
 }
 
-class RepeatedModifier(modifier: String)(implicit ctx:Context)
+class RepeatedModifier(modifier: String, source: SourceFile, span: Span)(implicit ctx:Context)
 extends SyntaxMsg(RepeatedModifierID) {
   def msg(using Context) = i"""Repeated modifier $modifier"""
 
@@ -516,6 +517,16 @@ extends SyntaxMsg(RepeatedModifierID) {
         |
         |"""
   }
+
+  override def actions(using Context) =
+    List(
+      CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
+        description =  java.util.Optional.empty(),
+        patches = List(
+          ActionPatch(SourcePosition(source, span), "")
+        ).asJava
+      )
+    ).asJava
 }
 
 class InterpolatedStringError()(implicit ctx:Context)
