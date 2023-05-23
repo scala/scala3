@@ -567,7 +567,7 @@ object Inlines:
     extension (sym: Symbol)
       private def isTermParamAccessor: Boolean = !sym.isType && sym.is(ParamAccessor)
 
-    private def expandStat(stat: tpd.Tree, inlinedSym: Symbol): tpd.Tree = stat match
+    private def expandStat(stat: tpd.Tree, inlinedSym: Symbol)(using Context): tpd.Tree = stat match
       case stat: ValDef =>
         inlinedValDef(stat, inlinedSym)
       case stat: DefDef =>
@@ -590,8 +590,8 @@ object Inlines:
             (sym.flags | Synthetic) &~ withoutFlags,
             clsSym =>
               ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ baseThisCls, Scopes.newScope, selfInfo),
-            privateWithin = sym.privateWithin,
-            coord = spanCoord(parent.span)
+            sym.privateWithin,
+            spanCoord(parent.span)
           )
           inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
           inlinedSym
@@ -643,8 +643,9 @@ object Inlines:
     private def inlinedClassDef(clsDef: TypeDef, inlinedCls: ClassSymbol)(using Context): Tree =
       val TypeDef(_, tmpl: Template) = clsDef: @unchecked
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
+        val inlinedConstr = inlinedPrimaryConstructorDefDef(tmpl.constr)
         val inlinedTmpl = tmpl.body.map(stat => expandStat(stat, inlinedSym(stat.symbol)))
-        (inlinedPrimaryConstructorDefDef(tmpl.constr), inlinedTmpl)
+        (inlinedConstr, inlinedTmpl)
       }
       val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents :+ This(ctx.owner.asClass).select(clsDef.symbol), body)
       inlined(clsDef1)._2.withSpan(clsDef.span) // TODO adapt parents
