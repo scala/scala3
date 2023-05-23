@@ -226,31 +226,39 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               constrStats += intoConstr(stat, sym)
             } else
               dropped += sym
-          case stat @ DefDef(name, _, tpt, _)
-              if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) && !stat.symbol.isConstExprFinalVal =>
+          case stat @ DefDef(name, _, tpt, _) if stat.symbol.isGetter && !stat.symbol.is(Lazy) =>
             val sym = stat.symbol
             assert(isRetained(sym), sym)
-            if !stat.rhs.isEmpty && !isWildcardArg(stat.rhs) then
-              /* !!! Work around #9390
-               * This should really just be `sym.setter`. However, if we do that, we'll miss
-               * setters for mixed in `private var`s. Even though the scope clearly contains the
-               * setter symbol with the correct Name structure (since the `find` finds it),
-               * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
-               * Could it be that the hash table of the `Scope` is corrupted?
-               * We still try `sym.setter` first as an optimization, since it will work for all
-               * public vars in traits and all (public or private) vars in classes.
-               */
-              val symSetter =
-                if sym.setter.exists then
-                  sym.setter
-                else
-                  val setterName = sym.asTerm.name.setterName
-                  sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
-              val setter =
-                if (symSetter.exists) symSetter
-                else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
-              constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
-            clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
+            if sym.isConstExprFinalVal then
+              if stat.rhs.isInstanceOf[Literal] then
+                clsStats += stat
+              else
+                constrStats += intoConstr(stat.rhs, sym)
+                clsStats += cpy.DefDef(stat)(rhs = Literal(sym.constExprFinalValConstantType.value).withSpan(stat.span))
+            else if !sym.owner.is(Trait) then
+              clsStats += stat
+            else
+              if !stat.rhs.isEmpty && !isWildcardArg(stat.rhs) then
+                /* !!! Work around #9390
+                 * This should really just be `sym.setter`. However, if we do that, we'll miss
+                 * setters for mixed in `private var`s. Even though the scope clearly contains the
+                 * setter symbol with the correct Name structure (since the `find` finds it),
+                 * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
+                 * Could it be that the hash table of the `Scope` is corrupted?
+                 * We still try `sym.setter` first as an optimization, since it will work for all
+                 * public vars in traits and all (public or private) vars in classes.
+                 */
+                val symSetter =
+                  if sym.setter.exists then
+                    sym.setter
+                  else
+                    val setterName = sym.asTerm.name.setterName
+                    sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
+                val setter =
+                  if (symSetter.exists) symSetter
+                  else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
+                constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
+              clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
           case DefDef(nme.CONSTRUCTOR, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>
