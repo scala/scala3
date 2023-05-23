@@ -44,6 +44,17 @@ class CodeActionTest extends DottyTest:
 
       )
 
+  @Test def removeRepeatModifier =
+    checkCodeAction(
+      """|final final class Test
+         |""".stripMargin,
+      """Remove repeated modifier: "final"""",
+      // TODO look into trying to remove the extra space that is left behind
+      """|final  class Test
+         |""".stripMargin
+
+      )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =
