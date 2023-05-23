@@ -115,9 +115,10 @@ object Inliner:
       oldOwners: List[Symbol],
       newOwners: List[Symbol],
       substFrom: List[Symbol],
-      substTo: List[Symbol])(using Context)
+      substTo: List[Symbol],
+      val inlineCopier: TreeCopier)(using Context)
     extends TreeTypeMap(
-      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
+      typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, inlineCopier):
 
     override def copy(
         typeMap: Type => Type,
@@ -126,7 +127,7 @@ object Inliner:
         newOwners: List[Symbol],
         substFrom: List[Symbol],
         substTo: List[Symbol])(using Context) =
-      new InlinerMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+      new InlinerMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, inlineCopier)
 
     override def transformInlined(tree: Inlined)(using Context) =
       if tree.call.isEmpty then
@@ -565,6 +566,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
   protected def substFrom: List[Symbol] = Nil
   protected def substTo: List[Symbol] = Nil
+  protected def inlineCopier: TreeCopier = InlineCopier()
 
   protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
     inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
@@ -624,7 +626,8 @@ class Inliner(val call: tpd.Tree)(using Context):
       oldOwners = inlinedMethod :: Nil,
       newOwners = ctx.owner :: Nil,
       substFrom = substFrom,
-      substTo = substTo
+      substTo = substTo,
+      inlineCopier = inlineCopier
     )(using inlineCtx)
 
     inlining.println(

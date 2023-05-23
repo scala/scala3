@@ -533,29 +533,32 @@ object Inlines:
     end expandDefs
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
-      override def apply(t: Type) = t match {
-        case t: ThisType if t.cls == parentSym => ctx.owner.thisType
-        case t => super.apply(t)
+      override def apply(t: Type) = super.apply(t) match {
+        case t: ThisType if t.cls == parentSym =>
+          ctx.owner.thisType
+        case t =>
+          mapOver(t)
       }
     }
 
     protected class InlineTraitTreeMap extends InlinerTreeMap {
-      override def apply(tree: Tree) = tree match {
-        case tree: This if tree.qual.name == parentSym.name =>
-          Inlined(EmptyTree, Nil, This(ctx.owner.asClass).withSpan(parent.span)).withSpan(tree.span)
+      override def apply(tree: Tree) = super.apply(tree) match {
+        case tree: This if tree.symbol == parentSym =>
+          Inlined(EmptyTree, Nil, This(ctx.owner.asClass).withSpan(parent.span)).withSpan(parent.span)
         case tree: This =>
           tree.tpe match {
             case thisTpe: ThisType if thisTpe.cls.isInlineTrait =>
-              integrate(This(ctx.owner.asClass).withSpan(call.span), thisTpe.cls)
-            case _ => super.apply(tree)
+              integrate(This(ctx.owner.asClass).withSpan(parent.span), thisTpe.cls)
+            case _ =>
+              tree
           }
         case Select(qual, name) =>
           paramAccessorsMapper.getParamAccessorName(qual.symbol, name) match {
-            case Some(newName) => Select(apply(qual), newName).withSpan(tree.span)
-            case None => super.apply(tree)
+            case Some(newName) => Select(this(qual), newName).withSpan(parent.span)
+            case None => Select(this(qual), name)
           }
         case tree =>
-          super.apply(tree)
+          tree
       }
     }
 
@@ -564,6 +567,11 @@ object Inlines:
 
     override protected def substFrom: List[Symbol] = innerClassNewSyms.keys.toList
     override protected def substTo: List[Symbol] = innerClassNewSyms.values.toList
+    override protected def inlineCopier: tpd.TreeCopier = new TypedTreeCopier() {
+      // FIXME it feels weird... Is this correct?
+      override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+        untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
+    }
 
     override protected def computeThisBindings(): Unit = ()
     override protected def canElideThis(tpe: ThisType): Boolean = true
