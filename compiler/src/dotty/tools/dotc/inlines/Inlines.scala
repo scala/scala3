@@ -622,7 +622,7 @@ object Inlines:
       if sym.isType || !sym.is(Private) then flags |= Override
       if sym.isTermParamAccessor then
         flags &~= ParamAccessor
-        if sym.is(Local) then
+        if sym.is(Local) && sym.owner.isInlineTrait then
           name = paramAccessorsMapper.registerNewName(sym)
       sym.copy(
         owner = ctx.owner,
