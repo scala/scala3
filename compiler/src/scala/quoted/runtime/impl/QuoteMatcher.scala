@@ -206,12 +206,31 @@ object QuoteMatcher {
         // Matches an open term and wraps it into a lambda that provides the free variables
         case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
+
+          /* Some of method symbols in arguments of higher-order term hole are eta-expanded.
+           * e.g.
+           * g: Int -> Int
+           * => {
+           *   def $anonfun(y: Int): Int = g(y)
+           *   closure($anonfun)
+           * }
+           * This function restores the symbol of the original method from
+           * the eta-expanded function.
+           */
+          def getCapturedIdent(arg: Tree)(using Context): Ident =
+            arg match
+              case id: Ident => id
+              case Block(DefDef(_, _, _, Apply(id: Ident, _))::_, _) => id
+              case Apply(id: Ident, _) => id
+              case y => ???
+
           val env = summon[Env]
-          val capturedArgs = args.map(_.symbol)
-          val captureEnv = env.filter((k, v) => !capturedArgs.contains(v))
+          val capturedIds = args.map(getCapturedIdent)
+          val capturedSymbols = capturedIds.map(_.symbol)
+          val captureEnv = env.filter((k, v) => !capturedSymbols.contains(v))
           withEnv(captureEnv) {
             scrutinee match
-              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, args, env)
+              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, capturedIds, env)
               case _ => notMatched
           }
 
