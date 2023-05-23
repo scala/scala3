@@ -20,6 +20,14 @@ object Rewrites {
     def delta = replacement.length - (span.end - span.start)
   }
 
+  /** A special type of Patch that instead of just a span, contains the
+    * full SourcePosition. This is useful when being used by
+    * [[dotty.tools.dotc.reporting.CodeAction]] or if the patch doesn't
+    * belong to the same file that the actual issue it's addressing is in.
+    *
+    * @param srcPos The SourcePosition of the patch.
+    * @param replacement The Replacement that should go in that position.
+    */
   case class ActionPatch(srcPos: SourcePosition, replacement: String)
 
   private class Patches(source: SourceFile) {

@@ -69,6 +69,10 @@ final public class Problem implements xsbti.Problem {
     if (_actions.isEmpty()) {
       return java.util.Collections.emptyList();
     } else {
+      // Same as with diagnosticCode, we need to ensure we don't create the actual
+      // Action until we are here to ensure that when using an older version of sbt/zinc
+      // with the new versions of the compiler, this doesn't blow up because this is
+      // never getting called.
       return _actions
               .stream()
               .map(action -> new Action(action.title(), action.description(), toWorkspaceEdit(action.patches())))
