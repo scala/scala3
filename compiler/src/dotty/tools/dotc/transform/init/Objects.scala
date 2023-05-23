@@ -100,7 +100,7 @@ object Objects:
 
     def initVal(field: Symbol, value: Value)(using Context) = log("Initialize " + field.show + " = " + value + " for " + this, printer) {
       assert(!field.is(Flags.Mutable), "Field is mutable: " + field.show)
-      assert(!vals.contains(field), "Field already set " + field.show)
+      assert(!vals.contains(field), "Field already set: " + field.show)
       vals(field) = value
     }
 
@@ -111,7 +111,7 @@ object Objects:
     }
 
     def initOuter(cls: ClassSymbol, value: Value)(using Context) = log("Initialize outer " + cls.show + " = " + value + " for " + this, printer) {
-      assert(!outers.contains(cls), "Outer already set " + cls)
+      assert(!outers.contains(cls), "Outer already set: " + cls)
       outers(cls) = value
     }
 
@@ -1355,7 +1355,7 @@ object Objects:
    * @param klass   The enclosing class where the type `C.this` is located.
    * @param elideObjectAccess Whether object access should be omitted.
    *
-   * Object access elission happens when the object access is used as a prefix
+   * Object access elision happens when the object access is used as a prefix
    * in `new o.C` and `C` does not need an outer.
    */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, elideObjectAccess: Boolean = false): Contextual[Value] = log("resolveThis target = " + target.show + ", this = " + thisV.show, printer, (_: Value).show) {
