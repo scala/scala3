@@ -597,19 +597,20 @@ object Inlines:
 
     private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
       sym.info match {
-        case ClassInfo(prefix, cls, declaredParents, scope, selfInfo) =>
-          val baseThisCls = ctx.owner.thisType.select(sym)
+        case clsInfo: ClassInfo =>
           val inlinedSym = newClassSymbol(
             ctx.owner,
-            sym.asType.name,
+            sym.name,
             (sym.flags | Synthetic) &~ withoutFlags,
-            clsSym =>
-              ClassInfo(inlinerTypeMap(prefix), clsSym, declaredParents :+ baseThisCls, Scopes.newScope, selfInfo),
+            newCls => {
+              val ClassInfo(prefix, _, parents, _, selfInfo) = inlinerTypeMap.mapClassInfo(clsInfo)
+              ClassInfo(prefix, newCls, parents :+ ctx.owner.thisType.select(sym), Scopes.newScope, selfInfo) // TODO check if need to add type params to new parent
+            },
             sym.privateWithin,
             spanCoord(parent.span)
           )
           inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
-          inlinedSym
+          inlinedSym.entered
         case _ =>
           report.error(s"Class symbol ${sym.show} does not have class info")
           sym
