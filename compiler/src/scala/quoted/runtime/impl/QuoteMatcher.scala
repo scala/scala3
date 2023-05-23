@@ -217,11 +217,11 @@ object QuoteMatcher {
            * This function restores the symbol of the original method from
            * the eta-expanded function.
            */
-          def getCapturedIdent(arg: Tree)(using Context): Ident =
+          def getCapturedIdent(arg: LazyTree)(using Context): Ident =
             arg match
               case id: Ident => id
-              case Block(DefDef(_, _, _, Apply(id: Ident, _))::_, _) => id
-              case Apply(id: Ident, _) => id
+              case Apply(term, _) => getCapturedIdent(term)
+              case Block(DefDef(_, _, _, term)::_, _) => getCapturedIdent(term)
               case y => ???
 
           val env = summon[Env]
