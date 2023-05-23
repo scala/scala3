@@ -3,11 +3,14 @@
  */
 package dotty.tools.xsbt;
 
+import java.util.List;
+
 import scala.Tuple2;
 import scala.collection.mutable.HashMap;
 
 import dotty.tools.dotc.core.Contexts.Context;
 import dotty.tools.dotc.reporting.AbstractReporter;
+import dotty.tools.dotc.reporting.CodeAction;
 import dotty.tools.dotc.reporting.Diagnostic;
 import dotty.tools.dotc.reporting.Message;
 import dotty.tools.dotc.util.SourceFile;
@@ -43,12 +46,13 @@ final public class DelegatingReporter extends AbstractReporter {
     messageBuilder.append(message.message());
     String diagnosticCode = String.valueOf(message.errorId().errorNumber());
     boolean shouldExplain = Diagnostic.shouldExplain(dia, ctx);
+    List<CodeAction> actions = message.actions(ctx);
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
       messageBuilder.append(System.lineSeparator()).append(explanation(message, ctx));
     }
 
-    delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode));
+    delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode, actions));
   }
 
   private static Severity severityOf(int level) {

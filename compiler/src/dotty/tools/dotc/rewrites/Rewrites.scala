@@ -7,6 +7,7 @@ import core.Contexts._
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
+import dotty.tools.dotc.util.SourcePosition;
 
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets.UTF_8
@@ -18,6 +19,8 @@ object Rewrites {
   private case class Patch(span: Span, replacement: String) {
     def delta = replacement.length - (span.end - span.start)
   }
+
+  case class ActionPatch(srcPos: SourcePosition, replacement: String)
 
   private class Patches(source: SourceFile) {
     private[Rewrites] val pbuf = new mutable.ListBuffer[Patch]()
