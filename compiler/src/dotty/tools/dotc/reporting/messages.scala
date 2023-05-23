@@ -519,6 +519,7 @@ extends SyntaxMsg(RepeatedModifierID) {
   }
 
   override def actions(using Context) =
+    import scala.language.unsafeNulls
     List(
       CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
         description =  java.util.Optional.empty(),
@@ -1869,6 +1870,7 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
         |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
 
   override def actions(using Context) =
+    import scala.language.unsafeNulls
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
     List(
       CodeAction(title = "Rewrite to function value",
@@ -1898,6 +1900,7 @@ class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
   }
 
   override def actions(using Context) =
+    import scala.language.unsafeNulls
     List(
       CodeAction(title = "Insert ()",
         description =  java.util.Optional.empty(),
