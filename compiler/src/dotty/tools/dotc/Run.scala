@@ -367,7 +367,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
             profiler.onPhase(phase):
               try units = phase.runOn(units)
               catch case _: InterruptedException => cancelInterrupted()
-            if (ctx.settings.Vprint.value.containsPhase(phase))
+            for (printAt <- ctx.settings.Vprint.userValue if printAt.containsPhase(phase))
               for (unit <- units)
                 def printCtx(unit: CompilationUnit) = phase.printingContext(
                   ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))

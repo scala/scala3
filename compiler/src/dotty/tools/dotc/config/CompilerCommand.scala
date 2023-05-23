@@ -18,10 +18,10 @@ abstract class CompilerCommand extends CliCommand:
         else if (settings.Xhelp.value) xusageMessage
         else if (settings.Yhelp.value) yusageMessage
         else if (settings.showPlugins.value) ctx.base.pluginDescriptions
-        else if (settings.XshowPhases.value) phasesMessage
+        else if settings.XshowPhases.isPresentIn(summon[SettingsState]) then phasesMessage
         else ""
 
   final def isHelpFlag(using settings: ConcreteSettings)(using SettingsState): Boolean =
     import settings.*
-    val flags = Set(help, Vhelp,  Whelp, Xhelp, Yhelp, showPlugins, XshowPhases)
-    flags.exists(_.value) || allSettings.exists(isHelping)
+    val flags = Set(help, Vhelp,  Whelp, Xhelp, Yhelp, showPlugins)
+    flags.exists(_.value) || XshowPhases.isPresentIn(summon[SettingsState]) || allSettings.exists(isHelping)
