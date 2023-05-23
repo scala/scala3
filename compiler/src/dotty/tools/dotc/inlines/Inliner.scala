@@ -283,7 +283,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   private def classNestingLevel(cls: Symbol) = cls.ownersIterator.count(_.isClass)
 
   // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
-  private def computeThisBindings() = {
+  protected def computeThisBindings() = {
     // All needed this-proxies, paired-with and sorted-by nesting depth of
     // the classes they represent (innermost first)
     val sortedProxies = thisProxy.toList
@@ -430,7 +430,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       else arg
     else arg
 
-  private def canElideThis(tpe: ThisType): Boolean =
+  protected def canElideThis(tpe: ThisType): Boolean =
     inlineCallPrefix.tpe == tpe && ctx.owner.isContainedIn(tpe.cls)
     || tpe.cls.isContainedIn(inlinedMethod)
     || tpe.cls.is(Package)
@@ -451,7 +451,7 @@ class Inliner(val call: tpd.Tree)(using Context):
    *      and MethodParams, not TypeRefs or TermRefs.
    */
   private def registerType(tpe: Type): Unit = tpe match {
-    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) && !tpe.cls.isInlineTrait =>
+    case tpe: ThisType if !canElideThis(tpe) && !thisProxy.contains(tpe.cls) =>
       val proxyName = s"${tpe.cls.name}_this".toTermName
       val proxyType = inlineCallPrefix.tpe.dealias.tryNormalize match {
         case typeMatchResult if typeMatchResult.exists => typeMatchResult
@@ -563,6 +563,9 @@ class Inliner(val call: tpd.Tree)(using Context):
   protected val inlinerTypeMap: InlinerTypeMap = InlinerTypeMap()
   protected val inlinerTreeMap: InlinerTreeMap = InlinerTreeMap()
 
+  protected def substFrom: List[Symbol] = Nil
+  protected def substTo: List[Symbol] = Nil
+
   protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
     inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
@@ -620,8 +623,8 @@ class Inliner(val call: tpd.Tree)(using Context):
       treeMap = inlinerTreeMap,
       oldOwners = inlinedMethod :: Nil,
       newOwners = ctx.owner :: Nil,
-      substFrom = Nil,
-      substTo = Nil
+      substFrom = substFrom,
+      substTo = substTo
     )(using inlineCtx)
 
     inlining.println(

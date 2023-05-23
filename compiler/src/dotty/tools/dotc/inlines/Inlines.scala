@@ -523,6 +523,7 @@ object Inlines:
 
     private val parentSym = symbolFromParent(parent)
     private val paramAccessorsMapper = ParamAccessorsMapper()
+    private val innerClassNewSyms: mutable.LinkedHashMap[Symbol, Symbol] = mutable.LinkedHashMap.empty
 
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       paramAccessorsMapper.registerParamValuesOf(parent)
@@ -560,6 +561,12 @@ object Inlines:
 
     override protected val inlinerTypeMap: InlinerTypeMap = InlineTraitTypeMap()
     override protected val inlinerTreeMap: InlinerTreeMap = InlineTraitTreeMap()
+
+    override protected def substFrom: List[Symbol] = innerClassNewSyms.keys.toList
+    override protected def substTo: List[Symbol] = innerClassNewSyms.values.toList
+
+    override protected def computeThisBindings(): Unit = ()
+    override protected def canElideThis(tpe: ThisType): Boolean = true
 
     override protected def inlineCtx(inlineTyper: InlineTyper)(using Context): Context =
       ctx.fresh.setTyper(inlineTyper).setNewScope
