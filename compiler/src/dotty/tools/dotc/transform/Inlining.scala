@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.DenotTransformers.SymTransformer
 import dotty.tools.dotc.staging.StagingLevel
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.StdNames.str
-import dotty.tools.dotc.core.Types.TypeBounds
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Names.Name
 
 import scala.collection.mutable.ListBuffer
@@ -73,11 +73,17 @@ class Inlining extends MacroTransform, SymTransformer {
     val body1 = tmpl.body.flatMap {
       case innerClass @ tpd.TypeDef(name, tmpl1: Template) =>
         val newTrait = cpy.TypeDef(innerClass)(name = newInnerClassName(name))
+        val upperBound = innerClass.symbol.primaryConstructor.info match {
+          case _: MethodType =>
+            newTrait.symbol.typeRef
+          case poly: PolyType =>
+            HKTypeLambda(poly.paramNames)(tl => poly.paramInfos, tl => newTrait.symbol.typeRef.appliedTo(tl.paramRefs.head))
+        }
         val newTypeSym = newSymbol(
           owner = inlineTrait.symbol,
           name = name.asTypeName,
           flags = innerClass.symbol.flags & (Private | Protected),
-          info = TypeBounds.upper(newTrait.symbol.typeRef),
+          info = TypeBounds.upper(upperBound),
           privateWithin = innerClass.symbol.privateWithin,
           coord = innerClass.symbol.coord,
           nestingLevel = innerClass.symbol.nestingLevel,
