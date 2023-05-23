@@ -55,7 +55,7 @@ object ErrorReporting {
     val meth = err.exprStr(methPart(tree))
     val info = if tree.symbol.exists then tree.symbol.info else mt
     if isCallableWithSingleEmptyArgumentList(info) then
-      report.error(MissingEmptyArgumentList(meth), tree.srcPos)
+      report.error(MissingEmptyArgumentList(meth, tree), tree.srcPos)
     else
       report.error(MissingArgumentList(meth, tree.symbol), tree.srcPos)
 

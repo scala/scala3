@@ -30,6 +30,20 @@ class CodeActionTest extends DottyTest:
          |""".stripMargin
       )
 
+  @Test def insertBracesForEmptyArgument =
+    checkCodeAction(
+      """|object Test:
+         |  def foo(): Unit = ()
+         |  val x = foo
+         |""".stripMargin,
+      "Insert ()",
+      """|object Test:
+         |  def foo(): Unit = ()
+         |  val x = foo()
+         |""".stripMargin
+
+      )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =
@@ -41,11 +55,11 @@ class CodeActionTest extends DottyTest:
     val source = SourceFile.virtual("test", code).content
     val runCtx = checkCompile("typer", code) { (_, _) => () }
     val diagnostics = runCtx.reporter.removeBufferedMessages
-    assertEquals(diagnostics.size, 1)
+    assertEquals(1, diagnostics.size)
 
     val diagnostic = diagnostics.head
     val actions = diagnostic.msg.actions.asScala.toList
-    assertEquals(actions.size, 1)
+    assertEquals(1, actions.size)
 
     // TODO account for more than 1 action
     val action = actions.head
@@ -80,4 +94,4 @@ class CodeActionTest extends DottyTest:
           assert(outNew == result.length, s"$outNew != ${result.length}")
 
     loop(patches, 0, 0)
-    assertEquals(result.mkString, expected)
+    assertEquals(expected, result.mkString)

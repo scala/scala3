@@ -3882,7 +3882,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       def isAutoApplied(sym: Symbol): Boolean =
         sym.isConstructor
         || sym.matchNullaryLoosely
-        || Feature.warnOnMigration(MissingEmptyArgumentList(sym.show), tree.srcPos, version = `3.0`)
+        || Feature.warnOnMigration(MissingEmptyArgumentList(sym.show, tree), tree.srcPos, version = `3.0`)
            && { patch(tree.span.endPos, "()"); true }
 
       /** If this is a selection prototype of the form `.apply(...): R`, return the nested
