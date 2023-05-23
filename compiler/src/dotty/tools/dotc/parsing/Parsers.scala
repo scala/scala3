@@ -169,9 +169,9 @@ object Parsers {
     }
   }
 
-  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
+  class Parser(source: SourceFile, allowRewrite: Boolean = true)(using Context) extends ParserCommon(source) {
 
-    val in: Scanner = new Scanner(source, profile = Profile.current)
+    val in: Scanner = new Scanner(source, profile = Profile.current, allowRewrite = allowRewrite)
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
@@ -4361,7 +4361,7 @@ object Parsers {
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.
    */
-  class OutlineParser(source: SourceFile)(using Context) extends Parser(source) with OutlineParserCommon {
+  class OutlineParser(source: SourceFile)(using Context) extends Parser(source, allowRewrite = false) with OutlineParserCommon {
 
     def skipBracesHook(): Option[Tree] =
       if (in.token == XMLSTART) Some(xmlLiteral()) else None

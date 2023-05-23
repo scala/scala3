@@ -170,7 +170,7 @@ object Scanners {
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowRewrite: Boolean = true, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -179,7 +179,7 @@ object Scanners {
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
-    val rewrite = ctx.settings.rewrite.value.isDefined
+    val rewrite = allowRewrite && ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value
 
