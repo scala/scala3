@@ -604,12 +604,13 @@ object Inlines:
             (sym.flags | Synthetic) &~ withoutFlags,
             newCls => {
               val ClassInfo(prefix, _, parents, _, selfInfo) = inlinerTypeMap.mapClassInfo(clsInfo)
-              ClassInfo(prefix, newCls, parents :+ ctx.owner.thisType.select(sym), Scopes.newScope, selfInfo) // TODO check if need to add type params to new parent
+              ClassInfo(prefix, newCls, parents :+ ctx.owner.thisType.select(sym), Scopes.newScope, selfInfo) // TODO fix new parent type (wrong symbol?)
             },
             sym.privateWithin,
             spanCoord(parent.span)
           )
           inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
+          innerClassNewSyms.put(sym, inlinedSym)
           inlinedSym.entered
         case _ =>
           report.error(s"Class symbol ${sym.show} does not have class info")
