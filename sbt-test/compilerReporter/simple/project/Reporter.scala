@@ -2,6 +2,8 @@ import sbt._
 import Keys._
 import KeyRanks.DTask
 
+import scala.jdk.CollectionConverters.*
+
 object Reporter {
   import xsbti.{Reporter, Problem, Position, Severity}
 
@@ -67,13 +69,17 @@ object Reporter {
 
           assert(warning.severity == Severity.Warn) // Only function types can be followed by _ but the current expression has type Int
 
-          //val actions = warning.actions()
+          val actions = warning.actions().asScala.toList
 
-          //assert(actions.size == 1)
+          assert(actions.size == 1)
 
-          //val action = actions.head
+          val action = actions.head
 
-          //assert(action.title() == "wrong")
+          assert(action.title() == "Rewrite to function value")
+
+          val edits = action.edit().changes().asScala.toList
+
+          assert(edits.size == 2)
 
         case somethingElse =>
           assert(false, s"Only expected to have a single error and a single warning, but instead got: ${somethingElse.toString}")
