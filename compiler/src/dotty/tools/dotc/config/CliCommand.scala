@@ -156,12 +156,15 @@ trait CliCommand:
     private def columnate(sb: StringBuilder, texts: List[List[(String, String)]])(using Context): Unit =
       import Highlighting.*
       val colors = Seq(Green(_), Yellow(_), Magenta(_), Cyan(_), Red(_))
+      val bolds = Seq(GreenB(_), YellowB(_), MagentaB(_), CyanB(_), RedB(_))
       val nocolor = texts.length == 1
       def color(index: Int): String => Highlight = if nocolor then NoColor(_) else colors(index % colors.length)
+      def colorB(index: Int): String => Highlight = if nocolor then NoColor(_) else bolds(index % colors.length)
       val maxCol = ctx.settings.pageWidth.value
       val field1 = maxField.min(texts.flatten.map(_._1.length).filter(_ < maxField).max) // widest field under maxField
       val field2 = if field1 + separation + maxField < maxCol then maxCol - field1 - separation else 0 // skinny window -> terminal wrap
-      val separator = " " * separation
+      val toMark = ctx.settings.XshowPhases.value.toSet
+      def separator(name: String) = if toMark(name) then "->" + " " * (separation - 2) else " " * separation
       val EOL = "\n"
       def formatField1(text: String): String = if text.length <= field1 then text.padLeft(field1) else text + EOL + "".padLeft(field1)
       def formatField2(text: String): String =
@@ -170,15 +173,15 @@ trait CliCommand:
           else
             fld.lastIndexOf(" ", field2) match
               case -1 => List(fld)
-              case i  => val (prefix, rest) = fld.splitAt(i) ; prefix :: loopOverField2(rest.trim)
-        text.split("\n").toList.flatMap(loopOverField2).filter(_.nonEmpty).mkString(EOL + "".padLeft(field1) + separator)
+              case i  => val (prefix, rest) = fld.splitAt(i); prefix :: loopOverField2(rest.trim)
+        text.split("\n").toList.flatMap(loopOverField2).filter(_.nonEmpty).mkString(EOL + "".padLeft(field1) + separator("no-phase"))
       end formatField2
       def format(first: String, second: String, index: Int, colorPicker: Int => String => Highlight) =
         sb.append(colorPicker(index)(formatField1(first)).show)
-          .append(separator)
+          .append(colorPicker(index)(separator(first)).show)
           .append(formatField2(second))
           .append(EOL): Unit
-      def fancy(first: String, second: String, index: Int) = format(first, second, index, color)
+      def fancy(first: String, second: String, index: Int) = format(first, second, index, if toMark(first) then colorB else color)
       def plain(first: String, second: String) = format(first, second, 0, _ => NoColor(_))
 
       if heading1.nonEmpty then
