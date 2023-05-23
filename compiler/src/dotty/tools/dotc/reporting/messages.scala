@@ -32,6 +32,7 @@ import cc.CaptureSet.IdentityCaptRefMap
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
+import scala.jdk.CollectionConverters.*
 
 /**  Messages
   *  ========
@@ -1858,8 +1859,6 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
 
   override def actions(using Context) =
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
-    import scala.language.unsafeNulls
-    import scala.jdk.CollectionConverters.*
     List(
       CodeAction(title = "Rewrite to function value",
         description =  java.util.Optional.empty(),
@@ -1871,7 +1870,7 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
     ).asJava
 }
 
-class MissingEmptyArgumentList(method: String)(using Context)
+class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
   extends SyntaxMsg(MissingEmptyArgumentListID) {
   def msg(using Context) = i"$method must be called with ${hl("()")} argument"
   def explain(using Context) = {
@@ -1886,6 +1885,16 @@ class MissingEmptyArgumentList(method: String)(using Context)
         |In Dotty, this idiom is an error. The application syntax has to follow exactly the parameter syntax.
         |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
   }
+
+  override def actions(using Context) =
+    List(
+      CodeAction(title = "Insert ()",
+        description =  java.util.Optional.empty(),
+        patches = List(
+          ActionPatch(SourcePosition(tree.source, tree.span.endPos), "()"),
+        ).asJava
+      )
+    ).asJava
 }
 
 class DuplicateNamedTypeParameter(name: Name)(using Context)
