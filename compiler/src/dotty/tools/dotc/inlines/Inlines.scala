@@ -660,7 +660,12 @@ object Inlines:
       val TypeDef(_, tmpl: Template) = clsDef: @unchecked
       val (constr, body) = inContext(ctx.withOwner(inlinedCls)) {
         val inlinedConstr = inlinedPrimaryConstructorDefDef(tmpl.constr)
-        val inlinedTmpl = tmpl.body.map(stat => expandStat(stat, inlinedSym(stat.symbol)))
+        val inlinedTmpl = tmpl.body.map {
+          case stat: TypeDef if stat.symbol.isAllOf(PrivateLocal | Param) =>
+            expandStat(stat, inlinedSym(stat.symbol, withoutFlags = Override))
+          case stat =>
+            expandStat(stat, inlinedSym(stat.symbol))
+        }
         (inlinedConstr, inlinedTmpl)
       }
       val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents :+ This(ctx.owner.asClass).select(clsDef.symbol), body)
