@@ -27,27 +27,58 @@ object Reporter {
     check := (Compile / compile).failure.map(_ => {
       val problems = reporter.problems
       println(problems.toList)
-      assert(problems.size == 1)
 
-      // make sure position reported by zinc are proper
-      val mainProblem = problems.head
+      problems match {
+        case Array(err, warning) =>
+          // Checking the error reported
+          val eline = err.position().line()
+          assert(eline.isPresent() == true)
+          assert(eline.get() == 9)
 
-      val line = mainProblem.position().line()
-      assert(line.isPresent() == true)
-      assert(line.get() == 9)
+          val ediagnosticCode = err.diagnosticCode()
+          assert(ediagnosticCode.isPresent() == true)
+          val ecode = ediagnosticCode.get().code()
+          assert(ecode == "6")
 
-      val diagnosticCode = mainProblem.diagnosticCode()
-      assert(diagnosticCode.isPresent() == true)
-      val code = diagnosticCode.get()
-      assert(diagnosticCode.get().code() == "6")
+          val epointer = err.position().pointer()
+          assert(epointer.isPresent() == true)
+          assert(epointer.get() == 10)
 
-      val pointer = mainProblem.position().pointer()
-      assert(pointer.isPresent() == true)
-      assert(pointer.get() == 10)
+          assert(err.position.offset.isPresent)
 
-      assert(problems.forall(_.position.offset.isPresent))
+          assert(err.severity == Severity.Error) // not found: er1,
 
-      assert(problems.count(_.severity == Severity.Error) == 1) // not found: er1,
+          // Checking the warning reported
+   
+          val wline = warning.position().line()
+          assert(wline.isPresent() == true)
+          assert(wline.get() == 12)
+
+          val wdiagnosticCode = warning.diagnosticCode()
+          assert(wdiagnosticCode.isPresent() == true)
+          val wcode = wdiagnosticCode.get().code()
+          assert(wcode == "99")
+
+          val wpointer = warning.position().pointer()
+          assert(wpointer.isPresent() == true)
+          assert(wpointer.get() == 12)
+
+          assert(warning.position.offset.isPresent)
+
+          assert(warning.severity == Severity.Warn) // Only function types can be followed by _ but the current expression has type Int
+
+          //val actions = warning.actions()
+
+          //assert(actions.size == 1)
+
+          //val action = actions.head
+
+          //assert(action.title() == "wrong")
+
+        case somethingElse =>
+          assert(false, s"Only expected to have a single error and a single warning, but instead got: ${somethingElse.toString}")
+
+      }
     }).value
   )
 }

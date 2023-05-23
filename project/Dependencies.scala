@@ -28,6 +28,6 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 
-  val newCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.8.0"
+  val newCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.9.0-RC3"
   val oldCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.3.5"
 }
