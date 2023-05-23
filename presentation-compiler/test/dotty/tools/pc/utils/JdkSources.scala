@@ -47,7 +47,7 @@ object JdkSources:
           // In case java.home points to the JRE instead of the JDK,
           // try to find jdk among its siblings
           Option(javaHome.getParent).toList
-            .flatMap(Files.list(_).toList.asScala)
+            .flatMap(Files.list(_).iterator.asScala)
             .filter(isJdkCandidate)
             .toArray[Path]
             .sortBy(_.filename)

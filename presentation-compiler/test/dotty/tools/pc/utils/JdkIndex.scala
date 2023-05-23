@@ -22,7 +22,7 @@ import dotty.tools.dotc.util.SourceFile
 class JdkIndex():
   val jdkSources = JdkSources()
   private val maybeJdkZipFs: Option[FileSystem] =
-    jdkSources.toOption.map(FileSystems.newFileSystem(_, Collections.emptyMap))
+    jdkSources.toOption.map(FileSystems.newFileSystem(_, (null: ClassLoader)))
 
   def search(classfile: String, symbol: Symbol, query: String)(using
       Context
@@ -35,7 +35,8 @@ class JdkIndex():
         .split("$")
         .headOption
         .map(_.stripSuffix("class") ++ "java")
-      content <- Try { Files.readString(fsroot.resolve(javafile)) }.toOption
+      if Files.exists(fsroot.resolve(javafile))
+      content <- Try { String(Files.readAllBytes(fsroot.resolve(javafile))) }.toOption
       virtualFile = SourceFile.virtual(javafile, content)
       untpdTree <- Try { JavaParser(virtualFile).parse() }.toOption
       symbol <- extractSymbolInformation(untpdTree, symbol, query)

@@ -71,7 +71,7 @@ trait PcAssertions:
     throw error
 
   private def unifyNewlines(str: String): String =
-    str.linesIterator.dropWhile(_.isBlank).mkString("\n").stripTrailing()
+    str.linesIterator.dropWhile(_.trim.isEmpty).mkString("\n").trim
 
   private def addSnippet(description: StringDescription)(snippet: String) =
     description.appendText(System.lineSeparator)
