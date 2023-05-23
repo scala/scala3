@@ -668,8 +668,8 @@ object Inlines:
         }
         (inlinedConstr, inlinedTmpl)
       }
-      val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents :+ This(ctx.owner.asClass).select(clsDef.symbol), body)
-      inlined(clsDef1)._2.withSpan(clsDef.span) // TODO adapt parents
+      val clsDef1 = tpd.ClassDefWithParents(inlinedCls, constr, tmpl.parents, body) // TODO add correct parent tree
+      inlined(clsDef1)._2.withSpan(clsDef.span)
 
     private def inlinedTypeDef(tdef: TypeDef, inlinedSym: Symbol)(using Context): TypeDef =
       tpd.TypeDef(inlinedSym.asType).withSpan(parent.span)
