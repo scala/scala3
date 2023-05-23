@@ -16,6 +16,7 @@ import dotty.tools.dotc.staging.StagingLevel
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.StdNames.str
 import dotty.tools.dotc.core.Types.TypeBounds
+import dotty.tools.dotc.core.Names.Name
 
 import scala.collection.mutable.ListBuffer
 
@@ -63,7 +64,7 @@ class Inlining extends MacroTransform, SymTransformer {
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
     if sym.isClass && sym.owner.isInlineTrait && !sym.is(Module) then
-      sym.copySymDenotation(name = sym.name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX, initFlags = (sym.flags &~ Final) | Trait)
+      sym.copySymDenotation(name = newInnerClassName(sym.name), initFlags = (sym.flags &~ Final) | Trait)
     else
       sym
 
@@ -71,7 +72,7 @@ class Inlining extends MacroTransform, SymTransformer {
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
     val body1 = tmpl.body.flatMap {
       case innerClass @ tpd.TypeDef(name, tmpl1: Template) =>
-        val newTrait = cpy.TypeDef(innerClass)(name = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX)
+        val newTrait = cpy.TypeDef(innerClass)(name = newInnerClassName(name))
         val newTypeSym = newSymbol(
           owner = inlineTrait.symbol,
           name = name.asTypeName,
@@ -145,6 +146,8 @@ class Inlining extends MacroTransform, SymTransformer {
           else super.transform(tree)
     }
   }
+
+  private def newInnerClassName(name: Name): name.ThisName = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX
 }
 
 object Inlining:
