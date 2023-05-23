@@ -67,26 +67,26 @@ class Inlining extends MacroTransform, SymTransformer {
     else
       sym
 
-  def transformInlineClasses(tree: Tree)(using Context): Tree =
-    val tpd.TypeDef(name, tmpl: Template) = tree: @unchecked
+  def transformInnerClasses(inlineTrait: TypeDef)(using Context): TypeDef =
+    val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
     val body1 = tmpl.body.flatMap {
-      case tdef @ tpd.TypeDef(name, tmpl1: Template) =>
-        val newTrait = cpy.TypeDef(tdef)(name = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX)
+      case innerClass @ tpd.TypeDef(name, tmpl1: Template) =>
+        val newTrait = cpy.TypeDef(innerClass)(name = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX)
         val newTypeSym = newSymbol(
-          owner = tree.symbol,
+          owner = inlineTrait.symbol,
           name = name.asTypeName,
-          flags = tdef.symbol.flags & (Private | Protected),
+          flags = innerClass.symbol.flags & (Private | Protected),
           info = TypeBounds.upper(newTrait.symbol.typeRef),
-          privateWithin = tdef.symbol.privateWithin,
-          coord = tdef.symbol.coord,
-          nestingLevel = tdef.symbol.nestingLevel,
+          privateWithin = innerClass.symbol.privateWithin,
+          coord = innerClass.symbol.coord,
+          nestingLevel = innerClass.symbol.nestingLevel,
         ).asType
         List(newTrait, TypeDef(newTypeSym))
       case member =>
         List(member)
     }
     val tmpl1 = cpy.Template(tmpl)(body = body1)
-    cpy.TypeDef(tree)(name, tmpl1)
+    cpy.TypeDef(inlineTrait)(rhs = tmpl1)
 
   private class InliningTreeMap extends TreeMapWithImplicits {
 
@@ -98,11 +98,11 @@ class Inlining extends MacroTransform, SymTransformer {
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
         case tree: TypeDef if tree.symbol.isInlineTrait =>
-          transformInlineClasses(tree)
+          transformInnerClasses(tree)
         case tree: TypeDef if Inlines.needsInlining(tree) =>
-          val tree1 = super.transform(tree)
+          val tree1 = super.transform(tree).asInstanceOf[TypeDef]
           if tree1.tpe.isError then tree1
-          else if tree1.symbol.isInlineTrait then transformInlineClasses(tree1)
+          else if tree1.symbol.isInlineTrait then transformInnerClasses(tree1)
           else Inlines.inlineParentInlineTraits(tree1)
         case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree
