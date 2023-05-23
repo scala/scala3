@@ -29,6 +29,9 @@ import transform.SymUtils._
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
+import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.util.SourcePosition
 
 /**  Messages
   *  ========
@@ -1846,12 +1849,26 @@ class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: L
         |are only approximated in a best-effort way."""
 }
 
-class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type)(using Context)
+class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(using Context)
   extends SyntaxMsg(OnlyFunctionsCanBeFollowedByUnderscoreID) {
   def msg(using Context) = i"Only function types can be followed by ${hl("_")} but the current expression has type $tp"
   def explain(using Context) =
     i"""The syntax ${hl("x _")} is no longer supported if ${hl("x")} is not a function.
         |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
+
+  override def actions(using Context) =
+    val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
+    import scala.language.unsafeNulls
+    import scala.jdk.CollectionConverters.*
+    List(
+      CodeAction(title = "Rewrite to function value",
+        description =  java.util.Optional.empty(),
+        patches = List(
+          ActionPatch(SourcePosition(tree.source, Span(tree.span.start)), "(() => "),
+          ActionPatch(SourcePosition(tree.source, Span(qual.span.end, tree.span.end)), ")")
+        ).asJava
+      )
+    ).asJava
 }
 
 class MissingEmptyArgumentList(method: String)(using Context)
