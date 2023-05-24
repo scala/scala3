@@ -1513,16 +1513,29 @@ object SymDenotations {
      *  See tests/pos/i10769.scala
      */
      def reachableTypeRef(using Context) =
-       TypeRef(owner.reachableThisType, symbol)
+       TypeRef(owner.reachablePrefix, symbol)
 
-    /** Like termRef, but objects in the prefix are represented by their singleton type,
+    /** The reachable typeRef with wildcard arguments for each type parameter */
+    def reachableRawTypeRef(using Context) =
+      reachableTypeRef.appliedTo(typeParams.map(_ => TypeBounds.emptyPolyKind))
+
+    /** Like termRef, if it is addressable from the current context,
+     *  but objects in the prefix are represented by their singleton type,
      *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
      *
      *  This is required to avoid owner crash in ExplicitOuter.
      *  See tests/pos/i10769.scala
+     *
+     *  If the reference is to an object that is not accessible from the
+     *  current context since the object is nested in a class that is not an outer
+     *  class of the current context, fall back to a TypeRef to the module class.
+     *  Test case is tests/pos/i17556.scala.
+     *  If the reference is to some other inaccessible object, throw an AssertionError.
      */
-    def reachableTermRef(using Context) =
-      TermRef(owner.reachableThisType, symbol)
+    def reachableTermRef(using Context): Type = owner.reachablePrefix match
+      case pre: SingletonType => TermRef(pre, symbol)
+      case pre if symbol.is(ModuleVal) => TypeRef(pre, symbol.moduleClass)
+      case _ => throw AssertionError(i"cannot compute path to TermRef $this from ${ctx.owner}")
 
     /** Like thisType, but objects in the type are represented by their singleton type,
      *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
@@ -1536,6 +1549,18 @@ object SymDenotations {
         TermRef(owner.reachableThisType, this.sourceModule)
       else
         ThisType.raw(TypeRef(owner.reachableThisType, symbol.asType))
+
+    /** Like `reachableThisType`, except if that would refer to a class where
+     *  the `this` cannot be accessed. In that case, fall back to the
+     *  rawTypeRef of the class. E.g. instead of `A.this.X` where `A.this`
+     *  is inaccessible, use `A#X`.
+     */
+    def reachablePrefix(using Context): Type = reachableThisType match
+      case pre: ThisType
+      if !pre.cls.isStaticOwner && !ctx.owner.isContainedIn(pre.cls) =>
+        pre.cls.reachableRawTypeRef
+      case pre =>
+        pre
 
     /** The variance of this type parameter or type member as a subset of
      *  {Covariant, Contravariant}
