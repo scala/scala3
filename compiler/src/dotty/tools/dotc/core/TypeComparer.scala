@@ -867,10 +867,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     /** Can we widen an abstract type when comparing with `tp`?
-     *  This is NOT the case if one of the following is true:
-     *    - canWidenAbstract is false,
-     *    - or `tp` contains a non-wildcard type parameter of the matched-against
-     *      case lambda that appears in co- or contra-variant position
+    *   This is the case with the following cases:
+    *    - if `canWidenAbstract` is true.
+     *
+     *  Secondly, if `tp` is a type parameter, we can widen if:
+     *    - if `tp` is not a type parameter of the matched-against case lambda
+     *    - if `tp` is an invariant or wildcard type parameter
+     *    - finally, allow widening, but record the type parameter in `poisoned`,
+     *      so that can be accounted for during the reduction step
      */
     def widenAbstractOKFor(tp: Type): Boolean =
       val acc = new TypeAccumulator[Boolean]:
@@ -3114,6 +3118,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
+    // a reference for the type parameters poisoned during matching
+    // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
 
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
