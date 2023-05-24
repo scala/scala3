@@ -1,0 +1,3 @@
+((g: (y: scala.Int)scala.Int, n: scala.Int) => g(n))
+((g: (y: scala.Int, z: scala.Int)scala.Int) => g(1, 2))
+((g2: (x$1: scala.math.Ordered[scala.Int])scala.Boolean, ord: scala.math.Ordered[scala.Int]) => (g2(ord).||(2.<(3)): scala.Boolean))
