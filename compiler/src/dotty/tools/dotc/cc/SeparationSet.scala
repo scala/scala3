@@ -62,7 +62,7 @@ object SeparationSet:
       }
     def recur(cs1: CaptureSet, cs2: CaptureSet): Boolean = trace(i"$cs1 ⋈ $cs2") {
       val problems = cs1.elems.toList.flatMap { x1 => cs2.elems.toList.map(x2 => (x1, x2)) }
-      problems.forall { (x1, x2) => check(x1, x2) }
+      problems.forall { (x1, x2) => check(x1, x2).showing(i"check $x1 >< $x2 = ${result.toString}", capt) }
     }
     recur(cs1, cs2)
   end checkSeparation

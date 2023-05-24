@@ -11,8 +11,9 @@ import ast.tpd
 import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
-import util.Property
+import util.{Property, SrcPos}
 import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.dotc.cc.CaptureSet.transitiveClosure
 
 /** A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:
@@ -250,7 +251,7 @@ extends tpd.TreeTraverser:
     end apply
   end mapInferred
 
-  private def addSeparationSetVar(using Context) = new TypeMap:
+  private def addSeparationSetVar(sym: Symbol, pos: SrcPos)(using Context) = new TypeMap:
     def apply(tp: Type): Type = tp match
       case CapturingType(parent, refs) =>
         tp match
@@ -261,7 +262,16 @@ extends tpd.TreeTraverser:
                 try
                   val (cs, seps) = ann.tree.toCapturesAndSeps
                   if seps.isAlwaysEmpty then
-                    CapturingType(parent, cs, CaptureSet.Var(), boxed = false)
+                    val theVar = CaptureSet.Var()
+                    if sym ne NoSymbol then
+                      theVar.ensureWellformedness: refs =>
+                        //println(i"PUSH ${refs.toString} to the separation set for $tp ($sym), transitive ${refs.toList.map(transitiveClosure(_))}")
+                        if refs.exists: ref =>
+                          transitiveClosure(ref).exists:
+                            case ref: TermRef => ref.symbol == sym
+                            case _ => false
+                        then report.error(em"The separation set of $sym cannot contain a self reference.", pos)
+                    CapturingType(parent, cs, theVar, boxed = false)
                   else tp
                 catch case ex: IllegalCaptureRef => tp
           case _ => tp.derivedCapturingType(mapOver(parent), refs)
@@ -366,13 +376,13 @@ extends tpd.TreeTraverser:
     else expandAbbreviations(tp1)
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
-  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean)(using Context): Unit =
+  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean, sym: Symbol = NoSymbol)(using Context): Unit =
     if !tree.hasRememberedType then
       val tp1 =
         if tree.isInstanceOf[InferredTypeTree] && !exact
         then transformInferredType(tree.tpe, boxed)
         else transformExplicitType(tree.tpe, boxed)
-      val tp2 = addSeparationSetVar(tp1)
+      val tp2 = addSeparationSetVar(sym, tree.srcPos)(tp1)
       tree.rememberType(tp2)
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
@@ -420,7 +430,7 @@ extends tpd.TreeTraverser:
         tree.tpt match
           case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
             tree.paramss.foreach(traverse)
-            transformTT(tpt, boxed = false, exact = true)
+            transformTT(tpt, boxed = false, exact = true, sym = tree.symbol)
             traverse(tree.rhs)
             //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
           case _ =>
@@ -428,7 +438,8 @@ extends tpd.TreeTraverser:
       case tree @ ValDef(_, tpt: TypeTree, _) =>
         transformTT(tpt,
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
-          exact = tree.symbol.allOverriddenSymbols.hasNext // types of symbols that override a parent don't get a capture set
+          exact = tree.symbol.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
+          sym   = tree.symbol
         )
         if allowUniversalInBoxed && tree.symbol.is(Mutable)
             && !tree.symbol.hasAnnotation(defn.UncheckedCapturesAnnot)

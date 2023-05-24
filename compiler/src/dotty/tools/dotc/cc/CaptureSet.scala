@@ -288,6 +288,10 @@ sealed abstract class CaptureSet extends Showable:
     if isUniversal then handler()
     this
 
+  def ensureWellformedness(handler: Refs => Context ?=> Unit)(using Context): this.type =
+    handler(elems)
+    this
+
   /** An upper approximation of this capture set, i.e. a constant set that is
    *  subcaptured by this set. If the current set is a variable
    *  it is the intersection of all upper approximations of known supersets
@@ -392,6 +396,8 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
+    var newElemHandler: Refs => Context ?=> Unit = _ => ()
+
     var description: String = ""
 
     /** Record current elements in given VarState provided it does not yet
@@ -422,6 +428,7 @@ object CaptureSet:
       if !isConst && recordElemsState() then
         elems ++= newElems
         if isUniversal then rootAddedHandler()
+        newElemHandler(newElems)
         // assert(id != 2 || elems.size != 2, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
@@ -441,6 +448,10 @@ object CaptureSet:
     override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
+
+    override def ensureWellformedness(handler: Refs => Context ?=> Unit)(using Context): this.type =
+      newElemHandler = handler
+      super.ensureWellformedness(handler)
 
     private var computingApprox = false
 
@@ -912,4 +923,8 @@ object CaptureSet:
             println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
       }
     else op
+
+  def transitiveClosure(x: CaptureRef)(using Context): List[CaptureRef] =
+    if x.isRootCapability then x :: Nil
+    else x :: x.captureSetOfInfo.elems.toList.flatMap(transitiveClosure(_))
 end CaptureSet
