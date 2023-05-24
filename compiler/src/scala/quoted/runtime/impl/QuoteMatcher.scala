@@ -209,19 +209,23 @@ object QuoteMatcher {
 
           /* Some of method symbols in arguments of higher-order term hole are eta-expanded.
            * e.g.
-           * g: Int -> Int
+           * g: (Int) => Int
            * => {
            *   def $anonfun(y: Int): Int = g(y)
            *   closure($anonfun)
            * }
+           *
+           * f: (using Int) => Int
+           * => f(using x)
            * This function restores the symbol of the original method from
            * the eta-expanded function.
            */
-          def getCapturedIdent(arg: LazyTree)(using Context): Ident =
+          def getCapturedIdent(arg: Tree)(using Context): Ident =
             arg match
               case id: Ident => id
               case Apply(term, _) => getCapturedIdent(term)
-              case Block(DefDef(_, _, _, term)::_, _) => getCapturedIdent(term)
+              case Block((ddef: DefDef) :: _, _) => getCapturedIdent(ddef.rhs)
+              // How should I deal with it?
               case y => ???
 
           val env = summon[Env]
