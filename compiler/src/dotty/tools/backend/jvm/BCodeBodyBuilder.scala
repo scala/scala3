@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.report
+import dotty.tools.dotc.inlines.Inlines
 
 /*
  *
@@ -479,8 +480,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         case t: TypeApply => // dotty specific
           generatedType = genTypeApply(t)
 
-        case inlined @ Inlined(call, bindings, expansion) => 
-          genLoadTo(Block(bindings, expansion), expectedType, dest)
+        case inlined @ Inlined(_, _, _) => 
+          genLoadTo(Inlines.dropInlined(inlined) , expectedType, dest)
+          generatedDest = dest
 
         case _ => abort(s"Unexpected tree in genLoad: $tree/${tree.getClass} at: ${tree.span}")
       }
