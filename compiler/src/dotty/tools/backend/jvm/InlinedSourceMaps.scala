@@ -33,7 +33,6 @@ import collection.mutable
  *   stack frames for inlined calls.
  **/
 object InlinedSourceMaps:
-  //private case class Request(targetPos: SourcePosition, origPos: SourcePosition, firstFakeLine: Int)
   private case class Request(inline: Inlined, firstFakeLine: Int)
 
   private class File(id: Int, name: String, path: Option[String]):
