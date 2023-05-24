@@ -22,7 +22,11 @@ trait TypeAssigner {
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(using Context): Symbol = {
     def qualifies(sym: Symbol) =
-      sym.isClass && (
+      sym.isClass &&
+      // `this` in a polymorphic function type never refers to the desugared refinement.
+      // In other refinements, `this` does refer to the refinement but is deprecated
+      // (see `Checking#checkRefinementNonCyclic`).
+      !(sym.isRefinementClass && sym.derivesFrom(defn.PolyFunctionClass)) && (
           qual.isEmpty ||
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
