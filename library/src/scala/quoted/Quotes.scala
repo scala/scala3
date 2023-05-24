@@ -3258,8 +3258,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeLambda` */
     trait TypeLambdaMethods:
       extension (self: TypeLambda)
+        /** Reference to the i-th parameter */
         def param(idx: Int) : TypeRepr
+        /** Type bounds of the i-th parameter */
         def paramBounds: List[TypeBounds]
+        /** Variance flags for the i-th parameter
+         *
+         *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
+         */
+        @experimental
+        def paramVariances: List[Flags]
       end extension
     end TypeLambdaMethods
 
