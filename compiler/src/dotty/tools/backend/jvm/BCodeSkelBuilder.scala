@@ -377,8 +377,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var stackHeight                = 0
     // line numbers
     var lastEmittedLineNr          = -1
-    // by real line number we mean line number that is not pointing to virtual lines added by inlined calls
-    var lastRealLineNr             = -1
 
     object bc extends JCodeMethodN {
       override def jmethod = PlainSkelBuilder.this.mnode
@@ -587,13 +585,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       if tree.source != cunit.source then
         sourceMap.lineFor(tree) match
           case Some(nr) => 
-            return emitNr(nr)
+            emitNr(nr)
           case None => ()
       else
         val nr = ctx.source.offsetToLine(tree.span.point) + 1
-        lastRealLineNr = nr
-        return emitNr(nr)
-    }
+        emitNr(nr)
+    } 
 
     // on entering a method
     def resetMethodBookkeeping(dd: DefDef) = {
