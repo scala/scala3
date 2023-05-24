@@ -13,5 +13,5 @@ class D() extends A, Serializable {
 }
 
 @main def Test =
-  println(C())
-  println(D())
+  assert(C().toString == "B")
+  assert(D().toString == "B")
