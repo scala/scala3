@@ -333,10 +333,6 @@ object SymUtils:
       else owner.isLocal
     }
 
-    /** The reachable typeRef with wildcard arguments for each type parameter */
-    def reachableRawTypeRef(using Context) =
-      self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
-
     /** Is symbol a type splice operation? */
     def isTypeSplice(using Context): Boolean =
       self == defn.QuotedType_splice
