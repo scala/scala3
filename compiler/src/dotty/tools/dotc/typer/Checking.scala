@@ -412,7 +412,7 @@ object Checking {
         case tree: RefTree =>
           checkRef(tree, tree.symbol)
           foldOver(x, tree)
-        case tree: This =>
+        case tree: This if tree.tpe.classSymbol == refineCls =>
           selfRef(tree)
         case tree: TypeTree =>
           val checkType = new TypeAccumulator[Unit] {
