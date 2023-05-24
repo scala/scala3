@@ -2677,6 +2677,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           )
         )
         val membersToInline = body1.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
+        membersToInline.foreach {
+          case tdef: TypeDef if tdef.symbol.isClass =>
+            def rec(paramss: List[List[Symbol]]): Unit = paramss match {
+              case (param :: _) :: _ if param.isTerm =>
+                report.error(em"Implementation restriction: inline traits cannot have term parameters", param.srcPos)
+              case _ :: paramss =>
+                rec(paramss)
+              case _ =>
+            }
+            rec(tdef.symbol.primaryConstructor.paramSymss)
+          case _ =>
+        }
         val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
         PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
 
