@@ -599,13 +599,19 @@ object Inlines:
     private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
       sym.info match {
         case clsInfo: ClassInfo =>
+          val typeParams: List[Type] = sym.primaryConstructor.info match {
+            case poly: PolyType => poly.paramRefs
+            case _ => Nil
+          }
+          // Extend inner class from inline trait to preserve typing
+          val newParent = ctx.owner.thisType.select(sym).appliedTo(typeParams)
           val inlinedSym = newClassSymbol(
             ctx.owner,
             sym.name,
             (sym.flags | Synthetic) &~ withoutFlags,
             newCls => {
               val ClassInfo(prefix, _, parents, _, selfInfo) = inlinerTypeMap.mapClassInfo(clsInfo)
-              ClassInfo(prefix, newCls, parents :+ ctx.owner.thisType.select(sym), Scopes.newScope, selfInfo) // TODO fix new parent type (wrong symbol?)
+              ClassInfo(prefix, newCls, parents :+ newParent, Scopes.newScope, selfInfo) // TODO fix selfInfo (what to use?)
             },
             sym.privateWithin,
             spanCoord(parent.span)
