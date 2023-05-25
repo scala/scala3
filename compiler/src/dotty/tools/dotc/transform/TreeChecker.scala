@@ -495,6 +495,18 @@ object TreeChecker {
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    override def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
+      val tree1 = super.typedNew(tree, pt).asInstanceOf[tpd.New]
+      val sym = tree1.tpe.typeSymbol
+      if postTyperPhase <= ctx.phase then // postTyper checks that `New` nodes can be instantiated
+        assert(!tree1.tpe.isInstanceOf[TermRef], s"New should not have a TermRef type: ${tree1.tpe}")
+        assert(
+          !sym.is(Module)
+          || ctx.erasedTypes // TODO add check for module initialization after erasure (LazyVals transformation)
+          || ctx.owner == sym.companionModule,
+          i"new of $sym module should only exist in ${sym.companionModule} but was in ${ctx.owner}")
+      tree1
+
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = tree match
       case Apply(Select(qual, nme.CONSTRUCTOR), _)
           if !ctx.phase.erasedTypes
