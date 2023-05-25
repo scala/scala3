@@ -5,6 +5,7 @@ import dotty.tools.dotc.util.EnumFlags.FlagSet
 
 enum FileExtension(val toLowerCase: String):
   case Tasty extends FileExtension("tasty")
+  case Betasty extends FileExtension("betasty")
   case Class extends FileExtension("class")
   case Jar extends FileExtension("jar")
   case Scala extends FileExtension("scala")
@@ -24,6 +25,8 @@ enum FileExtension(val toLowerCase: String):
 
   /** represents `".tasty"` */
   def isTasty = this == Tasty
+  /** represents `".betasty"` */
+  def isBetasty = this == Betasty
   /** represents `".class"` */
   def isClass = this == Class
   /** represents `".scala"` */

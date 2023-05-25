@@ -321,6 +321,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases, runCtx)
 
+    var forceReachPhaseMaybe =
+      if (ctx.isBestEffort && phases.exists(_.phaseName == "typer")) Some("typer")
+      else None
+
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
 
@@ -331,7 +335,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
       for phase <- allPhases do
         doEnterPhase(phase)
-        val phaseWillRun = phase.isRunnable
+        val phaseWillRun = phase.isRunnable || forceReachPhaseMaybe.nonEmpty
         if phaseWillRun then
           Stats.trackTime(s"phase time ms/$phase") {
             val start = System.currentTimeMillis
@@ -344,6 +348,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
                 def printCtx(unit: CompilationUnit) = phase.printingContext(
                   ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
                 lastPrintedTree = printTree(lastPrintedTree)(using printCtx(unit))
+
+            forceReachPhaseMaybe match {
+              case Some(forceReachPhase) if phase.phaseName == forceReachPhase =>
+                forceReachPhaseMaybe = None
+              case _ =>
+            }
+
             report.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
             for (unit <- units)

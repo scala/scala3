@@ -756,7 +756,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           MissingType(tycon.prefix, tycon.name)
         case _ =>
           TypeError(em"Cannot resolve reference to $tp")
-      throw typeErr
+      if ctx.isBestEffort then report.error(typeErr.toMessage)
+      else throw typeErr
     tp1
 
   /** Widen term ref, skipping any `()` parameter of an eventual getter. Used to erase a TermRef.

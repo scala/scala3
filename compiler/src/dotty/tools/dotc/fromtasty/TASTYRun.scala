@@ -27,6 +27,8 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
             .map(e => e.stripSuffix(".tasty").replace("/", "."))
             .toList
         case FileExtension.Tasty => TastyFileUtil.getClassName(file)
+        case FileExtension.Betasty if ctx.withBestEffortTasty =>
+          TastyFileUtil.getClassName(file, withBestEffortTasty = true)
         case _ =>
           report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
           Nil
