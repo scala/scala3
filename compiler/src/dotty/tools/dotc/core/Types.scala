@@ -6045,7 +6045,7 @@ object Types {
         case _ =>
           if args.exists(isRange) then
             if variance > 0 then
-              tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
+              tp.derivedAppliedType(tycon, args.map(rangeToBounds))(using ctx.addMode(Mode.AllowLambdaWildcardApply)) match
                 case tp1: AppliedType if tp1.isUnreducibleWild && ctx.phase != checkCapturesPhase =>
                   // don't infer a type that would trigger an error later in
                   // Checking.checkAppliedType; fall through to default handling instead
