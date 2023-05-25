@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Pull Request Checklist
+title: Sending in a pull request
 ---
 
 Once you solved the issue you were working on, you'll likely want to see your
