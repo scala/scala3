@@ -1122,7 +1122,10 @@ class Namer { typer: Typer =>
           No("is already an extension method, cannot be exported into another one")
         else if targets.contains(alias) then
           No(i"clashes with another export in the same export clause")
-        else if sym.is(Override) then
+        else if sym.is(Override) || sym.is(JavaDefined) then
+          // The tests above are used to avoid futile searches of `allOverriddenSymbols`.
+          // Scala defined symbols can override concrete symbols only if declared override.
+          // For Java defined symbols, this does not hold, so we have to search anyway.
           sym.allOverriddenSymbols.find(
             other => cls.derivesFrom(other.owner) && !other.is(Deferred)
           ) match
