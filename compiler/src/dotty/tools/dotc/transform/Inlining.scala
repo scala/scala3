@@ -68,7 +68,7 @@ class Inlining extends MacroTransform, SymTransformer {
     else
       sym
 
-  def transformInnerClasses(inlineTrait: TypeDef)(using Context): TypeDef =
+  def transformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
     val body1 = tmpl.body.flatMap {
       case innerClass @ tpd.TypeDef(name, tmpl1: Template) =>
@@ -89,8 +89,10 @@ class Inlining extends MacroTransform, SymTransformer {
           nestingLevel = innerClass.symbol.nestingLevel,
         ).asType
         List(newTrait, TypeDef(newTypeSym))
-      case member =>
+      case member: MemberDef =>
         List(member)
+      case _ =>
+        Nil
     }
     val tmpl1 = cpy.Template(tmpl)(body = body1)
     cpy.TypeDef(inlineTrait)(rhs = tmpl1)
@@ -105,11 +107,11 @@ class Inlining extends MacroTransform, SymTransformer {
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
         case tree: TypeDef if tree.symbol.isInlineTrait =>
-          transformInnerClasses(tree)
+          transformInlineTrait(tree)
         case tree: TypeDef if Inlines.needsInlining(tree) =>
           val tree1 = super.transform(tree).asInstanceOf[TypeDef]
           if tree1.tpe.isError then tree1
-          else if tree1.symbol.isInlineTrait then transformInnerClasses(tree1)
+          else if tree1.symbol.isInlineTrait then transformInlineTrait(tree1)
           else Inlines.inlineParentInlineTraits(tree1)
         case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree

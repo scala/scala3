@@ -220,7 +220,7 @@ object Inlines:
             val overriddenSymbols = clsOverriddenSyms ++ defs.flatMap(_.symbol.allOverriddenSymbols)
             defs ::: InlineParentTrait(parent)(using ctx.withOwner(cls.symbol)).expandDefs(overriddenSymbols)
         )
-        val impl1 = cpy.Template(impl)(body = impl.body ::: inlineDefs)
+        val impl1 = cpy.Template(impl)(body = inlineDefs ::: impl.body)
         cpy.TypeDef(cls)(rhs = impl1)
       case _ =>
         cls
@@ -531,8 +531,13 @@ object Inlines:
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       paramAccessorsMapper.registerParamValuesOf(parent)
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
-      val inlinedSymbols = stats.map(stat => inlinedSym(stat.symbol))
-      stats.zip(inlinedSymbols).map(expandStat)
+      stats.map{
+        case member: MemberDef => Left((member, inlinedSym(member.symbol)))
+        case stat => Right(stat)
+      }.map{
+        case Left((tree, inlinedSym)) => expandStat(tree, inlinedSym)
+        case Right(tree) => inlinedRhs(tree)
+      }
     end expandDefs
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
