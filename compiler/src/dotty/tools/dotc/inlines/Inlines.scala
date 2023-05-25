@@ -525,6 +525,9 @@ object Inlines:
     private val paramAccessorsMapper = ParamAccessorsMapper()
     private val innerClassNewSyms: mutable.LinkedHashMap[Symbol, Symbol] = mutable.LinkedHashMap.empty
 
+    private val childThisType = ctx.owner.thisType
+    private val childThisTree = This(ctx.owner.asClass).withSpan(parent.span)
+
     def expandDefs(overriddenDecls: Set[Symbol]): List[Tree] =
       paramAccessorsMapper.registerParamValuesOf(parent)
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
@@ -534,17 +537,15 @@ object Inlines:
 
     protected class InlineTraitTypeMap extends InlinerTypeMap {
       override def apply(t: Type) = super.apply(t) match {
-        case t: ThisType if t.cls == parentSym =>
-          ctx.owner.thisType
-        case t =>
-          mapOver(t)
+        case t: ThisType if t.cls == parentSym => childThisType
+        case t => mapOver(t)
       }
     }
 
     protected class InlineTraitTreeMap extends InlinerTreeMap {
       override def apply(tree: Tree) = super.apply(tree) match {
         case tree: This if tree.symbol == parentSym =>
-          Inlined(EmptyTree, Nil, This(ctx.owner.asClass).withSpan(parent.span)).withSpan(parent.span)
+          Inlined(EmptyTree, Nil, childThisTree).withSpan(parent.span)
         case tree: This =>
           tree.tpe match {
             case thisTpe: ThisType if thisTpe.cls.isInlineTrait =>
@@ -593,7 +594,7 @@ object Inlines:
         inlinedTypeDef(stat, inlinedSym)
 
     private def inlinedSym(sym: Symbol, withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
-       if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, withoutFlags)
+      if sym.isClass then inlinedClassSym(sym.asClass, withoutFlags) else inlinedMemberSym(sym, withoutFlags)
 
     private def inlinedClassSym(sym: ClassSymbol, withoutFlags: FlagSet = EmptyFlags)(using Context): ClassSymbol =
       sym.info match {
