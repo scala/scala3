@@ -85,7 +85,10 @@ object Inlines:
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
+    if ctx.isAfterTyper then
+      // During typer we wait with cross version checks until PostTyper, in order
+      // not to provoke cyclic references. See i16116 for a test case.
+      CrossVersionChecks.checkExperimentalRef(tree.symbol, tree.srcPos)
 
     if tree.symbol.isConstructor then return tree // error already reported for the inline constructor definition
 
@@ -153,9 +156,9 @@ object Inlines:
           else ("successive inlines", ctx.settings.XmaxInlines)
         errorTree(
           tree,
-          i"""|Maximal number of $reason (${setting.value}) exceeded,
-              |Maybe this is caused by a recursive inline method?
-              |You can use ${setting.name} to change the limit.""".toMessage,
+          em"""|Maximal number of $reason (${setting.value}) exceeded,
+               |Maybe this is caused by a recursive inline method?
+               |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
@@ -178,37 +181,28 @@ object Inlines:
     // as its right hand side. The call to the wrapper unapply serves as the signpost for pattern matching.
     // After pattern matching, the anonymous class is removed in phase InlinePatterns with a beta reduction step.
     //
-    // An inline unapply `P.unapply` in a plattern `P(x1,x2,...)` is transformed into
-    // `{ class $anon { def unapply(t0: T0)(using t1: T1, t2: T2, ...): R = P.unapply(t0)(using t1, t2, ...) }; new $anon }.unapply`
-    // and the call `P.unapply(x1, x2, ...)` is inlined.
+    // An inline unapply `P.unapply` in a pattern `P[...](using ...)(x1,x2,...)(using t1: T1, t2: T2, ...)` is transformed into
+    // `{ class $anon { def unapply(s: S)(using t1: T1, t2: T2, ...): R = P.unapply[...](using ...)(s)(using t1, t2, ...) }; new $anon }.unapply(using y1,y2,...)`
+    // and the call `P.unapply[...](using ...)(x1, x2, ...)(using t1, t2, ...)` is inlined.
     // This serves as a placeholder for the inlined body until the `patternMatcher` phase. After pattern matcher
     // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
     // the call to the `unapply`.
 
-    object SplitFunAndGivenArgs:
-      def unapply(tree: Tree): (Tree, List[List[Tree]]) = tree match
-        case Apply(SplitFunAndGivenArgs(fn, argss), args) => (fn, argss :+ args)
-        case _ => (tree, Nil)
-    val UnApply(SplitFunAndGivenArgs(fun, leadingImplicits), trailingImplicits, patterns) = unapp
-    if leadingImplicits.flatten.nonEmpty then
-      // To support them see https://github.com/lampepfl/dotty/pull/13158
-      report.error("inline unapply methods with given parameters before the scrutinee are not supported", fun)
+    val UnApply(fun, trailingImplicits, patterns) = unapp
 
     val sym = unapp.symbol
 
     var unapplySym1: Symbol = NoSymbol // created from within AnonClass() and used afterwards
 
     val newUnapply = AnonClass(ctx.owner, List(defn.ObjectType), sym.coord) { cls =>
-      val targs = fun match
-        case TypeApply(_, targs) => targs
-        case _ => Nil
-      val unapplyInfo = sym.info match
-        case info: PolyType => info.instantiate(targs.map(_.tpe))
-        case info => info
-
-      val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+      // `fun` is a partially applied method that contains all type applications of the method.
+      // The methodic type `fun.tpe.widen` is the type of the function starting from the scrutinee argument
+      // and its type parameters are instantiated.
+      val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, fun.tpe.widen, coord = sym.coord).entered
       val unapply = DefDef(unapplySym.asTerm, argss =>
-        inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unapplySym))
+        val body = fun.appliedToArgss(argss).withSpan(unapp.span)
+        if body.symbol.is(Transparent) then inlineCall(body)(using ctx.withOwner(unapplySym))
+        else body
       )
       unapplySym1 = unapplySym
       List(unapply)
@@ -235,8 +229,8 @@ object Inlines:
 
     val retainer = meth.copy(
       name = BodyRetainerName(meth.name),
-      flags = meth.flags &~ (Inline | Macro | Override) | Private,
-      coord = mdef.rhs.span.startPos).asTerm
+      flags = (meth.flags &~ (Inline | Macro | Override | AbsOverride)) | Private,
+      coord = mdef.rhs.span.startPos).asTerm.entered
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     DefDef(retainer, prefss =>
       inlineCall(
@@ -439,8 +433,7 @@ object Inlines:
               val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
               evidence.tpe match
                 case fail: Implicits.SearchFailureType =>
-                  val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
-                  errorTree(call, em"$msg")
+                  errorTree(call, evTyper.missingArgMsg(evidence, tpt.tpe, ""))
                 case _ =>
                   evidence
             }

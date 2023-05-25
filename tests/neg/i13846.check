@@ -2,7 +2,7 @@
 3 |def foo(): Int throws ArithmeticException = 1 / 0 // error
   |                      ^^^^^^^^^^^^^^^^^^^
   |                      throws clause cannot be defined for RuntimeException
--- Error: tests/neg/i13846.scala:7:9 -----------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i13846.scala:7:9 -----------------------------------------------------------------------
 7 |    foo() // error
   |         ^
   |        The capability to throw exception ArithmeticException is missing.

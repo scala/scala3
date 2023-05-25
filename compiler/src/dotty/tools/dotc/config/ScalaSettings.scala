@@ -17,7 +17,7 @@ class ScalaSettings extends SettingGroup with AllScalaSettings
 object ScalaSettings:
   // Keep synchronized with `classfileVersion` in `BCodeIdiomatic`
   private val minTargetVersion = 8
-  private val maxTargetVersion = 19
+  private val maxTargetVersion = 20
 
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
@@ -64,7 +64,6 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions.")
   val indent: Setting[Boolean] = BooleanSetting("-indent", "Together with -rewrite, remove {...} syntax when possible due to significant indentation.")
   val noindent: Setting[Boolean] = BooleanSetting("-no-indent", "Require classical {...} syntax, indentation is not significant.", aliases = List("-noindent"))
-  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "(disabled: use -language:experimental.fewerBraces instead)")
 
   /* Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.", aliases = List("--print-tasty"))
@@ -156,19 +155,70 @@ private sealed trait VerboseSettings:
  */
 private sealed trait WarningSettings:
   self: SettingGroup =>
+  import Setting.ChoiceWithHelp
+
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
 
-  val Wunused: Setting[List[String]] = MultiChoiceSetting(
+  val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
-    choices = List("nowarn", "all"),
+    choices = List(
+      ChoiceWithHelp("nowarn", ""),
+      ChoiceWithHelp("all",""),
+      ChoiceWithHelp(
+        name = "imports",
+        description = "Warn if an import selector is not referenced.\n" +
+        "NOTE : overrided by -Wunused:strict-no-implicit-warn"),
+        ChoiceWithHelp("privates","Warn if a private member is unused"),
+        ChoiceWithHelp("locals","Warn if a local definition is unused"),
+        ChoiceWithHelp("explicits","Warn if an explicit parameter is unused"),
+        ChoiceWithHelp("implicits","Warn if an implicit parameter is unused"),
+        ChoiceWithHelp("params","Enable -Wunused:explicits,implicits"),
+        ChoiceWithHelp("linted","Enable -Wunused:imports,privates,locals,implicits"),
+        ChoiceWithHelp(
+          name = "strict-no-implicit-warn",
+          description = "Same as -Wunused:import, only for imports of explicit named members.\n" +
+          "NOTE : This overrides -Wunused:imports and NOT set by -Wunused:all"
+        ),
+        // ChoiceWithHelp("patvars","Warn if a variable bound in a pattern is unused"),
+        ChoiceWithHelp(
+          name = "unsafe-warn-patvars",
+          description = "(UNSAFE) Warn if a variable bound in a pattern is unused.\n" +
+          "This warning can generate false positive, as warning cannot be\n" +
+          "suppressed yet."
+        )
+    ),
     default = Nil
   )
   object WunusedHas:
+    def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
     def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
     def nowarn(using Context) = allOr("nowarn")
+
+    // overrided by strict-no-implicit-warn
+    def imports(using Context) =
+      (allOr("imports") || allOr("linted")) && !(strictNoImplicitWarn)
+    def locals(using Context) =
+      allOr("locals") || allOr("linted")
+    /** -Wunused:explicits OR -Wunused:params */
+    def explicits(using Context) =
+      allOr("explicits") || allOr("params")
+    /** -Wunused:implicits OR -Wunused:params */
+    def implicits(using Context) =
+      allOr("implicits") || allOr("params") || allOr("linted")
+    def params(using Context) = allOr("params")
+    def privates(using Context) =
+      allOr("privates") || allOr("linted")
+    def patvars(using Context) =
+      isChoiceSet("unsafe-warn-patvars") // not with "all"
+      // allOr("patvars") // todo : rename once fixed
+    def linted(using Context) =
+      allOr("linted")
+    def strictNoImplicitWarn(using Context) =
+      isChoiceSet("strict-no-implicit-warn")
 
   val Wconf: Setting[List[String]] = MultiStringSetting(
     "-Wconf",
@@ -282,6 +332,7 @@ private sealed trait YSettings:
   val Yscala2Unpickler: Setting[String] = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports: Setting[Boolean] = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
+  val Yimports: Setting[List[String]] = MultiStringSetting("-Yimports", helpArg="", "Custom root imports. If set, none of scala.*, java.lang.*, or Predef.* will be imported unless explicitly included.")
   val YnoGenericSig: Setting[Boolean] = BooleanSetting("-Yno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val YnoPredef: Setting[Boolean] = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
   val Yskip: Setting[List[String]] = PhasesSetting("-Yskip", "Skip")
@@ -309,10 +360,12 @@ private sealed trait YSettings:
   val YforceSbtPhases: Setting[Boolean] = BooleanSetting("-Yforce-sbt-phases", "Run the phases used by sbt for incremental compilation (ExtractDependencies and ExtractAPI) even if the compiler is ran outside of sbt, for debugging.")
   val YdumpSbtInc: Setting[Boolean] = BooleanSetting("-Ydump-sbt-inc", "For every compiled foo.scala, output the API representation and dependencies used for sbt incremental compilation in foo.inc, implies -Yforce-sbt-phases.")
   val YcheckAllPatmat: Setting[Boolean] = BooleanSetting("-Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm).")
+  val YcheckConstraintDeps: Setting[Boolean] = BooleanSetting("-Ycheck-constraint-deps", "Check dependency tracking in constraints (used for testing the algorithm).")
   val YretainTrees: Setting[Boolean] = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds: Setting[Boolean] = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
   val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty")
   val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features")
+  val YlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals")
 
   val YprofileEnabled: Setting[Boolean] = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
   val YprofileDestination: Setting[String] = StringSetting("-Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "")
@@ -330,7 +383,6 @@ private sealed trait YSettings:
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references")
   val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with captureChecking language import, suppress type abbreviations")
-  val YlightweightLazyVals: Setting[Boolean] = BooleanSetting("-Ylightweight-lazy-vals", "Use experimental lightweight implementation of lazy vals")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

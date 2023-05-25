@@ -1,0 +1,10 @@
+-- [E007] Type Mismatch Error: tests/neg/i16850.scala:7:33 -------------------------------------------------------------
+7 |  def add(elm: Y): Unit = list = elm :: list // error
+  |                                 ^^^
+  |                                 Found:    (elm : Y)
+  |                                 Required: Class.this.Y²
+  |
+  |                                 where:    Y  is a type in class Class
+  |                                           Y² is a type in trait Trait
+  |
+  | longer explanation available when compiling with `-explain`

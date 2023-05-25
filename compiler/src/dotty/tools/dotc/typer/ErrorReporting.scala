@@ -10,11 +10,9 @@ import Trees._
 import NameOps._
 import util.SrcPos
 import config.Feature
-import java.util.regex.Matcher.quoteReplacement
 import reporting._
 import collection.mutable
 
-import scala.util.matching.Regex
 
 object ErrorReporting {
 
@@ -26,9 +24,6 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
     errorTree(tree, msg, tree.srcPos)
 
-  def errorTree(tree: untpd.Tree, msg: => String)(using Context): tpd.Tree =
-    errorTree(tree, msg.toMessage)
-
   def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
@@ -36,9 +31,6 @@ object ErrorReporting {
     report.error(msg, pos)
     ErrorType(msg)
   }
-
-  def errorType(msg: => String, pos: SrcPos)(using Context): ErrorType =
-    errorType(msg.toMessage, pos)
 
   def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
     report.error(ex, pos)
@@ -87,18 +79,18 @@ object ErrorReporting {
 
     def expectedTypeStr(tp: Type): String = tp match {
       case tp: PolyProto =>
-        em"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(revealDeepenedArgs(tp.resultType))}"
+        i"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(revealDeepenedArgs(tp.resultType))}"
       case tp: FunProto =>
         def argStr(tp: FunProto): String =
           val result = revealDeepenedArgs(tp.resultType) match {
             case restp: FunProto => argStr(restp)
             case _: WildcardType | _: IgnoredProto => ""
-            case tp => em" and expected result type $tp"
+            case tp => i" and expected result type $tp"
           }
-          em"(${tp.typedArgs().tpes}%, %)$result"
+          i"(${tp.typedArgs().tpes}%, %)$result"
         s"arguments ${argStr(tp)}"
       case _ =>
-        em"expected type $tp"
+        i"expected type $tp"
     }
 
     def anonymousTypeMemberStr(tpe: Type): String = {
@@ -107,12 +99,12 @@ object ErrorReporting {
         case _: MethodOrPoly => "method"
         case _ => "value of type"
       }
-      em"$kind $tpe"
+      i"$kind $tpe"
     }
 
     def overloadedAltsStr(alts: List[SingleDenotation]): String =
-      em"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
-      em" ${alts map (_.info)}%\n %"
+      i"""overloaded alternatives of ${denotStr(alts.head)} with types
+         | ${alts map (_.info)}%\n %"""
 
     def denotStr(denot: Denotation): String =
       if (denot.isOverloaded) overloadedAltsStr(denot.alternatives)
@@ -130,13 +122,30 @@ object ErrorReporting {
       case _ => anonymousTypeMemberStr(tp)
     }
 
+    /** Explain info of symbol `sym` as a member of class `base`.
+     *   @param  showLocation  if true also show sym's location.
+     */
+    def infoString(sym: Symbol, base: Type, showLocation: Boolean): String =
+      val sym1 = sym.underlyingSymbol
+      def info = base.memberInfo(sym1)
+      val infoStr =
+        if sym1.isAliasType then i", which equals ${info.bounds.hi}"
+        else if sym1.isAbstractOrParamType && info != TypeBounds.empty then i" with bounds$info"
+        else if sym1.is(Module) then ""
+        else if sym1.isTerm then i" of type $info"
+        else ""
+      i"${if showLocation then sym1.showLocated else sym1}$infoStr"
+
+    def infoStringWithLocation(sym: Symbol, base: Type) =
+      infoString(sym, base, showLocation = true)
+
     def exprStr(tree: Tree): String = refStr(tree.tpe)
 
-    def takesNoParamsStr(tree: Tree, kind: String): String =
+    def takesNoParamsMsg(tree: Tree, kind: String): Message =
       if (tree.tpe.widen.exists)
-        i"${exprStr(tree)} does not take ${kind}parameters"
+        em"${exprStr(tree)} does not take ${kind}parameters"
       else {
-        i"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
+        em"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
       }
 
     def patternConstrStr(tree: Tree): String = ???
@@ -187,7 +196,9 @@ object ErrorReporting {
          |The tests were made under $constraintText"""
 
     def whyFailedStr(fail: FailedExtension) =
-      i"""    failed with
+      i"""
+         |
+         |    failed with:
          |
          |${fail.whyFailed.message.indented(8)}"""
 
@@ -255,201 +266,9 @@ object ErrorReporting {
       ownerSym.typeRef.nonClassTypeMembers.map(_.symbol)
     }.toList
 
-  def dependentStr =
+  def dependentMsg =
     """Term-dependent types are experimental,
-      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin
+      |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
-}
-
-class ImplicitSearchError(
-  arg: tpd.Tree,
-  pt: Type,
-  where: String,
-  paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
-  ignoredInstanceNormalImport: => Option[SearchSuccess],
-  importSuggestionAddendum: => String
-)(using ctx: Context) {
-
-  def missingArgMsg = arg.tpe match {
-    case ambi: AmbiguousImplicits =>
-      (ambi.alt1, ambi.alt2) match {
-        case (alt @ AmbiguousImplicitMsg(msg), _) =>
-          userDefinedAmbiguousImplicitMsg(alt, msg)
-        case (_, alt @ AmbiguousImplicitMsg(msg)) =>
-          userDefinedAmbiguousImplicitMsg(alt, msg)
-        case _ =>
-          defaultAmbiguousImplicitMsg(ambi)
-      }
-    case ambi @ TooUnspecific(target) =>
-      ex"""No implicit search was attempted${location("for")}
-          |since the expected type $target is not specific enough"""
-    case _ =>
-      val shortMessage = userDefinedImplicitNotFoundParamMessage
-        .orElse(userDefinedImplicitNotFoundTypeMessage)
-        .getOrElse(defaultImplicitNotFoundMessage)
-      formatMsg(shortMessage)()
-      ++ hiddenImplicitsAddendum
-      ++ ErrorReporting.matchReductionAddendum(pt)
-  }
-
-  private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match
-    case arg: Trees.SearchFailureIdent[?] =>
-      arg.tpe match
-        case _: NoMatchingImplicits => headline
-        case tpe: SearchFailureType =>
-          i"$headline. ${tpe.explanation}"
-        case _ => headline
-    case _ =>
-      arg.tpe match
-        case tpe: SearchFailureType =>
-          val original = arg match
-            case Inlined(call, _, _) => call
-            case _ => arg
-          i"""$headline.
-            |I found:
-            |
-            |    ${original.show.replace("\n", "\n    ")}
-            |
-            |But ${tpe.explanation}."""
-        case _ => headline
-
-  /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
-   *  all occurrences of `${X}` where `X` is in `paramNames` with the
-   *  corresponding shown type in `args`.
-   */
-  private def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
-    def translate(name: String): Option[String] = {
-      val idx = paramNames.indexOf(name)
-      if (idx >= 0) Some(ex"${args(idx)}") else None
-    }
-
-    """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match {
-      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
-    })
-  }
-
-  /** Extract a user defined error message from a symbol `sym`
-   *  with an annotation matching the given class symbol `cls`.
-   */
-  private def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
-    ann <- sym.getAnnotation(cls)
-    msg <- ann.argumentConstantString(0)
-  } yield msg
-
-  private def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
-
-  private def defaultAmbiguousImplicitMsg(ambi: AmbiguousImplicits) =
-    s"Ambiguous given instances: ${ambi.explanation}${location("of")}"
-
-  private def defaultImplicitNotFoundMessage =
-    ex"No given instance of type $pt was found${location("for")}"
-
-  /** Construct a custom error message given an ambiguous implicit
-   *  candidate `alt` and a user defined message `raw`.
-   */
-  private def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
-    val params = alt.ref.underlying match {
-      case p: PolyType => p.paramNames.map(_.toString)
-      case _           => Nil
-    }
-    def resolveTypes(targs: List[tpd.Tree])(using Context) =
-      targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
-
-    // We can extract type arguments from:
-    //   - a function call:
-    //     @implicitAmbiguous("msg A=${A}")
-    //     implicit def f[A](): String = ...
-    //     implicitly[String] // found: f[Any]()
-    //
-    //   - an eta-expanded function:
-    //     @implicitAmbiguous("msg A=${A}")
-    //     implicit def f[A](x: Int): String = ...
-    //     implicitly[Int => String] // found: x => f[Any](x)
-
-    val call = tpd.closureBody(alt.tree) // the tree itself if not a closure
-    val targs = tpd.typeArgss(call).flatten
-    val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
-    userDefinedErrorString(raw, params, args)
-  }
-
-  /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
-   *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
-   *  @param substituteType   Function substituting specific types for abstract types associated with variables, e.g A -> Int
-   */
-  private def formatAnnotationMessage(rawMsg: String, sym: Symbol, substituteType: Type => Type): String = {
-    val substitutableTypesSymbols = ErrorReporting.substitutableTypeSymbolsInScope(sym)
-
-    userDefinedErrorString(
-      rawMsg,
-      paramNames = substitutableTypesSymbols.map(_.name.unexpandedName.toString),
-      args = substitutableTypesSymbols.map(_.typeRef).map(substituteType)
-    )
-  }
-
-  /** Extracting the message from a method parameter, e.g. in
-   *
-   *  trait Foo
-   *
-   *  def foo(implicit @annotation.implicitNotFound("Foo is missing") foo: Foo): Any = ???
-   */
-  private def userDefinedImplicitNotFoundParamMessage: Option[String] = paramSymWithMethodCallTree.flatMap { (sym, applTree) =>
-    userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
-      val fn = tpd.funPart(applTree)
-      val targs = tpd.typeArgss(applTree).flatten
-      val methodOwner = fn.symbol.owner
-      val methodOwnerType = tpd.qualifier(fn).tpe
-      val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)
-      val methodTypeArgs = targs.map(_.tpe)
-      val substituteType = (_: Type).asSeenFrom(methodOwnerType, methodOwner).subst(methodTypeParams, methodTypeArgs)
-      formatAnnotationMessage(rawMsg, sym.owner, substituteType)
-    }
-  }
-
-  /** Extracting the message from a type, e.g. in
-   *
-   *  @annotation.implicitNotFound("Foo is missing")
-   *  trait Foo
-   *
-   *  def foo(implicit foo: Foo): Any = ???
-   */
-  private def userDefinedImplicitNotFoundTypeMessage: Option[String] =
-    def recur(tp: Type): Option[String] = tp match
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        userDefinedImplicitNotFoundTypeMessage(sym).orElse(recur(tp.info))
-      case tp: ClassInfo =>
-        tp.baseClasses.iterator
-          .map(userDefinedImplicitNotFoundTypeMessage)
-          .find(_.isDefined).flatten
-      case tp: TypeProxy =>
-        recur(tp.superType)
-      case tp: AndType =>
-        recur(tp.tp1).orElse(recur(tp.tp2))
-      case _ =>
-        None
-    recur(pt)
-
-  private def userDefinedImplicitNotFoundTypeMessage(sym: Symbol): Option[String] =
-    for
-      rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
-      if Feature.migrateTo3 || sym != defn.Function1
-        // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
-    yield
-      val substituteType = (_: Type).asSeenFrom(pt, sym)
-      formatAnnotationMessage(rawMsg, sym, substituteType)
-
-  private def hiddenImplicitsAddendum: String =
-    def hiddenImplicitNote(s: SearchSuccess) =
-      em"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
-
-    val normalImports = ignoredInstanceNormalImport.map(hiddenImplicitNote)
-
-    normalImports.getOrElse(importSuggestionAddendum)
-  end hiddenImplicitsAddendum
-
-  private object AmbiguousImplicitMsg {
-    def unapply(search: SearchSuccess): Option[String] =
-      userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
-  }
 }

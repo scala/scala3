@@ -1,4 +1,4 @@
--- Error: tests/neg/saferExceptions.scala:12:16 ------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/saferExceptions.scala:12:16 ------------------------------------------------------------
 12 |      case 4 => throw Exception()             // error
    |                ^^^^^^^^^^^^^^^^^
    |                The capability to throw exception Exception is missing.
@@ -11,7 +11,7 @@
    |
    |                  import unsafeExceptions.canThrowAny
    |
--- Error: tests/neg/saferExceptions.scala:17:46 ------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/saferExceptions.scala:17:46 ------------------------------------------------------------
 17 |  def baz(x: Int): Int throws Failure = bar(x)  // error
    |                                              ^
    |      The capability to throw exception java.io.IOException is missing.

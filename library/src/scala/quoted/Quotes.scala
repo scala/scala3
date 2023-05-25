@@ -14,7 +14,7 @@ import scala.reflect.TypeTest
  *  }
  *  ```
  */
-transparent inline def quotes(using inline q: Quotes): q.type = q
+transparent inline def quotes(using q: Quotes): q.type = q
 
 /** Quotation context provided by a macro expansion or in the scope of `scala.quoted.staging.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
@@ -467,9 +467,33 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *                 otherwise the can be `Term` containing the `New` applied to the parameters of the extended class.
        *  @param body List of members of the class. The members must align with the members of `cls`.
        */
+      // TODO add selfOpt: Option[ValDef]?
       @experimental def apply(cls: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
+
+
+      /** Create the ValDef and ClassDef of a module (equivalent to an `object` declaration in source code).
+       *
+       *  Equivalent to
+       *  ```
+       *  def module(module: Symbol, parents: List[Tree], body: List[Statement]): (ValDef, ClassDef) =
+       *    val modCls = module.moduleClass
+       *    val modClassDef = ClassDef(modCls, parents, body)
+       *    val modValDef = ValDef(module, Some(Apply(Select(New(TypeIdent(modCls)), cls.primaryConstructor), Nil)))
+       *    List(modValDef, modClassDef)
+       *  ```
+       *
+       *  @param module the module symbol (created using `Symbol.newModule`)
+       *  @param parents parents of the module class
+       *  @param body body of the module class
+       *  @return The module lazy val definition and module class definition.
+       *          These should be added one after the other (in that order) in the body of a class or statements of a block.
+       *
+       *  @syntax markdown
+       */
+      // TODO add selfOpt: Option[ValDef]?
+      @experimental def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef)
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -3638,7 +3662,66 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
        *        direct or indirect children of the reflection context's owner.
        */
+      // TODO: add flags and privateWithin
       @experimental def newClass(parent: Symbol, name: String, parents: List[TypeRepr], decls: Symbol => List[Symbol], selfType: Option[TypeRepr]): Symbol
+
+      /** Generates a new module symbol with an associated module class symbol,
+       *  this is equivalent to an `object` declaration in source code.
+       *  This method returns the module symbol. The module class can be accessed calling `moduleClass` on this symbol.
+       *
+       *  Example usage:
+       *  ```scala
+       *  //{
+       *  given Quotes = ???
+       *  import quotes.reflect._
+       *  //}
+       *  val moduleName: String = Symbol.freshName("MyModule")
+       *  val parents = List(TypeTree.of[Object])
+       *  def decls(cls: Symbol): List[Symbol] =
+       *    List(Symbol.newMethod(cls, "run", MethodType(Nil)(_ => Nil, _ => TypeRepr.of[Unit]), Flags.EmptyFlags, Symbol.noSymbol))
+       *
+       *  val mod = Symbol.newModule(Symbol.spliceOwner, moduleName, Flags.EmptyFlags, Flags.EmptyFlags, parents.map(_.tpe), decls, Symbol.noSymbol)
+       *  val cls = mod.moduleClass
+       *  val runSym = cls.declaredMethod("run").head
+       *
+       *  val runDef = DefDef(runSym, _ => Some('{ println("run") }.asTerm))
+       *  val modDef = ClassDef.module(mod, parents, body = List(runDef))
+       *
+       *  val callRun = Apply(Select(Ref(mod), runSym), Nil)
+       *
+       *  Block(modDef.toList, callRun)
+       *  ```
+       *  constructs the equivalent to
+       *  ```scala
+       *  //{
+       *  given Quotes = ???
+       *  import quotes.reflect._
+       *  //}
+       *  '{
+       *    object MyModule$macro$1 extends Object:
+       *      def run(): Unit = println("run")
+       *    MyModule$macro$1.run()
+       *  }
+       *  ```
+       *
+       *  @param parent The owner of the class
+       *  @param name The name of the class
+       *  @param modFlags extra flags with which the module symbol should be constructed
+       *  @param clsFlags extra flags with which the module class symbol should be constructed
+       *  @param parents The parent classes of the class. The first parent must not be a trait.
+       *  @param decls A function that takes the symbol of the module class as input and return the symbols of its declared members
+       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
+       *
+       *  This symbol starts without an accompanying definition.
+       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
+       *  this symbol to `ClassDef.module`.
+       *
+       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
+       *        direct or indirect children of the reflection context's owner.
+       *
+       *  @syntax markdown
+       */
+      @experimental def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol
 
       /** Generates a new method symbol with the given parent, name and type.
        *
@@ -3675,7 +3758,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
       *  this symbol to the ValDef constructor.
       *
-      *  Note: Also see reflect.let
+      *  Note: Also see ValDef.let
       *
       *  @param parent The owner of the val/var/lazy val
       *  @param name The name of the val/var/lazy val
@@ -3704,6 +3787,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Definition not available */
       def noSymbol: Symbol
+
+      /** A fresh name for class or member symbol names.
+       *
+       *  Fresh names are constructed using the following format `prefix + "$macro$" + freshIndex`.
+       *  The `freshIndex` are unique within the current source file.
+       *
+       *  Examples: See `scala.annotation.MacroAnnotation`
+       *
+       *  @param prefix Prefix of the fresh name
+       */
+      @experimental
+      def freshName(prefix: String): String
     }
 
     /** Makes extension methods on `Symbol` available without any imports */
@@ -3733,6 +3828,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The full name of this symbol up to the root package */
         def fullName: String
+
+        /** Type of the definition */
+        @experimental
+        def info: TypeRepr
 
         /** The position of this symbol */
         def pos: Option[Position]
@@ -3879,17 +3978,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
-        @deprecated("Use typeMember", "3.1.0")
+        @deprecated("Use declaredType or typeMember", "3.1.0")
         def memberType(name: String): Symbol
 
-        /** Type member with the given name directly declared in the class */
+        /** Type member with the given name declared or inherited in the class */
         def typeMember(name: String): Symbol
 
         /** Type member directly declared in the class */
-        @deprecated("Use typeMembers", "3.1.0")
+        @deprecated("Use declaredTypes or typeMembers", "3.1.0")
         def memberTypes: List[Symbol]
 
-        /** Type member directly declared in the class */
+        /** Type member directly declared or inherited in the class */
         def typeMembers: List[Symbol]
 
         /** All members directly declared in the class */
@@ -4201,7 +4300,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     //   FLAGS   //
     ///////////////
 
-    /** FlagSet of a Symbol */
+    /** Flags of a Symbol */
     type Flags
 
     /** Module object of `type Flags`  */
@@ -4278,6 +4377,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is implemented as a Java static */
       def JavaStatic: Flags
 
+      /** Is this an annotation defined in Java */
+      @experimental def JavaAnnotation: Flags
+
       /** Is this symbol `lazy` */
       def Lazy: Flags
 
@@ -4336,7 +4438,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def StableRealizable: Flags
 
       /** Is this symbol marked as static. Mapped to static Java member */
-      def Static: Flags
+      @deprecated("Use JavaStatic instead", "3.3.0") def Static: Flags
 
       /** Is this symbol to be tagged Java Synthetic */
       def Synthetic: Flags
@@ -4369,6 +4471,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       end extension
     }
+
 
     ///////////////
     // POSITIONS //

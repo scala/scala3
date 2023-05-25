@@ -1,13 +1,3 @@
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:27 ------------------------------------------------------
-23 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           {f} () -> Unit cannot be box-converted to box ? () -> Unit
-   |                           since one of their capture sets contains the root capability `*`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:29:9 -------------------------------------------------------
-29 |  later2.x()  // error
-   |  ^^^^^^^^
-   |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:33:2 -------------------------------------------------------
 33 |  later3() // error
    |  ^^^^^^
@@ -18,18 +8,32 @@
    |  ^^^^^^^^
    |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:27 ------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:6 -------------------------------------------------------
+23 |  val later = usingLogFile { f => () => f.write(0) } // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Non-local value later cannot have an inferred type
+   |  {x$0} () -> Unit
+   |  with non-empty capture set {x$0}.
+   |  The type needs to be declared explicitly.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:29:9 -------------------------------------------------------
+29 |  later2.x()  // error
+   |  ^^^^^^^^
+   |  The expression's type box {x$0, *} () -> Unit is not allowed to capture the root capability `*`.
+   |  This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:6 -------------------------------------------------------
 47 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           {f} () -> Unit cannot be box-converted to box ? () -> Unit
-   |                           since one of their capture sets contains the root capability `*`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:33 ------------------------------------------------------
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Non-local value later cannot have an inferred type
+   |  {x$0} () -> Unit
+   |  with non-empty capture set {x$0}.
+   |  The type needs to be declared explicitly.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:25 ------------------------------------------------------
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                 {f} (x$0: Int) -> Unit cannot be box-converted to box ? (x$0: Int) -> Unit
-   |                                 since one of their capture sets contains the root capability `*`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:37 ------------------------------------------------------
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        The expression's type box {x$0, *} (x$0: Int) -> Unit is not allowed to capture the root capability `*`.
+   |        This usually means that a capability persists longer than its allowed lifetime.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:25 ------------------------------------------------------
 71 |    val later = usingFile("logfile", usingLogger(_, l => () => l.log("test"))) // error
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                                     {_$1} () -> Unit cannot be box-converted to box ? () -> Unit
-   |                                     since one of their capture sets contains the root capability `*`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                The expression's type box {x$0, *} () -> Unit is not allowed to capture the root capability `*`.
+   |                This usually means that a capability persists longer than its allowed lifetime.

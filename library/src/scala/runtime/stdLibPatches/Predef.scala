@@ -31,7 +31,7 @@ object Predef:
    *  @tparam T the type of the value to be summoned
    *  @return the given value typed: the provided type parameter
    */
-  transparent inline def summon[T](using inline x: T): x.type = x
+  transparent inline def summon[T](using x: T): x.type = x
 
   // Extension methods for working with explicit nulls
 

@@ -57,7 +57,6 @@ object Extractors {
     if (flags.is(Flags.Scala2x)) flagList += "Flags.Scala2x"
     if (flags.is(Flags.Sealed)) flagList += "Flags.Sealed"
     if (flags.is(Flags.StableRealizable)) flagList += "Flags.StableRealizable"
-    if (flags.is(Flags.Static)) flagList += "Flags.javaStatic"
     if (flags.is(Flags.Synthetic)) flagList += "Flags.Synthetic"
     if (flags.is(Flags.Trait)) flagList += "Flags.Trait"
     if (flags.is(Flags.Transparent)) flagList += "Flags.Transparent"

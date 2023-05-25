@@ -193,4 +193,9 @@ class TastyBuffer(initialSize: Int) {
    *  After `assemble` no more output actions to this buffer are permitted.
    */
   def assemble(): Unit = ()
+
+  def reset(): Unit = {
+    java.util.Arrays.fill(bytes, 0, length, 0.toByte)
+    length = 0
+  }
 }

@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.config.Printers._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
@@ -12,7 +13,7 @@ import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
-
+import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
@@ -220,10 +221,10 @@ object PickledQuotes {
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
-      val positionWarnings = new mutable.ListBuffer[String]()
+      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
-      new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference)
-        .picklePositions(ctx.compilationUnit.source, tree :: Nil, positionWarnings)
+      PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference,
+        ctx.compilationUnit.source, tree :: Nil, positionWarnings)
       positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()
@@ -248,23 +249,41 @@ object PickledQuotes {
           case pickled: String => TastyString.unpickle(pickled)
           case pickled: List[String] => TastyString.unpickle(pickled)
 
-        quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
+        val unpicklingContext =
+          if ctx.owner.isClass then
+            // When a quote is unpickled with a Quotes context that that has a class `spliceOwner`
+            // we need to use a dummy owner to unpickle it. Otherwise any definitions defined
+            // in the quoted block would be accidentally entered in the class.
+            // When splicing this expression, this owner is replaced with the correct owner (see `quotedExprToTree` and `quotedTypeToTree` above).
+            // On the other hand, if the expression is used as a reflect term, the user must call `changeOwner` (same as with other expressions used within a nested owner).
+            // `-Xcheck-macros` will check for inconsistent owners and provide the users hints on how to improve them.
+            //
+            // Quotes context that that has a class `spliceOwner` can come from a macro annotation
+            // or a user setting it explicitly using `Symbol.asQuotes`.
+            ctx.withOwner(newSymbol(ctx.owner, "$quoteOwnedByClass$".toTermName, Private, defn.AnyType, NoSymbol))
+            else ctx
 
-        val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-        val unpickler = new DottyUnpickler(bytes, mode)
-        unpickler.enter(Set.empty)
+        inContext(unpicklingContext) {
 
-        val tree = unpickler.tree
-        QuotesCache(pickled) = tree
+          quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
-        // Make sure trees and positions are fully loaded
-        new TreeTraverser {
-          def traverse(tree: Tree)(using Context): Unit = traverseChildren(tree)
-        }.traverse(tree)
+          val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
+          val unpickler = new DottyUnpickler(bytes, mode)
+          unpickler.enter(Set.empty)
 
-        quotePickling.println(i"**** unpickled quote\n$tree")
+          val tree = unpickler.tree
+          QuotesCache(pickled) = tree
 
-        tree
+          // Make sure trees and positions are fully loaded
+          new TreeTraverser {
+            def traverse(tree: Tree)(using Context): Unit = traverseChildren(tree)
+          }.traverse(tree)
+
+          quotePickling.println(i"**** unpickled quote\n$tree")
+
+          tree
+        }
+
   }
 
 }

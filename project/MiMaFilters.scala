@@ -3,21 +3,12 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
-    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.MappedAlternative"),
-
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.LazyVals.getStaticFieldOffset"),
-    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.LazyVals.objCAS"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.LazyVals$LazyValControlState"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.LazyVals$Evaluating$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.LazyVals$NullValue$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.LazyVals$Waiting"),
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.LazyVals.Evaluating"),
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.LazyVals.NullValue"),
-
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.pureFunctions"),
-    ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.captureChecking"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$pureFunctions$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$captureChecking$"),
-    ProblemFilters.exclude[MissingClassProblem]("scala.caps"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeBox"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.caps.unsafeUnbox"),
+  )
+  val TastyCore: Seq[ProblemFilter] = Seq()
+  val Interfaces: Seq[ProblemFilter] = Seq(
+    ProblemFilters.exclude[MissingClassProblem]("dotty.tools.dotc.interfaces.DiagnosticRelatedInformation"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("dotty.tools.dotc.interfaces.Diagnostic.diagnosticRelatedInformation")
   )
 }

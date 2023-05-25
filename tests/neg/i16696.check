@@ -1,0 +1,12 @@
+-- Error: tests/neg/i16696.scala:7:29 ----------------------------------------------------------------------------------
+7 |  val boom1 = BoxMaker[Some].make1 // error
+  |                             ^
+  |                             Some is not a value type, cannot be used in intersection Some & Int
+-- Error: tests/neg/i16696.scala:8:29 ----------------------------------------------------------------------------------
+8 |  val boom2 = BoxMaker[Some].make2 // error
+  |                             ^
+  |                             Some is not a value type, cannot be used in union Some | Int
+-- Error: tests/neg/i16696.scala:20:27 ---------------------------------------------------------------------------------
+20 |  val boom = BoxMaker[Foo].make(_.foo) // error
+   |                           ^
+   |                           test2.Foo is not a value type, cannot be used in intersection R & test2.Foo

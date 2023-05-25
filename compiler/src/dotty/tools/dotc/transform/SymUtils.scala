@@ -270,11 +270,8 @@ object SymUtils:
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)
 
-    def annotationsCarrying(meta: ClassSymbol)(using Context): List[Annotation] =
-      self.annotations.filter(_.symbol.hasAnnotation(meta))
-
-    def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(using Context): self.type = {
-      self.addAnnotations(from.annotationsCarrying(meta))
+    def withAnnotationsCarrying(from: Symbol, meta: Symbol, orNoneOf: Set[Symbol] = Set.empty)(using Context): self.type = {
+      self.addAnnotations(from.annotationsCarrying(Set(meta), orNoneOf))
       self
     }
 
@@ -384,7 +381,7 @@ object SymUtils:
       if original.hasAnnotation(defn.TargetNameAnnot) then
         self.addAnnotation(
           Annotation(defn.TargetNameAnnot,
-            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span)))
+            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span), original.span))
 
     /** The return type as seen from the body of this definition. It is
      *  computed from the symbol's type by replacing param refs by param symbols.

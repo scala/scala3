@@ -2,7 +2,11 @@
 //
 // e.g. addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.10.1")
+// some plugins haven't moved to scala-xml 2.x yet
+libraryDependencySchemes +=
+  "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
+
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.12.0")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.10")
 

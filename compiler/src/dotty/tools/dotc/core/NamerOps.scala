@@ -67,11 +67,11 @@ object NamerOps:
       completer.withSourceModule(findModuleBuddy(name.sourceModuleName, scope))
 
   /** Find moduleClass/sourceModule in effective scope */
-  def findModuleBuddy(name: Name, scope: Scope)(using Context) = {
-    val it = scope.lookupAll(name).filter(_.is(Module))
-    if (it.hasNext) it.next()
-    else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
-  }
+  def findModuleBuddy(name: Name, scope: Scope, alternate: Name = EmptyTermName)(using Context): Symbol =
+    var it = scope.lookupAll(name).filter(_.is(Module))
+    if !alternate.isEmpty then it ++= scope.lookupAll(alternate).filter(_.is(Module))
+    if it.hasNext then it.next()
+    else NoSymbol.assertingErrorsReported(em"no companion $name in $scope")
 
   /** If a class has one of these flags, it does not get a constructor companion */
   private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
@@ -212,11 +212,11 @@ object NamerOps:
    *  by (ab?)-using GADT constraints. See pos/i941.scala.
    */
   def linkConstructorParams(sym: Symbol, tparams: List[Symbol], rhsCtx: Context)(using Context): Unit =
-    rhsCtx.gadt.addToConstraint(tparams)
+    rhsCtx.gadtState.addToConstraint(tparams)
     tparams.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
       val tr = tparam.typeRef
-      rhsCtx.gadt.addBound(psym, tr, isUpper = false)
-      rhsCtx.gadt.addBound(psym, tr, isUpper = true)
+      rhsCtx.gadtState.addBound(psym, tr, isUpper = false)
+      rhsCtx.gadtState.addBound(psym, tr, isUpper = true)
     }
 
 end NamerOps

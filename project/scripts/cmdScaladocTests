@@ -17,7 +17,7 @@ DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyVersion)\""
 DOTTY_BOOTSTRAPPED_VERSION=$(eval $DOTTY_BOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
 SOURCE_LINKS_REPOSITORY="lampepfl/dotty"
-SOURCE_LINKS_VERSION="$DOTTY_BOOTSTRAPPED_VERSION"
+SOURCE_LINKS_VERSION="${GITHUB_SHA:-$DOTTY_BOOTSTRAPPED_VERSION}"
 
 "$SBT" "scaladoc/generateTestcasesDocumentation" > "$tmp" 2>&1 || echo "generated testcases project with sbt"
 dist/target/pack/bin/scaladoc \
@@ -37,9 +37,9 @@ dist/target/pack/bin/scaladoc \
   "-snippet-compiler:scaladoc-testcases/docs=compile" \
   "-comment-syntax:scaladoc-testcases/src/example/comment-md=markdown,scaladoc-testcases/src/example/comment-wiki=wiki" \
   -siteroot scaladoc-testcases/docs \
-  -project-footer "Copyright (c) 2002-2022, LAMP/EPFL" \
+  -project-footer "Copyright (c) 2002-2023, LAMP/EPFL" \
   -default-template static-site-main \
   -author -groups -revision main -project-version "${DOTTY_BOOTSTRAPPED_VERSION}" \
-  "-quick-links:Learn::https://docs.scala-lang.org/,Install::https://www.scala-lang.org/download/,Playground::https://scastie.scala-lang.org,Find A Library::https://index.scala-lang.org,Community::https://www.scala-lang.org/community/,Blog::https://www.scala-lang.org/blog/" \
+  "-quick-links:Learn::https://docs.scala-lang.org/,Install::https://www.scala-lang.org/download/,Playground::https://scastie.scala-lang.org,Find A Library::https://index.scala-lang.org,Community::https://www.scala-lang.org/community/,Blog::https://www.scala-lang.org/blog/," \
   out/bootstrap/scaladoc-testcases/scala-"${DOTTY_NONBOOTSTRAPPED_VERSION}"/classes > "$tmp" 2>&1 || echo "generated testcases project with scripts"
 diff -rq "$OUT1" "scaladoc/output/testcases"

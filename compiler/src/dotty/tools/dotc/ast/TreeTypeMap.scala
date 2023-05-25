@@ -92,11 +92,11 @@ class TreeTypeMap(
     cpy.Inlined(tree)(call, bindings1, expanded1)
 
   override def transform(tree: tpd.Tree)(using Context): tpd.Tree = treeMap(tree) match {
-    case impl @ Template(constr, parents, self, _) =>
+    case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
-          parents = parents.mapconserve(transform),
+          parents = impl.parents.mapconserve(transform),
           self = tmap.transformSub(self),
           body = impl.body mapconserve
             (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))

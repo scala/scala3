@@ -962,8 +962,7 @@ footer .socials {
   color: var(--type);
 }
 
-.signature *[t="t"] {
-  /* Types with links */
+.signature *[t="t"] { /* Types with links */
   color: var(--type-link);
 }
 

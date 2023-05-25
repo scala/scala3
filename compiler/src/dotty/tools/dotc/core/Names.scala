@@ -15,8 +15,8 @@ import scala.annotation.internal.sharable
 object Names {
   import NameKinds._
 
-  /** Things that can be turned into names with `totermName` and `toTypeName`
-   *  Decorators defines implements these as extension methods for strings.
+  /** Things that can be turned into names with `toTermName` and `toTypeName`.
+   *  Decorators implements these as extension methods for strings.
    */
   type PreName = Name | String
 
@@ -25,7 +25,7 @@ object Names {
    */
   abstract class Designator
 
-  /** A name if either a term name or a type name. Term names can be simple
+  /** A name is either a term name or a type name. Term names can be simple
    *  or derived. A simple term name is essentially an interned string stored
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.

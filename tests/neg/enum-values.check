@@ -6,7 +6,9 @@
    |                                         meaning a values array is not defined.
    |                                         An extension method was tried, but could not be fully constructed:
    |
-   |                                             example.Extensions.values(Tag)    failed with
+   |                                             example.Extensions.values(Tag)
+   |
+   |                                             failed with:
    |
    |                                                 Found:    example.Tag.type
    |                                                 Required: Nothing
@@ -18,7 +20,9 @@
    |                                         meaning a values array is not defined.
    |                                         An extension method was tried, but could not be fully constructed:
    |
-   |                                             example.Extensions.values(ListLike)    failed with
+   |                                             example.Extensions.values(ListLike)
+   |
+   |                                             failed with:
    |
    |                                                 Found:    Array[example.Tag[?]]
    |                                                 Required: Array[example.ListLike[?]]
@@ -30,7 +34,9 @@
    |                                         meaning a values array is not defined.
    |                                         An extension method was tried, but could not be fully constructed:
    |
-   |                                             example.Extensions.values(TypeCtorsK)    failed with
+   |                                             example.Extensions.values(TypeCtorsK)
+   |
+   |                                             failed with:
    |
    |                                                 Found:    Array[example.Tag[?]]
    |                                                 Required: Array[example.TypeCtorsK[?[_$1]]]
@@ -63,7 +69,9 @@
    |  value values is not a member of object example.NotAnEnum.
    |  An extension method was tried, but could not be fully constructed:
    |
-   |      example.Extensions.values(NotAnEnum)    failed with
+   |      example.Extensions.values(NotAnEnum)
+   |
+   |      failed with:
    |
    |          Found:    example.NotAnEnum.type
    |          Required: Nothing

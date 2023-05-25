@@ -22,15 +22,14 @@ object ValueClasses {
   }
 
   def isMethodWithExtension(sym: Symbol)(using Context): Boolean =
-    atPhaseNoLater(extensionMethodsPhase) {
-      val d = sym.denot
-      d.validFor.containsPhaseId(ctx.phaseId) &&
-      d.isRealMethod &&
-      isDerivedValueClass(d.owner) &&
-      !d.isConstructor &&
-      !d.symbol.isSuperAccessor &&
-      !d.is(Macro)
-    }
+    val d = sym.denot.initial
+    d.validFor.firstPhaseId <= extensionMethodsPhase.id
+    && d.isRealMethod
+    && isDerivedValueClass(d.owner)
+    && !d.isConstructor
+    && !d.symbol.isSuperAccessor
+    && !d.isInlineMethod
+    && !d.is(Macro)
 
   /** The member of a derived value class that unboxes it. */
   def valueClassUnbox(cls: ClassSymbol)(using Context): Symbol =

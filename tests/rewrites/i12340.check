@@ -3,6 +3,15 @@ class C {
   def f = 42
 } // end C
 
+class A {
+  class B {
+    class C {
+      def foo = 42
+    }
+
+  } // end B
+}
+
 def f(i: Int) = {
   if i < 42 then
     println(i)

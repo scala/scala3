@@ -1,0 +1,4 @@
+-- Error: tests/neg/i16452.scala:2:8 -----------------------------------------------------------------------------------
+2 |// error
+  |        ^
+  |        indented definitions expected, eof found

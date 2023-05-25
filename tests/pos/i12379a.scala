@@ -1,7 +1,7 @@
-inline def convFail[Of, From](inline from : From) : Unit =
+inline def convFail[Of, From](from : From) : Unit = // removed inline from parameter to avoid unsound path selection
   val c = compiletime.summonInline[Conversion[from.type, Of]]
 
-inline def convOK[Of, From](inline from : From)(using c : Conversion[from.type, Of]) : Unit = {}
+inline def convOK[Of, From](from : From)(using c : Conversion[from.type, Of]) : Unit = {} // removed inline from parameter to avoid unsound path selection
 
 class Bar[T](value : T)
 given [T <: Int] : Conversion[T, Bar[T]] = Bar(_)
