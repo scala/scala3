@@ -684,11 +684,14 @@ object Inlines:
 
     private def inlinedRhs(vddef: ValOrDefDef, inlinedSym: Symbol)(using Context): Tree =
       val rhs = vddef.rhs.changeOwner(vddef.symbol, inlinedSym)
+      inlinedRhs(rhs)(using ctx.withOwner(inlinedSym))
+
+    private def inlinedRhs(rhs: Tree)(using Context): Tree =
       if rhs.isEmpty then
         rhs
       else
-        val inlinedRhs = inContext(ctx.withOwner(inlinedSym)) { inlined(rhs)._2 }
-        Inlined(tpd.ref(parentSym), Nil, inlinedRhs).withSpan(parent.span)
+        // TODO make version of inlined that does not return bindings?
+        Inlined(tpd.ref(parentSym), Nil, inlined(rhs)._2).withSpan(parent.span)
 
     private class ParamAccessorsMapper:
       private val paramAccessorsTrees: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
