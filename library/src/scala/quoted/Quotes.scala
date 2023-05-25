@@ -4086,7 +4086,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Fields of a case class type -- only the ones declared in primary constructor */
         def caseFields: List[Symbol]
 
+        /** Is this the symbol of a type parameter */
         def isTypeParam: Boolean
+
+        /** Variance flags for of this type parameter.
+         *
+         *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
+         *  If this is not the symbol of a type parameter the result is `Flags.EmptyFlags`.
+         */
+        @experimental
+        def paramVariance: Flags
 
         /** Signature of this definition */
         def signature: Signature
