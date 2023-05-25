@@ -637,7 +637,10 @@ object desugar {
     //       new C[...](p1, ..., pN)(moreParams)
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
-        DefDef(name, Nil, tpt, rhs).withMods(synthetic)
+        val mods =
+          if ctx.settings.Yscala2Stdlib.value then synthetic | Inline
+          else synthetic
+        DefDef(name, Nil, tpt, rhs).withMods(mods)
 
       def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
@@ -735,13 +738,25 @@ object desugar {
               .withMods(appMods) :: Nil
           }
         val unapplyMeth = {
+          def scala2LibCompatUnapplyRhs(unapplyParamName: Name) =
+            assert(arity <= Definitions.MaxTupleArity, "Unexpected case class with tuple larger than 22: "+ cdef.show)
+            if arity == 1 then Apply(scalaDot(nme.Option), Select(Ident(unapplyParamName), nme._1))
+            else
+              val tupleApply = Select(Ident(nme.scala), s"Tuple$arity".toTermName)
+              val members = List.tabulate(arity) { n => Select(Ident(unapplyParamName), s"_${n+1}".toTermName) }
+              Apply(scalaDot(nme.Option), Apply(tupleApply, members))
+
           val hasRepeatedParam = constrVparamss.head.exists {
             case ValDef(_, tpt, _) => isRepeated(tpt)
           }
           val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
-          val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
+          val unapplyRHS =
+            if (arity == 0) Literal(Constant(true))
+            else if ctx.settings.Yscala2Stdlib.value then scala2LibCompatUnapplyRhs(unapplyParam.name)
+            else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
+
           DefDef(
             methName,
             joinParams(derivedTparams, (unapplyParam :: Nil) :: Nil),

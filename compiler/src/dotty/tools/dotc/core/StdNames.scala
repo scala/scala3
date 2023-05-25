@@ -177,6 +177,7 @@ object StdNames {
     final val typeTag: N    = "typeTag"
     final val Expr: N       = "Expr"
     final val String: N     = "String"
+    final val Option: N     = "Option"
     final val Annotation: N = "Annotation"
 
     // fictions we use as both types and terms
