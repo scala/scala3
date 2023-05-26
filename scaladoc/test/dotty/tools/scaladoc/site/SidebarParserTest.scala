@@ -91,7 +91,7 @@ class SidebarParserTest:
       |          - page: my-page6/my-page6/my-page6.md
       """.stripMargin
 
-  private val msgNoTitle = "Error parsing YAML configuration file: 'title' is not provided for page 'my-page7/my-page7.md'."
+  private val msgNoTitle = "`title` property is missing for some page."
   private val msgNoPage = "Error parsing YAML configuration file: 'index' or 'page' path is missing for title 'My title'."
 
   private def schemaMessage: String = Sidebar.schemaMessage
