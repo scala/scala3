@@ -991,7 +991,9 @@ class ClassfileParser(
             return unpickleTASTY(tastyBytes)
           }
         }
-        else return unpickleTASTY(bytes)
+        else
+          // Before 3.0.0 we had a mode where we could embed the TASTY bytes in the classfile. This has not been supported in any stable release.
+          report.error(s"Found a TASTY attribute with a length different from 16 in $classfile. This is likely a bug in the compiler. Please report.", NoSourcePosition)
       }
 
       if scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)
