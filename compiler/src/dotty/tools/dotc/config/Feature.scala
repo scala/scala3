@@ -137,18 +137,20 @@ object Feature:
       report.error(em"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
-    ccEnabled && defn.ccExperimental.contains(sym) 
+    ccEnabled && defn.ccExperimental.contains(sym)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
-    if !isExperimentalEnabled && !ccException(sym) then
-      val symMsg =
-        if sym.hasAnnotation(defn.ExperimentalAnnot) then
-          i"$sym is marked @experimental"
-        else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then
-          i"${sym.owner} is marked @experimental"
-        else
-          i"$sym inherits @experimental"
-      report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
+    if !isExperimentalEnabled then
+      val experimentalSym =
+        if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
+        else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
+        else NoSymbol
+      if !ccException(experimentalSym) then
+        val symMsg =
+          if experimentalSym.exists
+          then i"$experimentalSym is marked @experimental"
+          else i"$sym inherits @experimental"
+        report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
   def checkExperimentalSettings(using Context): Unit =
