@@ -394,7 +394,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myCtx: Context | Null = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def]: Context = myCtx.nn
+  given runContext[Dummy_so_its_a_def]: Context =
+    // if indent enabled, remove no-indent
+    if myCtx.nn.settings.indent.value(using myCtx.nn) then
+      myCtx.nn.fresh.setSetting(myCtx.nn.settings.noindent, false)
+    else myCtx.nn
+
   assert(runContext.runId <= Periods.MaxPossibleRunId)
 }
 

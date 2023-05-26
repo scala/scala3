@@ -111,11 +111,14 @@ final case class SbtCommunityProject(
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     requiresExperimental: Boolean = false,
+    rewriteToIndent: Boolean = true,
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
   private def scalacOptionsString: String =
-    scalacOptions.map("\"" + _ + "\"").mkString("List(", ",", ")")
+    ((if rewriteToIndent then Seq("-indent", "-rewrite") else Seq.empty) ++ scalacOptions)
+      .map("\"" + _ + "\"")
+      .mkString("List(", ",", ")")
 
   private val baseCommand =
     "clean; set Global/logLevel := Level.Error; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
@@ -290,7 +293,8 @@ object projects:
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
     // dotty.tools.dotc.core.MissingType:
     dependencies = List(scalaXml),
-    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
+    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG),
+    rewriteToIndent = false
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
