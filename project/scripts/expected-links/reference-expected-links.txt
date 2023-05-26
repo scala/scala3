@@ -18,7 +18,6 @@
 ./changed-features/pattern-matching.html
 ./changed-features/structural-types-spec.html
 ./changed-features/structural-types.html
-./changed-features/type-checking.html
 ./changed-features/type-inference.html
 ./changed-features/vararg-splices.html
 ./changed-features/wildcards.html
