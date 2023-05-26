@@ -180,6 +180,7 @@ subsection:
       - page: contributing/testing.md
       - page: contributing/scaladoc.md
       - page: contributing/sending-in-a-pr.md
+      - page: contributing/cheatsheet.md
       - title: Procedures
         directory: procedures
         index: contributing/procedures/index.md
