@@ -12,6 +12,7 @@ import dotty.tools.pc.utils.TextEdits
 
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
+import java.nio.file.Paths
 
 abstract class BasePcDefinitionSuite extends BasePCSuite:
 
@@ -19,7 +20,7 @@ abstract class BasePcDefinitionSuite extends BasePCSuite:
 
   def check(original: String): Unit =
     val filename = "A.scala"
-    val uri = s"file:///$filename"
+    val uri = Paths.get(filename).toUri
 
     val (_, offset) = params(original.removeRanges, filename)
     val cleanedCode = original.removeRanges.removePos
@@ -30,10 +31,10 @@ abstract class BasePcDefinitionSuite extends BasePCSuite:
     ).toLsp
 
     val locs = definitions(
-      CompilerOffsetParams(URI.create(uri), cleanedCode, offset)
+      CompilerOffsetParams(uri, cleanedCode, offset)
     )
     val edits = locs.flatMap { location =>
-      if (location.getUri() == uri) {
+      if (location.getUri() == uri.toString) {
         List(
           new TextEdit(
             new l.Range(

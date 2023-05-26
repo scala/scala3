@@ -1132,11 +1132,30 @@ object Build {
     case Bootstrapped => `scala3-presentation-compiler-bootstrapped`
   }
 
+  def scala3PresentationCompilerBuildInfo(implicit mode: Mode) =
+    Seq(
+      ideTestsDependencyClasspath := {
+        val dottyLib = (dottyLibrary / Compile / classDirectory).value
+        val scalaLib =
+          (dottyLibrary / Compile / dependencyClasspath)
+            .value
+            .map(_.data)
+            .filter(_.getName.matches("scala-library.*\\.jar"))
+            .toList
+        dottyLib :: scalaLib
+        // Nil
+      },
+      Compile / buildInfoPackage := "dotty.tools.pc.util",
+      Compile / buildInfoKeys := Seq(scalaVersion),
+      Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath)
+    ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
+      BuildInfoPlugin.buildInfoScopedSettings(Test) ++
+      BuildInfoPlugin.buildInfoDefaultSettings
+
   lazy val presentationCompilerSettings = {
     val mtagsVersion = "0.11.12+45-45df705d-SNAPSHOT" // Will be set to stable release after 0.11.13 is published
 
     Seq(
-      moduleName := "scala3-presentation-compiler",
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.13",
@@ -1177,22 +1196,7 @@ object Build {
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
-      ideTestsDependencyClasspath := {
-        val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
-        val scalaLib =
-          (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
-            .value
-            .map(_.data)
-            .filter(_.getName.matches("scala-library.*\\.jar"))
-            .toList
-        dottyLib :: scalaLib
-      },
-      Compile / buildInfoPackage := "dotty.tools.pc.util",
-      Compile / buildInfoKeys := Seq(scalaVersion),
-      Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath)
-    ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
-      BuildInfoPlugin.buildInfoScopedSettings(Test) ++
-      BuildInfoPlugin.buildInfoDefaultSettings
+    )
   }
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
@@ -1994,8 +1998,9 @@ object Build {
       enablePlugins(JmhPlugin)
 
     def asScala3PresentationCompiler(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyCompiler).
-      settings(presentationCompilerSettings)
+      dependsOn(dottyCompiler, dottyLibrary).
+      settings(presentationCompilerSettings).
+      settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).

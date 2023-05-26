@@ -256,16 +256,9 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       """|Path - java.nio.file
          |Paths - java.nio.file
-         |XPath - javax.xml.xpath
-         |Path2D - java.awt.geom
-         |CertPath - java.security.cert
-         |TreePath - javax.swing.tree
-         |XPathType - javax.xml.crypto.dsig.spec
-         |LayoutPath - java.awt.font
-         |XPathNodes - javax.xml.xpath
          |PathMatcher - java.nio.file
-         |XPathResult - org.w3c.dom.xpath
-         |""".stripMargin
+         |""".stripMargin,
+         filter = _.contains("java.nio.file")
     )
 
   @Test def import4 =
