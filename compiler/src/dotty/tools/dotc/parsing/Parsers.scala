@@ -1468,8 +1468,8 @@ object Parsers {
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
      *                   |  HKTypeParamClause ‘->’ [CaptureSet] Type   -- under pureFunctions
      *  FunTypeArgs    ::=  InfixType
-     *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
-     *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
+     *                   |  `(' [ [ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
+     *                   |  '(' [ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
     def typ(): Tree =
       val start = in.offset
