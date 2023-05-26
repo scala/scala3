@@ -4,7 +4,6 @@ import java.net.URI
 
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
-import scala.runtime.Scala3RunTime.assertFailed
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits

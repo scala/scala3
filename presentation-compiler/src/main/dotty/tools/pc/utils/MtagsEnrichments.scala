@@ -2,7 +2,6 @@ package dotty.tools.pc.utils
 
 import scala.annotation.tailrec
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.WorkspaceSymbolQuery
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.OffsetParams
@@ -24,8 +23,6 @@ import dotty.tools.dotc.core.Types.AppliedType
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.semanticdb.SymbolInformation
-import dotty.tools.dotc.semanticdb.SymbolInformation.Kind
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span

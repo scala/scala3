@@ -1,26 +1,16 @@
 package dotty.tools.pc.base
 
-import java.awt.image.PackedColorModel
 import java.nio.file.Paths
 import java.util.Collections
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
 import scala.meta.pc.CancelToken
 
-import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.pc.utils.{TestCompletions, TextEdits}
 
 import org.eclipse.lsp4j.{CompletionItem, CompletionList}
-import org.hamcrest
-import org.hamcrest.CoreMatchers.*
-import org.hamcrest.{Matcher, MatcherAssert, StringDescription, TypeSafeMatcher}
-import org.jline.utils.DiffHelper
-import org.junit.*
-import org.junit.rules.{ExpectedException, RuleChain, TestRule, TestWatcher}
-import org.junit.runner.Description
 
 abstract class BaseCompletionSuite extends BasePCSuite:
 
@@ -271,12 +261,6 @@ abstract class BaseCompletionSuite extends BasePCSuite:
         )
       }
     }
-
-  private def computeDiffMessageEditLines(
-      expected: String,
-      actual: String
-  ): String =
-    "\n\n" + DiffUtil.mkColoredCodeDiff(actual, expected, true) + "\n"
 
   private def trimTrailingSpace(string: String): String =
     string.linesIterator

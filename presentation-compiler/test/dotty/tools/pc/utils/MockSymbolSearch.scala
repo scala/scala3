@@ -15,19 +15,26 @@ import scala.meta.pc.{
   SymbolSearchVisitor
 }
 
-import dotty.tools.dotc.core.Contexts.Context
+import org.eclipse.lsp4j.Location
 
-import org.eclipse.lsp4j.{Location, Position, Range}
-
-/*
- * This symbol index is only used for testing purposes and should not be used
- * for other use cases. It is recommended to use own implementation.
+/* Mocking symbol search is an external part of presentation compiler,
+ * which is used for 3 purposes: finding Symbols that match our query,
+ * their definition location or documentation based on semanticdb symbol.
+ *
+ * This mock has to be provided to test presentation compiler implementations,
+ * which consumes returned symbols from symbol search. The main functinalities that rely on it
+ * are completion enrichements, go to definition and type definition, hover and signature help.
+ *
+ * @param workspace is used to search for Symbols in the workspace
+ * @param classpathSearch is used to search for Symbols in the classpath
+ * @param mockEntries is used to find mocked definitions and documentations
  */
-class TestingSymbolSearch(
+class MockSymbolSearch(
     workspace: TestingWorkspaceSearch,
-    maybeIndex: Option[TestingIndex],
-    classpath: ClasspathSearch = ClasspathSearch.empty
+    classpath: ClasspathSearch,
+    mockEntries: MockEntries
 ) extends SymbolSearch:
+
   override def search(
       textQuery: String,
       buildTargetIdentifier: String,
@@ -43,45 +50,24 @@ class TestingSymbolSearch(
       visitor: SymbolSearchVisitor
   ): SymbolSearch.Result =
     val query = WorkspaceSymbolQuery.exact(textQuery)
-    workspace.search(query, visitor, _.denot.isRealMethod)
+    workspace.search(query, visitor)
     SymbolSearch.Result.COMPLETE
 
   override def definition(symbol: String, source: URI): ju.List[Location] =
-    maybeIndex.toList
-      .flatMap: index =>
-        index
-          .search(symbol)
-          .map(source =>
-            val name = source.name.replace("class", "java")
-            val uri = s"$symbol $name"
-            new Location(
-              uri,
-              new Range(new Position(0, 0), new Position(0, 0))
-            )
-          )
-      .asJava
+    mockEntries.definitions.getOrElse(symbol, Nil).asJava
 
   override def definitionSourceToplevels(
       symbol: String,
       sourceUri: URI
   ): ju.List[String] =
-    maybeIndex.toList
-      .flatMap: index =>
-        index
-          .search(symbol)
-          .filter(_.`extension` == "class")
-          .map(_.name.stripSuffix(".class"))
-      .asJava
+    mockEntries.definitionSourceTopLevels.getOrElse(symbol, Nil).asJava
 
   override def documentation(
       symbol: String,
       parents: ParentSymbols
   ): Optional[SymbolDocumentation] =
-    maybeIndex
-      .flatMap: index =>
-        (symbol +: parents.parents().asScala).iterator
-          .map(index.documentation)
-          .collectFirst { case Some(doc) =>
-            doc
-          }
+    (symbol +: parents.parents().asScala).iterator
+      .map(symbol => mockEntries.documentations.find(_.symbol == symbol))
+      .collectFirst { case Some(doc) => doc }
       .toJava
+

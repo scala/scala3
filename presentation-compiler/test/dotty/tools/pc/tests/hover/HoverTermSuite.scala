@@ -64,7 +64,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  <<@@s"Hello ${name}">>
         |}
         |""".stripMargin,
-      """|erased def s(args: Any*): String
+      """|def s(args: Any*): String
          |""".stripMargin.hover
     )
 
@@ -77,7 +77,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  <<@@f"$name%s is $height%2.2f meters tall">>
         |}
         |""".stripMargin,
-      f"erased def f[A >: Any](args: A*): String".hover
+      f"def f[A >: Any](args: A*): String".hover
     )
 
   @Test def `interpolator-apply` =

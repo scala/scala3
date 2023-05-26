@@ -9,10 +9,6 @@ import org.junit.Test
 
 class PcSemanticdbSuite extends BasePCSuite:
 
-  override def requiresJdkSources: Boolean = true
-
-  override def requiresScalaLibrarySources: Boolean = true
-
   @Test def `simple` =
     check(
       """|package a

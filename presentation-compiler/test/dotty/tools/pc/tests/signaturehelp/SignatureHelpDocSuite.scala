@@ -1,33 +1,39 @@
 package dotty.tools.pc.tests.signaturehelp
 
+import scala.meta.pc.SymbolDocumentation
+
 import dotty.tools.pc.base.BaseSignatureHelpSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.junit.{Ignore, Test}
 
 class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
 
-  override def requiresJdkSources: Boolean = true
+  override protected def mockEntries: MockEntries = new MockEntries:
+    override def documentations: Set[SymbolDocumentation] = Set(
+      MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
+      MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
+      MockDocumentation("java/lang/String#valueOf().", "valueOf", Seq(), Seq("obj")),
+      MockDocumentation("java/lang/String#valueOf(+1).", "valueOf", Seq(), Seq("data")),
+      MockDocumentation("java/lang/String#valueOf(+2).", "valueOf", Seq(), Seq("data", "offset", "count")),
+      MockDocumentation("java/lang/String#valueOf(+3).", "valueOf", Seq(), Seq("b")),
+      MockDocumentation("java/lang/String#valueOf(+4).", "valueOf", Seq(), Seq("c")),
+      MockDocumentation("java/lang/String#valueOf(+5).", "valueOf", Seq(), Seq("i")),
+      MockDocumentation("java/lang/String#valueOf(+6).", "valueOf", Seq(), Seq("l")),
+      MockDocumentation("java/lang/String#valueOf(+7).", "valueOf", Seq(), Seq("f")),
+      MockDocumentation("java/lang/String#valueOf(+8).", "valueOf", Seq(), Seq("d")),
+      MockDocumentation("java/io/File#`<init>`().", "<init>", Seq(), Seq("pathname")),
+      MockDocumentation("java/io/File#`<init>`(+1).", "<init>", Seq(), Seq("parent", "child")),
+      MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("parent", "child")),
+      MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("uri")),
+      ScalaMockDocumentation("scala/Some#", "Some"),
+      ScalaMockDocumentation("scala/Option#fold().", "fold", List("ifEmpty", "f")),
+      ScalaMockDocumentation("scala/Option.apply().", "apply", List("x")),
+      ScalaMockDocumentation("scala/collection/immutable/List#map().", "map", List("f")),
+      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List("z", "op")),
+      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List("pf", "fin", "rethrow"))
 
-  override def requiresScalaLibrarySources: Boolean = true
-
-  val foldLatestDocs: String =
-    """|Returns the result of applying $f to this $option's
-       |  value if the $option is nonempty.  Otherwise, evaluates
-       |  expression `ifEmpty`.
-       |
-       | This is equivalent to:
-       |
-       | {{{
-       | option match {
-       |   case Some(x) => f(x)
-       |   case None    => ifEmpty
-       | }
-       | }}}
-       | This is also equivalent to:
-       |
-       | {{{
-       | option map f getOrElse ifEmpty
-       | }}}""".stripMargin
+    )
 
   @Test def `curry` =
     checkDoc(
@@ -36,14 +42,11 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  Option(1).fold("")(_ => @@)
         |}
       """.stripMargin,
-      s"""$foldLatestDocs
-         |**Parameters**
-         | - **ifEmpty** the expression to evaluate if empty.
-         | - **f** the function to apply if nonempty.
+      s"""Found documentation for scala/Option#fold().
          |fold[B](ifEmpty: => B)(f: Int => B): B
          |                       ^^^^^^^^^^^
-         |  @param ifEmpty the expression to evaluate if empty.
-         |  @param f the function to apply if nonempty.
+         |  @param ifEmpty Found documentation for param ifEmpty
+         |  @param f Found documentation for param f
           """.stripMargin
     )
 
@@ -54,14 +57,11 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  Option(1).fold("@@")
         |}
       """.stripMargin,
-      s"""|$foldLatestDocs
-          |**Parameters**
-          | - **ifEmpty** the expression to evaluate if empty.
-          | - **f** the function to apply if nonempty.
+      s"""|Found documentation for scala/Option#fold().
           |fold[B](ifEmpty: => B)(f: Int => B): B
           |        ^^^^^^^^^^^^^
-          |  @param ifEmpty the expression to evaluate if empty.
-          |  @param f the function to apply if nonempty.
+          |  @param ifEmpty Found documentation for param ifEmpty
+          |  @param f Found documentation for param f
           |""".stripMargin
     )
 
@@ -74,27 +74,11 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  }
         |}
       """.stripMargin,
-      """|Applies a binary operator to a start value and all elements of this $coll,
-         |  going left to right.
-         |
-         |  $willNotTerminateInf
-         |  $orderDependentFold
-         |
-         |**Type Parameters**
-         | - **B** the result type of the binary operator.
-         |
-         |**Parameters**
-         | - **z** the start value.
-         | - **op** the binary operator.
-         |
-         |**Returns**
-         | - the result of inserting `op` between consecutive elements of this $coll,
-         |              going left to right with the start value `z` on the left:
-         |              `op(...op(z, x,,1,,), x,,2,,, ..., x,,n,,)` where `x,,1,,, ..., x,,n,,`
-         |               are the elements of this $coll.
-         |              Returns `z` if this $coll is empty.
+      """|Found documentation for scala/collection/LinearSeqOps#foldLeft().
          |foldLeft[B](z: B)(op: (B, Int) => B): B
          |                  ^^^^^^^^^^^^^^^^^
+         |  @param z Found documentation for param z
+         |  @param op Found documentation for param op
          |""".stripMargin
     )
 
@@ -119,20 +103,10 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  List(1).map(x => @@)
         |}
       """.stripMargin,
-      """|Builds a new $coll by applying a function to all elements of this $coll.
-         |
-         |
-         |**Type Parameters**
-         | - **B** the element type of the returned $coll.
-         |
-         |**Parameters**
-         | - **f** the function to apply to each element.
-         |
-         |**Returns**
-         | - a new $coll resulting from applying the given function
-         |                   `f` to each element of this $coll and collecting the results.
+      """|Found documentation for scala/collection/immutable/List#map().
          |map[B](f: Int => B): List[B]
          |       ^^^^^^^^^^^
+         |  @param f Found documentation for param f
          |""".stripMargin
     )
 
@@ -143,18 +117,10 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  Option(1, 2, @@2)
         |}
       """.stripMargin,
-      """|An Option factory which creates Some(x) if the argument is not null,
-         |  and None if it is null.
-         |
-         |
-         |**Parameters**
-         | - **x** the value
-         |
-         |**Returns**
-         | - Some(value) if value != null, None if value == null
+      """|Found documentation for scala/Option.apply().
          |apply[A](x: A): Option[A]
          |         ^^^^
-         |  @param x the value
+         |  @param x Found documentation for param x
          |""".stripMargin
     )
 
@@ -181,24 +147,12 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  new scala.util.control.Exception.Catch(@@)
         |}
       """.stripMargin,
-      """|A container class for catch/finally logic.
-         |
-         |  Pass a different value for rethrow if you want to probably
-         |  unwisely allow catching control exceptions and other throwables
-         |  which the rest of the world may expect to get through.
-         |
-         |**Type Parameters**
-         | - **T** result type of bodies used in try and catch blocks
-         |
-         |**Parameters**
-         | - **pf** Partial function used when applying catch logic to determine result value
-         | - **fin** Finally logic which if defined will be invoked after catch logic
-         | - **rethrow** Predicate on throwables determining when to rethrow a caught [[Throwable]]
+      """|Found documentation for scala/util/control/Exception.Catch#
          |Catch[T](pf: scala.util.control.Exception.Catcher[T], fin: Option[scala.util.control.Exception.Finally], rethrow: Throwable => Boolean)
          |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-         |  @param pf Partial function used when applying catch logic to determine result value
-         |  @param fin Finally logic which if defined will be invoked after catch logic
-         |  @param rethrow Predicate on throwables determining when to rethrow a caught [[Throwable]]
+         |  @param pf Found documentation for param pf
+         |  @param fin Found documentation for param fin
+         |  @param rethrow Found documentation for param rethrow
          |""".stripMargin
     )
 
@@ -277,28 +231,8 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  new Some(10@@)
         |}
       """.stripMargin,
-      """|Class `Some[A]` represents existing values of type
-         |  `A`.
+      """|Found documentation for scala/Some#
          |Some[A](value: A)
          |        ^^^^^^^^
-         |""".stripMargin
-    )
-
-  @Test def `markdown` =
-    checkDoc(
-      """
-        |object A {
-        |  1.to(10).by(@@)
-        |}
-      """.stripMargin,
-      // tests both @define and HTML expansion
-      """|Create a new range with the `start` and `end` values of this range and
-         |  a new `step`.
-         |
-         |
-         |**Returns**
-         | - a new range with a different step
-         |by(step: Int): Range
-         |   ^^^^^^^^^
          |""".stripMargin
     )

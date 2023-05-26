@@ -1,14 +1,21 @@
 package dotty.tools.pc.tests.completion
 
-import dotty.tools.pc.base.BaseCompletionSuite
+import scala.meta.pc.SymbolDocumentation
 
-import org.junit.rules.{RuleChain, TestRule, TestWatcher}
-import org.junit.runner.Description
-import org.junit.{Ignore, Test}
+import dotty.tools.pc.base.BaseCompletionSuite
+import dotty.tools.pc.utils.MockEntries
+
+import org.junit.Test
 
 class CompletionSuite extends BaseCompletionSuite:
 
-  override def requiresJdkSources: Boolean = true
+  override protected def mockEntries: MockEntries = new MockEntries:
+    override def documentations: Set[SymbolDocumentation] = Set(
+      MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
+      MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
+      MockDocumentation("java/nio/file/Files#readAttributes().", "readAttributes", Seq("A"), Seq("path", "type", "options")),
+      MockDocumentation("java/nio/file/Files#readAttributes(+1).", "readAttributes", Seq(), Seq("path", "attributes", "options"))
+    )
 
   @Test def scope =
     check(
@@ -17,7 +24,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |  Lis@@
         |}""".stripMargin,
       """
-        |List:  scala.collection.immutable
+        |List scala.collection.immutable
         |List - java.awt
         |List - java.util
         |List - scala.collection.immutable
@@ -84,7 +91,6 @@ class CompletionSuite extends BaseCompletionSuite:
       """|empty[A]: List[A]
          |from[B](coll: IterableOnce[B]): List[B]
          |newBuilder[A]: Builder[A, List[A]]
-         |ordinal(x$0: MirroredMonoType): Int
          |apply[A](elems: A*): List[A]
          |concat[A](xss: Iterable[A]*): List[A]
          |fill[A](n1: Int, n2: Int)(elem: => A): List[List[A] @uncheckedVariance]
@@ -650,7 +656,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|None scala
-         |NoManifest:  scala.reflect
+         |NoManifest scala.reflect
          |""".stripMargin,
       topLines = Some(2)
     )
@@ -663,8 +669,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Seq:  scala.collection.immutable
-         |Set:  scala.collection.immutable
+         |Seq scala.collection.immutable
+         |Set scala.collection.immutable
          |""".stripMargin,
       topLines = Some(3)
     )
@@ -677,8 +683,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some[?] scala
-         |Seq:  scala.collection.immutable
-         |Set:  scala.collection.immutable
+         |Seq scala.collection.immutable
+         |Set scala.collection.immutable
          |""".stripMargin,
       topLines = Some(3)
     )
@@ -699,7 +705,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|NotString: Int
          |Number: Regex
-         |Nil:  scala.collection.immutable
+         |Nil scala.collection.immutable
          |""".stripMargin,
       topLines = Option(3)
     )
@@ -713,8 +719,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Number: Regex
-         |Nil:  scala.collection.immutable
-         |NoManifest:  scala.reflect
+         |Nil scala.collection.immutable
+         |NoManifest scala.reflect
          |""".stripMargin,
       topLines = Option(3)
     )
@@ -728,8 +734,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Number: Regex
-         |Nil:  scala.collection.immutable
-         |NoManifest:  scala.reflect
+         |Nil scala.collection.immutable
+         |NoManifest scala.reflect
          |""".stripMargin,
       topLines = Option(3)
     )

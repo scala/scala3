@@ -2,7 +2,6 @@ package dotty.tools.pc.tests.signaturehelp
 
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 
-import coursierapi.*
 import org.junit.Test
 
 class SignatureHelpHKSuite extends BaseSignatureHelpSuite:

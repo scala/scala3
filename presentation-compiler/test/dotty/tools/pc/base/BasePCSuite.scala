@@ -18,16 +18,10 @@ import dotty.tools.pc.utils._
 
 import org.eclipse.lsp4j.MarkupContent
 import org.eclipse.lsp4j.jsonrpc.messages.Either as JEither
-import org.junit.Assert.*
-import org.junit.Test
 import org.junit.runner.RunWith
-import org.junit.runners.BlockJUnit4ClassRunner
-import org.junit.runners.model.{FrameworkMethod, Statement}
 
 object TestResources:
   val scalaLibrary = BuildInfo.ideTestsDependencyClasspath.map(_.toPath).toSeq
-
-  val index = TestingIndex(scalaLibrary.map(_.toString))
   val classpathSearch =
     ClasspathSearch.fromClasspath(scalaLibrary, ExcludedPackagesHandler.default)
 
@@ -43,11 +37,10 @@ abstract class BasePCSuite extends PcAssertions:
   lazy val presentationCompiler: PresentationCompiler =
     val myclasspath: Seq[Path] = TestResources.scalaLibrary
     val scalacOpts = scalacOptions(myclasspath)
-
-    val search = new TestingSymbolSearch(
+    val search = new MockSymbolSearch(
       testingWorkspaceSearch,
-      if requiresJdkSources then Some(TestResources.index) else None,
-      TestResources.classpathSearch
+      TestResources.classpathSearch,
+      mockEntries
     )
 
     new ScalaPresentationCompiler()
@@ -79,8 +72,7 @@ abstract class BasePCSuite extends PcAssertions:
 
   protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
     immutable.Seq.empty
-  protected def requiresJdkSources: Boolean = false
-  protected def requiresScalaLibrarySources: Boolean = false
+  protected def mockEntries: MockEntries = new MockEntries {}
 
   def params(code: String, filename: String = "test.scala"): (String, Int) =
     val code2 = code.replace("@@", "")

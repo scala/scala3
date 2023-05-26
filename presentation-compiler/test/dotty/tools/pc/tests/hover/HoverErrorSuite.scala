@@ -5,7 +5,6 @@ import dotty.tools.pc.base.BaseHoverSuite
 import org.junit.Test
 
 class HoverErrorSuite extends BaseHoverSuite:
-  override def requiresJdkSources: Boolean = true
 
   @Test def `no-type` =
     check(

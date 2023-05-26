@@ -5,6 +5,7 @@ import java.nio.file.Path
 import dotty.tools.pc.base.{BaseCompletionSuite, BaseExtractMethodSuite}
 
 import org.junit.Test
+import dotty.tools.pc.utils.MockEntries
 
 class ExtractMethodNoIndentSuite extends BaseExtractMethodSuite:
   override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
@@ -82,8 +83,8 @@ class CompletionMatchNoIndentSuite extends BaseCompletionSuite:
       s"""
          |object A {
          |  Option(1) match {
-         |\tcase Some(value) => $$0
-         |\tcase None =>
+         |\tcase None => $$0
+         |\tcase Some(value) =>
          |}
          |}""".stripMargin,
       filter = _.contains("exhaustive")

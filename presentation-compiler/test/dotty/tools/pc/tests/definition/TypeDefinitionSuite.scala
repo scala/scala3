@@ -4,15 +4,28 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.pc.base.BasePcDefinitionSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.eclipse.lsp4j.Location
 import org.junit.Test
 
 class TypeDefinitionSuite extends BasePcDefinitionSuite:
 
-  override def requiresJdkSources: Boolean = true
-
-  override def requiresScalaLibrarySources: Boolean = true
+  override def mockEntries = new MockEntries:
+    override def definitions = Map[String, List[Location]](
+      MockLocation("scala/Option#", "Option.scala"),
+      MockLocation("scala/Unit#", "Unit.scala"),
+      MockLocation("scala/List#", "Unit.scala"),
+      MockLocation("scala/Boolean#", "Boolean.scala"),
+      MockLocation("scala/collection/WithFilter#", "WithFilter.scala"),
+      MockLocation("scala/Option#WithFilter#", "Option.scala"),
+      MockLocation("scala/collection/immutable/List#", "List.scala"),
+      MockLocation("scala/Predef.String#", "Predef.scala"),
+      MockLocation("java/lang/String#", "String.java"),
+      MockLocation("scala/Int#", "Int.scala"),
+      MockLocation("scala/concurrent/Future#", "Future.scala"),
+      MockLocation("scala/concurrent/Future.", "Future.scala")
+    )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
     presentationCompiler

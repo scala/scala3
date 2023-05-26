@@ -4,15 +4,31 @@ import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.pc.base.BasePcDefinitionSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.eclipse.lsp4j.Location
 import org.junit.{Ignore, Test}
 
 class PcDefinitionSuite extends BasePcDefinitionSuite:
 
-  override def requiresJdkSources: Boolean = true
-
-  override def requiresScalaLibrarySources: Boolean = true
+  override def mockEntries = new MockEntries:
+    override def definitions = Map[String, List[Location]](
+      MockLocation("scala/Int#", "Int.scala"),
+      MockLocation("scala/concurrent/Future#", "Future.scala"),
+      MockLocation("scala/concurrent/Future.", "Future.scala"),
+      MockLocation("scala/Option#withFilter().", "Option.scala"),
+      MockLocation("scala/Option#flatMap().", "Option.scala"),
+      MockLocation("scala/Option#map().", "Option.scala"),
+      MockLocation("scala/Option#get().", "Option.scala"),
+      MockLocation("scala/Predef.assert().", "Predef.scala"),
+      MockLocation("scala/Predef.assert(+1).", "Predef.scala"),
+      MockLocation("scala/Predef.Ensuring#ensuring().", "Predef.scala"),
+      MockLocation("scala/Predef.Ensuring#ensuring(+1).", "Predef.scala"),
+      MockLocation("scala/Predef.Ensuring#ensuring(+2).", "Predef.scala"),
+      MockLocation("scala/Predef.Ensuring#ensuring(+3).", "Predef.scala"),
+      MockLocation("scala/collection/immutable/List#`::`().", "List.scala"),
+      MockLocation("scala/collection/IterableFactory#apply().", "Factory.scala")
+    )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
     presentationCompiler

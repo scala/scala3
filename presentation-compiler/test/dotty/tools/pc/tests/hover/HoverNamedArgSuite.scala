@@ -3,12 +3,16 @@ package dotty.tools.pc.tests.hover
 import dotty.tools.pc.base.BaseHoverSuite
 
 import org.junit.{Ignore, Test}
+import dotty.tools.pc.utils.MockEntries
+import scala.meta.pc.SymbolDocumentation
 
 class HoverNamedArgSuite extends BaseHoverSuite:
-  override protected def requiresScalaLibrarySources: Boolean = true
-  override protected def requiresJdkSources: Boolean = true
 
-  @Ignore // TODO SemanticdbSymbols.inverseSemanticdbSymbol does not support params and type params search
+  override protected def mockEntries: MockEntries = new MockEntries:
+    override def documentations: Set[SymbolDocumentation] = Set(
+      ScalaMockDocumentation("a/b.foo().(named)", "foo", List("named")),
+    )
+
   @Test def `named` =
     check(
       """package a
@@ -24,10 +28,7 @@ class HoverNamedArgSuite extends BaseHoverSuite:
       """|```scala
          |named: Int
          |```
-         |Runs foo
-         |
-         |**Parameters**
-         |- `named`: the argument
+         |Found documentation for a/b.foo().(named)
          |""".stripMargin
     )
 

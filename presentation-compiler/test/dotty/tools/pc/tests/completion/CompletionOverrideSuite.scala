@@ -1,14 +1,18 @@
 package dotty.tools.pc.tests.completion
 
+import scala.meta.pc.SymbolDocumentation
+
 import dotty.tools.pc.base.BaseCompletionSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
 
 class CompletionOverrideSuite extends BaseCompletionSuite:
 
-  override def requiresJdkSources: Boolean = true
-
-  override def requiresScalaLibrarySources: Boolean = true
+  override protected def mockEntries: MockEntries = new MockEntries:
+    override def documentations: Set[SymbolDocumentation] = Set(
+      MockDocumentation("java/nio/file/SimpleFileVisitor#visitFile().", "visitFile", Seq(), Seq("file", "attrs"))
+    )
 
   @Test def `basic` =
     checkEdit(

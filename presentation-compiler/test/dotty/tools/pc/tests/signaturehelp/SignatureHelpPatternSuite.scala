@@ -32,8 +32,8 @@ class SignatureHelpPatternSuite extends BaseSignatureHelpSuite:
       // This test is changed because we're using bootstrapped stdlib
       // and in Scala3 the return type of unapply is Some[Int] which
       // satisfies the predicate for param name ( is case class and is synthetic )
-      """|(value: Int)
-         | ^^^^^^^^^^
+      """|(Int)
+         | ^^^
          |""".stripMargin
     )
 

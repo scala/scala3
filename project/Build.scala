@@ -1178,7 +1178,14 @@ object Build {
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
       ideTestsDependencyClasspath := {
-        (`stdlib-bootstrapped` / Compile / products).value
+        val dottyLib = (`scala3-library-bootstrapped` / Compile / classDirectory).value
+        val scalaLib =
+          (`scala3-library-bootstrapped` / Compile / dependencyClasspath)
+            .value
+            .map(_.data)
+            .filter(_.getName.matches("scala-library.*\\.jar"))
+            .toList
+        dottyLib :: scalaLib
       },
       Compile / buildInfoPackage := "dotty.tools.pc.util",
       Compile / buildInfoKeys := Seq(scalaVersion),

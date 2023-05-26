@@ -1,7 +1,6 @@
 package dotty.tools.pc
 
 import scala.jdk.CollectionConverters._
-import scala.meta.internal.semver.SemVer
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch

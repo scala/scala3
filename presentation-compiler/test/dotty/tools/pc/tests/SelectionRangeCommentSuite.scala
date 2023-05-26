@@ -2,7 +2,6 @@ package dotty.tools.pc.tests
 
 import dotty.tools.pc.base.BaseSelectionRangeSuite
 
-import org.junit.Ignore
 import org.junit.Test
 
 class SelectionRangeCommentSuite extends BaseSelectionRangeSuite:

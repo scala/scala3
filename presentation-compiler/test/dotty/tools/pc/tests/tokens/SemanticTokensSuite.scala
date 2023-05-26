@@ -194,7 +194,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
       s"""|package <<example>>/*namespace*/
           |
           |object <<A>>/*class*/ {
-          |  val <<x>>/*variable,definition,readonly*/ = <<List>>/*variable,readonly*/(1,2,3)
+          |  val <<x>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
           |  val <<s>>/*variable,definition,readonly*/ = <<Some>>/*class*/(1)
           |  val <<Some>>/*class*/(<<s1>>/*variable,definition,readonly*/) = <<s>>/*variable,readonly*/
           |  val <<Some>>/*class*/(<<s2>>/*variable,definition,readonly*/) = <<s>>/*variable,readonly*/
@@ -263,14 +263,13 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     )
 
   @Test def `vars` =
-    // Scala2 unpickiling returns List as a val instead of class
     check(
       s"""|package <<example>>/*namespace*/
           |
           |object <<A>>/*class*/ {
           |  val <<a>>/*variable,definition,readonly*/ = 1
           |  var <<b>>/*variable,definition*/ = 2
-          |  val <<c>>/*variable,definition,readonly*/ = <<List>>/*variable,readonly*/(1,<<a>>/*variable,readonly*/,<<b>>/*variable*/)
+          |  val <<c>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,<<a>>/*variable,readonly*/,<<b>>/*variable*/)
           |  <<b>>/*variable*/ = <<a>>/*variable,readonly*/
           |""".stripMargin
     )
@@ -279,10 +278,10 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
     check(
       """
         |object <<Main>>/*class*/ {
-        |  val <<a>>/*variable,definition,readonly*/ = <<List>>/*variable,readonly*/(1,2,3)
-        |  val <<y>>/*variable,definition,readonly*/ = <<Vector>>/*variable,readonly*/(1,2)
-        |  val <<z>>/*variable,definition,readonly*/ = <<Set>>/*variable,readonly*/(1,2,3)
-        |  val <<w>>/*variable,definition,readonly*/ = <<Right>>/*variable,readonly*/(1)
+        |  val <<a>>/*variable,definition,readonly*/ = <<List>>/*class*/(1,2,3)
+        |  val <<y>>/*variable,definition,readonly*/ = <<Vector>>/*class*/(1,2)
+        |  val <<z>>/*variable,definition,readonly*/ = <<Set>>/*class*/(1,2,3)
+        |  val <<w>>/*variable,definition,readonly*/ = <<Right>>/*class*/(1)
         |}""".stripMargin
     )
 

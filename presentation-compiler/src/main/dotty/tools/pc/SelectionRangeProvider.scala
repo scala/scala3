@@ -6,13 +6,10 @@ import java.util as ju
 import scala.jdk.CollectionConverters._
 import scala.meta.pc.OffsetParams
 
-import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.semanticdb.Scala3
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j
