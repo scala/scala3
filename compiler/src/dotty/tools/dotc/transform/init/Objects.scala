@@ -1179,6 +1179,7 @@ object Objects:
         if sym.is(Flags.Package) then
           Bottom
         else if sym.isStaticObject && sym != klass then
+          // The typer may use ThisType to refer to an object outside its definition.
           if elideObjectAccess then
             ObjectRef(sym.moduleClass.asClass)
           else
@@ -1404,7 +1405,7 @@ object Objects:
   def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
-      "Mutating other static objects during the initialization of one static object is discouraged. " +
+      "Mutating other static objects during the initialization of one static object is forbidden. " +
       "Calling trace:\n" + Trace.show
 
     report.warning(msg, Trace.position)
@@ -1412,7 +1413,7 @@ object Objects:
   def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-      "Reading mutable state of other static objects is discouraged as it breaks initialization-time irrelevance. " +
+      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " +
       "Calling trace: " + Trace.show
 
     report.warning(msg, Trace.position)
