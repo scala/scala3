@@ -648,7 +648,6 @@ object Objects:
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
-          ref
         else
           extendTrace(ddef) { eval(ddef.rhs, ref, cls, cacheResult = true) }
       else
@@ -817,6 +816,7 @@ object Objects:
    * @param sym          The symbol of the variable.
    */
   def readLocal(thisV: Value, sym: Symbol): Contextual[Value] = log("reading local " + sym.show, printer, (_: Value).show) {
+    def isByNameParam(sym: Symbol) = sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType]
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       if sym.is(Flags.Mutable) then
@@ -837,7 +837,7 @@ object Objects:
         try
           // Assume forward reference check is doing a good job
           val value = Env.valValue(sym)
-          if sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType] then
+          if isByNameParam(sym) then
             value match
             case fun: Fun =>
               given Env.Data = fun.env
@@ -856,7 +856,7 @@ object Objects:
           Bottom
 
     case _ =>
-      if sym.is(Flags.Param) && sym.info.isInstanceOf[ExprType] then
+      if isByNameParam(sym) then
         report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
         Bottom
       else
@@ -1089,10 +1089,10 @@ object Objects:
         eval(expr, thisV, klass)
 
       case Try(block, cases, finalizer) =>
-        eval(block, thisV, klass)
+        val res = evalExprs(block :: cases.map(_.body), thisV, klass).join
         if !finalizer.isEmpty then
           eval(finalizer, thisV, klass)
-        evalExprs(cases.map(_.body), thisV, klass).join
+        res
 
       case SeqLiteral(elems, elemtpt) =>
         evalExprs(elems, thisV, klass).join
