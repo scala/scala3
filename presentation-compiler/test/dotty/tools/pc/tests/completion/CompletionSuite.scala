@@ -168,10 +168,10 @@ class CompletionSuite extends BaseCompletionSuite:
          |CertPathBuilderSpi - java.security.cert
          |CertPathBuilderResult - java.security.cert
          |PKIXBuilderParameters - java.security.cert
-         |PooledConnectionBuilder - javax.sql
          |CertPathBuilderException - java.security.cert
          |PKIXCertPathBuilderResult - java.security.cert
-         |""".stripMargin
+         |""".stripMargin,
+      filter = !_.contains("javax.sql") // Not shipped with all JDKs
     )
 
   @Test def companion =
