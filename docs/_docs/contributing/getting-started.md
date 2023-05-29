@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Getting Started
+redirectFrom: /docs/contributing/workflow.html
 ---
 
 ## Scala CLA

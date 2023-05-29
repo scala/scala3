@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Debugging the Compiler
+redirectFrom: /docs/contributing/issues/debugging.html
 ---
 
 This section goes over the various ways to debug either the compiler or the code

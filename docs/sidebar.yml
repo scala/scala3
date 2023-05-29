@@ -185,6 +185,7 @@ subsection:
         directory: procedures
         index: contributing/procedures/index.md
         subsection:
+          - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
       - title: High Level Architecture
         directory: architecture

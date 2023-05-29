@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Other Debugging Techniques
+redirectFrom: /docs/contributing/issues/debugging.html
 ---
 
 ## Debug Manually with JDB
