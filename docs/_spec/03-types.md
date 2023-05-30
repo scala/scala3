@@ -370,6 +370,8 @@ A _type lambda_ of the form `[´\pm a_1 >: L_1 <: H_1´, ..., ´\pm a_n >: L_n <
 When applied to ´n´ type arguments that conform to the specified bounds, it produces another type ´U´.
 Type lambdas are always concrete types.
 
+The scope of a type parameter extends over the result type ´U´ as well as the bounds of the type parameters themselves.
+
 All type constructors conform to some type lambda.
 
 The type bounds of the parameters of a type lambda are in contravariant position, while its result type is in covariant position.
