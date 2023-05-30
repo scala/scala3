@@ -4,6 +4,7 @@ package repl
 import scala.language.unsafeNulls
 
 import dotc.*, core.*
+import printing.SyntaxHighlighting
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import reporting.Diagnostic
@@ -117,7 +118,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None,
 
   /** Render value definition result */
   def renderVal(d: Denotation)(using Context): Either[ReflectiveOperationException, Option[Diagnostic]] =
-    val dcl = d.symbol.showUser
+    val dcl = SyntaxHighlighting.highlight(d.symbol.showUser)
+
     def msg(s: String) = infoDiagnostic(s, d)
     try
       Right(
