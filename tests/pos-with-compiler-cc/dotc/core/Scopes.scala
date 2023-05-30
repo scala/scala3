@@ -60,7 +60,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends printing.Showable, caps.Pure {
+  abstract class Scope extends printing.Showable, Pure {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry | Null

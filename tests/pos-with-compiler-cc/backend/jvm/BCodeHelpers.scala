@@ -209,7 +209,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
   } // end of trait BCPickles
 
-  trait BCInnerClassGen extends caps.Pure {
+  trait BCInnerClassGen extends Pure {
 
     def debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
 

@@ -145,7 +145,7 @@ object PatternMatcher {
     private var nxId = 0
 
     /** The different kinds of plans */
-    sealed abstract class Plan extends caps.Pure { val id: Int = nxId; nxId += 1 }
+    sealed abstract class Plan extends Pure { val id: Int = nxId; nxId += 1 }
 
     case class TestPlan(test: Test, var scrutinee: Tree, span: Span,
                         var onSuccess: Plan) extends Plan {

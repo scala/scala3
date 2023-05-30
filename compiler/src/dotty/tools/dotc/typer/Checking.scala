@@ -784,7 +784,9 @@ object Checking {
     for case imp @ Import(qual, selectors) <- trees do
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros || name == Feature.erasedDefinitions
+        name == Feature.scala2macros
+        || name == Feature.erasedDefinitions
+        || name == Feature.captureChecking
 
       languageImport(qual) match
         case Some(nme.experimental)

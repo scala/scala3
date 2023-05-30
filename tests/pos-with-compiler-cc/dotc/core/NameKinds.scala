@@ -23,14 +23,14 @@ object NameKinds {
   @sharable private val uniqueNameKinds = util.HashMap[String, UniqueNameKind]()
 
   /** A class for the info stored in a derived name */
-  abstract class NameInfo extends caps.Pure {
+  abstract class NameInfo extends Pure {
     def kind: NameKind
     def mkString(underlying: TermName): String
     def map(f: SimpleName => SimpleName): NameInfo = this
   }
 
   /** An abstract base class of classes that define the kind of a derived name info */
-  abstract class NameKind(val tag: Int) extends caps.Pure { self =>
+  abstract class NameKind(val tag: Int) extends Pure { self =>
 
     /** The info class defined by this kind */
     type ThisInfo <: Info

@@ -3,7 +3,7 @@ package dotc.util
 
 /** A class for the reading part of mutable or immutable maps.
  */
-abstract class ReadOnlyMap[Key, Value] extends caps.Pure:
+abstract class ReadOnlyMap[Key, Value] extends Pure:
 
   def lookup(x: Key): Value | Null
 

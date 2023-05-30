@@ -15,7 +15,7 @@ import annotation.internal.sharable
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable, caps.Pure {
+abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable, Pure {
   import Positioned.{ids, nextId, debugId}
 
   private var mySpan: Span = _
