@@ -41,7 +41,7 @@ sealed trait ZipAndJarFileLookupFactory {
  */
 object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveClassPath(zipFile: File, override val release: Option[String])
-    extends ZipArchiveFileLookup[ClassFileEntryImpl]
+    extends ZipArchiveFileLookup[ClassFileEntry]
     with NoSourcePaths {
 
     override def findClassFile(className: String): Option[AbstractFile] = {
@@ -57,7 +57,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
 
     override private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = files(inPackage)
 
-    override protected def createFileEntry(file: FileZipArchive#Entry): ClassFileEntryImpl = ClassFileEntryImpl(file)
+    override protected def createFileEntry(file: FileZipArchive#Entry): ClassFileEntry = ClassFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isClass
   }
 
@@ -131,7 +131,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     override private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = cachedPackages.get(inPackage.dottedString) match {
       case None => Seq.empty
       case Some(PackageFileInfo(pkg, _)) =>
-        (for (file <- pkg if file.isClass) yield ClassFileEntryImpl(file)).toSeq
+        (for (file <- pkg if file.isClass) yield ClassFileEntry(file)).toSeq
     }
 
     override private[dotty] def hasPackage(pkg: PackageName) = cachedPackages.contains(pkg.dottedString)
@@ -162,7 +162,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
  */
 object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveSourcePath(zipFile: File)
-    extends ZipArchiveFileLookup[SourceFileEntryImpl]
+    extends ZipArchiveFileLookup[SourceFileEntry]
     with NoClassPaths {
 
     def release: Option[String] = None
@@ -171,7 +171,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
 
     override private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = files(inPackage)
 
-    override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntryImpl = SourceFileEntryImpl(file)
+    override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.isScalaOrJavaSource
   }
 

@@ -188,7 +188,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
     else
       packageToModuleBases.getOrElse(inPackage.dottedString, Nil).flatMap(x =>
         Files.list(x.resolve(inPackage.dirPathTrailingSlash)).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
-        ClassFileEntryImpl(x.toPlainFile)).toVector
+        ClassFileEntry(x.toPlainFile)).toVector
 
   override private[dotty] def list(inPackage: PackageName): ClassPathEntries =
     if (inPackage.isRoot) ClassPathEntries(packages(inPackage), Nil)
@@ -251,7 +251,7 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
     else {
       val sigFiles = packageIndex.getOrElse(inPackage.dottedString, Nil).iterator.flatMap(p =>
         Files.list(p).iterator.asScala.filter(_.getFileName.toString.endsWith(".sig")))
-      sigFiles.map(f => ClassFileEntryImpl(f.toPlainFile)).toVector
+      sigFiles.map(f => ClassFileEntry(f.toPlainFile)).toVector
     }
   }
 
@@ -273,8 +273,8 @@ final class CtSymClassPath(ctSym: java.nio.file.Path, release: Int) extends Clas
   }
 }
 
-case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {
-  override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className) map ClassFileEntryImpl.apply
+case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFileEntry] with NoSourcePaths {
+  override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className).map(new ClassFileEntry(_))
 
   def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)
@@ -285,19 +285,19 @@ case class DirectoryClassPath(dir: JFile) extends JFileDirectoryLookup[ClassFile
     else None
   }
 
-  protected def createFileEntry(file: AbstractFile): ClassFileEntryImpl = ClassFileEntryImpl(file)
+  protected def createFileEntry(file: AbstractFile): ClassFileEntry = ClassFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = f.isClass
 
   private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = files(inPackage)
 }
 
-case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntryImpl] with NoClassPaths {
+case class DirectorySourcePath(dir: JFile) extends JFileDirectoryLookup[SourceFileEntry] with NoClassPaths {
   def asSourcePathString: String = asClassPathString
 
-  protected def createFileEntry(file: AbstractFile): SourceFileEntryImpl = SourceFileEntryImpl(file)
+  protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
   protected def isMatchingFile(f: JFile): Boolean = endsScalaOrJava(f.getName)
 
-  override def findClass(className: String): Option[ClassRepresentation] = findSourceFile(className) map SourceFileEntryImpl.apply
+  override def findClass(className: String): Option[ClassRepresentation] = findSourceFile(className) map SourceFileEntry.apply
 
   private def findSourceFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className)

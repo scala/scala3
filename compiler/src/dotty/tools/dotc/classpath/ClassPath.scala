@@ -14,14 +14,6 @@ object ClassPathEntries {
   val empty = ClassPathEntries(Seq.empty, Seq.empty)
 }
 
-trait ClassFileEntry extends ClassRepresentation {
-  def file: AbstractFile
-}
-
-trait SourceFileEntry extends ClassRepresentation {
-  def file: AbstractFile
-}
-
 case class PackageName(dottedString: String) {
   val dirPathTrailingSlashJar: String = FileUtils.dirPathInJar(dottedString) + "/"
 
@@ -48,7 +40,7 @@ trait PackageEntry {
   def name: String
 }
 
-private[dotty] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFileEntry {
+private[dotty] case class ClassFileEntry(file: AbstractFile) extends ClassRepresentation {
   final def fileName: String = file.name
   def name: String = FileUtils.stripClassExtension(file.name) // class name
 
@@ -56,7 +48,7 @@ private[dotty] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFi
   def source: Option[AbstractFile] = None
 }
 
-private[dotty] case class SourceFileEntryImpl(file: AbstractFile) extends SourceFileEntry {
+private[dotty] case class SourceFileEntry(file: AbstractFile) extends ClassRepresentation {
   final def fileName: String = file.name
   def name: String = FileUtils.stripSourceExtension(file.name)
 

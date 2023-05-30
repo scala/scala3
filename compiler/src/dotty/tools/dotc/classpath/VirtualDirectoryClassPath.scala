@@ -7,7 +7,7 @@ import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils._
 import java.net.{URI, URL}
 
-case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {
+case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[ClassFileEntry] with NoSourcePaths {
   type F = AbstractFile
 
   // From AbstractFileClassLoader
@@ -38,7 +38,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
   def asURLs: Seq[URL] = Seq(new URI(dir.name).toURL)
   def asClassPathStrings: Seq[String] = Seq(dir.path)
 
-  override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className) map ClassFileEntryImpl.apply
+  override def findClass(className: String): Option[ClassRepresentation] = findClassFile(className).map(new ClassFileEntry(_))
 
   def findClassFile(className: String): Option[AbstractFile] = {
     val relativePath = FileUtils.dirPath(className) + ".class"
@@ -47,6 +47,6 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
 
   private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = files(inPackage)
 
-  protected def createFileEntry(file: AbstractFile): ClassFileEntryImpl = ClassFileEntryImpl(file)
+  protected def createFileEntry(file: AbstractFile): ClassFileEntry = ClassFileEntry(file)
   protected def isMatchingFile(f: AbstractFile): Boolean = f.isClass
 }
