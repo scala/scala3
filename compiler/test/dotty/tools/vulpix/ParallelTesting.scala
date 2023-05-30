@@ -57,6 +57,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   /** Tests should override the checkfiles with the current output */
   def updateCheckFiles: Boolean
 
+  /** Contains a list of failed tests to run, if list is empty no tests will run */
+  def failedTests: Option[List[String]]
+
   /** A test source whose files or directory of files is to be compiled
    *  in a specific way defined by the `Test`
    */
@@ -203,6 +206,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   }
 
   protected def shouldSkipTestSource(testSource: TestSource): Boolean = false
+
+  protected def shouldReRun(testSource: TestSource): Boolean =
+    failedTests.forall(rerun => testSource match {
+      case JointCompilationSource(_, files, _, _, _, _) =>
+        rerun.exists(filter => files.exists(file => file.getPath.contains(filter)))
+      case SeparateCompilationSource(_, dir, _, _) =>
+        rerun.exists(dir.getPath.contains)
+    })
 
   private trait CompilationLogic { this: Test =>
     def suppressErrors = false
@@ -359,7 +370,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           case SeparateCompilationSource(_, dir, _, _) =>
             testFilter.exists(dir.getPath.contains)
         }
-      filteredByName.filterNot(shouldSkipTestSource(_))
+      filteredByName.filterNot(shouldSkipTestSource(_)).filter(shouldReRun(_))
 
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
@@ -409,14 +420,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       synchronized { reproduceInstructions.append(ins) }
 
     /** The test sources that failed according to the implementing subclass */
-    private val failedTestSources = mutable.ArrayBuffer.empty[String]
+    private val failedTestSources = mutable.ArrayBuffer.empty[FailedTestInfo]
     protected final def failTestSource(testSource: TestSource, reason: Failure = Generic) = synchronized {
       val extra = reason match {
         case TimeoutFailure(title) => s", test '$title' timed out"
         case JavaCompilationFailure(msg) => s", java test sources failed to compile with: \n$msg"
         case Generic => ""
       }
-      failedTestSources.append(testSource.title + s" failed" + extra)
+      failedTestSources.append(FailedTestInfo(testSource.title, s" failed" + extra))
       fail(reason)
     }
 
@@ -550,7 +561,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def addToLast(str: String): Unit =
         diagnostics match
           case head :: tail =>
-            diagnostics = Diagnostic.Error(s"${head.msg.rawMessage}$str", head.pos) :: tail
+            diagnostics = Diagnostic.Error(s"${head.msg.message}$str", head.pos) :: tail
           case Nil =>
       var inError = false
       for line <- errorsText.linesIterator do

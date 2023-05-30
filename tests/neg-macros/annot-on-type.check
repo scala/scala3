@@ -1,0 +1,16 @@
+
+-- Error: tests/neg-macros/annot-on-type/Test_2.scala:6:7 --------------------------------------------------------------
+5 |  @voidAnnot
+6 |  type C // error
+  |  ^
+  |  macro annotations are not supported on type
+-- Error: tests/neg-macros/annot-on-type/Test_2.scala:10:9 -------------------------------------------------------------
+ 9 |    @voidAnnot
+10 |    type D // error
+   |    ^
+   |    macro annotations are not supported on type
+-- Error: tests/neg-macros/annot-on-type/Test_2.scala:2:5 --------------------------------------------------------------
+1 |@voidAnnot
+2 |type A // error
+  |^
+  |macro annotations are not supported on type

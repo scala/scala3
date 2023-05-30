@@ -88,8 +88,8 @@ object SymbolLoaders {
         return NoSymbol
       }
       else
-        throw new TypeError(
-          i"""$owner contains object and package with same name: $pname
+        throw TypeError(
+          em"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""")
     newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       completer).entered
@@ -331,8 +331,9 @@ abstract class SymbolLoader extends LazyType { self =>
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
       report.error(
-        if (msg == null) "i/o error while loading " + root.name
-        else "error while loading " + root.name + ",\n" + msg)
+        if msg == null then em"i/o error while loading ${root.name}"
+        else em"""error while loading ${root.name},
+                 |$msg""")
     }
     try {
       val start = System.currentTimeMillis

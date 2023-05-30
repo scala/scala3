@@ -7,14 +7,18 @@ import Contexts._
 import Symbols._
 import SymUtils._
 import dotty.tools.dotc.ast.tpd
-
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.ast.TreeMapWithImplicits
+import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 
+import scala.collection.mutable.ListBuffer
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
 class Inlining extends MacroTransform {
+
   import tpd._
 
   override def phaseName: String = Inlining.name
@@ -23,8 +27,10 @@ class Inlining extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
+  override def changesMembers: Boolean = true
+
   override def run(using Context): Unit =
-    if ctx.compilationUnit.needsInlining then
+    if ctx.compilationUnit.needsInlining || ctx.compilationUnit.hasMacroAnnotations then
       try super.run
       catch case _: CompilationUnit.SuspendException => ()
 
@@ -57,10 +63,33 @@ class Inlining extends MacroTransform {
   }
 
   private class InliningTreeMap extends TreeMapWithImplicits {
+
+    /** List of top level classes added by macro annotation in a package object.
+     *  These are added to the PackageDef that owns this particular package object.
+     */
+    private val newTopClasses = MutableSymbolMap[ListBuffer[Tree]]()
+
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
-        case tree: DefTree =>
+        case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree
+          else if tree.symbol.is(Param) then super.transform(tree)
+          else if
+            !tree.symbol.isPrimaryConstructor
+            && StagingContext.level == 0
+            && MacroAnnotations.hasMacroAnnotation(tree.symbol)
+          then
+            val trees = (new MacroAnnotations).expandAnnotations(tree)
+            val trees1 = trees.map(super.transform)
+
+            // Find classes added to the top level from a package object
+            val (topClasses, trees2) =
+              if ctx.owner.isPackageObject then trees1.partition(_.symbol.owner == ctx.owner.owner)
+              else (Nil, trees1)
+            if topClasses.nonEmpty then
+              newTopClasses.getOrElseUpdate(ctx.owner.owner, new ListBuffer) ++= topClasses
+
+            flatTree(trees2)
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
@@ -72,6 +101,16 @@ class Inlining extends MacroTransform {
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingContext.spliceContext)
+        case _: PackageDef =>
+          super.transform(tree) match
+            case tree1: PackageDef  =>
+              newTopClasses.get(tree.symbol.moduleClass) match
+                case Some(topClasses) =>
+                  newTopClasses.remove(tree.symbol.moduleClass)
+                  val newStats = tree1.stats ::: topClasses.result()
+                  cpy.PackageDef(tree1)(tree1.pid, newStats)
+                case _ => tree1
+            case tree1 => tree1
         case _ =>
           super.transform(tree)
     }

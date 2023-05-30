@@ -14,6 +14,7 @@ import Contexts._
 import Types._
 import Symbols._
 import Phases._
+import Decorators.em
 
 import dotty.tools.dotc.util.ReadOnlyMap
 import dotty.tools.dotc.report
@@ -21,7 +22,7 @@ import dotty.tools.dotc.report
 import tpd._
 
 import StdNames.nme
-import NameKinds.LazyBitMapName
+import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
 class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
@@ -71,7 +72,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
     def _1: Type = field.tpe match {
       case JavaArrayType(elem) => elem
       case _ =>
-        report.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
+        report.error(em"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
     }
     def _2: List[Tree] = field.elems
@@ -128,10 +129,11 @@ object DottyBackendInterface {
        *        the new lazy val encoding: https://github.com/lampepfl/dotty/issues/7140
        */
       def isStaticModuleField(using Context): Boolean =
-        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName)
+        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName) && !sym.name.is(LazyLocalName)
 
       def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-        (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
+          (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
+
         // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
       /**

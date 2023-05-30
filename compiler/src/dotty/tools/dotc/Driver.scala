@@ -94,7 +94,7 @@ class Driver {
       val newEntries: List[String] = files
         .flatMap { file =>
           if !file.exists then
-            report.error(s"File does not exist: ${file.path}")
+            report.error(em"File does not exist: ${file.path}")
             None
           else file.extension match
             case "jar" => Some(file.path)
@@ -102,10 +102,10 @@ class Driver {
               TastyFileUtil.getClassPath(file) match
                 case Some(classpath) => Some(classpath)
                 case _ =>
-                  report.error(s"Could not load classname from: ${file.path}")
+                  report.error(em"Could not load classname from: ${file.path}")
                   None
             case _ =>
-              report.error(s"File extension is not `tasty` or `jar`: ${file.path}")
+              report.error(em"File extension is not `tasty` or `jar`: ${file.path}")
               None
         }
         .distinct
@@ -171,7 +171,7 @@ class Driver {
    *  the other overloads without worrying about breaking compatibility
    *  with sbt.
    */
-  final def process(args: Array[String]): Reporter =
+  def process(args: Array[String]): Reporter =
     process(args, null: Reporter | Null, null: interfaces.CompilerCallback | Null)
 
   /** Entry point to the compiler using a custom `Context`.

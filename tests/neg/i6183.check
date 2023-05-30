@@ -4,7 +4,9 @@
   |    value render is not a member of Int.
   |    An extension method was tried, but could not be fully constructed:
   |
-  |        render(42)    failed with
+  |        render(42)
+  |
+  |        failed with:
   |
   |            Ambiguous overload. The overloaded alternatives of method render in object Test with types
   |             [B](b: B)(using x$2: DummyImplicit): Char

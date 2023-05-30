@@ -2,7 +2,9 @@
 package xsbti
 
 import java.io.File
+import java.nio.file.Path
 import scala.collection.mutable.ArrayBuffer
+import xsbti.VirtualFileRef
 import xsbti.api.ClassLike
 import xsbti.api.DependencyContext
 import DependencyContext._
@@ -24,12 +26,14 @@ class TestCallback extends AnalysisCallback
     assert(!apis.contains(source), s"startSource can be called only once per source file: $source")
     apis(source) = Seq.empty
   }
+  override def startSource(source: VirtualFile): Unit = ???
 
   override def binaryDependency(binary: File, name: String, fromClassName: String, source: File, context: DependencyContext): Unit = {
     binaryDependencies += ((binary, name, fromClassName, source, context))
   }
+  override def binaryDependency(binary: Path, name: String, fromClassName: String, source: VirtualFileRef, context: DependencyContext): Unit = ???
 
-  def generatedNonLocalClass(source: File,
+  override def generatedNonLocalClass(source: File,
                              module: File,
                              binaryClassName: String,
                              srcClassName: String): Unit = {
@@ -37,12 +41,13 @@ class TestCallback extends AnalysisCallback
     classNames(source) += ((srcClassName, binaryClassName))
     ()
   }
+  override def generatedNonLocalClass(source: VirtualFileRef, module: Path, binaryClassName: String, srcClassName: String): Unit = ???
 
-  def generatedLocalClass(source: File, module: File): Unit = {
+  override def generatedLocalClass(source: File, module: File): Unit = {
     products += ((source, module))
     ()
   }
-
+  override def generatedLocalClass(source: VirtualFileRef, module: Path): Unit = ???
 
   override def classDependency(onClassName: String, sourceClassName: String, context: DependencyContext): Unit = {
     if (onClassName != sourceClassName) classDependencies += ((onClassName, sourceClassName, context))
@@ -51,15 +56,23 @@ class TestCallback extends AnalysisCallback
   override def usedName(className: String, name: String, scopes: EnumSet[UseScope]): Unit = {
     usedNamesAndScopes(className) += TestUsedName(name, scopes)
   }
+
   override def api(source: File, classApi: ClassLike): Unit = {
     apis(source) = classApi +: apis(source)
   }
+  override def api(source: VirtualFileRef, classApi: ClassLike): Unit = ???
+
   override def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean): Unit = ()
   override def dependencyPhaseCompleted(): Unit = ()
   override def apiPhaseCompleted(): Unit = ()
   override def enabled(): Boolean = true
-  def mainClass(source: File, className: String): Unit = ()
 
+  override def mainClass(source: File, className: String): Unit = ()
+  override def mainClass(source: VirtualFileRef, className: String): Unit = ???
+
+  override def classesInOutputJar(): java.util.Set[String] = ???
+  override def getPickleJarPair(): java.util.Optional[xsbti.T2[Path, Path]] = ???
+  override def isPickleJava(): Boolean = ???
 }
 
 object TestCallback {
@@ -78,14 +91,8 @@ object TestCallback {
     }
 
     private def pairsToMultiMap[A, B](pairs: collection.Seq[(A, B)]): Map[A, Set[B]] = {
-      import scala.collection.mutable.{ HashMap, MultiMap }
-      val emptyMultiMap = new HashMap[A, scala.collection.mutable.Set[B]] with MultiMap[A, B]
-      val multiMap = pairs.foldLeft(emptyMultiMap) {
-        case (acc, (key, value)) =>
-          acc.addBinding(key, value)
-      }
-      // convert all collections to immutable variants
-      multiMap.toMap.view.mapValues(_.toSet).toMap.withDefaultValue(Set.empty)
+      pairs.groupBy(_._1).view.mapValues(values => values.map(_._2).toSet)
+        .toMap.withDefaultValue(Set.empty)
     }
   }
 }

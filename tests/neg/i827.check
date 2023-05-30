@@ -1,0 +1,11 @@
+-- [E069] Naming Error: tests/neg/i827.scala:3:8 -----------------------------------------------------------------------
+3 |  trait Inner extends self.Inner // error: cannot merge trait Inner in trait A with trait Inner in trait B as members of type (A & B)(B.this)
+  |        ^
+  |trait Inner cannot have the same name as trait Inner in trait A -- cannot define trait member with the same name as a trait member in self reference self.
+  |(Note: this can be resolved by using another name)
+-- [E110] Syntax Error: tests/neg/i827.scala:7:16 ----------------------------------------------------------------------
+7 |class C extends C // error: cyclic inheritance: class C extends itself
+  |                ^
+  |                Cyclic inheritance: class C extends itself
+  |
+  | longer explanation available when compiling with `-explain`

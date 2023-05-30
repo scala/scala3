@@ -625,7 +625,9 @@ class TreeUnpickler(reader: TastyReader,
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
-      val annots = annotFns.map(_(sym.owner))
+      val annotOwner =
+        if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
+      val annots = annotFns.map(_(annotOwner))
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
@@ -957,6 +959,51 @@ class TreeUnpickler(reader: TastyReader,
       tree.setDefTree
     }
 
+    /** Read enough of parent to determine its type, without reading arguments
+     *  of applications. This is necessary to make TreeUnpickler as lazy as Namer
+     *  in this regard. See i16673 for a test case.
+     */
+    private def readParentType()(using Context): Type =
+      readByte() match
+        case TYPEAPPLY =>
+          val end = readEnd()
+          val tycon = readParentType()
+          if tycon.typeParams.isEmpty then
+            goto(end)
+            tycon
+          else
+            val args = until(end)(readTpt())
+            val cls = tycon.classSymbol
+            assert(cls.typeParams.hasSameLengthAs(args))
+            cls.typeRef.appliedTo(args.tpes)
+        case APPLY | BLOCK =>
+          val end = readEnd()
+          try readParentType()
+          finally goto(end)
+        case SELECTin =>
+          val end = readEnd()
+          readName()
+          readTerm() match
+            case nu: New =>
+              try nu.tpe
+              finally goto(end)
+        case SHAREDterm =>
+          forkAt(readAddr()).readParentType()
+
+    /** Read template parents
+     *  @param  withArgs if false, only read enough of parent trees to determine their type
+     *                   but skip constructor arguments. Return any trees that were partially
+     *                   parsed in this way as InferredTypeTrees.
+     */
+    def readParents(withArgs: Boolean)(using Context): List[Tree] =
+      collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
+        nextUnsharedTag match
+          case APPLY | TYPEAPPLY | BLOCK =>
+            if withArgs then readTerm()
+            else InferredTypeTree().withType(readParentType())
+          case _ => readTpt()
+      }
+
     private def readTemplate(using Context): Template = {
       val start = currentAddr
       assert(sourcePathAt(start).isEmpty)
@@ -979,12 +1026,8 @@ class TreeUnpickler(reader: TastyReader,
         while (bodyIndexer.reader.nextByte != DEFDEF) bodyIndexer.skipTree()
         bodyIndexer.indexStats(end)
       }
-      val parents = collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
-        nextUnsharedTag match {
-          case APPLY | TYPEAPPLY | BLOCK => readTerm()(using parentCtx)
-          case _ => readTpt()(using parentCtx)
-        }
-      }
+      val parentReader = fork
+      val parents = readParents(withArgs = false)(using parentCtx)
       val parentTypes = parents.map(_.tpe.dealias)
       val self =
         if (nextByte == SELFDEF) {
@@ -998,7 +1041,13 @@ class TreeUnpickler(reader: TastyReader,
         selfInfo = if (self.isEmpty) NoType else self.tpt.tpe)
         .integrateOpaqueMembers
       val constr = readIndexedDef().asInstanceOf[DefDef]
-      val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
+      val mappedParents: LazyTreeList =
+        if parents.exists(_.isInstanceOf[InferredTypeTree]) then
+          // parents were not read fully, will need to be read again later on demand
+          new LazyReader(parentReader, localDummy, ctx.mode, ctx.source,
+            _.readParents(withArgs = true)
+             .map(_.changeOwner(localDummy, constr.symbol)))
+        else parents
 
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
@@ -1007,7 +1056,7 @@ class TreeUnpickler(reader: TastyReader,
       defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
       setSpan(start,
-        untpd.Template(constr, mappedParents, Nil, self, lazyStats)
+        untpd.Template(constr, mappedParents, self, lazyStats)
           .withType(localDummy.termRef))
     }
 
@@ -1236,6 +1285,12 @@ class TreeUnpickler(reader: TastyReader,
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
+            case APPLYsigpoly =>
+              val fn = readTerm()
+              val methType = readType()
+              val args = until(end)(readTerm())
+              val fun2 = typer.Applications.retypeSignaturePolymorphicFn(fn, methType)
+              tpd.Apply(fun2, args)
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()

@@ -11,4 +11,4 @@
 -- [E170] Type Error: tests/neg/classOf.scala:9:18 ---------------------------------------------------------------------
 9 |  val y = classOf[C { type I = String }] // error
   |                  ^^^^^^^^^^^^^^^^^^^^^
-  |                  Test.C{I = String} is not a class type
+  |                  Test.C{type I = String} is not a class type

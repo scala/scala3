@@ -58,6 +58,12 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
+  /** Used for match type reduction: If false, we don't recognize an abstract type
+   *  to be a subtype type of any of its base classes. This is in place only at the
+   *  toplevel; it is turned on again when we add parts of the scrutinee to the constraint.
+   */
+  protected var canWidenAbstract: Boolean = true
+
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping
    *  judgment to be true, we sometimes need to approximate the constraint
@@ -146,8 +152,8 @@ trait ConstraintHandling {
       return param
     LevelAvoidMap(0, maxLevel)(param) match
       case freshVar: TypeVar => freshVar.origin
-      case _ => throw new TypeError(
-        i"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
+      case _ => throw TypeError(
+        em"Could not decrease the nesting level of ${param} from ${nestingLevel(param)} to $maxLevel in $constraint")
 
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds = constraint.nonParamBounds(param)
 
@@ -251,7 +257,7 @@ trait ConstraintHandling {
   end LevelAvoidMap
 
   /** Approximate `rawBound` if needed to make it a legal bound of `param` by
-   *  avoiding wildcards and types with a level strictly greater than its
+   *  avoiding cycles, wildcards and types with a level strictly greater than its
    *  `nestingLevel`.
    *
    *  Note that level-checking must be performed here and cannot be delayed
@@ -277,7 +283,7 @@ trait ConstraintHandling {
         // This is necessary for i8900-unflip.scala to typecheck.
         val v = if necessaryConstraintsOnly then -this.variance else this.variance
         atVariance(v)(super.legalVar(tp))
-    approx(rawBound)
+    constraint.validBoundFor(param, approx(rawBound), isUpper)
   end legalBound
 
   protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
@@ -407,8 +413,10 @@ trait ConstraintHandling {
 
     constraint = constraint.addLess(p2, p1, direction = if pKept eq p1 then KeepParam2 else KeepParam1)
 
-    val boundKept    = constraint.nonParamBounds(pKept).substParam(pRemoved, pKept)
-    var boundRemoved = constraint.nonParamBounds(pRemoved).substParam(pRemoved, pKept)
+    val boundKept    = constraint.validBoundsFor(pKept,
+      constraint.nonParamBounds(   pKept).substParam(pRemoved, pKept).bounds)
+    var boundRemoved = constraint.validBoundsFor(pKept,
+      constraint.nonParamBounds(pRemoved).substParam(pRemoved, pKept).bounds)
 
     if level1 != level2 then
       boundRemoved = LevelAvoidMap(-1, math.min(level1, level2))(boundRemoved)
@@ -550,6 +558,13 @@ trait ConstraintHandling {
         inst
   end approximation
 
+  private def isTransparent(tp: Type, traitOnly: Boolean)(using Context): Boolean = tp match
+    case AndType(tp1, tp2) =>
+      isTransparent(tp1, traitOnly) && isTransparent(tp2, traitOnly)
+    case _ =>
+      val cls = tp.underlyingClassRef(refinementOK = false).typeSymbol
+      cls.isTransparentClass && (!traitOnly || cls.is(Trait))
+
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
    *  as long as the result is still a subtype of `bound`. But fall back to the
@@ -562,18 +577,17 @@ trait ConstraintHandling {
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
-      val tpd = tp.dealias
-      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
-        dropped = tpd :: dropped
+      if isTransparent(tp, traitOnly = true) && !kept.contains(tp) then
+        dropped = tp :: dropped
         defn.AnyType
-      else tpd match
+      else tp match
         case AndType(tp1, tp2) =>
           val tp1w = dropOneTransparentTrait(tp1)
           if tp1w ne tp1 then tp1w & tp2
           else
             val tp2w = dropOneTransparentTrait(tp2)
             if tp2w ne tp2 then tp1 & tp2w
-            else tpd
+            else tp
         case _ =>
           tp
 
@@ -612,8 +626,9 @@ trait ConstraintHandling {
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
-   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
+   *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint) and
+   *      is not transparent according to `isTransparent`.
    *   2a. If `inst` is a union type and `widenUnions` is true, approximate the union type
    *      from above by an intersection of all common base types, provided the result
    *      is a subtype of `bound`.
@@ -635,7 +650,7 @@ trait ConstraintHandling {
     def widenOr(tp: Type) =
       if widenUnions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+        if (tpw ne tp) && !isTransparent(tpw, traitOnly = false) && (tpw <:< bound) then tpw else tp
       else tp.hardenUnions
 
     def widenSingle(tp: Type) =
@@ -648,7 +663,12 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
+      else
+        val widenedFromSingle = widenSingle(inst)
+        val widenedFromUnion = widenOr(widenedFromSingle)
+        val widened = dropTransparentTraits(widenedFromUnion, bound)
+        widenIrreducible(widened)
+
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
@@ -729,16 +749,7 @@ trait ConstraintHandling {
     }
 
   /** The current bounds of type parameter `param` */
-  def bounds(param: TypeParamRef)(using Context): TypeBounds = {
-    val e = constraint.entry(param)
-    if (e.exists) e.bounds
-    else {
-      // TODO: should we change the type of paramInfos to nullable?
-      val pinfos: List[param.binder.PInfo] | Null = param.binder.paramInfos
-      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
-      else TypeBounds.empty
-    }
-  }
+  def bounds(param: TypeParamRef)(using Context): TypeBounds = constraint.bounds(param)
 
   /** Add type lambda `tl`, possibly with type variables `tvars`, to current constraint
    *  and propagate all bounds.
@@ -839,13 +850,17 @@ trait ConstraintHandling {
     //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
+      val saved = canWidenAbstract
+      canWidenAbstract = true
       try bound match
         case bound: TypeParamRef if constraint contains bound =>
           addParamBound(bound)
         case _ =>
           val pbound = avoidLambdaParams(bound)
           kindCompatible(param, pbound) && addBoundTransitively(param, pbound, !fromBelow)
-      finally addConstraintInvocations -= 1
+      finally
+        canWidenAbstract = saved
+        addConstraintInvocations -= 1
     }
   end addConstraint
 

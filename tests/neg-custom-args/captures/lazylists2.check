@@ -1,10 +1,3 @@
--- [E163] Declaration Error: tests/neg-custom-args/captures/lazylists2.scala:50:10 -------------------------------------
-50 |      def tail: {xs, f} LazyList[B] = xs.tail.map(f) // error
-   |          ^
-   |          error overriding method tail in trait LazyList of type -> {Mapped.this} LazyList[B];
-   |            method tail of type -> {xs, f} LazyList[B] has incompatible type
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:18:4 ------------------------------------
 18 |    final class Mapped extends LazyList[B]:  // error
    |    ^
@@ -37,6 +30,18 @@
 41 |      def tail: {this} LazyList[B] = xs.tail.map(f) // error
    |                                                 ^
    |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:45:4 ------------------------------------
+45 |    final class Mapped extends LazyList[B]:  // error
+   |    ^
+   |    Found:    {f, xs} LazyList[? B]
+   |    Required: {xs} LazyList[B]
+46 |      this: ({xs, f} Mapped) =>
+47 |      def isEmpty = false
+48 |      def head: B = f(xs.head)
+49 |      def tail: {xs, f} LazyList[B] = xs.tail.map(f)
+50 |    new Mapped
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/lazylists2.scala:60:10 --------------------------------------------------------
 60 |    class Mapped2 extends Mapped:  // error
    |    ^

@@ -7,7 +7,7 @@
   |        ^
   |      error overriding given instance y in trait T of type (using x$1: Int): String;
   |        given instance y of type (using x$1: Int): String cannot override final member given instance y in trait T
--- [E163] Declaration Error: tests/neg/abstract-givens.scala:9:8 -------------------------------------------------------
+-- [E164] Declaration Error: tests/neg/abstract-givens.scala:9:8 -------------------------------------------------------
 9 |  given z[T](using T): Seq[T] = List(summon[T]) // error
   |        ^
   |        error overriding given instance z in trait T of type [T](using x$1: T): List[T];

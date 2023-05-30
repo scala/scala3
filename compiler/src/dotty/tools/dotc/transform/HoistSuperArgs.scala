@@ -13,6 +13,7 @@ import collection.mutable
 import ast.Trees._
 import core.NameKinds.SuperArgName
 import SymUtils._
+import core.Decorators.*
 
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"
@@ -181,7 +182,9 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
     /** Hoist complex arguments in super call out of the class. */
     def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree = superCall match
-      case Block(defs, expr) =>
+      case Block(defs, expr) if !expr.symbol.owner.is(Scala2x) =>
+        // MO: The guard avoids the crash for #16351.
+        // It would be good to dig deeper, but I won't have the time myself to do it.
         cpy.Block(superCall)(
           stats = defs.mapconserve {
             case vdef: ValDef =>

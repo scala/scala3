@@ -14,10 +14,7 @@ import scala.collection.mutable
 
 import scala.annotation.tailrec
 
-trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
-
-  // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
-  // But Scalac accepts the program happily without it. Need to find out why.
+trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   def unsplice(tree: Trees.Tree[T]): Trees.Tree[T] = tree
 
@@ -105,6 +102,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => tree
   }
 
+  def stripTyped(tree: Tree): Tree = unsplice(tree) match
+    case Typed(expr, _) =>
+      stripTyped(expr)
+    case _ =>
+      tree
+
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length
@@ -112,6 +115,24 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Block(_, expr) => numArgs(expr)
     case _ => 0
   }
+
+  /** The type arguments of a possibly curried call */
+  def typeArgss(tree: Tree): List[List[Tree]] =
+    @tailrec
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case TypeApply(fn, args) => loop(fn, args :: argss)
+      case Apply(fn, args) => loop(fn, argss)
+      case _ => argss
+    loop(tree, Nil)
+
+  /** The term arguments of a possibly curried call */
+  def termArgss(tree: Tree): List[List[Tree]] =
+    @tailrec
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case Apply(fn, args) => loop(fn, args :: argss)
+      case TypeApply(fn, args) => loop(fn, argss)
+      case _ => argss
+    loop(tree, Nil)
 
   /** All term arguments of an application in a single flattened list */
   def allArguments(tree: Tree): List[Tree] = unsplice(tree) match {
@@ -298,7 +319,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    */
   def parentsKind(parents: List[Tree])(using Context): FlagSet = parents match {
     case Nil => NoInitsInterface
-    case Apply(_, _ :: _) :: _ => EmptyFlags
+    case Apply(_, _ :: _) :: _ | Block(_, _) :: _ => EmptyFlags
     case _ :: parents1 => parentsKind(parents1)
   }
 
@@ -310,6 +331,50 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Match(_, cases) => cases forall (c => forallResults(c.body, p))
     case Block(_, expr) => forallResults(expr, p)
     case _ => p(tree)
+  }
+
+  def appliedCore(tree: Tree): Tree = tree match {
+    case Apply(fn, _) => appliedCore(fn)
+    case TypeApply(fn, _)       => appliedCore(fn)
+    case AppliedTypeTree(fn, _) => appliedCore(fn)
+    case tree                   => tree
+  }
+
+  /** Is tree an application with result `this.type`?
+   *  Accept `b.addOne(x)` and also `xs(i) += x`
+   *  where the op is an assignment operator.
+   */
+  def isThisTypeResult(tree: Tree)(using Context): Boolean = appliedCore(tree) match {
+    case fun @ Select(receiver, op) =>
+      val argss = termArgss(tree)
+      tree.tpe match {
+        case ThisType(tref) =>
+          tref.symbol == receiver.symbol
+        case tref: TermRef =>
+          tref.symbol == receiver.symbol || argss.exists(_.exists(tref.symbol == _.symbol))
+        case _ =>
+          def checkSingle(sym: Symbol): Boolean =
+            (sym == receiver.symbol) || {
+              receiver match {
+                case Apply(_, _) => op.isOpAssignmentName                    // xs(i) += x
+                case _ => receiver.symbol != NoSymbol &&
+                  (receiver.symbol.isGetter || receiver.symbol.isField)      // xs.addOne(x) for var xs
+              }
+            }
+          @tailrec def loop(mt: Type): Boolean = mt match {
+            case m: MethodType =>
+              m.resType match {
+                case ThisType(tref) => checkSingle(tref.symbol)
+                case tref: TermRef  => checkSingle(tref.symbol)
+                case restpe => loop(restpe)
+              }
+            case PolyType(_, restpe) => loop(restpe)
+            case _ => false
+          }
+          fun.symbol != NoSymbol && loop(fun.symbol.info)
+      }
+    case _ =>
+      tree.tpe.isInstanceOf[ThisType]
   }
 }
 
@@ -686,24 +751,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** The type arguments of a possibly curried call */
-  def typeArgss(tree: Tree): List[List[Tree]] =
-    @tailrec
-    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
-      case TypeApply(fn, args) => loop(fn, args :: argss)
-      case Apply(fn, args) => loop(fn, argss)
-      case _ => argss
-    loop(tree, Nil)
-
-  /** The term arguments of a possibly curried call */
-  def termArgss(tree: Tree): List[List[Tree]] =
-    @tailrec
-    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
-      case Apply(fn, args) => loop(fn, args :: argss)
-      case TypeApply(fn, args) => loop(fn, argss)
-      case _ => argss
-    loop(tree, Nil)
-
   /** The type and term arguments of a possibly curried call, in the order they are given */
   def allArgss(tree: Tree): List[List[Tree]] =
     @tailrec
@@ -745,8 +792,6 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
       case Block(Nil, expr) =>
-        unapply(expr)
-      case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
         unapply(expr)
       case _ =>
         None
@@ -791,10 +836,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The symbols defined locally in a statement list */
   def localSyms(stats: List[Tree])(using Context): List[Symbol] =
-    val locals = new mutable.ListBuffer[Symbol]
-    for stat <- stats do
-      if stat.isDef && stat.symbol.exists then locals += stat.symbol
-    locals.toList
+    if stats.isEmpty then Nil
+    else
+      val locals = new mutable.ListBuffer[Symbol]
+      for stat <- stats do
+        if stat.isDef && stat.symbol.exists then locals += stat.symbol
+      locals.toList
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(using Context): Symbol =
@@ -1040,7 +1087,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case Inlined(_, Nil, expr) => unapply(expr)
         case Block(Nil, expr) => unapply(expr)
         case _ =>
-          tree.tpe.widenTermRefExpr.normalized match
+          tree.tpe.widenTermRefExpr.dealias.normalized match
             case ConstantType(Constant(x)) => Some(x)
             case _ => None
   }

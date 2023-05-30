@@ -9,6 +9,8 @@ import Symbols._, Contexts._, Types._, Decorators._
 import StdNames.nme
 import ast.TreeTypeMap
 
+import scala.collection.mutable.ListBuffer
+
 /** Rewrite an application
  *
  *    (((x1, ..., xn) => b): T)(y1, ..., yn)
@@ -70,9 +72,15 @@ object BetaReduce:
         original
   end apply
 
-  /** Beta-reduces a call to `ddef` with arguments `argSyms` */
+  /** Beta-reduces a call to `ddef` with arguments `args` */
   def apply(ddef: DefDef, args: List[Tree])(using Context) =
-    val bindings = List.newBuilder[ValDef]
+    val bindings = new ListBuffer[ValDef]()
+    val expansion1 = reduceApplication(ddef, args, bindings)
+    val bindings1 = bindings.result()
+    seq(bindings1, expansion1)
+
+  /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings */
+  def reduceApplication(ddef: DefDef, args: List[Tree], bindings: ListBuffer[ValDef])(using Context): Tree =
     val vparams = ddef.termParamss.iterator.flatten.toList
     assert(args.hasSameLengthAs(vparams))
     val argSyms =
@@ -84,7 +92,8 @@ object BetaReduce:
             val flags = Synthetic | (param.symbol.flags & Erased)
             val tpe = if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias else arg.tpe.widen
             val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
-            bindings += binding
+            if !(tpe.isInstanceOf[ConstantType] && isPureExpr(arg)) then
+              bindings += binding
             binding.symbol
 
     val expansion = TreeTypeMap(
@@ -99,8 +108,5 @@ object BetaReduce:
         case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
         case _ => super.transform(tree)
     }.transform(expansion)
-    val bindings1 =
-      bindings.result().filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
 
-    seq(bindings1, expansion1)
-  end apply
+    expansion1

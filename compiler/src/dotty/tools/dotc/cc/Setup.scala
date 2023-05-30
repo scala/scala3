@@ -11,6 +11,7 @@ import ast.tpd
 import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
+import util.Property
 
 /** A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:
@@ -98,7 +99,10 @@ extends tpd.TreeTraverser:
     def addCaptureRefinements(tp: Type): Type = tp match
       case _: TypeRef | _: AppliedType if tp.typeParams.isEmpty =>
         tp.typeSymbol match
-          case cls: ClassSymbol if !defn.isFunctionClass(cls) =>
+          case cls: ClassSymbol
+          if !defn.isFunctionClass(cls) && !cls.is(JavaDefined) =>
+            // We assume that Java classes can refer to capturing Scala types only indirectly,
+            // using type parameters. Hence, no need to refine them.
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
@@ -117,14 +121,14 @@ extends tpd.TreeTraverser:
         case tp: (TypeRef | AppliedType) =>
           val sym = tp.typeSymbol
           if sym.isClass then
-            tp.typeSymbol == defn.AnyClass
+            sym == defn.AnyClass
               // we assume Any is a shorthand of {*} Any, so if Any is an upper
               // bound, the type is taken to be impure.
           else superTypeIsImpure(tp.superType)
         case tp: (RefinedOrRecType | MatchType) =>
           superTypeIsImpure(tp.underlying)
         case tp: AndType =>
-          superTypeIsImpure(tp.tp1) || canHaveInferredCapture(tp.tp2)
+          superTypeIsImpure(tp.tp1) || needsVariable(tp.tp2)
         case tp: OrType =>
           superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
         case _ =>
@@ -132,23 +136,26 @@ extends tpd.TreeTraverser:
     }.showing(i"super type is impure $tp = $result", capt)
 
     /** Should a capture set variable be added on type `tp`? */
-    def canHaveInferredCapture(tp: Type): Boolean = {
+    def needsVariable(tp: Type): Boolean = {
       tp.typeParams.isEmpty && tp.match
         case tp: (TypeRef | AppliedType) =>
           val tp1 = tp.dealias
-          if tp1 ne tp then canHaveInferredCapture(tp1)
+          if tp1 ne tp then needsVariable(tp1)
           else
             val sym = tp1.typeSymbol
-            if sym.isClass then !sym.isValueClass && sym != defn.AnyClass
+            if sym.isClass then
+              !sym.isPureClass && sym != defn.AnyClass
             else superTypeIsImpure(tp1)
         case tp: (RefinedOrRecType | MatchType) =>
-          canHaveInferredCapture(tp.underlying)
+          needsVariable(tp.underlying)
         case tp: AndType =>
-          canHaveInferredCapture(tp.tp1) && canHaveInferredCapture(tp.tp2)
+          needsVariable(tp.tp1) && needsVariable(tp.tp2)
         case tp: OrType =>
-          canHaveInferredCapture(tp.tp1) || canHaveInferredCapture(tp.tp2)
-        case CapturingType(_, refs) =>
-          refs.isConst && !refs.isUniversal
+          needsVariable(tp.tp1) || needsVariable(tp.tp2)
+        case CapturingType(parent, refs) =>
+          needsVariable(parent)
+          && refs.isConst      // if refs is a variable, no need to add another
+          && !refs.isUniversal // if refs is {*}, an added variable would not change anything
         case _ =>
           false
     }.showing(i"can have inferred capture $tp = $result", capt)
@@ -181,7 +188,7 @@ extends tpd.TreeTraverser:
         CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
       case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
         CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
-      case _ if canHaveInferredCapture(tp) =>
+      case _ if needsVariable(tp) =>
         val cs = tp.dealias match
           case CapturingType(_, refs) => CaptureSet.Var(refs.elems)
           case _ => CaptureSet.Var()
@@ -206,17 +213,22 @@ extends tpd.TreeTraverser:
           val tycon1 = this(tycon)
           if defn.isNonRefinedFunction(tp) then
             // Convert toplevel generic function types to dependent functions
-            val args0 = args.init
-            var res0 = args.last
-            val args1 = mapNested(args0)
-            val res1 = this(res0)
-            if isTopLevel then
-              depFun(tycon1, args1, res1)
-                .showing(i"add function refinement $tp --> $result", capt)
-            else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
-              tp
+            if !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) then
+              // This type is a function after dealiasing, so we dealias and recurse.
+              // See #15925.
+              this(tp.dealias)
             else
-              tp.derivedAppliedType(tycon1, args1 :+ res1)
+              val args0 = args.init
+              var res0 = args.last
+              val args1 = mapNested(args0)
+              val res1 = this(res0)
+              if isTopLevel then
+                depFun(tycon1, args1, res1)
+                  .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", capt)
+              else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
+                tp
+              else
+                tp.derivedAppliedType(tycon1, args1 :+ res1)
           else
             tp.derivedAppliedType(tycon1, args.mapConserve(arg => this(arg)))
         case tp @ RefinedType(core, rname, rinfo) if defn.isFunctionType(tp) =>
@@ -382,20 +394,18 @@ extends tpd.TreeTraverser:
           return
         tree.tpt match
           case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
+            tree.paramss.foreach(traverse)
             transformTT(tpt, boxed = false, exact = true)
+            traverse(tree.rhs)
             //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
           case _ =>
-        traverseChildren(tree)
+            traverseChildren(tree)
       case tree @ ValDef(_, tpt: TypeTree, _) =>
-        val isVar = tree.symbol.is(Mutable)
-        val overrides = tree.symbol.allOverriddenSymbols.hasNext
-        //if overrides then println(i"transforming overriding ${tree.symbol}")
-        if isVar || overrides then
-          transformTT(tpt,
-              boxed = isVar,    // types of mutable variables are boxed
-              exact = overrides // types of symbols that override a parent don't get a capture set
-            )
-        traverseChildren(tree)
+        transformTT(tpt,
+          boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
+          exact = tree.symbol.allOverriddenSymbols.hasNext // types of symbols that override a parent don't get a capture set
+        )
+        traverse(tree.rhs)
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
@@ -475,4 +485,14 @@ extends tpd.TreeTraverser:
               capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
       case _ =>
   end traverse
+
+  def apply(tree: Tree)(using Context): Unit =
+    traverse(tree)(using ctx.withProperty(Setup.IsDuringSetupKey, Some(())))
 end Setup
+
+object Setup:
+  val IsDuringSetupKey = new Property.Key[Unit]
+
+  def isDuringSetup(using Context): Boolean =
+    ctx.property(IsDuringSetupKey).isDefined
+

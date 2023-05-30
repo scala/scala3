@@ -17,9 +17,11 @@ import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
-import config.Feature.migrateTo3
+import config.Feature.{migrateTo3, fewerBracesEnabled}
 import config.SourceVersion.`3.0`
-import reporting.{NoProfile, Profile}
+import reporting.{NoProfile, Profile, Message}
+
+import java.util.Objects
 
 object Scanners {
 
@@ -100,19 +102,23 @@ object Scanners {
       */
     var errOffset: Offset = NoOffset
 
+    /** Implements CharArrayReader's error method */
+    protected def error(msg: String, off: Offset): Unit =
+      error(msg.toMessage, off)
+
     /** Generate an error at the given offset */
-    def error(msg: String, off: Offset = offset): Unit = {
+    def error(msg: Message, off: Offset = offset): Unit = {
       errorButContinue(msg, off)
       token = ERROR
       errOffset = off
     }
 
-    def errorButContinue(msg: String, off: Offset = offset): Unit =
+    def errorButContinue(msg: Message, off: Offset = offset): Unit =
       report.error(msg, sourcePos(off))
 
     /** signal an error where the input ended in the middle of a token */
-    def incompleteInputError(msg: String): Unit = {
-      report.incompleteInputError(msg.toMessage, sourcePos())
+    def incompleteInputError(msg: Message): Unit = {
+      report.incompleteInputError(msg, sourcePos())
       token = EOF
       errOffset = offset
     }
@@ -122,9 +128,11 @@ object Scanners {
 
     // Setting token data ----------------------------------------------------
 
+    protected def initialCharBufferSize = 1024
+
     /** A character buffer for literals
       */
-    protected val litBuf = CharBuffer()
+    protected val litBuf = CharBuffer(initialCharBufferSize)
 
     /** append Unicode character to "litBuf" buffer
       */
@@ -159,7 +167,7 @@ object Scanners {
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
       if (!litBuf.isEmpty && isNumberSeparator(litBuf.last))
-        errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
+        errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
   class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
@@ -192,7 +200,7 @@ object Scanners {
       val rewriteTargets = List(s.newSyntax, s.oldSyntax, s.indent, s.noindent)
       val enabled = rewriteTargets.filter(_.value)
       if (enabled.length > 1)
-        error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
+        error(em"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
     private var myLanguageImportContext: Context = ctx
@@ -201,25 +209,6 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
-
-    private inline val fewerBracesByDefault = false
-      // turn on to study impact on codebase if `fewerBraces` was the default
-
-    private var fewerBracesEnabledCache = false
-    private var fewerBracesEnabledCtx: Context = NoContext
-
-    def fewerBracesEnabled =
-      if fewerBracesEnabledCtx ne myLanguageImportContext then
-        fewerBracesEnabledCache =
-          featureEnabled(Feature.fewerBraces)
-          || fewerBracesByDefault && indentSyntax && !migrateTo3
-          		// ensure that fewer braces is not the default for 3.0-migration since
-          		//     { x: T =>
-          		//       expr
-          		//     }
-                // would be ambiguous
-        fewerBracesEnabledCtx = myLanguageImportContext
-      fewerBracesEnabledCache
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -257,14 +246,14 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val commentBuf = CharBuffer()
+    private val commentBuf = CharBuffer(initialCharBufferSize)
 
     def toToken(identifier: SimpleName): Token =
       def handleMigration(keyword: Token): Token =
         if scala3keywords.contains(keyword) && migrateTo3 then
           val what = tokenString(keyword)
           report.errorOrMigrationWarning(
-            i"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
+            em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
             sourcePos(),
             from = `3.0`)
           patch(source, Span(offset), "`")
@@ -566,7 +555,7 @@ object Scanners {
 
       // If nextWidth is an indentation level not yet seen by enclosing indentation
       // region, invoke `handler`.
-      def handleNewIndentWidth(r: Region, handler: Indented => Unit): Unit = r match
+      inline def handleNewIndentWidth(r: Region, inline handler: Indented => Unit): Unit = r match
         case r @ Indented(curWidth, prefix, outer)
         if curWidth < nextWidth && !r.otherIndentWidths.contains(nextWidth) && nextWidth != lastWidth =>
           handler(r)
@@ -584,7 +573,7 @@ object Scanners {
        *     they start with `(`, `[` or `{`, or the last statement ends in a `return`.
        *   The Scala 2 rules apply under source `3.0-migration` or under `-no-indent`.
        */
-      def isContinuing =
+      inline def isContinuing =
         lastWidth < nextWidth
         && (openParensTokens.contains(token) || lastToken == RETURN)
         && !pastBlankLine
@@ -621,10 +610,11 @@ object Scanners {
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
+                  val lw = lastWidth
                   errorButContinue(
-                    i"""The start of this line does not match any of the previous indentation widths.
-                       |Indentation width of current line : $nextWidth
-                       |This falls between previous widths: ${ir.width} and $lastWidth"""))
+                    em"""The start of this line does not match any of the previous indentation widths.
+                        |Indentation width of current line : $nextWidth
+                        |This falls between previous widths: ${ir.width} and $lw"""))
               case r =>
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
@@ -640,16 +630,17 @@ object Scanners {
           else if lastToken == SELFARROW then
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
-          errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
+          val lw = lastWidth
+          errorButContinue(spaceTabMismatchMsg(lw, nextWidth))
       if token != OUTDENT then
         handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
       if next.token == EMPTY then
         profile.recordNewLine()
     end handleNewLine
 
-    def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
-      i"""Incompatible combinations of tabs and spaces in indentation prefixes.
-         |Previous indent : $lastWidth
+    def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth): Message =
+      em"""Incompatible combinations of tabs and spaces in indentation prefixes.
+          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
     def observeColonEOL(inTemplate: Boolean): Unit =
@@ -792,22 +783,24 @@ object Scanners {
     private def isSupplementary(high: Char, test: Int => Boolean, strict: Boolean = true): Boolean =
       isHighSurrogate(high) && {
         var res = false
-        nextChar()
-        val low = ch
+        val low = lookaheadChar()
         if isLowSurrogate(low) then
-          nextChar()
           val codepoint = toCodePoint(high, low)
-          if isValidCodePoint(codepoint) && test(codepoint) then
-            putChar(high)
-            putChar(low)
-            res = true
+          if isValidCodePoint(codepoint) then
+            if test(codepoint) then
+              putChar(high)
+              putChar(low)
+              nextChar()
+              nextChar()
+              res = true
           else
-            error(s"illegal character '${toUnicode(high)}${toUnicode(low)}'")
+            error(em"illegal character '${toUnicode(high)}${toUnicode(low)}'")
         else if !strict then
           putChar(high)
+          nextChar()
           res = true
         else
-          error(s"illegal character '${toUnicode(high)}' missing low surrogate")
+          error(em"illegal character '${toUnicode(high)}' missing low surrogate")
         res
       }
     private def atSupplementary(ch: Char, f: Int => Boolean): Boolean =
@@ -884,7 +877,7 @@ object Scanners {
               case _         => base = 10 ; putChar('0')
             }
             if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
-              error("invalid literal number")
+              error(em"invalid literal number")
           }
           fetchLeadingZero()
           getNumber()
@@ -904,7 +897,6 @@ object Scanners {
               if (ch == '\"') {
                 if (lookaheadChar() == '\"') {
                   nextRawChar()
-                  //offset += 3   // first part is positioned at the quote
                   nextRawChar()
                   stringPart(multiLine = true)
                 }
@@ -915,7 +907,6 @@ object Scanners {
                 }
               }
               else {
-                //offset += 1   // first part is positioned at the quote
                 stringPart(multiLine = false)
               }
             }
@@ -950,13 +941,13 @@ object Scanners {
                 val isEmptyCharLit = (ch == '\'')
                 getLitChar()
                 if ch == '\'' then
-                  if isEmptyCharLit then error("empty character literal (use '\\'' for single quote)")
-                  else if litBuf.length != 1 then error("illegal codepoint in Char constant: " + litBuf.toString.map(toUnicode).mkString("'", "", "'"))
+                  if isEmptyCharLit then error(em"empty character literal (use '\\'' for single quote)")
+                  else if litBuf.length != 1 then error(em"illegal codepoint in Char constant: ${litBuf.toString.map(toUnicode).mkString("'", "", "'")}")
                   else finishCharLit()
-                else if isEmptyCharLit then error("empty character literal")
-                else error("unclosed character literal")
+                else if isEmptyCharLit then error(em"empty character literal")
+                else error(em"unclosed character literal")
               case _ =>
-                error("unclosed character literal")
+                error(em"unclosed character literal")
             }
           }
           fetchSingleQuote()
@@ -987,35 +978,34 @@ object Scanners {
         case SU =>
           if (isAtEnd) token = EOF
           else {
-            error("illegal character")
+            error(em"illegal character")
             nextChar()
           }
         case _ =>
           def fetchOther() =
-            if (ch == '\u21D2') {
+            if ch == '\u21D2' then
               nextChar(); token = ARROW
-              report.deprecationWarning("The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
-            }
-            else if (ch == '\u2190') {
+              report.deprecationWarning(em"The unicode arrow `⇒` is deprecated, use `=>` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
+            else if ch == '\u2190' then
               nextChar(); token = LARROW
-              report.deprecationWarning("The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
-            }
-            else if (Character.isUnicodeIdentifierStart(ch)) {
+              report.deprecationWarning(em"The unicode arrow `←` is deprecated, use `<-` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", sourcePos(offset))
+            else if isUnicodeIdentifierStart(ch) then
               putChar(ch)
               nextChar()
               getIdentRest()
-            }
-            else if (isSpecial(ch)) {
+              if ch == '"' && token == IDENTIFIER then token = INTERPOLATIONID
+            else if isSpecial(ch) then
               putChar(ch)
               nextChar()
               getOperatorRest()
-            }
             else if isSupplementary(ch, isUnicodeIdentifierStart) then
               getIdentRest()
-            else {
-              error(s"illegal character '${toUnicode(ch)}'")
+              if ch == '"' && token == IDENTIFIER then token = INTERPOLATIONID
+            else if isSupplementary(ch, isSpecial) then
+              getOperatorRest()
+            else
+              error(em"illegal character '${toUnicode(ch)}'")
               nextChar()
-            }
           fetchOther()
       }
     }
@@ -1043,7 +1033,7 @@ object Scanners {
           if (ch == '/') nextChar()
           else skipComment()
         }
-        else if (ch == SU) incompleteInputError("unclosed comment")
+        else if (ch == SU) incompleteInputError(em"unclosed comment")
         else { nextChar(); skipComment() }
       def nestedComment() = { nextChar(); skipComment() }
       val start = lastCharOffset
@@ -1091,6 +1081,7 @@ object Scanners {
       next
 
     class LookaheadScanner(val allowIndent: Boolean = false) extends Scanner(source, offset, allowIndent = allowIndent) {
+      override protected def initialCharBufferSize = 8
       override def languageImportContext = Scanner.this.languageImportContext
     }
 
@@ -1123,14 +1114,14 @@ object Scanners {
         nextChar()
         finishNamedToken(BACKQUOTED_IDENT, target = this)
         if (name.length == 0)
-          error("empty quoted identifier")
+          error(em"empty quoted identifier")
         else if (name == nme.WILDCARD)
-          error("wildcard invalid as backquoted identifier")
+          error(em"wildcard invalid as backquoted identifier")
       }
-      else error("unclosed quoted identifier")
+      else error(em"unclosed quoted identifier")
     }
 
-    private def getIdentRest(): Unit = (ch: @switch) match {
+    @tailrec private def getIdentRest(): Unit = (ch: @switch) match {
       case 'A' | 'B' | 'C' | 'D' | 'E' |
            'F' | 'G' | 'H' | 'I' | 'J' |
            'K' | 'L' | 'M' | 'N' | 'O' |
@@ -1165,7 +1156,7 @@ object Scanners {
           finishNamed()
     }
 
-    private def getOperatorRest(): Unit = (ch: @switch) match {
+    @tailrec private def getOperatorRest(): Unit = (ch: @switch) match {
       case '~' | '!' | '@' | '#' | '%' |
            '^' | '*' | '+' | '-' | '<' |
            '>' | '?' | ':' | '=' | '&' |
@@ -1176,23 +1167,13 @@ object Scanners {
         if nxch == '/' || nxch == '*' then finishNamed()
         else { putChar(ch); nextChar(); getOperatorRest() }
       case _ =>
-        if (isSpecial(ch)) { putChar(ch); nextChar(); getOperatorRest() }
+        if isSpecial(ch) then { putChar(ch); nextChar(); getOperatorRest() }
+        else if isSupplementary(ch, isSpecial) then getOperatorRest()
         else finishNamed()
     }
 
     private def getIdentOrOperatorRest(): Unit =
-      if (isIdentifierPart(ch))
-        getIdentRest()
-      else ch match {
-        case '~' | '!' | '@' | '#' | '%' |
-             '^' | '*' | '+' | '-' | '<' |
-             '>' | '?' | ':' | '=' | '&' |
-             '|' | '\\' | '/' =>
-          getOperatorRest()
-        case _ =>
-          if (isSpecial(ch)) getOperatorRest()
-          else finishNamed()
-      }
+      if (isIdentifierPart(ch) || isSupplementary(ch, isIdentifierPart)) getIdentRest() else getOperatorRest()
 
     def isSoftModifier: Boolean =
       token == IDENTIFIER
@@ -1221,7 +1202,7 @@ object Scanners {
         nextChar()
         token = STRINGLIT
       }
-      else error("unclosed string literal")
+      else error(em"unclosed string literal")
     }
 
     private def getRawStringLit(): Unit =
@@ -1235,7 +1216,7 @@ object Scanners {
           getRawStringLit()
       }
       else if (ch == SU)
-        incompleteInputError("unclosed multi-line string literal")
+        incompleteInputError(em"unclosed multi-line string literal")
       else {
         putChar(ch)
         nextRawChar()
@@ -1305,7 +1286,7 @@ object Scanners {
         else if atSupplementary(ch, isUnicodeIdentifierStart) then
           getInterpolatedIdentRest(hasSupplement = true)
         else
-          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected", off = charOffset - 2)
+          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected".toMessage, off = charOffset - 2)
           putChar('$')
           getStringPart(multiLine)
       }
@@ -1313,9 +1294,9 @@ object Scanners {
         val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
         if (isUnclosedLiteral)
           if (multiLine)
-            incompleteInputError("unclosed multi-line string literal")
+            incompleteInputError(em"unclosed multi-line string literal")
           else
-            error("unclosed string literal")
+            error(em"unclosed string literal")
         else {
           putChar(ch)
           nextRawChar()
@@ -1467,7 +1448,7 @@ object Scanners {
     }
     def checkNoLetter(): Unit =
       if (isIdentifierPart(ch) && ch >= ' ')
-        error("Invalid literal number")
+        error(em"Invalid literal number")
 
     /** Read a number into strVal and set base
     */
@@ -1515,7 +1496,7 @@ object Scanners {
       if (ch == '\'') finishCharLit()
       else {
         token = op
-        strVal = if (name != null) name.toString else null
+        strVal = Objects.toString(name)
         litBuf.clear()
       }
     }
@@ -1550,7 +1531,7 @@ object Scanners {
     def resume(lastTokenData: TokenData): Unit = {
       this.copyFrom(lastTokenData)
       if (next.token != EMPTY && !ctx.reporter.hasErrors)
-        error("unexpected end of input: possible missing '}' in XML block")
+        error(em"unexpected end of input: possible missing '}' in XML block")
 
       nextToken()
     }

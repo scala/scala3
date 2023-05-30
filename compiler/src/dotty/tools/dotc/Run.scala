@@ -164,9 +164,14 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
   /** Will be set to true if any of the compiled compilation units contains
-   *  a pureFunctions or captureChecking language import.
+   *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
+
+  /** Will be set to true if any of the compiled compilation units contains
+   *  a captureChecking language import.
+   */
+  var ccImportEncountered = false
 
   def compile(files: List[AbstractFile]): Unit =
     try
@@ -226,9 +231,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
     ctx.base.usePhases(phases)
 
+    if ctx.settings.YnoDoubleBindings.value then
+      ctx.base.checkNoDoubleBindings = true
+
     def runPhases(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
+      var phasesWereAdjusted = false
 
       for (phase <- ctx.base.allPhases)
         if (phase.isRunnable)
@@ -247,6 +256,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
               Stats.record(s"retained typed trees at end of $phase", unit.tpdTree.treeSize)
             ctx.typerState.gc()
           }
+          if !phasesWereAdjusted then
+            phasesWereAdjusted = true
+            if !Feature.ccEnabledSomewhere then
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase.prev)
+              ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase)
 
       profiler.finished()
     }

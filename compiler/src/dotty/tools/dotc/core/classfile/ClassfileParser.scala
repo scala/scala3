@@ -165,11 +165,7 @@ class ClassfileParser(
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
       val superType =
-        if (isAnnotation) {
-          in.nextChar
-          defn.AnnotationClass.typeRef
-        }
-        else if (classRoot.symbol == defn.ComparableClass ||
+        if (classRoot.symbol == defn.ComparableClass ||
                  classRoot.symbol == defn.JavaCloneableClass ||
                  classRoot.symbol == defn.JavaSerializableClass) {
           // Treat these interfaces as universal traits
@@ -186,7 +182,6 @@ class ClassfileParser(
         // Consequently, no best implicit for the "Integral" evidence parameter of "range"
         // is found. Previously, this worked because of weak conformance, which has been dropped.
 
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
 
@@ -331,7 +326,7 @@ class ClassfileParser(
       if (isEnum) {
         val enumClass = sym.owner.linkedClass
         if (!enumClass.exists)
-          report.warning(s"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
+          report.warning(em"no linked class for java enum $sym in ${sym.owner}. A referencing class file might be missing an InnerClasses entry.")
         else {
           if (!enumClass.is(Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
           enumClass.addAnnotation(Annotation.Child(sym, NoSpan))
@@ -661,7 +656,7 @@ class ClassfileParser(
       case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
         // Silently ignore missing annotation classes like javac
         if ctx.debug then
-          report.warning(i"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+          report.warning(em"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
         None
       case _ =>
         if (hasError || skip) None
@@ -676,7 +671,7 @@ class ClassfileParser(
       // the classpath would *not* end up here. A class not found is signaled
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
-      report.warning("Caught: " + ex + " while parsing annotations in " + classfile)
+      report.warning(em"Caught: $ex while parsing annotations in $classfile")
       if (ctx.debug) ex.printStackTrace()
 
       None // ignore malformed annotations
@@ -758,7 +753,7 @@ class ClassfileParser(
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
           if (c ne null) res.constant = c
-          else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
+          else report.warning(em"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
 
         case tpnme.MethodParametersATTR =>
           val paramCount = in.nextByte
@@ -769,7 +764,7 @@ class ClassfileParser(
               res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
@@ -845,7 +840,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
+      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
@@ -972,7 +967,7 @@ class ClassfileParser(
                 }
               }
               else {
-                report.error(s"Could not find $path in ${classfile.underlyingSource}")
+                report.error(em"Could not find $path in ${classfile.underlyingSource}")
                 Array.empty
               }
             case _ =>
@@ -980,7 +975,7 @@ class ClassfileParser(
               val name = classfile.name.stripSuffix(".class") + ".tasty"
               val tastyFileOrNull = dir.lookupName(name, false)
               if (tastyFileOrNull == null) {
-                report.error(s"Could not find TASTY file $name under $dir")
+                report.error(em"Could not find TASTY file $name under $dir")
                 Array.empty
               } else
                 tastyFileOrNull.toByteArray

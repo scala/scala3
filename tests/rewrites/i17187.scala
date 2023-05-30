@@ -1,0 +1,33 @@
+
+object A:
+  object B:
+    def a = 2
+
+def m1 =
+  def b =
+    def c = 2
+
+def m2 =
+  if true then
+    val x = 3
+    if (false)
+      x
+    else
+      val y = 4
+      y
+
+def m3 =
+  try
+    val n2 = 21
+    val n1 = 4
+    n2 / n1
+  catch
+    case _ => 4
+
+def m4 =
+  val n2 = 21
+  try
+    val n1 = 4
+    n2 / n1
+  catch
+    case _ => 4

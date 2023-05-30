@@ -1,0 +1,9 @@
+
+-- Error: tests/neg-macros/annot-mod-class-add-top-method/Test_2.scala:1:0 ---------------------------------------------
+1 |@addTopLevelMethod // error
+  |^^^^^^^^^^^^^^^^^^
+  |macro annotation can not add top-level method. @addTopLevelMethod tried to add method toLevelMethod$macro$1.
+-- Error: tests/neg-macros/annot-mod-class-add-top-method/Test_2.scala:4:0 ---------------------------------------------
+4 |@addTopLevelMethod // error
+  |^^^^^^^^^^^^^^^^^^
+  |macro annotation can not add top-level method. @addTopLevelMethod tried to add method toLevelMethod$macro$2.

@@ -79,10 +79,10 @@ class ExtractUsedNamesSpecification {
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcA, srcB, srcC, srcD)
     val scalaVersion = scala.util.Properties.versionNumberString
     val namesA = standardNames ++ Set("Nothing", "Any")
-    val namesAX = standardNames ++ objectStandardNames ++ Set("x", "T", "A", "Nothing", "Any", "scala")
+    val namesAX = standardNames ++ Set("x", "T", "A", "Nothing", "Any")
     val namesB = Set("A", "Int", "A;init;", "Unit")
-    val namesC = objectStandardNames ++ Set("B;init;", "B", "Unit")
-    val namesD = standardNames ++ objectStandardNames ++ Set("C", "X", "foo", "Int", "T")
+    val namesC = Set("B;init;", "B", "Unit")
+    val namesD = standardNames ++ Set("C", "X", "foo", "Int", "T")
     assertEquals(namesA, usedNames("A"))
     assertEquals(namesAX, usedNames("A.X"))
     assertEquals(namesB, usedNames("B"))
@@ -131,13 +131,13 @@ class ExtractUsedNamesSpecification {
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(src1, src2)
     val expectedNames_lista =
-      standardNames ++ objectStandardNames ++ Set("B", "lista", "List", "A")
+      standardNames ++ Set("B", "lista", "List", "A")
     val expectedNames_at =
-      standardNames ++ objectStandardNames ++  Set("B", "at", "A", "T", "X0", "X1")
+      standardNames ++ Set("B", "at", "A", "T", "X0", "X1")
     val expectedNames_as =
-      standardNames ++ objectStandardNames ++  Set("B", "as", "S", "Y")
+      standardNames ++ Set("B", "as", "S", "Y")
     val expectedNames_foo =
-      standardNames ++ objectStandardNames ++
+      standardNames ++
        Set("B",
            "foo",
            "M",
@@ -146,7 +146,7 @@ class ExtractUsedNamesSpecification {
            "???",
            "Nothing")
     val expectedNames_bar =
-      standardNames ++ objectStandardNames ++
+      standardNames ++
        Set("B",
            "bar",
            "P1",
@@ -174,7 +174,7 @@ class ExtractUsedNamesSpecification {
                     |""".stripMargin
     val compilerForTesting = new ScalaCompilerForUnitTesting
     val usedNames = compilerForTesting.extractUsedNamesFromSrc(srcFoo, srcBar)
-    val expectedNames = standardNames ++ objectStandardNames ++ Set("Outer", "TypeInner", "Inner", "Int")
+    val expectedNames = standardNames ++ Set("Outer", "TypeInner", "Inner", "Int")
     assertEquals(expectedNames, usedNames("Bar"))
   }
 
@@ -227,7 +227,7 @@ class ExtractUsedNamesSpecification {
     def findPatMatUsages(in: String): Set[String] = {
       val compilerForTesting = new ScalaCompilerForUnitTesting
       val (_, callback) =
-        compilerForTesting.compileSrcs(List(List(sealedClass, in)), reuseCompilerInstance = false)
+        compilerForTesting.compileSrcs(List(List(sealedClass, in)))
       val clientNames = callback.usedNamesAndScopes.view.filterKeys(!_.startsWith("base."))
 
       val names: Set[String] = clientNames.flatMap {
@@ -308,10 +308,5 @@ class ExtractUsedNamesSpecification {
     "java.lang.Object;init;",
     // the return type of the default constructor is Unit
     "Unit"
-  )
-
-  private val objectStandardNames = Set(
-    // all Dotty objects extend scala.Serializable
-    "scala", "Serializable"
   )
 }

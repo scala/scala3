@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
 
 /** Provides methods to compare types.
  */
@@ -59,8 +59,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
-
-  protected var canWidenAbstract: Boolean = true
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -118,7 +116,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
-  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadt.addBound(sym, b, isUpper)
+  protected def gadtAddBound(sym: Symbol, b: Type, isUpper: Boolean): Boolean = ctx.gadtState.addBound(sym, b, isUpper)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
@@ -311,6 +309,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 thirdTryNamed(tp2)
               else
                 (  (tp1.name eq tp2.name)
+                && !sym1.is(Private)
                 && tp2.isPrefixDependentMemberRef
                 && isSubPrefix(tp1.prefix, tp2.prefix)
                 && tp1.signature == tp2.signature
@@ -420,16 +419,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           true
         }
         def compareTypeParamRef =
-          assumedTrue(tp1) ||
-          tp2.match {
-            case tp2: TypeParamRef => constraint.isLess(tp1, tp2)
-            case _ => false
-          } ||
-          isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2) || {
-            if (canConstrain(tp1) && !approx.high)
-              addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
-            else thirdTry
-          }
+          assumedTrue(tp1)
+          || tp2.dealias.match
+              case tp2a: TypeParamRef => constraint.isLess(tp1, tp2a)
+              case tp2a: AndType => recur(tp1, tp2a)
+              case _ => false
+          || isSubTypeWhenFrozen(bounds(tp1).hi.boxed, tp2)
+          || (if canConstrain(tp1) && !approx.high then
+                addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+              else thirdTry)
+
         compareTypeParamRef
       case tp1: ThisType =>
         val cls1 = tp1.cls
@@ -522,7 +521,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         res
 
       case CapturingType(parent1, refs1) =>
-        if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+        if tp2.isAny then true
+        else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+          || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
         then recur(parent1, tp2)
         else thirdTry
       case tp1: AnnotatedType if !tp1.isRefining =>
@@ -585,7 +586,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
-      assumedTrue(tp2) || {
+      assumedTrue(tp2)
+      || {
         val alwaysTrue =
           // The following condition is carefully formulated to catch all cases
           // where the subtype relation is true without needing to add a constraint
@@ -596,11 +598,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint) recur(tp1, bounds(tp2).lo.boxed)
           else isSubTypeWhenFrozen(tp1, tp2)
-        alwaysTrue || {
-          if (canConstrain(tp2) && !approx.low)
-            addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-          else fourthTry
-        }
+        alwaysTrue
+        || tp1.dealias.match
+            case tp1a: OrType => recur(tp1a, tp2)
+            case _ => false
+        || (if canConstrain(tp2) && !approx.low then
+              addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+            else fourthTry)
       }
 
     def thirdTry: Boolean = tp2 match {
@@ -826,7 +830,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if refs1.isAlwaysEmpty then recur(tp1, parent2)
             else subCaptures(refs1, refs2, frozenConstraint).isOK
               && sameBoxed(tp1, tp2, refs1)
-              && recur(tp1.widen.stripCapturing, parent2)
+              && (recur(tp1.widen.stripCapturing, parent2)
+                 || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
+                    // this alternative is needed in case the right hand side is a
+                    // capturing type that contains the lhs as an alternative of a union type.
+                 )
           catch case ex: AssertionError =>
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
@@ -1435,11 +1443,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if tp2 eq NoType then false
     else if tp1 eq tp2 then true
     else
-      val saved = constraint
-      val savedGadt = ctx.gadt.fresh
+      val savedCstr = constraint
+      val savedGadt = ctx.gadt
       inline def restore() =
-        state.constraint = saved
-        ctx.gadt.restore(savedGadt)
+        state.constraint = savedCstr
+        ctx.gadtState.restore(savedGadt)
       val savedSuccessCount = successCount
       try
         recCount += 1
@@ -1845,16 +1853,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = constraint
-    val preGadt = ctx.gadt.fresh
+    val preGadt = ctx.gadt
 
     def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      subsumes(left, right, preConstraint) && preGadt.subsumes(leftGadt, rightGadt, preGadt)
+      subsumes(left, right, preConstraint)
+      && subsumes(leftGadt.constraint, rightGadt.constraint, preGadt.constraint)
 
     if op1 then
       val op1Constraint = constraint
-      val op1Gadt = ctx.gadt.fresh
+      val op1Gadt = ctx.gadt
       constraint = preConstraint
-      ctx.gadt.restore(preGadt)
+      ctx.gadtState.restore(preGadt)
       if op2 then
         if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, constraint) then
           gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
@@ -1863,15 +1872,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
           constr.println(i"CUT - prefer $op1Constraint over $constraint")
           constraint = op1Constraint
-          ctx.gadt.restore(op1Gadt)
+          ctx.gadtState.restore(op1Gadt)
         else
           gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
           constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
           constraint = preConstraint
-          ctx.gadt.restore(preGadt)
+          ctx.gadtState.restore(preGadt)
       else
         constraint = op1Constraint
-        ctx.gadt.restore(op1Gadt)
+        ctx.gadtState.restore(op1Gadt)
       true
     else op2
   end necessaryEither
@@ -2043,10 +2052,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       gadts.println(i"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tparam)}")
       if (bound.isRef(tparam)) false
       else
-        val savedGadt = ctx.gadt.fresh
-        val success = gadtAddBound(tparam, bound, isUpper)
-        if !success then ctx.gadt.restore(savedGadt)
-        success
+        ctx.gadtState.rollbackGadtUnless(gadtAddBound(tparam, bound, isUpper))
     }
   }
 
@@ -3157,7 +3163,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             tp
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        throw new TypeError(s"Match type reduction $casesText")
+        throw TypeError(em"Match type reduction $casesText")
 
     inFrozenConstraint {
       // Empty types break the basic assumption that if a scrutinee and a

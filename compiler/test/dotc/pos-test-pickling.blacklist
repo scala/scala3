@@ -45,6 +45,7 @@ i9999.scala
 i6505.scala
 i15158.scala
 i15155.scala
+i15827.scala
 
 # Opaque type
 i5720.scala
@@ -83,7 +84,6 @@ boxmap-paper.scala
 
 # Function types print differnt after unpickling since test mispredicts Feature.preFundsEnabled
 caps-universal.scala
-
 
 # GADT cast applied to singleton type difference
 i4176-gadt.scala

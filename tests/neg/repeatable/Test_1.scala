@@ -6,8 +6,8 @@ import repeatable._
 @FirstLevel_0(Array()) // error
 trait U
 
-@FirstLevel_0(Array(Plain_0(4), Plain_0(5)))
-@FirstLevel_0(Array(Plain_0(6), Plain_0(7)))
+@FirstLevel_0(Array(new Plain_0(4), new Plain_0(5)))
+@FirstLevel_0(Array(new Plain_0(6), new Plain_0(7)))
 @SecondLevel_0(Array()) // error
 trait T
 

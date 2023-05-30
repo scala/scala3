@@ -1786,7 +1786,7 @@ Symbols:
 example/InstrumentTyper# => class InstrumentTyper extends Object { self: AnyRef & InstrumentTyper => +5 decls }
 example/InstrumentTyper#AnnotatedType# => type AnnotatedType  = Int @param
 example/InstrumentTyper#`<init>`(). => primary ctor <init> (): InstrumentTyper
-example/InstrumentTyper#all(). => method all => List[Matchable]
+example/InstrumentTyper#all(). => method all => List[Float | Double | List[Nothing] | Boolean | Unit | Char | String | LinkOption | Int | Long | Class[Option[Int]]]
 example/InstrumentTyper#clazzOf. => final val method clazzOf Option[Int]
 example/InstrumentTyper#singletonType(). => method singletonType (param x: Predef.type): Nothing
 example/InstrumentTyper#singletonType().(x) => param x: Predef.type
@@ -1847,7 +1847,7 @@ Occurrences:
 [24:37..24:40): Int -> scala/Int#
 
 Synthetics:
-[8:12..8:16):List => *.apply[Matchable]
+[8:12..8:16):List => *.apply[Float | Double | List[Nothing] | Boolean | Unit | Char | String | LinkOption | Int | Long | Class[Option[Int]]]
 [20:4..20:8):List => *.apply[Nothing]
 
 expect/InventedNames.scala
@@ -3493,7 +3493,7 @@ Uri => ValPattern.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 46 entries
+Occurrences => 44 entries
 Synthetics => 11 entries
 
 Symbols:
@@ -3532,9 +3532,7 @@ Occurrences:
 [8:11..8:15): Some -> scala/Some.
 [8:16..8:18): q1 <- example/ValPattern#q1.
 [8:21..8:25): None -> scala/None.
-[8:27..8:31): None -> scala/None.
-[8:38..8:42): None -> scala/None.
-[8:46..8:49): ??? -> scala/Predef.`???`().
+[8:29..8:32): ??? -> scala/Predef.`???`().
 [10:7..10:14): leftVar <- example/ValPattern#leftVar().
 [10:16..10:24): rightVar <- example/ValPattern#rightVar().
 [11:6..11:10): Some -> scala/Some.

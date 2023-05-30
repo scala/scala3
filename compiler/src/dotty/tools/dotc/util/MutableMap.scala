@@ -13,6 +13,10 @@ abstract class MutableMap[Key, Value] extends ReadOnlyMap[Key, Value]:
     remove(k)
     this
 
-  def clear(): Unit
+  /** Remove all bindings from this map.
+   *  @param resetToInitial If true, set back to initial configuration, which includes
+   *                        reallocating tables.
+   */
+  def clear(resetToInitial: Boolean = true): Unit
 
   def getOrElseUpdate(key: Key, value: => Value): Value

@@ -9,7 +9,7 @@
 15 |  val u = a  // error
    |          ^
    |          Found:    (a : box {*} String -> String)
-   |          Required: {*} (x$0: ? String) -> ? String
+   |          Required: {*} (x$0: String) -> String
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:16:2 ---------------------------------------------------------------
@@ -25,7 +25,7 @@
 -- Error: tests/neg-custom-args/captures/vars.scala:32:8 ---------------------------------------------------------------
 32 |  local { cap3 => // error
    |  ^
-   |  The expression's type box {*} (x$0: ? String) -> ? String is not allowed to capture the root capability `*`.
+   |  The expression's type box {x$0, *} (x$0: String) -> String is not allowed to capture the root capability `*`.
    |  This usually means that a capability persists longer than its allowed lifetime.
 33 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
 34 |    g

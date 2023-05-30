@@ -1,0 +1,12 @@
+macro generated class
+executed in: Bar$macro$5
+macro generated class
+executed in: Bar$macro$6
+macro generated class
+executed in: a.Bar$macro$3
+macro generated class
+executed in: a.b.Bar$macro$1
+macro generated class
+executed in: a.Bar$macro$4
+macro generated class
+executed in: a.c.Bar$macro$2

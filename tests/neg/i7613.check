@@ -1,4 +1,4 @@
--- Error: tests/neg/i7613.scala:10:16 ----------------------------------------------------------------------------------
+-- [E172] Type Error: tests/neg/i7613.scala:10:16 ----------------------------------------------------------------------
 10 |  new BazLaws[A] {}  // error
    |                ^
    |            No given instance of type Baz[A] was found for parameter x$1 of constructor BazLaws in trait BazLaws

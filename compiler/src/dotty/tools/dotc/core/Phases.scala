@@ -197,6 +197,14 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
+    /** Unlink `phase` from Denot transformer chain. This means that
+     *  any denotation transformer defined by the phase will not be executed.
+     */
+    def unlinkPhaseAsDenotTransformer(phase: Phase)(using Context) =
+      for i <- 0 until nextDenotTransformerId.length do
+        if nextDenotTransformerId(i) == phase.id then
+          nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
+
     private var myParserPhase: Phase = _
     private var myTyperPhase: Phase = _
     private var myPostTyperPhase: Phase = _

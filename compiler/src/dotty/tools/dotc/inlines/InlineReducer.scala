@@ -12,6 +12,8 @@ import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import config.Printers.inlining
 import util.SimpleIdentityMap
 
+import dotty.tools.dotc.transform.BetaReduce
+
 import collection.mutable
 
 /** A utility class offering methods for rewriting inlined code */
@@ -158,35 +160,32 @@ class InlineReducer(inliner: Inliner)(using Context):
     *
     *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
     *  refs among the ei's directly without creating an intermediate binding.
+    *
+    *  This variant of beta-reduction preserves the integrity of `Inlined` tree nodes.
     */
   def betaReduce(tree: Tree)(using Context): Tree = tree match {
-    case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-      // closureDef also returns a result for closures wrapped in Inlined nodes.
-      // These need to be preserved.
-      def recur(cl: Tree): Tree = cl match
-        case Inlined(call, bindings, expr) =>
-          cpy.Inlined(cl)(call, bindings, recur(expr))
-        case _ => ddef.tpe.widen match
-          case mt: MethodType if ddef.paramss.head.length == args.length =>
-            val bindingsBuf = new DefBuffer
-            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
-              arg.tpe.dealias match {
-                case ref @ TermRef(NoPrefix, _) => ref.symbol
-                case _ =>
-                  paramBindingDef(name, paramtp, arg, bindingsBuf)(
-                    using ctx.withSource(cl.source)
-                  ).symbol
-              }
-            }
-            val expander = new TreeTypeMap(
-              oldOwners = ddef.symbol :: Nil,
-              newOwners = ctx.owner :: Nil,
-              substFrom = ddef.paramss.head.map(_.symbol),
-              substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs)).withSpan(tree.span)
-          case _ => tree
-      recur(cl)
-    case _ => tree
+    case Apply(Select(cl, nme.apply), args) if defn.isFunctionType(cl.tpe) =>
+      val bindingsBuf = new mutable.ListBuffer[ValDef]
+      def recur(cl: Tree): Option[Tree] = cl match
+        case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
+          ddef.tpe.widen match
+            case mt: MethodType if ddef.paramss.head.length == args.length =>
+              Some(BetaReduce.reduceApplication(ddef, args, bindingsBuf))
+            case _ => None
+        case Block(stats, expr) if stats.forall(isPureBinding) =>
+          recur(expr).map(cpy.Block(cl)(stats, _))
+        case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+          recur(expr).map(cpy.Inlined(cl)(call, bindings, _))
+        case Typed(expr, tpt) =>
+          recur(expr)
+        case _ => None
+      recur(cl) match
+        case Some(reduced) =>
+          seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+        case None =>
+          tree
+    case _ =>
+      tree
   }
 
   /** The result type of reducing a match. It consists optionally of a list of bindings
@@ -269,12 +268,21 @@ class InlineReducer(inliner: Inliner)(using Context):
           }
         }
 
-        // Extractors contain Bind nodes in type parameter lists, the tree looks like this:
+        // Extractors can contain Bind nodes in type parameter lists,
+        // for that case tree looks like this:
         //   UnApply[t @ t](pats)(implicits): T[t]
         // Test case is pos/inline-caseclass.scala.
+        // Alternatively, for explicitly specified type binds in type annotations like in
+        //   case A(B): A[t]
+        // the tree will look like this:
+        //   Unapply[t](pats)(implicits) : T[t @ t]
+        // and the binds will be found in the type tree instead
+        // Test case is pos-macros/i15971
+        val tptBinds = getBinds(Set.empty[TypeSymbol], tpt)
         val binds: Set[TypeSymbol] = pat match {
-          case UnApply(TypeApply(_, tpts), _, _) => getBinds(Set.empty[TypeSymbol], tpts)
-          case _ => getBinds(Set.empty[TypeSymbol], tpt)
+          case UnApply(TypeApply(_, tpts), _, _) =>
+            getBinds(Set.empty[TypeSymbol], tpts) ++ tptBinds
+          case _ => tptBinds
         }
 
         val extractBindVariance = new TypeAccumulator[TypeBindsMap] {
@@ -303,11 +311,11 @@ class InlineReducer(inliner: Inliner)(using Context):
       def addTypeBindings(typeBinds: TypeBindsMap)(using Context): Unit =
         typeBinds.foreachBinding { case (sym, shouldBeMinimized) =>
           newTypeBinding(sym,
-            ctx.gadt.approximation(sym, fromBelow = shouldBeMinimized, maxLevel = Int.MaxValue))
+            ctx.gadtState.approximation(sym, fromBelow = shouldBeMinimized, maxLevel = Int.MaxValue))
         }
 
       def registerAsGadtSyms(typeBinds: TypeBindsMap)(using Context): Unit =
-        if (typeBinds.size > 0) ctx.gadt.addToConstraint(typeBinds.keys)
+        if (typeBinds.size > 0) ctx.gadtState.addToConstraint(typeBinds.keys)
 
       pat match {
         case Typed(pat1, tpt) =>

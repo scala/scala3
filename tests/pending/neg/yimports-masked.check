@@ -1,0 +1,10 @@
+
+C_2.scala:11: error: not found: type Numb
+    val v: Numb = Answer
+           ^
+-- [E006] Not Found Error: tests/neg/yimports-masked/C_2.scala:12:18 ---------------------------------------------------
+12 |    def greet() = println("hello, world!") // error
+   |                  ^^^^^^^
+   |                  Not found: println
+   |
+   | longer explanation available when compiling with `-explain`
