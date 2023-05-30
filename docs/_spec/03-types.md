@@ -18,8 +18,6 @@ FunctionArgTypes      ::=  InfixType
 FunParamClause        ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam         ::=  id ‘:’ Type
 TypeLambda            ::= TypeLambdaParams ‘=>>’ Type
-TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
-TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
 InfixType             ::=  RefinedType
                         |  RefinedTypeOrWildcard id [nl] RefinedTypeOrWildcard {id [nl] RefinedTypeOrWildcard}
 RefinedType           ::=  AnnotType {[nl] Refinement}
@@ -46,6 +44,11 @@ ParamType             ::=  [‘=>’] ParamValueType
 ParamValueType        ::=  ParamValueType [‘*’]
 TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
 Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+
+TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
+TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
+TypeParamClause       ::=  ‘[’ VariantTypeParam {‘,’ VariantTypeParam} ‘]’
+VariantTypeParam      ::=  {Annotation} [‘+’ | ‘-’] (id | ‘_’) [TypeParamClause] TypeBounds
 
 RefineDcl             ::=  ‘val’ ValDcl
                         |  ‘def’ DefDcl
@@ -224,6 +227,21 @@ The conversion from the concrete syntax to the abstract syntax works as follows:
 2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
 3. Create nested [refined types](#refined-types), one for every refined declaration.
 4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
+
+### Concrete Type Lambdas
+
+```ebnf
+TypeLambda            ::= TypeLambdaParams ‘=>>’ Type
+TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
+TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
+TypeParamClause       ::=  ‘[’ VariantTypeParam {‘,’ VariantTypeParam} ‘]’
+VariantTypeParam      ::=  {Annotation} [‘+’ | ‘-’] (id | ‘_’) [TypeParamClause] TypeBounds
+```
+
+At the top level of concrete type lambda parameters, variance annotations are not allowed.
+However, in internal types, all type lambda parameters have explicit variance annotations.
+
+When translating a concrete type lambda into an internal one, the variance of each type parameter is _inferred_ from its usages in the body of the type lambda.
 
 ## Definitions
 
