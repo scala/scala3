@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Testing Your Changes
+redirectFrom: /docs/contributing/issues/testing.html
 ---
 
 It is important to add tests before a pull request, to verify that everything is working as expected,
@@ -50,7 +51,7 @@ or be within a directory called `i101/` for a multi-file test.
 To run the test, invoke the sbt command `testCompilation i101` (this will match all tests with `"i101"` in
 the name, so it is useful to use a unique name)
 
-The test groups – `pos`, `neg`, etc. – are defined in [CompilationTests]. If you want to run a group
+The test groups – `pos`, `negAll`, etc. – are defined in [CompilationTests]. If you want to run a group
 of tests, e.g. `pos`, you can do so via `testOnly *CompilationTests -- *pos` command.
 
 ### Testing a Single Input File

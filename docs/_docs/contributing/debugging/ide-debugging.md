@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Debugging the Compiler
+title: Debugging with your IDE
 ---
 
 The debugger is a powerful tool to navigate the internals of the compiler and track bugs.

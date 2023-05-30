@@ -1,6 +1,7 @@
 ---
 layout: doc-page
-title: Pull Request Checklist
+title: Sending in a pull request
+redirectFrom: /docs/contributing/issues/checklist.html
 ---
 
 Once you solved the issue you were working on, you'll likely want to see your

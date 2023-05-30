@@ -1,39 +1,99 @@
 ---
 layout: doc-page
 title: Other Debugging Techniques
+redirectFrom: /docs/contributing/issues/debugging.html
 ---
 
-## Setting up the playground
-Consider the `../issues/Playground.scala` (relative to the Dotty directory) file is:
+## Debug Manually with JDB
+
+First, compile the file `tests/debug/while.scala`:
+
+```shell
+$ scalac tests/debug/while.scala
+```
+
+Second, run the compiled class with debugging enabled (suppose the main class is `Test`):
+
+```shell
+$ scala -d Test
+```
+
+Third, start JDB:
+
+```shell
+$ jdb -attach 5005 -sourcepath tests/debug/
+```
+
+You can run `help` for commands that supported by JDB.
+
+## Debug Automatically with Expect
+
+### 1. Annotate the source code with debug information.
+
+Following file (`tests/debug/while.scala`) is an example of annotated source code:
 
 ```scala
-object Playground {
-  def main(args: Array[String]) = {
-    println("Hello World")
+object Test {
+
+  def main(args: Array[String]): Unit = {
+    var a = 1 + 2
+    a = a + 3
+    a = 4 + 5 // [break] [step: while]
+
+    while (a * 8 < 100) { // [step: a += 1]
+      a += 1              // [step: while] [cont: print]
+    }
+
+    print(a) // [break] [cont]
   }
 }
 ```
 
-Then, you can debug Dotty by compiling this file via `scalac ../issues/Playground.scala` (from the SBT console) and collecting various debug output in process. This section documents techniques you can use to collect the debug info.
-
-[This](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2231) is the entry point to the Typer. The job of the Typer is to take an untyped tree, compute its type and turn it into a typed tree by attaching the type information to that tree. We will use this entry point to practice debugging techniques. E.g.:
+The debugging information is annotated as comments to the code in brackets:
 
 ```scala
-  def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(implicit ctx: Context): Tree =
-    trace(i"typing $tree", typr, show = true) {
-      println("Hello Debug!")
-      /*...*/
+val x = f(3) // [break] [next: line=5]
+val y = 5
 ```
 
-Then:
+1. A JDB command must be wrapped in brackets, like `[step]`. All JDB commands can be used.
+2. To check output of JDB for a command, use `[cmd: expect]`.
+3. If `expect` is wrapped in double quotes, regex is supported.
+4. Break commands are collected and set globally.
+5. Other commands will be send to jdb in the order they appear in the source file
+
+Note that JDB uses line number starts from 1.
+
+### 2. Generate Expect File
+
+Now we can run the following command to generate an expect file:
 
 ```shell
-scalac ../issues/Playground.scala
+compiler/test/debug/Gen tests/debug/while.scala > robot
 ```
 
-The techniques discussed below can be tried out in place of `println("Hello Debug")` in that location. They are of course applicable throughout the codebase.
+### 3. Run the Test
 
-## Show for human readable output
+First, compile the file `tests/debug/while.scala`:
+
+```shell
+$ scalac tests/debug/while.scala
+```
+
+Second, run the compiled class with debugging enabled:
+
+```shell
+$ scala -d Test
+```
+
+Finally, run the expect script:
+
+```shell
+expect robot
+```
+## Other tips
+### Show for human readable output
+
 Many objects in the compiler have a `show` method available on them via implicit rich wrapper:
 
 ```scala
@@ -42,7 +102,8 @@ println(tree.show)
 
 This will output every single tree passing through the typer (or wherever else you inject it) in a human readable form. Try calling `show` on anything you want to be human-readable, and chances are it will be possible to do so.
 
-## How to disable color
+### How to disable color
+
 Note that the `show` command above outputs the code in color. This is achieved by injecting special characters into the strings which terminals interpret as commands to change color of the output. This however may not be what you want, e.g. if you want to zero-in on a particular tree:
 
 ```scala
@@ -56,7 +117,7 @@ To disable color output from `show`, run `scalac` as follows:
 
 `scalac -color:never ../issues/Playground.scala`
 
-## Reporting as a non-intrusive println
+### Reporting as a non-intrusive println
 Consider you want to debug the `tree` that goes into `assertPositioned(tree)` in the `typed` method. You can do:
 
 ```scala
@@ -72,7 +133,7 @@ assertPositioned(tree.reporting(s"Tree is: $result"))
 
 `extension (a: A) def reporting(f: WrappedResult[T] ?=> String, p: Printer = Printers.default): A` is defined on all types. The function `f` can be written without the argument since it is a context function. The `result` variable is a part of the `WrapperResult` – a tiny framework powering the `reporting` function. Basically, whenever you are using `reporting` on an object `A`, you can use the `result: A` variable from this function and it will be equal to the object you are calling `reporting` on.
 
-## Printing out trees after phases
+### Printing out trees after phases
 To print out the trees you are compiling after the FrontEnd (scanner, parser, namer, typer) phases:
 
 ```shell
@@ -121,7 +182,7 @@ dotty.tools.dotc.typer.Namer.recur$3$$anonfun$2(Namer.scala:495)
 
 So, the error happened in the Namer's `checkNoConflict` method (after which all the stack frames represent the mechanics of issuing an error, not an intent that produced the error in the first place).
 
-## Configuring the printer output
+### Configuring the printer output
 Printing from the `show` and `-Xprint` is done from the Printers framework (discussed in more details below). The following settings influence the output of the printers:
 
 ```scala
@@ -181,8 +242,8 @@ package <empty>@<Playground.scala:1> {
 <empty>@<Playground.scala:1>
 ```
 
-## Figuring out an object creation site
-### Via ID
+### Figuring out an object creation site
+#### Via ID
 Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```shell
@@ -284,7 +345,7 @@ So that tree was created at:
 
 Since all the stack frames above it are technical frames executing the tree creation command, and the frame in question is the location where the intent of the tree creation was expressed.
 
-### Via tracer
+#### Via tracer
 Some objects may not be `Positioned` and hence their creation site is not debuggable via the technique in the section above. Say you target a tree at `Typer`'s `typed` method as follows:
 
 ```scala
@@ -309,7 +370,7 @@ if (tree.show == """println("Hello World")""") {
 }
 ```
 
-## Built-in Logging Architecture
+### Built-in Logging Architecture
 Dotty has a lot of debug calls scattered throughout the code, most of which are disabled by default. At least three (possibly intertwined) architectures for logging are used for that:
 
 - Printer
@@ -318,7 +379,7 @@ Dotty has a lot of debug calls scattered throughout the code, most of which are 
 
 These do not follow any particular system and so probably it will be easier to go with `println` most of the times instead.
 
-### Printers
+#### Printers
 Defined in [Printers.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/config/Printers.scala) as a set of variables, each responsible for its own domain. To enable them, replace `noPrinter` with `default`. [Example](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2226) from the code:
 
 ```scala
@@ -327,7 +388,7 @@ typr.println(i"make contextual function $tree / $pt ---> $ifun")
 
 `typr` is a printer.
 
-### Tracing
+#### Tracing
 Defined in [trace.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/trace.scala). [Example](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2232) from the code:
 
 ```scala
@@ -344,5 +405,5 @@ To enable for a single trace, do the following:
 trace.force(i"typing $tree", typr, show = true) { // ...
 ```
 
-### Reporter
+#### Reporter
 Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run scalac with `-Ylog:typer` option.

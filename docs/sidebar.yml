@@ -166,24 +166,21 @@ subsection:
     index: contributing/index.md
     subsection:
       - page: contributing/getting-started.md
-      - index: contributing/workflow.md
+      - page: contributing/setting-up-your-ide.md
+      - index: contributing/issues/diagnosing-your-issue.md
         subsection:
           - page: contributing/issues/reproduce.md
           - page: contributing/issues/cause.md
           - page: contributing/issues/areas.md
-          - page: contributing/issues/debugging.md
-          - page: contributing/issues/other-debugging.md
-          - page: contributing/issues/inspection.md
-          - page: contributing/issues/efficiency.md
-          - page: contributing/issues/testing.md
-          - page: contributing/issues/checklist.md
-      - title: IDEs and Tools
-        directory: tools
-        index: contributing/tools/index.md
+      - index: contributing/debugging/debugging.md
         subsection:
-          - page: contributing/tools/ide.md
-          - page: contributing/tools/mill.md
-          - page: contributing/tools/scalafix.md
+          - page: contributing/debugging/ide-debugging.md
+          - page: contributing/debugging/inspection.md
+          - page: contributing/debugging/other-debugging.md
+      - page: contributing/testing.md
+      - page: contributing/scaladoc.md
+      - page: contributing/sending-in-a-pr.md
+      - page: contributing/cheatsheet.md
       - title: Procedures
         directory: procedures
         index: contributing/procedures/index.md
