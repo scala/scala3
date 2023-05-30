@@ -6,9 +6,70 @@ chapter: 3
 
 # Types
 
-In this specification, we specify and use types in terms of the following _abstract syntax_.
-The abstract syntax does not directly correspond to concrete syntax.
-It abstracts away irrelevant details such as precedence and grouping, and contains shapes of types that cannot be directly expressed using the concrete syntax.
+```ebnf
+Type                  ::=  FunType
+                        |  TypeLambda
+                        |  InfixType
+FunType               ::=  FunctionArgTypes ‘=>’ Type
+                        |  TypeLambdaParams '=>' Type
+FunctionArgTypes      ::=  InfixType
+                        |  ‘(’ [ FunArgTypes ] ‘)’
+                        |  FunParamClause
+FunParamClause        ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+TypedFunParam         ::=  id ‘:’ Type
+TypeLambda            ::= TypeLambdaParams ‘=>>’ Type
+TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
+TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
+InfixType             ::=  RefinedType
+                        |  RefinedTypeOrWildcard id [nl] RefinedTypeOrWildcard {id [nl] RefinedTypeOrWildcard}
+RefinedType           ::=  AnnotType {[nl] Refinement}
+AnnotType             ::=  SimpleType {Annotation}
+SimpleType            ::=  SimpleLiteral
+                        |  SimpleType1
+SimpleType1           ::=  id
+                        |  Singleton ‘.’ id
+                        |  Singleton ‘.’ ‘type’
+                        |  ‘(’ TypesOrWildcards ‘)’
+                        |  Refinement
+                        |  SimpleType1 TypeArgs
+                        |  SimpleType1 ‘#’ id
+Singleton             ::=  SimpleRef
+                        |  SimpleLiteral
+                        |  Singleton ‘.’ id
+SimpleRef             ::=  id
+                        |  [id ‘.’] ‘this’
+                        |  [id ‘.’] ‘super’ [‘[’ id ‘]’] ‘.’ id
+FunArgTypes           ::=  FunArgType { ‘,’ FunArgType }
+FunArgType            ::=  Type
+                        |  ‘=>’ Type
+ParamType             ::=  [‘=>’] ParamValueType
+ParamValueType        ::=  ParamValueType [‘*’]
+TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
+Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+
+RefineDcl             ::=  ‘val’ ValDcl
+                        |  ‘def’ DefDcl
+                        |  ‘type’ {nl} TypeDcl
+
+TypeBounds            ::=  [‘>:’ Type] [‘<:’ Type]
+
+TypesOrWildcards      ::=  TypeOrWildcard {‘,’ TypeOrWildcard}
+TypeOrWildcard        ::=  Type
+                        |  WildcardType
+RefinedTypeOrWildcard ::=  RefinedType
+                        |  WildcardType
+WildcardType          ::=  (‘?‘ | ‘_‘) TypeBounds
+```
+
+The above grammer describes the concrete syntax of types that can be written in user code.
+Semantic operations on types in the Scala type system are better defined in terms of _internal types_, which are desugared from the concrete type syntax.
+
+## Internal Types
+
+The following _abstract grammar_ defines the shape of _internal types_.
+In this specification, unless otherwise noted, "types" refer to internal types.
+Internal types abstract away irrelevant details such as precedence and grouping, and contain shapes of types that cannot be directly expressed using the concrete syntax.
+They also contain simplified, decomposed shapes for complex concrete syntax types, such as refined types.
 
 ```ebnf
 Type              ::=  ‘AnyKind‘
@@ -84,7 +145,89 @@ TypeAlias         ::=  ‘=‘ Type
 TypeBounds        ::=  ‘<:‘ Type ‘>:‘ Type
 ```
 
+### Translation of Concrete Types into Internal Types
+
+Concrete types are recursively translated, or desugared, into internal types.
+Most shapes of concrete types have a one-to-one translation to shapes of internal types.
+We elaborate hereafter on the translation of the other ones.
+
+### Infix Types
+
+```ebnf
+InfixType     ::=  CompoundType {id [nl] CompoundType}
+```
+
+A concrete _infix type_ ´T_1´ `op` ´T_2´ consists of an infix operator `op` which gets applied to two type operands ´T_1´ and ´T_2´.
+The type is translated to the internal type application `op`´[T_1, T_2]´.
+The infix operator `op` may be an arbitrary identifier.
+
+Type operators follow the same [precedence and associativity as term operators](06-expressions.html#prefix-infix-and-postfix-operations).
+For example, `A + B * C` parses as `A + (B * C)` and `A | B & C` parses as `A | (B & C)`.
+Type operators ending in a colon ‘:’ are right-associative; all other operators are left-associative.
+
+In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´, all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same associativity.
+If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
+
+The type operators `|` and `&` are not really special.
+Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
+
+### Function Types
+
+```ebnf
+Type              ::=  FunctionArgTypes ‘=>’ Type
+FunctionArgTypes  ::=  InfixType
+                    |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
+```
+
+The concrete type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
+The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.md#by-name-parameters) of type ´T´.
+
+Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
+
+Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
+
+Function types translate into internal class types that define an `apply` method.
+Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ translates to the internal class type `scala.Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
+In particular ´() \Rightarrow R´ is a shorthand for class type `scala.Function´_0´[´R´]`.
+
+Such class types behave as if they were instances of the following trait:
+
+```scala
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+```
+
+Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
+
+### Concrete Refined Types
+
+```ebnf
+RefinedType           ::=  AnnotType {[nl] Refinement}
+SimpleType1           ::=  ...
+                        |  Refinement
+Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+
+RefineDcl             ::=  ‘val’ ValDcl
+                        |  ‘def’ DefDcl
+                        |  ‘type’ {nl} TypeDcl
+```
+
+In the concrete syntax of types, refinements can contain several refined declarations.
+Moreover, the refined declarations can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
+
+In the internal types, each refinement defines exactly one refined declaration, and references to `this` must be made explicit in a recursive type.
+
+The conversion from the concrete syntax to the abstract syntax works as follows:
+
+1. Create a fresh recursive this name ´\alpha´.
+2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
+3. Create nested [refined types](#refined-types), one for every refined declaration.
+4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
+
 ## Definitions
+
+From here onwards, we refer to internal types by default.
 
 ### Kinds
 
@@ -1047,137 +1190,3 @@ eglb(A, _)                      = A                     if A is not a trait
 eglb(_, B)                      = B                     if B is not a trait
 eglb(A, _)                      = A                     // use first
 ```
-
-## Concrete syntax
-
-```ebnf
-Type                  ::=  FunType
-                        |  TypeLambda
-                        |  InfixType
-FunType               ::=  FunctionArgTypes ‘=>’ Type
-                        |  TypeLambdaParams '=>' Type
-FunctionArgTypes      ::=  InfixType
-                        |  ‘(’ [ FunArgTypes ] ‘)’
-                        |  FunParamClause
-FunParamClause        ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
-TypedFunParam         ::=  id ‘:’ Type
-TypeLambda            ::= TypeLambdaParams ‘=>>’ Type
-TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
-TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
-InfixType             ::=  RefinedType
-                        |  RefinedTypeOrWildcard id [nl] RefinedTypeOrWildcard {id [nl] RefinedTypeOrWildcard}
-RefinedType           ::=  AnnotType {[nl] Refinement}
-AnnotType             ::=  SimpleType {Annotation}
-SimpleType            ::=  SimpleLiteral
-                        |  SimpleType1
-SimpleType1           ::=  id
-                        |  Singleton ‘.’ id
-                        |  Singleton ‘.’ ‘type’
-                        |  ‘(’ TypesOrWildcards ‘)’
-                        |  Refinement
-                        |  SimpleType1 TypeArgs
-                        |  SimpleType1 ‘#’ id
-Singleton             ::=  SimpleRef
-                        |  SimpleLiteral
-                        |  Singleton ‘.’ id
-SimpleRef             ::=  id
-                        |  [id ‘.’] ‘this’
-                        |  [id ‘.’] ‘super’ [‘[’ id ‘]’] ‘.’ id
-FunArgTypes           ::=  FunArgType { ‘,’ FunArgType }
-FunArgType            ::=  Type
-                        |  ‘=>’ Type
-ParamType             ::=  [‘=>’] ParamValueType
-ParamValueType        ::=  ParamValueType [‘*’]
-TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
-Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
-
-RefineDcl             ::=  ‘val’ ValDcl
-                        |  ‘def’ DefDcl
-                        |  ‘type’ {nl} TypeDcl
-
-TypeBounds            ::=  [‘>:’ Type] [‘<:’ Type]
-
-TypesOrWildcards      ::=  TypeOrWildcard {‘,’ TypeOrWildcard}
-TypeOrWildcard        ::=  Type
-                        |  WildcardType
-RefinedTypeOrWildcard ::=  RefinedType
-                        |  WildcardType
-WildcardType          ::=  (‘?‘ | ‘_‘) TypeBounds
-```
-
-Most types in the concrete syntax translate one to one to types in the abstract syntax.
-We elaborate hereafter on the translation of the other ones.
-
-### Infix Types
-
-```ebnf
-InfixType     ::=  CompoundType {id [nl] CompoundType}
-```
-
-An _infix type_ ´T_1´ `op` ´T_2´ consists of an infix operator `op` which gets applied to two type operands ´T_1´ and ´T_2´.
-The type is equivalent to the type application `op`´[T_1, T_2]´.
-The infix operator `op` may be an arbitrary identifier.
-
-Type operators follow the same [precedence and associativity as term operators](06-expressions.html#prefix-infix-and-postfix-operations).
-For example, `A + B * C` parses as `A + (B * C)` and `A | B & C` parses as `A | (B & C)`.
-Type operators ending in a colon ‘:’ are right-associative; all other operators are left-associative.
-
-In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´, all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same associativity.
-If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
-
-The type operators `|` and `&` are not really special.
-Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
-
-### Function Types
-
-```ebnf
-Type              ::=  FunctionArgTypes ‘=>’ Type
-FunctionArgTypes  ::=  InfixType
-                    |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
-```
-
-The type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
-The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
-An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.md#by-name-parameters) of type ´T´.
-
-Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
-
-Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
-
-Function types are shorthands for class types that define an `apply` method.
-Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ is a shorthand for the class type `Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
-In particular ´() \Rightarrow R´ is a shorthand for class type `Function´_0´[´R´]`.
-
-Such class types behave as if they were instances of the following trait:
-
-```scala
-trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
-  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
-```
-
-Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
-
-### Concrete Refined Types
-
-```ebnf
-RefinedType           ::=  AnnotType {[nl] Refinement}
-SimpleType1           ::=  ...
-                        |  Refinement
-Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
-
-RefineDcl             ::=  ‘val’ ValDcl
-                        |  ‘def’ DefDcl
-                        |  ‘type’ {nl} TypeDcl
-```
-
-In the concrete syntax of types, refinements can contain several refined declarations.
-Moreover, the refined declarations can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
-
-In the abstract syntax of types, each refinement defines exactly one refined declaration, and references to `this` must be made explicit in a recursive type.
-
-The conversion from the concrete syntax to the abstract syntax works as follows:
-
-1. Create a fresh recursive this name ´\alpha´.
-2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
-3. Create nested [refined types](#refined-types), one for every refined declaration.
-4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
