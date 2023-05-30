@@ -12,7 +12,7 @@ import dotty.tools.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.ReadOnlyMap
 
-object JSPrimitives {
+object JSPrimitives:
 
   inline val FirstJSPrimitiveCode = 300
 
@@ -61,9 +61,8 @@ object JSPrimitives {
   def isJSPrimitive(code: Int): Boolean =
     code >= FirstJSPrimitiveCode && code <= LastJSPrimitiveCode
 
-}
 
-class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
+class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx):
   import JSPrimitives._
 
   private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
@@ -81,26 +80,23 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
 
   /** Initialize the primitive map */
-  private def initJSPrimitives(using Context): ReadOnlyMap[Symbol, Int] = {
+  private def initJSPrimitives(using Context): ReadOnlyMap[Symbol, Int] =
 
     val primitives = MutableSymbolMap[Int]()
 
     // !!! Code duplicate with DottyPrimitives
     /** Add a primitive operation to the map */
-    def addPrimitive(s: Symbol, code: Int): Unit = {
+    def addPrimitive(s: Symbol, code: Int): Unit =
       assert(!(primitives contains s), "Duplicate primitive " + s)
       primitives(s) = code
-    }
 
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
+    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit =
       val alts = cls.info.member(method).alternatives.map(_.symbol)
-      if (alts.isEmpty) {
+      if (alts.isEmpty)
         report.error(em"Unknown primitive method $cls.$method")
-      } else {
+      else
         for (s <- alts)
           addPrimitive(s, code)
-      }
-    }
 
     val jsdefn = JSDefinitions.jsdefn
 
@@ -145,6 +141,4 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.ReflectSelectable_applyDynamic, REFLECT_SELECTABLE_APPLYDYN)
 
     primitives
-  }
 
-}

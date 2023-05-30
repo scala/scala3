@@ -1,5 +1,4 @@
 package dotty.tools.dotc.semanticdb.internal
 
-trait SemanticdbEnum {
+trait SemanticdbEnum:
   def value: Int
-}

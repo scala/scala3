@@ -79,12 +79,11 @@ object Message:
        *  class symbol instead. This normalization avoids recording e.g. scala.List
        *  and scala.collection.immutable.List as two different types
        */
-      def followAlias(e1: Recorded): Recorded = e1 match {
+      def followAlias(e1: Recorded): Recorded = e1 match
         case e1: Symbol if e1.isAliasType =>
           val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
           if (underlying.name == e1.name) underlying else e1
         case _ => e1
-      }
       val key = SeenKey(str, isType)
       val existing = seen(key)
       lazy val dealiased = followAlias(entry)
@@ -95,21 +94,20 @@ object Message:
         alts = entry :: existing
         seen(key) = alts
 
-      val suffix = alts.length match {
+      val suffix = alts.length match
         case 1 => ""
         case n => n.toString.toCharArray.map {
-          case '0' => '⁰'
-          case '1' => '¹'
-          case '2' => '²'
-          case '3' => '³'
-          case '4' => '⁴'
-          case '5' => '⁵'
-          case '6' => '⁶'
-          case '7' => '⁷'
-          case '8' => '⁸'
-          case '9' => '⁹'
-        }.mkString
-      }
+            case '0' => '⁰'
+            case '1' => '¹'
+            case '2' => '²'
+            case '3' => '³'
+            case '4' => '⁴'
+            case '5' => '⁵'
+            case '6' => '⁶'
+            case '7' => '⁷'
+            case '8' => '⁸'
+            case '9' => '⁹'
+          }.mkString
       str + suffix
     end record
 
@@ -118,23 +116,21 @@ object Message:
       def boundStr(bound: Type, default: ClassSymbol, cmp: String) =
         if (bound.isRef(default)) "" else i"$cmp $bound"
 
-      def boundsStr(bounds: TypeBounds): String = {
+      def boundsStr(bounds: TypeBounds): String =
         val lo = boundStr(bounds.lo, defn.NothingClass, ">:")
         val hi = boundStr(bounds.hi, defn.AnyClass, "<:")
         if (lo.isEmpty) hi
         else if (hi.isEmpty) lo
         else s"$lo and $hi"
-      }
 
-      def addendum(cat: String, info: Type): String = info match {
+      def addendum(cat: String, info: Type): String = info match
         case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
           if (lo eq hi) i" which is an alias of $lo"
           else i" with $cat ${boundsStr(bounds)}"
         case _ =>
           ""
-      }
 
-      entry match {
+      entry match
         case param: TypeParamRef =>
           s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
         case param: TermParamRef =>
@@ -148,41 +144,35 @@ object Message:
           s"is a ${ctx.printer.kindString(sym)}${sym.showExtendedLocation}${addendum("bounds", info)}"
         case tp: SkolemType =>
           s"is an unknown value of type ${tp.widen.show}"
-      }
     end explanation
 
     /** Produce a where clause with explanations for recorded iterms.
      */
     def explanations(using Context): String =
-      def needsExplanation(entry: Recorded) = entry match {
+      def needsExplanation(entry: Recorded) = entry match
         case param: TypeParamRef => ctx.typerState.constraint.contains(param)
         case param: ParamRef     => false
         case skolem: SkolemType => true
         case sym: Symbol =>
           ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
-      }
 
       val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
-        val res: List[(String, Recorded)] = kvs match {
+        val res: List[(String, Recorded)] = kvs match
           case (key, entry :: Nil) =>
             if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
           case (key, entries) =>
-            for (alt <- entries) yield {
+            for (alt <- entries) yield
               val tickedString = record(key.str, key.isType, alt)
               (tickedString, alt)
-            }
-        }
         res // help the inferrencer out
       }.sortBy(_._1)
 
-      def columnar(parts: List[(String, String)]): List[String] = {
+      def columnar(parts: List[(String, String)]): List[String] =
         lazy val maxLen = parts.map(_._1.length).max
-        parts.map {
+        parts.map:
           case (leader, trailer) =>
             val variable = hl(leader)
             s"""$variable${" " * (maxLen - leader.length)} $trailer"""
-        }
-      }
 
       val explainParts = toExplain.map { case (str, entry) => (str, explanation(entry)) }
       val explainLines = columnar(explainParts)
@@ -392,19 +382,17 @@ trait NoDisambiguation extends Message:
   withoutDisambiguation()
 
 /** The fallback `Message` containing no explanation and having no `kind` */
-final class NoExplanation(msgFn: Context ?=> String)(using Context) extends Message(ErrorMessageID.NoExplanationID) {
+final class NoExplanation(msgFn: Context ?=> String)(using Context) extends Message(ErrorMessageID.NoExplanationID):
   def msg(using Context): String = msgFn
   def explain(using Context): String = ""
   val kind: MessageKind = MessageKind.NoKind
 
   override def toString(): String = msg
-}
 
 /** The extractor for `NoExplanation` can be used to check whether any error
   * lacks an explanation
   */
-object NoExplanation {
+object NoExplanation:
   def unapply(m: Message): Option[Message] =
     if (m.explanation == "") Some(m)
     else None
-}

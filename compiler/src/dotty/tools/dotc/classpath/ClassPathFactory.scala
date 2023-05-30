@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Contexts._
  * Provides factory methods for classpath. When creating classpath instances for a given path,
  * it uses proper type of classpath depending on a types of particular files containing sources or classes.
  */
-class ClassPathFactory {
+class ClassPathFactory:
   /**
     * Create a new classpath based on the abstract file.
     */
@@ -54,10 +54,9 @@ class ClassPathFactory {
   protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
     for {
       file <- expandPath(path, expand)
-      dir <- {
+      dir <-
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
-      }
     }
     yield newClassPath(dir)
 
@@ -68,10 +67,9 @@ class ClassPathFactory {
       new DirectorySourcePath(file.file)
     else
       sys.error(s"Unsupported sourcepath element: $file")
-}
 
-object ClassPathFactory {
-  def newClassPath(file: AbstractFile)(using Context): ClassPath = file match {
+object ClassPathFactory:
+  def newClassPath(file: AbstractFile)(using Context): ClassPath = file match
     case vd: VirtualDirectory => VirtualDirectoryClassPath(vd)
     case _ =>
       if (file.isJarOrZip)
@@ -80,5 +78,3 @@ object ClassPathFactory {
         new DirectoryClassPath(file.file)
       else
         sys.error(s"Unsupported classpath element: $file")
-  }
-}

@@ -73,14 +73,13 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     liftingCtx(false)
 
   override def transformTry(tree: Try)(using Context): Tree =
-    if (needLift && tree.cases.nonEmpty) {
+    if (needLift && tree.cases.nonEmpty)
       report.debuglog(i"lifting tree at ${tree.span}, current owner = ${ctx.owner}")
       val fn = newSymbol(
         ctx.owner, LiftedTreeName.fresh(), Synthetic | Method,
         MethodType(Nil, tree.tpe.widenIfUnstable), coord = tree.span)
       tree.changeOwnerAfter(ctx.owner, fn, thisPhase)
       Block(DefDef(fn, tree) :: Nil, ref(fn).appliedToNone)
-    }
     else tree
 }
 object LiftTry:

@@ -105,10 +105,9 @@ object Synthetics:
     case _ if idx < owner.asClass.paramGetters.length =>
       val param = owner.asClass.paramGetters(idx)
       val pinfo = param.info
-      atPhase(ctx.phase.next) {
+      atPhase(ctx.phase.next):
         if pinfo.captureSet.isAlwaysEmpty then info
         else CapturingType(pinfo.stripCapturing, CaptureSet(param.termRef))
-      }
     case _ =>
       info
 

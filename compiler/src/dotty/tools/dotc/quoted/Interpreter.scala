@@ -50,18 +50,17 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
    *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
    */
   final def interpret[T](tree: Tree)(using ct: ClassTag[T]): Option[T] =
-    interpretTree(tree)(using emptyEnv) match {
+    interpretTree(tree)(using emptyEnv) match
       case obj: T => Some(obj)
       case obj =>
         // TODO upgrade to a full type tag check or something similar
         report.error(em"Interpreted tree returned a result of an unexpected type. Expected ${ct.runtimeClass} but was ${obj.getClass}", pos)
         None
-    }
 
   /** Returns the result of interpreting the code in the tree.
    *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
    */
-  protected def interpretTree(tree: Tree)(using Env): Object = tree match {
+  protected def interpretTree(tree: Tree)(using Env): Object = tree match
     case Literal(Constant(value)) =>
       interpretLiteral(value)
 
@@ -76,18 +75,16 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         interpretNew(fn.symbol, args.flatten.map(interpretTree))
       else if (fn.symbol.is(Module))
         interpretModuleAccess(fn.symbol)
-      else if (fn.symbol.is(Method) && fn.symbol.isStatic) {
+      else if (fn.symbol.is(Method) && fn.symbol.isStatic)
         interpretedStaticMethodCall(fn.symbol.owner, fn.symbol, interpretArgs(args, fn.symbol.info))
-      }
       else if fn.symbol.isStatic then
         assert(args.isEmpty)
         interpretedStaticFieldAccess(fn.symbol)
       else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic)
         if (fn.name == nme.asInstanceOfPM)
           interpretModuleAccess(fn.qualifier.symbol)
-        else {
+        else
           interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol, interpretArgs(args, fn.symbol.info))
-        }
       else if (env.contains(fn.symbol))
         env(fn.symbol)
       else if (tree.symbol.is(InlineProxy))
@@ -113,9 +110,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
     case _ =>
       unexpectedTree(tree)
-  }
 
-  private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] = {
+  private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] =
     def interpretArgsGroup(args: List[Tree], argTypes: List[Type]): List[Object] =
       assert(args.size == argTypes.size)
       val view =
@@ -139,9 +135,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       case _ =>
         assert(argss.isEmpty)
         Nil
-  }
 
-  private def interpretBlock(stats: List[Tree], expr: Tree)(using Env) = {
+  private def interpretBlock(stats: List[Tree], expr: Tree)(using Env) =
     var unexpected: Option[Object] = None
     val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match
       case stat: ValDef =>
@@ -152,7 +147,6 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         accEnv
     )
     unexpected.getOrElse(interpretTree(expr)(using newEnv))
-  }
 
   private def interpretLiteral(value: Any): Object =
     value.asInstanceOf[Object]
@@ -160,7 +154,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def interpretVarargs(args: List[Object]): Object =
     args.toSeq
 
-  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object = {
+  private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol, args: List[Object]): Object =
     val inst =
       try loadModule(moduleClass)
       catch
@@ -170,43 +164,37 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
     stopIfRuntimeException(method.invoke(inst, args: _*), method)
-  }
 
-  private def interpretedStaticFieldAccess(sym: Symbol): Object = {
+  private def interpretedStaticFieldAccess(sym: Symbol): Object =
     val clazz = loadClass(sym.owner.fullName.toString)
     val field = clazz.getField(sym.name.toString)
     field.get(null)
-  }
 
   private def interpretModuleAccess(fn: Symbol): Object =
     loadModule(fn.moduleClass)
 
-  private def interpretNew(fn: Symbol, args: List[Object]): Object = {
+  private def interpretNew(fn: Symbol, args: List[Object]): Object =
     val className = fn.owner.fullName.mangledString.replaceAll("\\$\\.", "\\$")
     val clazz = loadClass(className)
     val constr = clazz.getConstructor(paramsSig(fn): _*)
     constr.newInstance(args: _*).asInstanceOf[Object]
-  }
 
   private def unexpectedTree(tree: Tree): Object =
     throw new StopInterpretation(em"Unexpected tree could not be interpreted: ${tree.toString}", tree.srcPos)
 
   private def loadModule(sym: Symbol): Object =
-    if (sym.owner.is(Package)) {
+    if (sym.owner.is(Package))
       // is top level object
       val moduleClass = loadClass(sym.fullName.toString)
       moduleClass.getField(str.MODULE_INSTANCE_FIELD).get(null)
-    }
-    else {
+    else
       // nested object in an object
       val clazz = loadClass(sym.binaryClassName)
       clazz.getConstructor().newInstance().asInstanceOf[Object]
-    }
 
-  private def loadReplLineClass(moduleClass: Symbol): Class[?] = {
+  private def loadReplLineClass(moduleClass: Symbol): Class[?] =
     val lineClassloader = new AbstractFileClassLoader(ctx.settings.outputDir.value, classLoader)
     lineClassloader.loadClass(moduleClass.name.firstPart.toString)
-  }
 
   private def loadClass(name: String): Class[?] =
     try classLoader.loadClass(name)
@@ -217,17 +205,16 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
   private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
     try clazz.getMethod(name.toString, paramClasses: _*)
-    catch {
+    catch
       case _: NoSuchMethodException =>
         val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"
         throw new StopInterpretation(msg, pos)
       case MissingClassDefinedInCurrentRun(sym) =>
         suspendOnMissing(sym, pos)
-    }
 
   private def stopIfRuntimeException[T](thunk: => T, method: JLRMethod): T =
     try thunk
-    catch {
+    catch
       case ex: RuntimeException =>
         val sw = new StringWriter()
         sw.write("A runtime exception occurred while executing macro expansion\n")
@@ -237,7 +224,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         sw.write("\n")
         throw new StopInterpretation(sw.toString.toMessage, pos)
       case ex: InvocationTargetException =>
-        ex.getTargetException match {
+        ex.getTargetException match
           case ex: scala.quoted.runtime.StopMacroExpansion =>
             throw ex
           case MissingClassDefinedInCurrentRun(sym) =>
@@ -245,7 +232,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
           case targetException =>
             val sw = new StringWriter()
             sw.write("Exception occurred while executing macro expansion.\n")
-            if (!ctx.settings.Ydebug.value) {
+            if (!ctx.settings.Ydebug.value)
               val end = targetException.getStackTrace.lastIndexWhere { x =>
                 x.getClassName == method.getDeclaringClass.getCanonicalName && x.getMethodName == method.getName
               }
@@ -256,22 +243,18 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
               targetException match
                 case _: CyclicReference => sw.write("\nSee full stack trace using -Ydebug")
                 case _ =>
-            } else {
+            else
               targetException.printStackTrace(new PrintWriter(sw))
-            }
             sw.write("\n")
             throw new StopInterpretation(sw.toString.toMessage, pos)
-        }
-    }
 
   /** List of classes of the parameters of the signature of `sym` */
-  private def paramsSig(sym: Symbol): List[Class[?]] = {
-    def paramClass(param: Type): Class[?] = {
-      def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match {
+  private def paramsSig(sym: Symbol): List[Class[?]] =
+    def paramClass(param: Type): Class[?] =
+      def arrayDepth(tpe: Type, depth: Int): (Type, Int) = tpe match
         case JavaArrayType(elemType) => arrayDepth(elemType, depth + 1)
         case _ => (tpe, depth)
-      }
-      def javaArraySig(tpe: Type): String = {
+      def javaArraySig(tpe: Type): String =
         val (elemType, depth) = arrayDepth(tpe, 0)
         val sym = elemType.classSymbol
         val suffix =
@@ -285,15 +268,13 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
           else if (sym == defn.CharClass) "C"
           else "L" + javaSig(elemType) + ";"
         ("[" * depth) + suffix
-      }
-      def javaSig(tpe: Type): String = tpe match {
+      def javaSig(tpe: Type): String = tpe match
         case tpe: JavaArrayType => javaArraySig(tpe)
         case _ =>
           // Take the flatten name of the class and the full package name
           val pack = tpe.classSymbol.topLevelClass.owner
           val packageName = if (pack == defn.EmptyPackageClass) "" else s"${pack.fullName}."
           packageName + tpe.classSymbol.fullNameSeparated(FlatName).toString
-      }
 
       val sym = param.classSymbol
       if (sym == defn.BooleanClass) classOf[Boolean]
@@ -305,20 +286,16 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       else if (sym == defn.FloatClass) classOf[Float]
       else if (sym == defn.DoubleClass) classOf[Double]
       else java.lang.Class.forName(javaSig(param), false, classLoader)
-    }
-    def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
+    def getExtraParams(tp: Type): List[Type] = tp.widenDealias match
       case tp: AppliedType if defn.isContextFunctionType(tp) =>
         // Call context function type direct method
         tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
       case _ => Nil
-    }
     val extraParams = getExtraParams(sym.info.finalResultType)
-    val allParams = TypeErasure.erasure(sym.info) match {
+    val allParams = TypeErasure.erasure(sym.info) match
       case meth: MethodType => meth.paramInfos ::: extraParams
       case _ => extraParams
-    }
     allParams.map(paramClass)
-  }
 end Interpreter
 
 object Interpreter:
@@ -333,8 +310,8 @@ object Interpreter:
     def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] =
       Call0.unapply(arg).map((fn, args) => (fn, args.reverse))
 
-    private object Call0 {
-      def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] = arg match {
+    private object Call0:
+      def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] = arg match
         case Select(Call0(fn, args), nme.apply) if defn.isContextFunctionType(fn.tpe.widenDealias.finalResultType) =>
           Some((fn, args))
         case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
@@ -344,12 +321,10 @@ object Interpreter:
           else Some((fn, args2 :: args1))
         case TypeApply(Call0(fn, args), _) => Some((fn, args))
         case _ => None
-      }
-    }
   end Call
 
-  object MissingClassDefinedInCurrentRun {
-    def unapply(targetException: Throwable)(using Context): Option[Symbol] = {
+  object MissingClassDefinedInCurrentRun:
+    def unapply(targetException: Throwable)(using Context): Option[Symbol] =
       if !ctx.compilationUnit.isSuspendable then None
       else targetException match
         case _: NoClassDefFoundError | _: ClassNotFoundException =>
@@ -359,8 +334,6 @@ object Interpreter:
             val sym = staticRef(className.toTypeName).symbol
             if (sym.isDefinedInCurrentRun) Some(sym) else None
         case _ => None
-    }
-  }
 
   def suspendOnMissing(sym: Symbol, pos: SrcPos)(using Context): Nothing =
     if ctx.settings.XprintSuspension.value then

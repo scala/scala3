@@ -15,7 +15,7 @@ import Decorators._
 
 import scala.annotation.internal.sharable
 
-object TyperState {
+object TyperState:
   @sharable private var nextId: Int = 0
   def initialState() =
     TyperState()
@@ -39,9 +39,8 @@ object TyperState {
       ts.constraint = constraint
       ts.ownedVars = ownedVars
       ts.upLevels = upLevels
-}
 
-class TyperState() {
+class TyperState():
   import TyperState.LevelMap
 
   private var myId: Int = _
@@ -59,12 +58,11 @@ class TyperState() {
   private var myConstraint: Constraint = _
 
   def constraint: Constraint = myConstraint
-  def constraint_=(c: Constraint)(using Context): Unit = {
+  def constraint_=(c: Constraint)(using Context): Unit =
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
     if Config.checkConsistentVars && !ctx.reporter.errorsReported then
       c.checkConsistentVars()
-  }
 
   private var previousConstraint: Constraint = _
 
@@ -156,7 +154,7 @@ class TyperState() {
    * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
    * many parts of dotty itself.
    */
-  def commit()(using Context): Unit = {
+  def commit()(using Context): Unit =
     Stats.record("typerState.commit")
     assert(isCommittable, s"$this is not committable")
     assert(!isCommitted, s"$this is already committed")
@@ -192,7 +190,6 @@ class TyperState() {
     targetState.gc()
     isCommitted = true
     ownedVars = SimpleIdentitySet.empty
-  }
 
   /** Ensure that this constraint does not associate different TypeVars for the
    *  same type lambda than the `other` constraint. Do this by renaming type lambdas
@@ -235,7 +232,7 @@ class TyperState() {
         }) &&
         // Integrate the additional constraints on type variables from `other`
         // and merge hardness markers
-        constraint.uninstVars.forall(tv =>
+      constraint.uninstVars.forall(tv =>
           if other.isHard(tv) then constraint = constraint.withHard(tv)
           val p = tv.origin
           val otherLos = other.lower(p)
@@ -295,12 +292,10 @@ class TyperState() {
       for tl <- toCollect do
         constraint = constraint.remove(tl)
 
-  override def toString: String = {
+  override def toString: String =
     def ids(state: TyperState): List[String] =
       s"${state.id}${if (state.isCommittable) "" else "X"}" ::
         (if (state.previous == null) Nil else ids(state.previous.uncheckedNN))
     s"TS[${ids(this).mkString(", ")}]"
-  }
 
   def stateChainStr: String = s"$this${if (previous == null) "" else previous.uncheckedNN.stateChainStr}"
-}

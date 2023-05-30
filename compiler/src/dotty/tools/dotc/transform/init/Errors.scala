@@ -62,10 +62,9 @@ object Errors:
   case class UnsafePromotion(msg: String, error: Error)(val trace: Trace) extends Error:
     def show(using Context): String =
       msg + stacktrace + "\n" +
-        "Promoting the value to transitively initialized (Hot) failed due to the following problem:\n" + {
+        "Promoting the value to transitively initialized (Hot) failed due to the following problem:\n" `+`:
           val ctx2 = ctx.withProperty(IsFromPromotion, Some(true))
           error.show(using ctx2)
-        }
 
   /** Unsafe leaking a non-hot value as constructor arguments
    *

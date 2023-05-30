@@ -10,13 +10,13 @@ import printing.Texts.Text
 
 import scala.annotation.internal.sharable
 
-object Annotations {
+object Annotations:
 
   def annotClass(tree: Tree)(using Context) =
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
-  abstract class Annotation extends Showable {
+  abstract class Annotation extends Showable:
     def tree(using Context): Tree
 
     def symbol(using Context): Symbol = annotClass(tree)
@@ -33,10 +33,9 @@ object Annotations {
     /** All arguments to this annotation in a single flat list */
     def arguments(using Context): List[Tree] = tpd.allArguments(tree)
 
-    def argument(i: Int)(using Context): Option[Tree] = {
+    def argument(i: Int)(using Context): Option[Tree] =
       val args = arguments
       if (i < args.length) Some(args(i)) else None
-    }
     def argumentConstant(i: Int)(using Context): Option[Constant] =
       for (case ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
 
@@ -72,12 +71,11 @@ object Annotations {
     def refersToParamOf(tl: TermLambda)(using Context): Boolean =
       val args = arguments
       if args.isEmpty then false
-      else tree.existsSubTree {
+      else tree.existsSubTree:
         case id: Ident => id.tpe.stripped match
-          case TermParamRef(tl1, _) => tl eq tl1
-          case _ => false
+            case TermParamRef(tl1, _) => tl eq tl1
+            case _ => false
         case _ => false
-      }
 
     /** A string representation of the annotation. Overridden in BodyAnnotation.
      */
@@ -88,7 +86,7 @@ object Annotations {
     def sameAnnotation(that: Annotation)(using Context): Boolean =
       symbol == that.symbol && tree.sameTree(that.tree)
 
-    def hasOneOfMetaAnnotation(metaSyms: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Boolean = atPhaseNoLater(erasurePhase) {
+    def hasOneOfMetaAnnotation(metaSyms: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Boolean = atPhaseNoLater(erasurePhase):
       def go(metaSyms: Set[Symbol]) =
         def recTp(tp: Type): Boolean = tp.dealiasKeepAnnots match
           case AnnotatedType(parent, metaAnnot) => metaSyms.exists(metaAnnot.matches) || recTp(parent)
@@ -102,21 +100,19 @@ object Annotations {
           case _ => false
         metaSyms.exists(symbol.hasAnnotation) || rec(tree)
       go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
-    }
 
     /** Operations for hash-consing, can be overridden */
     def hash: Int = System.identityHashCode(this)
     def eql(that: Annotation) = this eq that
-  }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
     def tree(using Context): Tree = t
 
-  abstract class LazyAnnotation extends Annotation {
+  abstract class LazyAnnotation extends Annotation:
     protected var mySym: Symbol | (Context ?=> Symbol) | Null
     override def symbol(using parentCtx: Context): Symbol =
       assert(mySym != null)
-      mySym match {
+      mySym match
         case symFn: (Context ?=> Symbol) @unchecked =>
           mySym = null
           mySym = atPhaseBeforeTransforms(symFn)
@@ -128,23 +124,20 @@ object Annotations {
         case sym: Symbol if sym.defRunId != parentCtx.runId =>
           mySym = sym.denot.current.symbol
         case _ =>
-      }
       mySym.asInstanceOf[Symbol]
 
     protected var myTree: Tree | (Context ?=> Tree) | Null
     def tree(using Context): Tree =
       assert(myTree != null)
-      myTree match {
+      myTree match
         case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
           myTree = atPhaseBeforeTransforms(treeFn)
         case _ =>
-      }
       myTree.asInstanceOf[Tree]
 
     override def isEvaluating: Boolean = myTree == null
     override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
-  }
 
   class DeferredSymAndTree(symFn: Context ?=> Symbol, treeFn: Context ?=> Tree)
   extends LazyAnnotation:
@@ -155,43 +148,38 @@ object Annotations {
    *  typically of an inline method. Treated specially in
    *  pickling/unpickling and TypeTreeMaps
    */
-  abstract class BodyAnnotation extends Annotation {
+  abstract class BodyAnnotation extends Annotation:
     override def symbol(using Context): ClassSymbol = defn.BodyAnnot
     override def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
     override def arguments(using Context): List[Tree] = Nil
     override def ensureCompleted(using Context): Unit = ()
     override def toText(printer: Printer): Text = "@Body"
-  }
 
-  class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation {
+  class ConcreteBodyAnnotation(body: Tree) extends BodyAnnotation:
     def tree(using Context): Tree = body
-  }
 
-  abstract class LazyBodyAnnotation extends BodyAnnotation {
+  abstract class LazyBodyAnnotation extends BodyAnnotation:
     // Copy-pasted from LazyAnnotation to avoid having to turn it into a trait
     protected var myTree: Tree | (Context ?=> Tree) | Null
     def tree(using Context): Tree =
       assert(myTree != null)
-      myTree match {
+      myTree match
         case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
           myTree = atPhaseBeforeTransforms(treeFn)
         case _ =>
-      }
       myTree.asInstanceOf[Tree]
 
     override def isEvaluating: Boolean = myTree == null
     override def isEvaluated: Boolean = myTree.isInstanceOf[Tree @unchecked]
-  }
 
-  object LazyBodyAnnotation {
+  object LazyBodyAnnotation:
     def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
       new LazyBodyAnnotation:
         protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> bodyFn(using ctx)
-  }
 
-  object Annotation {
+  object Annotation:
 
     def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
 
@@ -212,71 +200,60 @@ object Annotations {
 
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree): Annotation =
-      new LazyAnnotation {
+      new LazyAnnotation:
         protected var myTree: Tree | (Context ?=> Tree) | Null = ctx ?=> treeFn(using ctx)
         protected var mySym: Symbol | (Context ?=> Symbol) | Null = sym
-      }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
     def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree): Annotation =
       DeferredSymAndTree(symFn, treeFn)
 
     /** Extractor for child annotations */
-    object Child {
+    object Child:
 
       /** A deferred annotation to the result of a given child computation */
-      def later(delayedSym: Context ?=> Symbol, span: Span)(using Context): Annotation = {
-        def makeChildLater(using Context) = {
+      def later(delayedSym: Context ?=> Symbol, span: Span)(using Context): Annotation =
+        def makeChildLater(using Context) =
           val sym = delayedSym
           New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
             .withSpan(span)
-        }
         deferred(defn.ChildAnnot)(makeChildLater)
-      }
 
       /** A regular, non-deferred Child annotation */
       def apply(sym: Symbol, span: Span)(using Context): Annotation = later(sym, span)
 
       def unapply(ann: Annotation)(using Context): Option[Symbol] =
-        if (ann.symbol == defn.ChildAnnot) {
+        if (ann.symbol == defn.ChildAnnot)
           val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe: @unchecked
           Some(arg.symbol)
-        }
         else None
-    }
 
     def makeSourceFile(path: String, span: Span)(using Context): Annotation =
       apply(defn.SourceFileAnnot, Literal(Constant(path)), span)
-  }
 
   @sharable val EmptyAnnotation = Annotation(EmptyTree)
 
-  def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation = {
+  def ThrowsAnnotation(cls: ClassSymbol)(using Context): Annotation =
     val tref = cls.typeRef
     Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref), cls.span)
-  }
 
   /** Extracts the type of the thrown exception from an annotation.
    *
    *  Supports both "old-style" `@throws(classOf[Exception])`
    *  as well as "new-style" `@throws[Exception]("cause")` annotations.
    */
-  object ThrownException {
+  object ThrownException:
     def unapply(a: Annotation)(using Context): Option[Type] =
       if (a.symbol ne defn.ThrowsAnnot)
         None
-      else a.argumentConstant(0) match {
+      else a.argumentConstant(0) match
         // old-style: @throws(classOf[Exception]) (which is throws[T](classOf[Exception]))
         case Some(Constant(tpe: Type)) =>
           Some(tpe)
         // new-style: @throws[Exception], @throws[Exception]("cause")
         case _ =>
-          stripApply(a.tree) match {
+          stripApply(a.tree) match
             case TypeApply(_, List(tpt)) =>
               Some(tpt.tpe)
             case _ =>
               None
-          }
-      }
-  }
-}

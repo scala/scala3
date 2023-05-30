@@ -23,7 +23,7 @@ import dotty.tools.tasty.TastyFormat.ASTsSection
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
-class TreePickler(pickler: TastyPickler) {
+class TreePickler(pickler: TastyPickler):
   val buf: TreeBuffer = new TreeBuffer
   pickler.newSection(ASTsSection, buf)
   import buf._
@@ -56,20 +56,18 @@ class TreePickler(pickler: TastyPickler) {
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
 
-  private inline def withLength(inline op: Unit) = {
+  private inline def withLength(inline op: Unit) =
     val lengthAddr = reserveRef(relative = true)
     op
     fillRef(lengthAddr, currentAddr, relative = true)
-  }
 
   def addrOfSym(sym: Symbol): Option[Addr] =
     symRefs.get(sym)
 
-  def preRegister(tree: Tree)(using Context): Unit = tree match {
+  def preRegister(tree: Tree)(using Context): Unit = tree match
     case tree: MemberDef =>
       if (!symRefs.contains(tree.symbol)) symRefs(tree.symbol) = NoAddr
     case _ =>
-  }
 
   def registerDef(sym: Symbol): Unit =
     symRefs(sym) = currentAddr
@@ -99,16 +97,15 @@ class TreePickler(pickler: TastyPickler) {
     else
       writeRef(label.uncheckedNN) // !!! Dotty problem: Not clear why nn or uncheckedNN is needed here
 
-  private def pickleForwardSymRef(sym: Symbol)(using Context) = {
+  private def pickleForwardSymRef(sym: Symbol)(using Context) =
     val ref = reserveRef(relative = false)
     assert(!sym.is(Flags.Package), sym)
     forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
-  }
 
   private def isLocallyDefined(sym: Symbol)(using Context) =
     sym.topLevelClass.isLinkedWith(pickler.rootCls)
 
-  def pickleConstant(c: Constant)(using Context): Unit = c.tag match {
+  def pickleConstant(c: Constant)(using Context): Unit = c.tag match
     case UnitTag =>
       writeByte(UNITconst)
     case BooleanTag =>
@@ -142,7 +139,6 @@ class TreePickler(pickler: TastyPickler) {
     case ClazzTag =>
       writeByte(CLASSconst)
       pickleType(c.typeValue)
-  }
 
   def pickleVariances(tp: Type)(using Context): Unit = tp match
     case tp: HKTypeLambda if tp.isDeclaredVarianceLambda =>
@@ -153,27 +149,22 @@ class TreePickler(pickler: TastyPickler) {
           else STABLE)
     case _ =>
 
-  def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
+  def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit =
     val tpe = tpe0.stripTypeVar
-    try {
+    try
       val prev: Addr | Null = pickledTypes.lookup(tpe)
-      if (prev == null) {
+      if (prev == null)
         pickledTypes(tpe) = currentAddr
         pickleNewType(tpe, richTypes)
-      }
-      else {
+      else
         writeByte(SHAREDtype)
         writeRef(prev.uncheckedNN)
-      }
-    }
-    catch {
+    catch
       case ex: AssertionError =>
         println(i"error when pickling type $tpe")
         throw ex
-    }
-  }
 
-  private def pickleNewType(tpe: Type, richTypes: Boolean)(using Context): Unit = tpe match {
+  private def pickleNewType(tpe: Type, richTypes: Boolean)(using Context): Unit = tpe match
     case AppliedType(tycon, args) =>
       if tycon.typeSymbol == defn.MatchCaseClass then
         writeByte(MATCHCASEtype)
@@ -185,53 +176,43 @@ class TreePickler(pickler: TastyPickler) {
       pickleConstant(value)
     case tpe: NamedType =>
       val sym = tpe.symbol
-      def pickleExternalRef(sym: Symbol) = {
+      def pickleExternalRef(sym: Symbol) =
         val isShadowedRef =
           sym.isClass && tpe.prefix.member(sym.name).symbol != sym
-        if (sym.is(Flags.Private) || isShadowedRef) {
+        if (sym.is(Flags.Private) || isShadowedRef)
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
-          withLength {
+          withLength:
             pickleNameAndSig(sym.name, sym.signature, sym.targetName)
             pickleType(tpe.prefix)
             pickleType(sym.owner.typeRef)
-          }
-        }
-        else {
+        else
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleNameAndSig(sym.name, tpe.signature, sym.targetName)
           pickleType(tpe.prefix)
-        }
-      }
-      if (sym.is(Flags.Package)) {
+      if (sym.is(Flags.Package))
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
         pickleName(sym.fullName)
-      }
-      else if (tpe.prefix == NoPrefix) {
+      else if (tpe.prefix == NoPrefix)
         writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
         if Config.checkLevelsOnConstraints && !symRefs.contains(sym) && !sym.isPatternBound && !sym.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) then
           report.error(em"pickling reference to as yet undefined $tpe with symbol ${sym}", sym.srcPos)
         pickleSymRef(sym)
-      }
-      else tpe.designator match {
+      else tpe.designator match
         case name: Name =>
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleName(name); pickleType(tpe.prefix)
         case sym: Symbol =>
-          if (isLocallyDefined(sym)) {
+          if (isLocallyDefined(sym))
             writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
             pickleSymRef(sym); pickleType(tpe.prefix)
-          }
           else pickleExternalRef(sym)
-      }
     case tpe: ThisType =>
-      if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
+      if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
         writeByte(TERMREFpkg)
         pickleName(tpe.cls.fullName)
-      }
-      else {
+      else
         writeByte(THIS)
         pickleType(tpe.tref)
-      }
     case tpe: SuperType =>
       writeByte(SUPERtype)
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
@@ -244,22 +225,20 @@ class TreePickler(pickler: TastyPickler) {
       pickleType(tpe.info)
     case tpe: RefinedType =>
       writeByte(REFINEDtype)
-      withLength {
+      withLength:
         pickleName(tpe.refinedName)
         pickleType(tpe.parent)
         pickleType(tpe.refinedInfo, richTypes = true)
-      }
     case tpe: RecType =>
       writeByte(RECtype)
       pickleType(tpe.parent)
     case tpe: TypeBounds =>
       writeByte(TYPEBOUNDS)
-      withLength {
+      withLength:
         pickleType(tpe.lo, richTypes)
         if !tpe.isInstanceOf[AliasingBounds] then
           pickleType(tpe.hi, richTypes)
         pickleVariances(tpe.hi)
-      }
     case tpe: AnnotatedType =>
       writeByte(ANNOTATEDtype)
       withLength { pickleType(tpe.parent, richTypes); pickleTree(tpe.annot.tree) }
@@ -276,11 +255,10 @@ class TreePickler(pickler: TastyPickler) {
       pickleMethodic(TYPELAMBDAtype, tpe, EmptyFlags)
     case tpe: MatchType =>
       writeByte(MATCHtype)
-      withLength {
+      withLength:
         pickleType(tpe.bound)
         pickleType(tpe.scrutinee)
         tpe.cases.foreach(pickleType(_))
-      }
     case tpe: PolyType if richTypes =>
       pickleMethodic(POLYtype, tpe, EmptyFlags)
     case tpe: MethodType if richTypes =>
@@ -292,37 +270,31 @@ class TreePickler(pickler: TastyPickler) {
       assert(pickleParamRef(tpe), s"orphan parameter reference: $tpe")
     case tpe: LazyRef =>
       pickleType(tpe.ref)
-  }
 
-  def pickleMethodic(tag: Int, tpe: LambdaType, mods: FlagSet)(using Context): Unit = {
+  def pickleMethodic(tag: Int, tpe: LambdaType, mods: FlagSet)(using Context): Unit =
     writeByte(tag)
-    withLength {
+    withLength:
       pickleType(tpe.resultType, richTypes = true)
       tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
         pickleType(tpe); pickleName(name)
       }
       if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
-    }
-  }
 
-  def pickleParamRef(tpe: ParamRef)(using Context): Boolean = {
+  def pickleParamRef(tpe: ParamRef)(using Context): Boolean =
     val binder: Addr | Null = pickledTypes.lookup(tpe.binder)
     val pickled = binder != null
-    if (pickled) {
+    if (pickled)
       writeByte(PARAMtype)
       withLength { writeRef(binder.uncheckedNN); writeNat(tpe.paramNum) }
-    }
     pickled
-  }
 
   def pickleTpt(tpt: Tree)(using Context): Unit =
     pickleTree(tpt)
 
-  def pickleTreeUnlessEmpty(tree: Tree)(using Context): Unit = {
+  def pickleTreeUnlessEmpty(tree: Tree)(using Context): Unit =
     if (!tree.isEmpty) pickleTree(tree)
-  }
 
-  def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
+  def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit =
     val sym = mdef.symbol
 
     assert(symRefs(sym) == NoAddr, sym)
@@ -330,16 +302,14 @@ class TreePickler(pickler: TastyPickler) {
     writeByte(tag)
     val addr = currentAddr
     try
-      withLength {
+      withLength:
         pickleName(sym.name)
         pickleParams
-        tpt match {
+        tpt match
           case _: Template | _: Hole => pickleTree(tpt)
           case _ if tpt.isType => pickleTpt(tpt)
-        }
         pickleTreeUnlessEmpty(rhs)
         pickleModifiers(sym, mdef)
-      }
     catch
       case ex: Throwable =>
         if !ctx.settings.YnoDecodeStacktraces.value
@@ -353,36 +323,30 @@ class TreePickler(pickler: TastyPickler) {
       val comment = docCtx.docstrings.lookup(sym)
       if comment != null then
         docStrings(mdef) = comment
-  }
 
-  def pickleParam(tree: Tree)(using Context): Unit = {
+  def pickleParam(tree: Tree)(using Context): Unit =
     registerTreeAddr(tree)
-    tree match {
+    tree match
       case tree: ValDef  => pickleDef(PARAM, tree, tree.tpt)
       case tree: TypeDef => pickleDef(TYPEPARAM, tree, tree.rhs)
-    }
-  }
 
-  def pickleParams(trees: List[Tree])(using Context): Unit = {
+  def pickleParams(trees: List[Tree])(using Context): Unit =
     trees.foreach(preRegister)
     trees.foreach(pickleParam)
-  }
 
-  def pickleStats(stats: List[Tree])(using Context): Unit = {
+  def pickleStats(stats: List[Tree])(using Context): Unit =
     stats.foreach(preRegister)
     stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
-  }
 
-  def pickleTree(tree: Tree)(using Context): Unit = {
+  def pickleTree(tree: Tree)(using Context): Unit =
     val addr = registerTreeAddr(tree)
-    if (addr != currentAddr) {
+    if (addr != currentAddr)
       writeByte(SHAREDterm)
       writeRef(addr)
-    }
     else
-      try tree match {
+      try tree match
         case Ident(name) =>
-          tree.tpe match {
+          tree.tpe match
             case tp: TermRef if name != nme.WILDCARD =>
               // wildcards are pattern bound, need to be preserved as ids.
               pickleType(tp)
@@ -390,24 +354,21 @@ class TreePickler(pickler: TastyPickler) {
               writeByte(if (tree.isType) IDENTtpt else IDENT)
               pickleName(name)
               pickleType(tp)
-          }
         case This(qual) =>
           if (qual.isEmpty) pickleType(tree.tpe)
-          else {
+          else
             writeByte(QUALTHIS)
             val ThisType(tref) = tree.tpe: @unchecked
             pickleTree(qual.withType(tref))
-          }
         case Select(qual, name) =>
-          name match {
+          name match
             case OuterSelectName(_, levels) =>
               writeByte(SELECTouter)
-              withLength {
+              withLength:
                 writeNat(levels)
                 pickleTree(qual)
                 val SkolemType(tp) = tree.tpe: @unchecked
                 pickleType(tp)
-              }
             case _ =>
               val sig = tree.tpe.signature
               var ename = tree.symbol.targetName
@@ -423,54 +384,43 @@ class TreePickler(pickler: TastyPickler) {
                 pickleTree(qual)
               else // select from owner
                 writeByte(SELECTin)
-                withLength {
+                withLength:
                   pickleNameAndSig(name, tree.symbol.signature, ename)
                   pickleTree(qual)
                   pickleType(tree.symbol.owner.typeRef)
-                }
-          }
         case Apply(fun, args) =>
-          if (fun.symbol eq defn.throwMethod) {
+          if (fun.symbol eq defn.throwMethod)
             writeByte(THROW)
             pickleTree(args.head)
-          }
           else if fun.symbol.originalSignaturePolymorphic.exists then
             writeByte(APPLYsigpoly)
-            withLength {
+            withLength:
               pickleTree(fun)
               pickleType(fun.tpe.widenTermRefExpr, richTypes = true) // this widens to a MethodType, so need richTypes
               args.foreach(pickleTree)
-            }
-          else {
+          else
             writeByte(APPLY)
-            withLength {
+            withLength:
               pickleTree(fun)
               args.foreach(pickleTree)
-            }
-          }
         case TypeApply(fun, args) =>
           writeByte(TYPEAPPLY)
-          withLength {
+          withLength:
             pickleTree(fun)
             args.foreach(pickleTpt)
-          }
         case Literal(const1) =>
-          pickleConstant {
-            tree.tpe match {
+          pickleConstant:
+            tree.tpe match
               case ConstantType(const2) => const2
               case _ => const1
-            }
-          }
         case Super(qual, mix) =>
           writeByte(SUPER)
-          withLength {
+          withLength:
             pickleTree(qual);
-            if (!mix.isEmpty) {
+            if (!mix.isEmpty)
               // mixinType being a TypeRef when mix is non-empty is enforced by TreeChecker#checkSuper
               val SuperType(_, mixinType: TypeRef) = tree.tpe: @unchecked
               pickleTree(mix.withType(mixinType))
-            }
-          }
         case New(tpt) =>
           writeByte(NEW)
           pickleTpt(tpt)
@@ -490,28 +440,25 @@ class TreePickler(pickler: TastyPickler) {
           withLength { pickleTree(expr); stats.foreach(pickleTree) }
         case tree @ If(cond, thenp, elsep) =>
           writeByte(IF)
-          withLength {
+          withLength:
             if (tree.isInline) writeByte(INLINE)
             pickleTree(cond)
             pickleTree(thenp)
             pickleTree(elsep)
-          }
         case Closure(env, meth, tpt) =>
           writeByte(LAMBDA)
           assert(env.isEmpty)
-          withLength {
+          withLength:
             pickleTree(meth)
             if (tpt.tpe.exists) pickleTpt(tpt)
-          }
         case tree @ Match(selector, cases) =>
           writeByte(MATCH)
-          withLength {
+          withLength:
             if (tree.isInline)
               if (selector.isEmpty) writeByte(IMPLICIT)
               else { writeByte(INLINE); pickleTree(selector) }
             else pickleTree(selector)
             tree.cases.foreach(pickleTree)
-          }
         case CaseDef(pat, guard, rhs) =>
           writeByte(CASEDEF)
           withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
@@ -530,38 +477,34 @@ class TreePickler(pickler: TastyPickler) {
         case Inlined(call, bindings, expansion) =>
           writeByte(INLINED)
           bindings.foreach(preRegister)
-          withLength {
+          withLength:
             pickleTree(expansion)
             if (!call.isEmpty) pickleTree(call)
             bindings.foreach { b =>
               assert(b.isInstanceOf[DefDef] || b.isInstanceOf[ValDef])
               pickleTree(b)
             }
-          }
         case Bind(name, body) =>
           val sym = tree.symbol
           registerDef(sym)
           writeByte(BIND)
-          withLength {
+          withLength:
             pickleName(name)
             pickleType(sym.info)
             pickleTree(body)
             pickleFlags(sym.flags &~ Case, sym.isTerm)
-          }
         case Alternative(alts) =>
           writeByte(ALTERNATIVE)
           withLength { alts.foreach(pickleTree) }
         case UnApply(fun, implicits, patterns) =>
           writeByte(UNAPPLY)
-          withLength {
+          withLength:
             pickleTree(fun)
-            for (implicitArg <- implicits) {
+            for (implicitArg <- implicits)
               writeByte(IMPLICITarg)
               pickleTree(implicitArg)
-            }
             pickleType(tree.tpe)
             patterns.foreach(pickleTree)
-          }
         case tree: ValDef =>
           pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
         case tree: DefDef =>
@@ -585,39 +528,32 @@ class TreePickler(pickler: TastyPickler) {
           registerDef(tree.symbol)
           writeByte(TEMPLATE)
           val (params, rest) = decomposeTemplateBody(tree.body)
-          withLength {
+          withLength:
             pickleParams(params)
             tree.parents.foreach(pickleTree)
             val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info: @unchecked
-            if (!tree.self.isEmpty) {
+            if (!tree.self.isEmpty)
               writeByte(SELFDEF)
               pickleName(tree.self.name)
 
               if (!tree.self.tpt.isEmpty) pickleTree(tree.self.tpt)
-              else {
+              else
                 if (!tree.self.isEmpty) registerTreeAddr(tree.self)
-                pickleType {
-                  selfInfo match {
+                pickleType:
+                  selfInfo match
                     case sym: Symbol => sym.info
                     case tp: Type => tp
-                  }
-                }
-              }
-            }
             pickleStats(tree.constr :: rest)
-          }
         case Import(expr, selectors) =>
           writeByte(IMPORT)
-          withLength {
+          withLength:
             pickleTree(expr)
             pickleSelectors(selectors)
-          }
         case Export(expr, selectors) =>
           writeByte(EXPORT)
-          withLength {
+          withLength:
             pickleTree(expr)
             pickleSelectors(selectors)
-          }
         case PackageDef(pid, stats) =>
           writeByte(PACKAGE)
           withLength { pickleType(pid.tpe); pickleStats(stats) }
@@ -628,24 +564,22 @@ class TreePickler(pickler: TastyPickler) {
           pickleTree(ref)
         case RefinedTypeTree(parent, refinements) =>
           if (refinements.isEmpty) pickleTree(parent)
-          else {
+          else
             val refineCls = refinements.head.symbol.owner.asClass
             registerDef(refineCls)
             pickledTypes(refineCls.typeRef) = currentAddr
             writeByte(REFINEDtpt)
             refinements.foreach(preRegister)
             withLength { pickleTree(parent); refinements.foreach(pickleTree) }
-          }
         case AppliedTypeTree(tycon, args) =>
           writeByte(APPLIEDtpt)
           withLength { pickleTree(tycon); args.foreach(pickleTree) }
         case MatchTypeTree(bound, selector, cases) =>
           writeByte(MATCHtpt)
-          withLength {
+          withLength:
             if (!bound.isEmpty) pickleTree(bound)
             pickleTree(selector)
             cases.foreach(pickleTree)
-          }
         case ByNameTypeTree(tp) =>
           writeByte(BYNAMEtpt)
           pickleTree(tp)
@@ -657,14 +591,13 @@ class TreePickler(pickler: TastyPickler) {
           withLength { pickleParams(tparams); pickleTree(body) }
         case TypeBoundsTree(lo, hi, alias) =>
           writeByte(TYPEBOUNDStpt)
-          withLength {
+          withLength:
             pickleTree(lo);
             if alias.isEmpty then
               if hi ne lo then pickleTree(hi)
             else
               pickleTree(hi)
               pickleTree(alias)
-          }
         case tree @ Quote(body, Nil) =>
           // TODO: Add QUOTE tag to TASTy
           assert(body.isTerm,
@@ -687,20 +620,16 @@ class TreePickler(pickler: TastyPickler) {
           )
         case Hole(_, idx, args, _) =>
           writeByte(HOLE)
-          withLength {
+          withLength:
             writeNat(idx)
             pickleType(tree.tpe, richTypes = true)
             args.foreach(pickleTree)
-          }
-      }
-      catch {
+      catch
         case ex: TypeError =>
           report.error(ex.toMessage, tree.srcPos.focus)
         case ex: AssertionError =>
           println(i"error when pickling tree $tree")
           throw ex
-      }
-  }
 
   def pickleSelectors(selectors: List[untpd.ImportSelector])(using Context): Unit =
     for sel <- selectors do
@@ -715,33 +644,29 @@ class TreePickler(pickler: TastyPickler) {
           pickleTree(tpt)
         case _ =>
 
-  def pickleSelector(tag: Int, id: untpd.Ident)(using Context): Unit = {
+  def pickleSelector(tag: Int, id: untpd.Ident)(using Context): Unit =
     registerTreeAddr(id)
     writeByte(tag)
     pickleName(id.name)
-  }
 
-  def pickleModifiers(sym: Symbol, mdef: MemberDef)(using Context): Unit = {
+  def pickleModifiers(sym: Symbol, mdef: MemberDef)(using Context): Unit =
     import Flags._
     var flags = sym.flags
     val privateWithin = sym.privateWithin
-    if (privateWithin.exists) {
+    if (privateWithin.exists)
       writeByte(if (flags.is(Protected)) PROTECTEDqualified else PRIVATEqualified)
       pickleType(privateWithin.typeRef)
       flags = flags &~ Protected
-    }
     if (flags.is(ParamAccessor) && sym.isTerm && !sym.isSetter)
       flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
     pickleFlags(flags, sym.isTerm)
     val annots = sym.annotations.foreach(pickleAnnotation(sym, mdef, _))
-  }
 
-  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
+  def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit =
     import Flags._
-    def writeModTag(tag: Int) = {
+    def writeModTag(tag: Int) =
       assert(isModifierTag(tag))
       writeByte(tag)
-    }
     assert(!flags.is(Scala2x))
     if (flags.is(Private)) writeModTag(PRIVATE)
     if (flags.is(Protected)) writeModTag(PROTECTED)
@@ -764,7 +689,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Exported)) writeModTag(EXPORTED)
     if (flags.is(Given)) writeModTag(GIVEN)
     if (flags.is(Implicit)) writeModTag(IMPLICIT)
-    if (isTerm) {
+    if (isTerm)
       if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
       if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
       if (flags.is(Mutable)) writeModTag(MUTABLE)
@@ -776,8 +701,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
       assert(!(flags.is(Label)))
-    }
-    else {
+    else
       if (flags.is(Sealed)) writeModTag(SEALED)
       if (flags.is(Abstract)) writeModTag(ABSTRACT)
       if (flags.is(Trait)) writeModTag(TRAIT)
@@ -785,10 +709,8 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Contravariant)) writeModTag(CONTRAVARIANT)
       if (flags.is(Opaque)) writeModTag(OPAQUE)
       if (flags.is(Open)) writeModTag(OPEN)
-    }
-  }
 
-  private def isUnpicklable(owner: Symbol, ann: Annotation)(using Context) = ann match {
+  private def isUnpicklable(owner: Symbol, ann: Annotation)(using Context) = ann match
     case Annotation.Child(sym) => sym.isInaccessibleChildOf(owner)
       // If child annotation refers to a local class or enum value under
       // a different toplevel class, it is impossible to pickle a reference to it.
@@ -796,7 +718,6 @@ class TreePickler(pickler: TastyPickler) {
       // See tests/pickling/i3149.scala
     case _ =>
       ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
-  }
 
   def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =
     if !isUnpicklable(owner, ann) then
@@ -810,7 +731,7 @@ class TreePickler(pickler: TastyPickler) {
 
 // ---- main entry points ---------------------------------------
 
-  def pickle(trees: List[Tree])(using Context): Unit = {
+  def pickle(trees: List[Tree])(using Context): Unit =
     profile = Profile.current
     for tree <- trees do
       try
@@ -827,9 +748,8 @@ class TreePickler(pickler: TastyPickler) {
       .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")
       .toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
-  }
 
-  def compactify(scratch: ScratchData = new ScratchData): Unit = {
+  def compactify(scratch: ScratchData = new ScratchData): Unit =
     buf.compactify(scratch)
 
     def updateMapWithDeltas(mp: MutableSymbolMap[Addr]) =
@@ -847,5 +767,3 @@ class TreePickler(pickler: TastyPickler) {
         i += 1
 
     updateMapWithDeltas(symRefs)
-  }
-}

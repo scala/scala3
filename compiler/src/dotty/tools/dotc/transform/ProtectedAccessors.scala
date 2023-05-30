@@ -16,7 +16,7 @@ import dotty.tools.dotc.util.Property
  *  from the point of access, but is accessible if the access is from an enclosing
  *  class. In this point a public access method is placed in that enclosing class.
  */
-object ProtectedAccessors {
+object ProtectedAccessors:
   val name: String = "protectedAccessors"
   val description: String = "add accessors for protected members"
 
@@ -25,13 +25,12 @@ object ProtectedAccessors {
     if (sym.is(JavaDefined))
       sym.is(JavaStatic) ||  // Java's static protected definitions are treated as public
       ctx.owner.enclosingPackageClass == sym.enclosingPackageClass
-    else {
+    else
       // For Scala-defined symbols we currently allow private and protected accesses
       // from inner packages, and compensate by widening accessibility of such symbols to public.
       // It would be good if we could revisit this at some point.
       val boundary = sym.accessBoundary(sym.enclosingPackageClass)
       ctx.owner.isContainedIn(boundary) || ctx.owner.isContainedIn(boundary.linkedClass)
-    }
 
   /** Do we need a protected accessor if the current context's owner
    *  is not in a subclass or subtrait of `sym`?
@@ -45,9 +44,8 @@ object ProtectedAccessors {
   def needsAccessor(sym: Symbol)(using Context): Boolean =
     needsAccessorIfNotInSubclass(sym) &&
     !ctx.owner.enclosingClass.derivesFrom(sym.owner)
-}
 
-class ProtectedAccessors extends MiniPhase {
+class ProtectedAccessors extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = ProtectedAccessors.name
@@ -62,20 +60,17 @@ class ProtectedAccessors extends MiniPhase {
   override def prepareForUnit(tree: Tree)(using Context): Context =
     ctx.fresh.setProperty(AccessorsKey, new Accessors)
 
-  private class Accessors extends AccessProxies {
-    val insert: Insert = new Insert {
+  private class Accessors extends AccessProxies:
+    val insert: Insert = new Insert:
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName = ProtectedAccessorName(name)
       def needsAccessor(sym: Symbol)(using Context) = ProtectedAccessors.needsAccessor(sym)
 
-      override def ifNoHost(reference: RefTree)(using Context): Tree = {
+      override def ifNoHost(reference: RefTree)(using Context): Tree =
         val curCls = ctx.owner.enclosingClass
         transforms.println(i"${curCls.ownersIterator.toList}%, %")
         report.error(em"illegal access to protected ${reference.symbol.showLocated} from $curCls",
           reference.srcPos)
         reference
-      }
-    }
-  }
 
   override def transformIdent(tree: Ident)(using Context): Tree =
     accessors.insert.accessorIfNeeded(tree)
@@ -84,14 +79,12 @@ class ProtectedAccessors extends MiniPhase {
     accessors.insert.accessorIfNeeded(tree)
 
   override def transformAssign(tree: Assign)(using Context): Tree =
-    tree.lhs match {
+    tree.lhs match
       case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
         cpy.Apply(tree)(accessors.insert.useSetter(lhs), tree.rhs :: Nil)
       case _ =>
         tree
-    }
 
   override def transformTemplate(tree: Template)(using Context): Tree =
     cpy.Template(tree)(body = accessors.addAccessorDefs(tree.symbol.owner, tree.body))
 
-}

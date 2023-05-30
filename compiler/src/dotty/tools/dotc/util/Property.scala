@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 /** Defines a key type with which to tag properties, such as attachments
  *  or context properties
  */
-object Property {
+object Property:
 
   /** The class of keys for properties of type V */
   class Key[+V]
@@ -15,4 +15,3 @@ object Property {
    * is copied.
    */
   class StickyKey[+V] extends Key[V]
-}

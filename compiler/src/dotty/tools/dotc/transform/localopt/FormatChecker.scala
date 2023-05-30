@@ -32,11 +32,10 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
     val tpe = argTypes(argi)
     types.find(t => argConformsTo(argi, tpe, t))
       .orElse(types.find(t => argConvertsTo(argi, tpe, t)))
-      .getOrElse {
+      .getOrElse:
         report.argError(s"Found: ${tpe.show}, Required: ${types.map(_.show).mkString(", ")}", argi)
         actuals += args(argi)
         types.head
-      }
 
   object formattableTypes:
     val FormattableType = requiredClassRef("java.util.Formattable")
@@ -48,11 +47,10 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
   def argConformsTo(argi: Int, arg: Type, target: Type): Boolean = (arg <:< target).tap(if _ then actuals += args(argi))
   def argConvertsTo(argi: Int, arg: Type, target: Type): Boolean =
     import typer.Implicits.SearchSuccess
-    atPhase(typerPhase) {
+    atPhase(typerPhase):
       ctx.typer.inferView(args(argi), target) match
         case SearchSuccess(view, ref, _, _) => actuals += view ; true
         case _ => false
-    }
 
   // match a conversion specifier
   val formatPattern = """%(?:(\d+)\$)?([-#+ 0,(<]+)?(\d+)?(\.\d+)?([tT]?[%a-zA-Z])?""".r
@@ -211,9 +209,8 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       kind match
         case BooleanXn  => arg == defn.BooleanType orElse warningAt(CC)("Boolean format is null test for non-Boolean")
         case IntegralXn =>
-          arg == BigIntType || !cond(cc) {
+          arg == BigIntType || !cond(cc):
             case 'o' | 'x' | 'X' if hasAnyFlag("+ (") => "+ (".filter(hasFlag).foreach(bad => badFlag(bad, s"only use '$bad' for BigInt conversions to o, x, X")) ; true
-          }
         case _ => true
 
     // what arg type if any does the conversion accept

@@ -14,7 +14,7 @@ import util.{SimpleIdentitySet, SimpleIdentityMap}
  *   - TypeVar       Every constrained parameter might be associated with a TypeVar
  *                   that has the TypeParamRef as origin.
  */
-abstract class Constraint extends Showable {
+abstract class Constraint extends Showable:
 
   type This <: Constraint
 
@@ -221,7 +221,6 @@ abstract class Constraint extends Showable {
    *  of athe type lambda that is associated with the typevar itself.
    */
   def checkConsistentVars()(using Context): Unit
-}
 
 /** When calling `Constraint#addLess(p1, p2, ...)`, the caller might end up
  *  unifying one parameter with the other, this enum lets `addLess` know which

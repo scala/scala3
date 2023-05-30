@@ -37,7 +37,7 @@ object ScalaSettings:
 
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
-  def defaultPageWidth: Int = {
+  def defaultPageWidth: Int =
     val defaultWidth = 80
     val columnsVar = System.getenv("COLUMNS")
     if columnsVar != null then columnsVar.toInt
@@ -47,7 +47,6 @@ object ScalaSettings:
         ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
       else defaultWidth
     else defaultWidth
-  }
 
 trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSettings, WarningSettings, XSettings, YSettings:
   self: SettingGroup =>
@@ -300,10 +299,9 @@ private sealed trait XSettings:
     choices = List("true", "junit", "false"),
     default = "true")
 
-  object mixinForwarderChoices {
+  object mixinForwarderChoices:
     def isTruthy(using Context) = XmixinForceForwarders.value == "true"
     def isAtLeastJunit(using Context) = isTruthy || XmixinForceForwarders.value == "junit"
-  }
 
   val XmacroSettings: Setting[List[String]] = MultiStringSetting("-Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 end XSettings

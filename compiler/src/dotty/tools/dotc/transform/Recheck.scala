@@ -146,9 +146,8 @@ abstract class Recheck extends Phase, SymTransformer:
     /** If true, remember types of all tree nodes in attachments so that they
      *  can be retrieved with `knownType`
      */
-    private val keepAllTypes = inContext(ictx) {
+    private val keepAllTypes = inContext(ictx):
       ictx.settings.Xprint.value.containsPhase(thisPhase)
-    }
 
     /** Should type of `tree` be kept in an attachment so that it can be retrieved with
      *  `knownType`? By default true only is `keepAllTypes` hold, but can be overridden.
@@ -416,11 +415,10 @@ abstract class Recheck extends Phase, SymTransformer:
       traverse(stats)
 
     def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Unit =
-      inContext(ctx.localContext(tree, sym)) {
+      inContext(ctx.localContext(tree, sym)):
         tree match
           case tree: ValDef => recheckValDef(tree, sym)
           case tree: DefDef => recheckDefDef(tree, sym)
-      }
 
     /** Recheck tree without adapting it, returning its new type.
      *  @param tree        the original tree
@@ -490,12 +488,11 @@ abstract class Recheck extends Phase, SymTransformer:
       tpe
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      trace(i"rechecking $tree with pt = $pt", recheckr, show = true) {
+      trace(i"rechecking $tree with pt = $pt", recheckr, show = true):
         try recheckFinish(recheckStart(tree, pt), tree, pt)
         catch case ex: Exception =>
           println(i"error while rechecking $tree")
           throw ex
-      }
 
     /** Typing and previous transforms sometiems leaves skolem types in prefixes of
      *  NamedTypes in `expected` that do not match the `actual` Type. -Ycheck does
@@ -559,9 +556,8 @@ abstract class Recheck extends Phase, SymTransformer:
 
   /** Show tree with rechecked types instead of the types stored in the `.tpe` field */
   override def show(tree: untpd.Tree)(using Context): String =
-    atPhase(thisPhase) {
+    atPhase(thisPhase):
       super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
-    }
 end Recheck
 
 /** A class that can be used to test basic rechecking without any customaization */

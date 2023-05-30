@@ -32,11 +32,10 @@ object Bench extends Driver:
         System.in.nn.read()
     reporter
 
-  def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) = {
+  def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) =
     val pos = args indexOf name
     if (pos < 0) (default, args)
     else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
-  }
 
   def reportTimes() =
     val best = times.sorted

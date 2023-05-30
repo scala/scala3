@@ -377,13 +377,12 @@ object CheckUnused:
 
     def finishAggregation(using Context)(): Unit =
       val unusedInThisStage = this.getUnused
-      this.unusedAggregate match {
+      this.unusedAggregate match
         case None =>
           this.unusedAggregate = Some(unusedInThisStage)
         case Some(prevUnused) =>
           val intersection = unusedInThisStage.warnings.intersect(prevUnused.warnings)
           this.unusedAggregate = Some(UnusedResult(intersection))
-      }
 
 
     /**
@@ -559,9 +558,9 @@ object CheckUnused:
       val warnings =
         List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams,
                   sortedPrivateDefs, sortedPatVars, unsetLocalDefs, unsetPrivateDefs).flatten.sortBy { s =>
-        val pos = s.pos.sourcePos
-        (pos.line, pos.column)
-      }
+          val pos = s.pos.sourcePos
+          (pos.line, pos.column)
+        }
       UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
@@ -634,10 +633,9 @@ object CheckUnused:
       )
 
     extension (tree: ImportSelector)
-      def boundTpe: Type = tree.bound match {
+      def boundTpe: Type = tree.bound match
         case untpd.TypedSplice(tree1) => tree1.tpe
         case _ => NoType
-      }
 
     extension (sym: Symbol)
       /** is accessible without import in current context */
@@ -720,12 +718,12 @@ object CheckUnused:
         (rhs match {
           case _: tpd.Literal => true
           case _ => rhs.tpe match
-            case ConstantType(_) => true
-            case tp: TermRef =>
+              case ConstantType(_) => true
+              case tp: TermRef =>
               // Detect Scala 2 SingleType
-              tp.underlying.classSymbol.is(Flags.Module)
-            case _ =>
-              false
+                tp.underlying.classSymbol.is(Flags.Module)
+              case _ =>
+                false
         })
       def registerTrivial(using Context): Unit =
         if defdef.isTrivial then

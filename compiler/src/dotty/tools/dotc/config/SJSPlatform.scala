@@ -6,13 +6,12 @@ import Symbols._
 
 import dotty.tools.backend.sjs.JSDefinitions
 
-object SJSPlatform {
+object SJSPlatform:
   /** The `SJSPlatform` for the current context. */
   def sjsPlatform(using Context): SJSPlatform =
     ctx.platform.asInstanceOf[SJSPlatform]
-}
 
-class SJSPlatform()(using Context) extends JavaPlatform {
+class SJSPlatform()(using Context) extends JavaPlatform:
 
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()
@@ -32,4 +31,3 @@ class SJSPlatform()(using Context) extends JavaPlatform {
    */
   override def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     !sym.isSubClass(jsDefinitions.JSAnyClass)
-}

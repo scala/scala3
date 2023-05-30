@@ -16,12 +16,11 @@ import java.io.{InputStream, OutputStream}
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class VirtualDirectory(val name: String, maybeContainer: Option[VirtualDirectory] = None)
-extends AbstractFile {
+extends AbstractFile:
   def path: String =
-    maybeContainer match {
+    maybeContainer match
       case None => name
       case Some(parent) => parent.path + '/' + name
-    }
 
   def absolute: AbstractFile = this
 
@@ -55,20 +54,16 @@ extends AbstractFile {
     (files get name filter (_.isDirectory == directory)).orNull
 
   override def fileNamed(name: String): AbstractFile =
-    Option(lookupName(name, directory = false)) getOrElse {
+    Option(lookupName(name, directory = false)) getOrElse:
       val newFile = new VirtualFile(name, s"$path/$name")
       files(name) = newFile
       newFile
-    }
 
   override def subdirectoryNamed(name: String): AbstractFile =
-    Option(lookupName(name, directory = true)) getOrElse {
+    Option(lookupName(name, directory = true)) getOrElse:
       val dir = new VirtualDirectory(name, Some(this))
       files(name) = dir
       dir
-    }
 
-  def clear(): Unit = {
+  def clear(): Unit =
     files.clear()
-  }
-}

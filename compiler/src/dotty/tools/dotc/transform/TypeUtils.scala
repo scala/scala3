@@ -11,11 +11,11 @@ import Names.Name
 
 import dotty.tools.dotc.core.Decorators.*
 
-object TypeUtils {
+object TypeUtils:
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
-  extension (self: Type) {
+  extension (self: Type)
 
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]
@@ -39,20 +39,18 @@ object TypeUtils {
     def isByName: Boolean =
       self.isInstanceOf[ExprType]
 
-    def ensureMethodic(using Context): Type = self match {
+    def ensureMethodic(using Context): Type = self match
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
-    }
 
-    def widenToParents(using Context): Type = self.parents match {
+    def widenToParents(using Context): Type = self.parents match
       case Nil => self
       case ps => ps.reduceLeft(AndType(_, _))
-    }
 
     /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
      */
-    def tupleArity(using Context): Int = self/*.dealias*/ match { // TODO: why does dealias cause a failure in tests/run-deep-subtype/Tuple-toArray.scala
+    def tupleArity(using Context): Int = self/*.dealias*/ match // TODO: why does dealias cause a failure in tests/run-deep-subtype/Tuple-toArray.scala
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
@@ -65,10 +63,9 @@ object TypeUtils {
       case _ =>
         if defn.isTupleNType(self) then self.dealias.argInfos.length
         else -1
-    }
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
-    def tupleElementTypes(using Context): Option[List[Type]] = self.dealias match {
+    def tupleElementTypes(using Context): Option[List[Type]] = self.dealias match
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         tl.tupleElementTypes.map(hd :: _)
       case self: SingletonType =>
@@ -82,7 +79,6 @@ object TypeUtils {
       case _ =>
         if defn.isTupleClass(self.typeSymbol) then Some(self.dealias.argInfos)
         else None
-    }
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(using Context): Type =
@@ -95,7 +91,7 @@ object TypeUtils {
     /** The TermRef referring to the companion of the underlying class reference
      *  of this type, while keeping the same prefix.
      */
-    def mirrorCompanionRef(using Context): TermRef = self match {
+    def mirrorCompanionRef(using Context): TermRef = self match
       case AndType(tp1, tp2) =>
         val c1 = tp1.classSymbol
         val c2 = tp2.classSymbol
@@ -105,7 +101,6 @@ object TypeUtils {
         prefix.select(self.symbol.companionModule).asInstanceOf[TermRef]
       case self: TypeProxy =>
         self.superType.mirrorCompanionRef
-    }
 
     /** Is this type a methodic type that takes at least one parameter? */
     def takesParams(using Context): Boolean = self.stripPoly match
@@ -116,5 +111,3 @@ object TypeUtils {
     def takesImplicitParams(using Context): Boolean = self.stripPoly match
       case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
       case _ => false
-  }
-}

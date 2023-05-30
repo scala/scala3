@@ -5,7 +5,7 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.ast.tpd
 
 
-object QuotesCache {
+object QuotesCache:
   import tpd._
 
   /** A key to be used in a context property that caches the unpickled trees */
@@ -23,4 +23,3 @@ object QuotesCache {
   /** Context with a cache for quote trees and tasty bytes */
   def init(ctx: FreshContext): ctx.type =
     ctx.setProperty(QuotesCacheKey, collection.mutable.Map.empty)
-}

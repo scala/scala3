@@ -20,30 +20,28 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 import org.scalajs.ir.{Trees => js}
 
 /** Additional extensions for `Symbol`s that are only relevant for Scala.js. */
-object JSSymUtils {
+object JSSymUtils:
   /** The result type for `sym.jsName`.
    *
    *  It is either a literal string, or a computed name represented by a reference
    *  to a static `Symbol` (a `dotc.core.Symbols.Symbol`, not a `js.Symbol`).
    */
-  enum JSName {
+  enum JSName:
     case Literal(name: String)
     case Computed(sym: Symbol)
 
-    def displayName(using Context): String = this match {
+    def displayName(using Context): String = this match
       case Literal(name) => name
       case Computed(sym) => sym.fullName.toString()
-    }
-  }
 
-  enum JSCallingConvention {
+  enum JSCallingConvention:
     case Call, BracketAccess, BracketCall
     case Method(name: JSName)
     case Property(name: JSName)
     case UnaryOp(code: js.JSUnaryOp.Code)
     case BinaryOp(code: js.JSBinaryOp.Code)
 
-    def displayName(using Context): String = this match {
+    def displayName(using Context): String = this match
       case Call           => "function application"
       case BracketAccess  => "bracket access"
       case BracketCall    => "bracket call"
@@ -51,39 +49,31 @@ object JSSymUtils {
       case Property(name) => "property '" + name.displayName + "'"
       case UnaryOp(code)  => "unary operator"
       case BinaryOp(code) => "binary operator"
-    }
-  }
 
-  object JSCallingConvention {
-    def of(sym: Symbol)(using Context): JSCallingConvention = {
+  object JSCallingConvention:
+    def of(sym: Symbol)(using Context): JSCallingConvention =
       assert(sym.isTerm, s"got non-term symbol: $sym")
 
-      if (isJSBracketAccess(sym)) {
+      if (isJSBracketAccess(sym))
         BracketAccess
-      } else if (isJSBracketCall(sym)) {
+      else if (isJSBracketCall(sym))
         BracketCall
-      } else {
-        def default = {
+      else
+        def default =
           val jsName = sym.jsName
           if (sym.isJSProperty) Property(jsName)
           else Method(jsName)
-        }
 
-        if (!sym.hasAnnotation(jsdefn.JSNameAnnot)) {
+        if (!sym.hasAnnotation(jsdefn.JSNameAnnot))
           lazy val pc = sym.info.paramNamess.map(_.size).sum
 
-          sym.name match {
+          sym.name match
             case nme.apply                             => Call
             case JSUnaryOpMethodName(code) if pc == 0  => UnaryOp(code)
             case JSBinaryOpMethodName(code) if pc == 1 => BinaryOp(code)
             case _                                     => default
-          }
-        } else {
+        else
           default
-        }
-      }
-    }
-  }
 
   /** Info about a Scala method param when called as JS method.
    *
@@ -98,12 +88,11 @@ object JSSymUtils {
     val info: Type,
     val repeated: Boolean = false,
     val capture: Boolean = false
-  ) {
+  ):
     override def toString(): String =
       s"ParamSpec($info, repeated = $repeated, capture = $capture)"
-  }
 
-  extension (sym: Symbol) {
+  extension (sym: Symbol)
     /** Is this symbol a JavaScript type? */
     def isJSType(using Context): Boolean =
       sym.hasAnnotation(jsdefn.JSTypeAnnot)
@@ -119,19 +108,16 @@ object JSSymUtils {
     /** Tests whether the given member is exposed, i.e., whether it was
      *  originally a public or protected member of a non-native JS class.
      */
-    def isJSExposed(using Context): Boolean = {
-      !sym.is(Bridge) && {
+    def isJSExposed(using Context): Boolean =
+      !sym.is(Bridge) `&&`:
         sym.hasAnnotation(jsdefn.ExposedJSMemberAnnot)
           || (sym.is(Accessor) && sym.field.hasAnnotation(jsdefn.ExposedJSMemberAnnot))
-      }
-    }
 
     /** Should this symbol be translated into a JS getter? */
-    def isJSGetter(using Context): Boolean = {
+    def isJSGetter(using Context): Boolean =
       sym.is(Module)
         || !sym.is(Method)
         || (sym.info.firstParamTypes.isEmpty && atPhaseNoLater(erasurePhase)(sym.info.isParameterless))
-    }
 
     /** Should this symbol be translated into a JS setter? */
     def isJSSetter(using Context): Boolean =
@@ -160,44 +146,39 @@ object JSSymUtils {
      *  If it is not explicitly specified with an `@JSName` annotation, the
      *  JS name is inferred from the Scala name.
      */
-    def jsName(using Context): JSName = {
+    def jsName(using Context): JSName =
       sym.getAnnotation(jsdefn.JSNameAnnot).fold[JSName] {
         JSName.Literal(defaultJSName)
       } { annotation =>
-        annotation.arguments.head match {
+        annotation.arguments.head match
           case Literal(Constant(name: String)) => JSName.Literal(name)
           case tree                            => JSName.Computed(tree.symbol)
-        }
       }
-    }
 
     def defaultJSName(using Context): String =
       if (sym.isTerm) sym.asTerm.name.unexpandedName.getterName.toString()
       else sym.name.unexpandedName.stripModuleClassSuffix.toString()
 
-    def jsParamInfos(using Context): List[JSParamInfo] = {
+    def jsParamInfos(using Context): List[JSParamInfo] =
       assert(sym.is(Method), s"trying to take JS param info of non-method: $sym")
 
       def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
         sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
-      val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase) {
+      val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase):
         val list =
-          for ((name, info) <- paramNamesAndTypes) yield {
+          for ((name, info) <- paramNamesAndTypes) yield
             val v =
               if (info.isRepeatedParam) Some(info.repeatedToSingle.widenDealias)
               else None
             name -> v
-          }
         list.toMap
-      }
 
-      val paramInfosAtElimEVT = atPhase(elimErasedValueTypePhase) {
+      val paramInfosAtElimEVT = atPhase(elimErasedValueTypePhase):
         paramNamesAndTypes.toMap
-      }
 
-      for ((paramName, paramInfoNow) <- paramNamesAndTypes) yield {
-        paramInfosAtElimRepeated.get(paramName) match {
+      for ((paramName, paramInfoNow) <- paramNamesAndTypes) yield
+        paramInfosAtElimRepeated.get(paramName) match
           case None =>
             // This is a capture parameter introduced by erasure or lambdalift
             new JSParamInfo(paramInfoNow, capture = true)
@@ -208,9 +189,6 @@ object JSSymUtils {
           case Some(None) =>
             val info = paramInfosAtElimEVT.getOrElse(paramName, paramInfoNow)
             new JSParamInfo(info)
-        }
-      }
-    }
 
     /** Tests whether the semantics of Scala.js require a field for this symbol,
      *  irrespective of any optimization we think we can do.
@@ -228,9 +206,8 @@ object JSSymUtils {
           || sym.hasAnnotation(jsdefn.JSExportStaticAnnot)
       )
     end sjsNeedsField
-  }
 
-  private object JSUnaryOpMethodName {
+  private object JSUnaryOpMethodName:
     private val map = Map(
       nme.UNARY_+ -> js.JSUnaryOp.+,
       nme.UNARY_- -> js.JSUnaryOp.-,
@@ -240,9 +217,8 @@ object JSSymUtils {
 
     def unapply(name: TermName): Option[js.JSUnaryOp.Code] =
       map.get(name)
-  }
 
-  private object JSBinaryOpMethodName {
+  private object JSBinaryOpMethodName:
     private val map = Map(
       nme.ADD -> js.JSBinaryOp.+,
       nme.SUB -> js.JSBinaryOp.-,
@@ -268,5 +244,3 @@ object JSSymUtils {
 
     def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
       map.get(name)
-  }
-}

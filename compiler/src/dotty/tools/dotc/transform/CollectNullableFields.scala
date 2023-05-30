@@ -11,10 +11,9 @@ import scala.collection.mutable
 
 import java.util.IdentityHashMap
 
-object CollectNullableFields {
+object CollectNullableFields:
   val name: String = "collectNullableFields"
   val description: String = "collect fields that can be nulled out after use in lazy initialization"
-}
 
 /** Collect fields that can be nulled out after use in lazy initialization.
  *
@@ -39,7 +38,7 @@ object CollectNullableFields {
  *    - is only used in a lazy val initializer
  *    - defined in the same class as the lazy val
  */
-class CollectNullableFields extends MiniPhase {
+class CollectNullableFields extends MiniPhase:
   import tpd._
 
   override def phaseName: String = CollectNullableFields.name
@@ -56,7 +55,7 @@ class CollectNullableFields extends MiniPhase {
   /** Whether or not a field is nullable */
   private val nullability = new mutable.LinkedHashMap[Symbol, FieldInfo]
 
-  private def recordUse(tree: Tree)(using Context): Tree = {
+  private def recordUse(tree: Tree)(using Context): Tree =
     val sym = tree.symbol
     val isNullablePrivateField =
       sym.isField &&
@@ -68,7 +67,7 @@ class CollectNullableFields extends MiniPhase {
       sym.info.widenDealias.typeSymbol.isNullableClassAfterErasure
 
     if (isNullablePrivateField)
-      nullability.get(sym) match {
+      nullability.get(sym) match
         case Some(Nullable(from)) if from != ctx.owner => // used in multiple lazy val initializers
           nullability.put(sym, NotNullable)
         case None => // not in the map
@@ -83,10 +82,8 @@ class CollectNullableFields extends MiniPhase {
           // Do nothing for:
           //  - NotNullable
           //  - Nullable(ctx.owner)
-      }
 
     tree
-  }
 
   override def transformIdent(tree: Ident)(using Context): Tree =
     recordUse(tree)
@@ -95,16 +92,13 @@ class CollectNullableFields extends MiniPhase {
     recordUse(tree)
 
   /** Map lazy values to the fields they should null after initialization. */
-  def lazyValNullables(using Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
+  def lazyValNullables(using Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] =
     val result = new IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]]
 
-    nullability.foreach {
+    nullability.foreach:
       case (sym, Nullable(from)) =>
         val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer).nn
         bldr += sym
       case _ =>
-    }
 
     result
-  }
-}

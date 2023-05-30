@@ -10,7 +10,7 @@ import NameKinds.OuterSelectName
 /** This phase rewrites outer selects `E.n_<outer>` which were introduced by
  *  inlining to outer paths.
  */
-class ElimOuterSelect extends MiniPhase {
+class ElimOuterSelect extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = ElimOuterSelect.name
@@ -25,13 +25,11 @@ class ElimOuterSelect extends MiniPhase {
    *  length `n`.
    */
   override def transformSelect(tree: Select)(using Context): Tree =
-    tree.name match {
+    tree.name match
       case OuterSelectName(_, nhops) =>
         val SkolemType(tp) = tree.tpe: @unchecked
         ExplicitOuter.outer.path(start = tree.qualifier, count = nhops).ensureConforms(tp)
       case _ => tree
-    }
-}
 
 object ElimOuterSelect:
   val name: String = "elimOuterSelect"

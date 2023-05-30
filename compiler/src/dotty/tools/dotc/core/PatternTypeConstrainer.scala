@@ -73,48 +73,41 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts):
 
-    def classesMayBeCompatible: Boolean = {
+    def classesMayBeCompatible: Boolean =
       import Flags._
       val patCls = pat.classSymbol
       val scrCls = scrut.classSymbol
-      !patCls.exists || !scrCls.exists || {
+      !patCls.exists || !scrCls.exists `||`:
         if (patCls.is(Final)) patCls.derivesFrom(scrCls)
         else if (scrCls.is(Final)) scrCls.derivesFrom(patCls)
         else if (!patCls.is(Flags.Trait) && !scrCls.is(Flags.Trait))
           patCls.derivesFrom(scrCls) || scrCls.derivesFrom(patCls)
         else true
-      }
-    }
 
-    def stripRefinement(tp: Type): Type = tp match {
+    def stripRefinement(tp: Type): Type = tp match
       case tp: RefinedOrRecType => stripRefinement(tp.parent)
       case tp => tp
-    }
 
-    def tryConstrainSimplePatternType(pat: Type, scrut: Type) = {
+    def tryConstrainSimplePatternType(pat: Type, scrut: Type) =
       val patCls = pat.classSymbol
       val scrCls = scrut.classSymbol
       patCls.exists && scrCls.exists
       && (patCls.derivesFrom(scrCls) || scrCls.derivesFrom(patCls))
       && constrainSimplePatternType(pat, scrut, forceInvariantRefinement)
-    }
 
-    def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
+    def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts):
       // Fold a list of types into an AndType
-      def buildAndType(xs: List[Type]): Type = {
-        @annotation.tailrec def recur(acc: Type, rem: List[Type]): Type = rem match {
+      def buildAndType(xs: List[Type]): Type =
+        @annotation.tailrec def recur(acc: Type, rem: List[Type]): Type = rem match
           case Nil => acc
           case x :: rem => recur(AndType(acc, x), rem)
-        }
-        xs match {
+        xs match
           case Nil => NoType
           case x :: xs => recur(x, xs)
-        }
-      }
 
-      scrut match {
+      scrut match
         case scrut: TypeRef if scrut.symbol.isClass =>
           // consider all parents
           val parents = scrut.parents
@@ -123,7 +116,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patCls = pat.classSymbol
           // find all shared parents in the inheritance hierarchy between pat and scrut
-          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
+          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] =
             var parents = tpClassSym.info.parents
             if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
               parents = parents.tail
@@ -132,38 +125,32 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               if patCls.derivesFrom(sym) then List(sym)
               else allParentsSharedWithPat(tp, sym)
             }
-          }
           val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
           val baseClasses = allSyms map scrut.baseType
           val andType = buildAndType(baseClasses)
           !andType.exists || constrainPatternType(pat, andType)
         case _ =>
-          def tryGadtBounds = scrut match {
+          def tryGadtBounds = scrut match
             case scrut: TypeRef =>
-              ctx.gadt.bounds(scrut.symbol) match {
+              ctx.gadt.bounds(scrut.symbol) match
                 case tb: TypeBounds =>
                   val hi = tb.hi
                   constrainPatternType(pat, hi)
                 case null => true
-              }
             case _ => true
-          }
 
           def trySuperType =
-            val upcasted: Type = scrut match {
+            val upcasted: Type = scrut match
               case scrut: TypeProxy =>
                 scrut.superType
               case _ => NoType
-            }
             if (upcasted.exists)
               tryConstrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
             else true
 
           tryGadtBounds && trySuperType
-      }
-    }
 
-    def dealiasDropNonmoduleRefs(tp: Type) = tp.dealias match {
+    def dealiasDropNonmoduleRefs(tp: Type) = tp.dealias match
       case tp: TermRef =>
         // we drop TermRefs that don't have a class symbol, as they can't
         // meaningfully participate in GADT reasoning and just get in the way.
@@ -173,28 +160,24 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         // See run/enum-Tree.scala.
         if tp.classSymbol.exists then tp else tp.info
       case tp => tp
-    }
 
-    dealiasDropNonmoduleRefs(scrut) match {
+    dealiasDropNonmoduleRefs(scrut) match
       case OrType(scrut1, scrut2) =>
         either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
       case AndType(scrut1, scrut2) =>
         constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
       case scrut: RefinedOrRecType =>
         constrainPatternType(pat, stripRefinement(scrut))
-      case scrut => dealiasDropNonmoduleRefs(pat) match {
-        case OrType(pat1, pat2) =>
-          either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
-        case AndType(pat1, pat2) =>
-          constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
-        case pat: RefinedOrRecType =>
-          constrainPatternType(stripRefinement(pat), scrut)
-        case pat =>
-          tryConstrainSimplePatternType(pat, scrut)
-          || classesMayBeCompatible && constrainUpcasted(scrut)
-      }
-    }
-  }
+      case scrut => dealiasDropNonmoduleRefs(pat) match
+          case OrType(pat1, pat2) =>
+            either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
+          case AndType(pat1, pat2) =>
+            constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
+          case pat: RefinedOrRecType =>
+            constrainPatternType(stripRefinement(pat), scrut)
+          case pat =>
+            tryConstrainSimplePatternType(pat, scrut)
+            || classesMayBeCompatible && constrainUpcasted(scrut)
 
   /** Constrain "simple" patterns (see `constrainPatternType`).
    *
@@ -230,15 +213,14 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  case classes without also appropriately extending the relevant case class
    *  (see `RefChecks#checkCaseClassInheritanceInvariant`).
    */
-  def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type, forceInvariantRefinement: Boolean): Boolean = {
-    def refinementIsInvariant(tp: Type): Boolean = tp match {
+  def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type, forceInvariantRefinement: Boolean): Boolean =
+    def refinementIsInvariant(tp: Type): Boolean = tp match
       case tp: SingletonType => true
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.superType)
       case _ => false
-    }
 
-    def widenVariantParams(tp: Type) = tp match {
+    def widenVariantParams(tp: Type) = tp match
       case tp @ AppliedType(tycon, args) =>
         val args1 = args.zipWithConserve(tycon.typeParams)((arg, tparam) =>
           if (tparam.paramVarianceSign != 0) TypeBounds.empty else arg
@@ -246,7 +228,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         tp.derivedAppliedType(tycon, args1)
       case tp =>
         tp
-    }
 
     val patternCls = patternTp.classSymbol
     val scrutineeCls = scrutineeTp.classSymbol
@@ -261,12 +242,12 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     val assumeInvariantRefinement =
       migrateTo3 || forceInvariantRefinement || refinementIsInvariant(patternTp)
 
-    trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}") {
-      (tp, pt) match {
+    trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}"):
+      (tp, pt) match
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
           val saved = state.nn.constraint
           val result =
-            ctx.gadtState.rollbackGadtUnless {
+            ctx.gadtState.rollbackGadtUnless:
               tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
                 val variance = param.paramVarianceSign
                 if variance == 0 || assumeInvariantRefinement ||
@@ -282,7 +263,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
                   res
                 else true
               }
-            }
           if !result then
             constraint = saved
           result
@@ -292,7 +272,4 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           // be co-inhabited, just that we cannot extract information out of them directly
           // and should upcast.
           false
-      }
-    }
-  }
 }

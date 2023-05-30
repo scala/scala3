@@ -1,7 +1,7 @@
 package dotty.tools.dotc.core
 
 /** A collection of mode bits that are part of a context */
-case class Mode(val bits: Int) extends AnyVal {
+case class Mode(val bits: Int) extends AnyVal:
   import Mode._
   def | (that: Mode): Mode = Mode(bits | that.bits)
   def & (that: Mode): Mode = Mode(bits & that.bits)
@@ -15,17 +15,15 @@ case class Mode(val bits: Int) extends AnyVal {
 
   def ==(that: Mode): Boolean = this.bits == that.bits
   def !=(that: Mode): Boolean = this.bits != that.bits
-}
 
-object Mode {
+object Mode:
   val None: Mode = Mode(0)
 
   private val modeName = new Array[String](32)
 
-  def newMode(bit: Int, name: String): Mode = {
+  def newMode(bit: Int, name: String): Mode =
     modeName(bit) = name
     Mode(1 << bit)
-  }
 
   val Pattern: Mode = newMode(0, "Pattern")
   val Type: Mode = newMode(1, "Type")
@@ -144,4 +142,3 @@ object Mode {
 
   /** We are checking the original call of an Inlined node */
   val InlinedCall: Mode = newMode(31, "InlinedCall")
-}

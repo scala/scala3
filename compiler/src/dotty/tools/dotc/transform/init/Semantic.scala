@@ -124,14 +124,13 @@ object Semantic:
      *  After populating class parameters and outers, it is possible to lazily
      *  compute the field values in class bodies when they are accessed.
      */
-    private def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString) {
+    private def populateParams(): Contextual[this.type] = log("populating parameters", printer, (_: Warm).objekt.toString):
       assert(!populatingParams, "the object is already populating parameters")
       populatingParams = true
       val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
       extendTrace(klass.defTree) { this.callConstructor(ctor, args.map(arg => new ArgInfo(arg, trace))) }
       populatingParams = false
       this
-    }
 
     def ensureObjectExistsAndPopulated(): Contextual[this.type] =
       if cache.containsObject(this) then this
@@ -514,7 +513,7 @@ object Semantic:
      *
      *  Invariant: fields are immutable and only set once
      */
-    def updateField(field: Symbol, value: Value): Contextual[Unit] = log("set field " + field + " of " + ref + " to " + value) {
+    def updateField(field: Symbol, value: Value): Contextual[Unit] = log("set field " + field + " of " + ref + " to " + value):
       val obj = objekt
       // We may reset the outers or params of a populated warm object.
       // This is the case if we need access the field of a warm object, which
@@ -528,19 +527,17 @@ object Semantic:
       assert(!obj.hasField(field) || isParamUpdate, field.show + " already init, new = " + value + ", old = " + obj.field(field) + ", ref = " + ref)
       val obj2 = obj.copy(fields = obj.fields.updated(field, value))
       if changed then cache.updateObject(ref, obj2)
-    }
 
     /** Update the immediate outer of the given `klass` of the abstract object
      *
      *  Invariant: outers are immutable and only set once
      */
-    def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = log("set outer " + klass + " of " + ref + " to " + value) {
+    def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = log("set outer " + klass + " of " + ref + " to " + value):
       val obj = objekt
       // See the comment in `updateField` for setting the value twice.
       assert(!obj.hasOuter(klass) || obj.outer(klass) == value, klass.show + " already has outer, new = " + value + ", old = " + obj.outer(klass) + ", ref = " + ref)
       val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
       cache.updateObject(ref, obj2)
-    }
   end extension
 
   extension (value: Value)
@@ -548,7 +545,7 @@ object Semantic:
       value.promote(msg)
       value
 
-    def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show) {
+    def select(field: Symbol, receiver: Type, needResolve: Boolean = true): Contextual[Value] = log("select " + field.show + ", this = " + value, printer, (_: Value).show):
       if promoted.isCurrentObjectPromoted then Hot
       else value match
         case Hot  =>
@@ -602,9 +599,8 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.map(_.select(field, receiver)).join
-    }
 
-    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show):
       def promoteArgs(): Contextual[Unit] = args.foreach(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
@@ -649,7 +645,7 @@ object Semantic:
       if promoted.isCurrentObjectPromoted then Hot
       else if isAlwaysSafe(meth) then Hot
       else if meth eq defn.Any_asInstanceOf then value
-      else value match {
+      else value match
         case Hot  =>
           if isSyntheticApply(meth) && meth.hasSource then
             val klass = meth.owner.companionClass.asClass
@@ -700,18 +696,16 @@ object Semantic:
                 outer.instantiate(klass, klass.primaryConstructor, args)
               else
                 reporter.reportAll(tryReporter.errors)
-                extendTrace(ddef) {
+                extendTrace(ddef):
                   eval(ddef.rhs, ref, cls, cacheResult = true)
-                }
             else if ref.canIgnoreMethodCall(target) then
               Hot
             else
               // no source code available
               promoteArgs()
               // try promoting the receiver as last resort
-              val hasErrors = Reporter.hasErrors {
+              val hasErrors = Reporter.hasErrors:
                 ref.promote(ref.show + " has no source code and is not provably transitively initialized (Hot).")
-              }
               if hasErrors then
                 val error = CallUnknown(target)(trace)
                 reporter.report(error)
@@ -741,10 +735,8 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.map(_.call(meth, args, receiver, superType)).join
-      }
-    }
 
-    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show):
       // init "fake" param fields for parameters of primary and secondary constructors
       def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
         val params = ctorDef.termParamss.flatten.map(_.symbol)
@@ -753,7 +745,7 @@ object Semantic:
           ref.updateField(param, value)
           printer.println(param.show + " initialized with " + value)
 
-      value match {
+      value match
         case Hot | Cold | _: RefSet | _: Fun =>
           report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", value = " + value + Trace.show, Trace.position)
           Hot
@@ -795,18 +787,15 @@ object Semantic:
             val error = CallUnknown(ctor)(trace)
             reporter.report(error)
             Hot
-      }
 
-    }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show):
       def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: List[Value]): Contextual[Value] =
         val argInfos2 = args.zip(argValues).map { (argInfo, v) => argInfo.copy(value = v) }
-        val errors = Reporter.stopEarly {
+        val errors = Reporter.stopEarly:
           given Trace = Trace.empty
           warm.callConstructor(ctor, argInfos2)
-        }
         if errors.nonEmpty then
           val indices =
             for
@@ -822,7 +811,7 @@ object Semantic:
           warm
 
       if promoted.isCurrentObjectPromoted then Hot
-      else value match {
+      else value match
         case Hot  =>
           var allHot = true
           val args2 = args.map { arg =>
@@ -867,8 +856,6 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.map(_.instantiate(klass, ctor, args)).join
-      }
-    }
   end extension
 
   extension (ref: Ref)
@@ -887,7 +874,7 @@ object Semantic:
       else if sym.is(Flags.Param) then
         Hot
       else
-        sym.defTree match {
+        sym.defTree match
           case vdef: ValDef =>
             // resolve this for local variable
             val enclosingClass = sym.owner.enclosingClass.asClass
@@ -905,7 +892,6 @@ object Semantic:
             end match
 
           case _ => Hot
-        }
   end extension
 
 // ----- Promotion ----------------------------------------------------
@@ -920,10 +906,10 @@ object Semantic:
      *  object freely, as its fields or outers may still reach uninitialized
      *  objects.
      */
-    def isFullyFilled: Contextual[Boolean] = log("isFullyFilled " + ref, printer) {
+    def isFullyFilled: Contextual[Boolean] = log("isFullyFilled " + ref, printer):
       val obj = ref.objekt
       ref.klass.baseClasses.forall { klass =>
-        !klass.hasSource || {
+        !klass.hasSource `||`:
           val nonInits = klass.info.decls.filter { member =>
             !member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred)
             && !member.isType
@@ -931,9 +917,7 @@ object Semantic:
           }
           printer.println("nonInits = " + nonInits)
           nonInits.isEmpty
-        }
       }
-    }
 
     def nonInitFields(): Contextual[List[Symbol]] =
       val obj = ref.objekt
@@ -951,7 +935,7 @@ object Semantic:
   end extension
 
   extension (thisRef: ThisRef)
-    def tryPromoteCurrentObject(): Contextual[Boolean] = log("tryPromoteCurrentObject ", printer) {
+    def tryPromoteCurrentObject(): Contextual[Boolean] = log("tryPromoteCurrentObject ", printer):
       if promoted.isCurrentObjectPromoted then
         true
       else if thisRef.isFullyFilled then
@@ -960,11 +944,10 @@ object Semantic:
         true
       else
         false
-    }
 
   extension (value: Value)
     /** Promotion of values to hot */
-    def promote(msg: String): Contextual[Unit] = log("promoting " + value + ", promoted = " + promoted, printer) {
+    def promote(msg: String): Contextual[Unit] = log("promoting " + value + ", promoted = " + promoted, printer):
       if !promoted.isCurrentObjectPromoted then
 
         value match
@@ -990,14 +973,12 @@ object Semantic:
 
         case fun @ Fun(body, thisV, klass) =>
           if !promoted.contains(fun) then
-            val errors = Reporter.stopEarly {
-              val res = {
+            val errors = Reporter.stopEarly:
+              val res =
                 given Trace = Trace.empty
                 eval(body, thisV, klass, cacheResult = true)
-              }
               given Trace = Trace.empty.add(body)
               res.promote("Only transitively initialized (Hot) values can be returned by functions. The function " + fun.show + " returns " + res.show + ".")
-            }
             if errors.nonEmpty then
               reporter.report(UnsafePromotion(msg, errors.head)(trace))
             else
@@ -1005,7 +986,6 @@ object Semantic:
 
         case RefSet(refs) =>
           refs.foreach(_.promote(msg))
-    }
   end extension
 
   extension (warm: Warm)
@@ -1023,18 +1003,17 @@ object Semantic:
      *  reports a warning to avoid expensive checks.
      *
      */
-    def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
+    def tryPromote(msg: String): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer):
       val obj = warm.objekt
 
       def doPromote(klass: ClassSymbol, subClass: ClassSymbol, subClassSegmentHot: Boolean)(using Reporter): Unit =
         val outer = obj.outer(klass)
-        val isHotSegment = outer.isHot && {
+        val isHotSegment = outer.isHot `&&`:
           val ctor = klass.primaryConstructor
           val ctorDef = ctor.defTree.asInstanceOf[DefDef]
           val params = ctorDef.termParamss.flatten.map(_.symbol)
           // We have cached all parameters on the object
           params.forall(param => obj.field(param).isHot)
-        }
 
         // Check invariant: subClassSegmentHot ==> isHotSegment
         //
@@ -1056,14 +1035,12 @@ object Semantic:
               if member.is(Flags.Method, butNot = Flags.Accessor) then
                 val args = member.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot: Value, Trace.empty))
                 val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
-                withTrace(trace.add(member.defTree)) {
+                withTrace(trace.add(member.defTree)):
                   res.promote("Could not verify that the return value of " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
-                }
               else
                 val res = warm.select(member, receiver = warm.klass.typeRef)
-                withTrace(trace.add(member.defTree)) {
+                withTrace(trace.add(member.defTree)):
                   res.promote("Could not verify that the field " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
-                }
           end for
 
         // Promote parents
@@ -1077,13 +1054,11 @@ object Semantic:
           for mixin <- mixins if mixin.hasSource do doPromote(mixin.asClass, klass, isHotSegment)
       end doPromote
 
-      val errors = Reporter.stopEarly {
+      val errors = Reporter.stopEarly:
         doPromote(warm.klass, subClass = warm.klass, subClassSegmentHot = false)
-      }
 
       if errors.isEmpty then Nil
       else UnsafePromotion(msg, errors.head)(trace) :: Nil
-    }
 
   end extension
 
@@ -1110,7 +1085,7 @@ object Semantic:
     val tpl = classSym.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     @tailrec
-    def iterate(): Unit = {
+    def iterate(): Unit =
       given Promoted = Promoted.empty(classSym)
       given Trace = Trace.empty.add(classSym.defTree)
       given reporter: Reporter.BufferedReporter = new Reporter.BufferedReporter
@@ -1130,7 +1105,6 @@ object Semantic:
         iterate()
       else
         cache.prepareForNextClass()
-    }
 
     iterate()
   end checkClass
@@ -1147,9 +1121,8 @@ object Semantic:
   type ArgInfo = TraceValue[Value]
 
   extension (arg: ArgInfo)
-    def promote: Contextual[Unit] = withTrace(arg.trace) {
+    def promote: Contextual[Unit] = withTrace(arg.trace):
       arg.value.promote("Could not verify that the method argument is transitively initialized (Hot). It was found to be " + arg.value.show + ". Only transitively initialized arguments may be passed to methods (except constructors).")
-    }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
@@ -1171,9 +1144,8 @@ object Semantic:
    * @param klass       The enclosing class where the expression is located.
    * @param cacheResult It is used to reduce the size of the cache.
    */
-  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+  def eval(expr: Tree, thisV: Ref, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Value] = log("evaluating " + expr.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show):
     cache.cachedEval(thisV, expr, cacheResult, default = Hot) { expr => cases(expr, thisV, klass) }
-  }
 
   /** Evaluate a list of expressions */
   def eval(exprs: List[Tree], thisV: Ref, klass: ClassSymbol): Contextual[List[Value]] =
@@ -1217,10 +1189,9 @@ object Semantic:
         val args = evalArgs(argss.flatten, thisV, klass)
 
         val cls = tref.classSymbol.asClass
-        withTrace(trace2) {
+        withTrace(trace2):
           val outer = outerValue(tref, thisV, klass)
           outer.instantiate(cls, ctor, args)
-        }
 
       case Call(ref, argss) =>
         // check args
@@ -1261,9 +1232,8 @@ object Semantic:
           case OuterSelectName(_, _) =>
             val current = qualifier.tpe.classSymbol
             val target = expr.tpe.widenSingleton.classSymbol.asClass
-            withTrace(trace2) {
+            withTrace(trace2):
               resolveThis(target, qual, current.asClass)
-            }
           case _ =>
             withTrace(trace2) { qual.select(expr.symbol, receiver = qualifier.tpe) }
 
@@ -1288,14 +1258,12 @@ object Semantic:
         case Select(qual, _) =>
           eval(qual, thisV, klass)
           val res = eval(rhs, thisV, klass)
-          extendTrace(expr) {
+          extendTrace(expr):
             res.ensureHot("The RHS of reassignment must be transitively initialized (Hot). It was found to be " + res.show + ". ")
-          }
         case id: Ident =>
           val res = eval(rhs, thisV, klass)
-          extendTrace(expr) {
+          extendTrace(expr):
             res.ensureHot("The RHS of reassignment must be transitively initialized (Hot). It was found to be " + res.show + ". ")
-          }
 
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
@@ -1316,16 +1284,14 @@ object Semantic:
 
       case Match(selector, cases) =>
         val res = eval(selector, thisV, klass)
-        extendTrace(selector) {
+        extendTrace(selector):
           res.ensureHot("The value to be matched needs to be transitively initialized (Hot). It was found to be " + res.show + ". ")
-        }
         eval(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
         val res = eval(expr, thisV, klass)
-        extendTrace(expr) {
+        extendTrace(expr):
           res.ensureHot("return expression must be transitively initialized (Hot). It was found to be " + res.show + ". ")
-        }
 
       case WhileDo(cond, body) =>
         eval(cond :: body :: Nil, thisV, klass)
@@ -1385,7 +1351,7 @@ object Semantic:
    * @param thisV   The value for `C.this` where `C` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `tp` is located.
    */
-  def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show) {
+  def cases(tp: Type, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("evaluating " + tp.show, printer, (_: Value).show):
     tp match
       case _: ConstantType =>
         Hot
@@ -1420,7 +1386,6 @@ object Semantic:
       case _ =>
         report.error("[Internal error] unexpected type " + tp + Trace.show, Trace.position)
         Hot
-  }
 
   /** Resolve C.this that appear in `klass`
    *
@@ -1428,7 +1393,7 @@ object Semantic:
    * @param thisV   The value for `D.this` where `D` is represented by the parameter `klass`.
    * @param klass   The enclosing class where the type `C.this` is located.
    */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, (_: Value).show):
     if target == klass then thisV
     else if target.is(Flags.Package) then Hot
     else
@@ -1450,7 +1415,6 @@ object Semantic:
           Cold
         case Cold => Cold
 
-  }
 
   /** Compute the outer value that correspond to `tref.prefix`
    *
@@ -1474,7 +1438,7 @@ object Semantic:
    * @param thisV     The value of the current object to be initialized.
    * @param klass     The class to which the template belongs.
    */
-  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show) {
+  def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Value] = log("init " + klass.show, printer, (_: Value).show):
     val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
       vdef.name -> thisV.objekt.field(vdef.symbol)
     }.toMap
@@ -1558,9 +1522,8 @@ object Semantic:
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
             val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot, Trace.empty))
-            extendTrace(superParent) {
+            extendTrace(superParent):
               superCall(tref, ctor, args, tasks)
-            }
       }
 
       // initialize super classes after outers are set
@@ -1570,7 +1533,7 @@ object Semantic:
     var fieldsChanged = true
 
     // class body
-    if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach {
+    if thisV.isThisRef || !thisV.asInstanceOf[Warm].isPopulatingParams then tpl.body.foreach:
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         val res = eval(vdef.rhs, thisV, klass)
         // TODO: Improve promotion to avoid handling enum initialization specially
@@ -1592,7 +1555,6 @@ object Semantic:
           thisV.asInstanceOf[ThisRef].tryPromoteCurrentObject()
         fieldsChanged = false
         eval(tree, thisV, klass)
-    }
 
     // ensure we try promotion once even if class body is empty
     if fieldsChanged && thisV.isThisRef then
@@ -1600,7 +1562,6 @@ object Semantic:
 
     // The result value is ignored, use Hot to avoid futile fixed point computation
     Hot
-  }
 
   /** Check that path in path-dependent types are initialized
    *

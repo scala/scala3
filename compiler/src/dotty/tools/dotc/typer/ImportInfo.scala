@@ -12,7 +12,7 @@ import StdNames.nme
 import printing.Texts.Text
 import NameKinds.QualifiedName
 
-object ImportInfo {
+object ImportInfo:
 
   case class RootRef(refFn: () => TermRef, isPredef: Boolean = false)
 
@@ -39,7 +39,6 @@ object ImportInfo {
     def withRootImports: Context =
       given Context = c
       c.withRootImports(defn.rootImportFns)
-}
 
 /** Info relating to an import clause
  *  @param   symf          A function that computes the import symbol defined by the clause
@@ -52,27 +51,23 @@ object ImportInfo {
 class ImportInfo(symf: Context ?=> Symbol,
                  val selectors: List[untpd.ImportSelector],
                  val qualifier: untpd.Tree,
-                 val isRootImport: Boolean = false) extends Showable {
+                 val isRootImport: Boolean = false) extends Showable:
 
-  private def symNameOpt = qualifier match {
+  private def symNameOpt = qualifier match
     case ref: untpd.RefTree => Some(ref.name.asTermName)
     case _                  => None
-  }
 
-  def importSym(using Context): Symbol = {
-    if (mySym == null) {
+  def importSym(using Context): Symbol =
+    if (mySym == null)
       mySym = symf
       assert(mySym != null)
-    }
     mySym.uncheckedNN
-  }
   private var mySym: Symbol | Null = _
 
   /** The (TermRef) type of the qualifier of the import clause */
-  def site(using Context): Type = importSym.info match {
+  def site(using Context): Type = importSym.info match
     case ImportType(expr) => expr.tpe
     case _ => NoType
-  }
 
   /** The names that are excluded from any wildcard import */
   def excluded: Set[TermName] = { ensureInitialized(); myExcluded.nn }
@@ -225,4 +220,3 @@ class ImportInfo(symf: Context ?=> Symbol,
     featureCache(feature).nn
 
   def toText(printer: Printer): Text = printer.toText(this)
-}

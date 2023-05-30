@@ -17,7 +17,7 @@ import util.Spans.Span
 import reporting._
 
 
-object Signatures {
+object Signatures:
 
   /**
    * Represent a method signature.
@@ -46,9 +46,8 @@ object Signatures {
    * @param doc        The documentation of this parameter
    * @param isImplicit Is this parameter implicit?
    */
-  case class Param(name: String, tpe: String, doc: Option[String] = None, isImplicit: Boolean = false) {
+  case class Param(name: String, tpe: String, doc: Option[String] = None, isImplicit: Boolean = false):
     def show: String = if name.nonEmpty then s"$name: $tpe" else tpe
-  }
 
   /**
    * Extract (current parameter index, function index, functions) method call for given position.
@@ -108,17 +107,16 @@ object Signatures {
    *         next subsequent application exists, it returns the latter
    */
   private def findEnclosingApply(path: List[tpd.Tree], span: Span)(using Context): tpd.Tree =
-    path.filterNot {
+    path.filterNot:
       case apply @ Apply(fun, _) => fun.span.contains(span) || isValid(apply)
       case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || isValid(unapply)
       case typeTree @ AppliedTypeTree(fun, _) => fun.span.contains(span) || isValid(typeTree)
       case typeApply @ TypeApply(fun, _) => fun.span.contains(span) || isValid(typeApply)
       case _ => true
-    } match {
+    match
       case Nil => tpd.EmptyTree
       case direct :: enclosing :: _ if isClosingSymbol(direct.source(span.end -1)) => enclosing
       case direct :: _ => direct
-    }
 
   private def isClosingSymbol(ch: Char) = ch == ')' || ch == ']'
 
@@ -363,11 +361,10 @@ object Signatures {
   /**
    * Filter returning only members starting with underscore followed with number
    */
-  private object underscoreMembersFilter extends NameFilter {
+  private object underscoreMembersFilter extends NameFilter:
     def apply(pre: Type, name: Name)(using Context): Boolean =
       name.startsWith("_") && name.toString.drop(1).toIntOption.isDefined
     def isStable = true
-  }
 
   /**
    * Creates signature for apply method.
@@ -376,7 +373,7 @@ object Signatures {
    *
    * @return Signature if denot is a function, None otherwise
    */
-  private def toApplySignature(denot: SingleDenotation)(using Context): Option[Signature] = {
+  private def toApplySignature(denot: SingleDenotation)(using Context): Option[Signature] =
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
 
@@ -413,22 +410,20 @@ object Signatures {
     denot.info.stripPoly match
       case tpe: (MethodType | AppliedType | TypeRef | TypeParamRef) =>
         val paramss = toParamss(tpe).map(_.filterNot(param => isSyntheticEvidence(param.name)))
-        val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap {
+        val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap:
           case (name, AppliedType(tpe, (ref: TypeParamRef) :: _)) if isSyntheticEvidence(name.show) =>
             Some(ref.paramName -> tpe)
           case _ => None
-        }
 
         val typeParams = denot.info match
           case poly: PolyType =>
             val tparams = poly.paramNames.zip(poly.paramInfos)
             tparams.map { (name, info) =>
-              evidenceParams.find((evidenceName: TypeName, _: Type) => name == evidenceName).flatMap {
+              evidenceParams.find((evidenceName: TypeName, _: Type) => name == evidenceName).flatMap:
                 case (_, tparam) => tparam.show.split('.').lastOption
-              } match {
+              match
                 case Some(evidenceTypeName) => s"${name.show}: ${evidenceTypeName}"
                 case None => name.show + info.show
-              }
             }
           case _ => Nil
         val (name, returnType) =
@@ -438,10 +433,9 @@ object Signatures {
             (denot.name.show, Some(tpe.finalResultType.widenTermRefExpr.show))
         Some(Signatures.Signature(name, typeParams, paramss, returnType, docComment.map(_.mainDoc), Some(denot)))
       case other => None
-  }
 
   @deprecated("Deprecated in favour of `signatureHelp` which now returns Signature along SingleDenotation", "3.1.3")
-  def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
+  def toSignature(denot: SingleDenotation)(using Context): Option[Signature] =
     if denot.name.isUnapplyName then
       val resultType = denot.info.stripPoly.finalResultType match
         case methodType: MethodType => methodType.resultType.widen
@@ -455,7 +449,6 @@ object Signatures {
       toUnapplySignature(denot.asSingleDenotation, paramNames, paramTypes)
     else
       toApplySignature(denot)
-  }
 
   /**
    * Creates signature for unapply method. It is different from apply one as it should not show function name,
@@ -515,7 +508,7 @@ object Signatures {
    * @return A pair composed of the index of the best alternative (0 if no alternatives
    *         were found), and the list of alternatives.
    */
-  private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(using Context): (Int, List[SingleDenotation]) = {
+  private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(using Context): (Int, List[SingleDenotation]) =
     val alternatives =
       err.msg match
         case msg: AmbiguousOverload  => msg.alternatives
@@ -543,7 +536,5 @@ object Signatures {
       else alternativesScores.zipWithIndex.maxBy(_._1)._2
 
     (bestAlternative, alternatives)
-  }
-}
 
 

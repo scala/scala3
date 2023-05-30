@@ -6,7 +6,7 @@ import Types._, Symbols._, Contexts._
 import printing.Printer
 import printing.Texts.Text
 
-object Constants {
+object Constants:
 
   inline val NoTag      = 0
   inline val UnitTag    = 1
@@ -22,7 +22,7 @@ object Constants {
   inline val NullTag    = 11
   inline val ClazzTag   = 12
 
-  class Constant(val value: Any, val tag: Int) extends printing.Showable with Product1[Any] {
+  class Constant(val value: Any, val tag: Int) extends printing.Showable with Product1[Any]:
     import java.lang.Double.doubleToRawLongBits
     import java.lang.Float.floatToRawIntBits
 
@@ -36,7 +36,7 @@ object Constants {
     def isNonUnitAnyVal: Boolean = BooleanTag <= tag && tag <= DoubleTag
     def isAnyVal: Boolean        = UnitTag <= tag && tag <= DoubleTag
 
-    def tpe(using Context): Type = tag match {
+    def tpe(using Context): Type = tag match
       case UnitTag        => defn.UnitType
       case BooleanTag     => defn.BooleanType
       case ByteTag        => defn.ByteType
@@ -49,27 +49,24 @@ object Constants {
       case StringTag      => defn.StringType
       case NullTag        => defn.NullType
       case ClazzTag       => defn.ClassType(typeValue)
-    }
 
     /** We need the equals method to take account of tags as well as values.
      */
-    override def equals(other: Any): Boolean = other match {
+    override def equals(other: Any): Boolean = other match
       case that: Constant =>
         this.tag == that.tag && equalHashValue == that.equalHashValue
       case _ => false
-    }
 
-    def isNaN: Boolean = value match {
+    def isNaN: Boolean = value match
       case f: Float  => f.isNaN
       case d: Double => d.isNaN
       case _ => false
-    }
 
     def booleanValue: Boolean =
       if (tag == BooleanTag) value.asInstanceOf[Boolean]
       else throw new Error("value " + value + " is not a boolean")
 
-    def byteValue: Byte = tag match {
+    def byteValue: Byte = tag match
       case ByteTag   => value.asInstanceOf[Byte]
       case ShortTag  => value.asInstanceOf[Short].toByte
       case CharTag   => value.asInstanceOf[Char].toByte
@@ -78,9 +75,8 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float].toByte
       case DoubleTag => value.asInstanceOf[Double].toByte
       case _         => throw new Error("value " + value + " is not a Byte")
-    }
 
-    def shortValue: Short = tag match {
+    def shortValue: Short = tag match
       case ByteTag   => value.asInstanceOf[Byte].toShort
       case ShortTag  => value.asInstanceOf[Short]
       case CharTag   => value.asInstanceOf[Char].toShort
@@ -89,9 +85,8 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float].toShort
       case DoubleTag => value.asInstanceOf[Double].toShort
       case _         => throw new Error("value " + value + " is not a Short")
-    }
 
-    def charValue: Char = tag match {
+    def charValue: Char = tag match
       case ByteTag   => value.asInstanceOf[Byte].toChar
       case ShortTag  => value.asInstanceOf[Short].toChar
       case CharTag   => value.asInstanceOf[Char]
@@ -100,9 +95,8 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float].toChar
       case DoubleTag => value.asInstanceOf[Double].toChar
       case _         => throw new Error("value " + value + " is not a Char")
-    }
 
-    def intValue: Int = tag match {
+    def intValue: Int = tag match
       case ByteTag   => value.asInstanceOf[Byte].toInt
       case ShortTag  => value.asInstanceOf[Short].toInt
       case CharTag   => value.asInstanceOf[Char].toInt
@@ -111,9 +105,8 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float].toInt
       case DoubleTag => value.asInstanceOf[Double].toInt
       case _         => throw new Error("value " + value + " is not an Int")
-    }
 
-    def longValue: Long = tag match {
+    def longValue: Long = tag match
       case ByteTag   => value.asInstanceOf[Byte].toLong
       case ShortTag  => value.asInstanceOf[Short].toLong
       case CharTag   => value.asInstanceOf[Char].toLong
@@ -122,9 +115,8 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float].toLong
       case DoubleTag => value.asInstanceOf[Double].toLong
       case _         => throw new Error("value " + value + " is not a Long")
-    }
 
-    def floatValue: Float = tag match {
+    def floatValue: Float = tag match
       case ByteTag   => value.asInstanceOf[Byte].toFloat
       case ShortTag  => value.asInstanceOf[Short].toFloat
       case CharTag   => value.asInstanceOf[Char].toFloat
@@ -133,9 +125,8 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float]
       case DoubleTag => value.asInstanceOf[Double].toFloat
       case _         => throw new Error("value " + value + " is not a Float")
-    }
 
-    def doubleValue: Double = tag match {
+    def doubleValue: Double = tag match
       case ByteTag   => value.asInstanceOf[Byte].toDouble
       case ShortTag  => value.asInstanceOf[Short].toDouble
       case CharTag   => value.asInstanceOf[Char].toDouble
@@ -144,24 +135,21 @@ object Constants {
       case FloatTag  => value.asInstanceOf[Float].toDouble
       case DoubleTag => value.asInstanceOf[Double]
       case _         => throw new Error("value " + value + " is not a Double")
-    }
 
     /** Convert constant value to conform to given type.
      */
-    def convertTo(pt: Type)(using Context): Constant | Null = {
-      def classBound(pt: Type): Type = pt.dealias.stripTypeVar match {
+    def convertTo(pt: Type)(using Context): Constant | Null =
+      def classBound(pt: Type): Type = pt.dealias.stripTypeVar match
         case tref: TypeRef if !tref.symbol.isClass && tref.info.exists =>
           classBound(tref.info.bounds.lo)
         case param: TypeParamRef =>
-          ctx.typerState.constraint.entry(param) match {
+          ctx.typerState.constraint.entry(param) match
             case TypeBounds(lo, hi) =>
               if (hi.classSymbol.isPrimitiveValueClass) hi //constrain further with high bound
               else classBound(lo)
             case NoType => classBound(param.binder.paramInfos(param.paramNum).lo)
             case inst => classBound(inst)
-          }
         case pt => pt
-      }
       pt match
         case ConstantType(value) if value == this => this
         case _: SingletonType => null
@@ -185,7 +173,6 @@ object Constants {
             Constant(doubleValue)
           else
             null
-    }
 
     def stringValue: String = value.toString
 
@@ -203,29 +190,26 @@ object Constants {
      * constants in regular Scala code, but it is conceivable that you could
      * conjure them with a macro.
      */
-    private def equalHashValue: Any = value match {
+    private def equalHashValue: Any = value match
       case f: Float  => floatToRawIntBits(f)
       case d: Double => doubleToRawLongBits(d)
       case v         => v
-    }
 
-    override def hashCode: Int = {
+    override def hashCode: Int =
       import scala.util.hashing.MurmurHash3._
       val seed = 17
       var h = seed
       h = mix(h, tag.##) // include tag in the hash, otherwise 0, 0d, 0L, 0f collide.
       h = mix(h, equalHashValue.##)
       finalizeHash(h, length = 2)
-    }
 
     override def toString: String = s"Constant($value)"
     def canEqual(x: Any): Boolean = true
     def get: Any                  = value
     def isEmpty: Boolean          = false
     def _1: Any                   = value
-  }
 
-  object Constant {
+  object Constant:
     def apply(x: Null): Constant         = new Constant(x, NullTag)
     def apply(x: Unit): Constant         = new Constant(x, UnitTag)
     def apply(x: Boolean): Constant      = new Constant(x, BooleanTag)
@@ -257,5 +241,3 @@ object Constants {
       )
 
     def unapply(c: Constant): Constant = c
-  }
-}

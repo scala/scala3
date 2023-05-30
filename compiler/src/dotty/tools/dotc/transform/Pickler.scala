@@ -17,7 +17,7 @@ import collection.mutable
 import util.concurrent.{Executor, Future}
 import compiletime.uninitialized
 
-object Pickler {
+object Pickler:
   val name: String = "pickler"
   val description: String = "generates TASTy info"
 
@@ -26,10 +26,9 @@ object Pickler {
    *  only in backend.
    */
   inline val ParallelPickling = true
-}
 
 /** This phase pickles trees */
-class Pickler extends Phase {
+class Pickler extends Phase:
   import ast.tpd._
 
   override def phaseName: String = Pickler.name
@@ -40,22 +39,20 @@ class Pickler extends Phase {
   override def isRunnable(using Context): Boolean =
     super.isRunnable && !ctx.settings.fromTasty.value
 
-  private def output(name: String, msg: String) = {
+  private def output(name: String, msg: String) =
     val s = new PrintStream(name)
     s.print(msg)
     s.close
-  }
 
   // Maps that keep a record if -Ytest-pickler is set.
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
   private val pickledBytes = new mutable.HashMap[ClassSymbol, Array[Byte]]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
-  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
+  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] =
     val companionModuleClasses =
       clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.isAbsent())
     clss.filterNot(companionModuleClasses.contains)
-  }
 
   /** Runs given functions with a scratch data block in a serialized fashion (i.e.
    *  inside a synchronized block). Scratch data is re-used between calls.
@@ -65,17 +62,16 @@ class Pickler extends Phase {
   object serialized:
     val scratch = new ScratchData
     def run(body: ScratchData => Array[Byte]): Array[Byte] =
-      synchronized {
+      synchronized:
         scratch.reset()
         body(scratch)
-      }
 
   private val executor = Executor[Array[Byte]]()
 
   private def useExecutor(using Context) =
     Pickler.ParallelPickling && !ctx.settings.YtestPickler.value
 
-  override def run(using Context): Unit = {
+  override def run(using Context): Unit =
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
@@ -93,7 +89,7 @@ class Pickler extends Phase {
       val positionWarnings = new mutable.ListBuffer[Message]()
       def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
 
-      def computePickled(): Array[Byte] = inContext(ctx.fresh) {
+      def computePickled(): Array[Byte] = inContext(ctx.fresh):
         serialized.run { scratch =>
           treePkl.compactify(scratch)
           if tree.span.exists then
@@ -111,9 +107,8 @@ class Pickler extends Phase {
           val pickled = pickler.assembleParts()
 
           def rawBytes = // not needed right now, but useful to print raw format.
-            pickled.iterator.grouped(10).toList.zipWithIndex.map {
+            pickled.iterator.grouped(10).toList.zipWithIndex.map:
               case (row, i) => s"${i}0: ${row.mkString(" ")}"
-            }
 
           // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
           if pickling ne noPrinter then
@@ -121,7 +116,6 @@ class Pickler extends Phase {
             println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
           pickled
         }
-      }
 
       /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
        *  either computes the pickled data in a future or eagerly before constructing the
@@ -141,9 +135,8 @@ class Pickler extends Phase {
 
       unit.pickled += (cls -> demandPickled)
     end for
-  }
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val result =
       if useExecutor then
         executor.start()
@@ -160,23 +153,19 @@ class Pickler extends Phase {
             .addMode(Mode.ReadPositions)
             .addMode(Mode.PrintShowExceptions))
     result
-  }
 
-  private def testUnpickler(using Context): Unit = {
+  private def testUnpickler(using Context): Unit =
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
-      for ((cls, bytes) <- pickledBytes) yield {
+      for ((cls, bytes) <- pickledBytes) yield
         val unpickler = new DottyUnpickler(bytes)
         unpickler.enter(roots = Set.empty)
         cls -> unpickler
-      }
     pickling.println("************* entered toplevel ***********")
-    for ((cls, unpickler) <- unpicklers) {
+    for ((cls, unpickler) <- unpicklers)
       val unpickled = unpickler.rootTrees
       testSame(i"$unpickled%\n%", beforePickling(cls), cls)
-    }
-  }
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
     import java.nio.charset.StandardCharsets.UTF_8
@@ -190,4 +179,3 @@ class Pickler extends Phase {
                     |
                     |  diff before-pickling.txt after-pickling.txt""")
   end testSame
-}

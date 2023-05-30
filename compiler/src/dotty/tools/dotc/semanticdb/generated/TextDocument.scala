@@ -19,45 +19,40 @@ final case class TextDocument(
     occurrences: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolOccurrence] = _root_.scala.Seq.empty,
     diagnostics: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Diagnostic] = _root_.scala.Seq.empty,
     synthetics: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Synthetic] = _root_.scala.Seq.empty
-    )  extends SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = schema.value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeEnumSize(1, __value)
-        }
       };
       
       {
         val __value = uri
-        if (!__value.isEmpty) {
+        if (!__value.isEmpty)
           __size += SemanticdbOutputStream.computeStringSize(2, __value)
-        }
       };
       
       {
         val __value = text
-        if (!__value.isEmpty) {
+        if (!__value.isEmpty)
           __size += SemanticdbOutputStream.computeStringSize(3, __value)
-        }
       };
       
       {
         val __value = md5
-        if (!__value.isEmpty) {
+        if (!__value.isEmpty)
           __size += SemanticdbOutputStream.computeStringSize(11, __value)
-        }
       };
       
       {
         val __value = language.value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeEnumSize(10, __value)
-        }
       };
       symbols.foreach { __item =>
         val __value = __item
@@ -76,34 +71,28 @@ final case class TextDocument(
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       }
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = schema.value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeEnum(1, __v)
-        }
       };
       {
         val __v = uri
-        if (!__v.isEmpty) {
+        if (!__v.isEmpty)
           _output__.writeString(2, __v)
-        }
       };
       {
         val __v = text
-        if (!__v.isEmpty) {
+        if (!__v.isEmpty)
           _output__.writeString(3, __v)
-        }
       };
       symbols.foreach { __v =>
         val __m = __v
@@ -125,15 +114,13 @@ final case class TextDocument(
       };
       {
         val __v = language.value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeEnum(10, __v)
-        }
       };
       {
         val __v = md5
-        if (!__v.isEmpty) {
+        if (!__v.isEmpty)
           _output__.writeString(11, __v)
-        }
       };
       synthetics.foreach { __v =>
         val __m = __v
@@ -141,7 +128,6 @@ final case class TextDocument(
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-    }
     def withSchema(__v: dotty.tools.dotc.semanticdb.Schema): TextDocument = copy(schema = __v)
     def withUri(__v: _root_.scala.Predef.String): TextDocument = copy(uri = __v)
     def withText(__v: _root_.scala.Predef.String): TextDocument = copy(text = __v)
@@ -168,11 +154,10 @@ final case class TextDocument(
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.TextDocument])
-}
 
-object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocument] {
+object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocument]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocument] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.TextDocument = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.TextDocument =
     var __schema: dotty.tools.dotc.semanticdb.Schema = dotty.tools.dotc.semanticdb.Schema.LEGACY
     var __uri: _root_.scala.Predef.String = ""
     var __text: _root_.scala.Predef.String = ""
@@ -183,9 +168,9 @@ object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
     val __diagnostics: _root_.scala.collection.immutable.VectorBuilder[dotty.tools.dotc.semanticdb.Diagnostic] = new _root_.scala.collection.immutable.VectorBuilder[dotty.tools.dotc.semanticdb.Diagnostic]
     val __synthetics: _root_.scala.collection.immutable.VectorBuilder[dotty.tools.dotc.semanticdb.Synthetic] = new _root_.scala.collection.immutable.VectorBuilder[dotty.tools.dotc.semanticdb.Synthetic]
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __schema = dotty.tools.dotc.semanticdb.Schema.fromValue(_input__.readEnum())
@@ -206,8 +191,6 @@ object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
         case 98 =>
           __synthetics += LiteParser.readMessage[dotty.tools.dotc.semanticdb.Synthetic](_input__)
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.TextDocument(
         schema = __schema,
         uri = __uri,
@@ -219,7 +202,6 @@ object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
         diagnostics = __diagnostics.result(),
         synthetics = __synthetics.result()
     )
-  }
   
   
   
@@ -268,4 +250,3 @@ object TextDocument  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
     synthetics
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocument])
-}

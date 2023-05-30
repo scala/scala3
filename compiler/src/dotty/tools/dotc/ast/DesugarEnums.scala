@@ -13,7 +13,7 @@ import transform.SyntheticMembers.ExtendsSingletonMirror
 import scala.annotation.internal.sharable
 
 /** Helper methods to desugar enums */
-object DesugarEnums {
+object DesugarEnums:
   import untpd._
 
   enum CaseKind:
@@ -40,22 +40,19 @@ object DesugarEnums {
    *  whether the case is still in the enum class or it has been transferred to the
    *  companion object.
    */
-  def enumClass(using Context): Symbol = {
+  def enumClass(using Context): Symbol =
     val cls = ctx.owner
     if (cls.is(Module)) cls.linkedClass else cls
-  }
 
-  def enumCompanion(using Context): Symbol = {
+  def enumCompanion(using Context): Symbol =
     val cls = ctx.owner
     if (cls.is(Module)) cls.sourceModule else cls.linkedClass.sourceModule
-  }
 
   /** Is `tree` an (untyped) enum case? */
-  def isEnumCase(tree: Tree)(using Context): Boolean = tree match {
+  def isEnumCase(tree: Tree)(using Context): Boolean = tree match
     case tree: MemberDef => tree.mods.isEnumCase
     case PatDef(mods, _, _, _) => mods.isEnumCase
     case _ => false
-  }
 
   /** A reference to the enum class `E`, possibly followed by type arguments.
    *  Each covariant type parameter is approximated by its lower bound.
@@ -63,7 +60,7 @@ object DesugarEnums {
    *  It is an error if a type parameter is non-variant, or if its approximation
    *  refers to pther type parameters.
    */
-  def interpolatedEnumParent(span: Span)(using Context): Tree = {
+  def interpolatedEnumParent(span: Span)(using Context): Tree =
     val tparams = enumClass.typeParams
     def isGround(tp: Type) = tp.subst(tparams, tparams.map(_ => NoType)) eq tp
     val targs = tparams map { tparam =>
@@ -71,16 +68,14 @@ object DesugarEnums {
         tparam.info.bounds.lo
       else if (tparam.is(Contravariant) && isGround(tparam.info.bounds.hi))
         tparam.info.bounds.hi
-      else {
+      else
         def problem =
           if (!tparam.isOneOf(VarianceFlags)) "is invariant"
           else "has bounds that depend on a type parameter in the same parameter list"
         errorType(em"""cannot determine type argument for enum parent $enumClass,
                       |type parameter $tparam $problem""", ctx.source.atSpan(span))
-      }
     }
     TypeTree(enumClass.typeRef.appliedTo(targs)).withSpan(span)
-  }
 
   /** A type tree referring to `enumClass` */
   def enumClassRef(using Context): Tree =
@@ -112,7 +107,7 @@ object DesugarEnums {
    *     case _ => throw new IllegalArgumentException("case not found: " + $name)
    *   }
    */
-  private def enumScaffolding(enumValues: List[RefTree])(using Context): List[Tree] = {
+  private def enumScaffolding(enumValues: List[RefTree])(using Context): List[Tree] =
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
@@ -140,7 +135,6 @@ object DesugarEnums {
     privateValuesDef ::
     valuesDef ::
     valueOfDef :: Nil
-  }
 
   private def enumLookupMethods(constraints: EnumConstraints)(using Context): List[Tree] =
     def scaffolding: List[Tree] =
@@ -177,7 +171,7 @@ object DesugarEnums {
    *     def ordinal = _$ordinal // if `E` does not derive from `java.lang.Enum`
    *   }
    */
-  private def enumValueCreator(using Context) = {
+  private def enumValueCreator(using Context) =
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
@@ -188,7 +182,6 @@ object DesugarEnums {
     DefDef(nme.DOLLAR_NEW,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
-  }
 
   /** Is a type parameter in `enumTypeParams` referenced from an enum class case that has
    *  given type parameters `caseTypeParams`, value parameters `vparamss` and parents `parents`?
@@ -201,18 +194,17 @@ object DesugarEnums {
     enumTypeParams: List[TypeSymbol],
     caseTypeParams: List[TypeDef],
     vparamss: List[List[ValDef]],
-    parents: List[Tree])(using Context): Boolean = {
+    parents: List[Tree])(using Context): Boolean =
 
-    object searchRef extends UntypedTreeAccumulator[Boolean] {
+    object searchRef extends UntypedTreeAccumulator[Boolean]:
       var tparamNames = enumTypeParams.map(_.name).toSet[Name]
-      def underBinders(binders: List[MemberDef], op: => Boolean): Boolean = {
+      def underBinders(binders: List[MemberDef], op: => Boolean): Boolean =
         val saved = tparamNames
         tparamNames = tparamNames -- binders.map(_.name)
         try op
         finally tparamNames = saved
-      }
-      def apply(x: Boolean, tree: Tree)(using Context): Boolean = x || {
-        tree match {
+      def apply(x: Boolean, tree: Tree)(using Context): Boolean = x `||`:
+        tree match
           case Ident(name) =>
             val matches = tparamNames.contains(name)
             if (matches && (caseTypeParams.nonEmpty || vparamss.isEmpty))
@@ -224,31 +216,26 @@ object DesugarEnums {
             val refinementDefs = refinements collect { case r: MemberDef => r }
             underBinders(refinementDefs, foldOver(x, tree))
           case _ => foldOver(x, tree)
-        }
-      }
       def apply(tree: Tree)(using Context): Boolean =
         underBinders(caseTypeParams, apply(false, tree))
-    }
 
     def typeHasRef(tpt: Tree) = searchRef(tpt)
     def valDefHasRef(vd: ValDef) = typeHasRef(vd.tpt)
-    def parentHasRef(parent: Tree): Boolean = parent match {
+    def parentHasRef(parent: Tree): Boolean = parent match
       case Apply(fn, _) => parentHasRef(fn)
       case TypeApply(_, targs) => targs.exists(typeHasRef)
       case Select(nu, nme.CONSTRUCTOR) => parentHasRef(nu)
       case New(tpt) => typeHasRef(tpt)
       case parent => parent.isType && typeHasRef(parent)
-    }
 
     vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
-  }
 
   /** A pair consisting of
    *   - the next enum tag
    *   - scaffolding containing the necessary definitions for singleton enum cases
    *     unless that scaffolding was already generated by a previous call to `nextEnumKind`.
    */
-  def nextOrdinal(name: Name, kind: CaseKind, definesLookups: Boolean)(using Context): (Int, List[Tree]) = {
+  def nextOrdinal(name: Name, kind: CaseKind, definesLookups: Boolean)(using Context): (Int, List[Tree]) =
     val (ordinal, seenMinKind, seenMaxKind, seenCases) =
       ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, CaseKind.Class, CaseKind.Simple, Nil))
     val minKind = if kind.ordinal < seenMinKind.ordinal then kind else seenMinKind
@@ -263,7 +250,6 @@ object DesugarEnums {
     else
       ctx.tree.pushAttachment(EnumCaseCount, (ordinal + 1, minKind, maxKind, cases))
       (ordinal, Nil)
-  }
 
   def param(name: TermName, typ: Type)(using Context): ValDef = param(name, TypeTree(typ))
   def param(name: TermName, tpt: Tree)(using Context): ValDef = ValDef(name, tpt, EmptyTree).withFlags(Param)
@@ -279,32 +265,27 @@ object DesugarEnums {
       rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */
-  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree = {
+  def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree =
     assert(impl.body.isEmpty)
     if (!enumClass.exists) EmptyTree
     else if (impl.parents.isEmpty)
       expandSimpleEnumCase(name, mods, definesLookups, span)
-    else {
+    else
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Object, definesLookups)
       val impl1 = cpy.Template(impl)(parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue), body = Nil)
         .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
-    }
-  }
 
   /** Expand a simple enum case */
   def expandSimpleEnumCase(name: TermName, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree =
     if (!enumClass.exists) EmptyTree
-    else if (enumClass.typeParams.nonEmpty) {
+    else if (enumClass.typeParams.nonEmpty)
       val parent = interpolatedEnumParent(span)
       val impl = Template(emptyConstructor, parent :: Nil, Nil, EmptyValDef, Nil)
       expandEnumModule(name, impl, mods, definesLookups, span)
-    }
-    else {
+    else
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Simple, definesLookups)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
-    }
-}

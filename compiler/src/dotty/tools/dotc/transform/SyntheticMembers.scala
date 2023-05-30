@@ -17,7 +17,7 @@ import util.Spans.Span
 import config.Printers.derive
 import NullOpsDecorator._
 
-object SyntheticMembers {
+object SyntheticMembers:
 
   enum MirrorImpl:
     case OfProduct(pre: Type)
@@ -28,7 +28,6 @@ object SyntheticMembers {
 
   /** Attachment recording that an anonymous class should extend Mirror.Product */
   val ExtendsSumOrProductMirror: Property.StickyKey[MirrorImpl] = new Property.StickyKey
-}
 
 /** Synthetic method implementations for case classes, case objects,
  *  and value classes.
@@ -52,7 +51,7 @@ object SyntheticMembers {
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
-class SyntheticMembers(thisPhase: DenotTransformer) {
+class SyntheticMembers(thisPhase: DenotTransformer):
   import SyntheticMembers._
   import ast.tpd._
 
@@ -63,13 +62,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private var myNonJavaEnumValueSymbols: List[Symbol] = Nil
 
   private def initSymbols(using Context) =
-    if (myValueSymbols.isEmpty) {
+    if (myValueSymbols.isEmpty)
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = defn.caseClassSynthesized
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
       myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal
-    }
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(using Context): List[Symbol] = { initSymbols; myCaseSymbols }
@@ -87,7 +85,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   /** If this is a case or value class, return the appropriate additional methods,
    *  otherwise return nothing.
    */
-  def caseAndValueMethods(clazz: ClassSymbol)(using Context): List[Tree] = {
+  def caseAndValueMethods(clazz: ClassSymbol)(using Context): List[Tree] =
     val clazzType = clazz.appliedRef
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
@@ -109,7 +107,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def syntheticDefIfMissing(sym: Symbol): List[Tree] =
       if (existingDef(sym, clazz).exists) Nil else syntheticDef(sym) :: Nil
 
-    def syntheticDef(sym: Symbol): Tree = {
+    def syntheticDef(sym: Symbol): Tree =
       val synthetic = sym.copy(
         owner = clazz,
         flags = sym.flags &~ Deferred | Synthetic | Override,
@@ -151,7 +149,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
-      def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
+      def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
         case nme.toString_ => toStringBody(vrefss)
@@ -163,10 +161,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
-      }
       report.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       synthesizeDef(synthetic, syntheticRHS)
-    }
 
     /** The class
      *
@@ -184,7 +180,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  }
      *  ```
      */
-    def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
+    def productElementBody(arity: Int, index: Tree)(using Context): Tree =
       // case N => _${N + 1}
       val cases = 0.until(arity).map { i =>
         val sel = This(clazz).select(nme.selectorName(i), _.info.isParameterless)
@@ -192,7 +188,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
 
       Match(index, (cases :+ generateIOBECase(index)).toList)
-    }
 
     /** The class
      *
@@ -210,30 +205,27 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  }
      *  ```
      */
-    def productElementNameBody(arity: Int, index: Tree)(using Context): Tree = {
+    def productElementNameBody(arity: Int, index: Tree)(using Context): Tree =
       // case N => // name for case arg N
       val cases = 0.until(arity).map { i =>
         CaseDef(Literal(Constant(i)), EmptyTree, Literal(Constant(accessors(i).name.toString)))
       }
 
       Match(index, (cases :+ generateIOBECase(index)).toList)
-    }
 
-    def generateIOBECase(index: Tree): CaseDef = {
+    def generateIOBECase(index: Tree): CaseDef =
       val ioob = defn.IndexOutOfBoundsException.typeRef
       // Second constructor of ioob that takes a String argument
-      def filterStringConstructor(s: Symbol): Boolean = s.info match {
+      def filterStringConstructor(s: Symbol): Boolean = s.info match
         case m: MethodType if s.isConstructor && m.paramInfos.size == 1 =>
           m.paramInfos.head.stripNull == defn.StringType
         case _ => false
-      }
       val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
       val stringIndex = Apply(Select(index, nme.toString_), Nil)
       val error = Throw(New(ioob, constructor, List(stringIndex)))
 
       // case _ => throw new IndexOutOfBoundsException(i.toString)
       CaseDef(Underscore(defn.IntType), EmptyTree, error)
-    }
 
     /** The class
      *
@@ -258,7 +250,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  `@unchecked` is needed for parametric case classes.
      *
      */
-    def equalsBody(that: Tree)(using Context): Tree = {
+    def equalsBody(that: Tree)(using Context): Tree =
       val thatAsClazz = newSymbol(ctx.owner, nme.x_0, SyntheticCase, clazzType, coord = ctx.owner.span) // x$0
       def wildcardAscription(tp: Type) = Typed(Underscore(tp), TypeTree(tp))
       val pattern = Bind(thatAsClazz, wildcardAscription(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot, thatAsClazz.span)))) // x$0 @ (_: C @unchecked)
@@ -278,11 +270,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
-      else {
+      else
         val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
         eqCompare or matchExpr
-      }
-    }
 
     /** The class
      *
@@ -296,10 +286,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def hashCode: Int = x.hashCode()
      *  ```
      */
-    def valueHashCodeBody(using Context): Tree = {
+    def valueHashCodeBody(using Context): Tree =
       assert(accessors.nonEmpty)
       ref(accessors.head).select(nme.hashCode_).ensureApplied
-    }
 
     /** The class
      *
@@ -353,7 +342,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  }
      *  ```
      */
-    def caseHashCodeBody(using Context): Tree = {
+    def caseHashCodeBody(using Context): Tree =
       val acc = newSymbol(ctx.owner, nme.acc, Mutable | Synthetic, defn.IntType, coord = ctx.owner.span)
       val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
       val mixPrefix = Assign(ref(acc),
@@ -362,11 +351,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
       Block(accDef :: mixPrefix :: mixes, finish)
-    }
 
     /** The `hashCode` implementation for given symbol `sym`. */
     def hashImpl(sym: Symbol)(using Context): Tree =
-      defn.scalaClassName(sym.info.finalResultType) match {
+      defn.scalaClassName(sym.info.finalResultType) match
         case tpnme.Unit | tpnme.Null               => Literal(Constant(0))
         case tpnme.Boolean                         => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
         case tpnme.Int                             => ref(sym)
@@ -375,7 +363,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case tpnme.Double                          => ref(defn.staticsMethod("doubleHash")).appliedTo(ref(sym))
         case tpnme.Float                           => ref(defn.staticsMethod("floatHash")).appliedTo(ref(sym))
         case _                                     => ref(defn.staticsMethod("anyHash")).appliedTo(ref(sym))
-      }
 
     /** The class
      *
@@ -394,7 +381,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def canEqualBody(that: Tree, span: Span): Tree = that.isInstance(AnnotatedType(clazzType, Annotation(defn.UncheckedAnnot, span)))
 
     symbolsToSynthesize.flatMap(syntheticDefIfMissing)
-  }
 
   private def hasWriteReplace(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.writeReplace)
@@ -451,7 +437,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *
    *  unless an implementation already exists, otherwise do nothing.
    */
-   def serializableEnumValueMethod(clazz: ClassSymbol)(using Context): List[Tree] =
+  def serializableEnumValueMethod(clazz: ClassSymbol)(using Context): List[Tree] =
     if clazz.isEnumValueImplementation
       && !clazz.derivesFrom(defn.JavaEnumClass)
       && clazz.isSerializable
@@ -504,9 +490,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
           val targs =
             for (tpt <- tpts) yield
-              tpt.tpe match {
+              tpt.tpe match
                 case tvar: TypeVar => tvar.instantiate(fromBelow = false)
-              }
           (baseRef.appliedTo(targs), extractParams(tl.instantiate(targs)))
         case methTpe =>
           (baseRef, extractParams(methTpe))
@@ -571,57 +556,49 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *    On this case the represented class or object is referred to in a pre-existing `MirroredMonoType`
    *    member of the template.
    */
-  def addMirrorSupport(impl: Template)(using Context): Template = {
+  def addMirrorSupport(impl: Template)(using Context): Template =
     val clazz = ctx.owner.asClass
 
     var newBody = impl.body
     var newParents = impl.parents
-    def addParent(parent: Type): Unit = {
+    def addParent(parent: Type): Unit =
       newParents = newParents :+ TypeTree(parent)
       val oldClassInfo = clazz.classInfo
       val newClassInfo = oldClassInfo.derivedClassInfo(
         declaredParents = oldClassInfo.declaredParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
-    }
-    def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {
+    def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit =
       val meth = newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
-      if (!existingDef(meth, clazz).exists) {
+      if (!existingDef(meth, clazz).exists)
         meth.enteredAfter(thisPhase)
         newBody = newBody :+
           synthesizeDef(meth, vrefss => body(cls, vrefss.head.head))
-      }
-    }
     val linked = clazz.linkedClass
-    lazy val monoType = {
+    lazy val monoType =
       val existing = clazz.info.member(tpnme.MirroredMonoType).symbol
       if (existing.exists && !existing.is(Deferred)) existing
-      else {
+      else
         val monoType =
           newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.enteredAfter(thisPhase)
-      }
-    }
     def makeSingletonMirror() =
       addParent(defn.Mirror_SingletonClass.typeRef)
-    def makeProductMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfProduct]) = {
+    def makeProductMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfProduct]) =
       addParent(defn.Mirror_ProductClass.typeRef)
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _, optInfo).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
-    }
-    def makeSumMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfSum]) = {
+    def makeSumMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfSum]) =
       addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
         ordinalBody(_, _, optInfo))
-    }
 
-    if (clazz.is(Module)) {
+    if (clazz.is(Module))
       if (clazz.is(Case)) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked, None)
       else if (linked.isGenericSum(NoType)) makeSumMirror(linked, None)
       else if (linked.is(Sealed))
         derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum(NoType)}")
-    }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()
     else
@@ -633,16 +610,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case _ =>
 
     cpy.Template(impl)(parents = newParents, body = newBody)
-  }
 
-  def addSyntheticMembers(impl: Template)(using Context): Template = {
+  def addSyntheticMembers(impl: Template)(using Context): Template =
     val clazz = ctx.owner.asClass
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
     val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
     if ctx.settings.Yscala2Stdlib.value then impl1
     else addMirrorSupport(impl1)
-  }
 
   private def checkInlining(syntheticMembers: List[Tree])(using Context): Unit =
     if syntheticMembers.exists(_.existsSubTree {
@@ -650,4 +625,3 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       case tree: Select => tree.symbol.isAllOf(InlineMethod)
       case _ => false
     }) then ctx.compilationUnit.needsInlining = true
-}

@@ -26,7 +26,7 @@ object HashSet:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends MutableSet[T] {
+class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends MutableSet[T]:
   import HashSet.DenseLimit
 
   private var used: Int = _
@@ -186,4 +186,3 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
     val prefix = if isDense then "HashSet(dense)." else "HashSet."
     val suffix = getClass.getSimpleName
     s"$prefix$op $suffix"
-}

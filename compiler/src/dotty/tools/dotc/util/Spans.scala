@@ -14,7 +14,7 @@ import language.implicitConversions
  *  Point: unsigned 12 Bits relative to start
  *  NoSpan encoded as -1L (this is a normally invalid span because point would lie beyond end).
  */
-object Spans {
+object Spans:
 
   private inline val StartEndBits = 26
   private inline val StartEndMask = (1L << StartEndBits) - 1
@@ -35,29 +35,26 @@ object Spans {
    *  is roughly where the `^` would go if an error was diagnosed at that position.
    *  All quantities are encoded opaquely in a Long.
    */
-  class Span(val coords: Long) extends AnyVal {
+  class Span(val coords: Long) extends AnyVal:
 
     /** Is this span different from NoSpan? */
     def exists: Boolean = this != NoSpan
 
     /** The start of this span. */
-    def start: Int = {
+    def start: Int =
       assert(exists)
       (coords & StartEndMask).toInt
-    }
 
     /** The end of this span */
-    def end: Int = {
+    def end: Int =
       assert(exists)
       ((coords >>> StartEndBits) & StartEndMask).toInt
-    }
 
     /** The point of this span, returns start for synthetic spans */
-    def point: Int = {
+    def point: Int =
       assert(exists)
       val poff = pointDelta
       if (poff == SyntheticPointDelta) start else start + poff
-    }
 
     /** The difference between point and start in this span */
     def pointDelta: Int =
@@ -79,7 +76,7 @@ object Spans {
       !that.exists || exists && (start <= that.start && end >= that.end)
 
     /** Does the range of this span overlap with the range of that span at more than a single point? */
-    def overlaps(that: Span): Boolean = {
+    def overlaps(that: Span): Boolean =
       def containsInner(span: Span, offset: Int) = span.start < offset && offset < span.end
       exists && that.exists && (
          containsInner(this, that.start)
@@ -87,7 +84,6 @@ object Spans {
       || containsInner(that, this.start)
       || containsInner(that, this.end)
       )
-    }
 
     /** Is this span synthetic? */
     def isSynthetic: Boolean = pointDelta == SyntheticPointDelta
@@ -132,17 +128,15 @@ object Spans {
     /** A synthetic copy of this span */
     def toSynthetic: Span = if (isSynthetic) this else Span(start, end)
 
-    override def toString: String = {
+    override def toString: String =
       val (left, right) = if (isSynthetic) ("<", ">") else ("[", "]")
       if (exists)
         s"$left$start..${if (point == start) "" else s"$point.."}$end$right"
       else
         s"${left}no position${right}"
-    }
 
     def ==(that: Span): Boolean = this.coords == that.coords
     def !=(that: Span): Boolean = this.coords != that.coords
-  }
 
   private def fromOffsets(start: Int, end: Int, pointDelta: Int) =
     //assert(start <= end || start == 1 && end == 0, s"$start..$end")
@@ -156,10 +150,9 @@ object Spans {
     fromOffsets(start, end, SyntheticPointDelta)
 
   /** A source-derived span with given start, end, and point delta */
-  def Span(start: Int, end: Int, point: Int): Span = {
+  def Span(start: Int, end: Int, point: Int): Span =
     val pointDelta = (point - start) max 0
     fromOffsets(start, end, if (pointDelta >= SyntheticPointDelta) 0 else pointDelta)
-  }
 
   /** A synthetic zero-extent span that starts and ends at given `start`. */
   def Span(start: Int): Span = Span(start, start)
@@ -170,19 +163,16 @@ object Spans {
   /** The coordinate of a symbol. This is either an index or
    *  a zero-range span.
    */
-  class Coord(val encoding: Int) extends AnyVal {
+  class Coord(val encoding: Int) extends AnyVal:
     def isIndex: Boolean = encoding > 0
     def isSpan: Boolean = encoding <= 0
-    def toIndex: Int = {
+    def toIndex: Int =
       assert(isIndex)
       encoding - 1
-    }
-    def toSpan: Span = {
+    def toSpan: Span =
       assert(isSpan)
       if (this == NoCoord) NoSpan else Span(-1 - encoding)
-    }
     override def toString = if isSpan then s"$toSpan" else s"Coord(idx=$toIndex)"
-  }
 
   /** An index coordinate */
   implicit def indexCoord(n: Int): Coord = new Coord(n + 1)
@@ -192,4 +182,3 @@ object Spans {
 
   /** A sentinel for a missing coordinate */
   val NoCoord: Coord = new Coord(0)
-}

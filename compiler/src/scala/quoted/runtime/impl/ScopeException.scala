@@ -21,7 +21,7 @@ object ScopeException:
           |Splice stack:
           |${scope.stack.mkString("\t", "\n\t", "\n")}
           """.stripMargin
-        else
+      else
           s"""Expression created in a splice was used outside of that splice.
             |Created in: $scope
             |Used in: $currentScope

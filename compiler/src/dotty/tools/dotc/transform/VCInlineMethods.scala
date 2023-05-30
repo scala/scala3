@@ -39,7 +39,7 @@ import ExtensionMethods._, ValueClasses._
  *  methods (like [[TypeSpecializer]]), this way [[VCInlineMethods]] does not
  *  need to have any knowledge of the name mangling done by other phases.
  */
-class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
+class VCInlineMethods extends MiniPhase with IdentityDenotTransformer:
   import tpd._
 
   override def phaseName: String = VCInlineMethods.name
@@ -58,7 +58,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    */
   private def rewire(tree: Tree, mtArgs: List[Tree] = Nil, mArgss: List[List[Tree]] = Nil)
     (using Context): Tree =
-    tree match {
+    tree match
       case Apply(qual, mArgs) =>
         rewire(qual, mtArgs, mArgs :: mArgss)
       case TypeApply(qual, mtArgs2) =>
@@ -85,12 +85,11 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
             .appliedToTypeTrees(mtArgs)
             .appliedTo(qual)
             .appliedToArgss(mArgss)
-    }
 
   /** If this tree corresponds to a fully-applied value class method call, replace it
    *  by a call to the corresponding extension method, otherwise return it as is.
    */
-  private def rewireIfNeeded(tree: Tree)(using Context) = tree.tpe.widen match {
+  private def rewireIfNeeded(tree: Tree)(using Context) = tree.tpe.widen match
     case tp: LambdaType =>
       tree // The rewiring will be handled by a fully-applied parent node
     case _ =>
@@ -98,7 +97,6 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
         rewire(tree).ensureConforms(tree.tpe).withSpan(tree.span)
       else
         tree
-  }
 
   override def transformSelect(tree: Select)(using Context): Tree =
     rewireIfNeeded(tree)
@@ -106,7 +104,6 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
     rewireIfNeeded(tree)
   override def transformApply(tree: Apply)(using Context): Tree =
     rewireIfNeeded(tree)
-}
 
 object VCInlineMethods:
   val name: String = "vcInlineMethods"

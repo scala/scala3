@@ -53,11 +53,10 @@ class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using C
   def toMessage(using Context) = em"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 
 class MissingType(pre: Type, name: Name)(using Context) extends TypeError:
-  private def otherReason(pre: Type)(using Context): String = pre match {
+  private def otherReason(pre: Type)(using Context): String = pre match
     case pre: ThisType if pre.cls.givenSelfType.exists =>
       i"\nor the self type of $pre might not contain all transitive dependencies"
     case _ => ""
-  }
 
   override def toMessage(using Context): Message =
     if ctx.debug then printStackTrace()
@@ -70,20 +69,18 @@ extends TypeError:
 
   def explanation: String = s"$op $details"
 
-  private def recursions: List[RecursionOverflow] = {
+  private def recursions: List[RecursionOverflow] =
     import scala.collection.mutable.ListBuffer
     val result = ListBuffer.empty[RecursionOverflow]
-    @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match {
+    @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match
       case ro: RecursionOverflow =>
         result += ro
         loop(ro.previous)
       case _ => result.toList
-    }
 
     loop(this)
-  }
 
-  def opsString(rs: List[RecursionOverflow])(using Context): String = {
+  def opsString(rs: List[RecursionOverflow])(using Context): String =
     val maxShown = 20
     if (rs.lengthCompare(maxShown) > 0)
       i"""${opsString(rs.take(maxShown / 2))}
@@ -91,7 +88,6 @@ extends TypeError:
          |${opsString(rs.takeRight(maxShown / 2))}"""
     else
       (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
-  }
 
   override def toMessage(using Context): Message =
     val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
@@ -153,7 +149,7 @@ class CyclicReference private (val denot: SymDenotation)(using Context) extends 
      */
     def errorMsg(cx: Context): Message =
       if (cx.mode is Mode.InferringReturnType)
-        cx.tree match {
+        cx.tree match
           case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
             if (inImplicitSearch)
               TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
@@ -165,7 +161,6 @@ class CyclicReference private (val denot: SymDenotation)(using Context) extends 
               errorMsg(cx.outer)
           case _ =>
             errorMsg(cx.outer)
-        }
 
       // Give up and give generic errors.
       else if (cycleSym.isOneOf(GivenOrImplicitVal, butNot = Method) && cycleSym.owner.isTerm)

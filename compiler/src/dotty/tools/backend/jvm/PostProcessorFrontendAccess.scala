@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.Phases
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess {
+sealed abstract class PostProcessorFrontendAccess:
   import PostProcessorFrontendAccess._
 
   def compilerSettings: CompilerSettings
@@ -22,10 +22,9 @@ sealed abstract class PostProcessorFrontendAccess {
 
   private val frontendLock: AnyRef = new Object()
   inline final def frontendSynch[T](inline x: => T): T = frontendLock.synchronized(x)
-}
 
-object PostProcessorFrontendAccess {
-  sealed trait CompilerSettings {
+object PostProcessorFrontendAccess:
+  sealed trait CompilerSettings:
     def debug: Boolean
     def target: String // javaOutputVersion
 
@@ -33,19 +32,17 @@ object PostProcessorFrontendAccess {
     def outputDirectory: AbstractFile
 
     def mainClass: Option[String]
-  }
 
-  sealed trait BackendReporting {
+  sealed trait BackendReporting:
     def error(message: Context ?=> Message): Unit
     def warning(message: Context ?=> Message): Unit
     def log(message: Context ?=> String): Unit
-  }
 
-  class Impl[I <: DottyBackendInterface](val int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess {
+  class Impl[I <: DottyBackendInterface](val int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess:
     import int.given
     lazy val compilerSettings: CompilerSettings = buildCompilerSettings()
 
-    private def buildCompilerSettings(): CompilerSettings = new CompilerSettings {
+    private def buildCompilerSettings(): CompilerSettings = new CompilerSettings:
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
          def valueSetByUser: Option[T] =
            Option(s.value).filter(_ != s.default)
@@ -66,14 +63,10 @@ object PostProcessorFrontendAccess {
       lazy val dumpClassesDirectory: Option[String] = s.Ydumpclasses.valueSetByUser
       lazy val outputDirectory: AbstractFile = s.outputDir.value
       lazy val mainClass: Option[String] = s.XmainClass.valueSetByUser
-     }
 
-    object backendReporting extends BackendReporting {
+    object backendReporting extends BackendReporting:
       def error(message: Context ?=> Message): Unit = frontendSynch(report.error(message))
       def warning(message: Context ?=> Message): Unit = frontendSynch(report.warning(message))
       def log(message: Context ?=> String): Unit = frontendSynch(report.log(message))
-    }
 
     def getEntryPoints: List[String] = frontendSynch(entryPoints.toList)
-  }
-}

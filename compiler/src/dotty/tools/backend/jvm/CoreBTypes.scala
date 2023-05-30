@@ -9,50 +9,49 @@ import scala.tools.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.StdNames
 import BTypes.InternalName
 
-abstract class CoreBTypes {
+abstract class CoreBTypes:
   val bTypes: BTypes
   import bTypes._
 
-   def primitiveTypeMap: Map[Symbol, PrimitiveBType]
+  def primitiveTypeMap: Map[Symbol, PrimitiveBType]
 
-   def boxedClasses: Set[ClassBType]
+  def boxedClasses: Set[ClassBType]
 
-   def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType]
+  def boxedClassOfPrimitive: Map[PrimitiveBType, ClassBType]
 
-   def boxResultType: Map[Symbol, ClassBType]
+  def boxResultType: Map[Symbol, ClassBType]
 
-   def unboxResultType: Map[Symbol, PrimitiveBType]
+  def unboxResultType: Map[Symbol, PrimitiveBType]
 
-   def srNothingRef : ClassBType
-   def srNullRef    : ClassBType
+  def srNothingRef : ClassBType
+  def srNullRef    : ClassBType
 
-   def ObjectRef                   : ClassBType
-   def StringRef                   : ClassBType
-   def jlStringBuilderRef          : ClassBType
-   def jlStringBufferRef           : ClassBType
-   def jlCharSequenceRef           : ClassBType
-   def jlClassRef                  : ClassBType
-   def jlThrowableRef              : ClassBType
-   def jlCloneableRef              : ClassBType
-   def jiSerializableRef           : ClassBType
-   def jlClassCastExceptionRef     : ClassBType
-   def jlIllegalArgExceptionRef    : ClassBType
-   def jliSerializedLambdaRef      : ClassBType
+  def ObjectRef                   : ClassBType
+  def StringRef                   : ClassBType
+  def jlStringBuilderRef          : ClassBType
+  def jlStringBufferRef           : ClassBType
+  def jlCharSequenceRef           : ClassBType
+  def jlClassRef                  : ClassBType
+  def jlThrowableRef              : ClassBType
+  def jlCloneableRef              : ClassBType
+  def jiSerializableRef           : ClassBType
+  def jlClassCastExceptionRef     : ClassBType
+  def jlIllegalArgExceptionRef    : ClassBType
+  def jliSerializedLambdaRef      : ClassBType
 
-   def srBoxesRuntimeRef: ClassBType
+  def srBoxesRuntimeRef: ClassBType
 
-   def jliLambdaMetaFactoryMetafactoryHandle    : Handle
-   def jliLambdaMetaFactoryAltMetafactoryHandle : Handle
-   def jliLambdaDeserializeBootstrapHandle      : Handle
-   def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle
+  def jliLambdaMetaFactoryMetafactoryHandle    : Handle
+  def jliLambdaMetaFactoryAltMetafactoryHandle : Handle
+  def jliLambdaDeserializeBootstrapHandle      : Handle
+  def jliStringConcatFactoryMakeConcatWithConstantsHandle: Handle
 
-   def asmBoxTo  : Map[BType, MethodNameAndType]
-   def asmUnboxTo: Map[BType, MethodNameAndType]
+  def asmBoxTo  : Map[BType, MethodNameAndType]
+  def asmUnboxTo: Map[BType, MethodNameAndType]
 
-   def typeOfArrayOp: Map[Int, BType]
-}
+  def typeOfArrayOp: Map[Int, BType]
 
-abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTypes {
+abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTypes:
   val bTypes: BTypesFromSymbols[I]
 
   import bTypes._
@@ -98,23 +97,21 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
    * Maps the method symbol for a box method to the boxed type of the result. For example, the
    * method symbol for `Byte.box()` is mapped to the ClassBType `java/lang/Byte`.
    */
-  lazy val boxResultType: Map[Symbol, ClassBType] = {
+  lazy val boxResultType: Map[Symbol, ClassBType] =
     val boxMethods = defn.ScalaValueClasses().map{x => // @darkdimius Are you sure this should be a def?
       (x, Erasure.Boxing.boxMethod(x.asClass))
     }.toMap
     for ((valueClassSym, boxMethodSym) <- boxMethods)
     yield boxMethodSym -> boxedClassOfPrimitive(primitiveTypeMap(valueClassSym))
-  }
 
   /**
    * Maps the method symbol for an unbox method to the primitive type of the result.
    * For example, the method symbol for `Byte.unbox()`) is mapped to the PrimitiveBType BYTE. */
-  lazy val unboxResultType: Map[Symbol, PrimitiveBType] = {
+  lazy val unboxResultType: Map[Symbol, PrimitiveBType] =
     val unboxMethods: Map[Symbol, Symbol] =
       defn.ScalaValueClasses().map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
     for ((valueClassSym, unboxMethodSym) <- unboxMethods)
     yield unboxMethodSym -> primitiveTypeMap(valueClassSym)
-  }
 
   /*
    * srNothingRef and srNullRef exist at run-time only. They are the bytecode-level manifestation (in
@@ -217,7 +214,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
     DOUBLE -> MethodNameAndType("unboxToDouble",  MethodBType(List(ObjectRef), DOUBLE))
   )
 
-  lazy val typeOfArrayOp: Map[Int, BType] = {
+  lazy val typeOfArrayOp: Map[Int, BType] =
     import dotty.tools.backend.ScalaPrimitivesOps._
     Map(
         (List(ZARRAY_LENGTH, ZARRAY_GET, ZARRAY_SET) map (_ -> BOOL))   ++
@@ -230,5 +227,3 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
         (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
         (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) : _*
     )
-  }
-}

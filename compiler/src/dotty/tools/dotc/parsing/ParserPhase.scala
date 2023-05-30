@@ -9,7 +9,7 @@ import dotty.tools.dotc.util.{ NoSourcePosition, SourcePosition }
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.unsupported
 
-class Parser extends Phase {
+class Parser extends Phase:
 
   override def phaseName: String = Parser.name
   override def description: String = Parser.description
@@ -22,24 +22,22 @@ class Parser extends Phase {
    */
   private[dotc] var firstXmlPos: SourcePosition = NoSourcePosition
 
-  def parse(using Context) = monitor("parser") {
+  def parse(using Context) = monitor("parser"):
     val unit = ctx.compilationUnit
     unit.untpdTree =
       if (unit.isJava) new JavaParsers.JavaParser(unit.source).parse()
-      else {
+      else
         val p = new Parsers.Parser(unit.source)
         //  p.in.debugTokenStream = true
         val tree = p.parse()
         if (p.firstXmlPos.exists && !firstXmlPos.exists)
           firstXmlPos = p.firstXmlPos
         tree
-      }
     if (Config.checkPositions)
       unit.untpdTree.checkPos(nonOverlapping = !unit.isJava && !ctx.reporter.hasErrors)
-  }
 
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val unitContexts =
       for unit <- units yield
         report.inform(s"parsing ${unit.source}")
@@ -49,12 +47,9 @@ class Parser extends Phase {
     record("parsedTrees", ast.Trees.ntrees)
 
     unitContexts.map(_.compilationUnit)
-  }
 
   def run(using Context): Unit = unsupported("run")
-}
 
-object Parser{
+object Parser:
   val name: String = "parser"
   val description: String = "scan and parse sources"
-}

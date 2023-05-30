@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutionException
 /**
  * This is a copy implementation from scala/scala scala.tools.nsc.CommonRunner trait
  */
-trait CommonRunner {
+trait CommonRunner:
   /** Run a given object, specified by name, using a
    *  specified classpath and argument list.
    *
@@ -18,10 +18,9 @@ trait CommonRunner {
    *  @throws java.lang.NoSuchMethodException
    *  @throws java.lang.reflect.InvocationTargetException
    */
-  def run(urls: Seq[URL], objectName: String, arguments: Seq[String]): Unit = {
+  def run(urls: Seq[URL], objectName: String, arguments: Seq[String]): Unit =
     import RichClassLoader._
     ScalaClassLoader.fromURLsParallelCapable(urls).run(objectName, arguments)
-  }
 
   /** Catches any non-fatal exception thrown by run (in the case of InvocationTargetException,
    *  unwrapping it) and returns it in an Option.
@@ -30,7 +29,7 @@ trait CommonRunner {
     try   { run(urls, objectName, arguments) ; None }
     catch { case NonFatal(e) => Some(rootCause(e)) }
 
-  private def rootCause(x: Throwable): Throwable = x match {
+  private def rootCause(x: Throwable): Throwable = x match
     case  _: InvocationTargetException |
           _: ExceptionInInitializerError |
           _: UndeclaredThrowableException |
@@ -38,8 +37,6 @@ trait CommonRunner {
             if x.getCause != null =>
               rootCause(x.getCause.nn)
     case _ => x
-  }
-}
 
 /** An object that runs another object specified by name.
  *

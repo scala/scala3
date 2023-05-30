@@ -25,24 +25,21 @@ import StdNames.nme
 import NameKinds.{LazyBitMapName, LazyLocalName}
 import Names.Name
 
-class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
+class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context):
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 
-  def cachedDesugarIdent(i: Ident): Option[tpd.Select] = {
+  def cachedDesugarIdent(i: Ident): Option[tpd.Select] =
     var found = desugared.get(i.tpe)
-    if (found == null) {
-      tpd.desugarIdent(i) match {
+    if (found == null)
+      tpd.desugarIdent(i) match
         case sel: tpd.Select =>
           desugared.put(i.tpe, sel)
           found = sel
         case _ =>
-      }
-    }
     if (found == null) None else Some(found)
-  }
 
-  object DesugaredSelect extends DeconstructorCommon[tpd.Tree] {
+  object DesugaredSelect extends DeconstructorCommon[tpd.Tree]:
 
     var desugared: tpd.Select = null
 
@@ -53,50 +50,40 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymb
 
     def _2: Name = desugared.name
 
-    override def unapply(s: tpd.Tree): this.type = {
-      s match {
+    override def unapply(s: tpd.Tree): this.type =
+      s match
         case t: tpd.Select => desugared = t
         case t: Ident  =>
-          cachedDesugarIdent(t) match {
+          cachedDesugarIdent(t) match
             case Some(t) => desugared = t
             case None => desugared = null
-          }
         case _ => desugared = null
-      }
 
       this
-    }
-  }
 
-  object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral] {
-    def _1: Type = field.tpe match {
+  object ArrayValue extends DeconstructorCommon[tpd.JavaSeqLiteral]:
+    def _1: Type = field.tpe match
       case JavaArrayType(elem) => elem
       case _ =>
         report.error(em"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
-    }
     def _2: List[Tree] = field.elems
-  }
 
-  abstract class DeconstructorCommon[T >: Null <: AnyRef] {
+  abstract class DeconstructorCommon[T >: Null <: AnyRef]:
     var field: T = null
     def get: this.type = this
     def isEmpty: Boolean = field eq null
     def isDefined = !isEmpty
-    def unapply(s: T): this.type ={
+    def unapply(s: T): this.type =
       field = s
       this
-    }
-  }
 
-}
 
-object DottyBackendInterface {
+object DottyBackendInterface:
 
-  private def erasureString(clazz: Class[_]): String = {
+  private def erasureString(clazz: Class[_]): String =
     if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
     else clazz.getName
-  }
 
   def requiredClass(str: String)(using Context): ClassSymbol =
     Symbols.requiredClass(str)
@@ -107,11 +94,10 @@ object DottyBackendInterface {
   def requiredModule(str: String)(using Context): Symbol =
     Symbols.requiredModule(str)
 
-  def requiredModule[T](using evidence: ClassTag[T], ctx: Context): Symbol = {
+  def requiredModule[T](using evidence: ClassTag[T], ctx: Context): Symbol =
     val moduleName = erasureString(evidence.runtimeClass)
     val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
     requiredModule(className)
-  }
 
   given symExtensions: AnyRef with
     extension (sym: Symbol)
@@ -141,28 +127,25 @@ object DottyBackendInterface {
       * for such objects will get a MODULE$ flag and a corresponding static initializer.
       */
       def isStaticModuleClass(using Context): Boolean =
-        (sym.is(Module)) && {
+        (sym.is(Module)) `&&`:
           // scalac uses atPickling here
           // this would not work if modules are created after pickling
           // for example by specialization
           val original = toDenot(sym).initial
           val validity = original.validFor
-          atPhase(validity.phaseId) {
+          atPhase(validity.phaseId):
             toDenot(sym).isStatic
-          }
-        }
 
 
 
       def originalLexicallyEnclosingClass(using Context): Symbol =
         // used to populate the EnclosingMethod attribute.
         // it is very tricky in presence of classes(and annonymous classes) defined inside supper calls.
-        if (sym.exists) {
+        if (sym.exists)
           val validity = toDenot(sym).initial.validFor
-          atPhase(validity.phaseId) {
+          atPhase(validity.phaseId):
             toDenot(sym).lexicallyEnclosingClass
-          }
-        } else NoSymbol
+        else NoSymbol
 
       /**
       * True for module classes of package level objects. The backend will generate a mirror class for
@@ -170,9 +153,8 @@ object DottyBackendInterface {
       */
       def isTopLevelModuleClass(using Context): Boolean =
         sym.is(ModuleClass) &&
-        atPhase(flattenPhase) {
+        atPhase(flattenPhase):
           toDenot(sym).owner.is(PackageClass)
-        }
 
       def javaSimpleName(using Context): String = toDenot(sym).name.mangledString
       def javaClassName(using Context): String = toDenot(sym).fullName.mangledString
@@ -198,8 +180,6 @@ object DottyBackendInterface {
    * True if the current compilation unit is of a primitive class (scala.Boolean et al).
    * Used only in assertions.
    */
-  def isCompilingPrimitive(using Context) = {
+  def isCompilingPrimitive(using Context) =
     primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
-  }
 
-}

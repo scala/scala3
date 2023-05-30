@@ -20,7 +20,7 @@ import dotc.classpath.{ PackageEntry, ClassPathEntries, PackageName }
 /**
   * A representation of the compiler's class- or sourcepath.
   */
-trait ClassPath {
+trait ClassPath:
   import dotty.tools.dotc.classpath._
   def asURLs: Seq[URL]
 
@@ -67,7 +67,7 @@ trait ClassPath {
     * https://github.com/sbt/sbt/blob/v0.13.15/compile/interface/src/main/scala/xsbt/CompilerInterface.scala#L249
     * Jason has some improvements for that in the works (https://github.com/scala/bug/issues/10289#issuecomment-310022699)
     */
-  def findClass(className: String): Option[ClassRepresentation] = {
+  def findClass(className: String): Option[ClassRepresentation] =
     // A default implementation which should be overridden, if we can create the more efficient
     // solution for a given type of ClassPath
     val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
@@ -77,7 +77,6 @@ trait ClassPath {
     def findClassInSources = sources(packageName).find(_.name == simpleClassName)
 
     foundClassFromClassFiles orElse findClassInSources
-  }
 
  /**
    * Returns the classfile for an external name, e.g., "java.lang.String". This method does not
@@ -102,30 +101,26 @@ trait ClassPath {
   /** The whole sourcepath in the form of one String.
     */
   def asSourcePathString: String
-}
 
-trait EfficientClassPath extends ClassPath {
+trait EfficientClassPath extends ClassPath:
   def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit
 
-  override def list(inPackage: PackageName): ClassPathEntries = {
+  override def list(inPackage: PackageName): ClassPathEntries =
     val packageBuf = collection.mutable.ArrayBuffer.empty[PackageEntry]
     val classRepBuf = collection.mutable.ArrayBuffer.empty[ClassRepresentation]
     list(inPackage, packageBuf += _, classRepBuf += _)
     if (packageBuf.isEmpty && classRepBuf.isEmpty) ClassPathEntries.empty
     else ClassPathEntries(packageBuf, classRepBuf)
-  }
-}
 
-trait EfficientClassPathCallBack {
+trait EfficientClassPathCallBack:
   def packageEntry(entry: PackageEntry): Unit
   def classesAndSources(entry: ClassRepresentation): Unit
-}
 
-object ClassPath {
+object ClassPath:
   val RootPackage: String = ""
 
   /** Expand single path entry */
-  private def expandS(pattern: String): List[String] = {
+  private def expandS(pattern: String): List[String] =
     val wildSuffix = File.separator + "*"
 
     /* Get all subdirectories, jars, zips out of a directory. */
@@ -135,15 +130,12 @@ object ClassPath {
     if (pattern == "*") lsDir(Directory("."))
     // On Windows the JDK supports forward slash or backslash in classpath entries
     else if (pattern.endsWith(wildSuffix) || pattern.endsWith("/*")) lsDir(Directory(pattern dropRight 2))
-    else if (pattern.contains('*')) {
-      try {
+    else if (pattern.contains('*'))
+      try
         val regexp = ("^" + pattern.replace("""\*""", """.*""") + "$").r
         lsDir(Directory(pattern).parent, regexp.findFirstIn(_).isDefined)
-      }
       catch { case _: PatternSyntaxException => List(pattern) }
-    }
     else List(pattern)
-  }
 
   /** Split classpath using platform-dependent path separator */
   def split(path: String): List[String] = path.split(pathSeparator).toList.filterNot(_ == "").distinct
@@ -160,17 +152,15 @@ object ClassPath {
     else split(path)
 
   /** Expand dir out to contents, a la extdir */
-  def expandDir(extdir: String): List[String] = {
-    AbstractFile getDirectory extdir match {
+  def expandDir(extdir: String): List[String] =
+    AbstractFile getDirectory extdir match
       case null => Nil
       case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
-    }
-  }
 
   /** Expand manifest jar classpath entries: these are either urls, or paths
    *  relative to the location of the jar.
    */
-  def expandManifestPath(jarPath: String): List[URL] = {
+  def expandManifestPath(jarPath: String): List[URL] =
     val file = File(jarPath)
     if (!file.isFile) return Nil
 
@@ -178,26 +168,23 @@ object ClassPath {
     new Jar(file).classPathElements map (elem =>
       specToURL(elem) getOrElse (baseDir / elem).toURL
     )
-  }
 
   def specToURL(spec: String): Option[URL] =
     try Some(new URI(spec).toURL)
     catch case _: MalformedURLException | _: URISyntaxException => None
 
-  def manifests: List[java.net.URL] = {
+  def manifests: List[java.net.URL] =
     import scala.jdk.CollectionConverters.EnumerationHasAsScala
     val resources = Thread.currentThread().getContextClassLoader().getResources("META-INF/MANIFEST.MF")
     resources.asScala.filter(_.getProtocol == "jar").toList
-  }
 
   @deprecated("shim for sbt's compiler interface", since = "2.12.0")
   sealed abstract class ClassPathContext
 
   @deprecated("shim for sbt's compiler interface", since = "2.12.0")
   sealed abstract class JavaContext
-}
 
-trait ClassRepresentation {
+trait ClassRepresentation:
   def fileName: String
   def name: String
   def binary: Option[AbstractFile]
@@ -207,11 +194,9 @@ trait ClassRepresentation {
    *
    *  Used to avoid creating String instance of `name`.
    */
-  final def nameLength: Int = {
+  final def nameLength: Int =
     val ix = fileName.lastIndexOf('.')
     if (ix < 0) fileName.length else ix
-  }
-}
 
 @deprecated("shim for sbt's compiler interface", since = "2.12.0")
 sealed abstract class DirectoryClassPath

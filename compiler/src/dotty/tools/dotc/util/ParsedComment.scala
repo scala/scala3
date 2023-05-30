@@ -16,7 +16,7 @@ import scala.collection.immutable.ListMap
  *
  * @param comment The doc comment to parse
  */
-class ParsedComment(val comment: Comment) {
+class ParsedComment(val comment: Comment):
 
   /**
    * The bounds of a section that represents the [start; end[ char offset
@@ -40,13 +40,11 @@ class ParsedComment(val comment: Comment) {
   /**
    * The "main" documentation for this comment. That is, the comment before any section starts.
    */
-  lazy val mainDoc: String = {
-    val doc = tagIndex match {
+  lazy val mainDoc: String =
+    val doc = tagIndex match
       case Nil => content.stripSuffix("*/")
       case (start, _) :: _ => content.slice(0, start)
-    }
     clean(doc.stripPrefix("/**"))
-  }
 
   /**
    * Renders this comment as markdown.
@@ -93,9 +91,8 @@ class ParsedComment(val comment: Comment) {
    * @return The cleaned string.
    */
   private def clean(str: String): String = str.stripMargin('*').trim
-}
 
-object ParsedComment {
+object ParsedComment:
 
   /**
    * Return the `ParsedComment` associated with `symbol`, if it exists.
@@ -103,14 +100,13 @@ object ParsedComment {
    * @param symbol The symbol for which to retrieve the documentation
    * @return If it exists, the `ParsedComment` for `symbol`.
    */
-  def docOf(symbol: Symbol)(using Context): Option[ParsedComment] = {
+  def docOf(symbol: Symbol)(using Context): Option[ParsedComment] =
     val documentedSymbol = if (symbol.isPrimaryConstructor) symbol.owner else symbol
     for {
       docCtx <- ctx.docCtx
       comment <- docCtx.docstring(documentedSymbol)
     }
     yield new ParsedComment(comment)
-  }
 
   @scala.annotation.internal.sharable
   private val prefixRegex = """@param\s+\w+\s+""".r
@@ -138,13 +134,12 @@ object ParsedComment {
    * @param items The items to format into a list.
    * @return A markdown list of descriptions.
    */
-  private def toDescriptionList(ctx: Context, items: List[String]): String = inContext(ctx) {
+  private def toDescriptionList(ctx: Context, items: List[String]): String = inContext(ctx):
     val formattedItems = items.map { p =>
       val name :: rest = p.split(" ", 2).toList: @unchecked
       s"${bold(name)} ${rest.mkString("").trim}"
     }
     toMarkdownList(ctx, formattedItems)
-  }
 
   /**
    * Formats a list of items into a markdown list.
@@ -152,10 +147,9 @@ object ParsedComment {
    * @param items The items to put in a list.
    * @return The list of items, in markdown.
    */
-  private def toMarkdownList(ctx: Context, items: List[String]): String = {
+  private def toMarkdownList(ctx: Context, items: List[String]): String =
     val formattedItems = items.map(_.linesIterator.mkString(System.lineSeparator + "   "))
     formattedItems.mkString(" - ", System.lineSeparator + " - ", "")
-  }
 
   /**
    * If the color is enabled, add syntax highlighting to each of `snippets`, otherwise wrap each
@@ -178,14 +172,13 @@ object ParsedComment {
    * @param snippet  The code snippet
    * @return `snippet`, wrapped in a code fence.
    */
-  private def toCodeFence(language: String)(ctx: Context, snippet: String): String = inContext(ctx) {
+  private def toCodeFence(language: String)(ctx: Context, snippet: String): String = inContext(ctx):
     if colorEnabled then
       SyntaxHighlighting.highlight(snippet)
     else
       s"""```$language
          |$snippet
          |```""".stripMargin
-  }
 
   /**
    * Format the elements of documentation associated with a given tag using `fn`, and starts the
@@ -194,7 +187,7 @@ object ParsedComment {
    * @param title The title to give to the formatted items.
    * @param fn    The formatting function to use.
    */
-  private case class TagFormatter(title: String, fn: (Context, List[String]) => String) {
+  private case class TagFormatter(title: String, fn: (Context, List[String]) => String):
 
     /**
      * Format `item` using `fn` if `items` is not empty.
@@ -202,15 +195,13 @@ object ParsedComment {
      * @param items The items to format
      * @return If items is not empty, the items formatted using `fn`.
      */
-    def apply(items: List[String])(using Context): Option[String] = items match {
+    def apply(items: List[String])(using Context): Option[String] = items match
       case Nil =>
         None
       case items =>
         Some(s"""${bold(title)}
                 |${fn(ctx, items)}
                 |""".stripMargin)
-    }
-  }
 
   /** Is the color enabled in the context? */
   private def colorEnabled(using Context): Boolean =
@@ -220,5 +211,4 @@ object ParsedComment {
   private def bold(str: String)(using Context): String =
     if (colorEnabled) s"$BOLD$str$RESET"
     else s"**$str**"
-}
 

@@ -55,10 +55,9 @@ class Instrumentation extends MiniPhase { thisPhase =>
     CollectionIterableClass = requiredClass("scala.collection.Iterable")
     ctx
 
-  private def record(category: String, tree: Tree)(using Context): Tree = {
+  private def record(category: String, tree: Tree)(using Context): Tree =
     val key = Literal(Constant(s"$category@${tree.sourcePos.show}"))
     ref(Stats_doRecord).appliedTo(key, Literal(Constant(1)))
-  }
 
   private def recordSize(tree: Apply)(using Context): Tree = tree.fun match
     case sel @ Select(qual, name)
@@ -88,21 +87,19 @@ class Instrumentation extends MiniPhase { thisPhase =>
       cpy.DefDef(tree)(rhs = rhs1)
     else tree
 
-  override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
+  override def transformApply(tree: Apply)(using Context): Tree = tree.fun match
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
     case ref: RefTree if namesToRecord.contains(ref.name) && ok =>
       cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, recordSize(tree))
     case _ =>
       tree
-  }
 
-  override def transformBlock(tree: Block)(using Context): Block = tree.expr match {
+  override def transformBlock(tree: Block)(using Context): Block = tree.expr match
     case _: Closure =>
       cpy.Block(tree)(record("closure/", tree) :: tree.stats, tree.expr)
     case _ =>
       tree
-  }
 }
 
 object Instrumentation:

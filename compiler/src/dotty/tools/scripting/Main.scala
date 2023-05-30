@@ -20,7 +20,7 @@ object Main:
     val scriptArgs = rest.drop(2)
     var saveJar = false
     var invokeFlag = true // by default, script main method is invoked
-    val compilerArgs = leftArgs.filter {
+    val compilerArgs = leftArgs.filter:
       case "-save" | "-savecompiled" =>
         saveJar = true
         false
@@ -29,7 +29,6 @@ object Main:
         false
       case _ =>
         true
-    }
     (compilerArgs, file, scriptArgs, saveJar, invokeFlag)
   end distinguishArgs
 
@@ -54,10 +53,9 @@ object Main:
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
       classpathEntries:Seq[Path], mainClassName: String): Unit =
 
-    val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
+    val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
       case Some(parent) => parent
-    }
 
     def scriptBasename = scriptFile.getName.takeWhile(_!='.')
     val jarPath = s"$jarTargetDir/$scriptBasename.jar"
@@ -82,14 +80,13 @@ object Main:
 
   def pathsep = sys.props("path.separator")
 
-  extension(path: String) {
+  extension(path: String)
     // Normalize path separator, convert relative path to absolute
     def norm: String =
-      path.replace('\\', '/') match {
+      path.replace('\\', '/') match
         case s if s.secondChar == ":" => s
         case s if s.startsWith("./") => s.drop(2)
         case s => s
-      }
 
     // convert to absolute path relative to cwd.
     def absPath: String = norm match
@@ -102,6 +99,5 @@ object Main:
     // Windows java.io.File#isAbsolute treats them as relative.
     def isAbsolute = path.norm.startsWith("/") || (isWin && path.secondChar == ":")
     def secondChar: String = path.take(2).drop(1).mkString("")
-  }
 
   lazy val userDir = sys.props("user.dir").norm

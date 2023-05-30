@@ -3,7 +3,7 @@ package runtime.impl.printers
 
 import scala.quoted._
 
-object Extractors {
+object Extractors:
 
   def showTree(using Quotes)(tree: quotes.reflect.Tree): String =
     new ExtractorsPrinter[quotes.type]().visitTree(tree).result()
@@ -17,7 +17,7 @@ object Extractors {
   def showSymbol(using Quotes)(symbol: quotes.reflect.Symbol): String =
     new ExtractorsPrinter[quotes.type]().visitSymbol(symbol).result()
 
-  def showFlags(using Quotes)(flags: quotes.reflect.Flags): String = {
+  def showFlags(using Quotes)(flags: quotes.reflect.Flags): String =
     import quotes.reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
@@ -61,7 +61,6 @@ object Extractors {
     if (flags.is(Flags.Trait)) flagList += "Flags.Trait"
     if (flags.is(Flags.Transparent)) flagList += "Flags.Transparent"
     flagList.result().mkString(" | ")
-  }
 
   private class ExtractorsPrinter[Q <: Quotes & Singleton](using val quotes: Q) { self =>
     import quotes.reflect._
@@ -70,7 +69,7 @@ object Extractors {
 
     def result(): String = sb.result()
 
-    def visitTree(x: Tree): this.type = x match {
+    def visitTree(x: Tree): this.type = x match
       case tree: Ref =>
         tree match
           case Wildcard() =>
@@ -177,9 +176,8 @@ object Extractors {
         this += "Alternatives(" ++= patterns += ")"
       case TypedOrTest(tree, tpt) =>
         this += "TypedOrTest(" += tree += ", " += tpt += ")"
-    }
 
-    def visitConstant(x: Constant): this.type = x match {
+    def visitConstant(x: Constant): this.type = x match
       case UnitConstant() => this += "UnitConstant()"
       case NullConstant() => this += "NullConstant()"
       case BooleanConstant(value) => this += "BooleanConstant(" += value += ")"
@@ -194,9 +192,8 @@ object Extractors {
       case ClassOfConstant(value) =>
         this += "ClassOfConstant("
         visitType(value) += ")"
-    }
 
-    def visitType(x: TypeRepr): this.type = x match {
+    def visitType(x: TypeRepr): this.type = x match
       case ConstantType(value) =>
         this += "ConstantType(" += value += ")"
       case TermRef(qual, name) =>
@@ -239,19 +236,16 @@ object Extractors {
         this += "NoPrefix()"
       case MatchCase(pat, rhs) =>
         this += "MatchCase(" += pat += ", " += rhs += ")"
-    }
 
-    def visitSignature(sig: Signature): this.type = {
+    def visitSignature(sig: Signature): this.type =
       val Signature(params, res) = sig
       this += "Signature(" ++= params.map(_.toString) += ", " += res += ")"
-    }
 
-    def visitSelector(sel: Selector): this.type = sel match {
+    def visitSelector(sel: Selector): this.type = sel match
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
       case GivenSelector(bound) => this += "GivenSelector(" += bound += ")"
-    }
 
     def visitSymbol(x: Symbol): this.type =
       if x.isPackageDef  then this += "IsPackageDefSymbol(<" += x.fullName += ">)"
@@ -278,68 +272,56 @@ object Extractors {
 
     def ++=(xs: List[String]): this.type = visitList[String](xs, +=)
 
-    private implicit class StringOps(buff: self.type) {
+    private implicit class StringOps(buff: self.type):
       def +=(x: Option[String]): self.type = { visitOption(x, y => buff += "\"" += y += "\""); buff }
-    }
 
-    private implicit class TreeOps(buff: self.type) {
+    private implicit class TreeOps(buff: self.type):
       def +=(x: Tree): self.type = { visitTree(x); buff }
       def +=(x: Option[Tree]): self.type = { visitOption(x, visitTree); buff }
       def ++=(x: List[Tree]): self.type = { visitList(x, visitTree); buff }
       def +++=(x: List[List[Tree]]): self.type = { visitList(x, ++=); buff }
-    }
 
-    private implicit class ConstantOps(buff: self.type) {
+    private implicit class ConstantOps(buff: self.type):
       def +=(x: Constant): self.type = { visitConstant(x); buff }
-    }
 
-    private implicit class TypeOps(buff: self.type) {
+    private implicit class TypeOps(buff: self.type):
       def +=(x: TypeRepr): self.type = { visitType(x); buff }
       def +=(x: Option[TypeRepr]): self.type = { visitOption(x, visitType); buff }
       def ++=(x: List[TypeRepr]): self.type = { visitList(x, visitType); buff }
-    }
 
-    private implicit class SignatureOps(buff: self.type) {
+    private implicit class SignatureOps(buff: self.type):
       def +=(x: Option[Signature]): self.type = { visitOption(x, visitSignature); buff }
-    }
 
-    private implicit class SelectorOps(buff: self.type) {
+    private implicit class SelectorOps(buff: self.type):
       def ++=(x: List[Selector]): self.type = { visitList(x, visitSelector); buff }
-    }
 
-    private implicit class SymbolOps(buff: self.type) {
+    private implicit class SymbolOps(buff: self.type):
       def +=(x: Symbol): self.type = { visitSymbol(x); buff }
-    }
 
-    private implicit class ParamClauseOps(buff: self.type) {
+    private implicit class ParamClauseOps(buff: self.type):
       def ++=(x: List[ParamClause]): self.type = { visitList(x, visitParamClause); buff }
-    }
 
-    private def visitOption[U](opt: Option[U], visit: U => this.type): this.type = opt match {
+    private def visitOption[U](opt: Option[U], visit: U => this.type): this.type = opt match
       case Some(x) =>
         this += "Some("
         visit(x)
         this += ")"
       case _ =>
         this += "None"
-    }
 
-    private def visitList[U](list: List[U], visit: U => this.type): this.type = list match {
+    private def visitList[U](list: List[U], visit: U => this.type): this.type = list match
       case x0 :: xs =>
         this += "List("
         visit(x0)
-        def visitNext(xs: List[U]): Unit = xs match {
+        def visitNext(xs: List[U]): Unit = xs match
           case y :: ys =>
             this += ", "
             visit(y)
             visitNext(ys)
           case Nil =>
-        }
         visitNext(xs)
         this += ")"
       case Nil =>
         this += "Nil"
-    }
   }
 
-}

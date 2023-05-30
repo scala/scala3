@@ -14,10 +14,9 @@ import Denotations._, SymDenotations._
 import DenotTransformers._
 import NullOpsDecorator._
 
-object ElimRepeated {
+object ElimRepeated:
   val name: String = "elimRepeated"
   val description: String = "rewrite vararg parameters and arguments"
-}
 
 /** A transformer that eliminates repeated parameters (T*) from all types, replacing
  *  them with Seq or Array types and adapting repeated arguments to conform to
@@ -89,12 +88,11 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def overridesJava(sym: Symbol)(using Context) =
     sym.memberCanMatchInheritedSymbols
     && sym.owner.info.baseClasses.drop(1).exists { bc =>
-      bc.is(JavaDefined) && {
+      bc.is(JavaDefined) `&&`:
         val other = bc.info.nonPrivateDecl(sym.name)
         other.hasAltWith { alt =>
           sym.owner.thisType.memberInfo(alt.symbol).matchesLoosely(sym.info)
         }
-      }
     }
 
   private def hasVarargsAnnotation(sym: Symbol)(using Context) = sym.hasAnnotation(defn.VarargsAnnot)
@@ -191,7 +189,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref(sym.termRef)
           .appliedToArgss(init)
           .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
-        })
+      })
       Thicket(tree, forwarderDef)
     else
       tree
@@ -248,7 +246,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           if isBridge then flags | Artifact
           else if hasAnnotation && !parentHasAnnotation then flags &~ Override
           else flags,
-        info = toJavaVarArgs(original.info)
+      info = toJavaVarArgs(original.info)
       ).asTerm
 
     // Find methods that would conflict with the forwarder if the latter existed.

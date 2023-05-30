@@ -33,7 +33,7 @@ import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
 
 /** Utility class to splice quoted expressions */
-object Splicer {
+object Splicer:
   import tpd.*
   import Interpreter.*
 
@@ -43,7 +43,7 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
+  def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match
     case Quote(quotedTree, Nil) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
@@ -52,7 +52,7 @@ object Splicer {
         inContext(sliceContext) {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
-          try {
+          try
             val interpreter = new SpliceInterpreter(splicePos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
@@ -60,11 +60,10 @@ object Splicer {
             val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuotesImpl())))
 
             checkEscapedVariables(interpretedTree, macroOwner)
-          } finally {
+          finally
             Thread.currentThread().setContextClassLoader(oldContextClassLoader)
-          }
         }.changeOwner(macroOwner, ctx.owner)
-      catch {
+      catch
         case ex: CompilationUnit.SuspendException =>
           throw ex
         case ex: scala.quoted.runtime.StopMacroExpansion =>
@@ -83,8 +82,6 @@ object Splicer {
               """
           report.error(msg, spliceExpansionPos)
           ref(defn.Predef_undefined).withType(ErrorType(msg))
-      }
-  }
 
   /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
@@ -92,10 +89,9 @@ object Splicer {
       private[this] var locals = Set.empty[Symbol]
       private def markSymbol(sym: Symbol)(using Context): Unit =
           locals = locals + sym
-      private def markDef(tree: Tree)(using Context): Unit = tree match {
+      private def markDef(tree: Tree)(using Context): Unit = tree match
         case tree: DefTree => markSymbol(tree.symbol)
         case _ =>
-      }
       def traverse(tree: Tree)(using Context): Unit =
         def traverseOver(lastEntered: Set[Symbol]) =
           try traverseChildren(tree)
@@ -135,12 +131,12 @@ object Splicer {
     *
     *  See: `Staging`
     */
-  def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match {
+  def checkValidMacroBody(tree: Tree)(using Context): Unit = tree match
     case Quote(_, Nil) => // ok
     case _ =>
       type Env = Set[Symbol]
 
-      def checkValidStat(tree: Tree)(using Env): Env = tree match {
+      def checkValidStat(tree: Tree)(using Env): Env = tree match
         case tree: ValDef if tree.symbol.is(Synthetic) =>
           // Check val from `foo(j = x, i = y)` which it is expanded to
           // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
@@ -149,20 +145,18 @@ object Splicer {
         case _ =>
           report.error("Macro should not have statements", tree.srcPos)
           summon[Env]
-      }
 
-      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
+      def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
         case Apply(Select(Quote(body, _), nme.apply), _) =>
-          val noSpliceChecker = new TreeTraverser {
+          val noSpliceChecker = new TreeTraverser:
             def traverse(tree: Tree)(using Context): Unit = tree match
               case Splice(_) =>
                 report.error("Quoted argument of macros may not have splices", tree.srcPos)
               case _ =>
                 traverseChildren(tree)
-          }
           noSpliceChecker.traverse(body)
 
         case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
@@ -190,9 +184,8 @@ object Splicer {
               | * Literal values of primitive types
               | * References to `inline val`s
               |""".stripMargin, tree.srcPos)
-      }
 
-      def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
+      def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match
         case closureDef(ddef @ DefDef(_, ValDefs(ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
@@ -220,10 +213,8 @@ object Splicer {
               |
               |Expected the splice ${...} to contain a single call to a static method.
               |""".stripMargin, tree.srcPos)
-      }
 
       checkIfValidStaticCall(tree)(using Set.empty)
-  }
 
   /** Is this the dummy owner of a macro expansion */
   def isMacroOwner(sym: Symbol)(using Context): Boolean =
@@ -236,18 +227,17 @@ object Splicer {
   /** Tree interpreter that evaluates the tree.
    *  Interpreter is assumed to start at quotation level -1.
    */
-  private class SpliceInterpreter(pos: SrcPos, classLoader: ClassLoader)(using Context) extends Interpreter(pos, classLoader) {
+  private class SpliceInterpreter(pos: SrcPos, classLoader: ClassLoader)(using Context) extends Interpreter(pos, classLoader):
 
-    override protected  def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
+    override protected  def interpretTree(tree: Tree)(implicit env: Env): Object = tree match
       // Interpret level -1 quoted code `'{...}` (assumed without level 0 splices)
       case Apply(Select(Quote(body, _), nme.apply), _) =>
-        val body1 = body match {
+        val body1 = body match
           case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             expr.symbol.defTree.asInstanceOf[DefDef].rhs
           case Inlined(EmptyTree, _, body1) => body1
           case _ => body
-        }
         new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
 
       // Interpret level -1 `Type.of[T]`
@@ -256,6 +246,3 @@ object Splicer {
 
       case _ =>
         super.interpretTree(tree)
-    }
-  }
-}

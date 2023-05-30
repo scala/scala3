@@ -11,14 +11,14 @@ import dotty.tools.dotc.staging.StagingLevel.*
 import scala.collection.mutable
 
 /** TreeMap that keeps track of staging levels using StagingLevel. */
-abstract class TreeMapWithStages extends TreeMapWithImplicits {
+abstract class TreeMapWithStages extends TreeMapWithImplicits:
   import tpd._
 
   override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
-    else reporting.trace(i"TreeMapWithStages.transform $tree at $level", staging, show = true) {
-      tree match {
+    else reporting.trace(i"TreeMapWithStages.transform $tree at $level", staging, show = true):
+      tree match
         case Block(stats, _) =>
           val defSyms = stats.collect { case defTree: DefTree => defTree.symbol }
           super.transform(tree)(using symbolsInCurrentLevel(defSyms))
@@ -44,6 +44,3 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
 
         case _ =>
           super.transform(tree)
-      }
-    }
-}

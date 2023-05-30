@@ -15,7 +15,7 @@ import TreeExtractors._, ValueClasses._
  *     new V(u1) == new V(u2) => u1 == u2   provided V does not redefine `equals`
  *    (new V(u)).underlying() => u
  */
-class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
+class VCElideAllocations extends MiniPhase with IdentityDenotTransformer:
   import tpd._
 
   override def phaseName: String = VCElideAllocations.name
@@ -26,12 +26,11 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
 
   override def transformApply(tree: Apply)(using Context): Tree =
     def hasUserDefinedEquals(tp: Type): Boolean =
-      val eql = atPhase(erasurePhase) {
+      val eql = atPhase(erasurePhase):
         defn.Any_equals.matchingMember(tp.typeSymbol.thisType)
-      }
       eql.owner != defn.AnyClass && !eql.is(Synthetic)
 
-    tree match {
+    tree match
       // new V(u1) == new V(u2) => u1 == u2, unless V defines its own equals.
       // (We don't handle != because it has been eliminated by InterceptedMethods)
       case BinaryOp(NewWithArgs(tp1, List(u1)), op, NewWithArgs(tp2, List(u2)))
@@ -47,8 +46,6 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
 
       case _ =>
         tree
-    }
-}
 
 object VCElideAllocations:
   val name: String = "vcElideAllocations"

@@ -16,7 +16,7 @@ import dotty.tools.dotc.util.SourceFile
 import java.util.Arrays
 
 /** This object provides functions for syntax highlighting in the REPL */
-object SyntaxHighlighting {
+object SyntaxHighlighting:
 
   /** if true, log erroneous positions being highlighted */
   private inline val debug = true
@@ -31,10 +31,10 @@ object SyntaxHighlighting {
   val TypeColor: String       = Console.MAGENTA
   val AnnotationColor: String = Console.MAGENTA
 
-  def highlight(in: String)(using Context): String = {
+  def highlight(in: String)(using Context): String =
     def freshCtx = ctx.fresh.setReporter(Reporter.NoReporter)
     if (in.isEmpty || ctx.settings.color.value == "never") in
-    else {
+    else
       val source = SourceFile.virtual("<highlighting>", in)
 
       given Context = freshCtx
@@ -46,15 +46,14 @@ object SyntaxHighlighting {
         Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
 
       def highlightPosition(span: Span, color: String) = if (span.exists)
-        if (span.start < 0 || span.end > in.length) {
+        if (span.start < 0 || span.end > in.length)
           if (debug)
             println(s"Trying to highlight erroneous position $span. Input size: ${in.length}")
-        }
         else
           highlightRange(span.start, span.end, color)
 
       val scanner = new Scanner(source)
-      while (scanner.token != EOF) {
+      while (scanner.token != EOF)
         val start = scanner.offset
         val token = scanner.token
         val name = scanner.name
@@ -64,7 +63,7 @@ object SyntaxHighlighting {
 
         // Branch order is important. For example,
         // `true` is at the same time a keyword and a literal
-        token match {
+        token match
           case _ if literalTokens.contains(token) =>
             highlightRange(start, end, LiteralColor)
 
@@ -80,20 +79,17 @@ object SyntaxHighlighting {
             highlightRange(start, end, Console.RED_B)
 
           case _ =>
-        }
-      }
 
       for (span <- scanner.commentSpans)
         highlightPosition(span, CommentColor)
 
-      object TreeHighlighter extends untpd.UntypedTreeTraverser {
+      object TreeHighlighter extends untpd.UntypedTreeTraverser:
         import untpd._
 
-        def ignored(tree: NameTree) = {
+        def ignored(tree: NameTree) =
           val name = tree.name.toTermName
           // trees named <error> and <init> have weird positions
           name == nme.ERROR || name == nme.CONSTRUCTOR
-        }
 
         def highlightAnnotations(tree: MemberDef): Unit =
           for (annotation <- tree.rawMods.annotations)
@@ -102,8 +98,8 @@ object SyntaxHighlighting {
         def highlight(trees: List[Tree])(using Context): Unit =
           trees.foreach(traverse)
 
-        def traverse(tree: Tree)(using Context): Unit = {
-          tree match {
+        def traverse(tree: Tree)(using Context): Unit =
+          tree match
             case tree: NameTree if ignored(tree) =>
               ()
             case tree: ValOrDefDef =>
@@ -119,10 +115,7 @@ object SyntaxHighlighting {
             case _: TypeTree =>
               highlightPosition(tree.span, TypeColor)
             case _ =>
-          }
           traverseChildren(tree)
-        }
-      }
 
       val parser = new Parser(source)
       val trees = parser.blockStatSeq()
@@ -130,18 +123,14 @@ object SyntaxHighlighting {
 
       val highlighted = new StringBuilder()
 
-      for (idx <- colorAt.indices) {
+      for (idx <- colorAt.indices)
         val prev = if (idx == 0) NoColor else colorAt(idx - 1)
         val curr = colorAt(idx)
         if (curr != prev)
           highlighted.append(curr)
         highlighted.append(in(idx))
-      }
 
       if (colorAt.last != NoColor)
         highlighted.append(NoColor)
 
       highlighted.toString
-    }
-  }
-}

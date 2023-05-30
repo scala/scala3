@@ -22,37 +22,34 @@ import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
 import scala.util.control.NonFatal
 
-object Phases {
+object Phases:
 
   inline def phaseOf(id: PhaseId)(using Context): Phase =
     ctx.base.phases(id)
 
-  @sharable object NoPhase extends Phase {
+  @sharable object NoPhase extends Phase:
     override def exists: Boolean = false
     def phaseName: String = "<no phase>"
     def run(using Context): Unit = unsupported("run")
     def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
-  }
 
-  trait PhasesBase {
+  trait PhasesBase:
     this: ContextBase =>
 
     // drop NoPhase at beginning
     def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
-    object SomePhase extends Phase {
+    object SomePhase extends Phase:
       def phaseName: String = "<some phase>"
       def run(using Context): Unit = unsupported("run")
-    }
 
     /** A sentinel transformer object */
-    class TerminalPhase extends DenotTransformer {
+    class TerminalPhase extends DenotTransformer:
       def phaseName: String = "terminal"
       def run(using Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
       override def lastPhaseId(using Context): Int = id
-    }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
     final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
@@ -65,7 +62,7 @@ object Phases {
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
-                           YCheckAfter: List[String])(using Context): List[Phase] = {
+                           YCheckAfter: List[String])(using Context): List[Phase] =
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
 
@@ -84,13 +81,13 @@ object Phases {
 
       var i = 0
 
-      while (i < filteredPhases.length) {
-        if (filteredPhases(i).nonEmpty) { //could be empty due to filtering
+      while (i < filteredPhases.length)
+        if (filteredPhases(i).nonEmpty) //could be empty due to filtering
           val filteredPhaseBlock = filteredPhases(i)
           val phaseToAdd =
-            if (filteredPhaseBlock.length > 1) {
+            if (filteredPhaseBlock.length > 1)
               for (phase <- filteredPhaseBlock)
-                phase match {
+                phase match
                   case p: MiniPhase =>
                     val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
                     assert(unmetRequirements.isEmpty,
@@ -98,34 +95,27 @@ object Phases {
 
                   case _ =>
                     assert(false, s"Only tree transforms can be fused, ${phase.phaseName} can not be fused")
-                }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
-            }
-            else { // block of a single phase, no fusion
+            else // block of a single phase, no fusion
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
-            }
           fusedPhases += phaseToAdd
           val shouldAddYCheck = filteredPhases(i).exists(_.isCheckable) && YCheckAfter.containsPhase(phaseToAdd)
-          if (shouldAddYCheck) {
+          if (shouldAddYCheck)
             val checker = new TreeChecker
             fusedPhases += checker
-          }
-        }
 
         i += 1
-      }
       fusedPhases.toList
-    }
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
-    final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit = {
+    final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit =
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -141,23 +131,21 @@ object Phases {
       denotTransformers = new Array[DenotTransformer](phases.length)
 
       var phaseId = 0
-      def nextPhaseId = {
+      def nextPhaseId =
         phaseId += 1
         phaseId // starting from 1 as NoPhase is 0
-      }
 
-      def checkRequirements(p: Phase) = {
+      def checkRequirements(p: Phase) =
         val unmetPrecedeRequirements = p.runsAfter -- phasesAfter
         assert(unmetPrecedeRequirements.isEmpty,
           s"phase ${p} has unmet requirement: ${unmetPrecedeRequirements.mkString(", ")} should precede this phase")
         phasesAfter += p.phaseName
-      }
 
       var i = 0
 
-      while (i < phasess.length) {
+      while (i < phasess.length)
         val phase = phasess(i)
-        phase match {
+        phase match
           case p: MegaPhase =>
             val miniPhases = p.miniPhases
             miniPhases.foreach{ phase =>
@@ -167,26 +155,22 @@ object Phases {
           case _ =>
             phase.init(this, nextPhaseId)
             checkRequirements(phase)
-        }
 
         i += 1
-      }
 
       phases.last.init(this, nextPhaseId) // init terminal phase
 
       i = phases.length
       var lastTransformerId = i
-      while (i > 0) {
+      while (i > 0)
         i -= 1
         val phase = phases(i)
-        phase match {
+        phase match
           case transformer: DenotTransformer =>
             lastTransformerId = i
             denotTransformers(i) = transformer
           case _ =>
-        }
         nextDenotTransformerId(i) = lastTransformerId
-      }
 
       if (fuse)
         this.fusedPhases = (NoPhase :: phasess).toArray
@@ -195,7 +179,6 @@ object Phases {
 
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
-    }
 
     /** Unlink `phase` from Denot transformer chain. This means that
      *  any denotation transformer defined by the phase will not be executed.
@@ -255,7 +238,7 @@ object Phases {
     final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
 
-    private def setSpecificPhases() = {
+    private def setSpecificPhases() =
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
       myParserPhase = phaseOfClass(classOf[Parser])
@@ -282,13 +265,11 @@ object Phases {
       myGettersPhase = phaseOfClass(classOf[Getters])
       myGenBCodePhase = phaseOfClass(classOf[GenBCode])
       myCheckCapturesPhase = phaseOfClass(classOf[CheckCaptures])
-    }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
     final def isTyper(phase: Phase): Boolean = phase.id == typerPhase.id
-  }
 
-  abstract class Phase {
+  abstract class Phase:
 
     /** A name given to the `Phase` that can be used to debug the compiler. For
      *  instance, it is possible to print trees after a given phase using:
@@ -401,7 +382,7 @@ object Phases {
     final def sameBaseTypesStartId: Int = mySameBaseTypesStartId
       // id of first phase where all symbols are guaranteed to have the same base tpyes as in this phase
 
-    protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
+    protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit =
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
@@ -415,7 +396,6 @@ object Phases {
       mySameMembersStartId = if (changesMembers) id else prev.sameMembersStartId
       mySameParentsStartId = if (changesParents) id else prev.sameParentsStartId
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId
-    }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
 
@@ -444,7 +424,6 @@ object Phases {
           throw ex
 
     override def toString: String = phaseName
-  }
 
   def parserPhase(using Context): Phase                 = ctx.base.parserPhase
   def typerPhase(using Context): Phase                  = ctx.base.typerPhase
@@ -476,4 +455,3 @@ object Phases {
   private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
-}

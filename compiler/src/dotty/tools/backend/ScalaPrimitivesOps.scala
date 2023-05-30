@@ -3,7 +3,7 @@ package backend
 
 object ScalaPrimitivesOps extends ScalaPrimitivesOps
 
-class ScalaPrimitivesOps {
+class ScalaPrimitivesOps:
   // Arithmetic unary operations
   inline val POS = 1                            // +x
   inline val NEG = 2                            // -x
@@ -165,68 +165,58 @@ class ScalaPrimitivesOps {
   def isArrayOp(code: Int): Boolean =
     isArrayNew(code) | isArrayLength(code) | isArrayGet(code) | isArraySet(code)
 
-  def isArrayNew(code: Int): Boolean = code match {
+  def isArrayNew(code: Int): Boolean = code match
     case NEW_ZARRAY | NEW_BARRAY | NEW_SARRAY | NEW_CARRAY |
          NEW_IARRAY | NEW_LARRAY | NEW_FARRAY | NEW_DARRAY |
          NEW_OARRAY => true
     case _ => false
-  }
 
-  def isArrayLength(code: Int): Boolean = code match {
+  def isArrayLength(code: Int): Boolean = code match
     case ZARRAY_LENGTH | BARRAY_LENGTH | SARRAY_LENGTH | CARRAY_LENGTH |
          IARRAY_LENGTH | LARRAY_LENGTH | FARRAY_LENGTH | DARRAY_LENGTH |
          OARRAY_LENGTH | LENGTH => true
     case _ => false
-  }
 
-  def isArrayGet(code: Int): Boolean = code match {
+  def isArrayGet(code: Int): Boolean = code match
     case ZARRAY_GET | BARRAY_GET | SARRAY_GET | CARRAY_GET |
          IARRAY_GET | LARRAY_GET | FARRAY_GET | DARRAY_GET |
          OARRAY_GET | APPLY => true
     case _ => false
-  }
 
-  def isArraySet(code: Int): Boolean = code match {
+  def isArraySet(code: Int): Boolean = code match
     case ZARRAY_SET | BARRAY_SET | SARRAY_SET | CARRAY_SET |
          IARRAY_SET | LARRAY_SET | FARRAY_SET | DARRAY_SET |
          OARRAY_SET | UPDATE => true
     case _ => false
-  }
 
   /** Check whether the given code is a comparison operator */
-  def isComparisonOp(code: Int): Boolean = code match {
+  def isComparisonOp(code: Int): Boolean = code match
     case ID | NI | EQ | NE |
          LT | LE | GT | GE => true
 
     case _ => false
-  }
   def isUniversalEqualityOp(code: Int): Boolean = (code == EQ) || (code == NE)
   def isReferenceEqualityOp(code: Int): Boolean = (code == ID) || (code == NI)
 
-  def isArithmeticOp(code: Int): Boolean = code match {
+  def isArithmeticOp(code: Int): Boolean = code match
     case POS | NEG | NOT => true; // unary
     case ADD | SUB | MUL |
          DIV | MOD       => true; // binary
     case OR  | XOR | AND |
          LSL | LSR | ASR => true; // bitwise
     case _ => false
-  }
 
-  def isLogicalOp(code: Int): Boolean = code match {
+  def isLogicalOp(code: Int): Boolean = code match
     case ZNOT | ZAND | ZOR => true
     case _ => false
-  }
 
-  def isShiftOp(code: Int): Boolean = code match {
+  def isShiftOp(code: Int): Boolean = code match
     case LSL | LSR | ASR => true
     case _ => false
-  }
 
-  def isBitwiseOp(code: Int): Boolean = code match {
+  def isBitwiseOp(code: Int): Boolean = code match
     case OR | XOR | AND => true
     case _ => false
-  }
 
   def isCoercion(code: Int): Boolean = (code >= B2B) && (code <= D2D)
 
-}

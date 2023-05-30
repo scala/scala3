@@ -54,15 +54,15 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
   override def changesMembers: Boolean = true // the phase adds extension methods
 
-  override def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
+  override def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match
     case moduleClassSym: ClassDenotation if moduleClassSym.is(ModuleClass) =>
-      moduleClassSym.linkedClass match {
+      moduleClassSym.linkedClass match
         case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
           val cinfo = moduleClassSym.classInfo
           val decls1 = cinfo.decls.cloneScope
           val moduleSym = moduleClassSym.symbol.asClass
 
-          def enterInModuleClass(sym: Symbol): Unit = {
+          def enterInModuleClass(sym: Symbol): Unit =
             decls1.enter(sym)
             // This is tricky: in this denotation transformer, we transform
             // companion modules of value classes by adding methods to them.
@@ -73,7 +73,6 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
             // created them to match the validity of the owner transformed
             // denotation.
             sym.validFor = thisPhase.validFor
-          }
 
           // Create extension methods, except if the class comes from Scala 2
           // because it adds extension methods before pickling.
@@ -96,17 +95,14 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           moduleClassSym.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
         case _ =>
           moduleClassSym
-      }
     case ref: SymDenotation =>
       var ref1 = ref
-      if (isMethodWithExtension(ref.symbol) && ref.hasAnnotation(defn.TailrecAnnot)) {
+      if (isMethodWithExtension(ref.symbol) && ref.hasAnnotation(defn.TailrecAnnot))
         ref1 = ref.copySymDenotation()
         ref1.removeAnnotation(defn.TailrecAnnot)
-      }
-      else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.isOneOf(AccessFlags)) {
+      else if (ref.isConstructor && isDerivedValueClass(ref.owner) && ref.isOneOf(AccessFlags))
         ref1 = ref.copySymDenotation()
         ref1.resetFlag(AccessFlags)
-      }
       // Drop the Local flag from all private[this] and protected[this] members
       // that will be moved to the companion object.
       if (ref.is(Local) && isDerivedValueClass(ref.owner))
@@ -114,24 +110,21 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
         else ref1 = ref1.copySymDenotation(initFlags = ref1.flags &~ Local)
       ref1
     case _ =>
-      ref.info match {
+      ref.info match
         case ClassInfo(pre, cls, _, _, _) if cls is ModuleClass =>
-          cls.linkedClass match {
+          cls.linkedClass match
             case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
               val info1 = atPhase(ctx.phase.next)(cls.denot).asClass.classInfo.derivedClassInfo(prefix = pre)
               ref.derivedSingleDenotation(ref.symbol, info1)
             case _ => ref
-          }
         case _ => ref
-      }
-  }
 
   protected def rewiredTarget(target: Symbol, derived: Symbol)(using Context): Symbol =
     if (isMethodWithExtension(target) &&
         target.owner.linkedClass == derived.owner) extensionMethod(target)
     else NoSymbol
 
-  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(using Context): TermSymbol = {
+  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(using Context): TermSymbol =
     val extensionMeth = newSymbol(staticClass, extensionName(imeth),
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
@@ -139,7 +132,6 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     atPhase(thisPhase)(extensionMeth.addAnnotations(imeth.annotations))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
-  }
 
   private val extensionDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
   // todo: check that when transformation finished map is empty
@@ -159,7 +151,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     else tree
 
   override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =
-    if (isMethodWithExtension(tree.symbol)) {
+    if (isMethodWithExtension(tree.symbol))
       val origMeth = tree.symbol
       val origClass = ctx.owner.asClass
       val staticClass = origClass.linkedClass
@@ -169,11 +161,10 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       val store = extensionDefs.getOrElseUpdate(staticClass, new mutable.ListBuffer[Tree])
       store += fullyParameterizedDef(extensionMeth, tree)
       cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))
-    }
     else tree
 }
 
-object ExtensionMethods {
+object ExtensionMethods:
   val name: String = "extmethods"
   val description: String = "expand methods of value classes with extension methods"
 
@@ -186,7 +177,7 @@ object ExtensionMethods {
 
   /** Return the extension method that corresponds to given instance method `meth`. */
   def extensionMethod(imeth: Symbol)(using Context): TermSymbol =
-    atPhase(extensionMethodsPhase.next) {
+    atPhase(extensionMethodsPhase.next):
       // FIXME use toStatic instead?
       val companion = imeth.owner.companionModule
       val companionInfo = companion.info
@@ -197,13 +188,13 @@ object ExtensionMethods {
         && (if imeth.targetName == imeth.name then
               // imeth does not have a @targetName annotation, candidate should not have one either
               candidate.symbol.targetName == candidate.symbol.name
-            else
+        else
               // imeth has a @targetName annotation, candidate's target name must match
               imeth.targetName == candidate.symbol.targetName
            )
       val matching = candidates.filter(matches)
       assert(matching.nonEmpty,
-       i"""no extension method found for:
+      i"""no extension method found for:
           |
           |  $imeth:${imeth.info.show} with signature ${imeth.info.signature} in ${companion.moduleClass}
           |
@@ -218,5 +209,3 @@ object ExtensionMethods {
         // this case will report a "have the same erasure" error later at erasure pahse
         report.log(i"mutiple extension methods match $imeth: ${candidates.map(c => i"${c.name}:${c.info}")}")
       matching.head.symbol.asTerm
-    }
-}

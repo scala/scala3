@@ -8,7 +8,7 @@ import scala.language.unsafeNulls
  *  Motivated by places like google app engine throwing exceptions
  *  on property lookups.
  */
-trait WrappedProperties extends PropertiesTrait {
+trait WrappedProperties extends PropertiesTrait:
   def wrap[T](body: => T): Option[T]
 
   protected def propCategory: String     = "wrapped"
@@ -21,22 +21,17 @@ trait WrappedProperties extends PropertiesTrait {
   override def envOrElse(name: String, alt: String): String  = wrap(super.envOrElse(name, alt)) getOrElse alt
   override def envOrNone(name: String): Option[String]       = wrap(super.envOrNone(name)).flatten
 
-  def systemProperties: Iterator[(String, String)] = {
+  def systemProperties: Iterator[(String, String)] =
     import scala.jdk.CollectionConverters._
     wrap(System.getProperties.asScala.iterator) getOrElse Iterator.empty
-  }
-}
 
-object WrappedProperties {
-  object AccessControl extends WrappedProperties {
+object WrappedProperties:
+  object AccessControl extends WrappedProperties:
     def wrap[T](body: => T): Option[T] =
       try Some(body)
-      catch {
+      catch
         // the actual exception we are concerned with is AccessControlException,
         // but that's deprecated on JDK 17, so catching its superclass is a convenient
         // way to avoid a deprecation warning
         case _: SecurityException =>
           None
-      }
-  }
-}

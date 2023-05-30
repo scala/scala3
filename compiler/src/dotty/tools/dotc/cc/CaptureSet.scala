@@ -72,10 +72,9 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
-    elems.exists {
+    elems.exists:
       case ref: TermRef => ref.symbol == defn.captureRoot
       case _ => false
-    }
 
   /** Add new elements to this capture set if allowed.
    *  @pre `newElems` is not empty and does not overlap with `this.elems`.
@@ -123,10 +122,9 @@ sealed abstract class CaptureSet extends Showable:
    *                 as frozen.
    */
   def accountsFor(x: CaptureRef)(using Context): Boolean =
-    reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true) {
+    reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
       elems.exists(_.subsumes(x))
       || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
-    }
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
@@ -136,14 +134,13 @@ sealed abstract class CaptureSet extends Showable:
    *  root capability `cap`.
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
-    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
+    reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true):
       elems.exists(elem => elem.subsumes(x) || elem.isRootCapability)
       || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems
           !elems.isEmpty && elems.forall(mightAccountFor)
         }
-    }
 
   /** A more optimistic version of subCaptures used to choose one of two typing rules
    *  for selections and applications. `cs1 mightSubcapture cs2` if `cs2` might account for
@@ -182,7 +179,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def =:= (that: CaptureSet)(using Context): Boolean =
        this.subCaptures(that, frozen = true).isOK
-    && that.subCaptures(this, frozen = true).isOK
+       && that.subCaptures(this, frozen = true).isOK
 
   /** The smallest capture set (via <:<) that is a superset of both
    *  `this` and `that`
@@ -495,10 +492,9 @@ object CaptureSet:
      *  establishes a record of all variables printed in an error message.
      *  Prints variables wih ids under -Ycc-debug.
      */
-    override def toText(printer: Printer): Text = inContext(printer.printerContext) {
+    override def toText(printer: Printer): Text = inContext(printer.printerContext):
       for vars <- ctx.property(ShownVars) do vars += this
       super.toText(printer) ~ (Str(ids) provided !isConst && ctx.settings.YccDebug.value)
-    }
 
     override def toString = s"Var$id$elems"
   end Var
@@ -553,12 +549,11 @@ object CaptureSet:
           // as superset; no mapping is necessary or allowed.
           Const(newElems)
       super.addNewElems(added.elems, origin)
-        .andAlso {
+        .andAlso:
           if added.isConst then CompareResult.OK
           else if added.asVar.recordDepsState() then { addAsDependentTo(added); CompareResult.OK }
           else CompareResult.fail(this)
-        }
-        .andAlso {
+        .andAlso:
           if (origin ne source) && (origin ne initial) && mapIsIdempotent then
             // `tm` is idempotent, propagate back elems from image set.
             // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
@@ -576,7 +571,6 @@ object CaptureSet:
             CompareResult.fail(this)
           else
             CompareResult.OK
-        }
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then
@@ -604,10 +598,9 @@ object CaptureSet:
         super.addNewElems(newElems.map(bimap.forward), origin)
       else
         super.addNewElems(newElems, origin)
-          .andAlso {
+          .andAlso:
             source.tryInclude(newElems.map(bimap.backward), this)
               .showing(i"propagating new elems ${CaptureSet(newElems)} backward from $this to $source", capt)
-          }
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -637,10 +630,9 @@ object CaptureSet:
         // Filtered elements have to be back-propagated to source.
         // Elements that don't satisfy `p` are not allowed.
         super.addNewElems(newElems, origin)
-          .andAlso {
+          .andAlso:
             if filtered.size == newElems.size then source.tryInclude(newElems, this)
             else CompareResult.fail(this)
-          }
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then
@@ -884,7 +876,7 @@ object CaptureSet:
   def withCaptureSetsExplained[T](op: Context ?=> T)(using ctx: Context): T =
     if ctx.settings.YccDebug.value then
       val shownVars = mutable.Set[Var]()
-      inContext(ctx.withProperty(ShownVars, Some(shownVars))) {
+      inContext(ctx.withProperty(ShownVars, Some(shownVars))):
         try op
         finally
           val reachable = mutable.Set[Var]()
@@ -895,10 +887,9 @@ object CaptureSet:
             val cv = todo.dequeue()
             if !reachable.contains(cv) then
               reachable += cv
-              cv.deps.foreach {
+              cv.deps.foreach:
                 case cv: Var => incl(cv)
                 case _ =>
-              }
               cv match
                 case cv: DerivedVar => incl(cv.source)
                 case _ =>
@@ -906,6 +897,5 @@ object CaptureSet:
           println(i"Capture set dependencies:")
           for cv <- allVars do
             println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
-      }
     else op
 end CaptureSet

@@ -42,7 +42,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
   override def changesMembers: Boolean = true // the phase adds super accessors
 
-  override def transformTemplate(impl: Template)(using Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template =
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._
@@ -58,22 +58,19 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val overrides = mixins.flatMap(superAccessors)
 
     cpy.Template(impl)(body = overrides ::: impl.body)
-  }
 
-  override def transformDefDef(ddef: DefDef)(using Context): Tree = {
+  override def transformDefDef(ddef: DefDef)(using Context): Tree =
     val meth = ddef.symbol.asTerm
-    if (meth.isSuperAccessor && !meth.is(Deferred)) {
+    if (meth.isSuperAccessor && !meth.is(Deferred))
       assert(ddef.rhs.isEmpty, ddef.symbol)
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisPhase)
       import ops._
       DefDef(meth, forwarderRhsFn(rebindSuper(cls, meth)))
-    }
     else ddef
-  }
 }
 
-object ResolveSuper {
+object ResolveSuper:
   val name: String = "resolveSuper"
   val description: String = "implement super accessors"
 
@@ -82,7 +79,7 @@ object ResolveSuper {
    *  @param base       The class in which everything is mixed together
    *  @param acc        The symbol statically referred to by the superaccessor in the trait
    */
-  def rebindSuper(base: Symbol, acc: Symbol)(using Context): Symbol = {
+  def rebindSuper(base: Symbol, acc: Symbol)(using Context): Symbol =
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
 
@@ -100,7 +97,7 @@ object ResolveSuper {
 
     report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
 
-    while (bcs.nonEmpty && sym == NoSymbol) {
+    while (bcs.nonEmpty && sym == NoSymbol)
       val other = bcs.head.info.nonPrivateDecl(memberName)
         .filterWithPredicate(denot => mix.isEmpty || denot.symbol.owner.name == mix)
         .matchingDenotation(base.thisType, base.thisType.memberInfo(acc), targetName)
@@ -118,14 +115,10 @@ object ResolveSuper {
         if !otherTp.overrides(accTp, relaxedOverriding, matchLoosely = true) then
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
       bcs = bcs.tail
-    }
     if sym.is(Accessor) then
       report.error(
         em"parent ${acc.owner} has a super call which binds to the value ${sym.showFullName}. Super calls can only target methods.", base)
-    sym.orElse {
+    sym.orElse:
       val originalName = acc.name.asTermName.originalOfSuperAccessorName
       report.error(em"Member method ${originalName.debugString} of mixin ${acc.owner} is missing a concrete super implementation in $base.", base.srcPos)
       acc
-    }
-  }
-}

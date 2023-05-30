@@ -33,7 +33,7 @@ import Types._
  *   to handle the full spectrum of Scala types. Additionally, some kinds of symbols like constructors and
  *   enum instances get special treatment.
  */
-object JavaNullInterop {
+object JavaNullInterop:
 
   /** Transforms the type `tp` of Java member `sym` to be explicitly nullable.
    *  `tp` is needed because the type inside `sym` might not be set when this method is called.
@@ -51,7 +51,7 @@ object JavaNullInterop {
    *
    *  But the selection can throw an NPE if the returned value is `null`.
    */
-  def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = {
+  def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type =
     assert(ctx.explicitNulls)
     assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
@@ -67,7 +67,6 @@ object JavaNullInterop {
     else
       // Otherwise, nullify everything
       nullifyType(tp)
-  }
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
     ctx.definitions.NotNullAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
@@ -95,7 +94,7 @@ object JavaNullInterop {
    *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
    *                                       to `(A & B) | Null`, instead of `(A | Null & B | Null) | Null`.
    */
-  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap {
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap:
     /** Should we nullify `tp` at the outermost level? */
     def needsNull(tp: Type): Boolean =
       !outermostLevelAlreadyNullable && (tp match {
@@ -113,7 +112,7 @@ object JavaNullInterop {
         case _ => true
       })
 
-    override def apply(tp: Type): Type = tp match {
+    override def apply(tp: Type): Type = tp match
       case tp: TypeRef if needsNull(tp) => OrNull(tp)
       case appTp @ AppliedType(tycon, targs) =>
         val oldOutermostNullable = outermostLevelAlreadyNullable
@@ -144,6 +143,3 @@ object JavaNullInterop {
       // In particular, if the type is a ConstantType, then we don't nullify it because it is the
       // type of a final non-nullable field.
       case _ => tp
-    }
-  }
-}

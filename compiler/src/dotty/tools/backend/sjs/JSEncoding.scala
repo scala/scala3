@@ -35,7 +35,7 @@ import JSDefinitions.jsdefn
  *
  *  @author Sébastien Doeraene
  */
-object JSEncoding {
+object JSEncoding:
 
   /** Name of the capture param storing the JS super class.
    *
@@ -60,7 +60,7 @@ object JSEncoding {
 
   // Fresh local name generator ----------------------------------------------
 
-  class LocalNameGenerator {
+  class LocalNameGenerator:
     import LocalNameGenerator._
 
     private val usedLocalNames = mutable.Set.empty[LocalName]
@@ -69,24 +69,21 @@ object JSEncoding {
     private val labelSymbolNames = mutable.Map.empty[Symbol, LabelName]
     private var returnLabelName: Option[LabelName] = None
 
-    def reserveLocalName(name: LocalName): Unit = {
+    def reserveLocalName(name: LocalName): Unit =
       require(usedLocalNames.isEmpty,
           s"Trying to reserve the name '$name' but names have already been allocated")
       usedLocalNames += name
-    }
 
     private def freshNameGeneric[N <: ir.Names.Name](base: N, usedNamesSet: mutable.Set[N])(
-        withSuffix: (N, String) => N): N = {
+        withSuffix: (N, String) => N): N =
 
       var suffix = 1
       var result = base
-      while (usedNamesSet(result)) {
+      while (usedNamesSet(result))
         suffix += 1
         result = withSuffix(base, "$" + suffix)
-      }
       usedNamesSet += result
       result
-    }
 
     def freshName(base: LocalName): LocalName =
       freshNameGeneric(base, usedLocalNames)(_.withSuffix(_))
@@ -106,7 +103,7 @@ object JSEncoding {
     def freshLocalIdent(base: TermName)(implicit pos: ir.Position): js.LocalIdent =
       freshLocalIdent(base.mangledString)
 
-    def localSymbolName(sym: Symbol)(using Context): LocalName = {
+    def localSymbolName(sym: Symbol)(using Context): LocalName =
       localSymbolNames.getOrElseUpdate(sym, {
         /* The emitter does not like local variables that start with a '$',
          * because it needs to encode them not to clash with emitter-generated
@@ -120,14 +117,12 @@ object JSEncoding {
          * case. It can still happen for user-defined variables, but in that case
          * the emitter will deal with it.
          */
-        val base = sym.name match {
+        val base = sym.name match
           case nme.SELF  => "this$" // instead of $this
           case nme.OUTER => "outer" // instead of $outer
           case name      => name.mangledString
-        }
         freshName(base)
       })
-    }
 
     def freshLabelName(base: LabelName): LabelName =
       freshNameGeneric(base, usedLabelNames)(_.withSuffix(_))
@@ -141,36 +136,30 @@ object JSEncoding {
     def labelSymbolName(sym: Symbol)(using Context): LabelName =
       labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.javaSimpleName))
 
-    def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
+    def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent =
       if (returnLabelName.isEmpty)
         returnLabelName = Some(freshLabelName("_return"))
       js.LabelIdent(returnLabelName.get)
-    }
 
     /* If this `LocalNameGenerator` has a `returnLabelName` (often added in the
      * construction of the `body` argument), wrap the resulting js.Tree to use that label.
      */
-    def makeLabeledIfRequiresEnclosingReturn(tpe: jstpe.Type)(body: js.Tree)(implicit pos: ir.Position): js.Tree = {
-      returnLabelName match {
+    def makeLabeledIfRequiresEnclosingReturn(tpe: jstpe.Type)(body: js.Tree)(implicit pos: ir.Position): js.Tree =
+      returnLabelName match
         case None =>
           body
         case Some(labelName) =>
           js.Labeled(js.LabelIdent(labelName), tpe, body)
-      }
-    }
-  }
 
-  private object LocalNameGenerator {
+  private object LocalNameGenerator:
     private val xLocalName = LocalName("x")
-  }
 
   // Encoding methods ----------------------------------------------------------
 
   def encodeLabelSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LabelIdent = {
+      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LabelIdent =
     require(sym.is(Flags.Label), "encodeLabelSym called with non-label symbol: " + sym)
     js.LabelIdent(localNames.labelSymbolName(sym))
-  }
 
   def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
     js.FieldIdent(FieldName(encodeFieldSymAsString(sym)))
@@ -178,17 +167,16 @@ object JSEncoding {
   def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.StringLiteral =
     js.StringLiteral(encodeFieldSymAsString(sym))
 
-  private def encodeFieldSymAsString(sym: Symbol)(using Context): String = {
+  private def encodeFieldSymAsString(sym: Symbol)(using Context): String =
     require(sym.owner.isClass && sym.isTerm && !sym.isOneOf(MethodOrModule),
         "encodeFieldSym called with non-field symbol: " + sym)
 
     val name0 = sym.javaSimpleName
     if (name0.charAt(name0.length() - 1) != ' ') name0
     else name0.substring(0, name0.length() - 1)
-  }
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(
-      implicit ctx: Context, pos: ir.Position): js.MethodIdent = {
+      implicit ctx: Context, pos: ir.Position): js.MethodIdent =
     require(sym.is(Flags.Method), "encodeMethodSym called with non-method symbol: " + sym)
 
     val tpe = sym.info
@@ -203,67 +191,58 @@ object JSEncoding {
     val name = sym.name
     val simpleName = SimpleMethodName(name.mangledString)
 
-    val methodName = {
+    val methodName =
       if (sym.isClassConstructor)
         MethodName.constructor(paramTypeRefs)
       else if (reflProxy)
         MethodName.reflectiveProxy(simpleName, paramTypeRefs)
       else
         MethodName(simpleName, paramTypeRefs, paramOrResultTypeRef(patchedResultType(sym)))
-    }
 
     js.MethodIdent(methodName)
-  }
 
-  def encodeJSNativeMemberSym(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
+  def encodeJSNativeMemberSym(sym: Symbol)(using Context, ir.Position): js.MethodIdent =
     require(sym.hasAnnotation(jsdefn.JSNativeAnnot),
         "encodeJSNativeMemberSym called with non-native symbol: " + sym)
     if (sym.is(Method))
       encodeMethodSym(sym)
     else
       encodeFieldSymAsMethod(sym)
-  }
 
-  def encodeStaticMemberSym(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
+  def encodeStaticMemberSym(sym: Symbol)(using Context, ir.Position): js.MethodIdent =
     require(sym.is(Flags.JavaStaticTerm),
         "encodeStaticMemberSym called with non-static symbol: " + sym)
     encodeFieldSymAsMethod(sym)
-  }
 
-  private def encodeFieldSymAsMethod(sym: Symbol)(using Context, ir.Position): js.MethodIdent = {
+  private def encodeFieldSymAsMethod(sym: Symbol)(using Context, ir.Position): js.MethodIdent =
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.info)
     val methodName = MethodName(name.mangledString, Nil, resultTypeRef)
     js.MethodIdent(methodName)
-  }
 
-  def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent = {
+  def encodeDynamicImportForwarderIdent(params: List[Symbol])(using Context, ir.Position): js.MethodIdent =
     val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.info))
     val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
     val methodName = MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
     js.MethodIdent(methodName)
-  }
 
   /** Computes the type ref for a type, to be used in a method signature. */
   private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef =
     toParamOrResultTypeRef(toTypeRef(tpe))
 
   def encodeLocalSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LocalIdent = {
+      implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LocalIdent =
     require(!sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
         "encodeLocalSym called with non-local symbol: " + sym)
     js.LocalIdent(localNames.localSymbolName(sym))
-  }
 
-  def encodeClassType(sym: Symbol)(using Context): jstpe.Type = {
+  def encodeClassType(sym: Symbol)(using Context): jstpe.Type =
     if (sym == defn.ObjectClass) jstpe.AnyType
     else if (sym.isJSType) jstpe.AnyType
-    else {
+    else
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
       jstpe.ClassType(encodeClassName(sym))
-    }
-  }
 
   def encodeClassRef(sym: Symbol)(using Context): jstpe.ClassRef =
     jstpe.ClassRef(encodeClassName(sym))
@@ -272,7 +251,7 @@ object JSEncoding {
       implicit ctx: Context, pos: ir.Position): js.ClassIdent =
     js.ClassIdent(encodeClassName(sym))
 
-  def encodeClassName(sym: Symbol)(using Context): ClassName = {
+  def encodeClassName(sym: Symbol)(using Context): ClassName =
     val sym1 =
       if (sym.isAllOf(ModuleClass | JavaDefined)) sym.linkedClass
       else sym
@@ -291,27 +270,23 @@ object JSEncoding {
       ScalaRuntimeNullClassName
     else
       ClassName(sym1.javaClassName)
-  }
 
   /** Converts a general TypeRef to a TypeRef to be used in a method signature. */
-  def toParamOrResultTypeRef(typeRef: jstpe.TypeRef): jstpe.TypeRef = {
-    typeRef match {
+  def toParamOrResultTypeRef(typeRef: jstpe.TypeRef): jstpe.TypeRef =
+    typeRef match
       case jstpe.ClassRef(ScalaRuntimeNullClassName)    => jstpe.NullRef
       case jstpe.ClassRef(ScalaRuntimeNothingClassName) => jstpe.NothingRef
       case _                                            => typeRef
-    }
-  }
 
-  def toIRTypeAndTypeRef(tp: Type)(using Context): (jstpe.Type, jstpe.TypeRef) = {
+  def toIRTypeAndTypeRef(tp: Type)(using Context): (jstpe.Type, jstpe.TypeRef) =
     val typeRefInternal = toTypeRefInternal(tp)
     (toIRTypeInternal(typeRefInternal), typeRefInternal._1)
-  }
 
   def toIRType(tp: Type)(using Context): jstpe.Type =
     toIRTypeInternal(toTypeRefInternal(tp))
 
-  private def toIRTypeInternal(typeRefInternal: (jstpe.TypeRef, Symbol))(using Context): jstpe.Type = {
-    typeRefInternal._1 match {
+  private def toIRTypeInternal(typeRefInternal: (jstpe.TypeRef, Symbol))(using Context): jstpe.Type =
+    typeRefInternal._1 match
       case jstpe.PrimRef(irTpe) =>
         irTpe
 
@@ -328,17 +303,15 @@ object JSEncoding {
 
       case typeRef: jstpe.ArrayTypeRef =>
         jstpe.ArrayType(typeRef)
-    }
-  }
 
   def toTypeRef(tp: Type)(using Context): jstpe.TypeRef =
     toTypeRefInternal(tp)._1
 
-  private def toTypeRefInternal(tp: Type)(using Context): (jstpe.TypeRef, Symbol) = {
-    def primitiveOrClassToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
+  private def toTypeRefInternal(tp: Type)(using Context): (jstpe.TypeRef, Symbol) =
+    def primitiveOrClassToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) =
       assert(sym.isClass, sym)
       //assert(sym != defn.ArrayClass || isCompilingArray, sym)
-      val typeRef = if (sym.isPrimitiveValueClass) {
+      val typeRef = if (sym.isPrimitiveValueClass)
         if (sym == defn.UnitClass) jstpe.VoidRef
         else if (sym == defn.BooleanClass) jstpe.BooleanRef
         else if (sym == defn.CharClass) jstpe.CharRef
@@ -349,22 +322,19 @@ object JSEncoding {
         else if (sym == defn.FloatClass) jstpe.FloatRef
         else if (sym == defn.DoubleClass) jstpe.DoubleRef
         else throw new Exception(s"unknown primitive value class $sym")
-      } else {
+      else
         encodeClassRef(sym)
-      }
       (typeRef, sym)
-    }
 
     /**
      * When compiling Array.scala, the type parameter T is not erased and shows up in method
      * signatures, e.g. `def apply(i: Int): T`. A TyperRef to T is replaced by ObjectReference.
      */
-    def nonClassTypeRefToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
+    def nonClassTypeRefToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) =
       //assert(sym.isType && isCompilingArray, sym)
       (jstpe.ClassRef(ir.Names.ObjectClass), defn.ObjectClass)
-    }
 
-    tp.widenDealias match {
+    tp.widenDealias match
       // Array type such as Array[Int] (kept by erasure)
       case JavaArrayType(el) =>
         val elTypeRef = toTypeRefInternal(el)
@@ -387,8 +357,6 @@ object JSEncoding {
       case a @ AnnotatedType(t, _) =>
         //debuglog(s"typeKind of annotated type $a")
         toTypeRefInternal(t)
-    }
-  }
 
   /** Patches the result type of a method symbol to sanitize it.
    *
@@ -404,12 +372,11 @@ object JSEncoding {
     else sym.info.resultType
 
   def originalNameOfLocal(sym: Symbol)(
-      implicit ctx: Context, localNames: LocalNameGenerator): OriginalName = {
+      implicit ctx: Context, localNames: LocalNameGenerator): OriginalName =
     val irName = localNames.localSymbolName(sym)
     val originalName = UTF8String(sym.name.unexpandedName.toString)
     if (UTF8String.equals(originalName, irName.encoded)) NoOriginalName
     else OriginalName(originalName)
-  }
 
   def originalNameOfField(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.name)
@@ -420,9 +387,7 @@ object JSEncoding {
   def originalNameOfClass(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.fullName)
 
-  private def originalNameOf(name: Name): OriginalName = {
+  private def originalNameOf(name: Name): OriginalName =
     val originalName = name.unexpandedName.toString
     if (originalName == name.mangledString) NoOriginalName
     else OriginalName(originalName)
-  }
-}

@@ -60,10 +60,9 @@ trait TraceSyntax:
           t => i"$t"
         }
       else
-        summonFrom {
+        summonFrom:
           case given Show[T] => t => i"$t"
           case _             => alwaysToString
-        }
       showOp
     })(op)
 

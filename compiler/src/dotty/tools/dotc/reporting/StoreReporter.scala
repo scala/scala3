@@ -17,15 +17,14 @@ import Diagnostic._
   * - The reporter is not flushed and the message containers capture a
   *   `Context` (about 4MB)
   */
-class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter {
+class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState: Boolean = false) extends Reporter:
 
   protected var infos: mutable.ListBuffer[Diagnostic] | Null = null
 
-  def doReport(dia: Diagnostic)(using Context): Unit = {
+  def doReport(dia: Diagnostic)(using Context): Unit =
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos.uncheckedNN += dia
-  }
 
   override def hasUnreportedErrors: Boolean =
     outer != null && infos != null && infos.uncheckedNN.exists(_.isInstanceOf[Error])
@@ -48,4 +47,3 @@ class StoreReporter(outer: Reporter | Null = Reporter.NoReporter, fromTyperState
   override def report(dia: Diagnostic)(using Context): Unit =
     if fromTyperState then issueUnconfigured(dia)
     else super.report(dia)
-}

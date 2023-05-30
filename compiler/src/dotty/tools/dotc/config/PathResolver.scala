@@ -13,7 +13,7 @@ import core.Contexts._
 import Settings._
 import dotty.tools.io.File
 
-object PathResolver {
+object PathResolver:
 
   // Imports property/environment functions which suppress
   // security exceptions.
@@ -27,15 +27,14 @@ object PathResolver {
 
   /** pretty print class path
    */
-  def ppcp(s: String): String = split(s) match {
+  def ppcp(s: String): String = split(s) match
     case Nil      => ""
     case Seq(x)   => x
     case xs       => xs.map("\n" + _).mkString
-  }
 
   /** Values found solely by inspecting environment or property variables.
    */
-  object Environment {
+  object Environment:
     private def searchForBootClasspath = (
       systemProperties find (_._1 endsWith ".boot.class.path") map (_._2) getOrElse ""
     )
@@ -65,12 +64,11 @@ object PathResolver {
       |  javaUserClassPath  = ${ppcp(javaUserClassPath)}
       |  scalaExtDirs       = ${ppcp(scalaExtDirs)}
       |}""".trim.stripMargin
-  }
 
   /** Default values based on those in Environment as interpreted according
    *  to the path resolution specification.
    */
-  object Defaults {
+  object Defaults:
     def scalaSourcePath: String    = Environment.sourcePathEnv
     def javaBootClassPath: String  = Environment.javaBootClassPath
     def javaUserClassPath: String  = Environment.javaUserClassPath
@@ -127,67 +125,57 @@ object PathResolver {
         scalaLibDirFound, scalaLibFound,
         ppcp(scalaBootClassPath), ppcp(scalaPluginPath)
       )
-  }
 
-  def fromPathString(path: String)(using Context): ClassPath = {
+  def fromPathString(path: String)(using Context): ClassPath =
     val settings = ctx.settings.classpath.update(path)
-    inContext(ctx.fresh.setSettings(settings)) {
+    inContext(ctx.fresh.setSettings(settings)):
       new PathResolver().result
-    }
-  }
 
   /** Show values in Environment and Defaults when no argument is provided.
    *  Otherwise, show values in Calculated as if those options had been given
    *  to a scala runner.
    */
   def main(args: Array[String]): Unit =
-    if (args.isEmpty) {
+    if (args.isEmpty)
       println(Environment)
       println(Defaults)
-    }
-    else inContext(ContextBase().initialCtx) {
+    else inContext(ContextBase().initialCtx):
       val ArgsSummary(sstate, rest, errors, warnings) =
         ctx.settings.processArguments(args.toList, true, ctx.settingsState)
       errors.foreach(println)
-      val pr = inContext(ctx.fresh.setSettings(sstate)) {
+      val pr = inContext(ctx.fresh.setSettings(sstate)):
         new PathResolver()
-      }
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
 
-      pr.result match {
+      pr.result match
         case cp: AggregateClassPath =>
           println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
-      }
-    }
-}
 
 import PathResolver.{Defaults, ppcp}
 
-class PathResolver(using c: Context) {
+class PathResolver(using c: Context):
   import c.base.settings
 
   private val classPathFactory = new ClassPathFactory
 
   private def cmdLineOrElse(name: String, alt: String) =
-    commandLineFor(name) match {
+    commandLineFor(name) match
       case Some("") | None => alt
       case Some(x)         => x
-    }
 
-  private def commandLineFor(s: String): Option[String] = condOpt(s) {
+  private def commandLineFor(s: String): Option[String] = condOpt(s):
     case "javabootclasspath"  => settings.javabootclasspath.value
     case "javaextdirs"        => settings.javaextdirs.value
     case "bootclasspath"      => settings.bootclasspath.value
     case "extdirs"            => settings.extdirs.value
     case "classpath" | "cp"   => settings.classpath.value
     case "sourcepath"         => settings.sourcepath.value
-  }
 
   /** Calculated values based on any given command line options, falling back on
    *  those in Defaults.
    */
-  object Calculated {
+  object Calculated:
     def scalaHome: String           = Defaults.scalaHome
     def useJavaClassPath: Boolean   = settings.usejavacp.value || Defaults.useJavaClassPath
     def javaBootClassPath: String   = cmdLineOrElse("javabootclasspath", Defaults.javaBootClassPath)
@@ -245,14 +233,13 @@ class PathResolver(using c: Context) {
         ppcp(scalaBootClassPath), ppcp(scalaExtDirs), ppcp(userClassPath),
         ppcp(sourcePath)
       )
-  }
 
   def containers: List[ClassPath] = Calculated.containers
 
-  lazy val result: ClassPath = {
+  lazy val result: ClassPath =
     val cp = AggregateClassPath(containers.toIndexedSeq)
 
-    if (settings.YlogClasspath.value) {
+    if (settings.YlogClasspath.value)
       Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
@@ -260,9 +247,6 @@ class PathResolver(using c: Context) {
       val xs = (Calculated.basis drop 2).flatten.distinct
       println("After java boot/extdirs classpath has %d entries:" format xs.size)
       xs foreach (x => println("  " + x))
-    }
     cp
-  }
 
   def asURLs: Seq[java.net.URL] = result.asURLs
-}

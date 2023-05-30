@@ -12,7 +12,7 @@ import TastyUnpickler._
 import dotty.tools.tasty.TastyFormat.ASTsSection
 
 /** Reads the package and class name of the class contained in this TASTy */
-class TastyClassName(bytes: Array[Byte]) {
+class TastyClassName(bytes: Array[Byte]):
 
   val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}
@@ -20,16 +20,16 @@ class TastyClassName(bytes: Array[Byte]) {
   /** Returns a tuple with the package and class names */
   def readName(): Option[(TermName, TermName)] = unpickle(new TreeSectionUnpickler)
 
-  class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](ASTsSection) {
+  class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](ASTsSection):
     import dotty.tools.tasty.TastyFormat._
-    def unpickle(reader: TastyReader, tastyName: NameTable): (TermName, TermName) = {
+    def unpickle(reader: TastyReader, tastyName: NameTable): (TermName, TermName) =
       import reader._
-      def readNames(packageName: TermName): (TermName, TermName) = {
+      def readNames(packageName: TermName): (TermName, TermName) =
         val tag = readByte()
-        if (tag >= firstLengthTreeTag) {
+        if (tag >= firstLengthTreeTag)
           val len = readNat()
           val end = currentAddr + len
-          tag match {
+          tag match
             case TYPEDEF =>
               val className = reader.readName()
               goto(end)
@@ -39,9 +39,7 @@ class TastyClassName(bytes: Array[Byte]) {
               readNames(packageName)
             case PACKAGE =>
               readNames(packageName)
-          }
-        }
-        else tag match {
+        else tag match
           case TERMREFpkg | TYPEREFpkg =>
             val subPackageName = reader.readName()
             readNames(subPackageName)
@@ -54,15 +52,9 @@ class TastyClassName(bytes: Array[Byte]) {
             readNames(subPackageName)
           case _ =>
             readNames(packageName)
-        }
-      }
       readNames(nme.EMPTY_PACKAGE)
-    }
 
-    extension (reader: TastyReader) def readName() = {
+    extension (reader: TastyReader) def readName() =
       val idx = reader.readNat()
       nameAtRef(NameRef(idx))
-    }
-  }
 
-}

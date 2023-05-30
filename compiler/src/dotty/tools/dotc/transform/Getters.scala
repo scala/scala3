@@ -63,7 +63,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   override def description: String = Getters.description
 
-  override def transformSym(d: SymDenotation)(using Context): SymDenotation = {
+  override def transformSym(d: SymDenotation)(using Context): SymDenotation =
     def noGetterNeeded =
       d.isOneOf(NoGetterNeededFlags) ||
       d.isAllOf(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Lazy) ||
@@ -72,7 +72,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
       d.isSelfSym
 
     var d1 =
-      if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded) {
+      if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded)
         val maybeStable = if (d.isStableMember) StableRealizable else EmptyFlags
         d.copySymDenotation(
           initFlags = d.flags | maybeStable | AccessorCreationFlags,
@@ -81,7 +81,6 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
             // SingleDenotations referring to a getter. In this case it does not
             // seem to be a problem since references to a getter don't care whether
             // it's a `T` or a `=> T`
-      }
       else d
 
     // Drop the Local flag from all private[this] and protected[this] members.
@@ -89,7 +88,6 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
       if (d1 ne d) d1.resetFlag(Local)
       else d1 = d1.copySymDenotation(initFlags = d1.flags &~ Local)
     d1
-  }
   private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic
 
   val newSetters = util.HashSet[Symbol]()
@@ -119,7 +117,6 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
     else tree
 }
 
-object Getters {
+object Getters:
   val name: String = "getters"
   val description: String = "replace non-private vals and vars with getter defs"
-}

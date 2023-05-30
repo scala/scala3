@@ -33,12 +33,12 @@ class BeanProperties(thisPhase: DenotTransformer):
         info = MethodType(Nil, valDef.denot.info),
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
-       .withAnnotationsCarrying(valDef.symbol, defn.BeanGetterMetaAnnot)
+      .withAnnotationsCarrying(valDef.symbol, defn.BeanGetterMetaAnnot)
       val body: Tree = ref(valDef.symbol)
       DefDef(meth, body).withSpan(meth.span)
 
     def maybeGenerateSetter(valDef: ValDef, annot: Annotation)(using Context): Option[Tree] =
-      Option.when(valDef.denot.asSymDenotation.flags.is(Mutable)) {
+      Option.when(valDef.denot.asSymDenotation.flags.is(Mutable)):
         val owner = ctx.owner
         val meth = newSymbol(
           owner,
@@ -47,10 +47,9 @@ class BeanProperties(thisPhase: DenotTransformer):
           info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
-         .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)
+        .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)
         def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
         DefDef(meth, body).withSpan(meth.span)
-      }
 
     def prefixedName(prefix: String, valName: Name) =
       (prefix + valName.lastPart.toString.capitalize).toTermName

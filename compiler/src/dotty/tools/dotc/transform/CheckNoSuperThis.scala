@@ -27,24 +27,23 @@ class CheckNoSuperThis extends MiniPhase:
     if mdef.symbol.isClassConstructor then
       mdef.rhs match
         case Block(stats, _) => splitAtSuper(stats) match
-          case (Apply(_, superArgs) :: _, _) =>
-            val cls = mdef.symbol.owner
-            def fail(t: Tree) =
-              report.error(em"super constructor cannot be passed a self reference $t unless parameter is declared by-name", t.srcPos)
-            for arg <- superArgs do
-              arg.foreachSubTree {
-                case t: This if t.symbol == cls =>
-                  fail(t)
-                case t: RefTree => t.tpe match
-                  case tpe @ TermRef(prefix, _)
-                  if (prefix == cls.thisType
+            case (Apply(_, superArgs) :: _, _) =>
+              val cls = mdef.symbol.owner
+              def fail(t: Tree) =
+                report.error(em"super constructor cannot be passed a self reference $t unless parameter is declared by-name", t.srcPos)
+              for arg <- superArgs do
+                arg.foreachSubTree:
+                  case t: This if t.symbol == cls =>
+                    fail(t)
+                  case t: RefTree => t.tpe match
+                      case tpe @ TermRef(prefix, _)
+                      if (prefix == cls.thisType
                       || cls.is(Module)
                          && (prefix.termSymbol == cls.sourceModule || tpe.symbol == cls.sourceModule)
-                    ) && !tpe.symbol.is(JavaStatic) => fail(t)
+                      ) && !tpe.symbol.is(JavaStatic) => fail(t)
+                      case _ =>
                   case _ =>
-                case _ =>
-              }
-          case _ =>
+            case _ =>
         case _ =>
     mdef
 

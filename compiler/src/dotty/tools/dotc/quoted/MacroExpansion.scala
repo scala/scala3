@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.typer.Typer
 import dotty.tools.dotc.util.{Property, SourcePosition}
 
-object MacroExpansion {
+object MacroExpansion:
 
   private val MacroExpansionPosition = new Property.Key[SourcePosition]
 
@@ -14,5 +14,4 @@ object MacroExpansion {
 
   def context(inlinedFrom: tpd.Tree)(using Context): Context =
     QuotesCache.init(ctx.fresh).setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).setTypeAssigner(new Typer(ctx.nestingLevel + 1)).withSource(inlinedFrom.source)
-}
 

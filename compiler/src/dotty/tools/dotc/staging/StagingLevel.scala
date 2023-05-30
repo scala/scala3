@@ -11,7 +11,7 @@ import dotty.tools.dotc.util.SrcPos
 
 import scala.collection.mutable
 
-object StagingLevel {
+object StagingLevel:
 
   /** A key to be used in a context property that tracks the staging level */
   private val LevelKey = new Property.Key[Int]
@@ -49,4 +49,3 @@ object StagingLevel {
       val syms1 = syms//.filter(sym => !levelOfMap.contains(sym))
       val newMap = syms1.foldLeft(levelOfMap)((acc, sym) => acc.updated(sym, level))
       ctx.fresh.setProperty(LevelOfKey, newMap)
-}

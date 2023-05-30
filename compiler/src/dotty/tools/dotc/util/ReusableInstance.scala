@@ -14,20 +14,17 @@ import scala.util.chaining._
   *
   * Ported from scala.reflect.internal.util.ReusableInstance
   */
-final class ReusableInstance[T <: AnyRef] private (make: => T) {
+final class ReusableInstance[T <: AnyRef] private (make: => T):
   private[this] val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
   private[this] var taken = 0
 
-  inline def withInstance[R](action: T => R): R ={
+  inline def withInstance[R](action: T => R): R =
     if (taken == cache.size)
       cache += make
     taken += 1
     try action(cache(taken-1)) finally taken -= 1
-  }
-}
 
-object ReusableInstance {
+object ReusableInstance:
   private inline val InitialSize = 4
 
   def apply[T <: AnyRef](make: => T): ReusableInstance[T] = new ReusableInstance[T](make)
-}

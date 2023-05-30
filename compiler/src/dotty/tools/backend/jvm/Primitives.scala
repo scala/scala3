@@ -4,13 +4,13 @@ package jvm
 
 import java.io.PrintWriter
 
-object Primitives {
+object Primitives:
   /** This class represents a primitive operation. */
   class Primitive {
   }
 
   /** This class represents a test operation. */
-  sealed abstract class TestOp {
+  sealed abstract class TestOp:
 
     /** Returns the negation of this operation. */
     def negate(): TestOp
@@ -24,61 +24,54 @@ object Primitives {
     /** used only from GenASM */
     def opcodeIFICMP(): Int
 
-  }
 
   /** An equality test */
-  case object EQ extends TestOp {
+  case object EQ extends TestOp:
     def negate() = NE
     override def toString() = "EQ"
     override def opcodeIF()     = scala.tools.asm.Opcodes.IFEQ
     override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPEQ
-  }
 
   /** A non-equality test */
-  case object NE extends TestOp {
+  case object NE extends TestOp:
     def negate() = EQ
     override def toString() = "NE"
     override def opcodeIF()     = scala.tools.asm.Opcodes.IFNE
     override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPNE
-  }
 
   /** A less-than test */
-  case object LT extends TestOp {
+  case object LT extends TestOp:
     def negate() = GE
     override def toString() = "LT"
     override def opcodeIF()     = scala.tools.asm.Opcodes.IFLT
     override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPLT
-  }
 
   /** A greater-than-or-equal test */
-  case object GE extends TestOp {
+  case object GE extends TestOp:
     def negate() = LT
     override def toString() = "GE"
     override def opcodeIF()     = scala.tools.asm.Opcodes.IFGE
     override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPGE
-  }
 
   /** A less-than-or-equal test */
-  case object LE extends TestOp {
+  case object LE extends TestOp:
     def negate() = GT
     override def toString() = "LE"
     override def opcodeIF()     = scala.tools.asm.Opcodes.IFLE
     override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPLE
-  }
 
   /** A greater-than test */
-  case object GT extends TestOp {
+  case object GT extends TestOp:
     def negate() = LE
     override def toString() = "GT"
     override def opcodeIF()     = scala.tools.asm.Opcodes.IFGT
     override def opcodeIFICMP() = scala.tools.asm.Opcodes.IF_ICMPGT
-  }
 
   /** This class represents an arithmetic operation. */
-  class ArithmeticOp {
+  class ArithmeticOp:
 
     /** Returns a string representation of this operation. */
-    override def toString(): String = this match {
+    override def toString(): String = this match
       case ADD => "ADD"
       case SUB => "SUB"
       case MUL => "MUL"
@@ -86,8 +79,6 @@ object Primitives {
       case REM => "REM"
       case NOT => "NOT"
       case _   => throw new RuntimeException("ArithmeticOp unknown case")
-    }
-  }
 
   /** An arithmetic addition operation */
   case object ADD extends ArithmeticOp
@@ -108,16 +99,14 @@ object Primitives {
   case object NOT extends ArithmeticOp
 
   /** This class represents a shift operation. */
-  class ShiftOp {
+  class ShiftOp:
 
     /** Returns a string representation of this operation. */
-    override def toString(): String = this match {
+    override def toString(): String = this match
       case LSL =>  "LSL"
       case ASR =>  "ASR"
       case LSR =>  "LSR"
       case _  => throw new RuntimeException("ShitOp unknown case")
-    }
-  }
 
   /** A logical shift to the left */
   case object LSL extends ShiftOp
@@ -129,16 +118,14 @@ object Primitives {
   case object LSR extends ShiftOp
 
   /** This class represents a logical operation. */
-  class LogicalOp {
+  class LogicalOp:
 
     /** Returns a string representation of this operation. */
-    override def toString(): String = this match {
+    override def toString(): String = this match
       case AND => "AND"
       case OR  => "OR"
       case XOR => "XOR"
       case _  => throw new RuntimeException("LogicalOp unknown case")
-    }
-  }
 
   /** A bitwise AND operation */
   case object AND extends LogicalOp
@@ -161,24 +148,20 @@ object Primitives {
   case object EndConcat extends Primitive
 
   /** Pretty printer for primitives */
-  class PrimitivePrinter(out: PrintWriter) {
-    def print(s: String): PrimitivePrinter = {
+  class PrimitivePrinter(out: PrintWriter):
+    def print(s: String): PrimitivePrinter =
       out.print(s)
       this
-    }
-  }
 
   /** This class represents a comparison operation. */
-  class ComparisonOp {
+  class ComparisonOp:
 
     /** Returns a string representation of this operation. */
-    override def toString(): String = this match {
+    override def toString(): String = this match
       case CMPL => "CMPL"
       case CMP  => "CMP"
       case CMPG => "CMPG"
       case _ => throw new RuntimeException("ComparisonOp unknown case")
-    }
-  }
 
   /** A comparison operation with -1 default for NaNs */
   case object CMPL extends ComparisonOp
@@ -188,4 +171,3 @@ object Primitives {
 
   /** A comparison operation with +1 default for NaNs */
   case object CMPG extends ComparisonOp
-}

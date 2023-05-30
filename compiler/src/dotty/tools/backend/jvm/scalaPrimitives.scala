@@ -31,15 +31,14 @@ import scala.annotation.threadUnsafe
  *
  * Inspired from the `scalac` compiler.
  */
-class DottyPrimitives(ictx: Context) {
+class DottyPrimitives(ictx: Context):
   import dotty.tools.backend.ScalaPrimitivesOps._
 
   @threadUnsafe private lazy val primitives: ReadOnlyMap[Symbol, Int] = init
 
   /** Return the code for the given symbol. */
-  def getPrimitive(sym: Symbol): Int = {
+  def getPrimitive(sym: Symbol): Int =
     primitives(sym)
-  }
 
   /**
    * Return the primitive code of the given operation. If the
@@ -50,10 +49,10 @@ class DottyPrimitives(ictx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: Apply, tpe: Type)(using Context): Int = {
+  def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
     val fun = app.fun.symbol
     val defn = ctx.definitions
-    val code = app.fun match {
+    val code = app.fun match
       case Select(_, nme.primitive.arrayLength) =>
         LENGTH
       case Select(_, nme.primitive.arrayUpdate) =>
@@ -61,20 +60,18 @@ class DottyPrimitives(ictx: Context) {
       case Select(_, nme.primitive.arrayApply) =>
         APPLY
       case _ => getPrimitive(fun)
-    }
 
-    def elementType: Type = tpe.widenDealias match {
+    def elementType: Type = tpe.widenDealias match
       case defn.ArrayOf(el) => el
       case JavaArrayType(el) => el
       case _ =>
         report.error(em"expected Array $tpe")
         UnspecifiedErrorType
-    }
 
-    code match {
+    code match
 
       case APPLY =>
-        defn.scalaClassName(elementType) match {
+        defn.scalaClassName(elementType) match
           case tpnme.Boolean    => ZARRAY_GET
           case tpnme.Byte       => BARRAY_GET
           case tpnme.Short      => SARRAY_GET
@@ -84,10 +81,9 @@ class DottyPrimitives(ictx: Context) {
           case tpnme.Float      => FARRAY_GET
           case tpnme.Double     => DARRAY_GET
           case _                => OARRAY_GET
-        }
 
       case UPDATE =>
-        defn.scalaClassName(elementType) match {
+        defn.scalaClassName(elementType) match
           case tpnme.Boolean    => ZARRAY_SET
           case tpnme.Byte       => BARRAY_SET
           case tpnme.Short      => SARRAY_SET
@@ -97,10 +93,9 @@ class DottyPrimitives(ictx: Context) {
           case tpnme.Float      => FARRAY_SET
           case tpnme.Double     => DARRAY_SET
           case _                => OARRAY_SET
-        }
 
       case LENGTH =>
-        defn.scalaClassName(elementType) match {
+        defn.scalaClassName(elementType) match
           case tpnme.Boolean    => ZARRAY_LENGTH
           case tpnme.Byte       => BARRAY_LENGTH
           case tpnme.Short      => SARRAY_LENGTH
@@ -110,15 +105,12 @@ class DottyPrimitives(ictx: Context) {
           case tpnme.Float      => FARRAY_LENGTH
           case tpnme.Double     => DARRAY_LENGTH
           case _                => OARRAY_LENGTH
-        }
 
       case _ =>
         code
-    }
-  }
 
   /** Initialize the primitive map */
-  private def init: ReadOnlyMap[Symbol, Int]  = {
+  private def init: ReadOnlyMap[Symbol, Int]  =
 
     given Context = ictx
 
@@ -126,12 +118,11 @@ class DottyPrimitives(ictx: Context) {
     val primitives = Symbols.MutableSymbolMap[Int](512)
 
     /** Add a primitive operation to the map */
-    def addPrimitive(s: Symbol, code: Int): Unit = {
+    def addPrimitive(s: Symbol, code: Int): Unit =
       assert(!(primitives contains s), "Duplicate primitive " + s)
       primitives(s) = code
-    }
 
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
+    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit =
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty)
         report.error(em"Unknown primitive method $cls.$method")
@@ -142,8 +133,7 @@ class DottyPrimitives(ictx: Context) {
             case _                                          => code
           }
         )
-        )
-    }
+      )
 
     // scala.Any
     addPrimitive(defn.Any_==, EQ)
@@ -395,7 +385,6 @@ class DottyPrimitives(ictx: Context) {
 
 
     primitives
-  }
 
   def isPrimitive(sym: Symbol): Boolean =
     primitives.contains(sym)
@@ -409,4 +398,3 @@ class DottyPrimitives(ictx: Context) {
             case Select(_, StdNames.nme.clone_) => false // but array.clone is NOT a primitive op.
             case _ => true
         })
-}

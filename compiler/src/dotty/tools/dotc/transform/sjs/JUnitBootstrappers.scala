@@ -105,7 +105,7 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
  *  parameters, notably the expected exception class. This should be handled at
  *  some point in the future.
  */
-class JUnitBootstrappers extends MiniPhase {
+class JUnitBootstrappers extends MiniPhase:
   import JUnitBootstrappers._
   import ast.tpd._
 
@@ -118,31 +118,27 @@ class JUnitBootstrappers extends MiniPhase {
 
   // The actual transform -------------------------------
 
-  override def transformPackageDef(tree: PackageDef)(using Context): Tree = {
+  override def transformPackageDef(tree: PackageDef)(using Context): Tree =
     val junitdefn = jsdefn.junit
 
     @tailrec
-    def hasTests(sym: ClassSymbol): Boolean = {
+    def hasTests(sym: ClassSymbol): Boolean =
       sym.info.decls.exists(m => m.is(Method) && m.hasAnnotation(junitdefn.TestAnnotClass)) ||
       sym.superClass.exists && hasTests(sym.superClass.asClass)
-    }
 
-    def isTestClass(sym: Symbol): Boolean = {
+    def isTestClass(sym: Symbol): Boolean =
       sym.isClass &&
       !sym.isOneOf(ModuleClass | Abstract | Trait) &&
       hasTests(sym.asClass)
-    }
 
-    val bootstrappers = tree.stats.collect {
+    val bootstrappers = tree.stats.collect:
       case clDef: TypeDef if isTestClass(clDef.symbol) =>
         genBootstrapper(clDef.symbol.asClass)
-    }
 
     if (bootstrappers.isEmpty) tree
     else cpy.PackageDef(tree)(tree.pid, tree.stats ::: bootstrappers)
-  }
 
-  private def genBootstrapper(testClass: ClassSymbol)(using Context): TypeDef = {
+  private def genBootstrapper(testClass: ClassSymbol)(using Context): TypeDef =
     val junitdefn = jsdefn.junit
 
     /* The name of the bootstrapper module. It is derived from the test class name by
@@ -176,9 +172,8 @@ class JUnitBootstrappers extends MiniPhase {
     sbt.APIUtils.registerDummyClass(classSym)
 
     ClassDef(classSym, constr, defs)
-  }
 
-  private def genConstructor(owner: ClassSymbol)(using Context): DefDef = {
+  private def genConstructor(owner: ClassSymbol)(using Context): DefDef =
     val sym = newDefaultConstructor(owner).entered
     DefDef(sym, {
       Block(
@@ -186,24 +181,21 @@ class JUnitBootstrappers extends MiniPhase {
         unitLiteral
       )
     })
-  }
 
-  private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef = {
+  private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef =
     val sym = newSymbol(owner, name, Synthetic | Method,
       MethodType(Nil, Nil, defn.UnitType)).entered
 
     DefDef(sym, {
-      if (module.exists) {
+      if (module.exists)
         val calls = annotatedMethods(module.moduleClass.asClass, annot)
           .map(m => Apply(ref(module).select(m), Nil))
         Block(calls, unitLiteral)
-      } else {
+      else
         unitLiteral
-      }
     })
-  }
 
-  private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef = {
+  private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef =
     val sym = newSymbol(owner, name, Synthetic | Method,
       MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
 
@@ -213,21 +205,20 @@ class JUnitBootstrappers extends MiniPhase {
         .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
       Block(calls, unitLiteral)
     })
-  }
 
-  private def genTests(owner: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
+  private def genTests(owner: ClassSymbol, tests: List[Symbol])(using Context): DefDef =
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.tests, Synthetic | Method,
       MethodType(Nil, defn.ArrayOf(junitdefn.TestMetadataType))).entered
 
     DefDef(sym, {
-      val metadata = for (test <- tests) yield {
+      val metadata = for (test <- tests) yield
         val name = Literal(Constant(test.name.mangledString))
         val ignored = Literal(Constant(test.hasAnnotation(junitdefn.IgnoreAnnotClass)))
         val testAnnot = test.getAnnotation(junitdefn.TestAnnotClass).get
 
-        val mappedArguments = testAnnot.arguments.flatMap{
+        val mappedArguments = testAnnot.arguments.flatMap:
           // Since classOf[...] in annotations would not be transformed, grab the resulting class constant here
           case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg :: _))
             if expectedName.toString == "expected" => Some(clsOf(fstArg.tpe))
@@ -235,23 +226,19 @@ class JUnitBootstrappers extends MiniPhase {
           case NamedArg(timeoutName: TermName, timeoutLiteral: Literal)
             if timeoutName.toString == "timeout" => Some(timeoutLiteral)
           case other => {
-            val shownName = other match {
-              case NamedArg(name, _) => name.show(using ctx)
-              case other => other.show(using ctx)
+              val shownName = other match
+                case NamedArg(name, _) => name.show(using ctx)
+                case other => other.show(using ctx)
+              report.error(em"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
+              None
             }
-            report.error(em"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
-            None
-          }
-        }
 
         val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
         New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
-      }
       JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))
     })
-  }
 
-  private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
+  private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: List[Symbol])(using Context): DefDef =
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
@@ -272,33 +259,29 @@ class JUnitBootstrappers extends MiniPhase {
         }
       )
     })
-  }
 
-  private def genTestInvocation(testClass: ClassSymbol, testMethod: Symbol, instance: Tree)(using Context): Tree = {
+  private def genTestInvocation(testClass: ClassSymbol, testMethod: Symbol, instance: Tree)(using Context): Tree =
     val junitdefn = jsdefn.junit
 
     val resultType = testMethod.info.resultType
-    if (resultType.isRef(defn.UnitClass)) {
+    if (resultType.isRef(defn.UnitClass))
       val newSuccess = ref(junitdefn.SuccessModule_apply).appliedTo(ref(defn.BoxedUnit_UNIT))
       Block(
         instance.select(testMethod).appliedToNone :: Nil,
         ref(junitdefn.FutureModule_successful).appliedTo(newSuccess)
       )
-    } else if (resultType.isRef(junitdefn.FutureClass)) {
+    else if (resultType.isRef(junitdefn.FutureClass))
       instance.select(testMethod).appliedToNone
-    } else {
+    else
       // We lie in the error message to not expose that we support async testing.
       report.error("JUnit test must have Unit return type", testMethod.sourcePos)
       EmptyTree
-    }
-  }
 
-  private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef = {
+  private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef =
     val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
       MethodType(Nil, defn.ObjectType)).entered
 
     DefDef(sym, New(testClass.typeRef, Nil))
-  }
 
   private def castParam(param: Symbol, clazz: Symbol)(using Context): Tree =
     ref(param).cast(clazz.typeRef)
@@ -309,13 +292,12 @@ class JUnitBootstrappers extends MiniPhase {
       .filter(_.symbol.hasAnnotation(annot))
       .map(_.symbol)
       .toList
-}
 
-object JUnitBootstrappers {
+object JUnitBootstrappers:
   val name: String = "junitBootstrappers"
   val description: String = "generate JUnit-specific bootstrapper classes for Scala.js"
 
-  private object junitNme {
+  private object junitNme:
     val beforeClass: TermName = termName("beforeClass")
     val afterClass: TermName = termName("afterClass")
     val before: TermName = termName("before")
@@ -327,6 +309,4 @@ object JUnitBootstrappers {
     val instance: TermName = termName("instance")
     val name: TermName = termName("name")
     val castInstance: TermName = termName("castInstance")
-  }
 
-}

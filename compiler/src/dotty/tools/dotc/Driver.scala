@@ -20,7 +20,7 @@ import fromtasty.{TASTYCompiler, TastyFileUtil}
  *  process, but in most cases you only need to call [[process]] on the
  *  existing object [[Main]].
  */
-class Driver {
+class Driver:
 
   protected def newCompiler(using Context): Compiler =
     if (ctx.settings.fromTasty.value) new TASTYCompiler
@@ -71,7 +71,7 @@ class Driver {
    *  this method returns a list of files to compile and an updated Context.
    *  If compilation should be interrupted, this method returns None.
    */
-  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
+  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] =
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
@@ -79,7 +79,7 @@ class Driver {
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
 
-    inContext(ictx) {
+    inContext(ictx):
       if !ctx.settings.YdropComments.value || ctx.settings.YreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
@@ -87,8 +87,6 @@ class Driver {
         val files = fileNames.map(ctx.getFile)
         (files, fromTastySetup(files))
       }
-    }
-  }
 
   /** Setup extra classpath of tasty and jar files */
   protected def fromTastySetup(files: List[AbstractFile])(using Context): Context =
@@ -137,10 +135,9 @@ class Driver {
    *  @return
    */
   final def process(args: Array[String], simple: interfaces.SimpleReporter | Null,
-    callback: interfaces.CompilerCallback | Null): interfaces.ReporterResult = {
+    callback: interfaces.CompilerCallback | Null): interfaces.ReporterResult =
     val reporter = if (simple == null) null else Reporter.fromSimpleReporter(simple)
     process(args, reporter, callback)
-  }
 
   /** Principal entry point to the compiler.
    *
@@ -156,14 +153,13 @@ class Driver {
    *                    if compilation succeeded.
    */
   final def process(args: Array[String], reporter: Reporter | Null = null,
-    callback: interfaces.CompilerCallback | Null = null): Reporter = {
+    callback: interfaces.CompilerCallback | Null = null): Reporter =
     val compileCtx = initCtx.fresh
     if (reporter != null)
       compileCtx.setReporter(reporter)
     if (callback != null)
       compileCtx.setCompilerCallback(callback)
     process(args, compileCtx)
-  }
 
   /** Entry point to the compiler with no optional arguments.
    *
@@ -191,19 +187,16 @@ class Driver {
    *  @return           The `Reporter` used. Use `Reporter#hasErrors` to check
    *                    if compilation succeeded.
    */
-  def process(args: Array[String], rootCtx: Context): Reporter = {
+  def process(args: Array[String], rootCtx: Context): Reporter =
     setup(args, rootCtx) match
       case Some((files, compileCtx)) =>
         doCompile(newCompiler(using compileCtx), files)(using compileCtx)
       case None =>
         rootCtx.reporter
-  }
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit =
     // Preload scala.util.control.NonFatal. Otherwise, when trying to catch a StackOverflowError,
     // we may try to load it but fail with another StackOverflowError and lose the original exception,
     // see <https://groups.google.com/forum/#!topic/scala-user/kte6nak-zPM>.
     val _ = NonFatal
     sys.exit(if (process(args).hasErrors) 1 else 0)
-  }
-}

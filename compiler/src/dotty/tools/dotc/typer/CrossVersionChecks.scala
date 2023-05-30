@@ -93,9 +93,9 @@ class CrossVersionChecks extends MiniPhase:
    *  concrete, non-deprecated method.  If it does, then
    *  deprecation is meaningless.
    */
-  private def checkDeprecatedOvers(tree: Tree)(using Context): Unit = {
+  private def checkDeprecatedOvers(tree: Tree)(using Context): Unit =
     val symbol = tree.symbol
-    if (symbol.isDeprecated) {
+    if (symbol.isDeprecated)
       val concrOvers =
         symbol.allOverriddenSymbols.filter(sym =>
           !sym.isDeprecated && !sym.is(Deferred))
@@ -104,8 +104,6 @@ class CrossVersionChecks extends MiniPhase:
           em"""$symbol overrides concrete, non-deprecated definition(s):
               |    ${concrOvers.map(_.name).mkString(", ")}""",
           tree.srcPos)
-    }
-  }
 
   override def transformValDef(tree: ValDef)(using Context): ValDef =
     checkDeprecatedOvers(tree)
@@ -122,24 +120,21 @@ class CrossVersionChecks extends MiniPhase:
     checkExperimentalAnnots(tree.symbol)
     tree
 
-  override def transformIdent(tree: Ident)(using Context): Ident = {
+  override def transformIdent(tree: Ident)(using Context): Ident =
     checkUndesiredProperties(tree.symbol, tree.srcPos)
     tree
-  }
 
-  override def transformSelect(tree: Select)(using Context): Select = {
+  override def transformSelect(tree: Select)(using Context): Select =
     checkUndesiredProperties(tree.symbol, tree.srcPos)
     tree
-  }
 
-  override def transformNew(tree: New)(using Context): New = {
+  override def transformNew(tree: New)(using Context): New =
     checkUndesiredProperties(tree.tpe.typeSymbol, tree.srcPos)
     tree
-  }
 
-  override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
+  override def transformTypeTree(tree: TypeTree)(using Context): TypeTree =
     val tpe = tree.tpe
-    tpe.foreachPart {
+    tpe.foreachPart:
       case TypeRef(_, sym: Symbol)  =>
         checkDeprecated(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
@@ -147,17 +142,14 @@ class CrossVersionChecks extends MiniPhase:
         checkDeprecated(sym, tree.srcPos)
         checkExperimentalRef(sym, tree.srcPos)
       case _ =>
-    }
     tree
-  }
 
   override def transformOther(tree: Tree)(using Context): Tree =
-    tree.foreachSubTree { // Find references in type trees and imports
+    tree.foreachSubTree: // Find references in type trees and imports
       case tree: Ident => transformIdent(tree)
       case tree: Select => transformSelect(tree)
       case tree: TypeTree => transformTypeTree(tree)
       case _ =>
-    }
     tree
 
 end CrossVersionChecks

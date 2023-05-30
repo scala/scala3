@@ -94,16 +94,14 @@ class Namer { typer: Typer =>
   private var lateCompile = false
 
   /** The symbol of the given expanded tree. */
-  def symbolOfTree(tree: Tree)(using Context): Symbol = {
+  def symbolOfTree(tree: Tree)(using Context): Symbol =
     val xtree = expanded(tree)
-    xtree.getAttachment(TypedAhead) match {
+    xtree.getAttachment(TypedAhead) match
       case Some(ttree) => ttree.symbol
       case none =>
         xtree.getAttachment(SymOfTree) match
           case Some(sym) => sym
           case _ => throw IllegalArgumentException(i"$xtree does not have a symbol")
-    }
-  }
 
   def hasDefinedSymbol(tree: Tree)(using Context): Boolean =
     val xtree = expanded(tree)
@@ -112,19 +110,17 @@ class Namer { typer: Typer =>
   /** The enclosing class with given name; error if none exists */
   def enclosingClassNamed(name: TypeName, span: Span)(using Context): Symbol =
     if (name.isEmpty) NoSymbol
-    else {
+    else
       val cls = ctx.owner.enclosingClassNamed(name)
       if (!cls.exists)
         report.error(UnknownNamedEnclosingClassOrObject(name), ctx.source.atSpan(span))
       cls
-    }
 
   /** Record `sym` as the symbol defined by `tree` */
-  def recordSym(sym: Symbol, tree: Tree)(using Context): Symbol = {
+  def recordSym(sym: Symbol, tree: Tree)(using Context): Symbol =
     for (refs <- tree.removeAttachment(References); ref <- refs) ref.watching(sym)
     tree.pushAttachment(SymOfTree, sym)
     sym
-  }
 
   /** Check that a new definition with given name and privacy status
    *  in current context would not conflict with existing currently
@@ -178,7 +174,7 @@ class Namer { typer: Typer =>
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
-  def createSymbol(tree: Tree)(using Context): Symbol = {
+  def createSymbol(tree: Tree)(using Context): Symbol =
 
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, tree.span)
@@ -192,18 +188,16 @@ class Namer { typer: Typer =>
      */
     def checkFlags(flags: FlagSet) =
       if (flags.isEmpty) flags
-      else {
-        val (ok, adapted, kind) = tree match {
+      else
+        val (ok, adapted, kind) = tree match
           case tree: TypeDef => (flags.isTypeFlags, flags.toTypeFlags, "type")
           case _ => (flags.isTermFlags, flags.toTermFlags, "value")
-        }
         def canBeLocal = tree match
           case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
           case _ => false
         if !ok then
           report.error(em"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
         if adapted.is(Private) && canBeLocal then adapted | Local else adapted
-      }
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
@@ -215,7 +209,7 @@ class Namer { typer: Typer =>
     /** Create new symbol or redefine existing symbol under lateCompile. */
     def createOrRefine[S <: Symbol](
         tree: MemberDef, name: Name, flags: FlagSet, owner: Symbol, infoFn: S => Type,
-        symFn: (FlagSet, S => Type, Symbol) => S): Symbol = {
+        symFn: (FlagSet, S => Type, Symbol) => S): Symbol =
       val prev =
         if (lateCompile && ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
         else NoSymbol
@@ -223,24 +217,21 @@ class Namer { typer: Typer =>
       var flags1 = flags
       var privateWithin = privateWithinClass(tree.mods)
       val effectiveOwner = owner.skipWeakOwner
-      if (flags.is(Private) && effectiveOwner.is(Package)) {
+      if (flags.is(Private) && effectiveOwner.is(Package))
         // If effective owner is a package p, widen private to private[p]
         flags1 = flags1 &~ PrivateLocal
         privateWithin = effectiveOwner
-      }
 
       val sym =
-        if (prev.exists) {
+        if (prev.exists)
           prev.flags = flags1
           prev.info = infoFn(prev.asInstanceOf[S])
           prev.setPrivateWithin(privateWithin)
           prev
-        }
         else symFn(flags1, infoFn, privateWithin)
       recordSym(sym, tree)
-    }
 
-    tree match {
+    tree match
       case tree: TypeDef if tree.isClassDef =>
         val flags = checkFlags(tree.mods.flags)
         val name = checkNoConflict(tree.name, flags.is(Private), tree.span).asTypeName
@@ -295,8 +286,6 @@ class Namer { typer: Typer =>
         recordSym(newImportSymbol(ctx.owner, Completer(tree)(ctx), tree.span), tree)
       case _ =>
         NoSymbol
-    }
-  }
 
    /** If `sym` exists, enter it in effective scope. Check that
     *  package members are not entered twice in the same run.
@@ -308,84 +297,70 @@ class Namer { typer: Typer =>
       ctx.enter(sym)
 
   /** Create package if it does not yet exist. */
-  private def createPackageSymbol(pid: RefTree)(using Context): Symbol = {
-    val pkgOwner = pid match {
+  private def createPackageSymbol(pid: RefTree)(using Context): Symbol =
+    val pkgOwner = pid match
       case Ident(_) => if (ctx.owner eq defn.EmptyPackageClass) defn.RootClass else ctx.owner
       case Select(qual: RefTree, _) => createPackageSymbol(qual).moduleClass
-    }
     val existing = pkgOwner.info.decls.lookup(pid.name)
 
-    if (existing.is(Package) && (pkgOwner eq existing.owner)) {
-      existing.moduleClass.denot match {
+    if (existing.is(Package) && (pkgOwner eq existing.owner))
+      existing.moduleClass.denot match
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
           d.unlinkFromFile(ctx.source.file)
         case _ =>
-      }
       existing
-    }
-    else {
+    else
       /** If there's already an existing type, then the package is a dup of this type */
       val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
-      if (existingType.exists) {
+      if (existingType.exists)
         report.error(PkgDuplicateSymbol(existingType), pid.srcPos)
         newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
-      }
       else newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
-    }
-  }
 
   /** Expand tree and store in `expandedTree` */
-  def expand(tree: Tree)(using Context): Unit = {
+  def expand(tree: Tree)(using Context): Unit =
     def record(expanded: Tree) =
-      if (expanded `ne` tree) {
+      if (expanded `ne` tree)
         typr.println(i"Expansion: $tree expands to $expanded")
         tree.pushAttachment(ExpandedTree, expanded)
-      }
-    tree match {
+    tree match
       case tree: DefTree    => record(desugar.defTree(tree))
       case tree: PackageDef => record(desugar.packageDef(tree))
       case tree: ExtMethods => record(desugar.extMethods(tree))
       case _                =>
-    }
-  }
 
   /** The expanded version of this tree, or tree itself if not expanded */
-  def expanded(tree: Tree)(using Context): Tree = tree match {
+  def expanded(tree: Tree)(using Context): Tree = tree match
     case _: DefTree | _: PackageDef | _: ExtMethods => tree.attachmentOrElse(ExpandedTree, tree)
     case _ => tree
-  }
 
   /** For all class definitions `stat` in `xstats`: If the companion class is
     * not also defined in `xstats`, invalidate it by setting its info to
     * NoType.
     */
-  def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(using Context): Unit = {
+  def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(using Context): Unit =
     val definedNames = xstats collect { case stat: NameTree => stat.name }
     def invalidate(name: TypeName) =
-      if (!(definedNames contains name)) {
+      if (!(definedNames contains name))
         val member = pkg.info.decl(name).asSymDenotation
         if (member.isClass && !(member.is(Package))) member.markAbsent()
-      }
-    xstats foreach {
+    xstats foreach:
       case stat: TypeDef if stat.isClassDef =>
         invalidate(stat.name.moduleClassName)
       case _ =>
-    }
-  }
 
   /** Expand tree and create top-level symbols for statement and enter them into symbol table */
-  def index(stat: Tree)(using Context): Context = {
+  def index(stat: Tree)(using Context): Context =
     expand(stat)
     indexExpanded(stat)
-  }
 
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(origStat: Tree)(using Context): Context = {
-    def recur(stat: Tree): Context = stat match {
+  def indexExpanded(origStat: Tree)(using Context): Context =
+    def recur(stat: Tree): Context = stat match
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
         index(pcl.stats)(using ctx.fresh.setOwner(pkg.moduleClass))
@@ -405,9 +380,7 @@ class Namer { typer: Typer =>
         ctx
       case _ =>
         ctx
-    }
     recur(expanded(origStat))
-  }
 
   /** Determines whether this field holds an enum constant. */
   def isEnumConstant(vd: ValDef)(using Context): Boolean =
@@ -470,72 +443,65 @@ class Namer { typer: Typer =>
    *  in reverse order of their start positions.
    *  @pre `child` must have a position.
    */
-  final def addChild(cls: Symbol, child: Symbol)(using Context): Unit = {
+  final def addChild(cls: Symbol, child: Symbol)(using Context): Unit =
     val childStart = if (child.span.exists) child.span.start else -1
     def insertInto(annots: List[Annotation]): List[Annotation] =
-      annots.find(_.symbol == defn.ChildAnnot) match {
+      annots.find(_.symbol == defn.ChildAnnot) match
         case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
-          else {
+          else
             assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
             val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot): @unchecked
             prefix ::: otherAnnot :: insertInto(rest)
-          }
         case _ =>
           Annotation.Child(child, cls.span.startPos) :: annots
-      }
     cls.annotations = insertInto(cls.annotations)
-  }
 
   /** Add java enum constants */
-  def addEnumConstants(mdef: DefTree, sym: Symbol)(using Context): Unit = mdef match {
+  def addEnumConstants(mdef: DefTree, sym: Symbol)(using Context): Unit = mdef match
     case vdef: ValDef if (isEnumConstant(vdef)) =>
       val enumClass = sym.owner.linkedClass
       if (!enumClass.is(Sealed)) enumClass.setFlag(Flags.AbstractSealed)
       addChild(enumClass, sym)
     case _ =>
-  }
 
-  def setDocstring(sym: Symbol, tree: Tree)(using Context): Unit = tree match {
+  def setDocstring(sym: Symbol, tree: Tree)(using Context): Unit = tree match
     case t: MemberDef if t.rawComment.isDefined =>
       ctx.docCtx.foreach(_.addDocstring(sym, t.rawComment))
     case t: ExtMethods =>
       for meth <- t.methods.find(_.span.point == sym.span.point) do
         setDocstring(sym, meth)
     case _ => ()
-  }
 
   /** Create top-level symbols for statements and enter them into symbol table
    *  @return A context that reflects all imports in `stats`.
    */
-  def index(stats: List[Tree])(using Context): Context = {
+  def index(stats: List[Tree])(using Context): Context =
 
     // module name -> (stat, moduleCls | moduleVal)
     val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
     val moduleValDef = mutable.Map[TermName, (Tree, ValDef)]()
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
-    def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
+    def removeInExpanded(mdef: Tree, tree: Tree): Unit =
       val Thicket(trees) = expanded(mdef): @unchecked
       mdef.putAttachment(ExpandedTree, Thicket(trees.filter(_ != tree)))
-    }
 
     /** Transfer all references to `from` to `to` */
-    def transferReferences(from: ValDef, to: ValDef): Unit = {
+    def transferReferences(from: ValDef, to: ValDef): Unit =
       val fromRefs = from.removeAttachment(References).getOrElse(Nil)
       val toRefs = to.removeAttachment(References).getOrElse(Nil)
       to.putAttachment(References, fromRefs ++ toRefs)
-    }
 
     /** Merge the module class `modCls` in the expanded tree of `mdef` with the
      *  body and derived clause of the synthetic module class `fromCls`.
      */
-    def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
+    def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef =
       var res: TypeDef | Null = null
       val Thicket(trees) = expanded(mdef): @unchecked
       val merged = trees.map { tree =>
-        if (tree == modCls) {
+        if (tree == modCls)
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
           val modTempl = modCls.rhs.asInstanceOf[Template]
           res = cpy.TypeDef(modCls)(
@@ -546,21 +512,18 @@ class Namer { typer: Typer =>
                     // toString should only be generated if explicit companion is missing
                   case _ => true
                 } ++ modTempl.body))
-          if (fromTempl.derived.nonEmpty) {
+          if (fromTempl.derived.nonEmpty)
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
             // `res` is inside a closure, so the flow-typing doesn't work here.
             res.uncheckedNN.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
-          }
           res.uncheckedNN
-        }
         else tree
       }
 
       mdef.putAttachment(ExpandedTree, Thicket(merged))
 
       res.nn
-    }
 
     /** Merge `fromCls` of `fromStat` into `toCls` of `toStat`
      *  if the former is synthetic and the latter not.
@@ -570,56 +533,48 @@ class Namer { typer: Typer =>
      *    2. `fromCls` and `toCls` are necessarily different
      */
     def mergeIfSynthetic(fromStat: Tree, fromCls: TypeDef, toStat: Tree, toCls: TypeDef): Unit =
-      if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic)) {
+      if (fromCls.mods.is(Synthetic) && !toCls.mods.is(Synthetic))
         removeInExpanded(fromStat, fromCls)
         val mcls = mergeModuleClass(toStat, toCls, fromCls)
         mcls.setMods(toCls.mods)
         moduleClsDef(fromCls.name) = (toStat, mcls)
-      }
 
     /** Merge the definitions of a synthetic companion generated by a case class
      *  and the real companion, if both exist.
      */
-    def mergeCompanionDefs() = {
+    def mergeCompanionDefs() =
       def valid(mdef: MemberDef): Boolean = mdef.mods.is(Module, butNot = Package)
 
       for (stat <- stats)
-        expanded(stat) match {
+        expanded(stat) match
           case Thicket(trees) => // companion object always expands to thickets
-            trees.map {
+            trees.map:
               case mcls @ TypeDef(name, impl: Template) if valid(mcls) =>
-                (moduleClsDef.get(name): @unchecked) match {
+                (moduleClsDef.get(name): @unchecked) match
                   case Some((stat1, mcls1@TypeDef(_, impl1: Template))) =>
                     mergeIfSynthetic(stat, mcls, stat1, mcls1)
                     mergeIfSynthetic(stat1, mcls1, stat, mcls)
                   case None =>
                     moduleClsDef(name) = (stat, mcls)
-                }
 
               case vdef @ ValDef(name, _, _) if valid(vdef) =>
-                moduleValDef.get(name) match {
+                moduleValDef.get(name) match
                   case Some((stat1, vdef1)) =>
-                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic)) {
+                    if (vdef.mods.is(Synthetic) && !vdef1.mods.is(Synthetic))
                       transferReferences(vdef, vdef1)
                       removeInExpanded(stat, vdef)
-                    }
-                    else if (!vdef.mods.is(Synthetic) && vdef1.mods.is(Synthetic)) {
+                    else if (!vdef.mods.is(Synthetic) && vdef1.mods.is(Synthetic))
                       transferReferences(vdef1, vdef)
                       removeInExpanded(stat1, vdef1)
                       moduleValDef(name) = (stat, vdef)
-                    }
                     else {
                       // double definition of objects or case classes, handled elsewhere
                     }
                   case None =>
                     moduleValDef(name) = (stat, vdef)
-                }
 
               case _ =>
-            }
           case _ =>
-        }
-    }
 
     val classDef  = mutable.Map[TypeName, TypeDef]()
     val moduleDef = mutable.Map[TypeName, TypeDef]()
@@ -627,38 +582,33 @@ class Namer { typer: Typer =>
     /** Create links between companion object and companion class.
      *  Populate `moduleDef` and `classDef` as a side effect.
      */
-    def createCompanionLinks()(using Context): Unit = {
+    def createCompanionLinks()(using Context): Unit =
 
       def updateCache(cdef: TypeDef): Unit =
         if (cdef.isClassDef && !cdef.mods.is(Package))
           if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
           else classDef(cdef.name) = cdef
 
-      def createLinks(classTree: TypeDef, moduleTree: TypeDef)(using Context) = {
+      def createLinks(classTree: TypeDef, moduleTree: TypeDef)(using Context) =
         val claz = ctx.effectiveScope.lookup(classTree.name)
         val modl = ctx.effectiveScope.lookup(moduleTree.name)
         modl.registerCompanion(claz)
         claz.registerCompanion(modl)
-      }
 
       for (stat <- stats)
-        expanded(stat) match {
+        expanded(stat) match
           case cdef : TypeDef => updateCache(cdef)
           case Thicket(trees) =>
-            trees.map {
+            trees.map:
               case cdef: TypeDef => updateCache(cdef)
               case _ =>
-            }
           case _ =>
-        }
 
       for (cdef @ TypeDef(name, _) <- classDef.values)
-        moduleDef.getOrElse(name.moduleClassName, EmptyTree) match {
+        moduleDef.getOrElse(name.moduleClassName, EmptyTree) match
           case t: TypeDef =>
             createLinks(cdef, t)
           case EmptyTree =>
-        }
-    }
 
     /** If a top-level object or class has no companion in the current run, we
      *  enter a dummy companion (`denot.isAbsent` returns true) or constructor
@@ -707,12 +657,10 @@ class Namer { typer: Typer =>
     stats.foreach(expand)
     mergeCompanionDefs()
     val ctxWithStats = stats.foldLeft(ctx)((ctx, stat) => indexExpanded(stat)(using ctx))
-    inContext(ctxWithStats) {
+    inContext(ctxWithStats):
       createCompanionLinks()
       addAbsentCompanions()
-    }
     ctxWithStats
-  }
 
   /** Parse the source and index symbols in the compilation unit's untpdTree
    *  while asserting the `lateCompile` flag. This will cause any old
@@ -741,16 +689,14 @@ class Namer { typer: Typer =>
       if (unit.isJava) new JavaParser(unit.source).parse()
       else new Parser(unit.source).parse()
 
-    atPhase(Phases.typerPhase) {
-      inContext(PrepareInlineable.initContext(ctx)) {
+    atPhase(Phases.typerPhase):
+      inContext(PrepareInlineable.initContext(ctx)):
         // inline body annotations are set in namer, capturing the current context
         // we need to prepare the context for inlining.
         lateEnter()
         typeCheckCB { () =>
           lateTypeCheck()
         }
-      }
-    }
   end lateEnterUnit
 
   /** The type bound on wildcard imports of an import list, with special values
@@ -765,13 +711,12 @@ class Namer { typer: Typer =>
       else bound
     }
 
-  def missingType(sym: Symbol, modifier: String)(using Context): Unit = {
+  def missingType(sym: Symbol, modifier: String)(using Context): Unit =
     report.error(em"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
     sym.resetFlag(GivenOrImplicit)
-  }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
+  class Completer(val original: Tree)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter:
 
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
@@ -797,14 +742,13 @@ class Namer { typer: Typer =>
           typr.println(s"error while completing ${imp.expr}")
           throw ex
 
-    final override def complete(denot: SymDenotation)(using Context): Unit = {
-      if (Config.showCompletions && ctx.typerState != creationContext.typerState) {
+    final override def complete(denot: SymDenotation)(using Context): Unit =
+      if (Config.showCompletions && ctx.typerState != creationContext.typerState)
         def levels(c: Context): Int =
           if (c.typerState eq creationContext.typerState) 0
           else if (c.outer.typerState == c.typerState) levels(c.outer)
           else levels(c.outer) + 1
         println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
-      }
       val creationRunId = creationContext.runId
       if ctx.runId > creationRunId then
         assert(ctx.mode.is(Mode.Interactive), s"completing $denot in wrong run ${ctx.runId}, was created in $creationRunId")
@@ -818,7 +762,6 @@ class Namer { typer: Typer =>
             val completer = SuspendCompleter()
             denot.info = completer
             completer.complete(denot)
-    }
 
     private var completedTypeParamSyms: List[TypeSymbol] | Null = null
 
@@ -829,22 +772,19 @@ class Namer { typer: Typer =>
       if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
       else Nil
 
-    protected def addAnnotations(sym: Symbol): Unit = original match {
+    protected def addAnnotations(sym: Symbol): Unit = original match
       case original: untpd.MemberDef =>
         lazy val annotCtx = annotContext(original, sym)
-        for (annotTree <- original.mods.annotations) {
+        for (annotTree <- original.mods.annotations)
           val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
           if (cls eq sym)
             report.error(em"An annotation class cannot be annotated with iself", annotTree.srcPos)
-          else {
+          else
             val ann = Annotation.deferred(cls)(typedAheadExpr(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
-          }
-        }
       case _ =>
-    }
 
-    private def addInlineInfo(sym: Symbol) = original match {
+    private def addInlineInfo(sym: Symbol) = original match
       case original: untpd.DefDef if sym.isInlineMethod =>
         def rhsToInline(using Context): tpd.Tree =
           if !original.symbol.exists && !hasDefinedSymbol(original) then
@@ -855,7 +795,6 @@ class Namer { typer: Typer =>
           PrepareInlineable.wrapRHS(original, mdef.tpt, mdef.rhs)
         PrepareInlineable.registerInlineInfo(sym, rhsToInline)(using localContext(sym))
       case _ =>
-    }
 
     /** Invalidate `denot` by overwriting its info with `NoType` if
      *  `denot` is a compiler generated case class method that clashes
@@ -863,10 +802,9 @@ class Namer { typer: Typer =>
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
       def isCaseClassOrCompanion(owner: Symbol) =
-        owner.isClass && {
+        owner.isClass `&&`:
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
           else owner.is(CaseClass)
-        }
 
       def definesMember =
         denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
@@ -900,10 +838,10 @@ class Namer { typer: Typer =>
     /** If completed symbol is an enum value or a named class, register it as a child
      *  in all direct parent classes which are sealed.
      */
-    def registerIfChild(denot: SymDenotation)(using Context): Unit = {
+    def registerIfChild(denot: SymDenotation)(using Context): Unit =
       val sym = denot.symbol
 
-      def register(child: Symbol, parentCls: ClassSymbol) = {
+      def register(child: Symbol, parentCls: ClassSymbol) =
         if (parentCls.is(Sealed))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
@@ -913,7 +851,6 @@ class Namer { typer: Typer =>
             report.error(em"""children of $parentCls were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $parentCls.""",
                       child.srcPos)
-      }
 
       if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
         val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
@@ -922,12 +859,11 @@ class Namer { typer: Typer =>
         assert(denot.is(Enum), denot)
         denot.info.classSymbols.foreach { parent => register(denot.symbol, parent) }
       end if
-    }
 
     /** Intentionally left without `implicit ctx` parameter. We need
      *  to pick up the context at the point where the completer was created.
      */
-    def completeInCreationContext(denot: SymDenotation): Unit = {
+    def completeInCreationContext(denot: SymDenotation): Unit =
       val sym = denot.symbol
       addAnnotations(sym)
       addInlineInfo(sym)
@@ -935,11 +871,9 @@ class Namer { typer: Typer =>
       invalidateIfClashingSynthetic(denot)
       Checking.checkWellFormed(sym)
       denot.info = avoidPrivateLeaks(sym)
-    }
-  }
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
-  extends Completer(original)(ictx) with TypeParamsCompleter {
+  extends Completer(original)(ictx) with TypeParamsCompleter:
     private var myTypeParams: List[TypeSymbol] | Null = null
     private var nestedCtx: Context | Null = null
     assert(!original.isClassDef)
@@ -1002,18 +936,16 @@ class Namer { typer: Typer =>
         // inspects a TypeRef's info, instead of simply dealiasing alias types.
 
       val isDerived = original.rhs.isInstanceOf[untpd.DerivedTypeTree]
-      val rhs = original.rhs match {
+      val rhs = original.rhs match
         case LambdaTypeTree(_, body) => body
         case rhs => rhs
-      }
 
       // For match types: approximate with upper bound while evaluating the rhs.
-      val dummyInfo2 = rhs match {
+      val dummyInfo2 = rhs match
         case MatchTypeTree(bound, _, _) if !bound.isEmpty =>
           abstracted(TypeBounds.upper(typedAheadType(bound).tpe))
         case _ =>
           dummyInfo1
-      }
       sym.info = dummyInfo2
 
       // Treat the parameters of an upper type lambda bound on the RHS as non-variant.
@@ -1043,10 +975,9 @@ class Namer { typer: Typer =>
           info
 
       if (isDerived) sym.info = unsafeInfo
-      else {
+      else
         sym.info = NoCompleter
         sym.info = opaqueToBounds(checkNonCyclic(sym, unsafeInfo, reportErrors = true))
-      }
       if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
       sym.resetFlag(Provisional)
 
@@ -1061,9 +992,8 @@ class Namer { typer: Typer =>
 
       sym.info
     end typeSig
-  }
 
-  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx):
     withDecls(newScope(using ictx))
 
     protected implicit val completerCtx: Context = localContext(cls)
@@ -1075,11 +1005,10 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original: @unchecked
 
-    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
+    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span:
       case td: TypeDef => td.mods.is(Param)
       case vd: ValDef => vd.mods.is(ParamAccessor)
       case _ => false
-    }
 
     def init(): Context = index(params)
 
@@ -1107,7 +1036,7 @@ class Namer { typer: Typer =>
       lazy val givenBound = importBound(selectors, isGiven = true)
 
       val targets = mutable.Set[Name]()
-      def canForward(mbr: SingleDenotation, alias: TermName): CanForward = {
+      def canForward(mbr: SingleDenotation, alias: TermName): CanForward =
         import CanForward.*
         val sym = mbr.symbol
         if !sym.isAccessibleFrom(pathType) then
@@ -1133,7 +1062,6 @@ class Namer { typer: Typer =>
               case None => Yes
         else
           Yes
-      }
 
       def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
         var n = 0
@@ -1332,8 +1260,8 @@ class Namer { typer: Typer =>
               val alt2 = tpd.methPart(forwarder1.rhs).tpe
               val cmp = alt1 match
                 case alt1: TermRef => alt2 match
-                  case alt2: TermRef => compare(alt1, alt2)
-                  case _ => 0
+                    case alt2: TermRef => compare(alt1, alt2)
+                    case _ => 0
                 case _ => 0
               if cmp == 0 then
                 report.error(
@@ -1414,11 +1342,10 @@ class Namer { typer: Typer =>
           process(stats1)
         case Nil =>
 
-      def hasExport(stats: List[Tree]): Boolean = stats.exists {
+      def hasExport(stats: List[Tree]): Boolean = stats.exists:
         case _: Export => true
         case ExtMethods(_, stats1) => hasExport(stats1)
         case _ => false
-      }
       // Do a quick scan whether we need to process at all. This avoids creating
       // import contexts for nothing.
       if hasExport(rest) then
@@ -1431,7 +1358,7 @@ class Namer { typer: Typer =>
      *  accessors, that's why the constructor needs to be completed before
      *  the parent types are elaborated.
      */
-    def completeConstructor(denot: SymDenotation): Unit = {
+    def completeConstructor(denot: SymDenotation): Unit =
       if (tempInfo != null) // Constructor has been completed already
         return
 
@@ -1439,13 +1366,12 @@ class Namer { typer: Typer =>
 
       val selfInfo: TypeOrSymbol =
         if (self.isEmpty) NoType
-        else if (cls.is(Module)) {
+        else if (cls.is(Module))
           val moduleType = cls.owner.thisType select sourceModule
           if (self.name == nme.WILDCARD) moduleType
           else recordSym(
             newSymbol(cls, self.name, self.mods.flags, moduleType, coord = self.span),
             self)
-        }
         else createSymbol(self)
 
       val savedInfo = denot.infoOrCompleter
@@ -1466,10 +1392,9 @@ class Namer { typer: Typer =>
 
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
       denot.info = savedInfo
-    }
 
     /** The type signature of a ClassDef with given symbol */
-    override def completeInCreationContext(denot: SymDenotation): Unit = {
+    override def completeInCreationContext(denot: SymDenotation): Unit =
       val parents = impl.parents
 
       /* The type of a parent constructor. Types constructor arguments
@@ -1518,22 +1443,20 @@ class Namer { typer: Typer =>
        *  (3) The class is not final
        *  (4) If the class is sealed, it is defined in the same compilation unit as the current class
        */
-      def checkedParentType(parent: untpd.Tree): Type = {
+      def checkedParentType(parent: untpd.Tree): Type =
         val ptype = parentType(parent)(using completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
-        else {
+        else
           val pt = checkClassType(ptype, parent.srcPos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
-          if (pt.derivesFrom(cls)) {
-            val addendum = parent match {
+          if (pt.derivesFrom(cls))
+            val addendum = parent match
               case Select(qual: Super, _) if Feature.migrateTo3 =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
-            }
             report.error(CyclicInheritance(cls, addendum), parent.srcPos)
             defn.ObjectType
-          }
-          else {
+          else
             val pclazz = pt.typeSymbol
             if pclazz.is(Final) then
               report.error(ExtendFinalClass(cls, pclazz), cls.srcPos)
@@ -1546,9 +1469,6 @@ class Namer { typer: Typer =>
                   cls.topLevelClass,
                   parent.srcPos)
             pt
-          }
-        }
-      }
 
       /** If `parents` contains references to traits that have supertraits with implicit parameters
        *  add those supertraits in linearization order unless they are already covered by other
@@ -1598,15 +1518,13 @@ class Namer { typer: Typer =>
       )
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
-      if (impl.derived.nonEmpty) {
-        val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
+      if (impl.derived.nonEmpty)
+        val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match
           case Some(pos) => (cls.companionClass.orElse(cls).asClass, pos)
           case None => (cls, impl.srcPos.startPos)
-        }
         val deriver = new Deriver(derivingClass, derivePos)(using localCtx)
         deriver.enterDerived(impl.derived)
         original.putAttachment(AttachedDeriver, deriver)
-      }
 
       denot.info = tempInfo.nn.finalized(parentTypes)
       tempInfo = null // The temporary info can now be garbage-collected
@@ -1621,8 +1539,6 @@ class Namer { typer: Typer =>
       processExports(using localCtx)
       defn.patchStdLibClass(cls)
       addConstructorProxies(cls)
-    }
-  }
 
   /** Possible actions to perform when deciding on a forwarder for a member */
   private enum CanForward:
@@ -1630,24 +1546,21 @@ class Namer { typer: Typer =>
     case No(whyNot: String)
     case Skip  // for members that have never forwarders
 
-  class SuspendCompleter extends LazyType, SymbolLoaders.SecondCompleter {
+  class SuspendCompleter extends LazyType, SymbolLoaders.SecondCompleter:
 
     final override def complete(denot: SymDenotation)(using Context): Unit =
       denot.resetFlag(Touched) // allow one more completion
       ctx.compilationUnit.suspend()
-  }
 
   /** Typecheck `tree` during completion using `typed`, and remember result in TypedAhead map */
-  def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(using Context): tpd.Tree = {
+  def typedAhead(tree: Tree, typed: untpd.Tree => tpd.Tree)(using Context): tpd.Tree =
     val xtree = expanded(tree)
-    xtree.getAttachment(TypedAhead) match {
+    xtree.getAttachment(TypedAhead) match
       case Some(ttree) => ttree
       case none =>
         val ttree = typed(tree)
         if !ttree.isEmpty then xtree.putAttachment(TypedAhead, ttree)
         ttree
-    }
-  }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(using Context): tpd.Tree =
     typedAhead(tree, typer.typedType(_, pt))
@@ -1665,23 +1578,21 @@ class Namer { typer: Typer =>
       if sym.isConstructor then sym.owner else sym
 
   /** Enter and typecheck parameter list */
-  def completeParams(params: List[MemberDef])(using Context): Unit = {
+  def completeParams(params: List[MemberDef])(using Context): Unit =
     index(params)
     for (param <- params) typedAheadExpr(param)
-  }
 
   /** The signature of a module valdef.
    *  This will compute the corresponding module class TypeRef immediately
    *  without going through the defined type of the ValDef. This is necessary
    *  to avoid cyclic references involving imports and module val defs.
    */
-  def moduleValSig(sym: Symbol)(using Context): Type = {
+  def moduleValSig(sym: Symbol)(using Context): Type =
     val clsName = sym.name.moduleClassName
     val cls = ctx.effectiveScope.lookupAll(clsName)
       .find(_.is(ModuleClass))
       .getOrElse(newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
     ctx.owner.thisType.select(clsName, cls)
-  }
 
   /** The type signature of a ValDef or DefDef
    *  @param mdef     The definition
@@ -1689,12 +1600,12 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type =
 
     def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
     lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
-    val tptProto = mdef.tpt match {
+    val tptProto = mdef.tpt match
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
@@ -1704,7 +1615,7 @@ class Namer { typer: Typer =>
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
-        mdef match {
+        mdef match
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
             // This case applies if the closure result type contains uninstantiated
             // type variables. In this case, constrain the closure result from below
@@ -1733,19 +1644,16 @@ class Namer { typer: Typer =>
             //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
-        }
         WildcardType
       case _ =>
         WildcardType
-    }
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)
     if (ctx.explicitNulls && mdef.mods.is(JavaDefined))
       JavaNullInterop.nullifyMember(sym, mbrTpe, mdef.mods.isAllOf(JavaEnumValue))
     else mbrTpe
-  }
 
   /** The type signature of a DefDef with given symbol */
-  def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type = {
+  def defDefSig(ddef: DefDef, sym: Symbol, completer: Namer#Completer)(using Context): Type =
     // Beware: ddef.name need not match sym.name if sym was freshened!
     val isConstructor = sym.name == nme.CONSTRUCTOR
 
@@ -1790,7 +1698,6 @@ class Namer { typer: Typer =>
       wrapMethType(effectiveResultType(sym, paramSymss))
     else
       valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
-  }
 
   def inferredResultType(
       mdef: ValOrDefDef,
@@ -1853,13 +1760,12 @@ class Namer { typer: Typer =>
             sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
           else
             ctx.defContext(sym).denotNamed(original)
-        def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+        def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match
           case params :: paramss1 =>
             if (idx < params.length) params(idx)
             else paramProto(paramss1, idx - params.length)
           case nil =>
             NoType
-        }
         val defaultAlts = meth.altsWith(_.hasDefaultParams)
         if (defaultAlts.length == 1)
           paramProto(defaultAlts.head.info.widen.paramInfoss, idx)
@@ -1896,13 +1802,12 @@ class Namer { typer: Typer =>
     if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
     val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
-    if (typeParams.nonEmpty) {
+    if (typeParams.nonEmpty)
       // we'll be typing an expression from a polymorphic definition's body,
       // so we must allow constraining its type parameters
       // compare with typedDefDef, see tests/pos/gadt-inference.scala
       rhsCtx.setFreshGADTBounds
       rhsCtx.gadtState.addToConstraint(typeParams)
-    }
 
     def typedAheadRhs(pt: Type) =
       PrepareInlineable.dropInlineIfError(sym,
@@ -1937,14 +1842,12 @@ class Namer { typer: Typer =>
     //if (sym.name.toString == "y") println(i"rhs = $rhsType, cooked = $cookedRhsType")
     if (inherited.exists)
       if sym.isInlineVal then lhsType else inherited
-    else {
+    else
       if (sym.is(Implicit))
-        mdef match {
+        mdef match
           case _: DefDef => missingType(sym, "result ")
           case _: ValDef if sym.owner.isType => missingType(sym, "")
           case _ =>
-        }
       lhsType orElse WildcardType
-    }
   end inferredResultType
 }

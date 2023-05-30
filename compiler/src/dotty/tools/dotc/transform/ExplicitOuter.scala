@@ -48,14 +48,13 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   override def changesMembers: Boolean = true // the phase adds outer accessors
 
   /** Add outer accessors if a class always needs an outer pointer */
-  override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
+  override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
     case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
     case _ =>
       tp
-  }
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isClass && !sym.is(JavaDefined)
 
@@ -70,31 +69,29 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
    *  a separate phase which needs to run after erasure. However, we make sure here
    *  that the super class constructor is indeed a New, and not just a type.
    */
-  override def transformTemplate(impl: Template)(using Context): Tree = {
+  override def transformTemplate(impl: Template)(using Context): Tree =
     val cls = ctx.owner.asClass
     val isTrait = cls.is(Trait)
     if needsOuterIfReferenced(cls) && !needsOuterAlways(cls) && referencesOuter(cls, impl) then
       ensureOuterAccessors(cls)
 
     val clsHasOuter = hasOuter(cls)
-    if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
+    if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced))
       val newDefs = new mutable.ListBuffer[Tree]
 
       if (clsHasOuter)
         if (isTrait)
           newDefs += DefDef(outerAccessor(cls).asTerm, EmptyTree)
-        else {
+        else
           val outerParamAcc = outerParamAccessor(cls)
           newDefs += ValDef(outerParamAcc, EmptyTree)
           newDefs += DefDef(outerAccessor(cls).asTerm, ref(outerParamAcc))
-        }
 
       for (parentTrait <- cls.mixins)
-        if (needsOuterIfReferenced(parentTrait)) {
+        if (needsOuterIfReferenced(parentTrait))
           val parentTp = cls.denot.thisType.baseType(parentTrait)
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisPhase)
           newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
-        }
 
       val parents1 =
         for (parent <- impl.parents) yield
@@ -107,21 +104,17 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
               New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent
       cpy.Template(impl)(parents = parents1, body = impl.body ++ newDefs)
-    }
     else impl
-  }
 
-  override def transformClosure(tree: Closure)(using Context): tpd.Tree = {
-    if (tree.tpt ne EmptyTree) {
+  override def transformClosure(tree: Closure)(using Context): tpd.Tree =
+    if (tree.tpt ne EmptyTree)
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
         report.error("Not a single abstract method type, requires an outer pointer", tree.srcPos)
-    }
     tree
-  }
 }
 
-object ExplicitOuter {
+object ExplicitOuter:
   import ast.tpd._
 
   val name: String = "explicitOuter"
@@ -129,10 +122,9 @@ object ExplicitOuter {
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(using Context): Unit =
-    atPhase(explicitOuterPhase.next) {
+    atPhase(explicitOuterPhase.next):
       if (!hasOuter(cls))
         newOuterAccessors(cls).foreach(_.enteredAfter(explicitOuterPhase.asInstanceOf[DenotTransformer]))
-    }
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
   private def newOuterAccessors(cls: ClassSymbol)(using Context) =
@@ -141,16 +133,14 @@ object ExplicitOuter {
   /** Scala 2.x and Dotty don't always agree on what should be the type of the outer parameter,
    *  so we replicate the old behavior when passing arguments to methods coming from Scala 2.x.
    */
-  private def outerClass(cls: ClassSymbol)(using Context): Symbol = {
+  private def outerClass(cls: ClassSymbol)(using Context): Symbol =
     val encl = cls.owner.enclosingClass
     if (cls.is(Scala2x))
-      encl.asClass.classInfo.selfInfo match {
+      encl.asClass.classInfo.selfInfo match
         case tp: TypeRef => tp.classSymbol
         case self: Symbol => self
         case _ => encl
-      }
     else encl
-  }
 
   /** A new outer accessor or param accessor.
    *  @param  owner  The class where the outer accessor is located
@@ -165,7 +155,7 @@ object ExplicitOuter {
    *    base type of P.this wrt class O
    *  - otherwise O[?, ..., ?]
    */
-  private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(using Context) = {
+  private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(using Context) =
     val outerThis = owner.owner.enclosingClass.thisType
     val outerCls = outerClass(cls)
     val prefix = owner.thisType.baseType(cls).normalizedPrefix
@@ -178,22 +168,19 @@ object ExplicitOuter {
           else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
     val currentNestingLevel = ctx.nestingLevel
-    atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
+    atPhaseNoEarlier(explicitOuterPhase.next): // outer accessors are entered at explicitOuter + 1, should not be defined before.
       newSymbol(owner, name, SyntheticArtifact | flags, info, coord = cls.coord, nestingLevel = currentNestingLevel)
-    }
-  }
 
   /** A new param accessor for the outer field in class `cls` */
   private def newOuterParamAccessor(cls: ClassSymbol)(using Context) =
     newOuterSym(cls, cls, nme.OUTER, LocalParamAccessor)
 
   /** A new outer accessor for class `cls` which is a member of `owner` */
-  private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(using Context) = {
+  private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(using Context) =
     val deferredIfTrait = if (owner.is(Trait)) Deferred else EmptyFlags
     val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
     newOuterSym(owner, cls, outerAccName(cls),
       Final | StableMethod | outerAccIfOwn | deferredIfTrait)
-  }
 
   private def outerAccName(cls: ClassSymbol)(using Context): TermName =
     nme.OUTER.expandedName(cls)
@@ -209,7 +196,7 @@ object ExplicitOuter {
     !(cls.isStatic
       || outerOwner(cls).isStaticOwner
       || cls.is(PureInterface)
-     )
+    )
 
   /** Class unconditionally needs an outer pointer. This is the case if
    *  the class needs an outer pointer if referenced and one of the following holds:
@@ -219,8 +206,8 @@ object ExplicitOuter {
   private def needsOuterAlways(cls: ClassSymbol)(using Context): Boolean =
     needsOuterIfReferenced(cls) &&
     (!hasLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
-     cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
-     cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
+    cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
+    cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
   /** Class is only instantiated in the compilation unit where it is defined */
@@ -344,9 +331,9 @@ object ExplicitOuter {
   private final val HoistableFlags = Method | Lazy | Module
 
   /** The outer prefix implied by type `tpe` */
-  private def outerPrefix(tpe: Type)(using Context): Type = tpe match {
+  private def outerPrefix(tpe: Type)(using Context): Type = tpe match
     case tpe: TypeRef =>
-      tpe.symbol match {
+      tpe.symbol match
         case cls: ClassSymbol =>
           if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
           else tpe.prefix
@@ -359,10 +346,8 @@ object ExplicitOuter {
           	// For some other unknown reason this works with underlying but not with superType.
           	// I was not able to minimize the problem and parboiled2 spits out way too much
           	// macro generated code to be able to pinpoint the root problem.
-      }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
-  }
 
   /** It's possible (i1755.scala gives an example) that the type
    *  given by outerPrefix contains a This-reference to a module outside
@@ -374,14 +359,13 @@ object ExplicitOuter {
    *  in the first place. I was not yet able to find out how such references
    *  arise and how to avoid them.
    */
-  private def fixThis(tpe: Type)(using Context): Type = tpe match {
+  private def fixThis(tpe: Type)(using Context): Type = tpe match
     case tpe: ThisType if tpe.cls.is(Module) && !ctx.owner.isContainedIn(tpe.cls) =>
       fixThis(tpe.cls.owner.thisType.select(tpe.cls.sourceModule.asTerm))
     case tpe: TermRef =>
       tpe.derivedSelect(fixThis(tpe.prefix))
     case _ =>
       tpe
-  }
 
   extension (sym: Symbol) def isOuterParamAccessor(using Context): Boolean =
     sym.is(ParamAccessor) && sym.name == nme.OUTER
@@ -405,39 +389,35 @@ object ExplicitOuter {
    *     get erased during erasure. Therefore, outer arguments have to be passed
    *     no later than erasure.
    */
-  class OuterOps(val ictx: Context) extends AnyVal {
+  class OuterOps(val ictx: Context) extends AnyVal:
     /** The context of all operations of this class */
     given [Dummy]: Context = ictx
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =
-      if (needsOuterParam(cls)) {
+      if (needsOuterParam(cls))
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp: @unchecked
         mt.derivedLambdaType(
           nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
-      }
       else tp
 
     /** If function in an apply node is a constructor that needs to be passed an
      *  outer argument, the singleton list with the argument, otherwise Nil.
      */
     def args(fun: Tree): List[Tree] =
-      if (fun.symbol.isConstructor) {
+      if (fun.symbol.isConstructor)
         val cls = fun.symbol.owner.asClass
-        def outerArg(receiver: Tree): Tree = receiver match {
+        def outerArg(receiver: Tree): Tree = receiver match
           case New(_) | Super(_, _) =>
             singleton(fixThis(outerPrefix(receiver.tpe)))
           case This(_) =>
             ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
             outerArg(r) // cast was inserted, skip
-        }
         if (needsOuterParam(cls))
-          methPart(fun) match {
+          methPart(fun) match
             case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
-          }
         else Nil
-      }
       else Nil
 
     /** If the constructors of the given `cls` need to be passed an outer
@@ -466,7 +446,7 @@ object ExplicitOuter {
           if (count == 0 || count < 0 && treeCls == toCls) tree
           else
             val enclClass = ctx.owner.lexicallyEnclosingClass.asClass
-            val outerAcc = atPhaseNoLater(lambdaLiftPhase) {
+            val outerAcc = atPhaseNoLater(lambdaLiftPhase):
               // lambdalift mangles local class names, which means we cannot
               // reliably find outer acessors anymore
               tree match
@@ -474,7 +454,6 @@ object ExplicitOuter {
                   outerParamAccessor(enclClass)
                 case _ =>
                   outerAccessor(treeCls.asClass)
-            }
             assert(outerAcc.exists,
                 i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
             loop(tree.select(outerAcc).ensureApplied, count - 1)
@@ -483,5 +462,3 @@ object ExplicitOuter {
         loop(start, count)
       catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
-  }
-}

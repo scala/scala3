@@ -3,7 +3,7 @@ package dotc
 package core
 package classfile
 
-trait DataReader {
+trait DataReader:
 
   def bp: Int
   def bp_=(i: Int): Unit
@@ -58,4 +58,3 @@ trait DataReader {
   /** skip next 'n' bytes
     */
   def skip(n: Int): Unit
-}

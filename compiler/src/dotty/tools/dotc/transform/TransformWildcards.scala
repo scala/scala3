@@ -11,7 +11,7 @@ import ast.tpd
   *    `val x : T = _` to `val x : T = <zero of T>`
   *
   */
-class TransformWildcards extends MiniPhase with IdentityDenotTransformer {
+class TransformWildcards extends MiniPhase with IdentityDenotTransformer:
   import tpd._
 
   override def phaseName: String = TransformWildcards.name
@@ -19,15 +19,13 @@ class TransformWildcards extends MiniPhase with IdentityDenotTransformer {
   override def description: String = TransformWildcards.description
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    tree match {
+    tree match
       case vDef: ValDef => assert(!tpd.isWildcardArg(vDef.rhs))
       case _ =>
-    }
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     if (ctx.owner.isClass) tree
     else cpy.ValDef(tree)(rhs = tree.rhs.wildcardToDefault)
-}
 
 object TransformWildcards:
   val name: String = "transformWildcards"

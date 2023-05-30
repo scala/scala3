@@ -11,7 +11,7 @@ import util.Spans._
 import Names.TermName
 
 /** Unpickler for tree positions */
-class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
+class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName):
   import reader._
 
   private var myLineSizes: Array[Int] = _
@@ -19,8 +19,8 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   private var mySourcePaths: util.HashMap[Addr, String] = _
   private var isDefined = false
 
-  def ensureDefined(): Unit = {
-    if (!isDefined) {
+  def ensureDefined(): Unit =
+    if (!isDefined)
       val lines = readNat()
       myLineSizes = new Array[Int](lines)
       var i = 0
@@ -33,13 +33,12 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
       var curIndex = 0
       var curStart = 0
       var curEnd = 0
-      while (!isAtEnd) {
+      while (!isAtEnd)
         val header = readInt()
-        if (header == SOURCE) {
+        if (header == SOURCE)
           val path = nameAtRef(readNameRef()).toString
           mySourcePaths(Addr(curIndex)) = path
-        }
-        else {
+        else
           val addrDelta = header >> 3
           val hasStart = (header & 4) != 0
           val hasEnd = (header & 2) != 0
@@ -51,27 +50,19 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
           mySpans(Addr(curIndex)) =
             if (hasPoint) Span(curStart, curEnd, curStart + readInt())
             else Span(curStart, curEnd)
-        }
-      }
       isDefined = true
-    }
-  }
 
-  private[tasty] def spans: util.ReadOnlyMap[Addr, Span] = {
+  private[tasty] def spans: util.ReadOnlyMap[Addr, Span] =
     ensureDefined()
     mySpans
-  }
 
-  private[tasty] def sourcePaths: util.ReadOnlyMap[Addr, String] = {
+  private[tasty] def sourcePaths: util.ReadOnlyMap[Addr, String] =
     ensureDefined()
     mySourcePaths
-  }
 
-  private[tasty] def lineSizes: Array[Int] = {
+  private[tasty] def lineSizes: Array[Int] =
     ensureDefined()
     myLineSizes
-  }
 
   def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)
   def sourcePathAt(addr: Addr): String = sourcePaths.getOrElse(addr, "")
-}

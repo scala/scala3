@@ -76,7 +76,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
   private def exprBecomesFunction(symd: SymDenotation)(using Context): Boolean =
     symd.is(Param) || symd.is(ParamAccessor, butNot = Method)
 
-  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
     case ExprType(rt) if exprBecomesFunction(sym) =>
       defn.ByNameFunction(rt)
     case tp: MethodType =>
@@ -92,7 +92,6 @@ class ElimByName extends MiniPhase, InfoTransformer:
     case tp: PolyType =>
       tp.derivedLambdaType(resType = transformInfo(tp.resType, sym))
     case _ => tp
-  }
 
   override def infoMayChange(sym: Symbol)(using Context): Boolean =
     sym.is(Method) || exprBecomesFunction(sym)
@@ -121,16 +120,15 @@ class ElimByName extends MiniPhase, InfoTransformer:
   override def transformSelect(tree: Select)(using Context): Tree =
     applyIfFunction(tree)
 
-  override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
+  override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match
     case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
       applyIfFunction(tree)
     case _ => tree
-  }
 
   override def transformApply(tree: Apply)(using Context): Tree =
-    trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
+    trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true):
 
       def transformArg(arg: Tree, formal: Type): Tree = formal match
         case defn.ByNameFunction(formalResult) =>
@@ -150,14 +148,12 @@ class ElimByName extends MiniPhase, InfoTransformer:
       val mt @ MethodType(_) = tree.fun.tpe.widen: @unchecked
       val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
       cpy.Apply(tree)(tree.fun, args1)
-    }
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
-    atPhase(next) {
+    atPhase(next):
       if exprBecomesFunction(tree.symbol) then
         cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
       else tree
-    }
 
 object ElimByName:
   val name: String = "elimByName"

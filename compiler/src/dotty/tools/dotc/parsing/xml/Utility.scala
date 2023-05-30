@@ -12,7 +12,7 @@ import scala.collection.mutable
  *
  * @author Burak Emir
  */
-object Utility {
+object Utility:
   import util.Chars.SU
 
   private val unescMap = Map(
@@ -32,51 +32,43 @@ object Utility {
   private final def unescape(ref: String, s: StringBuilder): StringBuilder =
     ((unescMap get ref) map (s append _)).orNull
 
-  def parseAttributeValue[T](value: String, text: String => T, entityRef: String => T): List[T] = {
+  def parseAttributeValue[T](value: String, text: String => T, entityRef: String => T): List[T] =
     val sb  = new StringBuilder
     var rfb: StringBuilder = null
     val nb = new mutable.ListBuffer[T]()
 
     val it = value.iterator
-    while (it.hasNext) {
+    while (it.hasNext)
       var c = it.next()
       // entity! flush buffer into text node
-      if (c == '&') {
+      if (c == '&')
         c = it.next()
-        if (c == '#') {
+        if (c == '#')
           c = it.next()
           val theChar = parseCharRef ({ ()=> c },{ () => c = it.next() },{s => throw new RuntimeException(s)}, {s => throw new RuntimeException(s)})
           sb.append(theChar)
-        }
-        else {
+        else
           if (rfb eq null) rfb = new StringBuilder()
           rfb append c
           c = it.next()
-          while (c != ';') {
+          while (c != ';')
             rfb.append(c)
             c = it.next()
-          }
           val ref = rfb.toString()
           rfb.clear()
-          unescape(ref,sb) match {
+          unescape(ref,sb) match
             case null =>
-              if (!sb.isEmpty) {  // flush buffer
+              if (!sb.isEmpty) // flush buffer
                 nb += text(sb.toString())
                 sb.clear()
-              }
               nb += entityRef(ref) // add entityref
             case _ =>
-          }
-        }
-      }
       else sb append c
-    }
 
     if (!sb.isEmpty) // flush buffer
       nb += text(sb.toString())
 
     nb.toList
-  }
 
   /**
    * {{{
@@ -85,13 +77,13 @@ object Utility {
    * }}}
    * See [66]
    */
-  def parseCharRef(ch: () => Char, nextch: () => Unit, reportSyntaxError: String => Unit, reportTruncatedError: String => Unit): String = {
+  def parseCharRef(ch: () => Char, nextch: () => Unit, reportSyntaxError: String => Unit, reportTruncatedError: String => Unit): String =
     val hex  = ch() == 'x'
     if (hex) nextch()
     val base = if (hex) 16 else 10
     var i = 0
-    while (ch() != ';') {
-      ch() match {
+    while (ch() != ';')
+      ch() match
         case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           i = i * base + ch().asDigit
         case 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
@@ -105,19 +97,15 @@ object Utility {
           reportTruncatedError("")
         case _ =>
           reportSyntaxError("character '" + ch() + "' not allowed in char ref\n")
-      }
       nextch()
-    }
     new String(Array(i), 0, 1)
-  }
 
   /** {{{
    *  (#x20 | #x9 | #xD | #xA)
    *  }}} */
-  final def isSpace(ch: Char): Boolean = ch match {
+  final def isSpace(ch: Char): Boolean = ch match
     case '\u0009' | '\u000A' | '\u000D' | '\u0020' => true
     case _                                         => false
-  }
   /** {{{
    *  (#x20 | #x9 | #xD | #xA)+
    *  }}} */
@@ -129,7 +117,7 @@ object Utility {
    *  }}}
    *  See [4] and Appendix B of XML 1.0 specification.
   */
-  def isNameChar(ch: Char): Boolean = {
+  def isNameChar(ch: Char): Boolean =
     import java.lang.Character._
     // The constants represent groups Mc, Me, Mn, Lm, and Nd.
 
@@ -139,7 +127,6 @@ object Utility {
               MODIFIER_LETTER | DECIMAL_DIGIT_NUMBER => true
       case _                                         => ".-:" contains ch
     })
-  }
 
   /** {{{
    *  NameStart ::= ( Letter | '_' )
@@ -150,16 +137,14 @@ object Utility {
    *  We do not allow a name to start with `:`.
    *  See [3] and Appendix B of XML 1.0 specification
    */
-  def isNameStart(ch: Char): Boolean = {
+  def isNameStart(ch: Char): Boolean =
     import java.lang.Character._
 
-    getType(ch).toByte match {
+    getType(ch).toByte match
       case LOWERCASE_LETTER |
               UPPERCASE_LETTER | OTHER_LETTER |
               TITLECASE_LETTER | LETTER_NUMBER => true
       case _                                   => ch == '_'
-    }
-  }
 
   /** {{{
    *  Name ::= ( Letter | '_' ) (NameChar)*
@@ -169,5 +154,4 @@ object Utility {
   def isName(s: String): Boolean =
     s.nonEmpty && isNameStart(s.head) && (s.tail forall isNameChar)
 
-}
 

@@ -5,7 +5,7 @@ import Types._, Contexts._, Flags._, Symbols._, Annotations._
 import TypeApplications.TypeParamInfo
 import Decorators._
 
-object Variances {
+object Variances:
 
   type Variance = FlagSet
   val Bivariant: Variance = VarianceFlags
@@ -30,13 +30,12 @@ object Variances {
   def setStructuralVariances(lam: HKTypeLambda)(using Context): Unit =
     assert(!lam.isDeclaredVarianceLambda)
     for param <- lam.typeParams do param.storedVariance = Bivariant
-    object narrowVariances extends TypeTraverser {
+    object narrowVariances extends TypeTraverser:
       def traverse(t: Type): Unit = t match
         case t: TypeParamRef if t.binder eq lam =>
           lam.typeParams(t.paramNum).storedVariance &= varianceFromInt(variance)
         case _ =>
           traverseChildren(t)
-    }
     // Note: Normally, we'd need to repeat `traverse` until a fixpoint is reached.
     // But since recursive lambdas can only appear in bounds, and bounds never have
     // structural variances, a single traversal is enough.
@@ -79,4 +78,3 @@ object Variances {
     else "invariant"
 
   val alwaysInvariant: Any => Invariant.type = Function.const(Invariant)
-}

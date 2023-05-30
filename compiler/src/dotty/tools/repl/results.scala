@@ -6,7 +6,7 @@ import dotc.reporting.Diagnostic
 /** Contains the different data and type structures used to model results
  *  in the REPL
  */
-object results {
+object results:
 
   /** Type alias for `List[Diagnostic]` */
   type Errors = List[Diagnostic]
@@ -20,4 +20,3 @@ object results {
   extension [A](xs: Errors)
     def errors: Result[A] = scala.util.Left(xs)
 
-}

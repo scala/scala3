@@ -102,7 +102,7 @@ import dotty.tools.dotc.util.optional
  *
  *   ```
  */
-object QuoteMatcher {
+object QuoteMatcher:
   import tpd.*
 
   // TODO use flag from Context. Maybe -debug or add -debug-macros
@@ -127,9 +127,9 @@ object QuoteMatcher {
   /** Evaluate the result of pattern matching against a quote pattern.
    *  Implementation of the runtime of `QuoteMatching.{ExprMatch, TypeMatch}.unapply`.
    */
-  def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] = {
+  def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] =
     val (pat1, typeHoles, ctx1) = instrumentTypeHoles(pattern)
-    inContext(ctx1) {
+    inContext(ctx1):
       optional {
         given Env = Map.empty
         scrutinee =?= pat1
@@ -143,19 +143,16 @@ object QuoteMatcher {
         val matchedExprs =
           val typeHoleMap: Type => Type =
             if typeHoles.isEmpty then identity
-            else new TypeMap {
+            else new TypeMap:
               private val typeHoleMapping = Map(typeHoles.zip(typeHoleApproximations)*)
               def apply(tp: Type): Type = tp match
                 case TypeRef(NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
                 case _ => mapOver(tp)
-            }
           if matchings.isEmpty then Nil
           else matchings.map(_.toExpr(typeHoleMap, spliceScope))
         val results = matchedTypes ++ matchedExprs
         Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
       }
-    }
-  }
 
   def instrumentTypeHoles(pat: Tree)(using Context): (Tree, List[Symbol], Context) =
     def isTypeHoleDef(tree: Tree): Boolean = tree match
@@ -181,11 +178,10 @@ object QuoteMatcher {
     if fromAboveAnnot then fullBounds.nn.hi else fullBounds.nn.lo
 
   /** Check that all trees match with `mtch` and concatenate the results with &&& */
-  private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] = (l1, l2) match {
+  private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] = (l1, l2) match
     case (x :: xs, y :: ys) => mtch(x, y) &&& matchLists(xs, ys)(mtch)
     case (Nil, Nil) => matched
     case _ => notMatched
-  }
 
   extension (scrutinees: List[Tree])
     private def =?= (patterns: List[Tree])(using Env, Context): optional[MatchingExprs] =
@@ -206,7 +202,7 @@ object QuoteMatcher {
 
       /* Match block flattening */ // TODO move to cases
       /** Normalize the tree */
-      def normalize(tree: Tree): Tree = tree match {
+      def normalize(tree: Tree): Tree = tree match
         case Block(Nil, expr) => normalize(expr)
         case Block(stats1, Block(stats2, expr)) =>
           expr match
@@ -214,17 +210,15 @@ object QuoteMatcher {
             case _ => normalize(Block(stats1 ::: stats2, expr))
         case Inlined(_, Nil, expr) => normalize(expr)
         case _ => tree
-      }
 
       val scrutinee = normalize(scrutinee0)
       val pattern = normalize(pattern0)
 
       /** Check that both are `val` or both are `lazy val` or both are `var` **/
-      def checkValFlags(): Boolean = {
+      def checkValFlags(): Boolean =
         val sFlags = scrutinee.symbol.flags
         val pFlags = pattern.symbol.flags
         sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
-      }
 
       // TODO remove
       object TypeTreeTypeTest:
@@ -262,11 +256,10 @@ object QuoteMatcher {
           val env = summon[Env]
           val capturedArgs = args.map(_.symbol)
           val captureEnv = env.filter((k, v) => !capturedArgs.contains(v))
-          withEnv(captureEnv) {
+          withEnv(captureEnv):
             scrutinee match
               case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, args, env)
               case _ => notMatched
-          }
 
         /* Match type ascription (b) */
         case Typed(expr2, _) =>
@@ -321,15 +314,13 @@ object QuoteMatcher {
             case Block(stat1 :: stats1, expr1) =>
               pattern match
                 case Block(stat2 :: stats2, expr2) =>
-                  val newEnv = (stat1, stat2) match {
+                  val newEnv = (stat1, stat2) match
                     case (stat1: MemberDef, stat2: MemberDef) =>
                       summon[Env] + (stat1.symbol -> stat2.symbol)
                     case _ =>
                       summon[Env]
-                  }
-                  withEnv(newEnv) {
+                  withEnv(newEnv):
                     stat1 =?= stat2 &&& Block(stats1, expr1) =?= Block(stats2, expr2)
-                  }
                 case _ => notMatched
 
             /* Match if */
@@ -472,21 +463,19 @@ object QuoteMatcher {
     || summon[Env].get(devirtualizedScrutinee).contains(pattern)
     || devirtualizedScrutinee.allOverriddenSymbols.contains(pattern)
 
-  private object ClosedPatternTerm {
+  private object ClosedPatternTerm:
     /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
     def unapply(term: Tree)(using Env, Context): Option[term.type] =
       if freePatternVars(term).isEmpty then Some(term) else None
 
     /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
     def freePatternVars(term: Tree)(using Env, Context): Set[Symbol] =
-      val accumulator = new TreeAccumulator[Set[Symbol]] {
+      val accumulator = new TreeAccumulator[Set[Symbol]]:
         def apply(x: Set[Symbol], tree: Tree)(using Context): Set[Symbol] =
           tree match
             case tree: Ident if summon[Env].contains(tree.symbol) => foldOver(x + tree.symbol, tree)
             case _ => foldOver(x, tree)
-      }
       accumulator.apply(Set.empty, term)
-  }
 
   enum MatchResult:
     /** Closed pattern extracted value
@@ -514,14 +503,13 @@ object QuoteMatcher {
       case MatchResult.ClosedTree(tree) =>
         new ExprImpl(tree, spliceScope)
       case MatchResult.OpenTree(tree, patternTpe, args, env) =>
-        val names: List[TermName] = args.map {
+        val names: List[TermName] = args.map:
           case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
           case arg => arg.symbol.name.asTermName
-        }
         val paramTypes = args.map(x => mapTypeHoles(x.tpe.widenTermRefExpr))
         val methTpe = MethodType(names)(_ => paramTypes, _ => mapTypeHoles(patternTpe))
         val meth = newAnonFun(ctx.owner, methTpe)
-        def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+        def bodyFn(lambdaArgss: List[List[Tree]]): Tree =
           val argsMap = args.view.map(_.symbol).zip(lambdaArgss.head).toMap
           val body = new TreeMap {
             override def transform(tree: Tree)(using Context): Tree =
@@ -530,7 +518,6 @@ object QuoteMatcher {
                 case tree => super.transform(tree)
           }.transform(tree)
           TreeOps(body).changeNonLocalOwners(meth)
-        }
         val hoasClosure = Closure(meth, bodyFn)
         new ExprImpl(hoasClosure, spliceScope)
 
@@ -551,4 +538,3 @@ object QuoteMatcher {
       def &&& (that: MatchingExprs): MatchingExprs = self ++ that
   end extension
 
-}

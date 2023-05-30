@@ -61,8 +61,8 @@ class StringInterpolatorOpt extends MiniPhase:
     def unapply(t: Throwable): Option[Int] = t match
       case iee: StringContext.InvalidEscapeException => Some(iee.index)
       case iae: IllegalArgumentException => iae.getMessage() match
-        case s"""invalid unicode escape at index $index of $_""" => index.toIntOption
-        case _ => None
+          case s"""invalid unicode escape at index $index of $_""" => index.toIntOption
+          case _ => None
       case _ => None
 
   /** Match trees that resemble s and raw string interpolations. In the case of the s

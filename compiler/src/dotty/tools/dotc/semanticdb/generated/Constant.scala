@@ -8,22 +8,21 @@ package dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
-sealed trait Constant  extends SemanticdbGeneratedSealedOneof  derives CanEqual {
+sealed trait Constant  extends SemanticdbGeneratedSealedOneof  derives CanEqual:
   type MessageType = dotty.tools.dotc.semanticdb.ConstantMessage
   final def isEmpty = this.isInstanceOf[dotty.tools.dotc.semanticdb.Constant.Empty.type]
   final def isDefined = !isEmpty
   final def asMessage: dotty.tools.dotc.semanticdb.ConstantMessage = dotty.tools.dotc.semanticdb.Constant.ConstantTypeMapper.toBase(this)
   final def asNonEmpty: Option[dotty.tools.dotc.semanticdb.Constant.NonEmpty] = if (isEmpty) None else Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.Constant.NonEmpty])
-}
 
-object Constant {
+object Constant:
   case object Empty extends dotty.tools.dotc.semanticdb.Constant
   
   sealed trait NonEmpty extends dotty.tools.dotc.semanticdb.Constant
   def defaultInstance: dotty.tools.dotc.semanticdb.Constant = Empty
   
-  implicit val ConstantTypeMapper: SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.ConstantMessage, dotty.tools.dotc.semanticdb.Constant] = new SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.ConstantMessage, dotty.tools.dotc.semanticdb.Constant] {
-    override def toCustom(__base: dotty.tools.dotc.semanticdb.ConstantMessage): dotty.tools.dotc.semanticdb.Constant = __base.sealedValue match {
+  implicit val ConstantTypeMapper: SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.ConstantMessage, dotty.tools.dotc.semanticdb.Constant] = new SemanticdbTypeMapper[dotty.tools.dotc.semanticdb.ConstantMessage, dotty.tools.dotc.semanticdb.Constant]:
+    override def toCustom(__base: dotty.tools.dotc.semanticdb.ConstantMessage): dotty.tools.dotc.semanticdb.Constant = __base.sealedValue match
       case __v: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.UnitConstant => __v.value
       case __v: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.BooleanConstant => __v.value
       case __v: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.ByteConstant => __v.value
@@ -36,7 +35,6 @@ object Constant {
       case __v: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.StringConstant => __v.value
       case __v: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.NullConstant => __v.value
       case dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.Empty => Empty
-    }
     override def toBase(__custom: dotty.tools.dotc.semanticdb.Constant): dotty.tools.dotc.semanticdb.ConstantMessage = dotty.tools.dotc.semanticdb.ConstantMessage(__custom match {
       case __v: dotty.tools.dotc.semanticdb.UnitConstant => dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.UnitConstant(__v)
       case __v: dotty.tools.dotc.semanticdb.BooleanConstant => dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.BooleanConstant(__v)
@@ -51,15 +49,13 @@ object Constant {
       case __v: dotty.tools.dotc.semanticdb.NullConstant => dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.NullConstant(__v)
       case Empty => dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.Empty
     })
-  }
-}
 @SerialVersionUID(0L)
 final case class ConstantMessage(
     sealedValue: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.Empty
-    )  extends SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       if (sealedValue.unitConstant.isDefined) {
         val __value = sealedValue.unitConstant.get
@@ -106,17 +102,14 @@ final case class ConstantMessage(
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       sealedValue.unitConstant.foreach { __v =>
         val __m = __v
         _output__.writeTag(1, 2)
@@ -183,7 +176,6 @@ final case class ConstantMessage(
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-    }
     def getUnitConstant: dotty.tools.dotc.semanticdb.UnitConstant = sealedValue.unitConstant.getOrElse(dotty.tools.dotc.semanticdb.UnitConstant.defaultInstance)
     def withUnitConstant(__v: dotty.tools.dotc.semanticdb.UnitConstant): ConstantMessage = copy(sealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.UnitConstant(__v))
     def getBooleanConstant: dotty.tools.dotc.semanticdb.BooleanConstant = sealedValue.booleanConstant.getOrElse(dotty.tools.dotc.semanticdb.BooleanConstant.defaultInstance)
@@ -214,16 +206,15 @@ final case class ConstantMessage(
     
     def toConstant: dotty.tools.dotc.semanticdb.Constant = dotty.tools.dotc.semanticdb.Constant.ConstantTypeMapper.toCustom(this)
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Constant])
-}
 
-object ConstantMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ConstantMessage] {
+object ConstantMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ConstantMessage]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ConstantMessage] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.ConstantMessage = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.ConstantMessage =
     var __sealedValue: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.Empty
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 10 =>
           __sealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.UnitConstant(__sealedValue.unitConstant.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.UnitConstant](_input__))(LiteParser.readMessage(_input__, _)))
@@ -248,12 +239,9 @@ object ConstantMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
         case 90 =>
           __sealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.NullConstant(__sealedValue.nullConstant.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.NullConstant](_input__))(LiteParser.readMessage(_input__, _)))
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.ConstantMessage(
         sealedValue = __sealedValue
     )
-  }
   
   
   
@@ -263,7 +251,7 @@ object ConstantMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.ConstantMessage(
     sealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.Empty
   )
-  sealed trait SealedValue  extends SemanticdbGeneratedOneof  derives CanEqual {
+  sealed trait SealedValue  extends SemanticdbGeneratedOneof  derives CanEqual:
     def isEmpty: _root_.scala.Boolean = false
     def isDefined: _root_.scala.Boolean = true
     def isUnitConstant: _root_.scala.Boolean = false
@@ -288,95 +276,81 @@ object ConstantMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
     def doubleConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.DoubleConstant] = _root_.scala.None
     def stringConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.StringConstant] = _root_.scala.None
     def nullConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.NullConstant] = _root_.scala.None
-  }
-  object SealedValue {
+  object SealedValue:
     @SerialVersionUID(0L)
-    case object Empty extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue {
+    case object Empty extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue:
       type ValueType = _root_.scala.Nothing
       override def isEmpty: _root_.scala.Boolean = true
       override def isDefined: _root_.scala.Boolean = false
       override def number: _root_.scala.Int = 0
       override def value: _root_.scala.Nothing = throw new java.util.NoSuchElementException("Empty.value")
-    }
   
     @SerialVersionUID(0L)
-    final case class UnitConstant(value: dotty.tools.dotc.semanticdb.UnitConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class UnitConstant(value: dotty.tools.dotc.semanticdb.UnitConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.UnitConstant
       override def isUnitConstant: _root_.scala.Boolean = true
       override def unitConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.UnitConstant] = Some(value)
       override def number: _root_.scala.Int = 1
-    }
     @SerialVersionUID(0L)
-    final case class BooleanConstant(value: dotty.tools.dotc.semanticdb.BooleanConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class BooleanConstant(value: dotty.tools.dotc.semanticdb.BooleanConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.BooleanConstant
       override def isBooleanConstant: _root_.scala.Boolean = true
       override def booleanConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.BooleanConstant] = Some(value)
       override def number: _root_.scala.Int = 2
-    }
     @SerialVersionUID(0L)
-    final case class ByteConstant(value: dotty.tools.dotc.semanticdb.ByteConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class ByteConstant(value: dotty.tools.dotc.semanticdb.ByteConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.ByteConstant
       override def isByteConstant: _root_.scala.Boolean = true
       override def byteConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.ByteConstant] = Some(value)
       override def number: _root_.scala.Int = 3
-    }
     @SerialVersionUID(0L)
-    final case class ShortConstant(value: dotty.tools.dotc.semanticdb.ShortConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class ShortConstant(value: dotty.tools.dotc.semanticdb.ShortConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.ShortConstant
       override def isShortConstant: _root_.scala.Boolean = true
       override def shortConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.ShortConstant] = Some(value)
       override def number: _root_.scala.Int = 4
-    }
     @SerialVersionUID(0L)
-    final case class CharConstant(value: dotty.tools.dotc.semanticdb.CharConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class CharConstant(value: dotty.tools.dotc.semanticdb.CharConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.CharConstant
       override def isCharConstant: _root_.scala.Boolean = true
       override def charConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.CharConstant] = Some(value)
       override def number: _root_.scala.Int = 5
-    }
     @SerialVersionUID(0L)
-    final case class IntConstant(value: dotty.tools.dotc.semanticdb.IntConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class IntConstant(value: dotty.tools.dotc.semanticdb.IntConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.IntConstant
       override def isIntConstant: _root_.scala.Boolean = true
       override def intConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.IntConstant] = Some(value)
       override def number: _root_.scala.Int = 6
-    }
     @SerialVersionUID(0L)
-    final case class LongConstant(value: dotty.tools.dotc.semanticdb.LongConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class LongConstant(value: dotty.tools.dotc.semanticdb.LongConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.LongConstant
       override def isLongConstant: _root_.scala.Boolean = true
       override def longConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.LongConstant] = Some(value)
       override def number: _root_.scala.Int = 7
-    }
     @SerialVersionUID(0L)
-    final case class FloatConstant(value: dotty.tools.dotc.semanticdb.FloatConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class FloatConstant(value: dotty.tools.dotc.semanticdb.FloatConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.FloatConstant
       override def isFloatConstant: _root_.scala.Boolean = true
       override def floatConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.FloatConstant] = Some(value)
       override def number: _root_.scala.Int = 8
-    }
     @SerialVersionUID(0L)
-    final case class DoubleConstant(value: dotty.tools.dotc.semanticdb.DoubleConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class DoubleConstant(value: dotty.tools.dotc.semanticdb.DoubleConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.DoubleConstant
       override def isDoubleConstant: _root_.scala.Boolean = true
       override def doubleConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.DoubleConstant] = Some(value)
       override def number: _root_.scala.Int = 9
-    }
     @SerialVersionUID(0L)
-    final case class StringConstant(value: dotty.tools.dotc.semanticdb.StringConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class StringConstant(value: dotty.tools.dotc.semanticdb.StringConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.StringConstant
       override def isStringConstant: _root_.scala.Boolean = true
       override def stringConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.StringConstant] = Some(value)
       override def number: _root_.scala.Int = 10
-    }
     @SerialVersionUID(0L)
-    final case class NullConstant(value: dotty.tools.dotc.semanticdb.NullConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual {
+    final case class NullConstant(value: dotty.tools.dotc.semanticdb.NullConstant) extends dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue  derives CanEqual:
       type ValueType = dotty.tools.dotc.semanticdb.NullConstant
       override def isNullConstant: _root_.scala.Boolean = true
       override def nullConstant: _root_.scala.Option[dotty.tools.dotc.semanticdb.NullConstant] = Some(value)
       override def number: _root_.scala.Int = 11
-    }
-  }
   final val UNIT_CONSTANT_FIELD_NUMBER = 1
   final val BOOLEAN_CONSTANT_FIELD_NUMBER = 2
   final val BYTE_CONSTANT_FIELD_NUMBER = 3
@@ -394,11 +368,10 @@ object ConstantMessage  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
     sealedValue
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.Constant])
-}
 
 @SerialVersionUID(0L)
 final case class UnitConstant(
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     final override def serializedSize: _root_.scala.Int = 0
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
     }
@@ -407,22 +380,18 @@ final case class UnitConstant(
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.UnitConstant])
-}
 
-object UnitConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.UnitConstant] {
+object UnitConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.UnitConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.UnitConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.UnitConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.UnitConstant =
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.UnitConstant(
     )
-  }
   
   
   
@@ -435,68 +404,57 @@ object UnitConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
   ): _root_.dotty.tools.dotc.semanticdb.UnitConstant = _root_.dotty.tools.dotc.semanticdb.UnitConstant(
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.UnitConstant])
-}
 
 @SerialVersionUID(0L)
 final case class BooleanConstant(
     value: _root_.scala.Boolean = false
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != false) {
+        if (__value != false)
           __size += SemanticdbOutputStream.computeBoolSize(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != false) {
+        if (__v != false)
           _output__.writeBool(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Boolean): BooleanConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.BooleanConstant])
-}
 
-object BooleanConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.BooleanConstant] {
+object BooleanConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.BooleanConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.BooleanConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.BooleanConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.BooleanConstant =
     var __value: _root_.scala.Boolean = false
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __value = _input__.readBool()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.BooleanConstant(
         value = __value
     )
-  }
   
   
   
@@ -513,68 +471,57 @@ object BooleanConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.BooleanConstant])
-}
 
 @SerialVersionUID(0L)
 final case class ByteConstant(
     value: _root_.scala.Int = 0
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeInt32Size(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeInt32(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Int): ByteConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.ByteConstant])
-}
 
-object ByteConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ByteConstant] {
+object ByteConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ByteConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ByteConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.ByteConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.ByteConstant =
     var __value: _root_.scala.Int = 0
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __value = _input__.readInt32()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.ByteConstant(
         value = __value
     )
-  }
   
   
   
@@ -591,68 +538,57 @@ object ByteConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ByteConstant])
-}
 
 @SerialVersionUID(0L)
 final case class ShortConstant(
     value: _root_.scala.Int = 0
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeInt32Size(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeInt32(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Int): ShortConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.ShortConstant])
-}
 
-object ShortConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ShortConstant] {
+object ShortConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ShortConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ShortConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.ShortConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.ShortConstant =
     var __value: _root_.scala.Int = 0
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __value = _input__.readInt32()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.ShortConstant(
         value = __value
     )
-  }
   
   
   
@@ -669,68 +605,57 @@ object ShortConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.ShortConstant])
-}
 
 @SerialVersionUID(0L)
 final case class CharConstant(
     value: _root_.scala.Int = 0
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeInt32Size(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeInt32(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Int): CharConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.CharConstant])
-}
 
-object CharConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.CharConstant] {
+object CharConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.CharConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.CharConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.CharConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.CharConstant =
     var __value: _root_.scala.Int = 0
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __value = _input__.readInt32()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.CharConstant(
         value = __value
     )
-  }
   
   
   
@@ -747,68 +672,57 @@ object CharConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.CharConstant])
-}
 
 @SerialVersionUID(0L)
 final case class IntConstant(
     value: _root_.scala.Int = 0
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeInt32Size(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeInt32(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Int): IntConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.IntConstant])
-}
 
-object IntConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.IntConstant] {
+object IntConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.IntConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.IntConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.IntConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.IntConstant =
     var __value: _root_.scala.Int = 0
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __value = _input__.readInt32()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.IntConstant(
         value = __value
     )
-  }
   
   
   
@@ -825,68 +739,57 @@ object IntConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.IntConstant])
-}
 
 @SerialVersionUID(0L)
 final case class LongConstant(
     value: _root_.scala.Long = 0L
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0L) {
+        if (__value != 0L)
           __size += SemanticdbOutputStream.computeInt64Size(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0L) {
+        if (__v != 0L)
           _output__.writeInt64(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Long): LongConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.LongConstant])
-}
 
-object LongConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LongConstant] {
+object LongConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LongConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LongConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.LongConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.LongConstant =
     var __value: _root_.scala.Long = 0L
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 8 =>
           __value = _input__.readInt64()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.LongConstant(
         value = __value
     )
-  }
   
   
   
@@ -903,68 +806,57 @@ object LongConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.LongConstant])
-}
 
 @SerialVersionUID(0L)
 final case class FloatConstant(
     value: _root_.scala.Float = 0.0f
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0.0f) {
+        if (__value != 0.0f)
           __size += SemanticdbOutputStream.computeFloatSize(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0.0f) {
+        if (__v != 0.0f)
           _output__.writeFloat(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Float): FloatConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.FloatConstant])
-}
 
-object FloatConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.FloatConstant] {
+object FloatConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.FloatConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.FloatConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.FloatConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.FloatConstant =
     var __value: _root_.scala.Float = 0.0f
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 13 =>
           __value = _input__.readFloat()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.FloatConstant(
         value = __value
     )
-  }
   
   
   
@@ -981,68 +873,57 @@ object FloatConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.FloatConstant])
-}
 
 @SerialVersionUID(0L)
 final case class DoubleConstant(
     value: _root_.scala.Double = 0.0
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (__value != 0.0) {
+        if (__value != 0.0)
           __size += SemanticdbOutputStream.computeDoubleSize(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (__v != 0.0) {
+        if (__v != 0.0)
           _output__.writeDouble(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Double): DoubleConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.DoubleConstant])
-}
 
-object DoubleConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.DoubleConstant] {
+object DoubleConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.DoubleConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.DoubleConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.DoubleConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.DoubleConstant =
     var __value: _root_.scala.Double = 0.0
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 9 =>
           __value = _input__.readDouble()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.DoubleConstant(
         value = __value
     )
-  }
   
   
   
@@ -1059,68 +940,57 @@ object DoubleConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.d
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.DoubleConstant])
-}
 
 @SerialVersionUID(0L)
 final case class StringConstant(
     value: _root_.scala.Predef.String = ""
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       
       {
         val __value = value
-        if (!__value.isEmpty) {
+        if (!__value.isEmpty)
           __size += SemanticdbOutputStream.computeStringSize(1, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       {
         val __v = value
-        if (!__v.isEmpty) {
+        if (!__v.isEmpty)
           _output__.writeString(1, __v)
-        }
       };
-    }
     def withValue(__v: _root_.scala.Predef.String): StringConstant = copy(value = __v)
     
     
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.StringConstant])
-}
 
-object StringConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.StringConstant] {
+object StringConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.StringConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.StringConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.StringConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.StringConstant =
     var __value: _root_.scala.Predef.String = ""
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 10 =>
           __value = _input__.readStringRequireUtf8()
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.StringConstant(
         value = __value
     )
-  }
   
   
   
@@ -1137,11 +1007,10 @@ object StringConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.d
     value
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.StringConstant])
-}
 
 @SerialVersionUID(0L)
 final case class NullConstant(
-    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual:
     final override def serializedSize: _root_.scala.Int = 0
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
     }
@@ -1150,22 +1019,18 @@ final case class NullConstant(
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.NullConstant])
-}
 
-object NullConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.NullConstant] {
+object NullConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.NullConstant]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.NullConstant] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.NullConstant = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.NullConstant =
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.NullConstant(
     )
-  }
   
   
   
@@ -1178,4 +1043,3 @@ object NullConstant  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dot
   ): _root_.dotty.tools.dotc.semanticdb.NullConstant = _root_.dotty.tools.dotc.semanticdb.NullConstant(
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.NullConstant])
-}

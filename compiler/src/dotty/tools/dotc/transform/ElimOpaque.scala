@@ -13,13 +13,12 @@ import SymDenotations.SymDenotation
 import DenotTransformers._
 import Names._
 
-object ElimOpaque {
+object ElimOpaque:
   val name: String = "elimOpaque"
   val description: String = "turn opaque into normal aliases"
-}
 
 /** Rewrites opaque type aliases to normal alias types */
-class ElimOpaque extends MiniPhase with DenotTransformer {
+class ElimOpaque extends MiniPhase with DenotTransformer:
   thisPhase =>
   import ast.tpd._
 
@@ -33,19 +32,18 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation =
     val sym = ref.symbol
-    ref match {
+    ref match
       case ref: SymDenotation if sym.isOpaqueAlias =>
         ref.copySymDenotation(
           info = TypeAlias(ref.opaqueAlias),
           initFlags = ref.flags &~ (Opaque | Deferred))
       case ref: SymDenotation if sym.containsOpaques =>
-        def stripOpaqueRefinements(tp: Type): Type = tp match {
+        def stripOpaqueRefinements(tp: Type): Type = tp match
           case RefinedType(parent, rname, TypeAlias(_))
           if ref.info.decl(rname).symbol.isOpaqueAlias => stripOpaqueRefinements(parent)
           case _ => tp
-        }
         val cinfo = sym.asClass.classInfo
         val strippedSelfType = stripOpaqueRefinements(cinfo.selfType)
         ref.copySymDenotation(
@@ -55,8 +53,6 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
         ref.derivedSingleDenotation(sym, TypeAlias(sym.opaqueAlias.asSeenFrom(ref.prefix, sym.owner)))
       case _ =>
         ref
-    }
-  }
 
   /** Resolve overloading of `==` and `!=` methods with the representation
    *  types in order to avoid boxing.
@@ -72,4 +68,3 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
           tree
     else
       tree
-}

@@ -41,7 +41,7 @@ import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
-object Contexts {
+object Contexts:
 
   private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
   private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
@@ -129,11 +129,10 @@ object Contexts {
     def outer: Context
 
     /** All outer contexts, ending in `base.initialCtx` and then `NoContext` */
-    def outersIterator: Iterator[Context] = new Iterator[Context] {
+    def outersIterator: Iterator[Context] = new Iterator[Context]:
       var current = thiscontext
       def hasNext = current != NoContext
       def next = { val c = current; current = current.outer; c }
-    }
 
     def period: Period
     def mode: Mode
@@ -198,15 +197,14 @@ object Contexts {
 
     /** The new implicit references that are introduced by this scope */
     private var implicitsCache: ContextualImplicits | Null = null
-    def implicits: ContextualImplicits = {
+    def implicits: ContextualImplicits =
       if (implicitsCache == null)
-        implicitsCache = {
+        implicitsCache =
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
               try owner.thisType.implicitMembers
-              catch {
+              catch
                 case ex: CyclicReference => Nil
-              }
             else if (isImportContext) importInfo.nn.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
@@ -217,9 +215,7 @@ object Contexts {
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
           else new ContextualImplicits(implicitRefs, outerImplicits, isImportContext)(this)
-        }
       implicitsCache.nn
-    }
 
     /** Either the current scope, or, if the current context owner is a class,
      *  the declarations of the current class.
@@ -232,10 +228,9 @@ object Contexts {
     def nestingLevel: Int = effectiveScope.nestingLevel
 
     /** Sourcefile corresponding to given abstract file, memoized */
-    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
+    def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) =
       util.Stats.record("Context.getSource")
       base.sources.getOrElseUpdate(file, SourceFile(file, codec))
-    }
 
     /** SourceFile with given path name, memoized */
     def getSource(path: TermName): SourceFile = getFile(path) match
@@ -394,10 +389,9 @@ object Contexts {
      *    context see the constructor parameters instead, but then we'd need a final substitution step
      *    from constructor parameters to class parameter accessors.
      */
-    def superCallContext: Context = {
+    def superCallContext: Context =
       val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
-    }
 
     /** The context for the arguments of a this(...) constructor call.
      *  The context is computed from the local auxiliary constructor context.
@@ -407,22 +401,20 @@ object Contexts {
      *   - as outer context: The context enclosing the enclosing class context
      *   - as scope: The parameters of the auxiliary constructor.
      */
-    def thisCallArgContext: Context = {
+    def thisCallArgContext: Context =
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
         .setGadtState(gadtState)
         .fresh
         .setScope(this.scope)
-    }
 
     /** The super- or this-call context with given owner and locals. */
-    private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
+    private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext =
       var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next()
       classCtx.outer.fresh.setOwner(owner)
         .setScope(locals)
         .setMode(classCtx.mode)
-    }
 
     /** The context of expression `expr` seen as a member of a statement sequence */
     def exprContext(stat: Tree[?], exprOwner: Symbol): Context =
@@ -471,15 +463,13 @@ object Contexts {
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
-      else value match {
+      else value match
         case Some(v) => fresh.setProperty(key, v)
         case None => fresh.dropProperty(key)
-      }
 
-    def typer: Typer = this.typeAssigner match {
+    def typer: Typer = this.typeAssigner match
       case typer: Typer => typer
       case _ => new Typer
-    }
 
     override def toString: String =
       def iinfo(using Context) =
@@ -524,7 +514,7 @@ object Contexts {
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  class FreshContext(base: ContextBase) extends Context(base) {
+  class FreshContext(base: ContextBase) extends Context(base):
     util.Stats.record("Context.fresh")
 
     private var _outer: Context = uninitialized
@@ -567,7 +557,7 @@ object Contexts {
      *  @param  outer   The outer context
      *  @param  origin  The context from which fields are copied
      */
-    private[Contexts] def init(outer: Context, origin: Context): this.type = {
+    private[Contexts] def init(outer: Context, origin: Context): this.type =
       _outer = outer
       _period = origin.period
       _mode = origin.mode
@@ -580,7 +570,6 @@ object Contexts {
       _moreProperties = origin.moreProperties
       _store = origin.store
       this
-    }
 
     def reuseIn(outer: Context): this.type =
       resetCaches()
@@ -658,10 +647,9 @@ object Contexts {
       this._store = store
       this
 
-    def setCompilationUnit(compilationUnit: CompilationUnit): this.type = {
+    def setCompilationUnit(compilationUnit: CompilationUnit): this.type =
       setSource(compilationUnit.source)
       updateStore(compilationUnitLoc, compilationUnit)
-    }
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
@@ -686,17 +674,15 @@ object Contexts {
     def dropProperty(key: Key[?]): this.type =
       setMoreProperties(moreProperties - key)
 
-    def addLocation[T](initial: T): Store.Location[T] = {
+    def addLocation[T](initial: T): Store.Location[T] =
       val (loc, store1) = store.newLocation(initial)
       setStore(store1)
       loc
-    }
 
-    def addLocation[T](): Store.Location[T] = {
+    def addLocation[T](): Store.Location[T] =
       val (loc, store1) = store.newLocation[T]()
       setStore(store1)
       loc
-    }
 
     def updateStore[T](loc: Store.Location[T], value: T): this.type =
       setStore(store.updated(loc, value))
@@ -708,7 +694,6 @@ object Contexts {
       setSettings(setting.updateIn(settingsState, value))
 
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
-  }
 
   object FreshContext:
     /** Defines an initial context with given context base and possible settings. */
@@ -748,18 +733,16 @@ object Contexts {
   end ops
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
-  extension (c: Context) {
+  extension (c: Context)
     final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
     final def addMode(mode: Mode): Context = withModeBits(c.mode | mode)
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
-  }
 
-  extension (c: FreshContext) {
+  extension (c: FreshContext)
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
-  }
 
   /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
@@ -831,17 +814,16 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
+  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN):
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
     setSource(NoSource)
-  }
 
   /** A context base defines state and associated methods that exist once per
    *  compiler run.
    */
   class ContextBase extends ContextState
                        with Phases.PhasesBase
-                       with Plugins {
+                       with Plugins:
 
     /** The applicable settings */
     val settings: ScalaSettings = new ScalaSettings
@@ -853,13 +835,12 @@ object Contexts {
     private var _platform: Platform | Null = uninitialized
 
     /** The platform */
-    def platform: Platform = {
+    def platform: Platform =
       val p = _platform
       if p == null then
         throw new IllegalStateException(
             "initialize() must be called before accessing platform")
       p
-    }
 
     protected def newPlatform(using Context): Platform =
       if (settings.scalajs.value) new SJSPlatform
@@ -877,14 +858,12 @@ object Contexts {
     /** Initializes the `ContextBase` with a starting context.
      *  This initializes the `platform` and the `definitions`.
      */
-    def initialize()(using Context): Unit = {
+    def initialize()(using Context): Unit =
       _platform = newPlatform
       definitions.init()
-    }
 
     def fusedContaining(p: Phase): Phase =
       allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
-  }
 
   class ContextPool:
     protected def fresh()(using Context): FreshContext =
@@ -928,7 +907,7 @@ object Contexts {
       super.fresh().setTyperState(ts)
 
   /** The essential mutable state of a context base, collected into a common class */
-  class ContextState {
+  class ContextState:
     // Symbols state
 
     /** Counter for unique symbol ids */
@@ -1053,5 +1032,3 @@ object Contexts {
     def checkSingleThreaded(): Unit =
       if (thread == null) thread = Thread.currentThread()
       else assert(thread == Thread.currentThread(), "illegal multithreaded access to ContextBase")
-  }
-}

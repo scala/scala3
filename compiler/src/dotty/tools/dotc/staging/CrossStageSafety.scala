@@ -50,7 +50,7 @@ import dotty.tools.dotc.util.SrcPos
  *     }
  *
  */
-class CrossStageSafety extends TreeMapWithStages {
+class CrossStageSafety extends TreeMapWithStages:
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()
@@ -204,7 +204,7 @@ class CrossStageSafety extends TreeMapWithStages {
              traverseChildren(tp)
     }.traverse(tree.tpe)
 
-  private def levelError(sym: Symbol, tp: Type, pos: SrcPos)(using Context): tp.type = {
+  private def levelError(sym: Symbol, tp: Type, pos: SrcPos)(using Context): tp.type =
     def symStr =
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
@@ -220,7 +220,6 @@ class CrossStageSafety extends TreeMapWithStages {
           | - the definition is at level ${levelOf(sym)},
           | - but the access is at level $level.$hint""", pos)
     tp
-  }
 
   private object CancelledQuote:
     def unapply(tree: Quote): Option[Tree] =
@@ -237,4 +236,3 @@ class CrossStageSafety extends TreeMapWithStages {
         case Quote(inner, _) => Some(inner)
         case _ => None
       rec(tree.expr)
-}

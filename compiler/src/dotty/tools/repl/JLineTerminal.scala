@@ -16,7 +16,7 @@ import org.jline.reader.impl.history.DefaultHistory
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.AttributedString
 
-class JLineTerminal extends java.io.Closeable {
+class JLineTerminal extends java.io.Closeable:
   // import java.util.logging.{Logger, Level}
   // Logger.getLogger("org.jline").setLevel(Level.FINEST)
 
@@ -49,7 +49,7 @@ class JLineTerminal extends java.io.Closeable {
    */
   def readLine(
     completer: Completer // provide auto-completions
-  )(using Context): String = {
+  )(using Context): String =
     import LineReader.Option._
     import LineReader._
     val userHome = System.getProperty("user.home")
@@ -73,22 +73,19 @@ class JLineTerminal extends java.io.Closeable {
       .build()
 
     lineReader.readLine(prompt)
-  }
 
   def close(): Unit = terminal.close()
 
   /** Provide syntax highlighting */
-  private class Highlighter(using Context) extends reader.Highlighter {
-    def highlight(reader: LineReader, buffer: String): AttributedString = {
+  private class Highlighter(using Context) extends reader.Highlighter:
+    def highlight(reader: LineReader, buffer: String): AttributedString =
       val highlighted = SyntaxHighlighting.highlight(buffer)
       AttributedString.fromAnsi(highlighted)
-    }
     def setErrorPattern(errorPattern: java.util.regex.Pattern): Unit = {}
     def setErrorIndex(errorIndex: Int): Unit = {}
-  }
 
   /** Provide multi-line editing support */
-  private class Parser(using Context) extends reader.Parser {
+  private class Parser(using Context) extends reader.Parser:
 
     /**
      * @param cursor     The cursor position within the line
@@ -98,13 +95,12 @@ class JLineTerminal extends java.io.Closeable {
      */
     private class ParsedLine(
       val cursor: Int, val line: String, val word: String, val wordCursor: Int
-    ) extends reader.ParsedLine {
+    ) extends reader.ParsedLine:
       // Using dummy values, not sure what they are used for
       def wordIndex = -1
       def words = java.util.Collections.emptyList[String]
-    }
 
-    def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine = {
+    def parse(input: String, cursor: Int, context: ParseContext): reader.ParsedLine =
       def parsedLine(word: String, wordCursor: Int) =
         new ParsedLine(cursor, input, word, wordCursor)
       // Used when no word is being completed
@@ -118,12 +114,12 @@ class JLineTerminal extends java.io.Closeable {
         /* missing = */ newLinePrompt)
 
       case class TokenData(token: Token, start: Int, end: Int)
-      def currentToken: TokenData /* | Null */ = {
+      def currentToken: TokenData /* | Null */ =
         val source = SourceFile.virtual("<completions>", input)
         val scanner = new Scanner(source)(using ctx.fresh.setReporter(Reporter.NoReporter))
         var lastBacktickErrorStart: Option[Int] = None
 
-        while (scanner.token != EOF) {
+        while (scanner.token != EOF)
           val start = scanner.offset
           val token = scanner.token
           scanner.nextToken()
@@ -139,16 +135,13 @@ class JLineTerminal extends java.io.Closeable {
             lastBacktickErrorStart = Some(start)
           else
             lastBacktickErrorStart = None
-        }
         null
-      }
 
-      def acceptLine = {
+      def acceptLine =
         val onLastLine = !input.substring(cursor).contains(System.lineSeparator)
         onLastLine && !ParseResult.isIncomplete(input)
-      }
 
-      context match {
+      context match
         case ParseContext.ACCEPT_LINE if acceptLine =>
           // using dummy values, resulting parsed input is probably unused
           defaultParsedLine
@@ -164,18 +157,13 @@ class JLineTerminal extends java.io.Closeable {
         case ParseContext.COMPLETE =>
           // Parse to find completions (typically after a Tab).
           def isCompletable(token: Token) = isIdentifier(token) || isKeyword(token)
-          currentToken match {
+          currentToken match
             case TokenData(token, start, end) if isCompletable(token) =>
               val word = input.substring(start, end)
               val wordCursor = cursor - start
               parsedLine(word, wordCursor)
             case _ =>
               defaultParsedLine
-          }
 
         case _ =>
           incomplete()
-      }
-    }
-  }
-}

@@ -51,7 +51,7 @@ class Checker extends Phase:
 
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)
-      tree match {
+      tree match
         case mdef: MemberDef =>
           // self-type annotation ValDef has no symbol
           if mdef.name != nme.WILDCARD then
@@ -64,7 +64,6 @@ class Checker extends Phase:
           case _ =>
 
         case _ =>
-      }
   end InitTreeTraverser
 
 object Checker:

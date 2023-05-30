@@ -17,7 +17,7 @@ import config.Printers.plugins.{ println => debug }
  *  @version 1.1, 2009/1/2
  *  Updated 2009/1/2 by Anders Bach Nielsen: Added features to implement SIP 00002
  */
-trait Plugins {
+trait Plugins:
   self: ContextBase =>
 
   /** Load a rough list of the plugins.  For speed, it
@@ -25,13 +25,12 @@ trait Plugins {
    *  test for same-named phases or other problems that are
    *  filtered from the final list of plugins.
    */
-  protected def loadRoughPluginsList(using Context): List[Plugin] = {
+  protected def loadRoughPluginsList(using Context): List[Plugin] =
     def asPath(p: String) = ClassPath split p
     val paths  = ctx.settings.plugin.value filter (_ != "") map (s => asPath(s) map Path.apply)
-    val dirs   = {
+    val dirs   =
       def injectDefault(s: String) = if (s.isEmpty) PathResolver.Defaults.scalaPluginPath else s
       asPath(ctx.settings.pluginsDir.value) map injectDefault map Path.apply
-    }
     val maybes = Plugin.loadAllFrom(paths, dirs, ctx.settings.disable.value)
     val (goods, errors) = maybes partition (_.isSuccess)
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
@@ -42,25 +41,23 @@ trait Plugins {
     })
 
     goods map (_.get)
-  }
 
   private var _roughPluginsList: List[Plugin] = _
   protected def roughPluginsList(using Context): List[Plugin] =
-    if (_roughPluginsList == null) {
+    if (_roughPluginsList == null)
       _roughPluginsList = loadRoughPluginsList
       _roughPluginsList
-    }
     else _roughPluginsList
 
   /** Load all available plugins. Skips plugins that
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
-  protected def loadPlugins(using Context): List[Plugin] = {
+  protected def loadPlugins(using Context): List[Plugin] =
     // remove any with conflicting names or subcomponent names
     def pick(
       plugins: List[Plugin],
-      plugNames: Set[String]): List[Plugin] = {
+      plugNames: Set[String]): List[Plugin] =
       if (plugins.isEmpty) return Nil // early return
 
       val plug :: tail      = plugins: @unchecked
@@ -74,11 +71,9 @@ trait Plugins {
         fail("[skipping a repeated plugin: %s]")
       else if (ctx.settings.disable.value contains plug.name)
         fail("[disabling plugin: %s]")
-      else {
+      else
         note("[loaded plugin %s]")
         withPlug
-      }
-    }
 
     val plugs = pick(roughPluginsList, ctx.base.phasePlan.flatten.map(_.phaseName).toSet)
 
@@ -94,14 +89,12 @@ trait Plugins {
     report.error(em"bad option: -P:$opt")
 
     plugs
-  }
 
   private var _plugins: List[Plugin] = _
   def plugins(using Context): List[Plugin] =
-    if (_plugins == null) {
+    if (_plugins == null)
       _plugins = loadPlugins
       _plugins
-    }
     else _plugins
 
   /** A description of all the plugins that are loaded */
@@ -115,11 +108,10 @@ trait Plugins {
     }).mkString
 
   /** Add plugin phases to phase plan */
-  def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
-    def options(plugin: Plugin): List[String] = {
+  def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] =
+    def options(plugin: Plugin): List[String] =
       def namec = plugin.name + ":"
       ctx.settings.pluginOptions.value filter (_ startsWith namec) map (_ stripPrefix namec)
-    }
 
     // schedule plugins according to ordering constraints
     val pluginPhases = plugins.collect { case p: StandardPlugin => p }.flatMap { plug => plug.init(options(plug)) }
@@ -127,15 +119,12 @@ trait Plugins {
 
     // add research plugins
     if (Feature.isExperimentalEnabled)
-      plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
+      plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan):
         (plug, plan) => plug.init(options(plug), plan)
-      }
     else
       updatedPlan
-  }
-}
 
-object Plugins {
+object Plugins:
   /** Insert plugin phases in the right place of the phase plan
    *
    *  The scheduling makes sure the ordering constraints of plugin phases are satisfied.
@@ -143,7 +132,7 @@ object Plugins {
    *
    *  Note: this algorithm is factored out for unit test.
    */
-  def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] = {
+  def schedule(plan: List[List[Phase]], pluginPhases: List[PluginPhase]): List[List[Phase]] =
     import scala.collection.mutable.{ Map => MMap }
     type OrderingReq = (Set[String], Set[String])
 
@@ -162,14 +151,13 @@ object Plugins {
 
     var updatedPlan = plan
 
-    def constraintConflict(phase: Phase): String = {
+    def constraintConflict(phase: Phase): String =
       val (runsAfter, runsBefore) = orderRequirements(phase.phaseName)
       s"""
          |Ordering conflict for phase ${phase.phaseName}
          |after: ${runsAfter.mkString("[", ", ", "]")}
          |before: ${runsBefore.mkString("[", ", ", "]")}
        """.stripMargin
-    }
 
     // init ordering map, no propagation
     pluginPhases.foreach { phase =>
@@ -204,26 +192,24 @@ object Plugins {
     )
 
     // propagate constraints from related phases to current phase: transitivity
-    def propagate(phase: Phase): OrderingReq = {
+    def propagate(phase: Phase): OrderingReq =
       def propagateRunsBefore(beforePhase: String): Set[String] =
         if (beforePhase == phase.phaseName)
           throw new Exception(constraintConflict(phase))
         else if (isInserted(beforePhase))
           Set(beforePhase)
-        else {
+        else
           val (_, runsBefore) = orderRequirements(beforePhase)
           runsBefore.flatMap(propagateRunsBefore) + beforePhase
-        }
 
       def propagateRunsAfter(afterPhase: String): Set[String] =
         if (afterPhase == phase.phaseName)
           throw new Exception(constraintConflict(phase))
         else if (isInserted(afterPhase))
           Set(afterPhase)
-        else {
+        else
           val (runsAfter, _) = orderRequirements(afterPhase)
           runsAfter.flatMap(propagateRunsAfter) + afterPhase
-        }
 
       var (runsAfter, runsBefore) = orderRequirements(phase.phaseName)
 
@@ -231,7 +217,6 @@ object Plugins {
       runsBefore = runsBefore.flatMap(propagateRunsBefore)
 
       (runsAfter, runsBefore)
-    }
 
     pluginPhases.sortBy(_.phaseName).foreach { phase =>
       var (runsAfter1, runsBefore1) = propagate(phase)
@@ -271,5 +256,3 @@ object Plugins {
     }
 
     updatedPlan
-  }
-}

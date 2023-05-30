@@ -59,9 +59,8 @@ object Scala3:
           // println(name.mangledString)
           nameInSource == name.mangledString
 
-  sealed trait FakeSymbol {
+  sealed trait FakeSymbol:
     private[Scala3] var sname: Option[String] = None
-  }
 
   /** Fake symbol that represents wildcard symbol which will be converted to
     * semanticdb symbol with
@@ -88,11 +87,10 @@ object Scala3:
         sym match
           case s: Symbol => builder.symbolName(s)
           case s: FakeSymbol =>
-            s.sname.getOrElse {
+            s.sname.getOrElse:
               val sname = builder.symbolName(s)
               s.sname = Some(sname)
               sname
-            }
 
       def symbolInfo(symkinds: Set[SymbolKind])(using LinkMode, TypeOps, SemanticSymbolBuilder, Context): SymbolInformation =
         sym match
@@ -100,10 +98,9 @@ object Scala3:
             val kind = s.symbolKind(symkinds)
             val sname = sym.symbolName
             val signature = s.info.toSemanticSig(s)
-            val symbolAnnotations = s.annotations.collect{
+            val symbolAnnotations = s.annotations.collect:
               case annot if annot.symbol != defn.BodyAnnot && annot.symbol != defn.ChildAnnot =>
                 Annotation(annot.tree.tpe.toSemanticType(annot.symbol))
-            }
             SymbolInformation(
               symbol = sname,
               language = Language.SCALA,
@@ -153,7 +150,7 @@ object Scala3:
               displayName = s.name.show.unescapeUnicode,
               properties =
                 SymbolInformation.Property.ABSTRACT.value,
-              signature = signature,
+            signature = signature,
             )
   end SemanticSymbolOps
 

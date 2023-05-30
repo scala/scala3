@@ -10,15 +10,14 @@ import java.lang.Double.longBitsToDouble
 import core.unpickleScala2.PickleBuffer
 import core.Names._
 
-object ShowPickled {
+object ShowPickled:
   import core.unpickleScala2.PickleFormat._
 
-  case class PickleBufferEntry(num: Int, startIndex: Int, tag: Int, bytes: Array[Byte]) {
+  case class PickleBufferEntry(num: Int, startIndex: Int, tag: Int, bytes: Array[Byte]):
     def isName: Boolean = tag == TERMname || tag == TYPEname
-    def hasName: Boolean = tag match {
+    def hasName: Boolean = tag match
       case TYPEsym | ALIASsym | CLASSsym | MODULEsym | VALsym | EXTref | EXTMODCLASSref => true
       case _                                                                            => false
-    }
     def readName: String =
       if (isName) new String(bytes, StandardCharsets.UTF_8)
       else sys.error("%s is no name" format tagName)
@@ -28,26 +27,21 @@ object ShowPickled {
 
     def tagName: String = tag2string(tag)
     override def toString: String = "%d,%d: %s".format(num, startIndex, tagName)
-  }
 
-  case class PickleBufferEntryList(entries: IndexedSeq[PickleBufferEntry]) {
-    def nameAt(idx: Int): String = {
+  case class PickleBufferEntryList(entries: IndexedSeq[PickleBufferEntry]):
+    def nameAt(idx: Int): String =
       val entry = entries(idx)
       if (entry.isName) entry.readName
       else if (entry.hasName) entries(entry.nameIndex).readName
       else "?"
-    }
-  }
 
-  def makeEntryList(buf: PickleBuffer, index: Array[Int]): PickleBufferEntryList = {
-    val entries = buf.toIndexedSeq.zipWithIndex map {
+  def makeEntryList(buf: PickleBuffer, index: Array[Int]): PickleBufferEntryList =
+    val entries = buf.toIndexedSeq.zipWithIndex map:
       case ((tag, data), num) => PickleBufferEntry(num, index(num), tag, data)
-    }
 
     PickleBufferEntryList(entries)
-  }
 
-  def tag2string(tag: Int): String = tag match {
+  def tag2string(tag: Int): String = tag match
     case TERMname       => "TERMname"
     case TYPEname       => "TYPEname"
     case NONEsym        => "NONEsym"
@@ -95,11 +89,10 @@ object ShowPickled {
     case MODIFIERS      => "MODIFIERS"
 
     case _ => "***BAD TAG***(" + tag + ")"
-  }
 
   /** Extremely regrettably, essentially copied from PickleBuffer.
    */
-  def readNat(data: Array[Byte], index: Int): Int = {
+  def readNat(data: Array[Byte], index: Int): Int =
     var idx = index
     var result = 0L
     var b = 0L
@@ -111,9 +104,8 @@ object ShowPickled {
     })
     ()
     result.toInt
-  }
 
-  def printFile(buf: PickleBuffer, out: PrintStream = System.out.nn): Unit = {
+  def printFile(buf: PickleBuffer, out: PrintStream = System.out.nn): Unit =
     out.println("Version " + buf.readNat() + "." + buf.readNat())
     val index = buf.createIndex
     val entryList = makeEntryList(buf, index)
@@ -121,13 +113,12 @@ object ShowPickled {
 
     def p(s: String) = out print s
 
-    def printNameRef(): Unit = {
+    def printNameRef(): Unit =
       val idx = buf.readNat()
       val name = entryList nameAt idx
       val toPrint = " %s(%s)".format(idx, name)
 
       out print toPrint
-    }
 
     def printNat() = p(" " + buf.readNat())
     def printReadNat(x: Int) = p(" " + x)
@@ -139,11 +130,11 @@ object ShowPickled {
     def printConstAnnotArgRef() = printNat()
     def printAnnotArgRef() = printNat()
 
-    def printSymInfo(end: Int, isType: Boolean): Unit = {
+    def printSymInfo(end: Int, isType: Boolean): Unit =
       printNameRef()
       printSymbolRef()
       val pflags = buf.readLongNat()
-      def printFlags(privateWithin: Option[Int]) = {
+      def printFlags(privateWithin: Option[Int]) =
         val accessBoundary = (
           for (idx <- privateWithin) yield {
             val s = entryList nameAt idx
@@ -152,25 +143,21 @@ object ShowPickled {
         )
         val flagString = PickleBuffer.unpickleScalaFlags(pflags, isType).toString
         out.print(" %s[%s]".format(toHexString(pflags), flagString))
-      }
 
       /** Might be info or privateWithin */
       val x = buf.readNat()
-      if (buf.readIndex == end) {
+      if (buf.readIndex == end)
         printFlags(None)
         printReadNat(x)
-      }
-      else {
+      else
         printFlags(Some(x))
         printTypeRef()
-      }
-    }
 
     /** Note: the entries which require some semantic analysis to be correctly
      *  interpreted are for the most part going to tell you the wrong thing.
      *  It's not so easy to duplicate the logic applied in the UnPickler.
      */
-    def printEntry(i: Int): Unit = {
+    def printEntry(i: Int): Unit =
       buf.readIndex = index(i)
       p(s"$i,${buf.readIndex}: ")
       val tag = buf.readByte()
@@ -178,7 +165,7 @@ object ShowPickled {
       val len = buf.readNat()
       val end = len + buf.readIndex
       p(s" $len:")
-      tag match {
+      tag match
         case TERMname =>
           out.print(" ")
           out.print(termName(buf.bytes, buf.readIndex, len).toString)
@@ -249,17 +236,13 @@ object ShowPickled {
           printTypeRef(); buf.until(end, () => printSymbolRef())
 
         case _ =>
-      }
       out.println()
       if (buf.readIndex != end)
         out.println("BAD ENTRY END: computed = %d, actual = %d, bytes = %s".format(
           end, buf.readIndex, buf.bytes.slice(index(i), (end max buf.readIndex)).mkString(", ")
         ))
-    }
 
     for (i <- 0 until index.length) printEntry(i)
-  }
-}
 
 /*
  *

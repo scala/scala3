@@ -22,31 +22,28 @@ import scala.collection.mutable
 
 import QuoteUtils._
 
-object PickledQuotes {
+object PickledQuotes:
   import tpd._
 
   /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(using Context): List[String] =
     if (ctx.reporter.hasErrors) Nil
-    else {
+    else
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
       TastyString.pickle(pickled)
-    }
 
   /** Transform the expression into its fully spliced Tree */
-  def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
+  def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree =
     val expr1 = expr.asInstanceOf[ExprImpl]
     ScopeException.checkInCorrectScope(expr1.scope, SpliceScope.getCurrent, expr1.tree, "Expr")
     changeOwnerOfTree(expr1.tree, ctx.owner)
-  }
 
   /** Transform the expression into its fully spliced TypeTree */
-  def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
+  def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree =
     val tpe1 = tpe.asInstanceOf[TypeImpl]
     ScopeException.checkInCorrectScope(tpe1.scope, SpliceScope.getCurrent, tpe1.typeTree, "Type")
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
-  }
 
   /** `typeHole`/`types` argument of `QuoteUnpickler.{unpickleExpr,unpickleExprV2,unpickleType,unpickleTypeV2}` */
   enum TypeHole:
@@ -80,28 +77,26 @@ object PickledQuotes {
     type ArgV2 = scala.quoted.Type[?] | scala.quoted.Expr[Any]
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
+  def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree =
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
     val Inlined(call, Nil, expansion) = unpickled: @unchecked
     val inlineCtx = inlineContext(call)
     val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
     val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
     cpy.Inlined(unpickled)(call, Nil, expansion2)
-  }
 
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleTypeTree(pickled: String | List[String], typeHole: TypeHole)(using Context): Tree = {
+  def unpickleTypeTree(pickled: String | List[String], typeHole: TypeHole)(using Context): Tree =
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
     spliceTypes(unpickled, typeHole)
-  }
 
   /** Replace all term holes with the spliced terms */
-  private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    def evaluateHoles = new TreeMap {
-      override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
+  private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree =
+    def evaluateHoles = new TreeMap:
+      override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match
         case Hole(isTerm, idx, args, _) =>
-          inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
+          inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)):
             if isTerm then
               val quotedExpr = termHole match
                 case ExprHole.V1(evalHole) =>
@@ -124,38 +119,31 @@ object PickledQuotes {
               val TypeHole.V1(evalHole) = typeHole: @unchecked
               val quotedType = evalHole.nn.apply(idx, reifyTypeHoleArgs(args))
               PickledQuotes.quotedTypeToTree(quotedType)
-          }
         case tree =>
           if tree.isDef then
-            tree.symbol.annotations = tree.symbol.annotations.map {
+            tree.symbol.annotations = tree.symbol.annotations.map:
               annot => annot.derivedAnnotation(transform(annot.tree))
-            }
           end if
 
-         val tree1 = super.transform(tree)
-         tree1.withType(mapAnnots(tree1.tpe))
-      }
+          val tree1 = super.transform(tree)
+          tree1.withType(mapAnnots(tree1.tpe))
 
       // Evaluate holes in type annotations
-      private val mapAnnots = new TypeMap {
-        override def apply(tp: Type): Type = {
+      private val mapAnnots = new TypeMap:
+        override def apply(tp: Type): Type =
             tp match
               case tp @ AnnotatedType(underlying, annot) =>
                 val underlying1 = this(underlying)
                 derivedAnnotatedType(tp, underlying1, annot.derivedAnnotation(transform(annot.tree)))
               case _ => mapOver(tp)
-        }
-      }
-    }
     val tree1 = termHole match
       case ExprHole.V2(null) => tree
       case _ => evaluateHoles.transform(tree)
     quotePickling.println(i"**** evaluated quote\n$tree1")
     tree1
-  }
 
   /** Replace all type holes generated with the spliced types */
-  private def spliceTypes(tree: Tree, typeHole: TypeHole)(using Context): Tree = {
+  private def spliceTypes(tree: Tree, typeHole: TypeHole)(using Context): Tree =
     if typeHole.isEmpty then tree
     else tree match
       case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
@@ -177,8 +165,8 @@ object PickledQuotes {
                 PickledQuotes.quotedTypeToTree(types.nn.apply(idx))
             (tdef.symbol, tree.tpe)
         }.toMap
-        class ReplaceSplicedTyped extends TypeMap() {
-          override def apply(tp: Type): Type = tp match {
+        class ReplaceSplicedTyped extends TypeMap():
+          override def apply(tp: Type): Type = tp match
             case tp: ClassInfo =>
               tp.derivedClassInfo(declaredParents = tp.declaredParents.map(apply))
             case tp: TypeRef =>
@@ -187,14 +175,11 @@ object PickledQuotes {
                 case _ => mapOver(tp)
             case _ =>
               mapOver(tp)
-          }
-        }
         val expansion2 = new TreeTypeMap(new ReplaceSplicedTyped).transform(expr1)
         quotePickling.println(i"**** typed quote\n${expansion2.show}")
         expansion2
       case _ =>
         tree
-  }
 
   def reifyTypeHoleArgs(args: List[Tree])(using Context): List[scala.quoted.Type[?]] =
     args.map(arg => new TypeImpl(arg, SpliceScope.getCurrent))
@@ -214,7 +199,7 @@ object PickledQuotes {
   // TASTY picklingtests/pos/quoteTest.scala
 
   /** Pickle tree into it's TASTY bytes s*/
-  private def pickle(tree: Tree)(using Context): Array[Byte] = {
+  private def pickle(tree: Tree)(using Context): Array[Byte] =
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
     val treePkl = new TreePickler(pickler)
@@ -230,10 +215,9 @@ object PickledQuotes {
     val pickled = pickler.assembleParts()
     quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never")}")
     pickled
-  }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
+  private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree =
     QuotesCache.getTree(pickled) match
       case Some(tree) =>
         quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
@@ -261,9 +245,9 @@ object PickledQuotes {
             // Quotes context that that has a class `spliceOwner` can come from a macro annotation
             // or a user setting it explicitly using `Symbol.asQuotes`.
             ctx.withOwner(newSymbol(ctx.owner, "$quoteOwnedByClass$".toTermName, Private, defn.AnyType, NoSymbol))
-            else ctx
+          else ctx
 
-        inContext(unpicklingContext) {
+        inContext(unpicklingContext):
 
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never")}")
 
@@ -280,8 +264,5 @@ object PickledQuotes {
           quotePickling.println(i"**** unpickled quote\n$tree")
 
           tree
-        }
 
-  }
 
-}

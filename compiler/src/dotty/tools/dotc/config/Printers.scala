@@ -1,14 +1,12 @@
 package dotty.tools.dotc.config
 
-object Printers {
+object Printers:
 
-  class Printer {
+  class Printer:
     def println(msg: => String): Unit = System.out.nn.println(msg)
-  }
 
-  object noPrinter extends Printer {
+  object noPrinter extends Printer:
     inline override def println(msg: => String): Unit = ()
-  }
 
   val default = new Printer
 
@@ -50,4 +48,3 @@ object Printers {
   val typr = noPrinter
   val unapp = noPrinter
   val variances = noPrinter
-}

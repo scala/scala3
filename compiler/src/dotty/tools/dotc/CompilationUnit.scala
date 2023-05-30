@@ -19,7 +19,7 @@ import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations
 
-class CompilationUnit protected (val source: SourceFile) {
+class CompilationUnit protected (val source: SourceFile):
 
   override def toString: String = source.toString
 
@@ -92,9 +92,8 @@ class CompilationUnit protected (val source: SourceFile) {
   def assignmentSpans(using Context): Map[Int, List[Span]] =
     if myAssignmentSpans == null then myAssignmentSpans = Nullables.assignmentSpans
     myAssignmentSpans.nn
-}
 
-@sharable object NoCompilationUnit extends CompilationUnit(NoSource) {
+@sharable object NoCompilationUnit extends CompilationUnit(NoSource):
 
   override def isJava: Boolean = false
 
@@ -102,9 +101,8 @@ class CompilationUnit protected (val source: SourceFile) {
     throw CompilationUnit.SuspendException()
 
   override def assignmentSpans(using Context): Map[Int, List[Span]] = Map.empty
-}
 
-object CompilationUnit {
+object CompilationUnit:
 
   class SuspendException extends Exception with NoStackTrace
 
@@ -114,46 +112,41 @@ object CompilationUnit {
     apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
-  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit = {
+  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
-    if (forceTrees) {
+    if (forceTrees)
       val force = new Force
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
       unit1.needsInlining = force.containsInline
       unit1.hasMacroAnnotations = force.containsMacroAnnotation
-    }
     unit1
-  }
 
   /** Create a compilation unit corresponding to `source`.
    *  If `mustExist` is true, this will fail if `source` does not exist.
    */
-  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
+  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit =
     val src =
       if (!mustExist)
         source
-      else if (source.file.isDirectory) {
+      else if (source.file.isDirectory)
         report.error(em"expected file, received directory '${source.file.path}'")
         NoSource
-      }
-      else if (!source.file.exists) {
+      else if (!source.file.exists)
         report.error(em"source file not found: ${source.file.path}")
         NoSource
-      }
       else source
     new CompilationUnit(src)
-  }
 
   /** Force the tree to be loaded */
-  private class Force extends TreeTraverser {
+  private class Force extends TreeTraverser:
     var containsQuote = false
     var containsInline = false
     var containsCaptureChecking = false
     var containsMacroAnnotation = false
-    def traverse(tree: Tree)(using Context): Unit = {
+    def traverse(tree: Tree)(using Context): Unit =
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
@@ -172,6 +165,3 @@ object CompilationUnit {
         if MacroAnnotations.isMacroAnnotation(annot) then
           ctx.compilationUnit.hasMacroAnnotations = true
       traverseChildren(tree)
-    }
-  }
-}

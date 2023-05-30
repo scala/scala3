@@ -8,11 +8,11 @@ import Names._
 import Symbols._
 import Contexts._
 
-object StdNames {
+object StdNames:
 
 /** Base strings from which synthetic names are derived. */
 
-  object str {
+  object str:
     inline val SETTER_SUFFIX            = "_="
     inline val EXPAND_SEPARATOR         = "$$"
     inline val TRAIT_SETTER_SEPARATOR   = "$_setter_$"
@@ -44,9 +44,8 @@ object StdNames {
     @sharable
     private val disallowed = java.util.regex.Pattern.compile("""[<>]""").nn
     def sanitize(str: String): String = disallowed.matcher(str).nn.replaceAll("""\$""").nn
-  }
 
-  abstract class DefinedNames[N <: Name] {
+  abstract class DefinedNames[N <: Name]:
     protected implicit def fromString(s: String): N
     protected def fromName(name: Name): N = fromString(name.toString)
 
@@ -54,9 +53,8 @@ object StdNames {
     protected def kw(name: N): N = { kws += name; name }
 
     final val keywords: collection.Set[N] = kws
-  }
 
-  abstract class ScalaNames[N <: Name] extends DefinedNames[N] {
+  abstract class ScalaNames[N <: Name] extends DefinedNames[N]:
     protected def encode(s: String): N = fromName(fromString(s).encode)
 
 // Keywords, need to come first -----------------------
@@ -660,7 +658,7 @@ object StdNames {
     val falseModuleClassNames: Set[N] = Set(nothingClass, nullClass, nothingRuntimeClass, nullRuntimeClass)
 
     // unencoded operators
-    object raw {
+    object raw:
       final val AMP  : N  = "&"
       final val BANG : N  = "!"
       final val BAR  : N  = "|"
@@ -682,9 +680,8 @@ object StdNames {
       final val PLUS_USCORE : N = "+_"
 
       final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
-    }
 
-    object specializedTypeNames {
+    object specializedTypeNames:
       final val Boolean: N = "Z"
       final val Byte: N    = "B"
       final val Char: N    = "C"
@@ -699,7 +696,6 @@ object StdNames {
       final val prefix: N = "$m"
       final val separator: N = "c"
       final val suffix: N = "$sp"
-    }
 
     // value-conversion methods
     val toByte: N   = "toByte"
@@ -786,12 +782,11 @@ object StdNames {
 
     val isBoxedNumberOrBoolean: N = "isBoxedNumberOrBoolean"
     val isBoxedNumber: N = "isBoxedNumber"
-  }
 
-  class ScalaTermNames extends ScalaNames[TermName] {
+  class ScalaTermNames extends ScalaNames[TermName]:
     protected implicit def fromString(s: String): TermName = termName(s)
 
-    def syntheticParamName(i: Int): TermName = (i: @switch) match {
+    def syntheticParamName(i: Int): TermName = (i: @switch) match
       case 0  => x_0
       case 1  => x_1
       case 2  => x_2
@@ -803,9 +798,8 @@ object StdNames {
       case 8  => x_8
       case 9  => x_9
       case _  => termName("x$" + i)
-    }
 
-    def productAccessorName(j: Int): TermName = (j: @switch) match {
+    def productAccessorName(j: Int): TermName = (j: @switch) match
       case 1  => nme._1
       case 2  => nme._2
       case 3  => nme._3
@@ -829,7 +823,6 @@ object StdNames {
       case 21 => nme._21
       case 22 => nme._22
       case _  => termName("_" + j)
-    }
 
     def localDummyName(clazz: Symbol)(using Context): TermName =
       termName(str.LOCALDUMMY_PREFIX + clazz.name + ">")
@@ -838,17 +831,15 @@ object StdNames {
 
     def selectorName(n: Int): TermName = productAccessorName(n + 1)
 
-    object primitive {
+    object primitive:
       val arrayApply: TermName  = "[]apply"
       val arrayUpdate: TermName = "[]update"
       val arrayLength: TermName = "[]length"
       val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength)
-    }
 
     def isPrimitiveName(name: Name): Boolean = primitive.names.contains(name)
-  }
 
-  class ScalaTypeNames extends ScalaNames[TypeName] {
+  class ScalaTypeNames extends ScalaNames[TypeName]:
     protected implicit def fromString(s: String): TypeName = typeName(s)
 
     def syntheticTypeParamName(i: Int): TypeName = "X" + i
@@ -859,9 +850,8 @@ object StdNames {
 
     val JFunctionPrefix: Seq[TypeName] = (0 to 2).map(i => s"scala.runtime.java8.JFunction${i}")
     val JProcedure: Seq[TypeName] = (0 to 22).map(i => s"scala.runtime.function.JProcedure${i}")
-  }
 
-  abstract class JavaNames[N <: Name] extends DefinedNames[N] {
+  abstract class JavaNames[N <: Name] extends DefinedNames[N]:
     final val ABSTRACTkw: N     = kw("abstract")
     final val ASSERTkw: N       = kw("assert")
     final val BOOLEANkw: N      = kw("boolean")
@@ -949,19 +939,15 @@ object StdNames {
     final val BeanProperty: N        = "scala.beans.BeanProperty"
     final val BooleanBeanProperty: N = "scala.beans.BooleanBeanProperty"
     final val JavaSerializable: N    = "java.io.Serializable"
-  }
 
 
 
-  class JavaTermNames extends JavaNames[TermName] {
+  class JavaTermNames extends JavaNames[TermName]:
     protected def fromString(s: String): TermName = termName(s)
-  }
-  class JavaTypeNames extends JavaNames[TypeName] {
+  class JavaTypeNames extends JavaNames[TypeName]:
     protected def fromString(s: String): TypeName = typeName(s)
-  }
 
   val nme:    ScalaTermNames = new ScalaTermNames
   val tpnme:  ScalaTypeNames = new ScalaTypeNames
   val jnme:   JavaTermNames  = new JavaTermNames
   val jtpnme: JavaTypeNames  = new JavaTypeNames
-}

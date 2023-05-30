@@ -14,7 +14,7 @@ import collection.mutable
 import ErrorReporting.errorTree
 
 /** A typer mixin that implements type class derivation functionality */
-trait Deriving {
+trait Deriving:
   this: Typer =>
 
   /** A helper class to derive type class instances for one class or object
@@ -23,25 +23,24 @@ trait Deriving {
    *                   synthesized infrastructure code that is not connected with a
    *                   `derives` instance.
    */
-  class Deriver(cls: ClassSymbol, codePos: SrcPos)(using Context) {
+  class Deriver(cls: ClassSymbol, codePos: SrcPos)(using Context):
 
     /** A buffer for synthesized symbols for type class instances */
     private var synthetics = new mutable.ListBuffer[Symbol]
 
     /** A version of Type#underlyingClassRef that works also for higher-kinded types */
-    private def underlyingClassRef(tp: Type): Type = tp match {
+    private def underlyingClassRef(tp: Type): Type = tp match
       case tp: TypeRef if tp.symbol.isClass => tp
       case tp: TypeRef if tp.symbol.isAbstractType => NoType
       case tp: TermRef => NoType
       case tp: TypeProxy => underlyingClassRef(tp.superType)
       case _ => NoType
-    }
 
     /** Enter type class instance with given name and info in current scope, provided
      *  an instance with the same name does not exist already.
      *  @param  reportErrors  Report an error if an instance with the same name exists already
      */
-    private def addDerivedInstance(clsName: Name, info: Type, pos: SrcPos): Unit = {
+    private def addDerivedInstance(clsName: Name, info: Type, pos: SrcPos): Unit =
       val instanceName = "derived$".concat(clsName)
       if (ctx.denotNamed(instanceName).exists)
         report.error(em"duplicate type class derivation for $clsName", pos)
@@ -53,7 +52,6 @@ trait Deriving {
         synthetics +=
           newSymbol(ctx.owner, instanceName, flags, info, coord = pos.span)
             .entered
-    }
 
     /** Check derived type tree `derived` for the following well-formedness conditions:
      *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
@@ -76,7 +74,7 @@ trait Deriving {
      *  the underlying class name. This allows one to disambiguate derivations of type classes
      *  that have the same name but different prefixes through selective aliasing.
      */
-    private def processDerivedInstance(derived: untpd.Tree): Unit = {
+    private def processDerivedInstance(derived: untpd.Tree): Unit =
       val originalTypeClassType = typedAheadType(derived, AnyTypeConstructorProto).tpe
       val underlyingClassType = underlyingClassRef(originalTypeClassType)
       val typeClassType = checkClassType(
@@ -92,7 +90,7 @@ trait Deriving {
       def cannotBeUnified =
         report.error(em"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.srcPos)
 
-      def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
+      def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit =
         val resultType = typeClassType.appliedTo(instanceTypes)
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
@@ -101,9 +99,8 @@ trait Deriving {
           if derivedParams.isEmpty then monoInfo
           else PolyType.fromParams(derivedParams, monoInfo)
         addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
-      }
 
-      def deriveSingleParameter: Unit = {
+      def deriveSingleParameter: Unit =
         // Single parameter type classes ... (a) and (b) above
         //
         // (a) ADT and type class parameters overlap on the right and have the
@@ -161,32 +158,28 @@ trait Deriving {
         val alignedTypeClassParamInfos = typeClassParamInfos.takeRight(alignedClsParamInfos.length)
 
 
-        if ((instanceArity == clsArity || instanceArity > 0) && sameParamKinds(alignedClsParamInfos, alignedTypeClassParamInfos)) {
+        if ((instanceArity == clsArity || instanceArity > 0) && sameParamKinds(alignedClsParamInfos, alignedTypeClassParamInfos))
           // case (a) ... see description above
           val derivedParams = clsParams.dropRight(instanceArity)
           val instanceType =
             if (instanceArity == clsArity) clsType.EtaExpand(clsParams)
-            else {
+            else
               val derivedParamTypes = derivedParams.map(_.typeRef)
 
               HKTypeLambda(typeClassParamInfos.map(_.paramName))(
                 tl => typeClassParamInfos.map(_.paramInfo.bounds),
                 tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
-            }
 
           addInstance(derivedParams, Nil, List(instanceType))
-        }
-        else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
+        else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub))
           // case (b) ... see description above
           val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
           val evidenceParamInfos = clsParams.map(param => List(param.typeRef))
           addInstance(clsParams, evidenceParamInfos, List(instanceType))
-        }
         else
           cannotBeUnified
-      }
 
-      def deriveCanEqual: Unit = {
+      def deriveCanEqual: Unit =
         // Specific derives rules for the CanEqual type class ... (c) above
         //
         // This has been extracted from the earlier more general multi-parameter
@@ -228,10 +221,9 @@ trait Deriving {
         }
         // Retain only rows with L/R params of kind * which CanEqual can be applied to.
         // No pairwise evidence will be required for params of other kinds.
-        val firstKindedParamss = clsParamss.filter {
+        val firstKindedParamss = clsParamss.filter:
           case param :: _ => !param.info.isLambdaSub
           case _ => false
-        }
 
         // The types of the required evidence parameters. In the running example:
         // CanEqual[T_L, T_R], CanEqual[U_L, U_R], CanEqual[V_L, V_R]
@@ -247,7 +239,6 @@ trait Deriving {
 
         // CanEqual[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
         addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes)
-      }
 
       if (typeClassArity == 1) deriveSingleParameter
       else if (typeClass == defn.CanEqualClass) deriveCanEqual
@@ -255,7 +246,6 @@ trait Deriving {
         report.error(em"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.srcPos)
       else
         cannotBeUnified
-    }
 
     /** Create symbols for derived instances and infrastructure,
      *  append them to `synthetics` buffer, and enter them into class scope.
@@ -265,7 +255,7 @@ trait Deriving {
       derived.foreach(processDerivedInstance(_))
 
     /** The synthesized type class instance definitions */
-    def syntheticDefs: List[tpd.Tree] = {
+    def syntheticDefs: List[tpd.Tree] =
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
@@ -277,17 +267,15 @@ trait Deriving {
           val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           vparams.foreach(ctx.enter(_))
-          def instantiated(info: Type): Type = info match {
+          def instantiated(info: Type): Type = info match
             case info: PolyType => instantiated(info.instantiate(tparamTypes))
             case info: MethodType => info.instantiate(vparams.map(_.termRef))
             case info => info.widenExpr
-          }
-          def companionRef(tp: Type): TermRef = tp match {
+          def companionRef(tp: Type): TermRef = tp match
             case tp @ TypeRef(prefix, _) if tp.symbol.isClass =>
               prefix.select(tp.symbol.companionModule).asInstanceOf[TermRef]
             case tp: TypeProxy =>
               companionRef(tp.superType)
-          }
           val resultType = instantiated(sym.info)
           val companion = companionRef(resultType)
           val module = untpd.ref(companion).withSpan(sym.span)
@@ -296,17 +284,12 @@ trait Deriving {
           else errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
       end typeclassInstance
 
-      def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
+      def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope):
         if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))
         else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil))
-      }
 
       synthetics.map(syntheticDef).toList
-    }
 
-    def finalize(stat: tpd.TypeDef): tpd.Tree = {
+    def finalize(stat: tpd.TypeDef): tpd.Tree =
       val templ @ Template(_, _, _, _) = stat.rhs: @unchecked
       tpd.cpy.TypeDef(stat)(rhs = tpd.cpy.Template(templ)(body = templ.body ++ syntheticDefs))
-    }
-  }
-}

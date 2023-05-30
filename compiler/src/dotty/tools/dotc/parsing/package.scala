@@ -5,7 +5,7 @@ import core.Names.Name
 import core.StdNames.nme
 import core.NameOps._
 
-package object parsing {
+package object parsing:
 
   /**
    * Compute the precedence of infix operator `operator` according to the SLS [§ 6.12.3][SLS].
@@ -16,11 +16,11 @@ package object parsing {
    */
   def precedence(operator: Name): Int =
     if (operator eq nme.ERROR) -1
-    else {
+    else
       val firstCh = operator.firstCodePoint
       if (isScalaLetter(firstCh)) 1
       else if (operator.isOpAssignmentName) 0
-      else firstCh match {
+      else firstCh match
         case '|' => 2
         case '^' => 3
         case '&' => 4
@@ -30,11 +30,8 @@ package object parsing {
         case '+' | '-' => 8
         case '*' | '/' | '%' => 9
         case _ => 10
-      }
-    }
 
   def minPrec: Int = 0
   def minInfixPrec: Int = 1
   def maxPrec: Int = 11
-}
 

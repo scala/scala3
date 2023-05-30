@@ -48,9 +48,8 @@ case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends
  *  the REPL
  */
 case class Load(path: String) extends Command
-object Load {
+object Load:
   val command: String = ":load"
-}
 
 /** To find out the type of an expression you may simply do:
  *
@@ -60,47 +59,41 @@ object Load {
  * ```
  */
 case class TypeOf(expr: String) extends Command
-object TypeOf {
+object TypeOf:
   val command: String = ":type"
-}
 
 /**
  * A command that is used to display the documentation associated with
  * the given expression.
  */
 case class DocOf(expr: String) extends Command
-object DocOf {
+object DocOf:
   val command: String = ":doc"
-}
 
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */
-case object Imports extends Command {
+case object Imports extends Command:
   val command: String = ":imports"
-}
 
 case class Settings(arg: String) extends Command
-object Settings {
+object Settings:
   val command: String = ":settings"
-}
 
 /** Reset the session to the initial state from when the repl program was
  *  started
  */
 case class Reset(arg: String) extends Command
-object Reset {
+object Reset:
   val command: String = ":reset"
-}
 
 /** `:quit` exits the repl */
-case object Quit extends Command {
+case object Quit extends Command:
   val command: String = ":quit"
   val alias: String = ":exit"
-}
 
 /** `:help` shows the different commands implemented by the Dotty repl */
-case object Help extends Command {
+case object Help extends Command:
   val command: String = ":help"
   val text: String =
     """The REPL has several commands available:
@@ -114,18 +107,16 @@ case object Help extends Command {
       |:reset [options]         reset the repl to its initial state, forgetting all session entries
       |:settings <options>      update compiler options, if possible
     """.stripMargin
-}
 
-object ParseResult {
+object ParseResult:
 
   @sharable private val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  private def parseStats(using Context): List[untpd.Tree] = {
+  private def parseStats(using Context): List[untpd.Tree] =
     val parser = new Parser(ctx.source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     stats
-  }
 
   private[repl] val commands: List[(String, String => ParseResult)] = List(
     Quit.command -> (_ => Quit),
@@ -139,20 +130,19 @@ object ParseResult {
     Settings.command -> (arg => Settings(arg)),
   )
 
-  def apply(source: SourceFile)(using state: State): ParseResult = {
+  def apply(source: SourceFile)(using state: State): ParseResult =
     val sourceCode = source.content().mkString
-    sourceCode match {
+    sourceCode match
       case "" => Newline
       case CommandExtract(cmd, arg) => {
-        val matchingCommands = commands.filter((command, _) => command.startsWith(cmd))
-        matchingCommands match {
-          case Nil => UnknownCommand(cmd)
-          case (_, f) :: Nil => f(arg)
-          case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
+          val matchingCommands = commands.filter((command, _) => command.startsWith(cmd))
+          matchingCommands match
+            case Nil => UnknownCommand(cmd)
+            case (_, f) :: Nil => f(arg)
+            case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
         }
-      }
       case _ =>
-        inContext(state.context) {
+        inContext(state.context):
           val reporter = newStoreReporter
           val stats = parseStats(using state.context.fresh.setReporter(reporter).withSource(source))
 
@@ -163,9 +153,6 @@ object ParseResult {
               stats)
           else
             Parsed(source, stats, reporter)
-        }
-    }
-  }
 
   def apply(sourceCode: String)(using state: State): ParseResult =
     maybeIncomplete(sourceCode, maybeIncomplete = true)
@@ -182,20 +169,17 @@ object ParseResult {
    *  having to evaluate the expression.
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
-    sourceCode match {
+    sourceCode match
       case CommandExtract(_) | "" => false
       case _ => {
-        val reporter = newStoreReporter
-        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode, maybeIncomplete = true)
-        val unit     = CompilationUnit(source, mustExist = false)
-        val localCtx = ctx.fresh
+          val reporter = newStoreReporter
+          val source   = SourceFile.virtual("<incomplete-handler>", sourceCode, maybeIncomplete = true)
+          val unit     = CompilationUnit(source, mustExist = false)
+          val localCtx = ctx.fresh
                           .setCompilationUnit(unit)
                           .setReporter(reporter)
-        var needsMore = false
-        reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(using localCtx)
+          var needsMore = false
+          reporter.withIncompleteHandler((_, _) => needsMore = true):
+            parseStats(using localCtx)
+          !reporter.hasErrors && needsMore
         }
-        !reporter.hasErrors && needsMore
-      }
-    }
-}

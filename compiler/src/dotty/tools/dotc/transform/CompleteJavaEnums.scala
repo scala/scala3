@@ -16,13 +16,12 @@ import DenotTransformers._
 import SymUtils._
 
 
-object CompleteJavaEnums {
+object CompleteJavaEnums:
   val name: String = "completeJavaEnums"
   val description: String = "fill in constructors for Java enums"
 
   private val nameParamName: TermName = "_$name".toTermName
   private val ordinalParamName: TermName = "_$ordinal".toTermName
-}
 
 /** For Scala enums that inherit from java.lang.Enum:
  *  Add constructor parameters for `name` and `ordinal` to pass from each
@@ -49,44 +48,40 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
    *  the last parameter list of (method- or poly-) type `tp`.
    */
-  private def addConstrParams(tp: Type)(using Context): Type = tp match {
+  private def addConstrParams(tp: Type)(using Context): Type = tp match
     case tp: PolyType =>
       tp.derivedLambdaType(resType = addConstrParams(tp.resType))
     case tp: MethodType =>
-      tp.resType match {
+      tp.resType match
         case restpe: MethodType =>
           tp.derivedLambdaType(resType = addConstrParams(restpe))
         case _ =>
           tp.derivedLambdaType(
             paramNames = tp.paramNames ++ List(nameParamName, ordinalParamName),
             paramInfos = tp.paramInfos ++ List(defn.StringType, defn.IntType))
-      }
-  }
 
   /** The list of parameter definitions `$name: String, $ordinal: Int`, in given `owner`
    *  with given flags (either `Param` or `ParamAccessor`)
    */
-  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] = {
+  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] =
     val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
     val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
     val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
     List(ValDef(nameParam), ValDef(ordinalParam))
-  }
 
   /** Add arguments `args` to the parent constructor application in `parents` that invokes
    *  a constructor of `targetCls`,
    */
   private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: List[Tree])(using Context): List[Tree] =
-    parents.map {
+    parents.map:
       case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
         if args0.nonEmpty && targetCls == defn.JavaEnumClass then
           report.error(em"the constructor of java.lang.Enum cannot be called explicitly", app.sourcePos)
         cpy.Apply(app)(fn, args0 ++ args)
       case p => p
-    }
 
   /** If this is a constructor of a enum class that extends, add $name and $ordinal parameters to it. */
-  override def transformDefDef(tree: DefDef)(using Context): DefDef = {
+  override def transformDefDef(tree: DefDef)(using Context): DefDef =
     val sym = tree.symbol
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then
       val tree1 = cpy.DefDef(tree)(
@@ -96,18 +91,17 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       sym.setParamssFromDefs(tree1.paramss)
       tree1
     else tree
-  }
 
   /** Return a list of forwarders for enum values defined in the companion object
    *  for java interop.
    */
-  private def addedEnumForwarders(clazz: Symbol)(using Context): List[MemberDef] = {
+  private def addedEnumForwarders(clazz: Symbol)(using Context): List[MemberDef] =
     val moduleCls = clazz.companionClass
     val moduleRef = ref(clazz.companionModule)
 
     val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
     for { enumValue <- enums }
-    yield {
+    yield
       def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =
         val sym = newSymbol(clazz, enumValue.name.asTermName, flags, info)
         sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot, sym.span))
@@ -120,8 +114,6 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
       else
         ValDef(forwarderSym(EnumValue | JavaStatic, enumValue.info), body)
-    }
-  }
 
   private def isJavaEnumValueImpl(cls: Symbol)(using Context): Boolean =
     cls.isAnonymousClass
@@ -157,7 +149,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *          "same as before"
    *       }
    */
-  override def transformTemplate(templ: Template)(using Context): Tree = {
+  override def transformTemplate(templ: Template)(using Context): Tree =
     val cls = templ.symbol.owner
     if cls.derivesFromJavaEnum then
       registerEnumClass(cls) // invariant: class is visited before cases: see tests/pos/enum-companion-first.scala
@@ -183,7 +175,6 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       enumCaseOrdinals.clear() // remove simple cases // invariant: companion is visited after cases
       templ
     else templ
-  }
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     assert(enumCaseOrdinals.isEmpty, "Java based enum ordinal cache was not cleared")

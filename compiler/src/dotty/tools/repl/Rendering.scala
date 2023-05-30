@@ -32,8 +32,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =
     if (myClassLoader != null && myClassLoader.root == ctx.settings.outputDir.value) myClassLoader
-    else {
-      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse {
+    else
+      val parent = Option(myClassLoader).orElse(parentClassLoader).getOrElse:
         val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
         // We can't use the system classloader as a parent because it would
         // pollute the user classpath with everything passed to the JVM
@@ -43,10 +43,9 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         // which should correspond to the platform classloader on Java 9+.
         val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
         new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
-      }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
-      myReplStringOf = {
+      myReplStringOf =
         // We need to use the ScalaRunTime class coming from the scala-library
         // on the user classpath, and not the one available in the current
         // classloader, so we use reflection instead of simply calling
@@ -54,17 +53,15 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
         val renderer = "stringOf"
-        def stringOfMaybeTruncated(value: Object, maxElements: Int): String = {
-          try {
+        def stringOfMaybeTruncated(value: Object, maxElements: Int): String =
+          try
             val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
             val truly = java.lang.Boolean.TRUE
             meth.invoke(null, value, maxElements, truly).asInstanceOf[String]
-          } catch {
+          catch
             case _: NoSuchMethodException =>
               val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
               meth.invoke(null, value, maxElements).asInstanceOf[String]
-          }
-        }
 
         (value: Object, maxElements: Int, maxCharacters: Int) => {
           // `ScalaRuntime.stringOf` may truncate the output, in which case we want to indicate that fact to the user
@@ -80,9 +77,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
           else s"$maybeTruncated ... large output truncated, print value to show all"
         }
 
-      }
       myClassLoader
-    }
 
   private[repl] def truncate(str: String, maxPrintCharacters: Int)(using ctx: Context): String =
     val ncp = str.codePointCount(0, str.length) // to not cut inside code point
@@ -185,11 +180,10 @@ object Rendering:
   final val REPL_WRAPPER_NAME_PREFIX = str.REPL_SESSION_LINE
 
   extension (s: Symbol)
-    def showUser(using Context): String = {
+    def showUser(using Context): String =
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
-    }
 
   def rootCause(x: Throwable): Throwable = x match
     case _: ExceptionInInitializerError |

@@ -12,10 +12,10 @@ import scala.annotation.internal.sharable
 final case class Synthetic(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None,
     tree: dotty.tools.dotc.semanticdb.Tree = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toCustom(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance)
-    )  extends SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       if (range.isDefined) {
         val __value = range.get
@@ -24,22 +24,18 @@ final case class Synthetic(
       
       {
         val __value = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toBase(tree)
-        if (__value.serializedSize != 0) {
+        if (__value.serializedSize != 0)
           __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       range.foreach { __v =>
         val __m = __v
         _output__.writeTag(1, 2)
@@ -48,13 +44,11 @@ final case class Synthetic(
       };
       {
         val __v = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toBase(tree)
-        if (__v.serializedSize != 0) {
+        if (__v.serializedSize != 0)
           _output__.writeTag(2, 2)
           _output__.writeUInt32NoTag(__v.serializedSize)
           __v.writeTo(_output__)
-        }
       };
-    }
     def getRange: dotty.tools.dotc.semanticdb.Range = range.getOrElse(dotty.tools.dotc.semanticdb.Range.defaultInstance)
     def clearRange: Synthetic = copy(range = _root_.scala.None)
     def withRange(__v: dotty.tools.dotc.semanticdb.Range): Synthetic = copy(range = Option(__v))
@@ -64,30 +58,26 @@ final case class Synthetic(
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Synthetic])
-}
 
-object Synthetic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.Synthetic] {
+object Synthetic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.Synthetic]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.Synthetic] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.Synthetic = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.Synthetic =
     var __range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None
     var __tree: _root_.scala.Option[dotty.tools.dotc.semanticdb.TreeMessage] = _root_.scala.None
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 10 =>
           __range = Option(__range.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.Range](_input__))(LiteParser.readMessage(_input__, _)))
         case 18 =>
           __tree = _root_.scala.Some(__tree.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.TreeMessage](_input__))(LiteParser.readMessage(_input__, _)))
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.Synthetic(
         range = __range,
         tree = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toCustom(__tree.getOrElse(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance))
     )
-  }
   
   
   
@@ -110,4 +100,3 @@ object Synthetic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
     tree
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.Synthetic])
-}

@@ -41,7 +41,7 @@ class EtaReduce extends MiniPhase:
       if (name == nme.apply || defn.FunctionSpecializedApplyNames.contains(name))
           && mdef.paramss.head.corresponds(args)((param, arg) =>
               arg.isInstanceOf[Ident] && arg.symbol == param.symbol)
-          && isPurePath(fn)
+      && isPurePath(fn)
           && fn.tpe <:< tree.tpe
           && defn.isFunctionClass(fn.tpe.widen.typeSymbol) =>
         report.log(i"eta reducing $tree --> $fn")

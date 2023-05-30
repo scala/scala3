@@ -10,12 +10,11 @@ import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation
 
-object MainProxies {
+object MainProxies:
 
   /** Generate proxy classes for @main functions and @myMain functions where myMain <:< MainAnnotation */
-  def proxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  def proxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] =
     mainAnnotationProxies(stats) ++ mainProxies(stats)
-  }
 
   /** Generate proxy classes for @main functions.
    *  A function like
@@ -35,32 +34,29 @@ object MainProxies {
    *         catch case err: ParseError => showError(err)
    *       }
    */
-  private def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  private def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] =
     import tpd._
-    def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
+    def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap:
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
         stat.symbol :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
       case _ =>
         Nil
-    }
     mainMethods(stats).flatMap(mainProxy)
-  }
 
   import untpd._
-  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
+  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] =
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
-      if (mt.isImplicitMethod) {
+      if (mt.isImplicitMethod)
         report.error(em"@main method cannot have implicit parameters", pos)
         call
-      }
-      else {
-        val args = mt.paramInfos.zipWithIndex map {
+      else
+        val args = mt.paramInfos.zipWithIndex map:
           (formal, n) =>
             val (parserSym, formalElem) =
               if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
@@ -69,24 +65,21 @@ object MainProxies {
               TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
               argsRef :: Literal(Constant(idx + n)) :: Nil)
             if (formal.isRepeatedParam) repeated(arg) else arg
-        }
         val call1 = Apply(call, args)
-        mt.resType match {
+        mt.resType match
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
               report.error(em"varargs parameter of @main method must come last", pos)
             addArgs(call1, restpe, idx + args.length)
           case _ =>
             call1
-        }
-      }
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
       report.error(em"@main method is not statically accessible", pos)
-    else {
+    else
       var call = ref(mainFun.termRef)
-      mainFun.info match {
+      mainFun.info match
         case _: ExprType =>
         case mt: MethodType =>
           call = addArgs(call, mt, 0)
@@ -94,7 +87,6 @@ object MainProxies {
           report.error(em"@main method cannot have type parameters", pos)
         case _ =>
           report.error(em"@main can only annotate a method", pos)
-      }
       val errVar = Ident(nme.error)
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
@@ -106,11 +98,10 @@ object MainProxies {
       /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.
        *  The annotations will be retype-checked in another scope that may not have the same imports.
        */
-      def insertTypeSplices = new TreeMap {
+      def insertTypeSplices = new TreeMap:
           override def transform(tree: Tree)(using Context): Tree = tree match
             case tree: tpd.Ident @unchecked => TypedSplice(tree)
             case tree => super.transform(tree)
-      }
       val annots = mainFun.annotations
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => insertTypeSplices.transform(annot.tree))
@@ -123,9 +114,7 @@ object MainProxies {
 
       if (!ctx.reporter.hasErrors)
         result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
-    }
     result
-  }
 
   private type DefaultValueSymbols = Map[Int, Symbol]
   private type ParameterAnnotationss = Seq[Seq[Annotation]]
@@ -171,7 +160,7 @@ object MainProxies {
    *       }
    *     }
    */
-  private def mainAnnotationProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  private def mainAnnotationProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] =
     import tpd._
 
     /**
@@ -179,7 +168,7 @@ object MainProxies {
       * point of the compilation, they must be explicitly passed by [[mainProxy]].
       */
     def defaultValueSymbols(scope: Tree, funSymbol: Symbol): DefaultValueSymbols =
-      scope match {
+      scope match
         case TypeDef(_, template: Template) =>
           template.body.flatMap((_: Tree) match {
             case dd: DefDef if dd.name.is(DefaultGetterName) && dd.name.firstPart == funSymbol.name =>
@@ -188,13 +177,12 @@ object MainProxies {
             case _ => Nil
           }).toMap
         case _ => Map.empty
-      }
 
     /** Computes the list of main methods present in the code. */
-    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotationss, DefaultValueSymbols, Option[Comment])] = stats.flatMap {
+    def mainMethods(scope: Tree, stats: List[Tree]): List[(Symbol, ParameterAnnotationss, DefaultValueSymbols, Option[Comment])] = stats.flatMap:
       case stat: DefDef =>
         val sym = stat.symbol
-        sym.annotations.filter(_.matches(defn.MainAnnotationClass)) match {
+        sym.annotations.filter(_.matches(defn.MainAnnotationClass)) match
           case Nil =>
             Nil
           case _ :: Nil =>
@@ -205,18 +193,15 @@ object MainProxies {
           case mainAnnot :: others =>
             report.error(em"method cannot have multiple main annotations", mainAnnot.tree)
             Nil
-        }
       case stat @ TypeDef(_, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(stat, impl.body)
       case _ =>
         Nil
-    }
 
     // Assuming that the top-level object was already generated, all main methods will have a scope
     mainMethods(EmptyTree, stats).flatMap(mainAnnotationProxy)
-  }
 
-  private def mainAnnotationProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotationss, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): Option[TypeDef] = {
+  private def mainAnnotationProxy(mainFun: Symbol, paramAnnotations: ParameterAnnotationss, defaultValueSymbols: DefaultValueSymbols, docComment: Option[Comment])(using Context): Option[TypeDef] =
     val mainAnnot = mainFun.getAnnotation(defn.MainAnnotationClass).get
     def pos = mainFun.sourcePos
 
@@ -299,21 +284,18 @@ object MainProxies {
 
     /** Turns an annotation (e.g. `@main(40)`) into an instance of the class (e.g. `new scala.main(40)`). */
     def instantiateAnnotation(annot: Annotation): Tree =
-      val argss = {
-        def recurse(t: tpd.Tree, acc: List[List[Tree]]): List[List[Tree]] = t match {
+      val argss =
+        def recurse(t: tpd.Tree, acc: List[List[Tree]]): List[List[Tree]] = t match
           case Apply(t, args: List[tpd.Tree]) => recurse(t, extractArgs(args) :: acc)
           case _ => acc
-        }
 
         def extractArgs(args: List[tpd.Tree]): List[Tree] =
-          args.flatMap {
+          args.flatMap:
             case Typed(SeqLiteral(varargs, _), _) => varargs.map(arg => TypedSplice(arg))
             case arg: Select if arg.name.is(DefaultGetterName) => Nil  // Ignore default values, they will be added later by the compiler
             case arg => List(TypedSplice(arg))
-          }
 
         recurse(annot.tree, Nil)
-      }
 
       New(TypeTree(annot.symbol.typeRef), argss)
     end instantiateAnnotation
@@ -361,11 +343,10 @@ object MainProxies {
       /** Replace typed `Ident`s that have been typed with a TypeSplice with the reference to the symbol.
        *  The annotations will be retype-checked in another scope that may not have the same imports.
        */
-      def insertTypeSplices = new TreeMap {
+      def insertTypeSplices = new TreeMap:
           override def transform(tree: Tree)(using Context): Tree = tree match
             case tree: tpd.Ident @unchecked => TypedSplice(tree)
             case tree => super.transform(tree)
-      }
       val annots = mainFun.annotations
         .filterNot(_.matches(defn.MainAnnotationClass))
         .map(annot => insertTypeSplices.transform(annot.tree))
@@ -381,7 +362,7 @@ object MainProxies {
     if (!mainFun.owner.isStaticOwner)
       report.error(em"main method is not statically accessible", pos)
       None
-    else mainFun.info match {
+    else mainFun.info match
       case _: ExprType =>
         Some(generateMainClass(unitToValue(ref(mainFun.termRef)), Nil, Nil))
       case mt: MethodType =>
@@ -400,8 +381,6 @@ object MainProxies {
       case _ =>
         report.error(em"main can only annotate a method", pos)
         None
-    }
-  }
 
   /** A class responsible for extracting the docstrings of a method. */
   private class Documentation(docComment: Option[Comment]):
@@ -415,21 +394,19 @@ object MainProxies {
     private var _mainDoc: String = ""
     private var _argDocs: Map[String, String] = Map()
 
-    docComment match {
+    docComment match
       case Some(comment) => if comment.isDocComment then parseDocComment(comment.raw) else _mainDoc = comment.raw
       case None =>
-    }
 
     private def cleanComment(raw: String): String =
       var lines: Seq[String] = raw.trim.nn.split('\n').nn.toSeq
       lines = lines.map(l => l.substring(skipLineLead(l, -1), l.length).nn.trim.nn)
-      var s = lines.foldLeft("") {
+      var s = lines.foldLeft(""):
         case ("", s2) => s2
         case (s1, "") if s1.last == '\n' => s1 // Multiple newlines are kept as single newlines
         case (s1, "") => s1 + '\n'
         case (s1, s2) if s1.last == '\n' => s1 + s2
         case (s1, s2) => s1 + ' ' + s2
-      }
       s.replaceAll(raw"\[\[", "").nn.replaceAll(raw"\]\]", "").nn.trim.nn
 
     private def parseDocComment(raw: String): Unit =
@@ -446,4 +423,3 @@ object MainProxies {
       val argsCommentsTexts = argsCommentsTextSpans.mapValues({ case (beg, end) => raw.substring(beg, end).nn })
       _argDocs = argsCommentsTexts.mapValues(cleanComment(_)).toMap
   end Documentation
-}

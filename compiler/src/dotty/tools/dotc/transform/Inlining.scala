@@ -17,7 +17,7 @@ import dotty.tools.dotc.staging.StagingLevel
 import scala.collection.mutable.ListBuffer
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform {
+class Inlining extends MacroTransform:
 
   import tpd._
 
@@ -40,7 +40,7 @@ class Inlining extends MacroTransform {
     newUnits
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    tree match {
+    tree match
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         new TreeTraverser {
           def traverse(tree: Tree)(using Context): Unit =
@@ -51,21 +51,19 @@ class Inlining extends MacroTransform {
                 traverseChildren(tree)
         }.traverse(tree)
       case _ =>
-    }
 
-  def newTransformer(using Context): Transformer = new Transformer {
+  def newTransformer(using Context): Transformer = new Transformer:
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       new InliningTreeMap().transform(tree)
-  }
 
-  private class InliningTreeMap extends TreeMapWithImplicits {
+  private class InliningTreeMap extends TreeMapWithImplicits:
 
     /** List of top level classes added by macro annotation in a package object.
      *  These are added to the PackageDef that owns this particular package object.
      */
     private val newTopClasses = MutableSymbolMap[ListBuffer[Tree]]()
 
-    override def transform(tree: Tree)(using Context): Tree = {
+    override def transform(tree: Tree)(using Context): Tree =
       tree match
         case tree: MemberDef =>
           if tree.symbol.is(Inline) then tree
@@ -106,9 +104,6 @@ class Inlining extends MacroTransform {
         case _ =>
           if tree.isType then tree
           else super.transform(tree)
-    }
-  }
-}
 
 object Inlining:
   val name: String = "inlining"

@@ -13,42 +13,37 @@ import core.TypeError
  *
  *  This incudes implicits defined in scope as well as imported implicits.
  */
-class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
+class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts:
   import tpd._
 
   def transformSelf(vd: ValDef)(using Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))
 
-  private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
+  private def nestedScopeCtx(defs: List[Tree])(using Context): Context =
     val nestedCtx = ctx.fresh.setNewScope
-    defs foreach {
+    defs foreach:
       case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
       case _ =>
-    }
     nestedCtx
-  }
 
-  private def patternScopeCtx(pattern: Tree)(using Context): Context = {
+  private def patternScopeCtx(pattern: Tree)(using Context): Context =
     val nestedCtx = ctx.fresh.setNewScope
-    pattern.foreachSubTree {
+    pattern.foreachSubTree:
       case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => nestedCtx.enter(d.symbol)
       case _ =>
-    }
     nestedCtx
-  }
 
-  override def transform(tree: Tree)(using Context): Tree = {
-    try tree match {
+  override def transform(tree: Tree)(using Context): Tree =
+    try tree match
       case Block(stats, expr) =>
         super.transform(tree)(using nestedScopeCtx(stats))
       case tree: DefDef =>
-        inContext(localCtx(tree)) {
+        inContext(localCtx(tree)):
           cpy.DefDef(tree)(
             tree.name,
             transformParamss(tree.paramss),
             transform(tree.tpt),
             transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flatten)))
-        }
       case impl @ Template(constr, _, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
@@ -65,12 +60,8 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
         )
       case _ =>
         super.transform(tree)
-    }
-    catch {
+    catch
       case ex: TypeError =>
         report.error(ex, tree.srcPos)
         tree
-    }
-  }
-}
 

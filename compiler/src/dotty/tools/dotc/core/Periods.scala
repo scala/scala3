@@ -3,7 +3,7 @@ package dotty.tools.dotc.core
 import Contexts._
 import Phases.unfusedPhases
 
-object Periods {
+object Periods:
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to
@@ -35,7 +35,7 @@ object Periods {
    *
    *     // Dmitry: sign == 0 isn't actually always true, in some cases phaseId == -1 is used for shifts, that easily creates code < 0
    */
-  class Period(val code: Int) extends AnyVal {
+  class Period(val code: Int) extends AnyVal:
 
     /** The run identifier of this period. */
     def runId: RunId = code >>> (PhaseWidth * 2)
@@ -53,7 +53,7 @@ object Periods {
     def containsPhaseId(id: PhaseId): Boolean = firstPhaseId <= id && id <= lastPhaseId
 
     /** Does this period contain given period? */
-    def contains(that: Period): Boolean = {
+    def contains(that: Period): Boolean =
       // Let    this = (r1, l1, d1), that = (r2, l2, d2)
       // where  r = runid, l = last phase, d = duration - 1
       // Then seen as intervals:
@@ -73,7 +73,6 @@ object Periods {
       //  q.e.d
       val lastDiff = (code - that.code) >>> PhaseWidth
       lastDiff + (that.code & PhaseMask ) <= (this.code & PhaseMask)
-    }
 
     /** Does this period overlap with given period? */
     def overlaps(that: Period): Boolean =
@@ -101,9 +100,8 @@ object Periods {
 
     def ==(that: Period): Boolean = this.code == that.code
     def !=(that: Period): Boolean = this.code != that.code
-  }
 
-  object Period {
+  object Period:
 
     /** The single-phase period consisting of given run id and phase id */
     def apply(rid: RunId, pid: PhaseId): Period =
@@ -116,7 +114,6 @@ object Periods {
     /** The interval consisting of all periods of given run id */
     def allInRun(rid: RunId): Period =
       apply(rid, 0, PhaseMask)
-  }
 
   inline val NowhereCode = 0
   final val Nowhere: Period = new Period(NowhereCode)
@@ -141,4 +138,3 @@ object Periods {
   inline val PhaseWidth = 7
   inline val PhaseMask = (1 << PhaseWidth) - 1
   inline val MaxPossiblePhaseId = PhaseMask
-}

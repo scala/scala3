@@ -55,10 +55,9 @@ class RepeatableAnnotations extends MiniPhase:
 
   private def stableGroupBy[A, K](ins: Seq[A], f: A => K): scala.collection.MapView[K, List[A]] =
     val out = new mutable.LinkedHashMap[K, mutable.ListBuffer[A]]()
-    for (in <- ins) {
+    for (in <- ins)
       val buffer = out.getOrElseUpdate(f(in), new mutable.ListBuffer)
       buffer += in
-    }
     out.view.mapValues(_.toList)
 
 object RepeatableAnnotations:

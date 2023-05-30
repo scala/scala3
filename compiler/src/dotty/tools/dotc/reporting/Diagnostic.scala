@@ -39,11 +39,10 @@ object Diagnostic:
   class Warning(
     msg: Message,
     pos: SourcePosition
-  ) extends Diagnostic(msg, pos, WARNING) {
+  ) extends Diagnostic(msg, pos, WARNING):
     def toError: Error = new Error(msg, pos).tap(e => if isVerbose then e.setVerbose())
     def toInfo: Info = new Info(msg, pos).tap(e => if isVerbose then e.setVerbose())
     def isSummarizedConditional(using Context): Boolean = false
-  }
 
   class Info(
     msg: Message,
@@ -54,31 +53,27 @@ object Diagnostic:
   abstract class ConditionalWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends Warning(msg, pos) {
+  ) extends Warning(msg, pos):
     def enablingOption(using Context): Setting[Boolean]
     override def isSummarizedConditional(using Context): Boolean = !enablingOption.value
-  }
 
   class FeatureWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
+  ) extends ConditionalWarning(msg, pos):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.feature
-  }
 
   class UncheckedWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
+  ) extends ConditionalWarning(msg, pos):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.unchecked
-  }
 
   class DeprecationWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends ConditionalWarning(msg, pos) {
+  ) extends ConditionalWarning(msg, pos):
     def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
-  }
 
   class MigrationWarning(
     msg: Message,

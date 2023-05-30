@@ -106,18 +106,16 @@ object report:
   def debuglog(msg: => String)(using Context): Unit =
     if (ctx.debug) log(msg)
 
-  def informTime(msg: => String, start: Long)(using Context): Unit = {
+  def informTime(msg: => String, start: Long)(using Context): Unit =
     def elapsed = s" in ${currentTimeMillis - start}ms"
     informProgress(msg + elapsed)
-  }
 
   def informProgress(msg: => String)(using Context): Unit =
     inform("[" + msg + "]")
 
-  def logWith[T](msg: => String)(value: T)(using Context): T = {
+  def logWith[T](msg: => String)(value: T)(using Context): T =
     log(msg + " " + value)
     value
-  }
 
   def debugwarn(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     if (ctx.settings.Ydebug.value) warning(msg, pos)
@@ -131,7 +129,7 @@ object report:
   private object messageRendering extends MessageRendering
 
   // Should only be called from Run#enrichErrorMessage.
-  def enrichErrorMessage(errorMessage: String)(using Context): String = try {
+  def enrichErrorMessage(errorMessage: String)(using Context): String = try
     def formatExplain(pairs: List[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
 
     val settings = ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name)
@@ -187,5 +185,5 @@ object report:
        |$info2
        |
        |$context_s""".stripMargin
-  } catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+  catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 end report

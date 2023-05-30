@@ -3,7 +3,7 @@ package dotty.tools.dotc
 import core.StdNames.{nme,tpnme}
 import util.Property.Key
 
-package object printing {
+package object printing:
 
   type Precedence = Int
 
@@ -26,4 +26,3 @@ package object printing {
     private[printing] def intersperse(a: A): List[A] =
       nel.flatMap(a :: _ :: Nil).tail
 
-}

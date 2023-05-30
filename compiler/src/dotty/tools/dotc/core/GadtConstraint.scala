@@ -99,8 +99,8 @@ class GadtConstraint private (
 
   def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match
     case param: TypeParamRef => reverseMapping(param) match
-      case sym: Symbol => sym.typeRef
-      case null        => param
+        case sym: Symbol => sym.typeRef
+        case null        => param
     case tp: TypeAlias       => tp.derivedAlias(externalize(tp.alias, theMap))
     case tp                  => (if theMap == null then ExternalizeMap() else theMap).mapOver(tp)
 
@@ -123,16 +123,14 @@ class GadtConstraint private (
       else ntTvar
     case _ => tp
 
-  private def containsNoInternalTypes(tp: Type, theAcc: TypeAccumulator[Boolean] | Null = null)(using Context): Boolean = tp match {
+  private def containsNoInternalTypes(tp: Type, theAcc: TypeAccumulator[Boolean] | Null = null)(using Context): Boolean = tp match
     case tpr: TypeParamRef => !reverseMapping.contains(tpr)
     case tv: TypeVar => !reverseMapping.contains(tv.origin)
     case tp =>
       (if (theAcc != null) theAcc else new ContainsNoInternalTypesAccumulator()).foldOver(true, tp)
-  }
 
-  private class ContainsNoInternalTypesAccumulator(using Context) extends TypeAccumulator[Boolean] {
+  private class ContainsNoInternalTypesAccumulator(using Context) extends TypeAccumulator[Boolean]:
     override def apply(x: Boolean, tp: Type): Boolean = x && containsNoInternalTypes(tp, this)
-  }
 
   override def toText(printer: Printer): Texts.Text = printer.toText(this)
 
@@ -150,7 +148,7 @@ end GadtConstraint
 object GadtState:
   def apply(gadt: GadtConstraint): GadtState = ProperGadtState(gadt)
 
-sealed trait GadtState {
+sealed trait GadtState:
   this: ConstraintHandling => // Hide ConstraintHandling within GadtConstraintHandling
 
   def gadt: GadtConstraint
@@ -166,7 +164,7 @@ sealed trait GadtState {
    * @see [[ConstraintHandling.addToConstraint]]
    */
   def addToConstraint(sym: Symbol)(using Context): Boolean = addToConstraint(sym :: Nil)
-  def addToConstraint(params: List[Symbol])(using Context): Boolean = {
+  def addToConstraint(params: List[Symbol])(using Context): Boolean =
     import NameKinds.DepParamName
 
     val poly1 = PolyType(params.map { sym => DepParamName.fresh(sym.name.toTypeName) })(
@@ -174,7 +172,7 @@ sealed trait GadtState {
         // In bound type `tp`, replace the symbols in dependent positions with their internal TypeParamRefs.
         // The replaced symbols will be later picked up in `ConstraintHandling#addToConstraint`
         // and used as orderings.
-        def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
+        def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type =
           def loop(tp: Type) = substDependentSyms(tp, isUpper)
           tp match
             case tp @ AndType(tp1, tp2) if !isUpper =>
@@ -189,7 +187,6 @@ sealed trait GadtState {
                     case _ => tp
                 case i => pt.paramRefs(i)
             case tp => tp
-        }
 
         val tb = param.info.bounds
         tb.derivedTypeBounds(
@@ -209,10 +206,9 @@ sealed trait GadtState {
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
       .showing(i"added to constraint: [$poly1] $params%, % gadt = $gadt", gadts)
-  }
 
   /** Further constrain a symbol already present in the constraint. */
-  def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
+  def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean =
     val symTvar: TypeVar = gadt.stripInternalTypeVar(gadt.tvarOrError(sym)) match
       case tv: TypeVar => tv
       case inst =>
@@ -231,18 +227,16 @@ sealed trait GadtState {
       case bound =>
         addBoundTransitively(symTvar.origin, bound, isUpper)
 
-    gadts.println {
+    gadts.println:
       val descr = if isUpper then "upper" else "lower"
       val op = if isUpper then "<:" else ">:"
       i"adding $descr bound $sym $op $bound = $result"
-    }
 
     if constraint ne saved then gadt = gadt.withWasConstrained
     result
-  }
 
   /** See [[ConstraintHandling.approximation]] */
-  def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type = {
+  def approximation(sym: Symbol, fromBelow: Boolean, maxLevel: Int = Int.MaxValue)(using Context): Type =
     approximation(gadt.tvarOrError(sym).origin, fromBelow, maxLevel).match
       case tpr: TypeParamRef =>
         // Here we do externalization when the returned type is a TypeParamRef,
@@ -250,8 +244,7 @@ sealed trait GadtState {
         //  the type variable is instantiated. See #15531.
         gadt.externalize(tpr)
       case tp => tp
-      .showing(i"approximating $sym ~> $result", gadts)
-  }
+    .showing(i"approximating $sym ~> $result", gadts)
 
   def fresh: GadtState = GadtState(gadt)
 
@@ -280,7 +273,6 @@ sealed trait GadtState {
   // ---- Debug ------------------------------------------------------------
 
   override def constr = gadtsConstr
-}
 
 // Hide ConstraintHandling within GadtState
 private class ProperGadtState(private var myGadt: GadtConstraint) extends ConstraintHandling with GadtState:

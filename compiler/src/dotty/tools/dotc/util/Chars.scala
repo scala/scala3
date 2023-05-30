@@ -18,7 +18,7 @@ object Chars:
   /** Convert a character digit to an Int according to given base,
     *  -1 if no success
     */
-  def digit2int(ch: Char, base: Int): Int = {
+  def digit2int(ch: Char, base: Int): Int =
     val num = (
       if (ch <= '9') ch - '0'
       else if ('a' <= ch && ch <= 'z') ch - 'a' + 10
@@ -26,12 +26,11 @@ object Chars:
       else -1
       )
     if (0 <= num && num < base) num else -1
-  }
   /** Buffer for creating '\ u XXXX' strings. */
   private[this] val char2uescapeArray = Array[Char]('\\', 'u', 0, 0, 0, 0)
 
   /** Convert a character to a backslash-u escape */
-  def char2uescape(c: Char): String = {
+  def char2uescape(c: Char): String =
     inline def hexChar(ch: Int): Char =
       (( if (ch < 10) '0' else 'A' - 10 ) + ch).toChar
 
@@ -41,13 +40,11 @@ object Chars:
     char2uescapeArray(5) = hexChar((c      ) % 16)
 
     new String(char2uescapeArray)
-  }
 
   /** Is character a line break? */
-  def isLineBreakChar(c: Char): Boolean = (c: @switch) match {
+  def isLineBreakChar(c: Char): Boolean = (c: @switch) match
     case LF|FF|CR|SU  => true
     case _            => false
-  }
 
   /** Is character a whitespace character (but not a new line)? */
   def isWhitespace(c: Char): Boolean =
@@ -66,14 +63,12 @@ object Chars:
   def isIdentifierPart(c: CodePoint) = (c == '$') || isUnicodeIdentifierPart(c)
 
   /** Is character a math or other symbol in Unicode?  */
-  def isSpecial(c: Char): Boolean = {
+  def isSpecial(c: Char): Boolean =
     val chtp = Character.getType(c)
     chtp == MATH_SYMBOL.toInt || chtp == OTHER_SYMBOL.toInt
-  }
-  def isSpecial(codePoint: CodePoint) = {
+  def isSpecial(codePoint: CodePoint) =
     val chtp = Character.getType(codePoint)
     chtp == MATH_SYMBOL.toInt || chtp == OTHER_SYMBOL.toInt
-  }
 
   def isValidJVMChar(c: Char): Boolean =
     !(c == '.' || c == ';' || c =='[' || c == '/')
@@ -82,31 +77,27 @@ object Chars:
     !(c == '.' || c == ';' || c =='[' || c == '/' || c == '<' || c == '>')
 
   def isScalaLetter(c: Char): Boolean =
-    Character.getType(c: @switch) match {
+    Character.getType(c: @switch) match
       case LOWERCASE_LETTER | UPPERCASE_LETTER | OTHER_LETTER | TITLECASE_LETTER | LETTER_NUMBER => true
       case _ => c == '$' || c == '_'
-    }
   def isScalaLetter(c: CodePoint): Boolean =
-    Character.getType(c: @switch) match {
+    Character.getType(c: @switch) match
       case LOWERCASE_LETTER | UPPERCASE_LETTER | OTHER_LETTER | TITLECASE_LETTER | LETTER_NUMBER => true
       case _ => c == '$' || c == '_'
-    }
 
   /** Can character form part of a Scala operator name? */
-  def isOperatorPart(c: Char): Boolean = (c: @switch) match {
+  def isOperatorPart(c: Char): Boolean = (c: @switch) match
     case '~' | '!' | '@' | '#' | '%' |
          '^' | '*' | '+' | '-' | '<' |
          '>' | '?' | ':' | '=' | '&' |
          '|' | '/' | '\\' => true
     case c => isSpecial(c)
-  }
-  def isOperatorPart(c: CodePoint): Boolean = (c: @switch) match {
+  def isOperatorPart(c: CodePoint): Boolean = (c: @switch) match
     case '~' | '!' | '@' | '#' | '%' |
          '^' | '*' | '+' | '-' | '<' |
          '>' | '?' | ':' | '=' | '&' |
          '|' | '/' | '\\' => true
     case c => isSpecial(c)
-  }
 
   /** Would the character be encoded by `NameTransformer.encode`? */
   def willBeEncoded(c: Char): Boolean = !isJavaIdentifierPart(c)

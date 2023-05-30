@@ -10,7 +10,7 @@ import MegaPhase.MiniPhase
 /** Specializes classes that inherit from `FunctionN` where there exists a
  *  specialized form.
  */
-class SpecializeFunctions extends MiniPhase {
+class SpecializeFunctions extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = SpecializeFunctions.name
@@ -24,7 +24,7 @@ class SpecializeFunctions extends MiniPhase {
 
   /** Create forwarders from the generic applys to the specialized ones.
    */
-  override def transformDefDef(ddef: DefDef)(using Context) = {
+  override def transformDefDef(ddef: DefDef)(using Context) =
     if ddef.name != nme.apply
        || ddef.termParamss.length != 1
        || ddef.termParamss.head.length > 2
@@ -37,12 +37,11 @@ class SpecializeFunctions extends MiniPhase {
 
     var specName: Name | Null = null
 
-    def isSpecializable = {
+    def isSpecializable =
       val paramTypes = ddef.termParamss.head.map(_.symbol.info)
       val retType = sym.info.finalResultType
       specName = nme.apply.specializedFunction(retType, paramTypes)
       defn.isSpecializableFunction(cls, paramTypes, retType)
-    }
 
     if (sym.is(Flags.Deferred) || !isSpecializable) return ddef
 
@@ -65,11 +64,10 @@ class SpecializeFunctions extends MiniPhase {
     val rhs = This(cls).select(specializedApply).appliedToTermArgs(args)
     val ddef1 = cpy.DefDef(ddef)(rhs = rhs)
     Thicket(ddef1, specializedDecl)
-  }
 
   /** Dispatch to specialized `apply`s in user code when available */
   override def transformApply(tree: Apply)(using Context) =
-    tree match {
+    tree match
       case Apply(fun: NameTree, args) if fun.name == nme.apply && args.size <= 3 && fun.symbol.maybeOwner.isType =>
         val argTypes = fun.tpe.widen.firstParamTypes.map(_.widenSingleton.dealias)
         val retType  = tree.tpe.widenSingleton.dealias
@@ -101,13 +99,11 @@ class SpecializeFunctions extends MiniPhase {
           newSel.appliedToTermArgs(args)
         else tree
       case _ => tree
-    }
 
   private def derivesFromFn012(cls: ClassSymbol)(using Context): Boolean =
     cls.baseClasses.exists { p =>
       p == defn.Function0 || p == defn.Function1 || p == defn.Function2
     }
-}
 
 object SpecializeFunctions:
   val name: String = "specializeFunctions"

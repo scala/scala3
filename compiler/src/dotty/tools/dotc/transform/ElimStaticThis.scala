@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Types.{ThisType, TermRef}
 /** Replace This references to module classes in static methods by global identifiers to the
  *  corresponding modules.
  */
-class ElimStaticThis extends MiniPhase {
+class ElimStaticThis extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = ElimStaticThis.name
@@ -19,24 +19,21 @@ class ElimStaticThis extends MiniPhase {
   override def description: String = ElimStaticThis.description
 
   override def transformThis(tree: This)(using Context): Tree =
-    if (!tree.symbol.is(Package) && ctx.owner.enclosingMethod.is(JavaStatic)) {
+    if (!tree.symbol.is(Package) && ctx.owner.enclosingMethod.is(JavaStatic))
       assert(tree.symbol.is(ModuleClass))
       ref(tree.symbol.sourceModule)
-    }
     else tree
 
   override def transformIdent(tree: tpd.Ident)(using Context): tpd.Tree =
     if (ctx.owner.enclosingMethod.is(JavaStatic))
-      tree.tpe match {
+      tree.tpe match
         case TermRef(thiz: ThisType, _) if thiz.cls.is(ModuleClass, JavaDefined) =>
           ref(thiz.cls.sourceModule).select(tree.symbol)
         case TermRef(thiz: ThisType, _) =>
           assert(tree.symbol.is(Flags.JavaStatic) || thiz.cls.is(JavaDefined))
           tree
         case _ => tree
-      }
     else tree
-}
 
 object ElimStaticThis:
   val name: String = "elimStaticThis"

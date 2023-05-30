@@ -21,7 +21,7 @@ import Path.fail
  *
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-object Streamable {
+object Streamable:
   /** Traits which can be viewed as a sequence of bytes.  Source types
    *  which know their length should override def length: Long for more
    *  efficient method implementations.
@@ -32,21 +32,20 @@ object Streamable {
    *  Several methods (such as `chars` and `lines`) create InputStreams they
    *  don't close
    */
-  trait Bytes {
+  trait Bytes:
     def inputStream(): InputStream
     def length: Long = -1
 
     def bufferedInput(): BufferedInputStream = new BufferedInputStream(inputStream())
     def bytes(): Iterator[Byte] = bytesAsInts() map (_.toByte)
-    def bytesAsInts(): Iterator[Int] = {
+    def bytesAsInts(): Iterator[Int] =
       val in = bufferedInput()
       Iterator continually in.read() takeWhile (_ != -1)
-    }
 
     /** This method aspires to be the fastest way to read
      *  a stream of known length into memory.
      */
-    def toByteArray(): Array[Byte] = {
+    def toByteArray(): Array[Byte] =
       // if we don't know the length, fall back on relative inefficiency
       if (length == -1L)
         return (new ArrayBuffer[Byte]() ++= bytes()).toArray
@@ -56,28 +55,23 @@ object Streamable {
       lazy val in = bufferedInput()
       var offset = 0
 
-      def loop(): Unit = {
-        if (offset < len) {
+      def loop(): Unit =
+        if (offset < len)
           val read = in.read(arr, offset, len - offset)
-          if (read >= 0) {
+          if (read >= 0)
             offset += read
             loop()
-          }
-        }
-      }
       try loop()
       finally in.close()
 
       if (offset == arr.length) arr
       else fail("Could not read entire source (%d of %d bytes)".format(offset, len))
-    }
-  }
 
   /** For objects which can be viewed as Chars.
    *
    * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
    */
-  trait Chars extends Bytes {
+  trait Chars extends Bytes:
     /** Calls to methods requiring byte<->char transformations should be offered
      *  in a form which allows specifying the codec.  When it is not specified,
      *  the one discovered at creation time will be used, which will always find the
@@ -106,20 +100,17 @@ object Streamable {
 
     /** Creates a BufferedReader and applies the closure, automatically closing it on completion.
      */
-    def applyReader[T](f: BufferedReader => T): T = {
+    def applyReader[T](f: BufferedReader => T): T =
       val in = bufferedReader()
       try f(in)
       finally in.close()
-    }
 
     /** Convenience function to import entire file into a String.
      */
     def slurp(): String = slurp(creationCodec)
-    def slurp(codec: Codec): String = {
+    def slurp(codec: Codec): String =
       val src = chars(codec)
       try src.mkString finally src.close()  // Always Be Closing
-    }
-  }
 
   /** Call a function on something Closeable, finally closing it. */
   def closing[T <: JCloseable, U](stream: T)(f: T => U): U =
@@ -136,4 +127,3 @@ object Streamable {
 
   def slurp(url: URL)(implicit codec: Codec): String =
     slurp(url.openStream())
-}

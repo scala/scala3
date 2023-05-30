@@ -57,42 +57,36 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
 
   override def runsAfter: Set[String] = Set(Erasure.name)
 
-  override def transformApply(tree: Apply)(using Context): Tree = {
-    if (tree.symbol == jsdefn.Runtime_createLocalJSClass) {
+  override def transformApply(tree: Apply)(using Context): Tree =
+    if (tree.symbol == jsdefn.Runtime_createLocalJSClass)
       val classValueArg :: superClassValueArg :: _ :: Nil = tree.args: @unchecked
-      val cls = classValueArg match {
+      val cls = classValueArg match
         case Literal(constant) if constant.tag == Constants.ClazzTag =>
           constant.typeValue.typeSymbol.asClass
         case _ =>
           // this shouldn't happen
           report.error(em"unexpected $classValueArg for the first argument to `createLocalJSClass`", classValueArg)
           jsdefn.JSObjectClass
-      }
 
-      val fakeNews = {
+      val fakeNews =
         val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).toList.reverse
         val elems = ctors.map(ctor => fakeNew(cls, ctor.asTerm))
         JavaSeqLiteral(elems, TypeTree(defn.ObjectType))
-      }
 
       cpy.Apply(tree)(tree.fun, classValueArg :: superClassValueArg :: fakeNews :: Nil)
-    } else {
+    else
       tree
-    }
-  }
 
   /** Creates a fake invocation of the given class with the given constructor. */
-  private def fakeNew(cls: ClassSymbol, ctor: TermSymbol)(using Context): Tree = {
+  private def fakeNew(cls: ClassSymbol, ctor: TermSymbol)(using Context): Tree =
     val tycon = cls.typeRef
     val outerArgs = outer.argsForNew(cls, tycon)
     val nonOuterArgCount = ctor.info.firstParamTypes.size - outerArgs.size
     val nonOuterArgs = List.fill(nonOuterArgCount)(ref(defn.Predef_undefined).appliedToNone)
 
     New(tycon, ctor, outerArgs ::: nonOuterArgs)
-  }
 }
 
-object AddLocalJSFakeNews {
+object AddLocalJSFakeNews:
   val name: String = "addLocalJSFakeNews"
   val description: String = "adds fake new invocations to local JS classes in calls to `createLocalJSClass`"
-}

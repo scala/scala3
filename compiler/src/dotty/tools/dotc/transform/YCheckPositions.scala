@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.util.SourceFile
 
 /** Ycheck inlined positions */
-class YCheckPositions extends Phase {
+class YCheckPositions extends Phase:
   import tpd._
 
   override def phaseName: String = YCheckPositions.name
@@ -20,11 +20,11 @@ class YCheckPositions extends Phase {
   override def run(using Context): Unit = () // YCheck only
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    tree match {
+    tree match
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-        val checker = new TreeTraverser {
+        val checker = new TreeTraverser:
           private var sources: List[SourceFile] = ctx.source :: Nil
-          def traverse(tree: tpd.Tree)(using Context): Unit = {
+          def traverse(tree: tpd.Tree)(using Context): Unit =
 
             // Check current context is correct
             assert(ctx.source == sources.head)
@@ -36,8 +36,8 @@ class YCheckPositions extends Phase {
                 assert(tree.source == currentSource, i"wrong source set for $tree # ${tree.uniqueId} of ${tree.getClass}, set to ${tree.source} but context had $currentSource\n ${tree.symbol.flagsString}")
 
             // Recursivlely check children while keeping track of current source
-            reporting.trace(i"check pos ${tree.getClass} ${tree.source} ${sources.head} $tree") {
-              tree match {
+            reporting.trace(i"check pos ${tree.getClass} ${tree.source} ${sources.head} $tree"):
+              tree match
                 case Inlined(EmptyTree, bindings, expansion) =>
                   assert(bindings.isEmpty)
                   val old = sources
@@ -51,13 +51,8 @@ class YCheckPositions extends Phase {
                     traverse(expansion)(using inlineContext(call).withSource(sources.head))
                   sources = sources.tail
                 case _ => traverseChildren(tree)
-              }
-            }
-          }
-        }
         checker.traverse(tree)
       case _ =>
-    }
 
   private def isMacro(call: Tree)(using Context) =
     call.symbol.is(Macro) ||
@@ -66,7 +61,6 @@ class YCheckPositions extends Phase {
     // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
     (!(ctx.phase <= postTyperPhase) && call.isInstanceOf[Select])
 
-}
 
 object YCheckPositions:
   val name: String = "inlinedPositions"

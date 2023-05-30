@@ -7,7 +7,7 @@ import Phases._
 import parsing._
 import typer._
 
-class InteractiveCompiler extends Compiler {
+class InteractiveCompiler extends Compiler:
   // TODO: Figure out what phases should be run in IDEs
   // More phases increase latency but allow us to report more errors.
   // This could be improved by reporting errors back to the IDE
@@ -18,4 +18,3 @@ class InteractiveCompiler extends Compiler {
     List(new transform.SetRootTree),
     List(new transform.CookComments)
   )
-}

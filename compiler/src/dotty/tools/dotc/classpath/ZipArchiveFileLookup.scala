@@ -17,7 +17,7 @@ import dotty.tools.io.{EfficientClassPath, ClassRepresentation}
  * It provides common logic for classes handling class and source files.
  * It's aware of things like e.g. META-INF directory which is correctly skipped.
  */
-trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends EfficientClassPath {
+trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends EfficientClassPath:
   val zipFile: File
   def release: Option[String]
 
@@ -28,13 +28,12 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
 
   private val archive = new FileZipArchive(zipFile.toPath, release)
 
-  override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] = {
+  override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] =
     for {
       dirEntry <- findDirEntry(inPackage).toSeq
       entry <- dirEntry.iterator if entry.isPackage
     }
     yield PackageEntryImpl(inPackage.entryName(entry.name))
-  }
 
   protected def files(inPackage: PackageName): Seq[FileEntryType] =
     for {
@@ -53,20 +52,17 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
 
   override def hasPackage(pkg: PackageName) = findDirEntry(pkg).isDefined
   def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit =
-    findDirEntry(inPackage) match {
+    findDirEntry(inPackage) match
       case Some(dirEntry) =>
-        for (entry <- dirEntry.iterator) {
+        for (entry <- dirEntry.iterator)
           if (entry.isPackage)
             onPackageEntry(PackageEntryImpl(inPackage.entryName(entry.name)))
           else if (isRequiredFileType(entry))
             onClassesAndSources(createFileEntry(entry))
-        }
       case None =>
-    }
 
   private def findDirEntry(pkg: PackageName): Option[archive.DirEntry] =
     archive.allDirs.get(pkg.dirPathTrailingSlashJar)
 
   protected def createFileEntry(file: FileZipArchive#Entry): FileEntryType
   protected def isRequiredFileType(file: AbstractFile): Boolean
-}

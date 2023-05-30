@@ -17,7 +17,7 @@ import scala.collection.mutable
  *  can hardcode them. This should, however be removed once we're using a
  *  different standard library.
  */
-class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
+class SpecializeApplyMethods extends MiniPhase with InfoTransformer:
   import ast.tpd._
 
   override def phaseName: String = SpecializeApplyMethods.name
@@ -27,36 +27,32 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def isEnabled(using Context): Boolean =
     !ctx.settings.scalajs.value
 
-  private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
+  private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol =
     val name = nme.apply.specializedFunction(ret, args)
     // Create the symbol at the next phase, so that it is a valid member of the
     // corresponding function for all valid periods of its SymDenotations.
     // Otherwise, the valid period will offset by 1, which causes a stale symbol
     // in compiling stdlib.
     atNextPhase(newSymbol(sym, name, Flags.Method, MethodType(args, ret)))
-  }
 
-  private inline def specFun0(inline op: Type => Unit)(using Context): Unit = {
+  private inline def specFun0(inline op: Type => Unit)(using Context): Unit =
     for (r <- defn.Function0SpecializedReturnTypes) do
       op(r)
-  }
 
-  private inline def specFun1(inline op: (Type, Type) => Unit)(using Context): Unit = {
+  private inline def specFun1(inline op: (Type, Type) => Unit)(using Context): Unit =
     for
       r  <- defn.Function1SpecializedReturnTypes
       t1 <- defn.Function1SpecializedParamTypes
     do
       op(t1, r)
-  }
 
-  private inline def specFun2(inline op: (Type, Type, Type) => Unit)(using Context): Unit = {
+  private inline def specFun2(inline op: (Type, Type, Type) => Unit)(using Context): Unit =
     for
       r  <- defn.Function2SpecializedReturnTypes
       t1 <- defn.Function2SpecializedParamTypes
       t2 <- defn.Function2SpecializedParamTypes
     do
       op(t1, t2, r)
-  }
 
   override def infoMayChange(sym: Symbol)(using Context) =
     sym == defn.Function0
@@ -64,7 +60,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
     || sym == defn.Function2
 
   /** Add symbols for specialized methods to FunctionN */
-  override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
+  override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match
     case tp: ClassInfo =>
       if sym == defn.Function0 then
         val scope = tp.decls.cloneScope
@@ -84,13 +80,12 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
       else tp
 
     case _ => tp
-  }
 
   /** Create bridge methods for FunctionN with specialized applys */
-  override def transformTemplate(tree: Template)(using Context) = {
+  override def transformTemplate(tree: Template)(using Context) =
     val cls = tree.symbol.owner.asClass
 
-    def synthesizeApply(names: collection.Set[TermName]): Tree = {
+    def synthesizeApply(names: collection.Set[TermName]): Tree =
       val applyBuf = new mutable.ListBuffer[DefDef]
       names.foreach { name =>
         val applySym = cls.info.decls.lookup(name)
@@ -106,7 +101,6 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
         applyBuf += ddef
       }
       cpy.Template(tree)(body = tree.body ++ applyBuf)
-    }
 
     if cls == defn.Function0 then
       synthesizeApply(defn.Function0SpecializedApplyNames)
@@ -116,8 +110,6 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
       synthesizeApply(defn.Function2SpecializedApplyNames)
     else
       tree
-  }
-}
 
 object SpecializeApplyMethods:
   val name: String = "specializeApplyMethods"

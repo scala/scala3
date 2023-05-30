@@ -20,10 +20,9 @@ import util.SrcPos
 import reporting._
 import NameKinds.WildcardParamName
 
-object PostTyper {
+object PostTyper:
   val name: String = "posttyper"
   val description: String = "additional checks and cleanups after type checking"
-}
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
  *
@@ -67,11 +66,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   override def description: String = PostTyper.description
 
-  override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = tree match {
+  override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = tree match
     case tree: ValOrDefDef =>
       assert(!tree.symbol.signature.isUnderDefined)
     case _ =>
-  }
 
   override def changesMembers: Boolean = true // the phase adds super accessors and synthetic members
 
@@ -84,26 +82,24 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
   val beanProps: BeanProperties = new BeanProperties(thisPhase)
 
-  private def newPart(tree: Tree): Option[New] = methPart(tree) match {
+  private def newPart(tree: Tree): Option[New] = methPart(tree) match
     case Select(nu: New, _) => Some(nu)
     case _ => None
-  }
 
   private def checkValidJavaAnnotation(annot: Tree)(using Context): Unit = {
     // TODO fill in
   }
 
-  class PostTyperTransformer extends Transformer {
+  class PostTyperTransformer extends Transformer:
 
     private var inJavaAnnot: Boolean = false
 
     private var noCheckNews: Set[New] = Set()
 
-    def withNoCheckNews[T](ts: List[New])(op: => T): T = {
+    def withNoCheckNews[T](ts: List[New])(op: => T): T =
       val saved = noCheckNews
       noCheckNews ++= ts
       try op finally noCheckNews = saved
-    }
 
     def isCheckable(t: New): Boolean = !inJavaAnnot && !noCheckNews.contains(t)
 
@@ -131,24 +127,22 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           case _ =>
       case _ =>
 
-    private def transformAnnot(annot: Tree)(using Context): Tree = {
+    private def transformAnnot(annot: Tree)(using Context): Tree =
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try transform(annot)
       finally inJavaAnnot = saved
-    }
 
     private def transformAnnot(annot: Annotation)(using Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
 
-    private def processMemberDef(tree: Tree)(using Context): tree.type = {
+    private def processMemberDef(tree: Tree)(using Context): tree.type =
       val sym = tree.symbol
       Checking.checkValidOperator(sym)
       sym.transformAnnotations(transformAnnot)
       sym.defTree = tree
       tree
-    }
 
     private def processValOrDefDef(tree: Tree)(using Context): tree.type =
       val sym = tree.symbol
@@ -193,65 +187,55 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       case _ =>
 
 
-    private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
+    private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree =
       val qual = tree.qualifier
-      qual.symbol.moduleClass.denot match {
+      qual.symbol.moduleClass.denot match
         case pkg: PackageClassDenotation =>
           val pobj = pkg.packageObjFor(tree.symbol)
           if (pobj.exists)
             return transformSelect(cpy.Select(tree)(qual.select(pobj).withSpan(qual.span), tree.name), targs)
         case _ =>
-      }
       val tree1 = super.transform(tree)
-      constToLiteral(tree1) match {
+      constToLiteral(tree1) match
         case _: Literal => tree1
         case _ => superAcc.transformSelect(tree1, targs)
-      }
-    }
 
-    private def normalizeTypeArgs(tree: TypeApply)(using Context): TypeApply = tree.tpe match {
+    private def normalizeTypeArgs(tree: TypeApply)(using Context): TypeApply = tree.tpe match
       case pt: PolyType => // wait for more arguments coming
         tree
       case _ =>
-        def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match {
+        def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match
           case fun: TypeApply =>
             val (tycon, args) = decompose(fun)
             (tycon, args ++ tree.args)
           case _ =>
             (tree.fun, tree.args)
-        }
-        def reorderArgs(pnames: List[Name], namedArgs: List[NamedArg], otherArgs: List[Tree]): List[Tree] = pnames match {
+        def reorderArgs(pnames: List[Name], namedArgs: List[NamedArg], otherArgs: List[Tree]): List[Tree] = pnames match
           case pname :: pnames1 =>
-            namedArgs.partition(_.name == pname) match {
+            namedArgs.partition(_.name == pname) match
               case (NamedArg(_, arg) :: _, namedArgs1) =>
                 arg :: reorderArgs(pnames1, namedArgs1, otherArgs)
               case _ =>
                 val otherArg :: otherArgs1 = otherArgs: @unchecked
                 otherArg :: reorderArgs(pnames1, namedArgs, otherArgs1)
-            }
           case nil =>
             assert(namedArgs.isEmpty && otherArgs.isEmpty)
             Nil
-        }
         val (tycon, args) = decompose(tree)
-        tycon.tpe.widen match {
+        tycon.tpe.widen match
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
             val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
             TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
-        }
-    }
 
-    private object dropInlines extends TreeMap {
-      override def transform(tree: Tree)(using Context): Tree = tree match {
+    private object dropInlines extends TreeMap:
+      override def transform(tree: Tree)(using Context): Tree = tree match
         case Inlined(call, _, expansion) =>
           val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
           cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
-      }
-    }
 
     def checkNoConstructorProxy(tree: Tree)(using Context): Unit =
       if tree.symbol.is(ConstructorProxy) then
@@ -270,7 +254,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       else errorTree(tree, em"${tree.symbol} cannot be used as a type")
 
     override def transform(tree: Tree)(using Context): Tree =
-      try tree match {
+      try tree match
         // TODO move CaseDef case lower: keep most probable trees first for performance
         case CaseDef(pat, _, _) =>
           val gadtCtx =
@@ -285,10 +269,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             checkNoConstructorProxy(tree)
             registerNeedsInlining(tree)
-            tree.tpe match {
+            tree.tpe match
               case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
               case _ => tree
-            }
         case tree @ Select(qual, name) =>
           registerNeedsInlining(tree)
           if name.isTypeName then
@@ -349,14 +332,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
             Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          fn match {
+          fn match
             case sel: Select =>
               val args1 = transform(args)
               val sel1 = transformSelect(sel, args1)
               cpy.TypeApply(tree1)(sel1, args1)
             case _ =>
               super.transform(tree1)
-          }
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
@@ -364,14 +346,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
-          withNoCheckNews(templ.parents.flatMap(newPart)) {
+          withNoCheckNews(templ.parents.flatMap(newPart)):
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
               beanProps.addBeanMethods(
                 superAcc.wrapTemplate(templ)(
                   super.transform(_).asInstanceOf[Template]))
             )
-          }
         case tree: ValDef =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
@@ -488,12 +469,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           super.transform(tree)
         case tree =>
           super.transform(tree)
-      }
-      catch {
+      catch
         case ex : AssertionError =>
           println(i"error while transforming $tree")
           throw ex
-      }
 
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
       try super.transformStats(trees, exprOwner, wrapResult)
@@ -532,5 +511,4 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
         sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
-  }
 }

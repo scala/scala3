@@ -180,19 +180,19 @@ object Scala2Erasure:
         !that.isInstanceOf[Scala2RefinedType] &&
         psym.match
           case sym1: Symbol => that match
-            case sym2: Symbol =>
-              if sym1.isClass && sym2.isClass then
-                sym1.derivesFrom(sym2)
-              else if !sym1.isClass then
-                goUpperBound(sym1)
-              else
+              case sym2: Symbol =>
+                if sym1.isClass && sym2.isClass then
+                  sym1.derivesFrom(sym2)
+                else if !sym1.isClass then
+                  goUpperBound(sym1)
+                else
                 // sym2 is an abstract type, return false because
                 // `isNonBottomSubClass` in Scala 2 never considers a class C to
                 // be a a sub of an abstract type T, even if it was declared as
                 // `type T >: C`.
-                false
-            case _ =>
-              goUpperBound(sym1)
+                  false
+              case _ =>
+                goUpperBound(sym1)
           case tp1: StructuralRef =>
             goUpperBound(tp1)
           case tp1: RefinedType =>
@@ -222,10 +222,10 @@ object Scala2Erasure:
    */
   def intersectionDominator(parents: List[Type])(using Context): Type =
     val psyms = parents.map(pseudoSymbol)
-    if (psyms.contains(defn.ArrayClass)) {
+    if (psyms.contains(defn.ArrayClass))
       defn.ArrayOf(
         intersectionDominator(parents.collect { case defn.ArrayOf(arg) => arg }))
-    } else {
+    else
       def isUnshadowed(psym: PseudoSymbol) =
         !(psyms.exists(qsym => !psym.sameSymbol(qsym) && qsym.isNonBottomSubClass(psym)))
       val cs = parents.iterator.filter { p =>
@@ -233,7 +233,6 @@ object Scala2Erasure:
         psym.isClass && !psym.isTrait && isUnshadowed(psym)
       }
       (if (cs.hasNext) cs else parents.iterator.filter(p => isUnshadowed(pseudoSymbol(p)))).next()
-    }
 
   /** A flattened list of parents of this intersection.
    *

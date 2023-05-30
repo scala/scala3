@@ -17,7 +17,7 @@ import io.AbstractFile
  * @author Philippe Altherr
  * @version 1.0, 23/03/2004
  */
-final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
+final class AbstractFileReader(val buf: Array[Byte]) extends DataReader:
   def this(file: AbstractFile) = this(file.toByteArray)
 
   /** the current input pointer
@@ -29,9 +29,8 @@ final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
   def getByte(mybp: Int): Byte =
     buf(mybp)
 
-  def getBytes(mybp: Int, bytes: Array[Byte]): Unit = {
+  def getBytes(mybp: Int, bytes: Array[Byte]): Unit =
     System.arraycopy(buf, mybp, bytes, 0, bytes.length)
-  }
 
   /** return byte at offset 'pos'
    */
@@ -41,18 +40,16 @@ final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
   /** read a byte
    */
   @throws(classOf[IndexOutOfBoundsException])
-  def nextByte: Byte = {
+  def nextByte: Byte =
     val b = buf(bp)
     bp += 1
     b
-  }
 
   /** read some bytes
    */
-  def nextBytes(len: Int): Array[Byte] = {
+  def nextBytes(len: Int): Array[Byte] =
     bp += len
     buf.slice(bp - len, bp)
-  }
 
   /** read a character
    */
@@ -96,5 +93,4 @@ final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
   /** skip next 'n' bytes
    */
   def skip(n: Int): Unit = { bp += n }
-}
 

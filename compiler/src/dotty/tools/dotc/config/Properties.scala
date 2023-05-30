@@ -11,16 +11,15 @@ import java.util.jar.Attributes.{ Name => AttributeName }
 import java.nio.charset.StandardCharsets
 
 /** Loads `library.properties` from the jar. */
-object Properties extends PropertiesTrait {
+object Properties extends PropertiesTrait:
   protected def propCategory: String = "compiler"
   protected def pickJarBasedOn: Class[PropertiesTrait] = classOf[PropertiesTrait]
 
   /** Scala manifest attributes.
    */
   @sharable val ScalaCompilerVersion: AttributeName = new AttributeName("Scala-Compiler-Version")
-}
 
-trait PropertiesTrait {
+trait PropertiesTrait:
   protected def propCategory: String      // specializes the remainder of the values
   protected def pickJarBasedOn: Class[?]  // props file comes from jar containing this
 
@@ -28,14 +27,13 @@ trait PropertiesTrait {
   protected val propFilename: String = "/" + propCategory + ".properties"
 
   /** The loaded properties */
-  @sharable protected lazy val scalaProps: java.util.Properties = {
+  @sharable protected lazy val scalaProps: java.util.Properties =
     val props = new java.util.Properties
     val stream = pickJarBasedOn getResourceAsStream propFilename
     if (stream ne null)
       quietlyDispose(props load stream, stream.close)
 
     props
-  }
 
   private def quietlyDispose(action: => Unit, disposal: => Unit) =
     try     { action }
@@ -69,7 +67,7 @@ trait PropertiesTrait {
   /** The version number of the jar this was loaded from,
    *  or `"(unknown)"` if it cannot be determined.
    */
-  val simpleVersionString: String = {
+  val simpleVersionString: String =
     val v = scalaPropOrElse("version.number", "(unknown)")
     v + (
       if (v.contains("SNAPSHOT") || v.contains("NIGHTLY"))
@@ -77,7 +75,6 @@ trait PropertiesTrait {
       else
         ""
     )
-  }
 
   /** The version number of the jar this was loaded from plus `"version "` prefix,
    *  or `"version (unknown)"` if it cannot be determined.
@@ -139,4 +136,3 @@ trait PropertiesTrait {
   def versionMsg: String            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
   def scalaCmd: String              = if (isWin) "scala.bat" else "scala"
   def scalacCmd: String             = if (isWin) "scalac.bat" else "scalac"
-}

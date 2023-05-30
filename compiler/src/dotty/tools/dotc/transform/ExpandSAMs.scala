@@ -43,9 +43,9 @@ class ExpandSAMs extends MiniPhase:
 
   override def description: String = ExpandSAMs.description
 
-  override def transformBlock(tree: Block)(using Context): Tree = tree match {
+  override def transformBlock(tree: Block)(using Context): Tree = tree match
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
-      tpt.tpe match {
+      tpt.tpe match
         case NoType =>
           tree // it's a plain function
         case tpe if defn.isContextFunctionType(tpe) =>
@@ -61,10 +61,8 @@ class ExpandSAMs extends MiniPhase:
           val Seq(samDenot) = tpe1.possibleSamMethods
           cpy.Block(tree)(stats,
               AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
-      }
     case _ =>
       tree
-  }
 
   private def checkNoContextFunction(tpt: Tree)(using Context): Unit =
     if defn.isContextFunctionType(tpt.tpe) then
@@ -112,7 +110,7 @@ class ExpandSAMs extends MiniPhase:
    *  }
    *  ```
    */
-  private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree = {
+  private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree =
     val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
 
     checkNoContextFunction(anon.tpt)
@@ -143,7 +141,7 @@ class ExpandSAMs extends MiniPhase:
       val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
       val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
 
-      def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) = {
+      def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) =
         val selector = tree.selector
         val cases1 = if cases.exists(isDefaultCase) then cases
         else
@@ -156,37 +154,32 @@ class ExpandSAMs extends MiniPhase:
             // Needed because  a partial function can be written as:
             // param => param match { case "foo" if foo(param) => param }
             // And we need to update all references to 'param'
-      }
 
-      def isDefinedAtRhs(paramRefss: List[List[Tree]])(using Context) = {
+      def isDefinedAtRhs(paramRefss: List[List[Tree]])(using Context) =
         val tru = Literal(Constant(true))
         def translateCase(cdef: CaseDef) =
           cpy.CaseDef(cdef)(body = tru).changeOwner(anonSym, isDefinedAtFn)
         val paramRef = paramRefss.head.head
         val defaultValue = Literal(Constant(false))
         translateMatch(pfRHS, paramRef.symbol, pfRHS.cases.map(translateCase), defaultValue)
-      }
 
-      def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) = {
+      def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) =
         val List(paramRef, defaultRef) = paramRefss(1)
         def translateCase(cdef: CaseDef) =
           cdef.changeOwner(anonSym, applyOrElseFn)
         val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
         translateMatch(pfRHS, paramRef.symbol, pfRHS.cases.map(translateCase), defaultValue)
-      }
 
       val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn))))
       val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn))))
       List(isDefinedAtDef, applyOrElseDef)
     }
-  }
 
-  private def checkRefinements(tpe: Type, tree: Tree)(using Context): Type = tpe.dealias match {
+  private def checkRefinements(tpe: Type, tree: Tree)(using Context): Type = tpe.dealias match
     case RefinedType(parent, name, _) =>
       if (name.isTermName && tpe.member(name).symbol.ownersIterator.isEmpty) // if member defined in the refinement
         report.error(em"Lambda does not define $name", tree.srcPos)
       checkRefinements(parent, tree)
     case tpe =>
       tpe
-  }
 end ExpandSAMs

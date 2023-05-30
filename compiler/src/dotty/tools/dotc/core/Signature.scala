@@ -46,7 +46,7 @@ import Signature._
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
+case class Signature(paramsSig: List[ParamSig], resSig: TypeName):
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =
@@ -56,26 +56,23 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
-  final def consistentParams(that: Signature)(using Context): Boolean = {
+  final def consistentParams(that: Signature)(using Context): Boolean =
     @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
       if (names1.isEmpty) names2.isEmpty
       else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
     loop(this.paramsSig, that.paramsSig)
-  }
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
-  final def updateWith(that: Signature): Signature = {
+  final def updateWith(that: Signature): Signature =
     def update[T <: ParamSig](name1: T, name2: T): T =
       if (consistent(name1, name2)) name1 else name2
     if (this == that) this
     else if (!this.paramsSig.hasSameLengthAs(that.paramsSig)) that
-    else {
+    else
       val mapped = Signature(
           this.paramsSig.zipWithConserve(that.paramsSig)(update),
           update(this.resSig, that.resSig))
       if (mapped == this) this else mapped
-    }
-  }
 
   /** The degree to which this signature matches `that`.
    *  If parameter signatures are consistent and result types names match (i.e. they are the same
@@ -124,15 +121,14 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    */
   def isUnderDefined(using Context): Boolean =
     paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
-}
 
-object Signature {
+object Signature:
   /** A parameter signature, see the documentation of `Signature` for more information. */
   type ParamSig = TypeName | Int
     // Erasure means that our Ints will be boxed, but Integer#valueOf caches
     // small values, so the performance hit should be minimal.
 
-  enum MatchDegree {
+  enum MatchDegree:
     /** The signatures are unrelated. */
     case NoMatch
     /** The parameter signatures are equivalent. */
@@ -144,7 +140,6 @@ object Signature {
     case MethodNotAMethodMatch
     /** The parameter and result type signatures are equivalent. */
     case FullMatch
-  }
   export MatchDegree._
 
   /** The signature of everything that's not a method, i.e. that has
@@ -162,36 +157,28 @@ object Signature {
    *  otherwise the signature will change once the contained type variables have
    *  been instantiated.
    */
-  def apply(resultType: Type, sourceLanguage: SourceLanguage)(using Context): Signature = {
+  def apply(resultType: Type, sourceLanguage: SourceLanguage)(using Context): Signature =
     assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, sourceLanguage))
-  }
 
-  val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature] {
-    val paramSigOrdering: Ordering[Signature.ParamSig] = new Ordering[Signature.ParamSig] {
-      def compare(x: ParamSig, y: ParamSig): Int = x match { // `(x, y) match` leads to extra allocations
+  val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature]:
+    val paramSigOrdering: Ordering[Signature.ParamSig] = new Ordering[Signature.ParamSig]:
+      def compare(x: ParamSig, y: ParamSig): Int = x match // `(x, y) match` leads to extra allocations
         case x: TypeName =>
-          y match {
+          y match
             case y: TypeName =>
               // `Ordering[TypeName]` doesn't work due to `Ordering` still being invariant
               summon[Ordering[Name]].compare(x, y)
             case y: Int =>
               1
-          }
         case x: Int =>
-          y match {
+          y match
             case y: Name =>
               -1
             case y: Int =>
               x - y
-          }
-      }
-    }
-    def compare(x: Signature, y: Signature): Int = {
+    def compare(x: Signature, y: Signature): Int =
       import scala.math.Ordering.Implicits.seqOrdering
       val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig, y.paramsSig)
       if (paramsOrdering != 0) paramsOrdering
       else summon[Ordering[Name]].compare(x.resSig, y.resSig)
-    }
-  }
-}

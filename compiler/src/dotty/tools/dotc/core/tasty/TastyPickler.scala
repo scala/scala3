@@ -13,16 +13,14 @@ import collection.mutable
 import core.Symbols.ClassSymbol
 import Decorators._
 
-object TastyPickler {
+object TastyPickler:
 
-  private val versionStringBytes = {
+  private val versionStringBytes =
     val compilerString = s"Scala ${config.Properties.simpleVersionString}"
     compilerString.getBytes(java.nio.charset.StandardCharsets.UTF_8)
-  }
 
-}
 
-class TastyPickler(val rootCls: ClassSymbol) {
+class TastyPickler(val rootCls: ClassSymbol):
 
   private val sections = new mutable.ArrayBuffer[(NameRef, TastyBuffer)]
 
@@ -31,7 +29,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
   def newSection(name: String, buf: TastyBuffer): Unit =
     sections += ((nameBuffer.nameIndex(name.toTermName), buf))
 
-  def assembleParts(): Array[Byte] = {
+  def assembleParts(): Array[Byte] =
     def lengthWithLength(buf: TastyBuffer) =
       buf.length + natSize(buf.length)
 
@@ -47,7 +45,7 @@ class TastyPickler(val rootCls: ClassSymbol) {
     // Hash of positions, comments and any additional section
     val uuidHi: Long = otherSectionHashes.fold(0L)(_ ^ _)
 
-    val headerBuffer = {
+    val headerBuffer =
       val buf = new TastyBuffer(header.length + TastyPickler.versionStringBytes.length + 32)
       for (ch <- header) buf.writeByte(ch.toByte)
       buf.writeNat(MajorVersion)
@@ -58,7 +56,6 @@ class TastyPickler(val rootCls: ClassSymbol) {
       buf.writeUncompressedLong(uuidLow)
       buf.writeUncompressedLong(uuidHi)
       buf
-    }
 
     val totalSize =
       headerBuffer.length +
@@ -70,12 +67,9 @@ class TastyPickler(val rootCls: ClassSymbol) {
     all.writeBytes(headerBuffer.bytes, headerBuffer.length)
     all.writeNat(nameBuffer.length)
     all.writeBytes(nameBuffer.bytes, nameBuffer.length)
-    for ((nameRef, buf) <- sections) {
+    for ((nameRef, buf) <- sections)
       all.writeNat(nameRef.index)
       all.writeNat(buf.length)
       all.writeBytes(buf.bytes, buf.length)
-    }
     assert(all.length == totalSize && all.bytes.length == totalSize, s"totalSize = $totalSize, all.length = ${all.length}, all.bytes.length = ${all.bytes.length}")
     all.bytes
-  }
-}

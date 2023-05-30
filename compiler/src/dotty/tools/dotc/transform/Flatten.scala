@@ -11,7 +11,7 @@ import MegaPhase.MiniPhase
 import util.Store
 
 /** Lift nested classes to toplevel */
-class Flatten extends MiniPhase with SymTransformer {
+class Flatten extends MiniPhase with SymTransformer:
   import ast.tpd._
 
   override def phaseName: String = Flatten.name
@@ -42,10 +42,9 @@ class Flatten extends MiniPhase with SymTransformer {
 
   private def liftIfNested(tree: Tree)(using Context) =
     if (ctx.owner.is(Package)) tree
-    else {
+    else
       transformFollowing(tree).foreachInThicket(t => liftedDefs.nn += t)
       EmptyTree
-    }
 
   override def transformStats(stats: List[Tree])(using Context): List[Tree] =
     if ctx.owner.is(Package) then
@@ -59,7 +58,6 @@ class Flatten extends MiniPhase with SymTransformer {
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     liftIfNested(tree)
-}
 
 object Flatten:
   val name: String = "flatten"

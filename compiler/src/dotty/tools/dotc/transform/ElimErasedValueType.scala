@@ -11,11 +11,11 @@ import TypeErasure.ErasedValueType, ValueClasses._
 import reporting._
 import NameKinds.SuperAccessorName
 
-object ElimErasedValueType {
+object ElimErasedValueType:
   val name: String = "elimErasedValueType"
   val description: String = "expand erased value types to their underlying implmementation types"
 
-  def elimEVT(tp: Type)(using Context): Type = tp match {
+  def elimEVT(tp: Type)(using Context): Type = tp match
     case ErasedValueType(_, underlying) =>
       elimEVT(underlying)
     case tp: MethodType =>
@@ -24,8 +24,6 @@ object ElimErasedValueType {
       tp.derivedLambdaType(tp.paramNames, paramTypes, retType)
     case _ =>
       tp
-  }
-}
 
 /** This phase erases ErasedValueType to their underlying type.
  *  It also removes the synthetic cast methods u2evt$ and evt2u$ which are
@@ -45,9 +43,9 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def runsAfter: Set[String] = Set(Erasure.name)
 
-  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = sym match {
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = sym match
     case sym: ClassSymbol if sym.is(ModuleClass) =>
-      sym.companionClass match {
+      sym.companionClass match
         case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
           val cinfo = tp.asInstanceOf[ClassInfo]
           val decls1 = cinfo.decls.cloneScope
@@ -58,15 +56,13 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
           cinfo.derivedClassInfo(decls = decls1)
         case _ =>
           tp
-      }
     case _ =>
       elimEVT(tp)
-  }
 
   def transformTypeOfTree(tree: Tree)(using Context): Tree =
     tree.withType(elimEVT(tree.tpe))
 
-  override def transformApply(tree: Apply)(using Context): Tree = {
+  override def transformApply(tree: Apply)(using Context): Tree =
     val Apply(fun, args) = tree
 
     // The casts to and from ErasedValueType are no longer needed once ErasedValueType
@@ -77,14 +73,13 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       else
         tree
     transformTypeOfTree(t)
-  }
 
   /** Check that we don't have pairs of methods that override each other after
    *  this phase, yet do not have matching types before erasure.
    */
-  private def checkNoClashes(root: Symbol)(using Context) = {
-    val opc = atPhase(thisPhase) {
-      new OverridingPairs.Cursor(root) {
+  private def checkNoClashes(root: Symbol)(using Context) =
+    val opc = atPhase(thisPhase):
+      new OverridingPairs.Cursor(root):
         override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
           // Need to compute suparents before erasure to not filter out parents
           // that are bypassed with different types. See neg/11719a.scala.
@@ -93,10 +88,8 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
           !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
         override def matches(sym1: Symbol, sym2: Symbol) =
           sym1.signature == sym2.signature
-      }
-    }
 
-    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(using Context): Unit = {
+    def checkNoConflict(sym1: Symbol, sym2: Symbol, info: Type)(using Context): Unit =
       val site = root.thisType
       val info1 = site.memberInfo(sym1)
       val info2 = site.memberInfo(sym2)
@@ -105,7 +98,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       def bothPolyApply =
         sym1.name == nme.apply &&
         (sym1.owner.derivesFrom(defn.PolyFunctionClass) ||
-         sym2.owner.derivesFrom(defn.PolyFunctionClass))
+        sym2.owner.derivesFrom(defn.PolyFunctionClass))
 
       // super-accessors start as private, and their expanded name can clash after
       // erasure. TODO: Verify that this is OK.
@@ -113,8 +106,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       if (sym1.name != sym2.name && !bothSuperAccessors ||
           !info1.matchesLoosely(info2) && !bothPolyApply)
         report.error(DoubleDefinition(sym1, sym2, root), root.srcPos)
-    }
-    while (opc.hasNext) {
+    while (opc.hasNext)
       val sym1 = opc.overriding
       val sym2 = opc.overridden
       // Do the test at the earliest phase where both symbols existed.
@@ -122,13 +114,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
         sym1.originDenotation.validFor.firstPhaseId max sym2.originDenotation.validFor.firstPhaseId
       atPhase(elimByNamePhase.next)(checkNoConflict(sym1, sym2, sym1.info))
       opc.next()
-    }
-  }
 
-  override def prepareForTypeDef(tree: TypeDef)(using Context): Context = {
+  override def prepareForTypeDef(tree: TypeDef)(using Context): Context =
     checkNoClashes(tree.symbol)
     ctx
-  }
 
   override def transformInlined(tree: Inlined)(using Context): Tree =
     transformTypeOfTree(tree)

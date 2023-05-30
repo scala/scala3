@@ -44,10 +44,9 @@ trait CliCommand:
   def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState)(using Context): ArgsSummary =
 
     // expand out @filename to the contents of that filename
-    def expandedArguments = args.toList flatMap {
+    def expandedArguments = args.toList flatMap:
       case x if x startsWith "@"  => CommandLineParser.expandArg(x)
       case x                      => List(x)
-    }
 
     sg.processArguments(expandedArguments, processAll = true, settingsState = ss)
   end distill
@@ -94,10 +93,9 @@ trait CliCommand:
   protected def shortHelp(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): String =
     s.description.linesIterator.next()
   protected def isHelping(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
-    cond(s.value) {
+    cond(s.value):
       case ss: List[?] if s.isMultivalue => ss.contains("help")
       case s: String                     => "help" == s
-    }
 
   /** Messages explaining usage and options */
   protected def usageMessage(using settings: ConcreteSettings)(using SettingsState) =

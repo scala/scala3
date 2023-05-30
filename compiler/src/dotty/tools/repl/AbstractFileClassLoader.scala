@@ -30,32 +30,27 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
     findAbstractFile(name) match
       case null => null
       case file => new URL(null, s"memory:${file.path}", new URLStreamHandler {
-        override def openConnection(url: URL): URLConnection = new URLConnection(url) {
-          override def connect() = ()
-          override def getInputStream = file.input
-        }
-      })
+          override def openConnection(url: URL): URLConnection = new URLConnection(url):
+            override def connect() = ()
+            override def getInputStream = file.input
+        })
   override protected def findResources(name: String) =
     findResource(name) match
       case null => Collections.enumeration(Collections.emptyList[URL])  //Collections.emptyEnumeration[URL]
       case url  => Collections.enumeration(Collections.singleton(url))
 
-  override def findClass(name: String): Class[?] = {
+  override def findClass(name: String): Class[?] =
     var file: AbstractFile = root
     val pathParts = name.split("[./]").toList
-    for (dirPart <- pathParts.init) {
+    for (dirPart <- pathParts.init)
       file = file.lookupName(dirPart, true)
-      if (file == null) {
+      if (file == null)
         throw new ClassNotFoundException(name)
-      }
-    }
     file = file.lookupName(pathParts.last+".class", false)
-    if (file == null) {
+    if (file == null)
       throw new ClassNotFoundException(name)
-    }
     val bytes = file.toByteArray
     defineClass(name, bytes, 0, bytes.length)
-  }
 
   override def loadClass(name: String): Class[?] = try findClass(name) catch case _: ClassNotFoundException => super.loadClass(name)
 end AbstractFileClassLoader

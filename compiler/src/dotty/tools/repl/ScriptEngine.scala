@@ -18,7 +18,7 @@ import dotc.core.StdNames.str
  *  val e = m.getEngineByName("scala")
  *  println(e.eval("42"))
  */
-class ScriptEngine extends AbstractScriptEngine {
+class ScriptEngine extends AbstractScriptEngine:
   private val driver = new ReplDriver(
     Array(
       "-classpath", "", // Avoid the default "."
@@ -35,7 +35,7 @@ class ScriptEngine extends AbstractScriptEngine {
 
   /* Evaluate with the given context. */
   @throws[ScriptException]
-  def eval(script: String, context: ScriptContext): Object = {
+  def eval(script: String, context: ScriptContext): Object =
     val vid = state.valIndex
     state = driver.run(script)(using state)
     val oid = state.objectIndex
@@ -43,30 +43,26 @@ class ScriptEngine extends AbstractScriptEngine {
       .getDeclaredMethods.find(_.getName == s"${str.REPL_RES_PREFIX}$vid")
       .map(_.invoke(null))
       .getOrElse(null)
-  }
 
   @throws[ScriptException]
   def eval(reader: Reader, context: ScriptContext): Object = eval(stringFromReader(reader), context)
 
   private val buffer = new Array[Char](8192)
 
-  def stringFromReader(in: Reader) = {
+  def stringFromReader(in: Reader) =
     val out = new StringWriter
     var n = in.read(buffer)
-    while (n > -1) {
+    while (n > -1)
       out.write(buffer, 0, n)
       n = in.read(buffer)
-    }
     in.close
     out.toString
-  }
-}
 
-object ScriptEngine {
+object ScriptEngine:
   import java.util.Arrays
   import scala.util.Properties
 
-  class Factory extends ScriptEngineFactory {
+  class Factory extends ScriptEngineFactory:
     def getEngineName = "Scala REPL"
     def getEngineVersion = "3.0"
     def getExtensions = Arrays.asList("scala")
@@ -79,17 +75,14 @@ object ScriptEngine {
 
     def getOutputStatement(toDisplay: String) = s"""print("$toDisplay")"""
 
-    def getParameter(key: String): Object = key match {
+    def getParameter(key: String): Object = key match
       case JScriptEngine.ENGINE           => getEngineName
       case JScriptEngine.ENGINE_VERSION   => getEngineVersion
       case JScriptEngine.LANGUAGE         => getLanguageName
       case JScriptEngine.LANGUAGE_VERSION => getLanguageVersion
       case JScriptEngine.NAME             => getNames.get(0)
       case _ => null
-    }
 
     def getProgram(statements: String*) = statements.mkString("; ")
 
     def getScriptEngine: JScriptEngine = new ScriptEngine
-  }
-}

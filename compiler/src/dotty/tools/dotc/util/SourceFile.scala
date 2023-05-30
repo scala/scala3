@@ -22,7 +22,7 @@ import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
-object ScriptSourceFile {
+object ScriptSourceFile:
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
@@ -30,46 +30,40 @@ object ScriptSourceFile {
   def hasScriptHeader(content: Array[Char]): Boolean =
     headerStarts.exists(content.startsWith(_))
 
-  def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
+  def apply(file: AbstractFile, content: Array[Char]): SourceFile =
     /** Length of the script header from the given content, if there is one.
      *  The header begins with "#!" or "::#!" and is either a single line,
      *  or it ends with a line starting with "!#" or "::!#", if present.
      */
     val headerLength =
-      if (headerStarts exists (content startsWith _)) {
+      if (headerStarts exists (content startsWith _))
         val matcher = headerPattern matcher content.mkString
         if (matcher.find) matcher.end
         else content.indexOf('\n') // end of first line
-      }
       else 0
 
     // overwrite hash-bang lines with all spaces to preserve line numbers
     val hashBangLines = content.take(headerLength).mkString.split("\\r?\\n")
     if hashBangLines.nonEmpty then
       for i <- 0 until headerLength do
-        content(i) match {
+        content(i) match
           case '\r' | '\n' =>
           case _ =>
             content(i) = ' '
-        }
 
-    new SourceFile(file, content) {
+    new SourceFile(file, content):
       override val underlying = new SourceFile(this.file, this.content)
-    }
-  }
-}
 
-class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
+class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile:
   import SourceFile._
 
   private var myContent: Array[Char] | Null = null
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
-  def content(): Array[Char] = {
+  def content(): Array[Char] =
     if (myContent == null) myContent = computeContent
     myContent
-  }
 
   private var _maybeInComplete: Boolean = false
 
@@ -80,12 +74,10 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
 
   override def equals(that: Any): Boolean =
-    (this `eq` that.asInstanceOf[AnyRef]) || {
-      that match {
+    (this `eq` that.asInstanceOf[AnyRef]) `||`:
+      that match
         case that : SourceFile => file == that.file && start == that.start
         case _ => false
-      }
-    }
 
   override def hashCode: Int = file.hashCode * 41 + start.hashCode
 
@@ -119,7 +111,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def calculateLineIndicesFromContents() = {
+  private def calculateLineIndicesFromContents() =
     val cs = content()
     val buf = new ArrayBuffer[Int]
     buf += 0
@@ -134,7 +126,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
       i += 1
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
-  }
 
   private var lineIndicesCache: Array[Int] = _
   private def lineIndices: Array[Int] =
@@ -171,17 +162,15 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** Convert offset to line in this source file
    *  Lines are numbered from 0
    */
-  def offsetToLine(offset: Int): Int = {
+  def offsetToLine(offset: Int): Int =
     lastLine = Util.bestFit(lineIndices, lineIndices.length, offset, lastLine)
     if (offset >= length) lastLine -= 1 // compensate for the sentinel
     lastLine
-  }
 
   /** The index of the first character of the line containing position `offset` */
-  def startOfLine(offset: Int): Int = {
+  def startOfLine(offset: Int): Int =
     require(offset >= 0)
     lineToOffset(offsetToLine(offset))
-  }
 
   /** The start index of the line following the one containing position `offset` */
   def nextLine(offset: Int): Int =
@@ -192,25 +181,21 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     content.slice(startOfLine(offset), nextLine(offset)).mkString
 
   /** The column corresponding to `offset`, starting at 0 */
-  def column(offset: Int): Int = {
+  def column(offset: Int): Int =
     var idx = startOfLine(offset)
     offset - idx
-  }
 
   /** The padding of the column corresponding to `offset`, includes tabs */
-  def startColumnPadding(offset: Int): String = {
+  def startColumnPadding(offset: Int): String =
     var idx = startOfLine(offset)
     val pad = new StringBuilder
-    while (idx != offset) {
+    while (idx != offset)
       pad.append(if (idx < content().length && content()(idx) == '\t') '\t' else ' ')
       idx += 1
-    }
     pad.result()
-  }
 
   override def toString: String = file.toString
-}
-object SourceFile {
+object SourceFile:
   implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
 
   implicit def fromContext(using Context): SourceFile = ctx.source
@@ -226,7 +211,7 @@ object SourceFile {
    *
    *  It returns the absolute path of `source` if it is not contained in `reference`.
    */
-  def relativePath(source: SourceFile, reference: String): String = {
+  def relativePath(source: SourceFile, reference: String): String =
     val file = source.file
     val jpath = file.jpath
     if jpath eq null then
@@ -256,7 +241,6 @@ object SourceFile {
         path.iterator.asScala.mkString("/")
       else
         sourcePath.toString
-  }
 
   /** Return true if file is a script:
    *  if filename extension is not .scala and has a script header.
@@ -279,9 +263,7 @@ object SourceFile {
       SourceFile(file, chars)
 
   def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
-}
 
-@sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
+@sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()):
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
-}

@@ -39,10 +39,9 @@ object Util:
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
-        val normArgs: List[Arg] = args.zip(argTps).map {
+        val normArgs: List[Arg] = args.zip(argTps).map:
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
-        }
         unapply(fn) match
         case Some((ref, args0)) => Some((ref, args0 :+ normArgs))
         case None => None
@@ -75,10 +74,9 @@ object Util:
       case _ =>
         None
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show) {
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show):
     if (sym.isEffectivelyFinal || sym.isConstructor) sym
     else sym.matchingMember(cls.appliedRef)
-  }
 
 
   extension (sym: Symbol)
@@ -90,13 +88,12 @@ object Util:
   def isConcreteClass(cls: ClassSymbol)(using Context) =
     val instantiable: Boolean =
       cls.is(Flags.Module) ||
-      !cls.isOneOf(Flags.AbstractOrTrait) && {
+      !cls.isOneOf(Flags.AbstractOrTrait) `&&`:
         // see `Checking.checkInstantiable` in typer
         val tp = cls.appliedRef
         val stp = SkolemType(tp)
         val selfType = cls.givenSelfType.asSeenFrom(stp, cls)
         !selfType.exists || stp <:< selfType
-      }
 
     // A concrete class may not be instantiated if the self type is not satisfied
     instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass

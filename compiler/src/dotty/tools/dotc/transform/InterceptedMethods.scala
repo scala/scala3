@@ -10,10 +10,9 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
-object InterceptedMethods {
+object InterceptedMethods:
   val name: String = "intercepted"
   val description: String = "rewrite universal `!=`, `##` methods"
-}
 
 /** Replace member references as follows:
   *
@@ -22,7 +21,7 @@ object InterceptedMethods {
   * - `x.##` for ## in Any becomes calls to ScalaRunTime.hash,
   *     using the most precise overload available
   */
-class InterceptedMethods extends MiniPhase {
+class InterceptedMethods extends MiniPhase:
   import tpd._
 
   override def phaseName: String = InterceptedMethods.name
@@ -37,19 +36,17 @@ class InterceptedMethods extends MiniPhase {
     transformRefTree(tree)
 
   private def transformRefTree(tree: RefTree)(using Context): Tree =
-    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol)) {
-      val qual = tree match {
+    if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol))
+      val qual = tree match
         case id: Ident => tpd.desugarIdentPrefix(id)
         case sel: Select => sel.qualifier
-      }
       val rewritten = poundPoundValue(qual)
       report.log(s"$phaseName rewrote $tree to $rewritten")
       rewritten
-    }
     else tree
 
   // TODO: add missing cases from scalac
-  private def poundPoundValue(tree: Tree)(using Context) = {
+  private def poundPoundValue(tree: Tree)(using Context) =
     val s = tree.tpe.typeSymbol
 
     def staticsCall(methodName: TermName): Tree =
@@ -60,23 +57,18 @@ class InterceptedMethods extends MiniPhase {
     else if (s == defn.LongClass) staticsCall(nme.longHash)
     else if (s == defn.FloatClass) staticsCall(nme.floatHash)
     else staticsCall(nme.anyHash)
-  }
 
-  override def transformApply(tree: Apply)(using Context): Tree = {
-    lazy val qual = tree.fun match {
+  override def transformApply(tree: Apply)(using Context): Tree =
+    lazy val qual = tree.fun match
       case Select(qual, _) => qual
       case ident: Ident =>
-        ident.tpe match {
+        ident.tpe match
           case TermRef(prefix: TermRef, _) =>
             tpd.ref(prefix)
           case TermRef(prefix: ThisType, _) =>
             tpd.This(prefix.cls)
-        }
-    }
 
     if tree.fun.symbol == defn.Any_!= then
       qual.select(defn.Any_==).appliedToTermArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
     else
       tree
-  }
-}

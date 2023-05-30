@@ -52,7 +52,7 @@ object Inlines:
     meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
 
   /** Should call be inlined in this context? */
-  def needsInlining(tree: Tree)(using Context): Boolean = tree match {
+  def needsInlining(tree: Tree)(using Context): Boolean = tree match
     case Block(_, expr) => needsInlining(expr)
     case _ =>
       isInlineable(tree.symbol)
@@ -64,7 +64,6 @@ object Inlines:
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
-  }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
     tree.symbol.is(Transparent)
@@ -113,7 +112,7 @@ object Inlines:
      *  the `bindings` buffer. This is done as an optimization to keep
      *  inline call expansions smaller.
      */
-    def liftBindings(tree: Tree, liftPos: Tree => Tree): Tree = tree match {
+    def liftBindings(tree: Tree, liftPos: Tree => Tree): Tree = tree match
       case Block(stats, expr) =>
         bindings ++= stats.map(liftPos)
         liftBindings(expr, liftPos)
@@ -137,7 +136,6 @@ object Inlines:
         cpy.Select(tree)(liftBindings(qual, liftPos), name)
       case _ =>
         tree
-    }
 
     // assertAllPositioned(tree)   // debug
     val tree1 = liftBindings(tree, identity)
@@ -253,12 +251,10 @@ object Inlines:
     val curSource = ctx.compilationUnit.source
 
     // Tree copier that changes the source of all trees to `curSource`
-    val cpyWithNewSource = new TypedTreeCopier {
+    val cpyWithNewSource = new TypedTreeCopier:
       override protected def sourceFile(tree: tpd.Tree): SourceFile = curSource
-      override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier {
+      override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier:
         override protected def sourceFile(tree: untpd.Tree): SourceFile = curSource
-      }
-    }
 
     /** Removes all Inlined trees, replacing them with blocks.
      *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
@@ -267,15 +263,15 @@ object Inlines:
      *  Until we implement JSR-45, we cannot represent in output positions in other source files.
      *  So, reposition inlined code from other files with the call position.
      */
-    class Reposition extends TreeMap(cpyWithNewSource) {
+    class Reposition extends TreeMap(cpyWithNewSource):
 
-      override def transform(tree: Tree)(using Context): Tree = {
+      override def transform(tree: Tree)(using Context): Tree =
         def fixSpan[T <: untpd.Tree](copied: T): T =
           copied.withSpan(if tree.source == curSource then tree.span else callSpan)
         def finalize(copied: untpd.Tree) =
           fixSpan(copied).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
 
-        inContext(ctx.withSource(curSource)) {
+        inContext(ctx.withSource(curSource)):
           tree match
             case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
             case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
@@ -287,9 +283,6 @@ object Inlines:
             case tree: DefTree => super.transform(tree).setDefTree
             case EmptyTree => tree
             case _ => fixSpan(super.transform(tree))
-        }
-      }
-    }
 
     (new Reposition).transform(tree)
   end reposition
@@ -301,12 +294,11 @@ object Inlines:
    *  The trace has enough info to completely reconstruct positions.
    *  Note: For macros it returns a Select and for other inline methods it returns an Ident (this distinction is only temporary to be able to run YCheckPositions)
    */
-  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
+  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree =
     assert(ctx.source == pos.source)
     val topLevelCls = callSym.topLevelClass
     if (callSym.is(Macro)) ref(topLevelCls.owner).select(topLevelCls.name)(using ctx.withOwner(topLevelCls.owner)).withSpan(pos.span)
     else Ident(topLevelCls.typeRef).withSpan(pos.span)
-  }
 
   private object Intrinsics:
     import dotty.tools.dotc.reporting.Diagnostic.Error
@@ -315,12 +307,11 @@ object Inlines:
 
     private def compileForErrors(tree: Tree)(using Context): List[(ErrorKind, Error)] =
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
-      def stripTyped(t: Tree): Tree = t match {
+      def stripTyped(t: Tree): Tree = t match
         case Typed(t2, _) => stripTyped(t2)
         case Block(Nil, t2) => stripTyped(t2)
         case Inlined(_, Nil, t2) => stripTyped(t2)
         case _ => t
-      }
 
       val Apply(_, codeArg :: Nil) = tree: @unchecked
       val codeArg1 = stripTyped(codeArg.underlying)
@@ -328,10 +319,10 @@ object Inlines:
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
         else codeArg1
 
-      ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
+      ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
-          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
+          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)):
             val tree2 = new Parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
@@ -346,11 +337,9 @@ object Inlines:
                     case _ =>
                 case _ =>
               ctx.reporter.allErrors.map((ErrorKind.Typer, _))
-          }
         case t =>
           report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
           Nil
-      }
 
     private def packError(kind: ErrorKind, error: Error)(using Context): Tree =
       def lit(x: Any) = Literal(Constant(x))
@@ -410,35 +399,31 @@ object Inlines:
 
       // Special handling of `constValue[T]`, `constValueOpt[T], and summonInline[T]`
       if callTypeArgs.length == 1 then
-        if (inlinedMethod == defn.Compiletime_constValue) {
+        if (inlinedMethod == defn.Compiletime_constValue)
           val constVal = tryConstValue
           if constVal.isEmpty then
             val msg = em"not a constant type: ${callTypeArgs.head}; cannot take constValue"
             return ref(defn.Predef_undefined).withSpan(call.span).withType(ErrorType(msg))
           else
             return constVal
-        }
-        else if (inlinedMethod == defn.Compiletime_constValueOpt) {
+        else if (inlinedMethod == defn.Compiletime_constValueOpt)
           val constVal = tryConstValue
           return (
             if (constVal.isEmpty) ref(defn.NoneModule.termRef)
             else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
           )
-        }
-        else if (inlinedMethod == defn.Compiletime_summonInline) {
+        else if (inlinedMethod == defn.Compiletime_summonInline)
           def searchImplicit(tpt: Tree) =
             val evTyper = new Typer(ctx.nestingLevel + 1)
             val evCtx = ctx.fresh.setTyper(evTyper)
-            inContext(evCtx) {
+            inContext(evCtx):
               val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
               evidence.tpe match
                 case fail: Implicits.SearchFailureType =>
                   errorTree(call, evTyper.missingArgMsg(evidence, tpt.tpe, ""))
                 case _ =>
                   evidence
-            }
           return searchImplicit(callTypeArgs.head)
-        }
       end if
 
       val (bindings, expansion) = super.inlined(rhsToInline)

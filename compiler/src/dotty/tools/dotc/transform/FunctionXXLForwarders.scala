@@ -22,16 +22,16 @@ import Types._
  *    `def apply(xs: Array[Object]): R = this.apply(xs(0).asInstanceOf[T1], ..., xs(n-1).asInstanceOf[Tn]).asInstanceOf[R]`
  *  is generated.
  */
-class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
+class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer:
   import ast.tpd._
 
   override def phaseName: String = FunctionXXLForwarders.name
 
   override def description: String = FunctionXXLForwarders.description
 
-  override def transformTemplate(impl: Template)(using Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template =
 
-    def forwarderRhs(receiver: Tree, xsTree: Tree): Tree = {
+    def forwarderRhs(receiver: Tree, xsTree: Tree): Tree =
       val argsApply = ref(xsTree.symbol).select(nme.apply)
       var idx = -1
       val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
@@ -39,7 +39,6 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
         argsApply.appliedToTermArgs(List(Literal(Constant(idx)))).cast(param)
       })
       ref(receiver.symbol).appliedToArgss(argss).cast(defn.ObjectType)
-    }
 
     if impl.symbol.owner.is(Trait) then return impl
 
@@ -50,16 +49,13 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
            ddef.symbol.signature.paramsSig.size > MaxImplementedFunctionArity &&
            ddef.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))
       }
-      yield {
+      yield
         val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
         val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
         val meth = newSymbol(ddef.symbol.owner, nme.apply, Synthetic | Method, methType)
         DefDef(meth, paramss => forwarderRhs(ddef, paramss.head.head))
-      }
 
     cpy.Template(impl)(body = forwarders ::: impl.body)
-  }
-}
 
 object FunctionXXLForwarders:
   val name: String = "functionXXLForwarders"

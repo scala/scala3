@@ -14,10 +14,10 @@ object NullOpsDecorator:
      *  If this type isn't (syntactically) nullable, then returns the type unchanged.
      *  The type will not be changed if explicit-nulls is not enabled.
      */
-    def stripNull(using Context): Type = {
+    def stripNull(using Context): Type =
       def strip(tp: Type): Type =
         val tpWiden = tp.widenDealias
-        val tpStripped = tpWiden match {
+        val tpStripped = tpWiden match
           case tp @ OrType(lhs, rhs) =>
             val llhs = strip(lhs)
             val rrhs = strip(rhs)
@@ -36,25 +36,21 @@ object NullOpsDecorator:
           case tp @ TypeBounds(lo, hi) =>
             tp.derivedTypeBounds(strip(lo), strip(hi))
           case tp => tp
-        }
         if tpStripped ne tpWiden then tpStripped else tp
 
       if ctx.explicitNulls then strip(self) else self
-    }
 
     /** Is self (after widening and dealiasing) a type of the form `T | Null`? */
-    def isNullableUnion(using Context): Boolean = {
+    def isNullableUnion(using Context): Boolean =
       val stripped = self.stripNull
       stripped ne self
-    }
   end extension
 
   import ast.tpd._
 
   extension (self: Tree)
     // cast the type of the tree to a non-nullable type
-    def castToNonNullable(using Context): Tree = self.typeOpt match {
+    def castToNonNullable(using Context): Tree = self.typeOpt match
       case OrNull(tp) => self.cast(tp)
       case _ => self
-    }
 end NullOpsDecorator

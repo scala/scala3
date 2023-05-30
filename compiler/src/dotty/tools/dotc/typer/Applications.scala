@@ -37,18 +37,17 @@ import annotation.threadUnsafe
 
 import scala.util.control.NonFatal
 
-object Applications {
+object Applications:
   import tpd._
 
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
 
-  def extractorMemberType(tp: Type, name: Name, errorPos: SrcPos)(using Context): Type = {
+  def extractorMemberType(tp: Type, name: Name, errorPos: SrcPos)(using Context): Type =
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(em"Overloaded reference to $ref is not allowed in extractor", errorPos)
     ref.info.widenExpr.annotatedToRepeated
-  }
 
   /** Does `tp` fit the "product match" conditions as an unapply result type
    *  for a pattern with `numArgs` subpatterns?
@@ -62,11 +61,10 @@ object Applications {
    *  This is the case if (1) `tp` has members `_1` to `_N` where `N <= numArgs + 1`.
    *                      (2) `tp._N` conforms to Seq match
    */
-  def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean = {
+  def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean =
     val arity = productArity(tp, errorPos)
     arity > 0 && arity <= numArgs + 1 &&
       unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
-  }
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
@@ -87,7 +85,7 @@ object Applications {
     *  ```
     *  returns `T`, otherwise NoType.
     */
-  def unapplySeqTypeElemTp(getTp: Type)(using Context): Type = {
+  def unapplySeqTypeElemTp(getTp: Type)(using Context): Type =
     def lengthTp = ExprType(defn.IntType)
     def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
     def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
@@ -107,12 +105,10 @@ object Applications {
       hasMethod(nme.toSeq, toSeqTp(elemTp))
 
     if (isValid) elemTp else NoType
-  }
 
-  def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
+  def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] =
     val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
     sels.takeWhile(_.exists).toList
-  }
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
     tp.widenExpr.dealias.normalized match
@@ -130,28 +126,25 @@ object Applications {
   def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
 
-  def productSelectors(tp: Type)(using Context): List[Symbol] = {
+  def productSelectors(tp: Type)(using Context): List[Symbol] =
     val sels = for (n <- Iterator.from(0)) yield
       tp.member(nme.selectorName(n)).suchThat(_.info.isParameterless).symbol
     sels.takeWhile(_.exists).toList
-  }
 
   def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
-    if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
+    if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass)))
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
       else tp :: Nil
-    }
     else tp :: Nil
 
-  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
+  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
     val selTps = productSelectorTypes(tp, pos)
     val arity = selTps.length
     val elemTp = unapplySeqTypeElemTp(selTps.last)
     (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
-  }
 
-  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] = {
+  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
     def getName(fn: Tree): Name =
       fn match
         case TypeApply(fn, _) => getName(fn)
@@ -161,25 +154,22 @@ object Applications {
 
     def getTp = extractorMemberType(unapplyResult, nme.get, pos)
 
-    def fail = {
+    def fail =
       report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
       Nil
-    }
 
-    def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] = {
+    def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] =
       val elemTp = unapplySeqTypeElemTp(tp)
       if (elemTp.exists) args.map(Function.const(elemTp))
       else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
       else if tp.derivesFrom(defn.NonEmptyTupleClass) then foldApplyTupleType(tp)
       else fallback
-    }
 
     if (unapplyName == nme.unapplySeq)
-      unapplySeq(unapplyResult) {
+      unapplySeq(unapplyResult):
         if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
         else fail
-      }
-    else {
+    else
       assert(unapplyName == nme.unapply)
       if (isProductMatch(unapplyResult, args.length, pos))
         productSelectorTypes(unapplyResult, pos)
@@ -194,8 +184,6 @@ object Applications {
       else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
         foldApplyTupleType(unapplyResult)
       else fail
-    }
-  }
 
   def foldApplyTupleType(tp: Type)(using Context): List[Type] =
     object tupleFold extends TypeAccumulator[List[Type]]:
@@ -240,10 +228,10 @@ object Applications {
         case Select(receiver, _) =>
           findDefaultGetter(meth, receiver, idx)
         case mr => mappedAltInfo(meth) match
-          case Some((pre, skipped)) =>
-            findDefaultGetter(meth, reifyPrefix(pre), idx + skipped)
-          case None =>
-            findDefaultGetter(meth, reifyPrefix(mr.tpe.normalizedPrefix), idx)
+            case Some((pre, skipped)) =>
+              findDefaultGetter(meth, reifyPrefix(pre), idx + skipped)
+            case None =>
+              findDefaultGetter(meth, reifyPrefix(mr.tpe.normalizedPrefix), idx)
     else EmptyTree // structural applies don't have symbols or defaults
   end findDefaultGetter
 
@@ -289,7 +277,7 @@ object Applications {
   end findDefaultGetter
 
   /** Splice new method reference `meth` into existing application `app` */
-  private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match {
+  private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match
     case Apply(fn, args) =>
       // Constructors always have one leading non-implicit parameter list.
       // Empty list is inserted for constructors where the first parameter list is implicit.
@@ -335,7 +323,6 @@ object Applications {
       // when typing the default argument, which is too early.
       spliceMeth(meth, fn).appliedToTypes(targs.tpes)
     case _ => meth
-  }
 
   def defaultArgument(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree =
     val getter = findDefaultGetter(fn, n, testOnly)
@@ -347,9 +334,8 @@ object Applications {
     val flags2 = sym1.flags | NonMember // ensures Select typing doesn't let TermRef#withPrefix revert the type
     val sym2 = sym1.copy(info = methType, flags = flags2) // symbol not entered, to avoid overload resolution problems
     fun.withType(sym2.termRef)
-}
 
-trait Applications extends Compatibility {
+trait Applications extends Compatibility:
   self: Typer & Dynamic =>
 
   import Applications._
@@ -362,7 +348,7 @@ trait Applications extends Compatibility {
    *  @param args       the arguments of the application
    *  @param resultType the expected result type of the application
    */
-  abstract class Application[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type)(using Context) {
+  abstract class Application[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type)(using Context):
 
     /** The type of typed arguments: either tpd.Tree or Type */
     type TypedArg
@@ -417,8 +403,8 @@ trait Applications extends Compatibility {
 
     /** Whether `liftFun` is needed? It is the case if default arguments are used.
      */
-    protected def needLiftFun: Boolean = {
-      def requiredArgNum(tp: Type): Int = tp.widen match {
+    protected def needLiftFun: Boolean =
+      def requiredArgNum(tp: Type): Int = tp.widen match
         case funType: MethodType =>
           val paramInfos = funType.paramInfos
           val argsNum = paramInfos.size
@@ -429,11 +415,9 @@ trait Applications extends Compatibility {
             argsNum
         case funType: PolyType => requiredArgNum(funType.resultType)
         case tp => args.size
-      }
 
       !isJavaAnnotConstr(methRef.symbol) &&
       args.size < requiredArgNum(funType)
-    }
 
     /** A flag signalling that the typechecking the application was so far successful */
     private var _ok = true
@@ -444,24 +428,20 @@ trait Applications extends Compatibility {
     /** The function's type after widening and instantiating polytypes
      *  with TypeParamRefs in constraint set
      */
-    @threadUnsafe lazy val methType: Type = {
-      def rec(t: Type): Type = {
-        t.widen match{
+    @threadUnsafe lazy val methType: Type =
+      def rec(t: Type): Type =
+        t.widen match
           case funType: MethodType => funType
           case funType: PolyType =>
             rec(instantiateWithTypeVars(funType))
           case tp => tp
-        }
-      }
 
       rec(liftedFunType)
-    }
 
     @threadUnsafe lazy val liftedFunType: Type =
-      if (needLiftFun) {
+      if (needLiftFun)
         liftFun()
         normalizedFun.tpe
-      }
       else funType
 
     /** The arguments re-ordered so that each named argument matches the
@@ -473,7 +453,7 @@ trait Applications extends Compatibility {
       else
         args
 
-    protected def init(): Unit = methType match {
+    protected def init(): Unit = methType match
       case methType: MethodType =>
         val resultApprox = resultTypeApprox(methType)
         val sym = methRef.symbol
@@ -493,7 +473,6 @@ trait Applications extends Compatibility {
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
-    }
 
     /** The application was successful */
     def success: Boolean = ok
@@ -504,7 +483,7 @@ trait Applications extends Compatibility {
       i"${err.refStr(methRef)}$infoStr"
 
     /** Re-order arguments to correctly align named arguments */
-    def reorder[T <: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
+    def reorder[T <: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
 
       /** @param pnames    The list of parameter names that are missing arguments
        *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
@@ -517,19 +496,19 @@ trait Applications extends Compatibility {
        *  2. For every `(name -> arg)` in `nameToArg`, `arg` is an element of `args`
        */
       def handleNamed(pnames: List[Name], args: List[Trees.Tree[T]],
-                      nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name]): List[Trees.Tree[T]] = pnames match {
+                      nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name]): List[Trees.Tree[T]] = pnames match
         case pname :: pnames1 if nameToArg contains pname =>
           // there is a named argument for this parameter; pick it
           nameToArg(pname) :: handleNamed(pnames1, args, nameToArg - pname, toDrop + pname)
         case _ =>
           def pnamesRest = if (pnames.isEmpty) pnames else pnames.tail
-          args match {
+          args match
             case (arg @ NamedArg(aname, _)) :: args1 =>
               if (toDrop contains aname) // argument is already passed
                 handleNamed(pnames, args1, nameToArg, toDrop - aname)
               else if ((nameToArg contains aname) && pnames.nonEmpty) // argument is missing, pass an empty tree
                 genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop)
-              else { // name not (or no longer) available for named arg
+              else // name not (or no longer) available for named arg
                 def msg =
                   if (methodType.paramNames contains aname)
                     em"parameter $aname of $methString is already instantiated"
@@ -537,27 +516,22 @@ trait Applications extends Compatibility {
                     em"$methString does not have a parameter $aname"
                 fail(msg, arg.asInstanceOf[Arg])
                 arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop)
-              }
             case arg :: args1 =>
               arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop) // unnamed argument; pick it
             case Nil => // no more args, continue to pick up any preceding named args
               if (pnames.isEmpty) Nil
               else handleNamed(pnamesRest, args, nameToArg, toDrop)
-          }
-      }
 
       def handlePositional(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] =
-        args match {
+        args match
           case (arg: NamedArg @unchecked) :: _ =>
             val nameAssocs = for (case arg @ NamedArg(name, _) <- args) yield (name, arg)
             handleNamed(pnames, args, nameAssocs.toMap, Set())
           case arg :: args1 =>
             arg :: handlePositional(if (pnames.isEmpty) Nil else pnames.tail, args1)
           case Nil => Nil
-        }
 
       handlePositional(methodType.paramNames, args)
-    }
 
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
@@ -567,7 +541,7 @@ trait Applications extends Compatibility {
      *  @param n   The position of the first parameter in formals in `methType`.
      */
     def matchArgs(args: List[Arg], formals: List[Type], n: Int): Unit =
-      if (success) formals match {
+      if (success) formals match
         case formal :: formals1 =>
 
           def checkNoVarArg(arg: Arg) =
@@ -596,12 +570,12 @@ trait Applications extends Compatibility {
           def missingArg(n: Int): Unit =
             fail(MissingArgument(methodType.paramNames(n), methString))
 
-          def tryDefault(n: Int, args1: List[Arg]): Unit = {
+          def tryDefault(n: Int, args1: List[Arg]): Unit =
             val sym = methRef.symbol
             val testOnly = this.isInstanceOf[TestApplication[?]]
 
             val defaultArg =
-              if (isJavaAnnotConstr(sym)) {
+              if (isJavaAnnotConstr(sym))
                 val cinfo = sym.owner.asClass.classInfo
                 val pname = methodType.paramNames(n)
                 val hasDefault = cinfo.member(pname)
@@ -613,7 +587,6 @@ trait Applications extends Compatibility {
                   tpd.Underscore(formal)
                 else
                   EmptyTree
-              }
               else defaultArgument(normalizedFun, n, testOnly)
 
             def implicitArg = implicitArgTree(formal, appPos.span)
@@ -626,10 +599,9 @@ trait Applications extends Compatibility {
               matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
-          }
 
           if (formal.isRepeatedParam)
-            args match {
+            args match
               case arg :: Nil if isVarArg(arg) =>
                 addTyped(arg)
               case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
@@ -637,26 +609,23 @@ trait Applications extends Compatibility {
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
                 val typedArgs =
-                  harmonic(harmonizeArgs, elemFormal) {
+                  harmonic(harmonizeArgs, elemFormal):
                     args.map { arg =>
                       checkNoVarArg(arg)
                       typedArg(arg, elemFormal)
                     }
-                  }
                 typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
-            }
-          else args match {
+          else args match
             case EmptyTree :: args1 =>
               tryDefault(n, args1)
             case arg :: args1 =>
               matchArgs(args1, addTyped(arg), n + 1)
             case nil =>
               tryDefault(n, args)
-          }
 
         case nil =>
-          args match {
+          args match
             case arg :: args1 =>
               def msg = arg match
                 case untpd.Tuple(Nil)
@@ -666,9 +635,6 @@ trait Applications extends Compatibility {
                   em"too many arguments for $methString"
               fail(msg, arg)
             case nil =>
-          }
-      }
-  }
 
   /** The degree to which an argument has to match a formal parameter */
   enum ArgMatch:
@@ -680,7 +646,7 @@ trait Applications extends Compatibility {
    *  issue error messages.
    */
   abstract class TestApplication[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type, argMatch: ArgMatch)(using Context)
-  extends Application[Arg](methRef, funType, args, resultType) {
+  extends Application[Arg](methRef, funType, args, resultType):
     type TypedArg = Arg
     type Result = Unit
 
@@ -738,13 +704,12 @@ trait Applications extends Compatibility {
     def appPos: SrcPos = NoSourcePosition
     @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
     init()
-  }
 
   /** Subclass of Application for applicability tests with type arguments and value
    *  argument trees.
    */
   class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type, argMatch: ArgMatch)(using Context)
-  extends TestApplication(methRef, methRef.widen, args, resultType, argMatch) {
+  extends TestApplication(methRef, methRef.widen, args, resultType, argMatch):
     def argType(arg: Tree, formal: Type): Type =
       if untpd.isContextualClosure(arg) && defn.isContextFunctionType(formal) then arg.tpe
       else normalize(arg.tpe, formal)
@@ -752,17 +717,15 @@ trait Applications extends Compatibility {
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
     def typeOfArg(arg: Tree): Type = arg.tpe
     def harmonizeArgs(args: List[Tree]): List[Tree] = harmonize(args)
-  }
 
   /** Subclass of Application for applicability tests with value argument types. */
   class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type, argMatch: ArgMatch)(using Context)
-  extends TestApplication(methRef, methRef, args, resultType, argMatch) {
+  extends TestApplication(methRef, methRef, args, resultType, argMatch):
     def argType(arg: Type, formal: Type): Type = arg
     def treeToArg(arg: Tree): Type = arg.tpe
     def isVarArg(arg: Type): Boolean = arg.isRepeatedParam
     def typeOfArg(arg: Type): Type = arg
     def harmonizeArgs(args: List[Type]): List[Type] = harmonizeTypes(args)
-  }
 
   /** Subclass of Application for type checking an Apply node, where
    *  types of arguments are either known or unknown.
@@ -770,7 +733,7 @@ trait Applications extends Compatibility {
   abstract class TypedApply[T <: Untyped](
     app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type,
     override val applyKind: ApplyKind)(using Context)
-  extends Application(methRef, fun.tpe, args, resultType) {
+  extends Application(methRef, fun.tpe, args, resultType):
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
@@ -781,12 +744,11 @@ trait Applications extends Compatibility {
     def addArg(arg: Tree, formal: Type): Unit =
       typedArgBuf += adapt(arg, formal.widenExpr)
 
-    def makeVarArg(n: Int, elemFormal: Type): Unit = {
+    def makeVarArg(n: Int, elemFormal: Type): Unit =
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.dropRightInPlace(n)
       val elemtpt = TypeTree(elemFormal)
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
-    }
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] =
       // harmonize args only if resType depends on parameter types
@@ -795,15 +757,13 @@ trait Applications extends Compatibility {
 
     override def appPos: SrcPos = app.srcPos
 
-    def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
+    def fail(msg: Message, arg: Trees.Tree[T]): Unit =
       report.error(msg, arg.srcPos)
       ok = false
-    }
 
-    def fail(msg: Message): Unit = {
+    def fail(msg: Message): Unit =
       report.error(msg, app.srcPos)
       ok = false
-    }
 
     def normalizedFun:  Tree = myNormalizedFun
 
@@ -811,26 +771,22 @@ trait Applications extends Compatibility {
       if (methRef.symbol.hasDefaultParams) LiftComplex else LiftImpure
 
     override def liftFun(): Unit =
-      if (liftedDefs == null) {
+      if (liftedDefs == null)
         liftedDefs = new mutable.ListBuffer[Tree]
         myNormalizedFun = lifter.liftApp(liftedDefs.uncheckedNN, myNormalizedFun)
-      }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
      *  -1 if there are no differences.
      */
-    private def firstDiff[T <: Trees.Tree[?]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
+    private def firstDiff[T <: Trees.Tree[?]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match
       case x :: xs1 =>
-        ys match {
+        ys match
           case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
           case nil => n
-        }
       case nil =>
-        ys match {
+        ys match
           case y :: ys1 => n
           case nil => -1
-        }
-    }
     private def sameSeq[T <: Trees.Tree[?]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
     /** An argument is safe if it is a pure expression or a default getter call
@@ -840,12 +796,12 @@ trait Applications extends Compatibility {
       isPureExpr(arg)
       || arg.isInstanceOf[RefTree | Apply | TypeApply] && arg.symbol.name.is(DefaultGetterName)
 
-    val result:   Tree = {
+    val result:   Tree =
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
-        else {
+        else
           if !sameSeq(args, orderedArgs)
              && !isJavaAnnotConstr(methRef.symbol)
              && !typedArgs.forall(isSafeArg)
@@ -860,15 +816,13 @@ trait Applications extends Compatibility {
             typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
-            val orderedArgDefs = {
+            val orderedArgDefs =
               // Indices of original typed arguments that are lifted by liftArgs
-              val impureArgIndices = typedArgBuf.zipWithIndex.collect {
+              val impureArgIndices = typedArgBuf.zipWithIndex.collect:
                 case (arg, idx) if !lifter.noLift(arg) => idx
-              }
-              def position(arg: Trees.Tree[T]) = {
+              def position(arg: Trees.Tree[T]) =
                 val i = args.indexOf(arg)
                 if (i >= 0) i else orderedArgs.length
-              }
               // The original indices of all ordered arguments, as an array
               val originalIndices = orderedArgs.map(position).toArray
               // Assuming stable sorting all non-explicit default parameters will remain in the end with the same order
@@ -878,36 +832,30 @@ trait Applications extends Compatibility {
                 if (n < originalIndices.length) originalIndices(n) else orderedArgs.length
               scala.util.Sorting.stableSort[(Tree, Int), Int](
                 argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
-            }
             liftedDefs.nn ++= orderedArgDefs
           end if
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
           assignType(app0, normalizedFun, typedArgs)
-        }
       wrapDefs(liftedDefs, app1)
-    }
-  }
 
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(
     app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
     resultType: Type)(using Context)
-  extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
+  extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind):
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
-  }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
   class ApplyToTyped(
     app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree],
     resultType: Type, applyKind: ApplyKind)(using Context)
-  extends TypedApply(app, fun, methRef, args, resultType, applyKind) {
+  extends TypedApply(app, fun, methRef, args, resultType, applyKind):
     def typedArg(arg: Tree, formal: Type): TypedArg = arg
     def treeToArg(arg: Tree): Tree = arg
     def typeOfArg(arg: Tree): Type = arg.tpe
-  }
 
   /** If `app` is a `this(...)` constructor call, the this-call argument context,
    *  otherwise the current context.
@@ -920,9 +868,9 @@ trait Applications extends Compatibility {
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
    */
-  def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
+  def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
 
-    def realApply(using Context): Tree = {
+    def realApply(using Context): Tree =
       val resultProto = tree.fun match
         case Select(New(tpt), _) if pt.isInstanceOf[ValueType] =>
           if tpt.isType && typedAheadType(tpt).tpe.typeSymbol.typeParams.isEmpty then
@@ -949,7 +897,7 @@ trait Applications extends Compatibility {
 
       /** Type application where arguments come from prototype, and no implicits are inserted */
       def simpleApply(fun1: Tree, proto: FunProto)(using Context): Tree =
-        methPart(fun1).tpe match {
+        methPart(fun1).tpe match
           case funRef: TermRef if funRef.symbol.isSignaturePolymorphic =>
             // synthesize a method type based on the types at the call site.
             // one can imagine the original signature-polymorphic method as
@@ -973,7 +921,6 @@ trait Applications extends Compatibility {
                 pt))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
-        }
 
       /** Try same application with an implicit inserted around the qualifier of the function
        *  part. Return an optional value to indicate success.
@@ -992,10 +939,10 @@ trait Applications extends Compatibility {
             }
           }
 
-      fun1.tpe match {
+      fun1.tpe match
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType =>
-          val isInsertedApply = fun1 match {
+          val isInsertedApply = fun1 match
             case Select(_, nme.apply) => fun1.span.isSynthetic
             case TypeApply(sel @ Select(_, nme.apply), _) => sel.span.isSynthetic
             /* TODO Get rid of this case. It is still syntax-based, therefore unreliable.
@@ -1009,7 +956,6 @@ trait Applications extends Compatibility {
              */
             case TypeApply(fun, _) => !fun.isInstanceOf[Select]
             case _ => false
-          }
           val tree1 = fun1 match
             case Select(_, nme.apply) => tree
             case _ => untpd.Apply(fun1, tree.args)
@@ -1034,19 +980,17 @@ trait Applications extends Compatibility {
             // To make this work using regular inlining, we'd need a way to annotate
             // an inline function that it should expand only if there are no enclosing
             // applications of inline functions.
-            tree.args match {
+            tree.args match
               case (arg @ Match(EmptyTree, cases)) :: Nil =>
-                cases.foreach {
+                cases.foreach:
                   case CaseDef(Typed(_: untpd.Ident, _), _, _) => // OK
                   case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
                   case CaseDef(pat, _, _) =>
                     report.error(UnexpectedPatternForSummonFrom(pat), pat.srcPos)
-                }
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(tree.span), pt)
               case _ =>
                 errorTree(tree, em"argument to summonFrom must be a pattern matching closure")
-            }
           else
             tryEither {
               simpleApply(fun1, proto)
@@ -1061,8 +1005,6 @@ trait Applications extends Compatibility {
                   if (proto eq originalProto) fail
                   else tryWithImplicitOnQualifier(fun1, proto).getOrElse(fail))
             }
-      }
-    }
 
     /** Convert expression like
      *
@@ -1072,7 +1014,7 @@ trait Applications extends Compatibility {
      *
      *     { val xs = es; e' = e' + args }
      */
-    def typedOpAssign(using Context): Tree = {
+    def typedOpAssign(using Context): Tree =
       val (lhs1, name, rhss) = (tree: @unchecked) match
         case Apply(Select(lhs, name), rhss) => (typedExpr(lhs), name, rhss)
         case Apply(untpd.TypedSplice(Select(lhs1, name)), rhss) => (lhs1, name, rhss)
@@ -1081,7 +1023,6 @@ trait Applications extends Compatibility {
       val assign = untpd.Assign(lhs2,
           untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
       wrapDefs(liftedDefs, typed(assign))
-    }
 
     val app1 =
       if (untpd.isOpAssign(tree))
@@ -1095,26 +1036,22 @@ trait Applications extends Compatibility {
             failedVal
           }
         }
-      else {
+      else
         val app = tree.fun match
           case _: untpd.SplicePattern => typedAppliedSplice(tree, pt)
           case _ => realApply
-        app match {
+        app match
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
               checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
           case _ =>
-        }
         app
-      }
-    app1 match {
+    app1 match
       case Apply(Block(stats, fn), args) =>
         tpd.cpy.Block(app1)(stats, tpd.cpy.Apply(app1)(fn, args))
       case _ =>
         app1
-    }
-  }
 
   /** Typecheck an Apply node with a typed function and possibly-typed arguments coming from `proto` */
   def ApplyTo(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using Context): tpd.Tree =
@@ -1133,7 +1070,7 @@ trait Applications extends Compatibility {
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
   def typedNamedArgs(args: List[untpd.Tree])(using Context): List[NamedArg] =
-    for (case arg @ NamedArg(id, argtpt) <- args) yield {
+    for (case arg @ NamedArg(id, argtpt) <- args) yield
       if !Feature.namedTypeArgsEnabled then
         report.error(
           em"""Named type arguments are experimental,
@@ -1141,16 +1078,15 @@ trait Applications extends Compatibility {
           arg.srcPos)
       val argtpt1 = typedType(argtpt)
       cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
-    }
 
-  def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
+  def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
     if (ctx.mode.is(Mode.Pattern))
       return errorTree(tree, em"invalid pattern")
 
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
-    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
+    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match
       case fun: TypeApply if !ctx.isAfterTyper =>
         val function = fun.fun
         val args = (fun.args ++ tree.args).map(_.show).mkString(", ")
@@ -1158,30 +1094,25 @@ trait Applications extends Compatibility {
                             |You might have meant something like:
                             |${function}[${args}]""")
       case typedFn =>
-        typedFn.tpe.widen match {
+        typedFn.tpe.widen match
           case pt: PolyType =>
             if (typedArgs.length <= pt.paramInfos.length && !isNamed)
-              if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
+              if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty)
                 val arg = typedArgs.head
                 if (!arg.symbol.is(Module)) // Allow `classOf[Foo.type]` if `Foo` is an object
                   checkClassType(arg.tpe, arg.srcPos, traitReq = false, stablePrefixReq = false)
-              }
           case _ =>
-        }
-        def tryDynamicTypeApply(): Tree = typedFn match {
+        def tryDynamicTypeApply(): Tree = typedFn match
           case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, typedArgs.map(untpd.TypedSplice(_)), pt)
           case _                                             => tree.withType(TryDynamicCallType)
-        }
         if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
         else assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
-    }
-  }
 
   /** Rewrite `new Array[T](....)` if T is an unbounded generic to calls to newGenericArray.
    *  It is performed during typer as creation of generic arrays needs a classTag.
    *  we rely on implicit search to find one.
    */
-  def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
+  def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.srcPos)
 
@@ -1195,22 +1126,19 @@ trait Applications extends Compatibility {
       else tree
     case _ =>
       tree
-  }
 
   /** Is `tp` a unary function type or an overloaded type with with only unary function
    *  types as alternatives?
    */
-  def isUnary(tp: Type)(using Context): Boolean = tp match {
+  def isUnary(tp: Type)(using Context): Boolean = tp match
     case tp: MethodicType =>
-      tp.firstParamTypes match {
+      tp.firstParamTypes match
         case ptype :: Nil => !ptype.isRepeatedParam
         case _ => false
-      }
     case tp: TermRef =>
       tp.denot.alternatives.forall(alt => isUnary(alt.info))
     case _ =>
       false
-  }
 
   /** Should we tuple or untuple the argument before application?
     *  If auto-tupling is enabled then
@@ -1266,7 +1194,7 @@ trait Applications extends Compatibility {
           case _ => false
       case _ => false
 
-  def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree = {
+  def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree =
     record("typedUnApply")
     val Apply(qual, args) = tree
 
@@ -1292,24 +1220,20 @@ trait Applications extends Compatibility {
      *  If this refers to a type alias, follow the alias, and if
      *  one finds a class, reference the class companion module.
      */
-    def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
-      tree match {
+    def followTypeAlias(tree: untpd.Tree): untpd.Tree =
+      tree match
         case tree: untpd.RefTree =>
           val nestedCtx = ctx.fresh.setNewTyperState()
           val ttree =
             typedType(untpd.rename(tree, tree.name.toTypeName))(using nestedCtx)
-          ttree.tpe match {
+          ttree.tpe match
             case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
-              Inferencing.companionRef(alias) match {
+              Inferencing.companionRef(alias) match
                 case companion: TermRef => return untpd.ref(companion).withSpan(tree.span)
                 case _ =>
-              }
             case _ =>
-          }
         case _ =>
-      }
       untpd.EmptyTree
-    }
 
     /** A typed qual.unapply or qual.unapplySeq tree, if this typechecks.
      *  Otherwise fallBack with (maltyped) qual.unapply as argument
@@ -1321,7 +1245,7 @@ trait Applications extends Compatibility {
      *  overloaded unapply does *not* need to be applicable to its argument
      *  whereas overloaded variants need to have a conforming variant.
      */
-    def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree = {
+    def trySelectUnapply(qual: untpd.Tree)(fallBack: (Tree, TyperState) => Tree): Tree =
       // try first for non-overloaded, then for overloaded occurrences
       def tryWithName(name: TermName)(fallBack: (Tree, TyperState) => Tree)(using Context): Tree =
 
@@ -1360,49 +1284,42 @@ trait Applications extends Compatibility {
       end tryWithName
 
       // try first for unapply, then for unapplySeq
-      tryWithName(nme.unapply) {
+      tryWithName(nme.unapply):
         (sel, state) =>
-          tryWithName(nme.unapplySeq) {
+          tryWithName(nme.unapplySeq):
             (sel2, state2) =>
               // if both fail, return unapply error, unless that is simply a
               // "not a member", and the unapplySeq error is more refined.
               if saysNotFound(state, nme.unapply) && !saysNotFound(state2, nme.unapplySeq)
               then fallBack(sel2, state2)
               else fallBack(sel, state)
-          }
-      }
-    }
 
     /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
     var unapplyFn =
-      trySelectUnapply(qual) {
+      trySelectUnapply(qual):
         (sel, state) =>
           val qual1 = followTypeAlias(qual)
           if (qual1.isEmpty) reportErrors(sel, state)
-          else trySelectUnapply(qual1) {
+          else trySelectUnapply(qual1):
             (_, state) => reportErrors(sel, state)
-          }
-      }
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
-    def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
+    def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match
       case TypeApply(fn, args) =>
         var remain = bound.toSet
-        def addBinder(arg: Tree) = arg.tpe.stripTypeVar match {
+        def addBinder(arg: Tree) = arg.tpe.stripTypeVar match
           case ref: TypeRef if remain.contains(ref.symbol) =>
             remain -= ref.symbol
             tpd.Bind(ref.symbol, Ident(ref))
           case _ =>
             arg
-        }
         tpd.cpy.TypeApply(unapp)(fn, args.mapConserve(addBinder))
       case _ =>
         unapp
-    }
 
-    unapplyFn.tpe.widen match {
+    unapplyFn.tpe.widen match
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
@@ -1425,33 +1342,29 @@ trait Applications extends Compatibility {
 
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
-        def unapplyImplicits(unapp: Tree): List[Tree] = {
+        def unapplyImplicits(unapp: Tree): List[Tree] =
           val res = List.newBuilder[Tree]
-          def loop(unapp: Tree): Unit = unapp match {
+          def loop(unapp: Tree): Unit = unapp match
             case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, `dummyArg` :: Nil) =>
             case Inlined(u, _, _) => loop(u)
             case DynamicUnapply(_) => report.error(em"Structural unapply is not supported", unapplyFn.srcPos)
             case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
             case _ => ().assertingErrorsReported
-          }
           loop(unapp)
           res.result()
-        }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
-        val bunchedArgs = argTypes match {
+        val bunchedArgs = argTypes match
           case argType :: Nil =>
             if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled && defn.isTupleNType(argType)) untpd.Tuple(args) :: Nil
             else args
           case _ => args
-        }
-        if (argTypes.length != bunchedArgs.length) {
+        if (argTypes.length != bunchedArgs.length)
           report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.srcPos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
-        }
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
@@ -1461,8 +1374,6 @@ trait Applications extends Compatibility {
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
         cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
-    }
-  }
 
   /** A typed unapply hook, can be overridden by re any-typers between frontend
    *  and pattern matcher.
@@ -1473,11 +1384,10 @@ trait Applications extends Compatibility {
   /** Is given method reference applicable to argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean, argMatch: ArgMatch)(using Context): Boolean = {
+  def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean, argMatch: ArgMatch)(using Context): Boolean =
     def isApp(using Context): Boolean =
       new ApplicableToTrees(methRef, args, resultType, argMatch).success
     if (keepConstraint) isApp else explore(isApp)
-  }
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
@@ -1489,54 +1399,48 @@ trait Applications extends Compatibility {
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableType(tp: Type, args: List[Tree], resultType: Type, keepConstraint: Boolean)(using Context): Boolean =
-    onMethod(tp, args.nonEmpty) {
+    onMethod(tp, args.nonEmpty):
       isApplicableMethodRef(_, args, resultType, keepConstraint, ArgMatch.Compatible)
-    }
 
   /** Is given type applicable to argument types `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableType(tp: Type, args: List[Type], resultType: Type)(using Context): Boolean =
-    onMethod(tp, args.nonEmpty) {
+    onMethod(tp, args.nonEmpty):
       isApplicableMethodRef(_, args, resultType, ArgMatch.Compatible)
-    }
 
-  private def onMethod(tp: Type, followApply: Boolean)(p: TermRef => Boolean)(using Context): Boolean = tp match {
+  private def onMethod(tp: Type, followApply: Boolean)(p: TermRef => Boolean)(using Context): Boolean = tp match
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[MethodicType] =>
       p(methRef)
     case mt: MethodicType =>
       p(mt.narrow)
     case _ =>
       followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
-  }
 
   /** Does `tp` have an extension method named `xname` with this-argument `argType` and
    *  result matching `resultType`?
    */
-  def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
+  def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) =
     def qualifies(mbr: Denotation) =
       mbr.exists
       && isApplicableType(
             normalize(tp.select(xname, mbr), WildcardType),
             argType :: Nil, resultType)
-    tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
+    tp.memberBasedOnFlags(xname, required = ExtensionMethod) match
       case mbr: SingleDenotation => qualifies(mbr)
       case mbr => mbr.hasAltWith(qualifies(_))
-    }
-  }
 
   /** Drop any leading type or implicit parameter sections */
-  def stripInferrable(tp: Type)(using Context): Type = tp match {
+  def stripInferrable(tp: Type)(using Context): Type = tp match
     case mt: MethodType if mt.isImplicitMethod =>
       stripInferrable(resultTypeApprox(mt))
     case pt: PolyType =>
       stripInferrable(pt.resType)
     case _ =>
       tp
-  }
 
   /** Drop any leading implicit parameter sections */
-  def stripImplicit(tp: Type, wildcardOnly: Boolean = false)(using Context): Type = tp match {
+  def stripImplicit(tp: Type, wildcardOnly: Boolean = false)(using Context): Type = tp match
     case mt: MethodType if mt.isImplicitMethod =>
       stripImplicit(resultTypeApprox(mt, wildcardOnly))
     case pt: PolyType =>
@@ -1549,7 +1453,6 @@ trait Applications extends Compatibility {
         .asInstanceOf[PolyType].flatten
     case _ =>
       tp
-  }
 
   /** Compare owner inheritance level.
     *  @param    sym1 The first owner
@@ -1618,7 +1521,7 @@ trait Applications extends Compatibility {
    *  an alternative that takes more implicit parameters wins over one
    *  that takes fewer.
    */
-  def compare(alt1: TermRef, alt2: TermRef)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
+  def compare(alt1: TermRef, alt2: TermRef)(using Context): Int = trace(i"compare($alt1, $alt2)", overload):
     record("resolveOverloaded.compare")
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
@@ -1638,7 +1541,7 @@ trait Applications extends Compatibility {
      *       b. as specific as a member of any other type `tp2` if `tp1` is compatible
      *          with `tp2`.
      */
-    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) {
+    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload):
       tp1 match
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
@@ -1650,7 +1553,7 @@ trait Applications extends Compatibility {
               isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
         case tp1: PolyType => // (2)
-          inContext(ctx.fresh.setExploreTyperState()) {
+          inContext(ctx.fresh.setExploreTyperState()):
             // Fully define the PolyType parameters so that the infos of the
             // tparams created below never contain TypeRefs whose underling types
             // contain uninstantiated TypeVars, this could lead to cycles in
@@ -1661,7 +1564,6 @@ trait Applications extends Compatibility {
 
             val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
             isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
-          }
         case _ => // (3)
           tp2 match
             case tp2: MethodType => true // (3a)
@@ -1670,7 +1572,6 @@ trait Applications extends Compatibility {
               explore(isAsSpecificValueType(tp1, instantiateWithTypeVars(tp2)))
             case _ => // 3b)
               isAsSpecificValueType(tp1, tp2)
-    }
 
     /** Test whether value type `tp1` is as specific as value type `tp2`.
      *  Let's abbreviate this to `tp1 <:s tp2`.
@@ -1705,24 +1606,20 @@ trait Applications extends Compatibility {
     def isAsSpecificValueType(tp1: Type, tp2: Type)(using Context) =
       if (ctx.mode.is(Mode.OldOverloadingResolution))
         isCompatible(tp1, tp2)
-      else {
-        val flip = new TypeMap {
-          def apply(t: Type) = t match {
+      else
+        val flip = new TypeMap:
+          def apply(t: Type) = t match
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
                 if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
                 else arg
               mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)
-          }
-        }
-        def prepare(tp: Type) = tp.stripTypeVar match {
+        def prepare(tp: Type) = tp.stripTypeVar match
           case tp: NamedType if tp.symbol.is(Module) && tp.symbol.sourceModule.is(Given) =>
             flip(tp.widen.widenToParents)
           case _ => flip(tp)
-        }
         (prepare(tp1) relaxed_<:< prepare(tp2)) || viewExists(tp1, tp2)
-      }
 
     /** Widen the result type of synthetic given methods from the implementation class to the
      *  type that's implemented. Example
@@ -1743,7 +1640,7 @@ trait Applications extends Compatibility {
      *  objects, since these are anyway taken to be more specific than methods
      *  (by condition 3a above).
      */
-    def widenGiven(tp: Type, alt: TermRef): Type = tp match {
+    def widenGiven(tp: Type, alt: TermRef): Type = tp match
       case mt: MethodType if mt.isImplicitMethod =>
         mt.derivedLambdaType(mt.paramNames, mt.paramInfos, widenGiven(mt.resultType, alt))
       case pt: PolyType =>
@@ -1751,9 +1648,8 @@ trait Applications extends Compatibility {
       case rt =>
         if alt.symbol.isCoDefinedGiven(rt.typeSymbol) then tp.widenToParents
         else tp
-    }
 
-    def compareWithTypes(tp1: Type, tp2: Type) = {
+    def compareWithTypes(tp1: Type, tp2: Type) =
       val ownerScore = compareOwner(alt1.symbol.maybeOwner, alt2.symbol.maybeOwner)
       def winsType1 = isAsSpecific(alt1, tp1, alt2, tp2)
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
@@ -1767,7 +1663,6 @@ trait Applications extends Compatibility {
         if (winsType2) 0 else 1
       else
         if (winsType2) -1 else 0
-    }
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
     else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
@@ -1784,40 +1679,33 @@ trait Applications extends Compatibility {
         else 1                                    // prefer 1st alternative with no implicits
       else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
       else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
-  }
   end compare
 
-  def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] = {
+  def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] =
     record("narrowMostSpecific")
-    alts match {
+    alts match
       case Nil => alts
       case _ :: Nil => alts
       case alt1 :: alt2 :: Nil =>
-        compare(alt1, alt2) match {
+        compare(alt1, alt2) match
           case  1 => alt1 :: Nil
           case -1 => alt2 :: Nil
           case  0 => alts
-        }
       case alt :: alts1 =>
-        def survivors(previous: List[TermRef], alts: List[TermRef]): List[TermRef] = alts match {
+        def survivors(previous: List[TermRef], alts: List[TermRef]): List[TermRef] = alts match
           case alt :: alts1 =>
-            compare(previous.head, alt) match {
+            compare(previous.head, alt) match
               case  1 => survivors(previous, alts1)
               case -1 => survivors(alt :: previous.tail, alts1)
               case  0 => survivors(alt :: previous, alts1)
-            }
           case Nil => previous
-        }
         val best :: rest = survivors(alt :: Nil, alts1): @unchecked
-        def asGood(alts: List[TermRef]): List[TermRef] = alts match {
+        def asGood(alts: List[TermRef]): List[TermRef] = alts match
           case alt :: alts1 =>
             if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)
           case nil =>
             Nil
-        }
         best :: asGood(rest)
-    }
-  }
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
@@ -1831,15 +1719,13 @@ trait Applications extends Compatibility {
      *  is a `IgnoredProto`, pick the underlying type instead.
      */
     def resultConforms(altSym: Symbol, altType: Type, resultType: Type)(using Context): Boolean =
-      resultType.revealIgnored match {
+      resultType.revealIgnored match
         case resultType: ValueType =>
-          altType.widen match {
+          altType.widen match
             case tp: PolyType => resultConforms(altSym, instantiateWithTypeVars(tp), resultType)
             case tp: MethodType => constrainResult(altSym, tp.resultType, resultType)
             case _ => true
-          }
         case _ => true
-      }
 
     /** If the `chosen` alternative has a result type incompatible with the expected result
      *  type `pt`, run overloading resolution again on all alternatives that do match `pt`.
@@ -1853,21 +1739,18 @@ trait Applications extends Compatibility {
      *  probability of pruning the search. result type comparisons are neither cheap nor
      *  do they prune much, on average.
      */
-    def adaptByResult(chosen: TermRef, alts: List[TermRef]) = pt match {
+    def adaptByResult(chosen: TermRef, alts: List[TermRef]) = pt match
       case pt: FunProto if !explore(resultConforms(chosen.symbol, chosen, pt.resultType)) =>
         val conformingAlts = alts.filterConserve(alt =>
           (alt ne chosen) && explore(resultConforms(alt.symbol, alt, pt.resultType)))
-        conformingAlts match {
+        conformingAlts match
           case Nil => chosen
           case alt2 :: Nil => alt2
           case alts2 =>
-            resolveOverloaded(alts2, pt) match {
+            resolveOverloaded(alts2, pt) match
               case alt2 :: Nil => alt2
               case _ => chosen
-            }
-        }
       case _ => chosen
-    }
 
     def resolve(alts: List[TermRef]): List[TermRef] =
       pt match
@@ -1891,23 +1774,20 @@ trait Applications extends Compatibility {
      *   - the result is applied to value arguments and alternative is not a method, or
      *   - the result is applied to type arguments and alternative is not polymorphic
      */
-    val tryApply: Type => Boolean = alt => pt match {
+    val tryApply: Type => Boolean = alt => pt match
       case pt: FunProto => !alt.widen.stripPoly.isInstanceOf[MethodType]
       case pt: PolyProto => !alt.widen.isInstanceOf[PolyType]
       case _ => false
-    }
 
     /** Replace each alternative by its apply members where necessary */
     def applyMembers(alt: TermRef): List[TermRef] =
-      if (tryApply(alt)) {
-        val qual = alt.widen match {
+      if (tryApply(alt))
+        val qual = alt.widen match
           case pt: PolyType =>
             wildApprox(pt.resultType)
           case _ =>
             alt
-        }
         qual.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
-      }
       else alt :: Nil
 
     /** Fall back from an apply method to its original alternative */
@@ -1916,10 +1796,9 @@ trait Applications extends Compatibility {
         alts.find(_.symbol == alt.prefix.termSymbol).getOrElse(alt)
       else alt
 
-    if (alts.exists(tryApply)) {
+    if (alts.exists(tryApply))
       val expanded = alts.flatMap(applyMembers)
       resolve(expanded).map(retract)
-    }
     else resolve(alts)
   end resolveOverloaded
 
@@ -1929,36 +1808,34 @@ trait Applications extends Compatibility {
    *  implicits and SAM conversions enabled, and once without.
    */
   private def resolveOverloaded1(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
-    trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
-    record(s"resolveOverloaded1", alts.length)
+    trace(i"resolve over $alts%, %, pt = $pt", typr, show = true):
+      record(s"resolveOverloaded1", alts.length)
 
-    def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
+      def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
     /** The shape of given tree as a type; cannot handle named arguments. */
-    def typeShape(tree: untpd.Tree): Type = tree match {
-      case untpd.Function(args, body) =>
-        defn.FunctionOf(
+      def typeShape(tree: untpd.Tree): Type = tree match
+        case untpd.Function(args, body) =>
+          defn.FunctionOf(
           args.map(Function.const(defn.AnyType)), typeShape(body),
           isContextual = untpd.isContextualClosure(tree))
-      case Match(EmptyTree, _) =>
-        defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
-      case _ =>
-        defn.NothingType
-    }
+        case Match(EmptyTree, _) =>
+          defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
+        case _ =>
+          defn.NothingType
 
     /** The shape of given tree as a type; is more expensive than
      *  typeShape but can can handle named arguments.
      */
-    def treeShape(tree: untpd.Tree): Tree = tree match {
-      case NamedArg(name, arg) =>
-        val argShape = treeShape(arg)
-        cpy.NamedArg(tree)(name, argShape).withType(argShape.tpe)
-      case _ =>
-        dummyTreeOfType(typeShape(tree))
-    }
+      def treeShape(tree: untpd.Tree): Tree = tree match
+        case NamedArg(name, arg) =>
+          val argShape = treeShape(arg)
+          cpy.NamedArg(tree)(name, argShape).withType(argShape.tpe)
+        case _ =>
+          dummyTreeOfType(typeShape(tree))
 
-    def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
-      alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
+      def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
+        alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
 
     /** Normalization steps before checking arguments:
      *
@@ -1968,106 +1845,105 @@ trait Applications extends Compatibility {
      *       is an n-ary function, and at least one alternative has a corresponding
      *       formal parameter that is a unary function.
      */
-    def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
-      case Block(Nil, expr) if !expr.isEmpty => normArg(alts, expr, idx)
-      case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
+      def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
+        case Block(Nil, expr) if !expr.isEmpty => normArg(alts, expr, idx)
+        case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
         // the arity of that function, otherise -1.
-        def paramCount(ref: TermRef) =
-          val formals = ref.widen.firstParamTypes
-          if formals.length > idx then
-            formals(idx) match
-              case defn.FunctionOf(args, _, _) => args.length
-              case _ => -1
-          else -1
+          def paramCount(ref: TermRef) =
+            val formals = ref.widen.firstParamTypes
+            if formals.length > idx then
+              formals(idx) match
+                case defn.FunctionOf(args, _, _) => args.length
+                case _ => -1
+            else -1
 
-        val numArgs = args.length
-        if numArgs != 1
-           && !alts.exists(paramCount(_) == numArgs)
-           && alts.exists(paramCount(_) == 1)
-        then
-          desugar.makeTupledFunction(args, body, isGenericTuple = true)
+          val numArgs = args.length
+          if numArgs != 1
+          && !alts.exists(paramCount(_) == numArgs)
+          && alts.exists(paramCount(_) == 1)
+          then
+            desugar.makeTupledFunction(args, body, isGenericTuple = true)
             // `isGenericTuple = true` is the safe choice here. It means the i'th tuple
             // element is selected with `(i)` instead of `_i`, which gives the same code
             // in the end, but the compilation time and the ascribed type are more involved.
             // It also means that -Ytest-pickler -Xprint-types fails for sources exercising
             // the idiom since after pickling the target is known, so _i is used directly.
-        else arg
-      case _ => arg
-    end normArg
+          else arg
+        case _ => arg
+      end normArg
 
-    val candidates = pt match {
-      case pt @ FunProto(args, resultType) =>
-        val numArgs = args.length
-        def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match {
-          case tp: MethodType =>
-            val ptypes = tp.paramInfos
-            val numParams = ptypes.length
-            def isVarArgs = ptypes.nonEmpty && ptypes.last.isRepeatedParam
-            def numDefaultParams =
-              if alt.symbol.hasDefaultParams then
-                val fn = ref(alt, needLoad = false)
-                ptypes.indices.count(n => !findDefaultGetter(fn, n, testOnly = true).isEmpty)
-              else 0
-            if numParams < numArgs then isVarArgs
-            else if numParams == numArgs then true
+      val candidates = pt match
+        case pt @ FunProto(args, resultType) =>
+          val numArgs = args.length
+          def sizeFits(alt: TermRef): Boolean = alt.widen.stripPoly match
+            case tp: MethodType =>
+              val ptypes = tp.paramInfos
+              val numParams = ptypes.length
+              def isVarArgs = ptypes.nonEmpty && ptypes.last.isRepeatedParam
+              def numDefaultParams =
+                if alt.symbol.hasDefaultParams then
+                  val fn = ref(alt, needLoad = false)
+                  ptypes.indices.count(n => !findDefaultGetter(fn, n, testOnly = true).isEmpty)
+                else 0
+              if numParams < numArgs then isVarArgs
+              else if numParams == numArgs then true
+              else
+                val numNecessaryArgs = numParams - numDefaultParams
+                if numNecessaryArgs <= numArgs then true
+                else if numNecessaryArgs == numArgs + 1 then isVarArgs
+                else false
+            case _ =>
+              numArgs == 0
+
+          def narrowBySize(alts: List[TermRef]): List[TermRef] =
+            alts.filterConserve(sizeFits(_))
+
+          def narrowByShapes(alts: List[TermRef]): List[TermRef] =
+            if args.exists(untpd.isFunctionWithUnknownParamType) then
+              val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
+              if hasNamedArg(args) then narrowByTrees(alts, normArgs.map(treeShape), resultType)
+              else narrowByTypes(alts, normArgs.map(typeShape), resultType)
             else
-              val numNecessaryArgs = numParams - numDefaultParams
-              if numNecessaryArgs <= numArgs then true
-              else if numNecessaryArgs == numArgs + 1 then isVarArgs
-              else false
-          case _ =>
-            numArgs == 0
-        }
+              alts
 
-        def narrowBySize(alts: List[TermRef]): List[TermRef] =
-          alts.filterConserve(sizeFits(_))
+          def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
+            alts.filterConserve(alt =>
+              isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
+            )
 
-        def narrowByShapes(alts: List[TermRef]): List[TermRef] =
-          if args.exists(untpd.isFunctionWithUnknownParamType) then
-            val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
-            if hasNamedArg(args) then narrowByTrees(alts, normArgs.map(treeShape), resultType)
-            else narrowByTypes(alts, normArgs.map(typeShape), resultType)
+          record("resolveOverloaded.FunProto", alts.length)
+          val alts1 = narrowBySize(alts)
+          overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
+          if isDetermined(alts1) then alts1
           else
-            alts
+            record("resolveOverloaded.narrowedBySize", alts1.length)
+            val alts2 = narrowByShapes(alts1)
+            overload.println(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
+            if isDetermined(alts2) then alts2
+            else
+              record("resolveOverloaded.narrowedByShape", alts2.length)
+              pretypeArgs(alts2, pt)
+              narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
 
-        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
-          alts.filterConserve(alt =>
-            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
-          )
-
-        record("resolveOverloaded.FunProto", alts.length)
-        val alts1 = narrowBySize(alts)
-        overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
-        if isDetermined(alts1) then alts1
-        else
-          record("resolveOverloaded.narrowedBySize", alts1.length)
-          val alts2 = narrowByShapes(alts1)
-          overload.println(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
-          if isDetermined(alts2) then alts2
+        case pt @ PolyProto(targs1, pt1) =>
+          val alts1 = alts.filterConserve(pt.canInstantiate)
+          if isDetermined(alts1) then alts1
           else
-            record("resolveOverloaded.narrowedByShape", alts2.length)
-            pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+            def withinBounds(alt: TermRef) = alt.widen match
+              case tp: PolyType =>
+                TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
+            val alts2 = alts1.filter(withinBounds)
+            if isDetermined(alts2) then alts2
+            else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
-      case pt @ PolyProto(targs1, pt1) =>
-        val alts1 = alts.filterConserve(pt.canInstantiate)
-        if isDetermined(alts1) then alts1
-        else
-          def withinBounds(alt: TermRef) = alt.widen match
-            case tp: PolyType =>
-              TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
-          val alts2 = alts1.filter(withinBounds)
-          if isDetermined(alts2) then alts2
-          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
+        case defn.FunctionOf(args, resultType, _) =>
+          narrowByTypes(alts, args, resultType)
 
-      case defn.FunctionOf(args, resultType, _) =>
-        narrowByTypes(alts, args, resultType)
-
-      case pt =>
-        val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
-        if (compat.isEmpty)
+        case pt =>
+          val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
+          if (compat.isEmpty)
           /*
            * the case should not be moved to the enclosing match
            * since SAM type must be considered only if there are no candidates
@@ -2076,85 +1952,81 @@ trait Applications extends Compatibility {
            *   def f: java.io.OutputStream = ???
            *   new java.io.ObjectOutputStream(f)
            */
-          pt match {
-            case SAMType(mtp) =>
-              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-            case _ =>
+            pt match
+              case SAMType(mtp) =>
+                narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+              case _ =>
               // pick any alternatives that are not methods since these might be convertible
               // to the expected type, or be used as extension method arguments.
-              val convertible = alts.filterNot(alt =>
+                val convertible = alts.filterNot(alt =>
                   normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
-              if convertible.length == 1 then convertible else compat
-          }
-        else compat
-    }
+                if convertible.length == 1 then convertible else compat
+          else compat
 
     /** The type of alternative `alt` after instantiating its first parameter
      *  clause with `argTypes`. In addition, if the resulting type is a PolyType
      *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
      */
-    def skipParamClause(argTypes: List[Type], typeArgs: List[Type])(alt: TermRef): Type =
-      def skip(tp: Type): Type = tp match {
-        case tp: PolyType =>
-          skip(tp.resultType) match
-            case NoType =>
-              NoType
-            case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
-              tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
-            case rt =>
-              tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
-        case tp: MethodType =>
-          tp.instantiate(argTypes)
-        case _ =>
-          NoType
-      }
-      skip(alt.widen)
+      def skipParamClause(argTypes: List[Type], typeArgs: List[Type])(alt: TermRef): Type =
+        def skip(tp: Type): Type = tp match
+          case tp: PolyType =>
+            skip(tp.resultType) match
+              case NoType =>
+                NoType
+              case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
+                tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
+              case rt =>
+                tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
+          case tp: MethodType =>
+            tp.instantiate(argTypes)
+          case _ =>
+            NoType
+        skip(alt.widen)
 
-    def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
-      case tp: MethodType => stripInferrable(tp.resultType).isInstanceOf[MethodType]
-      case _ => false
+      def resultIsMethod(tp: Type): Boolean = tp.widen.stripPoly match
+        case tp: MethodType => stripInferrable(tp.resultType).isInstanceOf[MethodType]
+        case _ => false
 
-    record("resolveOverloaded.narrowedApplicable", candidates.length)
-    if pt.unusableForInference then
+      record("resolveOverloaded.narrowedApplicable", candidates.length)
+      if pt.unusableForInference then
       // `pt` might have become erroneous by typing arguments of FunProtos.
       // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
-      candidates
-    else
-      val found = narrowMostSpecific(candidates)
-      if found.length <= 1 then found
+        candidates
       else
-        val deepPt = pt.deepenProto
-        deepPt match
-          case pt @ FunProto(_, PolyProto(targs, resType)) =>
+        val found = narrowMostSpecific(candidates)
+        if found.length <= 1 then found
+        else
+          val deepPt = pt.deepenProto
+          deepPt match
+            case pt @ FunProto(_, PolyProto(targs, resType)) =>
             // try to narrow further with snd argument list and following type params
-            resolveMapped(candidates,
+              resolveMapped(candidates,
               skipParamClause(pt.typedArgs().tpes, targs.tpes), resType)
-          case pt @ FunProto(_, resType: FunOrPolyProto) =>
+            case pt @ FunProto(_, resType: FunOrPolyProto) =>
             // try to narrow further with snd argument list
-            resolveMapped(candidates,
+              resolveMapped(candidates,
               skipParamClause(pt.typedArgs().tpes, Nil), resType)
-          case _ =>
+            case _ =>
             // prefer alternatives that need no eta expansion
-            val noCurried = alts.filterConserve(!resultIsMethod(_))
-            val noCurriedCount = noCurried.length
-            if noCurriedCount == 1 then
-              noCurried
-            else if noCurriedCount > 1 && noCurriedCount < alts.length then
-              resolveOverloaded1(noCurried, pt)
-            else
-              // prefer alternatves that match without default parameters
-              val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
-              val noDefaultsCount = noDefaults.length
-              if noDefaultsCount == 1 then
-                noDefaults
-              else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-                resolveOverloaded1(noDefaults, pt)
-              else if deepPt ne pt then
-                // try again with a deeper known expected type
-                resolveOverloaded1(alts, deepPt)
+              val noCurried = alts.filterConserve(!resultIsMethod(_))
+              val noCurriedCount = noCurried.length
+              if noCurriedCount == 1 then
+                noCurried
+              else if noCurriedCount > 1 && noCurriedCount < alts.length then
+                resolveOverloaded1(noCurried, pt)
               else
-                candidates
-    }
+              // prefer alternatves that match without default parameters
+                val noDefaults = alts.filterConserve(!_.symbol.hasDefaultParams)
+                val noDefaultsCount = noDefaults.length
+                if noDefaultsCount == 1 then
+                  noDefaults
+                else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
+                  resolveOverloaded1(noDefaults, pt)
+                else if deepPt ne pt then
+                // try again with a deeper known expected type
+                  resolveOverloaded1(alts, deepPt)
+                else
+                  candidates
   end resolveOverloaded1
 
   /** The largest suffix of `paramss` that has the same first parameter name as `t`,
@@ -2218,21 +2090,20 @@ trait Applications extends Compatibility {
    *  With `pretypeArgs`, we use the `Char => ?` as the expected type of the
    *  closure `x => x.toUpper`, which makes the code typecheck.
    */
-  private def pretypeArgs(alts: List[TermRef], pt: FunProto)(using Context): Unit = {
-    def recur(altFormals: List[List[Type]], args: List[untpd.Tree]): Unit = args match {
+  private def pretypeArgs(alts: List[TermRef], pt: FunProto)(using Context): Unit =
+    def recur(altFormals: List[List[Type]], args: List[untpd.Tree]): Unit = args match
       case arg :: args1 if !altFormals.exists(_.isEmpty) =>
         def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
         val formalsForArg: List[Type] = altFormals.map(_.head)
         def argTypesOfFormal(formal: Type): List[Type] =
-          formal.dealias match {
+          formal.dealias match
             case defn.FunctionOf(args, result, isImplicit) => args
             case defn.PartialFunctionOf(arg, result) => arg :: Nil
             case _ => Nil
-          }
         val formalParamTypessForArg: List[List[Type]] =
           formalsForArg.map(argTypesOfFormal)
         if (formalParamTypessForArg.forall(_.nonEmpty) &&
-            isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
+            isUniform(formalParamTypessForArg)((x, y) => x.length == y.length))
           val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
             // Given definitions above, for i = 1,...,m,
             //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
@@ -2251,61 +2122,50 @@ trait Applications extends Compatibility {
             else defn.FunctionOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
-            withMode(Mode.ImplicitsEnabled) {
+            withMode(Mode.ImplicitsEnabled):
               // We can cache the adapted argument here because the expected type
               // is a common type shared by all overloading candidates.
               pt.cacheArg(arg, pt.typedArg(arg, commonFormal))
-            }
-        }
         recur(altFormals.map(_.tail), args1)
       case _ =>
-    }
     recur(alts.map(_.widen.firstParamTypes), pt.args)
-  }
 
-  private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(using Context): List[T] = {
-    def targetClass(ts: List[T], cls: Symbol, intLitSeen: Boolean): Symbol = ts match {
+  private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(using Context): List[T] =
+    def targetClass(ts: List[T], cls: Symbol, intLitSeen: Boolean): Symbol = ts match
       case t :: ts1 =>
-        tpe(t).widenTermRefExpr match {
+        tpe(t).widenTermRefExpr match
           case ConstantType(c: Constant) if c.tag == IntTag =>
             targetClass(ts1, cls, true)
           case t =>
             val sym = t.classSymbol
             if (!sym.isNumericValueClass || cls.exists && cls != sym) NoSymbol
             else targetClass(ts1, sym, intLitSeen)
-        }
       case Nil =>
         if (cls != defn.IntClass && intLitSeen) cls else NoSymbol
-    }
     val cls = targetClass(ts, NoSymbol, false)
-    if (cls.exists) {
+    if (cls.exists)
       def lossOfPrecision(n: Int): Boolean =
         cls == defn.FloatClass && n.toFloat.toInt != n
       var canAdapt = true
       val ts1 = ts.mapConserve { t =>
-        tpe(t).widenTermRefExpr match {
+        tpe(t).widenTermRefExpr match
           case ConstantType(c: Constant) if c.tag == IntTag =>
             canAdapt &= c.convertTo(cls.typeRef) != null && !lossOfPrecision(c.intValue)
             if (canAdapt) adapt(t, cls.typeRef) else t
           case _ => t
-        }
       }
       if (canAdapt) ts1 else ts
-    }
     else ts
-  }
 
   /** If `trees` all have numeric value types, and they do not have all the same type,
    *  pick a common numeric supertype and try to convert all constant Int literals to this type.
    *  If the resulting trees all have the same type, return them instead of the original ones.
    */
-  def harmonize(trees: List[Tree])(using Context): List[Tree] = {
-    def adaptDeep(tree: Tree, pt: Type): Tree = tree match {
+  def harmonize(trees: List[Tree])(using Context): List[Tree] =
+    def adaptDeep(tree: Tree, pt: Type): Tree = tree match
       case cdef: CaseDef => tpd.cpy.CaseDef(cdef)(body = adaptDeep(cdef.body, pt))
       case _ => adapt(tree, pt)
-    }
     if (ctx.isAfterTyper) trees else harmonizeWith(trees)(_.tpe, adaptDeep)
-  }
 
   /** Apply a transformation `harmonize` on the results of operation `op`,
    *  unless the expected type `pt` is fully defined.
@@ -2324,13 +2184,12 @@ trait Applications extends Compatibility {
    *  which could lead to unsoundness.
    */
   def harmonic[T](harmonize: List[T] => List[T], pt: Type)(op: => List[T])(using Context): List[T] =
-    if (!isFullyDefined(pt, ForceDegree.none)) {
+    if (!isFullyDefined(pt, ForceDegree.none))
       val origConstraint = ctx.typerState.constraint
       val origElems = op
       val harmonizedElems = harmonize(origElems)
       if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
       harmonizedElems
-    }
     else op
 
   /** If all `types` are numeric value types, and they are not all the same type,
@@ -2347,7 +2206,7 @@ trait Applications extends Compatibility {
    *
    *  where <type-args> comes from `pt` if it is a (possibly ignored) PolyProto.
    */
-  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context): Tree = {
+  def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context): Tree =
     /** Integrate the type arguments (if any) from `currentPt` into `tree`, and produce
      *  an expected type that hides the appropriate amount of information through IgnoreProto.
      */
@@ -2362,12 +2221,10 @@ trait Applications extends Compatibility {
         (tree, currentPt)
 
     val (core, pt1) = normalizePt(methodRef, pt)
-    withMode(Mode.SynthesizeExtMethodReceiver) {
+    withMode(Mode.SynthesizeExtMethodReceiver):
       typed(
         untpd.Apply(core, untpd.TypedSplice(receiver, isExtensionReceiver = true) :: Nil),
         pt1, ctx.typerState.ownedVars)
-    }
-  }
 
   /** Assuming methodRef is a reference to an extension method defined e.g. as
    *
@@ -2404,14 +2261,13 @@ trait Applications extends Compatibility {
     val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
 
     try
-      val appliedTree = inContext(newCtx) {
+      val appliedTree = inContext(newCtx):
         // Introducing an auxiliary symbol in a temporary scope.
         // Entering the symbol indirectly by `newCtx.enter`
         // could instead add the symbol to the enclosing class
         // which could break the REPL.
         newCtx.scope.openForMutations.enter(truncatedSym)
         newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
-      }
       if appliedTree.tpe.exists && !appliedTree.tpe.isError then
         Some(replaceCallee(appliedTree, methodRefTree))
       else
@@ -2427,4 +2283,3 @@ trait Applications extends Compatibility {
     val captured = captureWildcards(tp)
     if (captured ne tp) && isCompatible(captured, pt) then captured
     else tp
-}

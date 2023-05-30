@@ -9,7 +9,7 @@ import core.Constants._
 
 object ConstantOps:
   extension (const: Constant)
-    def toSemanticConst(using Context): s.Constant = const.tag match {
+    def toSemanticConst(using Context): s.Constant = const.tag match
       case UnitTag => s.UnitConstant()
       case BooleanTag => s.BooleanConstant(const.booleanValue)
       case ByteTag => s.ByteConstant(const.byteValue)
@@ -22,4 +22,3 @@ object ConstantOps:
       case StringTag => s.StringConstant(const.stringValue)
       case NullTag => s.NullConstant()
       case _ => throw new Error(s"Constant ${const} can't be converted to Semanticdb Constant.")
-    }

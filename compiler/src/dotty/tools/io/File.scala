@@ -18,13 +18,12 @@ import scala.io.Codec
 /**
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-object File {
+object File:
   def pathSeparator: String = JavaIoFile.pathSeparator
   def separator: String     = JavaIoFile.separator
 
   def apply(path: String)(implicit codec: Codec): File = apply(Paths.get(path))
   def apply(path: JPath)(implicit codec: Codec): File = new File(path)
-}
 
 /** An abstraction for files.  For character data, a Codec
  *  can be supplied at either creation time or when a method
@@ -37,7 +36,7 @@ object File {
  *
  *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
  */
-class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
+class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars:
   override val creationCodec: io.Codec = constructorCodec
 
   override def addExtension(ext: String): File = super.addExtension(ext).toFile
@@ -75,24 +74,21 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
   def printWriter(): PrintWriter = new PrintWriter(bufferedWriter(), true)
 
   /** Creates a new file and writes all the Strings to it. */
-  def writeAll(strings: String*): Unit = {
+  def writeAll(strings: String*): Unit =
     val out = bufferedWriter()
     try strings foreach (out write _)
     finally out.close()
-  }
 
-  def appendAll(strings: String*): Unit = {
+  def appendAll(strings: String*): Unit =
     val out = bufferedWriter(append = true)
     try strings foreach (out write _)
     finally out.close()
-  }
 
   /** Calls println on each string (so it adds a newline in the PrintWriter fashion.) */
-  def printlnAll(strings: String*): Unit = {
+  def printlnAll(strings: String*): Unit =
     val out = printWriter()
     try strings foreach (out println _)
     finally out.close()
-  }
 
   def safeSlurp(): Option[String] =
     try Some(slurp())
@@ -100,7 +96,7 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
 
   /** Reflection since we're into the java 6+ API.
    */
-  def setExecutable(executable: Boolean, ownerOnly: Boolean = true): Boolean = {
+  def setExecutable(executable: Boolean, ownerOnly: Boolean = true): Boolean =
     type JBoolean = java.lang.Boolean
     val method =
       try classOf[JFile].getMethod("setExecutable", classOf[Boolean], classOf[Boolean])
@@ -108,5 +104,3 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) w
 
     try method.invoke(jpath.toFile, executable: JBoolean, ownerOnly: JBoolean).asInstanceOf[JBoolean].booleanValue
     catch { case _: Exception => false }
-  }
-}

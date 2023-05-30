@@ -201,7 +201,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         InstrumentedParts.singleExprTree(coverageCall, transformed)
 
     override def transform(tree: Tree)(using Context): Tree =
-      inContext(transformCtx(tree)) { // necessary to position inlined code properly
+      inContext(transformCtx(tree)): // necessary to position inlined code properly
         tree match
           // simple cases
           case tree: (Import | Export | Literal | This | Super | New) => tree
@@ -306,7 +306,6 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           // For everything else just recurse and transform
           case _ =>
             super.transform(tree)
-        }
 
     /** Transforms a `def lhs = rhs` and instruments its body (rhs).
       *

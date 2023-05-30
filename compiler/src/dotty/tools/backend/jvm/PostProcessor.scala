@@ -12,7 +12,7 @@ import scala.tools.asm.tree.ClassNode
  * Implements late stages of the backend that don't depend on a Global instance, i.e.,
  * optimizations, post-processing and classfile serialization and writing.
  */
-class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
+class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes):
   self =>
   import bTypes.*
   import frontendAccess.{backendReporting, compilerSettings}
@@ -21,9 +21,9 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   val backendUtils = new BackendUtils(this)
   val classfileWriter  = ClassfileWriter(frontendAccess)
 
-  def postProcessAndSendToDisk(generatedDefs: GeneratedDefs): Unit = {
+  def postProcessAndSendToDisk(generatedDefs: GeneratedDefs): Unit =
     val GeneratedDefs(classes, tasty) = generatedDefs
-    for (GeneratedClass(classNode, sourceFile, isArtifact, onFileCreated) <- classes) {
+    for (GeneratedClass(classNode, sourceFile, isArtifact, onFileCreated) <- classes)
       val bytes =
         try
           if !isArtifact then setSerializableLambdas(classNode)
@@ -38,39 +38,32 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
             backendReporting.error(em"Error while emitting ${classNode.name}\n${ex.getMessage}")
             null
 
-      if (bytes != null) {
+      if (bytes != null)
         if (AsmUtils.traceSerializedClassEnabled && classNode.name.nn.contains(AsmUtils.traceSerializedClassPattern))
           AsmUtils.traceClass(bytes)
 
         val clsFile = classfileWriter.writeClass(classNode.name.nn, bytes, sourceFile)
         if clsFile != null then onFileCreated(clsFile)
-      }
-    }
 
-    for (GeneratedTasty(classNode, binaryGen) <- tasty){
+    for (GeneratedTasty(classNode, binaryGen) <- tasty)
       classfileWriter.writeTasty(classNode.name.nn, binaryGen())
-    }
-  }
 
-  private def setSerializableLambdas(classNode: ClassNode): Unit = {
+  private def setSerializableLambdas(classNode: ClassNode): Unit =
     import backendUtils.{collectSerializableLambdas, addLambdaDeserialize}
     val serializableLambdas = collectSerializableLambdas(classNode)
     if serializableLambdas.nonEmpty then
       addLambdaDeserialize(classNode, serializableLambdas)
-  }
 
-  private def setInnerClasses(classNode: ClassNode): Unit = {
+  private def setInnerClasses(classNode: ClassNode): Unit =
     import backendUtils.{collectNestedClasses, addInnerClasses}
     classNode.innerClasses.nn.clear()
     val (declared, referred) = collectNestedClasses(classNode)
     addInnerClasses(classNode, declared, referred)
-  }
 
-  def serializeClass(classNode: ClassNode): Array[Byte] = {
+  def serializeClass(classNode: ClassNode): Array[Byte] =
     val cw = new ClassWriterWithBTypeLub(backendUtils.extraProc)
     classNode.accept(cw)
     cw.toByteArray.nn
-  }
 
   // -----------------------------------------------------------------------------------------
   // finding the least upper bound in agreement with the bytecode verifier (given two internal names handed by ASM)
@@ -84,14 +77,14 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
    *  The internal name of the least common ancestor of the types given by inameA and inameB.
    *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
    */
-  final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags) {
+  final class ClassWriterWithBTypeLub(flags: Int) extends ClassWriter(flags):
 
     /**
      * This method is used by asm when computing stack map frames. It is thread-safe: it depends
      * only on the BTypes component, which does not depend on global.
      * TODO @lry move to a different place where no global is in scope, on bTypes.
      */
-    override def getCommonSuperClass(inameA: String, inameB: String): String = {
+    override def getCommonSuperClass(inameA: String, inameB: String): String =
       // All types that appear in a class node need to have their ClassBType cached, see [[cachedClassBType]].
       val a = classBTypeFromInternalName(inameA)
       val b = classBTypeFromInternalName(inameB)
@@ -99,9 +92,6 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
       lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
-    }
-  }
-}
 
 /**
  * The result of code generation. [[isArtifact]] is `true` for mirror.
@@ -111,7 +101,6 @@ case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
 case class GeneratedDefs(classes: List[GeneratedClass], tasty: List[GeneratedTasty])
 
 // Temporary class, will be refactored in a future commit
-trait ClassWriterForPostProcessor {
+trait ClassWriterForPostProcessor:
   type InternalName = String
   def write(bytes: Array[Byte], className: InternalName, sourceFile: AbstractFile): Unit
-}

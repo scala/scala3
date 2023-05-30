@@ -88,8 +88,8 @@ object NamerOps:
   private def underlyingStableClassRef(tp: Type)(using Context): TypeRef | NoType.type = tp match
     case EtaExpansion(tp1) => underlyingStableClassRef(tp1)
     case _ => tp.underlyingClassRef(refinementOK = false) match
-      case ref: TypeRef if ref.prefix.isStable => ref
-      case _ => NoType
+        case ref: TypeRef if ref.prefix.isStable => ref
+        case _ => NoType
 
   /** Does symbol `sym` need constructor proxies to be generated? */
   def needsConstructorProxies(sym: Symbol)(using Context): Boolean =

@@ -25,7 +25,7 @@ import scala.collection.mutable.ListBuffer
 /** Helper object to generate generic java signatures, as defined in
  *  the Java Virtual Machine Specification, §4.3.4
  */
-object GenericSignatures {
+object GenericSignatures:
 
   /** Generate the signature for `sym0`, with type `info`, as defined in
    *  the Java Virtual Machine Specification, §4.3.4
@@ -40,19 +40,18 @@ object GenericSignatures {
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
   @noinline
-  private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] = {
+  private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] =
     val builder = new StringBuilder(64)
     val isTraitSignature = sym0.enclosingClass.is(Trait)
 
-    def superSig(cls: Symbol, parents: List[Type]): Unit = {
+    def superSig(cls: Symbol, parents: List[Type]): Unit =
       def isInterfaceOrTrait(sym: Symbol) = sym.is(PureInterface) || sym.is(Trait)
 
       // a signature should always start with a class
-      def ensureClassAsFirstParent(tps: List[Type]) = tps match {
+      def ensureClassAsFirstParent(tps: List[Type]) = tps match
         case Nil => defn.ObjectType :: Nil
         case head :: tail if isInterfaceOrTrait(head.typeSymbol) => defn.ObjectType :: tps
         case _ => tps
-      }
 
       val minParents = minimizeParents(cls, parents)
       val validParents =
@@ -63,7 +62,6 @@ object GenericSignatures {
 
       val ps = ensureClassAsFirstParent(validParents)
       ps.foreach(boxedSig)
-    }
 
     def boxedSig(tp: Type): Unit = jsig(tp.widenDealias, primitiveOK = false)
 
@@ -78,7 +76,7 @@ object GenericSignatures {
      *        Which should emit a signature `S <: A`. See the handling
      *        of `AndType` in `jsig` which already supports `def foo(x: A & Object)`.
      */
-    def boundsSig(bounds: List[Type]): Unit = {
+    def boundsSig(bounds: List[Type]): Unit =
       val (repr :: _, others) = splitIntersection(bounds): @unchecked
       builder.append(':')
 
@@ -94,7 +92,6 @@ object GenericSignatures {
         builder.append(':')
         boxedSig(tp)
       }
-    }
 
     /** The parents of this intersection where type parameters
      *  that cannot appear in the signature have been replaced
@@ -133,32 +130,28 @@ object GenericSignatures {
           else
             Right(parent))
 
-    def paramSig(param: TypeParamInfo): Unit = {
+    def paramSig(param: TypeParamInfo): Unit =
       builder.append(sanitizeName(param.paramName.lastPart))
       boundsSig(hiBounds(param.paramInfo.bounds))
-    }
 
     def polyParamSig(tparams: List[TypeParamInfo]): Unit =
-      if (tparams.nonEmpty) {
+      if (tparams.nonEmpty)
         builder.append('<')
         tparams.foreach(paramSig)
         builder.append('>')
-      }
 
-    def typeParamSig(name: Name): Unit = {
+    def typeParamSig(name: Name): Unit =
       builder.append(ClassfileConstants.TVAR_TAG)
       builder.append(sanitizeName(name))
       builder.append(';')
-    }
 
-    def methodResultSig(restpe: Type): Unit = {
+    def methodResultSig(restpe: Type): Unit =
       val finalType = restpe.finalResultType
       val sym = finalType.typeSymbol
       if (sym == defn.UnitClass || sym == defn.BoxedUnitModule || sym0.isConstructor)
         builder.append(ClassfileConstants.VOID_TAG)
       else
         jsig(finalType)
-    }
 
     // This works as long as mangled names are always valid valid Java identifiers,
     // if we change our name encoding, we'll have to `throw new UnknownSig` here for
@@ -168,24 +161,21 @@ object GenericSignatures {
     // Anything which could conceivably be a module (i.e. isn't known to be
     // a type parameter or similar) must go through here or the signature is
     // likely to end up with Foo<T>.Empty where it needs Foo<T>.Empty$.
-    def fullNameInSig(sym: Symbol): Unit = {
+    def fullNameInSig(sym: Symbol): Unit =
       assert(sym.isClass)
       val name = atPhase(genBCodePhase) { sanitizeName(sym.fullName).replace('.', '/') }
       builder.append('L').nn.append(name)
-    }
 
-    def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+    def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit =
       def argSig(tp: Type): Unit =
-        tp match {
+        tp match
           case bounds: TypeBounds =>
-            if (!(defn.AnyType <:< bounds.hi)) {
+            if (!(defn.AnyType <:< bounds.hi))
               builder.append('+')
               boxedSig(bounds.hi)
-            }
-            else if (!(bounds.lo <:< defn.NothingType)) {
+            else if (!(bounds.lo <:< defn.NothingType))
               builder.append('-')
               boxedSig(bounds.lo)
-            }
             else builder.append('*')
           case EtaExpansion(tp) =>
             argSig(tp)
@@ -195,14 +185,13 @@ object GenericSignatures {
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
               // Hence the widenNullaryMethod.
-        }
 
-      if (pre.exists) {
+      if (pre.exists)
         val preRebound = pre.baseType(sym.owner) // #2585
-        if (needsJavaSig(preRebound, Nil)) {
+        if (needsJavaSig(preRebound, Nil))
           val i = builder.length()
           jsig(preRebound)
-          if (builder.charAt(i) == 'L') {
+          if (builder.charAt(i) == 'L')
             builder.delete(builder.length() - 1, builder.length())// delete ';'
                                                                   // If the prefix is a module, drop the '$'. Classes (or modules) nested in modules
                                                                   // are separated by a single '$' in the filename: `object o { object i }` is o$i$.
@@ -217,26 +206,21 @@ object GenericSignatures {
             // TODO revisit this. Does it align with javac for code that can be expressed in both languages?
             val delimiter = if (builder.charAt(builder.length() - 1) == '>') '.' else '$'
             builder.append(delimiter).nn.append(sanitizeName(sym.name))
-          }
           else fullNameInSig(sym)
-        }
         else fullNameInSig(sym)
-      }
       else fullNameInSig(sym)
 
-      if (args.nonEmpty) {
+      if (args.nonEmpty)
         builder.append('<')
         args foreach argSig
         builder.append('>')
-      }
       builder.append(';')
-    }
 
     @noinline
-    def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit = {
+    def jsig(tp0: Type, toplevel: Boolean = false, primitiveOK: Boolean = true): Unit =
 
       val tp = tp0.dealias
-      tp match {
+      tp match
 
         case ref @ TypeParamRef(_: PolyType, _) =>
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
@@ -257,10 +241,9 @@ object GenericSignatures {
         case RefOrAppliedType(sym, pre, args) =>
           if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
             jsig(defn.TupleXXLClass.typeRef)
-          else if (isTypeParameterInSig(sym, sym0)) {
+          else if (isTypeParameterInSig(sym, sym0))
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
-          }
           else if (defn.specialErasure.contains(sym))
             jsig(defn.specialErasure(sym).nn.typeRef)
           else if (sym == defn.UnitClass || sym == defn.BoxedUnitModule)
@@ -273,17 +256,15 @@ object GenericSignatures {
             if (!primitiveOK) jsig(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
-          else if (ValueClasses.isDerivedValueClass(sym)) {
+          else if (ValueClasses.isDerivedValueClass(sym))
             val erasedUnderlying = fullErasure(tp)
             if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
               classSig(sym, pre, args)
             else
               jsig(erasedUnderlying, toplevel, primitiveOK)
-          }
-          else if (defn.isSyntheticFunctionClass(sym)) {
+          else if (defn.isSyntheticFunctionClass(sym))
             val erasedSym = defn.functionTypeErasure(sym).typeSymbol
             classSig(erasedSym, pre, if (erasedSym.typeParams.isEmpty) Nil else args)
-          }
           else if sym.isClass then
             classSig(sym, pre, args)
           else
@@ -310,13 +291,12 @@ object GenericSignatures {
 
         case mtpe: MethodType =>
           // erased method parameters do not make it to the bytecode.
-          def effectiveParamInfoss(t: Type)(using Context): List[List[Type]] = t match {
+          def effectiveParamInfoss(t: Type)(using Context): List[List[Type]] = t match
             case t: MethodType if t.hasErasedParams =>
               t.paramInfos.zip(t.erasedParams).collect{ case (i, false) => i }
                 :: effectiveParamInfoss(t.resType)
             case t: MethodType => t.paramInfos :: effectiveParamInfoss(t.resType)
             case _ => Nil
-          }
           val params = effectiveParamInfoss(mtpe).flatten
           val restpe = mtpe.finalResultType
           builder.append('(')
@@ -357,53 +337,45 @@ object GenericSignatures {
           val etp = erasure(tp)
           if (etp eq tp) throw new UnknownSig
           else jsig(etp, toplevel, primitiveOK)
-      }
-    }
     val throwsArgs = sym0.annotations flatMap ThrownException.unapply
     if (needsJavaSig(info, throwsArgs))
-      try {
+      try
         jsig(info, toplevel = true)
         throwsArgs.foreach { t =>
           builder.append('^')
           jsig(t, toplevel = true)
         }
         Some(builder.toString)
-      }
       catch { case _: UnknownSig => None }
     else None
-  }
 
   private class UnknownSig extends Exception
 
   /* Drop redundant types (ones which are implemented by some other parent) from the immediate parents.
    * This is important on Android because there is otherwise an interface explosion.
    */
-  private def minimizeParents(cls: Symbol, parents: List[Type])(using Context): List[Type] = if (parents.isEmpty) parents else {
+  private def minimizeParents(cls: Symbol, parents: List[Type])(using Context): List[Type] = if (parents.isEmpty) parents else
     // val requiredDirect: Symbol => Boolean = requiredDirectInterfaces.getOrElse(cls, Set.empty)
     var rest   = parents.tail
     var leaves = collection.mutable.ListBuffer.empty[Type] += parents.head
-    while (rest.nonEmpty) {
+    while (rest.nonEmpty)
       val candidate = rest.head
       val candidateSym = candidate.typeSymbol
       // val required = requiredDirect(candidateSym) || !leaves.exists(t => t.typeSymbol isSubClass candidateSym)
       val required = !leaves.exists(t => t.typeSymbol.isSubClass(candidateSym))
-      if (required) {
+      if (required)
         leaves = leaves filter { t =>
           val ts = t.typeSymbol
           !(ts.is(Trait) || ts.is(PureInterface)) || !candidateSym.isSubClass(ts)
           // requiredDirect(ts) || !ts.isTraitOrInterface || !candidateSym.isSubClass(ts)
         }
         leaves += candidate
-      }
       rest = rest.tail
-    }
     leaves.toList
-  }
 
-  private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match {
+  private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match
     case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
     case tp => tp :: Nil
-  }
 
 
   // only refer to type params that will actually make it into the sig, this excludes:
@@ -426,13 +398,12 @@ object GenericSignatures {
   // included (use pre.baseType(cls.owner)).
   //
   // This requires that cls.isClass.
-  private def rebindInnerClass(pre: Type, cls: Symbol)(using Context): Type = {
+  private def rebindInnerClass(pre: Type, cls: Symbol)(using Context): Type =
     val owner = cls.owner
     if (owner.is(PackageClass) || owner.isTerm) pre else cls.owner.info /* .tpe_* */
-  }
 
-  private object RefOrAppliedType {
-    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match {
+  private object RefOrAppliedType:
+    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
       case TypeParamRef(_, _) =>
         Some((tp.typeSymbol, tp, Nil))
       case TermParamRef(_, _) =>
@@ -444,18 +415,15 @@ object GenericSignatures {
         Some((pre.typeSymbol, pre, args))
       case _ =>
         None
-    }
-  }
 
-  private def needsJavaSig(tp: Type, throwsArgs: List[Type])(using Context): Boolean = !ctx.settings.YnoGenericSig.value && {
+  private def needsJavaSig(tp: Type, throwsArgs: List[Type])(using Context): Boolean = !ctx.settings.YnoGenericSig.value `&&`:
       def needs(tp: Type) = (new NeedsSigCollector).apply(false, tp)
       needs(tp) || throwsArgs.exists(needs)
-  }
 
-  private class NeedsSigCollector(using Context) extends TypeAccumulator[Boolean] {
+  private class NeedsSigCollector(using Context) extends TypeAccumulator[Boolean]:
     override def apply(x: Boolean, tp: Type): Boolean =
       if (!x)
-        tp.dealias match {
+        tp.dealias match
           case RefinedType(parent, refinedName, refinedInfo) =>
             val sym = parent.typeSymbol
             if (sym == defn.ArrayClass) foldOver(x, refinedInfo)
@@ -475,7 +443,4 @@ object GenericSignatures {
             true
           case tp =>
             foldOver(x, tp)
-        }
       else x
-  }
-}

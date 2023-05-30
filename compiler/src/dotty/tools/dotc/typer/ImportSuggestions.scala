@@ -59,14 +59,13 @@ trait ImportSuggestions:
     val seen = mutable.Set[TermRef]()
 
     def lookInside(root: Symbol)(using Context): Boolean =
-      explore {
+      explore:
         if root.is(Package) then root.isTerm && root.isCompleted
         else !root.name.is(FlatName)
           && !root.name.lastPart.contains('$')
           && root.is(ModuleVal, butNot = JavaDefined)
           // The implicits in `scalajs.js.|` are implementation details and shouldn't be suggested
           && !(root.name == nme.raw.BAR && ctx.settings.scalajs.value && root == JSDefinitions.jsdefn.PseudoUnionModule)
-      }
 
     def nestedRoots(site: Type)(using Context): List[Symbol] =
       val seenNames = mutable.Set[Name]()
@@ -157,13 +156,12 @@ trait ImportSuggestions:
     // Candidates that are already available without explicit import because they
     // are already provided by the context (imported or inherited) or because they
     // are in the implicit scope of `pt`.
-    val alreadyAvailableCandidates: Set[Symbol] = {
+    val alreadyAvailableCandidates: Set[Symbol] =
       val wildProto = wildApprox(pt)
       val contextualCandidates = ctx.implicits.eligible(wildProto)
       val implicitScopeCandidates = ctx.run.nn.implicitScope(wildProto).eligible
       val allCandidates = contextualCandidates ++ implicitScopeCandidates
       allCandidates.map(_.implicitRef.underlyingRef.symbol).toSet
-    }
 
     def testContext(): Context =
       ctx.fresh.retractMode(Mode.ImplicitsEnabled).setExploreTyperState()
@@ -173,7 +171,7 @@ trait ImportSuggestions:
      */
     def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
-      && inContext(testContext()) {
+      && inContext(testContext()):
         def test(pt: Type): Boolean = pt match
           case ViewProto(argType, OrType(rt1, rt2)) =>
             // Union types do not constrain results, since comparison with a union
@@ -185,7 +183,6 @@ trait ImportSuggestions:
           case _ =>
             normalize(ref, pt) <:< pt
         test(pt)
-      }
 
     /** Test whether a full given term can be synthesized that matches
      *  the expected type `pt`.
@@ -201,9 +198,9 @@ trait ImportSuggestions:
         val (expectedType, argument, kind) = pt match
           case ViewProto(argType, resType) =>
             (resType,
-             untpd.Ident(ref.name).withSpan(span).withType(argType),
-             if hasExtMethod(ref, resType) then Candidate.Extension
-             else Candidate.Conversion)
+            untpd.Ident(ref.name).withSpan(span).withType(argType),
+            if hasExtMethod(ref, resType) then Candidate.Extension
+            else Candidate.Conversion)
           case _ =>
             (pt, EmptyTree, Candidate.Value)
         val candidate = Candidate(ref, kind, 0)

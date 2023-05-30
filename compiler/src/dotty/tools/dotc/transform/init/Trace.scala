@@ -37,7 +37,7 @@ object Trace:
 
   inline def extendTrace[T](node: Tree)(using t: Trace)(op: Trace ?=> T): T = op(using t.add(node))
 
-  def buildStacktrace(trace: Trace, preamble: String)(using Context): String = if trace.isEmpty then "" else preamble + {
+  def buildStacktrace(trace: Trace, preamble: String)(using Context): String = if trace.isEmpty then "" else preamble `+`:
     var lastLineNum = -1
     var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
     trace.foreach { tree =>
@@ -66,7 +66,6 @@ object Trace:
     val sb = new StringBuilder
     for line <- lines do sb.append(line)
     sb.toString
-  }
 
   /** Used to underline source positions in the stack trace
    *  pos.source must exist

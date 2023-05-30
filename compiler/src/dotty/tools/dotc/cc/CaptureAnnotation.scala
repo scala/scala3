@@ -29,11 +29,10 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
 
   /** Reconstitute annotation tree from capture set */
   override def tree(using Context) =
-    val elems = refs.elems.toList.map {
+    val elems = refs.elems.toList.map:
       case cr: TermRef => ref(cr)
       case cr: TermParamRef => untpd.Ident(cr.paramName).withType(cr)
       case cr: ThisType => This(cr.cls)
-    }
     val arg = repeated(elems, TypeTree(defn.AnyType))
     New(symbol.typeRef, arg :: Nil)
 
@@ -59,10 +58,9 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     else EmptyAnnotation
 
   override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
-    refs.elems.exists {
+    refs.elems.exists:
       case TermParamRef(tl1, _) => tl eq tl1
       case _ => false
-    }
 
   override def toText(printer: Printer): Text = refs.toText(printer)
 

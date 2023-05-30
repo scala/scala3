@@ -15,7 +15,7 @@ import scala.annotation.internal.sharable
 
 /** The base class of all printers
  */
-abstract class Printer {
+abstract class Printer:
 
   private var prec: Precedence = GlobalPrec
 
@@ -37,12 +37,11 @@ abstract class Printer {
    *  If the presence of the parentheses depends on precedence, inserting them manually is most certainly a bug.
    *  Use `changePrec` instead to generate them exactly when needed.
    */
-  def atPrec(prec: Precedence)(op: => Text): Text = {
+  def atPrec(prec: Precedence)(op: => Text): Text =
     val outerPrec = this.prec
     this.prec = prec
     try op
     finally this.prec = outerPrec
-  }
 
   /** Generate text using `op`, assuming a given precedence level `prec`.
    *  If new level `prec` is lower than previous level, put text in parentheses.
@@ -190,11 +189,9 @@ abstract class Printer {
 
   /** The context in which this printer operates */
   def printerContext: Context
-}
-object Printer {
+object Printer:
 
   /** Debug hook; set to true if you want to see unique ids but cannot run with option
    *  -uniqid. A typical use case is for further exploration after a -Ytest-pickler failure.
    */
   @sharable var debugPrintUnique: Boolean = false
-}

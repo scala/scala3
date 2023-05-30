@@ -9,14 +9,13 @@ import Contexts._
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.
  */
-abstract class MacroTransform extends Phase {
+abstract class MacroTransform extends Phase:
 
   import ast.tpd._
 
-  override def run(using Context): Unit = {
+  override def run(using Context): Unit =
     val unit = ctx.compilationUnit
     unit.tpdTree = atPhase(transformPhase)(newTransformer.transform(unit.tpdTree))
-  }
 
   protected def newTransformer(using Context): Transformer
 
@@ -33,7 +32,7 @@ abstract class MacroTransform extends Phase {
 
     override def transform(tree: Tree)(using Context): Tree =
       try
-        tree match {
+        tree match
           case EmptyValDef =>
             tree
           case _: PackageDef | _: MemberDef =>
@@ -47,14 +46,11 @@ abstract class MacroTransform extends Phase {
               transformStats(impl.body, tree.symbol))
           case _ =>
             super.transform(tree)
-        }
-      catch {
+      catch
         case ex: TypeError =>
           report.error(ex, tree.srcPos)
           tree
-      }
 
     def transformSelf(vd: ValDef)(using Context): ValDef =
       cpy.ValDef(vd)(tpt = transform(vd.tpt))
   end Transformer
-}

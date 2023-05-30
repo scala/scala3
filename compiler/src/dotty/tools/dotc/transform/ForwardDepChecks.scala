@@ -19,21 +19,19 @@ object ForwardDepChecks:
 
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
-  class OptLevelInfo {
+  class OptLevelInfo:
     def levelAndIndex: LevelAndIndex = Map()
     def enterReference(sym: Symbol, span: Span): Unit = ()
-  }
 
   /** A class to help in forward reference checking */
   class LevelInfo(val outer: OptLevelInfo, val owner: Symbol, stats: List[Tree])(using Context)
-  extends OptLevelInfo {
+  extends OptLevelInfo:
     override val levelAndIndex: LevelAndIndex =
       stats.foldLeft(outer.levelAndIndex, 0) {(mi, stat) =>
         val (m, idx) = mi
-        val m1 = stat match {
+        val m1 = stat match
           case stat: MemberDef => m.updated(stat.symbol, (this: @unchecked, idx))
           case _ => m
-        }
         (m1, idx + 1)
       }._1
     var maxIndex: Int = Int.MinValue
@@ -42,14 +40,12 @@ object ForwardDepChecks:
 
     override def enterReference(sym: Symbol, span: Span): Unit =
       if (sym.exists && sym.owner.isTerm)
-        levelAndIndex.get(sym) match {
+        levelAndIndex.get(sym) match
           case Some((level, idx)) if (level.maxIndex < idx) =>
             level.maxIndex = idx
             level.refSpan = span
             level.refSym = sym
           case _ =>
-        }
-  }
 
   val NoLevelInfo: OptLevelInfo = new OptLevelInfo()
 
@@ -84,10 +80,9 @@ class ForwardDepChecks extends MiniPhase:
         case _ =>
     tree
 
-  override def transformIdent(tree: Ident)(using Context): Ident = {
+  override def transformIdent(tree: Ident)(using Context): Ident =
     currentLevel.enterReference(tree.symbol, tree.span)
     tree
-  }
 
   /** Check that self constructor call does not contain references to vals or defs
    *  defined later in the secondary constructor's right hand side. This is tricky
@@ -123,12 +118,10 @@ class ForwardDepChecks extends MiniPhase:
       checkSelfConstructorCall()
     tree
 
-  override def transformNew(tree: New)(using Context): New = {
+  override def transformNew(tree: New)(using Context): New =
     currentLevel.enterReference(tree.tpe.typeSymbol, tree.span)
-    tree.tpe.dealias.foreachPart {
+    tree.tpe.dealias.foreachPart:
       case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)
       case _ =>
-    }
     tree
-  }
 end ForwardDepChecks

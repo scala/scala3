@@ -15,14 +15,14 @@ import TypeErasure.transformInfo
 import Erasure.Boxing.adaptClosure
 
 /** A helper class for generating bridge methods in class `root`. */
-class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
+class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context):
   import ast.tpd._
 
   assert(ctx.phase == erasurePhase.next)
   private val preErasureCtx = ctx.withPhase(erasurePhase)
   private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
-  private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {
+  private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root):
 
     override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
       true
@@ -41,7 +41,6 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       OverridingPairs.isOverridingPair(sym1, sym2, parent.thisType)
-  }
 
   val site = root.thisType
 
@@ -65,25 +64,22 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    *  issue an error: A bridge would be needed yet it would clash with the member itself.
    *  See neg/i1905.scala
    */
-  private def addBridgeIfNeeded(member: Symbol, other: Symbol) = {
+  private def addBridgeIfNeeded(member: Symbol, other: Symbol) =
     def bridgeExists =
       bridgesScope.lookupAll(member.name).exists(bridge =>
         bridgeTarget(bridge) == member && bridge.signature == other.signature)
     def info(sym: Symbol)(using Context) = sym.info
-    def desc(sym: Symbol)= {
-      val infoStr = info(sym)(using preErasureCtx) match {
+    def desc(sym: Symbol)=
+      val infoStr = info(sym)(using preErasureCtx) match
         case ExprType(info) => i": $info"
         case info => info.show
-      }
       i"$sym$infoStr in ${sym.owner}"
-    }
-    if (member.signature == other.signature) {
+    if (member.signature == other.signature)
       if (!member.info.matches(other.info))
         report.error(em"""bridge generated for member ${desc(member)}
                       |which overrides ${desc(other)}
                       |clashes with definition of the member itself; both have erased type ${info(member)(using elimErasedCtx)}."""",
                   bridgePosFor(member))
-    }
     else if !inContext(preErasureCtx)(site.memberInfo(member).matches(site.memberInfo(other))) then
       // Neither symbol signatures nor pre-erasure types seen from root match; this means
       // according to Scala 2 semantics there is no override.
@@ -92,11 +88,10 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       report.log(i"suppress bridge in $root for ${member} in ${member.owner} and ${other.showLocated} since member infos ${site.memberInfo(member)} and ${site.memberInfo(other)} do not match")
     else if !bridgeExists then
       addBridge(member, other)
-  }
 
   /** Generate bridge between `member` and `other`
    */
-  private def addBridge(member: Symbol, other: Symbol) = {
+  private def addBridge(member: Symbol, other: Symbol) =
     val bridge = other.copy(
       owner = root,
       flags = (member.flags | Method | Bridge | Artifact) &~
@@ -111,10 +106,9 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     bridgeTarget(bridge) = member
     bridgesScope.enter(bridge)
 
-    if (other.owner == root) {
+    if (other.owner == root)
       root.delete(other)
       toBeRemoved += other
-    }
 
     val memberCount = contextResultCount(member)
 
@@ -167,7 +161,6 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       else etaExpand(ref, argss.head)
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))
-  }
 
   /** Add all necessary bridges to template statements `stats`, and remove at the same
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
@@ -180,4 +173,3 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       opc.next()
     if bridges.isEmpty then stats
     else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
-}

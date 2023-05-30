@@ -81,7 +81,7 @@ object LambdaLift:
             (fv, proxy)
         proxyMap(owner) = freeProxyPairs.toMap
 
-    private def liftedInfo(local: Symbol)(using Context): Type = local.info match {
+    private def liftedInfo(local: Symbol)(using Context): Type = local.info match
       case MethodTpe(pnames, ptypes, restpe) =>
         val ps = proxies(local)
         MethodType(
@@ -89,10 +89,9 @@ object LambdaLift:
           ps.map(_.info) ++ ptypes,
           restpe)
       case info => info
-    }
 
-    private def liftLocals()(using Context): Unit = {
-      for ((local, lOwner) <- deps.logicalOwner) {
+    private def liftLocals()(using Context): Unit =
+      for ((local, lOwner) <- deps.logicalOwner)
         val (newOwner, maybeStatic) =
           if lOwner is Package then (local.topLevelClass, JavaStatic)
           else (lOwner, EmptyFlags)
@@ -113,11 +112,9 @@ object LambdaLift:
           name = newName(local),
           initFlags = initFlags,
           info = liftedInfo(local)).installAfter(thisPhase)
-      }
       for (local <- deps.tracked)
         if (!deps.logicalOwner.contains(local))
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
-    }
 
     def currentEnclosure(using Context): Symbol =
       ctx.owner.enclosingMethodOrClass
@@ -125,53 +122,45 @@ object LambdaLift:
     private def inCurrentOwner(sym: Symbol)(using Context) =
       sym.enclosure == currentEnclosure
 
-    private def proxy(sym: Symbol)(using Context): Symbol = {
+    private def proxy(sym: Symbol)(using Context): Symbol =
       def liftedEnclosure(sym: Symbol) =
         deps.logicalOwner.getOrElse(sym, sym.enclosure)
-      def searchIn(enclosure: Symbol): Symbol = {
-        if (!enclosure.exists) {
+      def searchIn(enclosure: Symbol): Symbol =
+        if (!enclosure.exists)
           def enclosures(encl: Symbol): List[Symbol] =
             if (encl.exists) encl :: enclosures(liftedEnclosure(encl)) else Nil
           throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toList}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
-        }
         report.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
-        proxyMap get enclosure match {
+        proxyMap get enclosure match
           case Some(pmap) =>
-            pmap get sym match {
+            pmap get sym match
               case Some(proxy) => return proxy
               case none =>
-            }
           case none =>
-        }
         searchIn(liftedEnclosure(enclosure))
-      }
       if (inCurrentOwner(sym)) sym else searchIn(currentEnclosure)
-    }
 
-    def memberRef(sym: Symbol)(using Context): Tree = {
+    def memberRef(sym: Symbol)(using Context): Tree =
       val clazz = sym.enclosingClass
       val qual =
         if (clazz.isStaticOwner || ctx.owner.enclosingClass == clazz)
           singleton(clazz.thisType)
         else if (ctx.owner.isConstructor)
-          outerParam.get(ctx.owner) match {
+          outerParam.get(ctx.owner) match
             case Some(param) => outer.path(start = Ident(param.termRef), toCls = clazz)
             case _ => outer.path(toCls = clazz)
-          }
         else outer.path(toCls = clazz)
       thisPhase.transformFollowingDeep(qual.select(sym))
-    }
 
-    def proxyRef(sym: Symbol)(using Context): Tree = {
+    def proxyRef(sym: Symbol)(using Context): Tree =
       val psym = atPhase(thisPhase)(proxy(sym))
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
-    }
 
     def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
       val fvs = deps.freeVars(sym)
       if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
 
-    def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
+    def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match
       case Nil => tree
       case proxies =>
         val sym = tree.symbol
@@ -181,15 +170,14 @@ object LambdaLift:
           thisPhase.transformFollowingDeep(memberRef(field).becomes(ref(param)))
 
         /** Initialize proxy fields from proxy parameters and map `rhs` from fields to parameters */
-        def copyParams(rhs: Tree) = {
+        def copyParams(rhs: Tree) =
           val fvs = deps.freeVars(sym.owner).toList
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
           seq(classProxies.lazyZip(constrProxies).map(proxyInit), rhs)
-        }
 
-        tree match {
+        tree match
           case tree: DefDef =>
             cpy.DefDef(tree)(
                 paramss = tree.termParamss.map(freeParamDefs ++ _),
@@ -198,22 +186,18 @@ object LambdaLift:
                   else tree.rhs)
           case tree: Template =>
             cpy.Template(tree)(body = freeParamDefs ++ tree.body)
-        }
-    }
 
-    def liftDef(tree: MemberDef)(using Context): Tree = {
+    def liftDef(tree: MemberDef)(using Context): Tree =
       val buf = liftedDefs(tree.symbol.owner)
       thisPhase.transformFollowing(rename(tree, tree.symbol.name)).foreachInThicket(buf += _)
       EmptyTree
-    }
 
     def needsLifting(sym: Symbol): Boolean = deps.logicalOwner.contains(sym)
 
     // initialization
-    atPhase(thisPhase.next) {
+    atPhase(thisPhase.next):
       generateProxies()
       liftLocals()
-    }
   end Lifter
 end LambdaLift
 
@@ -275,9 +259,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def prepareForUnit(tree: Tree)(using Context): Context =
     ctx.fresh.updateStore(Lifter, new Lifter(thisPhase))
 
-  override def transformIdent(tree: Ident)(using Context): Tree = {
+  override def transformIdent(tree: Ident)(using Context): Tree =
     val sym = tree.symbol
-    tree.tpe match {
+    tree.tpe match
       case tpe @ TermRef(prefix, _) =>
         val lft = lifter
         if (prefix eq NoPrefix)
@@ -291,8 +275,6 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         else tree
       case _ =>
         tree
-    }
-  }
 
   override def transformSelect(tree: Select)(using Context): Tree =
     val denot = tree.denot
@@ -312,7 +294,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
   override def transformClosure(tree: Closure)(using Context): Closure =
     cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
 
-  override def transformDefDef(tree: DefDef)(using Context): Tree = {
+  override def transformDefDef(tree: DefDef)(using Context): Tree =
     val sym = tree.symbol
     val lft = lifter
     val paramsAdded =
@@ -320,21 +302,18 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       else tree
     if (lft.needsLifting(sym)) lft.liftDef(paramsAdded)
     else paramsAdded
-  }
 
-  override def transformReturn(tree: Return)(using Context): Tree = tree.expr match {
+  override def transformReturn(tree: Return)(using Context): Tree = tree.expr match
     case Block(stats, value) =>
       Block(stats, Return(value, tree.from)).withSpan(tree.span)
     case _ =>
       tree
-  }
 
-  override def transformTemplate(tree: Template)(using Context): Template = {
+  override def transformTemplate(tree: Template)(using Context): Template =
     val cls = ctx.owner
     val lft = lifter
     val impl = lft.addFreeParams(tree, lft.proxies(cls)).asInstanceOf[Template]
     cpy.Template(impl)(body = impl.body ++ lft.liftedDefs.remove(cls).get)
-  }
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     if (lifter.needsLifting(tree.symbol)) lifter.liftDef(tree) else tree

@@ -40,13 +40,11 @@ class CollectEntryPoints extends MiniPhase:
     val name = sym.fullName.stripModuleClassSuffix.toString
     Option.when(sym.isStatic && !sym.is(Flags.Trait) && ctx.platform.hasMainMethod(sym))(name)
 
-  private def registerEntryPoint(s: String)(using Context) = {
-    genBCodePhase match {
+  private def registerEntryPoint(s: String)(using Context) =
+    genBCodePhase match
       case genBCodePhase: GenBCode =>
         genBCodePhase.registerEntryPoint(s)
       case _ =>
-    }
-  }
 
 object CollectEntryPoints:
   val name: String = "Collect entry points"

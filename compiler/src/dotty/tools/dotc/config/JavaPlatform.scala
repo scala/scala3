@@ -9,16 +9,15 @@ import Symbols._, Types._, Contexts._, StdNames._
 import Flags._
 import transform.ExplicitOuter, transform.SymUtils._
 
-class JavaPlatform extends Platform {
+class JavaPlatform extends Platform:
 
   private var currentClassPath: Option[ClassPath] = None
 
-  def classPath(using Context): ClassPath = {
+  def classPath(using Context): ClassPath =
     if (currentClassPath.isEmpty)
       currentClassPath = Some(new PathResolver().result)
     val cp = currentClassPath.get
     cp
-  }
 
   // The given symbol is a method with the right name and signature to be a runnable java program.
   def isMainMethod(sym: Symbol)(using Context): Boolean =
@@ -28,12 +27,11 @@ class JavaPlatform extends Platform {
     })
 
   /** Update classpath with a substituted subentry */
-  def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit = currentClassPath.get match {
+  def updateClassPath(subst: Map[ClassPath, ClassPath]): Unit = currentClassPath.get match
     case AggregateClassPath(entries) =>
       currentClassPath = Some(AggregateClassPath(entries map (e => subst.getOrElse(e, e))))
     case cp: ClassPath =>
       currentClassPath = Some(subst.getOrElse(cp, cp))
-  }
 
   def rootLoader(root: TermSymbol)(using Context): SymbolLoader = new SymbolLoaders.PackageLoader(root, classPath)
 
@@ -50,7 +48,7 @@ class JavaPlatform extends Platform {
    *  to anything but other booleans, but it should be present in
    *  case this is put to other uses.
    */
-  def isMaybeBoxed(sym: ClassSymbol)(using Context): Boolean = {
+  def isMaybeBoxed(sym: ClassSymbol)(using Context): Boolean =
     val d = defn
     import d._
     (sym == ObjectClass) ||
@@ -59,11 +57,9 @@ class JavaPlatform extends Platform {
     (sym derivesFrom BoxedNumberClass) ||
     (sym derivesFrom BoxedCharClass) ||
     (sym derivesFrom BoxedBooleanClass)
-  }
 
   def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     true
 
   def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader =
     new ClassfileLoader(bin)
-}

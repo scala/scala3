@@ -13,27 +13,26 @@ import NameOps._
 import scala.io.Codec
 import NameTags.{SIGNED, TARGETSIGNED}
 
-class NameBuffer extends TastyBuffer(10000) {
+class NameBuffer extends TastyBuffer(10000):
   import NameBuffer._
 
   private val nameRefs = new mutable.LinkedHashMap[Name, NameRef]
 
-  def nameIndex(name: Name): NameRef = {
+  def nameIndex(name: Name): NameRef =
     val name1 = name.toTermName
-    nameRefs.get(name1) match {
+    nameRefs.get(name1) match
       case Some(ref) =>
         ref
       case None =>
-        name1 match {
+        name1 match
           case SignedName(original, Signature(params, result), target) =>
             nameIndex(original)
             if !original.matchesTargetName(target) then nameIndex(target)
             nameIndex(result)
-            params.foreach {
+            params.foreach:
               case param: TypeName =>
                 nameIndex(param)
               case _ =>
-            }
           case AnyQualifiedName(prefix, name) =>
             nameIndex(prefix); nameIndex(name)
           case AnyUniqueName(original, separator, num) =>
@@ -42,14 +41,11 @@ class NameBuffer extends TastyBuffer(10000) {
           case DerivedName(original, _) =>
             nameIndex(original)
           case _ =>
-        }
         val ref = NameRef(nameRefs.size)
         nameRefs(name1) = ref
         ref
-    }
-  }
 
-  private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit = {
+  private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit =
     val lengthAddr = currentAddr
     var i = 0
     while i < lengthWidth do
@@ -58,24 +54,21 @@ class NameBuffer extends TastyBuffer(10000) {
     op
     val length = currentAddr.index - lengthAddr.index - lengthWidth
     putNat(lengthAddr, length, lengthWidth)
-  }
 
   def writeNameRef(ref: NameRef): Unit = writeNat(ref.index)
   def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
-  def writeParamSig(paramSig: Signature.ParamSig): Unit ={
-    val encodedValue = paramSig match {
+  def writeParamSig(paramSig: Signature.ParamSig): Unit =
+    val encodedValue = paramSig match
       case paramSig: TypeName =>
         nameRefs(paramSig.toTermName).index
       case paramSig: Int =>
         -paramSig
-    }
     writeInt(encodedValue)
-  }
 
-  def pickleNameContents(name: Name): Unit = {
+  def pickleNameContents(name: Name): Unit =
     val tag = name.toTermName.info.kind.tag
-    name.toTermName match {
+    name.toTermName match
       case name: SimpleName =>
         writeByte(tag)
         val bytes =
@@ -88,11 +81,10 @@ class NameBuffer extends TastyBuffer(10000) {
         withLength { writeNameRef(prefix); writeNameRef(name) }
       case AnyUniqueName(original, separator, num) =>
         writeByte(tag)
-        withLength {
+        withLength:
           writeNameRef(separator)
           writeNat(num)
           if (!original.isEmpty) writeNameRef(original)
-        }
       case AnyNumberedName(original, num) =>
         writeByte(tag)
         withLength { writeNameRef(original); writeNat(num) }
@@ -109,21 +101,16 @@ class NameBuffer extends TastyBuffer(10000) {
       case DerivedName(original, _) =>
         writeByte(tag)
         withLength { writeNameRef(original) }
-    }
-  }
 
-  override def assemble(): Unit = {
+  override def assemble(): Unit =
     var i = 0
     for (name, ref) <- nameRefs do
       val ref = nameRefs(name)
       assert(ref.index == i)
       i += 1
       pickleNameContents(name)
-  }
-}
 
-object NameBuffer {
+object NameBuffer:
   private val maxIndexWidth = 3  // allows name indices up to 2^21.
   private val payloadBitsPerByte = 7 // determined by nat encoding in TastyBuffer
   private val maxNumInByte = (1 << payloadBitsPerByte) - 1
-}

@@ -267,7 +267,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass) { env =>
-          val included = cs.filter {
+          val included = cs.filter:
             case ref: TermRef =>
               (env.nestedInOwner || env.owner != ref.symbol.owner)
                 && env.owner.isContainedIn(ref.symbol.owner)
@@ -275,7 +275,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               (env.nestedInOwner || env.owner != ref.cls)
                 && env.owner.isContainedIn(ref.cls)
             case _ => false
-          }
           capt.println(i"Include call capture $included in ${env.owner}")
           checkSubset(included, env.captured, pos)
         }
@@ -299,7 +298,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  outcome of a `mightSubcapture` test. It picks `{f}` if this might subcapture Cr
      *  and Cr otherwise.
      */
-    override def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context) = {
+    override def recheckSelection(tree: Select, qualType: Type, name: Name, pt: Type)(using Context) =
       def disambiguate(denot: Denotation): Denotation = denot match
         case MultiDenotation(denot1, denot2) =>
           // This case can arise when we try to merge multiple types that have different
@@ -309,9 +308,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           // lead to a failure in disambiguation since neither alternative is better than the
           // other in a frozen constraint. An example test case is disambiguate-select.scala.
           // We address the problem by disambiguating while ignoring all capture sets as a fallback.
-          withMode(Mode.IgnoreCaptures) {
+          withMode(Mode.IgnoreCaptures):
             disambiguate(denot1).meet(disambiguate(denot2), qualType)
-          }
         case _ => denot
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
@@ -329,7 +327,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
         else
           selType
-    }//.showing(i"recheck sel $tree, $qualType = $result")
+    //.showing(i"recheck sel $tree, $qualType = $result")
 
     /** A specialized implementation of the apply rule.
      *
@@ -356,10 +354,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
-        mapArgUsing {
+        mapArgUsing:
           case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual) =>
             defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual)
-        }
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>
@@ -668,11 +665,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         (erefs /: erefs.elems) { (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
-              erefs ++ arefs.filter {
+              erefs ++ arefs.filter:
                 case aref: TermRef => eref.cls.isProperlyContainedIn(aref.symbol.owner)
                 case aref: ThisType => eref.cls.isProperlyContainedIn(aref.cls)
                 case _ => false
-              }
             case _ =>
               erefs
         }
@@ -751,7 +747,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val arrow = if covariant then "~~>" else "<~~"
         i"adapting $actual $arrow $expected"
 
-      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true) {
+      def adapt(actual: Type, expected: Type, covariant: Boolean): Type = trace(adaptInfo(actual, expected, covariant), recheckr, show = true):
         if expected.isInstanceOf[WildcardType] then actual
         else
           // Decompose the actual type into the inner shape type, the capture set and the box status
@@ -765,7 +761,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val insertBox = needsAdaptation && covariant != boxed
 
           // Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
-          val (styp1, leaked) = styp match {
+          val (styp1, leaked) = styp match
             case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
               adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
@@ -788,7 +784,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               )
             case _ =>
               (styp, CaptureSet())
-          }
 
           // Capture set of the term after adaptation
           val cs1 = cs ++ leaked
@@ -822,7 +817,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptedType(!boxed)
           else
             adaptedType(boxed)
-      }
 
       var actualw = actual.widenDealias
       actual match
@@ -846,7 +840,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
     */
     def checkOverrides = new TreeTraverser:
-      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self) {
+      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self):
         /** Check subtype with box adaptation.
         *  This function is passed to RefChecks to check the compatibility of overriding pairs.
         *  @param sym  symbol of the field definition that is being checked
@@ -868,7 +862,6 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case _ => adapted
             finally curEnv = saved
           actual1 frozen_<:< expected1
-      }
 
       def traverse(t: Tree)(using Context) =
         t match
@@ -880,14 +873,13 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       Setup(preRecheckPhase, thisPhase, recheckDef)(ctx.compilationUnit.tpdTree)
       //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
-      withCaptureSetsExplained {
+      withCaptureSetsExplained:
         super.checkUnit(unit)
         checkOverrides.traverse(unit.tpdTree)
         checkSelfTypes(unit.tpdTree)
         postCheck(unit.tpdTree)
         if ctx.settings.YccDebug.value then
           show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
-      }
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
@@ -898,10 +890,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def checkSelfTypes(unit: tpd.Tree)(using Context): Unit =
       val parentTrees = mutable.HashMap[Symbol, List[Tree]]()
-      unit.foreachSubTree {
+      unit.foreachSubTree:
         case cdef @ TypeDef(_, impl: Template) => parentTrees(cdef.symbol) = impl.parents
         case _ =>
-      }
       // Perform self type checking. The problem here is that `checkParents` compares a
       // self type of a subclass with the result of an asSeenFrom of the self type of the
       // superclass. That's no good. We need to constrain the original superclass self type
@@ -913,9 +904,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       // That means all capture sets of parent self types are constants, so mapping
       // them with asSeenFrom is OK.
       while parentTrees.nonEmpty do
-        val roots = parentTrees.keysIterator.filter {
+        val roots = parentTrees.keysIterator.filter:
           cls => !parentTrees(cls).exists(ptree => parentTrees.contains(ptree.tpe.classSymbol))
-        }
         assert(roots.nonEmpty)
         for case root: ClassSymbol <- roots do
           checkSelfAgainstParents(root, root.baseClasses)
@@ -1048,10 +1038,9 @@ class CheckCaptures extends Recheck, SymTransformer:
               ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
                 isLocal                         // local symbols still need explicit types if
                 && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
-            def isNotPureThis(ref: CaptureRef) = ref match {
+            def isNotPureThis(ref: CaptureRef) = ref match
               case ref: ThisType => !ref.cls.isPureClass
               case _ => true
-            }
             if !canUseInferred then
               val inferred = t.tpt.knownType
               def checkPure(tp: Type) = tp match

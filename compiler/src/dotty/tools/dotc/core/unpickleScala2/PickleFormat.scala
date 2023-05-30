@@ -13,7 +13,7 @@ package unpickleScala2
  *  @author Martin Odersky
  *  @version 1.0
  */
-object PickleFormat {
+object PickleFormat:
 
 /***************************************************
  * Symbol table attribute format:
@@ -218,7 +218,6 @@ object PickleFormat {
   inline val firstSymTag = NONEsym
   inline val lastSymTag = VALsym
   inline val lastExtSymTag = EXTMODCLASSref
-}
 
 
   //The following two are no longer accurate, because ANNOTATEDtpe,

@@ -42,14 +42,14 @@ import dotty.tools.dotc.transform.SymUtils._
  *
  *  @author Dmytro Petrashko
  */
-class SelectStatic extends MiniPhase with IdentityDenotTransformer {
+class SelectStatic extends MiniPhase with IdentityDenotTransformer:
   import ast.tpd._
 
   override def phaseName: String = SelectStatic.name
 
   override def description: String = SelectStatic.description
 
-  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree = {
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
     val sym = tree.symbol
     def isStaticMember =
       (sym is Flags.Module) && sym.initial.maybeOwner.initial.isStaticOwner ||
@@ -63,18 +63,16 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
       else tree
 
     normalize(tree1)
-  }
 
-  private def isStaticOwnerRef(tree: Tree)(using Context): Boolean = tree match {
+  private def isStaticOwnerRef(tree: Tree)(using Context): Boolean = tree match
     case Ident(_) =>
       tree.symbol.is(Module) && tree.symbol.moduleClass.isStaticOwner
     case Select(qual, _) =>
       isStaticOwnerRef(qual) && tree.symbol.is(Module) && tree.symbol.moduleClass.isStaticOwner
     case _ =>
       false
-  }
 
-  private def normalize(t: Tree)(using Context) = t match {
+  private def normalize(t: Tree)(using Context) = t match
     case Select(Block(stats, qual), nm) =>
       Block(stats, cpy.Select(t)(qual, nm))
     case Apply(Block(stats, qual), nm) =>
@@ -84,7 +82,6 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     case Closure(env, Block(stats, qual), tpt) =>
       Block(stats, Closure(env, qual, tpt))
     case _ => t
-  }
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     normalize(tree)
@@ -94,7 +91,6 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
 
   override def transformClosure(tree: tpd.Closure)(using Context): tpd.Tree =
     normalize(tree)
-}
 
 object SelectStatic:
   val name: String = "selectStatic"

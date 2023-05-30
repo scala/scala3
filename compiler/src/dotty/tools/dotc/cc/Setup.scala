@@ -460,7 +460,7 @@ extends tpd.TreeTraverser:
                   else
                     val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
                     psyms.map(psym => subst(psym.info).asInstanceOf[mt.PInfo]),
-                mt1 =>
+              mt1 =>
                   integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
               )
             case info: ExprType =>

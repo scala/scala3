@@ -4,7 +4,7 @@ package dotty.tools.dotc.util
  *  values 0..15 in a single Long.
  *
  */
-class SixteenNibbles(val bits: Long) extends AnyVal {
+class SixteenNibbles(val bits: Long) extends AnyVal:
   import SixteenNibbles._
 
   def apply(idx: Int): Int =
@@ -19,10 +19,8 @@ class SixteenNibbles(val bits: Long) extends AnyVal {
 
   override def toString: String =
     s"SixteenNibbles(${elements.mkString(", ")})"
-}
 
-object SixteenNibbles {
+object SixteenNibbles:
   inline val Width = 4
   inline val Mask = (1 << Width) - 1
   final val LongMask: Long = Mask.toLong
-}

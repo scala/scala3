@@ -121,7 +121,7 @@ object TypeEval:
           c <- extractorC(tp.args(2))
         yield runConstantOp(op(a, b, c))
 
-      trace(i"compiletime constant fold $tp", typr, show = true) {
+      trace(i"compiletime constant fold $tp", typr, show = true):
         val name = tycon.symbol.name
         val owner = tycon.symbol.owner
         val constantType =
@@ -240,7 +240,6 @@ object TypeEval:
           else None
 
         constantType.getOrElse(NoType)
-      }
 
     case _ => NoType
   end tryCompiletimeConstantFold

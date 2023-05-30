@@ -7,9 +7,9 @@ import ast.tpd._
 /** PostTyper doesn't run on java sources,
  *  but some checks still need to be applied.
  */
-object JavaChecks {
+object JavaChecks:
   /** Check the bounds of AppliedTypeTrees. */
-  private object AppliedTypeChecker extends TreeTraverser {
+  private object AppliedTypeChecker extends TreeTraverser:
     def traverse(tree: Tree)(using Context): Unit = tree match
       case tpt: TypeTree =>
         Checking.checkAppliedTypesIn(tpt)
@@ -17,10 +17,8 @@ object JavaChecks {
         Checking.checkAppliedType(tree)
       case _ =>
         traverseChildren(tree)
-  }
 
   /** Scan a tree and check it. */
   def check(tree: Tree)(using Context): Unit =
     report.debuglog("checking type bounds in " + ctx.compilationUnit.source.name)
     AppliedTypeChecker.traverse(tree)
-}

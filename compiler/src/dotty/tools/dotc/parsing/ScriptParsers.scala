@@ -43,11 +43,11 @@ import Parsers._
  *    </li>
  *  </ol>
  */
-object ScriptParsers {
+object ScriptParsers:
 
   import ast.untpd._
 
-  class ScriptParser(source: SourceFile)(using Context) extends Parser(source) {
+  class ScriptParser(source: SourceFile)(using Context) extends Parser(source):
 
     /** This is the parse entry point for code which is not self-contained, e.g.
      *  a script which is a series of template statements.  They will be
@@ -55,8 +55,6 @@ object ScriptParsers {
      *  by compilationUnit().
      */
     override def parse(): Tree = unsupported("parse")
-  }
-}
 
     /* TODO: reinstantiate
 

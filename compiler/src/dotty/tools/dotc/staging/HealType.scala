@@ -13,7 +13,7 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.util.SrcPos
 
-class HealType(pos: SrcPos)(using Context) extends TypeMap {
+class HealType(pos: SrcPos)(using Context) extends TypeMap:
 
   /** If the type refers to a locally defined symbol (either directly, or in a pickled type),
    *  check that its staging level matches the current level.
@@ -79,7 +79,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
    *  reference to a type alias containing the equivalent of `${summon[quoted.Type[T]]}.Underlying`.
    *  Emits an error if `T` cannot be healed and returns `T`.
    */
-  protected def tryHeal(tp: TypeRef): Type = {
+  protected def tryHeal(tp: TypeRef): Type =
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
@@ -99,13 +99,10 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
                       |
                       |""", pos)
         tp
-  }
 
-  private def levelError(sym: Symbol, tp: Type, pos: SrcPos): tp.type = {
+  private def levelError(sym: Symbol, tp: Type, pos: SrcPos): tp.type =
     report.error(
       em"""access to $sym from wrong staging level:
           | - the definition is at level ${levelOf(sym)},
           | - but the access is at level $level""", pos)
     tp
-  }
-}

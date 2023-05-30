@@ -1,6 +1,6 @@
 package dotty
 
-package object tools {
+package object tools:
 
   val ListOfNil: List[Nil.type] = Nil :: Nil
 
@@ -27,11 +27,10 @@ package object tools {
 
     inline def nen(y: T | Null): Boolean = !eqn(y)
 
-  object resultWrapper {
+  object resultWrapper:
     opaque type WrappedResult[T] = T
     private[tools] def unwrap[T](x: WrappedResult[T]): T = x
     private[tools] def wrap[T](x: T): WrappedResult[T] = x
-  }
   type WrappedResult[T] = resultWrapper.WrappedResult[T]
   def WrappedResult[T](x: T) = resultWrapper.wrap(x)
   def result[T](using x: WrappedResult[T]): T = resultWrapper.unwrap(x)
@@ -50,4 +49,3 @@ package object tools {
   // when handling stack overflows and every operation (including class loading)
   // risks failing.
   dotty.tools.dotc.core.handleRecursive
- }

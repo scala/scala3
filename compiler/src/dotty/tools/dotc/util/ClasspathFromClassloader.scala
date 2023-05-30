@@ -7,18 +7,18 @@ import java.nio.file.Paths
 
 import dotty.tools.repl.AbstractFileClassLoader
 
-object ClasspathFromClassloader {
+object ClasspathFromClassloader:
 
   /** Attempt to recreate a classpath from a classloader.
    *
    *  BEWARE: with exotic enough classloaders, this may not work at all or do
    *  the wrong thing.
    */
-  def apply(cl: ClassLoader): String = {
+  def apply(cl: ClassLoader): String =
     val classpathBuff = List.newBuilder[String]
-    def collectClassLoaderPaths(cl: ClassLoader): Unit = {
-      if (cl != null) {
-        cl match {
+    def collectClassLoaderPaths(cl: ClassLoader): Unit =
+      if (cl != null)
+        cl match
           case cl: URLClassLoader =>
             // This is wrong if we're in a subclass of URLClassLoader
             // that filters loading classes from its parent ¯\_(ツ)_/¯
@@ -44,10 +44,5 @@ object ClasspathFromClassloader {
               // HACK: For Java 9+, if the classloader is an AppClassLoader then use the classpath from the system
               // property `java.class.path`.
               classpathBuff += System.getProperty("java.class.path")
-        }
-      }
-    }
     collectClassLoaderPaths(cl)
     classpathBuff.result().mkString(java.io.File.pathSeparator)
-  }
-}

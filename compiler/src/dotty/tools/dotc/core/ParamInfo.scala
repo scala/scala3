@@ -8,7 +8,7 @@ import Variances.{Variance, varianceToInt}
 /** A common super trait of Symbol and LambdaParam.
  *  Used to capture the attributes of type parameters which can be implemented as either.
  */
-trait ParamInfo {
+trait ParamInfo:
 
   type ThisName <: Name
 
@@ -46,8 +46,6 @@ trait ParamInfo {
 
   /** A type that refers to the parameter */
   def paramRef(using Context): Type
-}
 
-object ParamInfo {
+object ParamInfo:
   type Of[N] = ParamInfo { type ThisName = N }
-}

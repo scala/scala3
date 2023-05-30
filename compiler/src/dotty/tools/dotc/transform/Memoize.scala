@@ -20,14 +20,12 @@ import sjs.JSSymUtils._
 
 import util.Store
 
-object Memoize {
+object Memoize:
   val name: String = "memoize"
   val description: String = "add private fields to getters and setters"
 
-  private final class MyState {
+  private final class MyState:
     val classesThatNeedReleaseFence = new util.HashSet[Symbol]
-  }
-}
 
 /** Provides the implementations of all getters and setters, introducing
  *  fields to hold the value accessed by them.
@@ -60,13 +58,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
-  override def checkPostCondition(tree: Tree)(using Context): Unit = {
-    def errorLackImplementation(t: Tree) = {
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
+    def errorLackImplementation(t: Tree) =
       val definingPhase = phaseOf(t.symbol.initial.validFor.firstPhaseId)
       throw new AssertionError(
         i"Non-deferred definition introduced by $definingPhase lacks implementation: $t")
-    }
-    tree match {
+    tree match
       case ddef: DefDef
         if !ddef.symbol.is(Deferred) &&
            !ddef.symbol.isConstructor && // constructors bodies are added later at phase Constructors
@@ -76,9 +73,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         if tdef.symbol.isClass && !tdef.symbol.is(Deferred) && tdef.rhs == EmptyTree =>
         errorLackImplementation(tdef)
       case _ =>
-    }
     super.checkPostCondition(tree)
-  }
 
   /** Should run after mixin so that fields get generated in the
    *  class that contains the concrete getter rather than the trait
@@ -97,10 +92,10 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     else
       tree
 
-  override def transformDefDef(tree: DefDef)(using Context): Tree = {
+  override def transformDefDef(tree: DefDef)(using Context): Tree =
     val sym = tree.symbol
 
-    def newField = {
+    def newField =
       assert(!sym.hasAnnotation(defn.ScalaStaticAnnot))
       val fieldType =
         if (sym.isGetter) sym.info.resultType
@@ -113,8 +108,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         info  = fieldType,
         coord = tree.span
       ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot, orNoneOf = defn.MetaAnnots)
-       .enteredAfter(thisPhase)
-    }
+      .enteredAfter(thisPhase)
 
     val NoFieldNeeded = Lazy | Deferred | JavaDefined | Inline
 
@@ -122,10 +116,9 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       if (sym eq defn.NothingClass) Throw(nullLiteral)
       else if (sym eq defn.NullClass) nullLiteral
       else if (sym eq defn.BoxedUnitClass) ref(defn.BoxedUnit_UNIT)
-      else {
+      else
         assert(false, s"$sym has no erased bottom tree")
         EmptyTree
-      }
 
     if sym.is(Accessor, butNot = NoFieldNeeded) then
       def adaptToField(field: Symbol, tree: Tree): Tree =
@@ -184,5 +177,4 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         tree
     else
       tree
-  }
 }

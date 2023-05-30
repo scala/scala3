@@ -66,25 +66,25 @@ object WConf:
   def parseFilter(s: String): Either[String, MessageFilter] = s match
     case "any" => Right(Any)
     case Splitter(filter, conf) => filter match
-      case "msg" => regex(conf).map(MessagePattern.apply)
-      case "id" => conf match
-        case ErrorId(num) =>
-          ErrorMessageID.fromErrorNumber(num.toInt) match
-            case Some(errId) if errId.isActive => Right(MessageID(errId))
-            case Some(errId) => Left(s"E${num} is marked as inactive.")
-            case _ => Left(s"Unknown error message number: E${num}")
-        case _ =>
-          Left(s"invalid error message id: $conf")
-      case "name" =>
-        try Right(MessageID(ErrorMessageID.valueOf(conf + "ID")))
-        catch case _: IllegalArgumentException => Left(s"unknown error message name: $conf")
+        case "msg" => regex(conf).map(MessagePattern.apply)
+        case "id" => conf match
+            case ErrorId(num) =>
+              ErrorMessageID.fromErrorNumber(num.toInt) match
+                case Some(errId) if errId.isActive => Right(MessageID(errId))
+                case Some(errId) => Left(s"E${num} is marked as inactive.")
+                case _ => Left(s"Unknown error message number: E${num}")
+            case _ =>
+              Left(s"invalid error message id: $conf")
+        case "name" =>
+          try Right(MessageID(ErrorMessageID.valueOf(conf + "ID")))
+          catch case _: IllegalArgumentException => Left(s"unknown error message name: $conf")
 
-      case "cat" => conf match
-        case "deprecation" => Right(Deprecated)
-        case "feature"     => Right(Feature)
-        case "unchecked"   => Right(Unchecked)
-        case _             => Left(s"unknown category: $conf")
-      case _ => Left(s"unknown filter: $filter")
+        case "cat" => conf match
+            case "deprecation" => Right(Deprecated)
+            case "feature"     => Right(Feature)
+            case "unchecked"   => Right(Unchecked)
+            case _             => Left(s"unknown category: $conf")
+        case _ => Left(s"unknown filter: $filter")
     case _ => Left(s"unknown filter: $s")
 
   def parsed(using Context): WConf =

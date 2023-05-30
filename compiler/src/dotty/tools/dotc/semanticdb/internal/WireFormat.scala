@@ -1,6 +1,6 @@
 package dotty.tools.dotc.semanticdb.internal
 
-object WireFormat {
+object WireFormat:
   val WIRETYPE_VARINT = 0
   val WIRETYPE_FIXED64 = 1
   val WIRETYPE_LENGTH_DELIMITED = 2
@@ -17,4 +17,3 @@ object WireFormat {
     (fieldNumber << TAG_TYPE_BITS) | wireType
 
   def getTagFieldNumber(tag: Int): Int = tag >>> TAG_TYPE_BITS
-}

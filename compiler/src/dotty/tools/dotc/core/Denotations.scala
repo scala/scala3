@@ -68,14 +68,14 @@ import collection.mutable.ListBuffer
  *                              annotations: List[Annotation]
  *  ClassDenotation          A denotation representing a single class definition.
  */
-object Denotations {
+object Denotations:
 
   implicit def eqDenotation: CanEqual[Denotation, Denotation] = CanEqual.derived
 
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
    */
-  abstract class PreDenotation {
+  abstract class PreDenotation:
 
     /** A denotation in the group exists */
     def exists: Boolean
@@ -129,14 +129,12 @@ object Denotations {
 
     /** The denotation with info(s) as seen from prefix type */
     def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
-      if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
+      if (Config.cacheAsSeenFrom)
+        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom)
           cachedAsSeenFrom = computeAsSeenFrom(pre)
           cachedPrefix = pre
           validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
-        }
         cachedAsSeenFrom
-      }
       else computeAsSeenFrom(pre)
 
     protected def computeAsSeenFrom(pre: Type)(using Context): AsSeenFromResult
@@ -146,7 +144,6 @@ object Denotations {
       if (!this.exists) that
       else if (!that.exists) this
       else DenotUnion(this, that)
-  }
 
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.
@@ -175,19 +172,17 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
+  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable:
     type AsSeenFromResult <: Denotation
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set myInfo to a LazyType.
      */
-    final def info(using Context): Type = {
-      def completeInfo = { // Written this way so that `info` is small enough to be inlined
+    final def info(using Context): Type =
+      def completeInfo = // Written this way so that `info` is small enough to be inlined
         this.asInstanceOf[SymDenotation].completeFrom(myInfo.asInstanceOf[LazyType]); info
-      }
       if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
-    }
 
     /** The type info, or, if this is a SymDenotation where the symbol
      *  is not yet completed, the completer
@@ -227,10 +222,9 @@ object Denotations {
     private var myValidFor: Period = Nowhere
 
     final def validFor: Period = myValidFor
-    final def validFor_=(p: Period): Unit = {
+    final def validFor_=(p: Period): Unit =
       myValidFor = p
       symbol.invalidateDenotCache()
-    }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
@@ -279,10 +273,9 @@ object Denotations {
      *  single-denotations that do not satisfy the predicate are left alone
      *  (whereas suchThat would map them to NoDenotation).
      */
-    inline def disambiguate(inline p: Symbol => Boolean)(using Context): SingleDenotation = this match {
+    inline def disambiguate(inline p: Symbol => Boolean)(using Context): SingleDenotation = this match
       case sdenot: SingleDenotation => sdenot
       case mdenot => suchThat(p) orElse NoQualifyingRef(alternatives)
-    }
 
     /** Return symbol in this denotation that satisfies the given predicate.
      *  if generateStubs is specified, return a stubsymbol if denotation is a missing ref.
@@ -296,7 +289,7 @@ object Denotations {
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
-      disambiguate(p) match {
+      disambiguate(p) match
         case m @ MissingRef(ownerd, name) if generateStubs =>
           if ctx.settings.YdebugMissingRefs.value then m.ex.printStackTrace()
           newStubSymbol(ownerd.symbol, name, source)
@@ -308,61 +301,51 @@ object Denotations {
           throw TypeError(msg)
         case denot =>
           denot.symbol
-      }
 
-    def requiredMethod(pname: PreName)(using Context): TermSymbol = {
+    def requiredMethod(pname: PreName)(using Context): TermSymbol =
       val name = pname.toTermName
       info.member(name).requiredSymbol("method", name, this)(_.is(Method)).asTerm
-    }
     def requiredMethodRef(name: PreName)(using Context): TermRef =
       requiredMethod(name).termRef
 
-    def requiredMethod(pname: PreName, argTypes: List[Type])(using Context): TermSymbol = {
+    def requiredMethod(pname: PreName, argTypes: List[Type])(using Context): TermSymbol =
       val name = pname.toTermName
       info.member(name).requiredSymbol("method", name, this, argTypes) { x =>
-        x.is(Method) && {
-          x.info.paramInfoss match {
+        x.is(Method) `&&`:
+          x.info.paramInfoss match
             case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
             case _ => false
-          }
-        }
       }.asTerm
-    }
     def requiredMethodRef(name: PreName, argTypes: List[Type])(using Context): TermRef =
       requiredMethod(name, argTypes).termRef
 
-    def requiredValue(pname: PreName)(using Context): TermSymbol = {
+    def requiredValue(pname: PreName)(using Context): TermSymbol =
       val name = pname.toTermName
       info.member(name).requiredSymbol("field or getter", name, this)(_.info.isParameterless).asTerm
-    }
     def requiredValueRef(name: PreName)(using Context): TermRef =
       requiredValue(name).termRef
 
-    def requiredClass(pname: PreName)(using Context): ClassSymbol = {
+    def requiredClass(pname: PreName)(using Context): ClassSymbol =
       val name = pname.toTypeName
       info.member(name).requiredSymbol("class", name, this)(_.isClass).asClass
-    }
 
-    def requiredType(pname: PreName)(using Context): TypeSymbol = {
+    def requiredType(pname: PreName)(using Context): TypeSymbol =
       val name = pname.toTypeName
       info.member(name).requiredSymbol("type", name, this)(_.isType).asType
-    }
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
      *  as a member of type `site` and that has a target name matching `targetName`, or
      *  `NoDenotation` if none exists.
      */
-    def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation = {
+    def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation =
       def qualifies(sym: Symbol) =
         site.memberInfo(sym).matchesLoosely(targetType) && sym.hasTargetName(targetName)
       if (isOverloaded)
-        atSignature(targetType.signature, targetName, site, relaxed = true) match {
+        atSignature(targetType.signature, targetName, site, relaxed = true) match
           case sd: SingleDenotation => sd.matchingDenotation(site, targetType, targetName)
           case md => md.suchThat(qualifies(_))
-        }
       else if (exists && !qualifies(symbol)) NoDenotation
       else asSingleDenotation
-    }
 
     /** Form a denotation by conjoining with denotation `that`.
      *
@@ -393,22 +376,20 @@ object Denotations {
      *  5. The symbol's visibility is strictly greater than the other one's.
      *  6. The symbol is a method, but the other one is not.
      */
-    def meet(that: Denotation, pre: Type, safeIntersection: Boolean = false)(using Context): Denotation = {
+    def meet(that: Denotation, pre: Type, safeIntersection: Boolean = false)(using Context): Denotation =
       /** Try to merge denot1 and denot2 without adding a new signature. */
-      def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
+      def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match
         case denot1 @ MultiDenotation(denot11, denot12) =>
           val d1 = mergeDenot(denot11, denot2)
           if (d1.exists) denot1.derivedUnionDenotation(d1, denot12)
-          else {
+          else
             val d2 = mergeDenot(denot12, denot2)
             if (d2.exists) denot1.derivedUnionDenotation(denot11, d2)
             else NoDenotation
-          }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
           else if denot1.matches(denot2) then mergeSingleDenot(denot1, denot2)
           else NoDenotation
-      }
 
       /** Try to merge single-denotations. */
       def mergeSingleDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
@@ -494,14 +475,12 @@ object Denotations {
       if (this eq that) this
       else if (!this.exists) that
       else if (!that.exists) this
-      else that match {
+      else that match
         case that: SingleDenotation =>
           val r = mergeDenot(this, that)
           if (r.exists) r else MultiDenotation(this, that)
         case that @ MultiDenotation(denot1, denot2) =>
           this.meet(denot1, pre).meet(denot2, pre)
-      }
-    }
 
     final def asSingleDenotation: SingleDenotation = asInstanceOf[SingleDenotation]
     final def asSymDenotation: SymDenotation = asInstanceOf[SymDenotation]
@@ -512,7 +491,6 @@ object Denotations {
 
     final def toDenot(pre: Type)(using Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
-  }
 
   // ------ Info meets ----------------------------------------------------
 
@@ -573,7 +551,7 @@ object Denotations {
   end infoMeet
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType) {
+  abstract class SingleDenotation(symbol: Symbol, initInfo: Type, isType: Boolean) extends Denotation(symbol, initInfo, isType):
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
@@ -687,13 +665,12 @@ object Denotations {
      */
     def initial: SingleDenotation =
       if (validFor.firstPhaseId <= 1) this
-      else {
+      else
         var current = nextInRun
         while (current.validFor.code > this.validFor.code) current = current.nextInRun
         current
-      }
 
-    def history: List[SingleDenotation] = {
+    def history: List[SingleDenotation] =
       val b = new ListBuffer[SingleDenotation]
       var current = initial
       while ({
@@ -703,12 +680,11 @@ object Denotations {
       })
       ()
       b.toList
-    }
 
     /** Invalidate all caches and fields that depend on base classes and their contents */
     def invalidateInheritedInfo(): Unit = ()
 
-    private def updateValidity()(using Context): this.type = {
+    private def updateValidity()(using Context): this.type =
       assert(
         ctx.runId >= validFor.runId
         || ctx.settings.YtestPickler.value // mixing test pickler with debug printing can travel back in time
@@ -724,7 +700,6 @@ object Denotations {
       })
       ()
       this
-    }
 
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
      *  if denotation is no longer valid.
@@ -736,8 +711,8 @@ object Denotations {
      *   - If the symbol did not have a denotation that was defined at the current phase
      *     return a NoDenotation instead.
      */
-    private def bringForward()(using Context): SingleDenotation = {
-      this match {
+    private def bringForward()(using Context): SingleDenotation =
+      this match
         case symd: SymDenotation =>
           if (stillValid(symd)) return updateValidity()
           if acceptStale(symd) && symd.initial.validFor.firstPhaseId <= ctx.lastPhaseId then
@@ -745,26 +720,22 @@ object Denotations {
             // visible at all. TabCompleteTests have examples where this happens.
             return symd.currentSymbol.denot.orElse(symd).updateValidity()
         case _ =>
-      }
       if (!symbol.exists) return updateValidity()
       if (!coveredInterval.containsPhaseId(ctx.phaseId)) return NoDenotation
       if (ctx.debug) traceInvalid(this)
       staleSymbolError
-    }
 
     /** The next defined denotation (following `nextInRun`) or an arbitrary
      *  undefined denotation, if all denotations in a `nextinRun` cycle are
      *  undefined.
      */
-    private def nextDefined: SingleDenotation = {
+    private def nextDefined: SingleDenotation =
       var p1 = this
       var p2 = nextInRun
-      while (p1.validFor == Nowhere && (p1 ne p2)) {
+      while (p1.validFor == Nowhere && (p1 ne p2))
         p1 = p1.nextInRun
         p2 = p2.nextInRun.nextInRun
-      }
       p1
-    }
 
     /** Skip any denotations that have been removed by an installAfter or that
      *  are otherwise undefined.
@@ -882,48 +853,41 @@ object Denotations {
      *  It's placed here because it needs access to private fields of SingleDenotation.
      *  @pre  Can only be called in `phase.next`.
      */
-    protected def installAfter(phase: DenotTransformer)(using Context): Unit = {
+    protected def installAfter(phase: DenotTransformer)(using Context): Unit =
       val targetId = phase.next.id
       if (ctx.phaseId != targetId) atPhase(phase.next)(installAfter(phase))
-      else {
+      else
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId >= targetId)
           current.replaceWith(this)
-        else {
+        else
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
           insertAfter(current)
-        }
-      }
       // printPeriods(this)
-    }
 
     /** Apply a transformation `f` to all denotations in this group that start at or after
      *  given phase. Denotations are replaced while keeping the same validity periods.
      */
-    protected def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(using Context): Unit = {
+    protected def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(using Context): Unit =
       var current = symbol.current
       while (current.validFor.firstPhaseId < phase.id && (current.nextInRun.validFor.code > current.validFor.code))
         current = current.nextInRun
       var hasNext = true
-      while ((current.validFor.firstPhaseId >= phase.id) && hasNext) {
+      while ((current.validFor.firstPhaseId >= phase.id) && hasNext)
         val current1: SingleDenotation = f(current.asSymDenotation)
-        if (current1 ne current) {
+        if (current1 ne current)
           current1.validFor = current.validFor
           current.replaceWith(current1)
-        }
         hasNext = current1.nextInRun.validFor.code > current1.validFor.code
         current = current1.nextInRun
-      }
-    }
 
     /** Insert this denotation so that it follows `prev`. */
-    private def insertAfter(prev: SingleDenotation) = {
+    private def insertAfter(prev: SingleDenotation) =
       this.nextInRun = prev.nextInRun
       prev.nextInRun = this
-    }
 
     /** Insert this denotation instead of `old`.
      *  Also ensure that `old` refers with `nextInRun` to this denotation
@@ -934,7 +898,7 @@ object Denotations {
      *  The code to achieve this is subtle in that it works correctly
      *  whether the replaced denotation is the only one in its cycle or not.
      */
-    private[dotc] def replaceWith(newd: SingleDenotation): Unit = {
+    private[dotc] def replaceWith(newd: SingleDenotation): Unit =
       var prev = this
       while (prev.nextInRun ne this) prev = prev.nextInRun
       // order of next two assignments is important!
@@ -942,23 +906,20 @@ object Denotations {
       newd.nextInRun = nextInRun
       validFor = Nowhere
       nextInRun = newd
-    }
 
     def staleSymbolError(using Context): Nothing =
       throw new StaleSymbol(staleSymbolMsg)
 
-    def staleSymbolMsg(using Context): String = {
-      def ownerMsg = this match {
+    def staleSymbolMsg(using Context): String =
+      def ownerMsg = this match
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
-      }
       s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${validFor}, is referred to in run ${ctx.period}"
-    }
 
     /** The period (interval of phases) for which there exists
      *  a valid denotation in this flock.
      */
-    def coveredInterval(using Context): Period = {
+    def coveredInterval(using Context): Period =
       var cur = this
       var cnt = 0
       var interval = validFor
@@ -971,7 +932,6 @@ object Denotations {
       })
       ()
       interval
-    }
 
     /** Show declaration string; useful for showing declarations
      *  as seen from subclasses.
@@ -982,7 +942,7 @@ object Denotations {
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
 
-    def definedPeriodsString: String = {
+    def definedPeriodsString: String =
       var sb = new StringBuilder()
       var cur = this
       var cnt = 0
@@ -995,7 +955,6 @@ object Denotations {
       })
       ()
       sb.toString
-    }
 
     // ------ PreDenotation ops ----------------------------------------------
 
@@ -1026,7 +985,7 @@ object Denotations {
           case FullMatch =>
             !alwaysCompareTypes || info.matches(other.info)
           case MethodNotAMethodMatch =>
-            !ctx.erasedTypes && {
+            !ctx.erasedTypes `&&`:
               // A Scala zero-parameter method and a Scala non-method always match.
               if !thisLanguage.isJava && !otherLanguage.isJava then
                 true
@@ -1039,7 +998,6 @@ object Denotations {
                 symbol.is(Method)
               else // otherLanguage.isJava
                 other.symbol.is(Method)
-            }
           case ParamMatch =>
             // The signatures do not tell us enough to be sure about matching
             !ctx.erasedTypes && info.matches(other.info)
@@ -1067,12 +1025,11 @@ object Denotations {
 
     type AsSeenFromResult = SingleDenotation
 
-    protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
+    protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation =
       val symbol = this.symbol
-      val owner = this match {
+      val owner = this match
         case thisd: SymDenotation => thisd.owner
         case _ => if (symbol.exists) symbol.owner else NoSymbol
-      }
 
       /** The derived denotation with the given `info` transformed with `asSeenFrom`.
        *
@@ -1115,7 +1072,6 @@ object Denotations {
         then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
         else derived(symbol.info)
       else derived(symbol.info)
-    }
 
     /** The argument bounds, possibly intersected with the parameter's info TypeBounds,
      *  if the latter is not F-bounded and does not refer to other type parameters
@@ -1136,18 +1092,16 @@ object Denotations {
           if tp.symbol.isAllOf(ClassTypeParam) && tp.symbol.owner == cls => true
           case _ => foldOver(x, tp)
       acc(false, symbol.info)
-  }
 
   abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type)
-  extends SingleDenotation(symbol, initInfo, initInfo.isInstanceOf[TypeType]) {
+  extends SingleDenotation(symbol, initInfo, initInfo.isInstanceOf[TypeType]):
     def infoOrCompleter: Type = initInfo
-  }
 
   class UniqueRefDenotation(
     symbol: Symbol,
     initInfo: Type,
     initValidFor: Period,
-    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix):
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
     protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
@@ -1155,34 +1109,30 @@ object Denotations {
         new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
       else
         new UniqueRefDenotation(s, i, validFor, pre)
-  }
 
   class JointRefDenotation(
     symbol: Symbol,
     initInfo: Type,
     initValidFor: Period,
     prefix: Type,
-    override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix):
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
     protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
       new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
-  }
 
-  class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
+  class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType):
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
     protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
       this
-  }
 
   /** An error denotation that provides more info about the missing reference.
    *  Produced by staticRef, consumed by requiredSymbol.
    */
-  case class MissingRef(val owner: SingleDenotation, name: Name)(using Context) extends ErrorDenotation {
+  case class MissingRef(val owner: SingleDenotation, name: Name)(using Context) extends ErrorDenotation:
     val ex: Exception = new Exception // DEBUG
-  }
 
   /** An error denotation that provides more info about alternatives
    *  that were found but that do not qualify.
@@ -1199,7 +1149,7 @@ object Denotations {
 
   // --- Overloaded denotations and predenotations -------------------------------------------------
 
-  trait MultiPreDenotation extends PreDenotation {
+  trait MultiPreDenotation extends PreDenotation:
     def denot1: PreDenotation
     def denot2: PreDenotation
 
@@ -1221,9 +1171,8 @@ object Denotations {
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =
       if ((denot1 eq this.denot1) && (denot2 eq this.denot2)) this
       else denot1 union denot2
-  }
 
-  final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation {
+  final case class DenotUnion(denot1: PreDenotation, denot2: PreDenotation) extends MultiPreDenotation:
     def exists: Boolean = true
     def toDenot(pre: Type)(using Context): Denotation =
       denot1.toDenot(pre).meet(denot2.toDenot(pre), pre)
@@ -1232,11 +1181,10 @@ object Denotations {
     type AsSeenFromResult = PreDenotation
     def computeAsSeenFrom(pre: Type)(using Context): PreDenotation =
       derivedUnion(denot1.asSeenFrom(pre), denot2.asSeenFrom(pre))
-  }
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType, isType = false) with MultiPreDenotation {
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType, isType = false) with MultiPreDenotation:
     validFor = denot1.validFor & denot2.validFor
 
     final def infoOrCompleter: Type = multiHasNot("info")
@@ -1252,7 +1200,7 @@ object Denotations {
       derivedUnionDenotation(denot1.current, denot2.current)
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       denot1.altsWith(p) ++ denot2.altsWith(p)
-    def suchThat(p: Symbol => Boolean)(using Context): SingleDenotation = {
+    def suchThat(p: Symbol => Boolean)(using Context): SingleDenotation =
       val sd1 = denot1.suchThat(p)
       val sd2 = denot2.suchThat(p)
       if sd1.exists then
@@ -1263,18 +1211,16 @@ object Denotations {
                 |  ${denot2.symbol.showLocated}: ${denot2.info}""")
         else sd1
       else sd2
-    }
     override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation =
       derivedUnionDenotation(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
-    def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation = {
+    def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation =
       val d1 = denot1 accessibleFrom (pre, superAccess)
       val d2 = denot2 accessibleFrom (pre, superAccess)
       if (!d1.exists) d2
       else if (!d2.exists) d1
       else derivedUnionDenotation(d1, d2)
-    }
     def mapInfo(f: Type => Type)(using Context): Denotation =
       derivedUnionDenotation(denot1.mapInfo(f), denot2.mapInfo(f))
     def derivedUnionDenotation(d1: Denotation, d2: Denotation): Denotation =
@@ -1290,33 +1236,29 @@ object Denotations {
     private def multiHasNot(op: String): Nothing =
       throw new UnsupportedOperationException(
         s"multi-denotation with alternatives $alternatives does not implement operation $op")
-  }
 
   /** The current denotation of the static reference given by path,
     *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
     *  if generateStubs is set, generates stubs for missing top-level symbols
     */
-  def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation = {
-    def select(prefix: Denotation, selector: Name): Denotation = {
+  def staticRef(path: Name, generateStubs: Boolean = true, isPackage: Boolean = false)(using Context): Denotation =
+    def select(prefix: Denotation, selector: Name): Denotation =
       val owner = prefix.disambiguate(_.info.isParameterless)
       def isPackageFromCoreLibMissing: Boolean =
         // if the scala package is missing, the stdlib must be missing
         owner.symbol == defn.RootClass && selector == nme.scala
-      if (owner.exists) {
+      if (owner.exists)
         val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
         if (result.exists) result
         else if (isPackageFromCoreLibMissing) throw new MissingCoreLibraryException(selector.toString)
-        else {
+        else
           val alt =
             if (generateStubs) missingHook(owner.symbol.moduleClass, selector)
             else NoSymbol
           if (alt.exists) alt.denot
           else MissingRef(owner, selector)
-        }
-      }
       else owner
-    }
-    def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match {
+    def recur(path: Name, wrap: TermName => Name = identity): Denotation = path match
       case path: TypeName =>
         recur(path.toTermName, n => n.toTypeName)
       case ModuleClassName(underlying) =>
@@ -1326,7 +1268,7 @@ object Denotations {
       case qn @ AnyQualifiedName(prefix, _) =>
         recur(prefix, n => wrap(qn.info.mkString(n).toTermName))
       case path: SimpleName =>
-        def recurSimple(len: Int, wrap: TermName => Name): Denotation = {
+        def recurSimple(len: Int, wrap: TermName => Name): Denotation =
           val point = path.lastIndexOf('.', len - 1)
           val selector = wrap(path.slice(point + 1, len).asTermName)
           val prefix =
@@ -1334,14 +1276,11 @@ object Denotations {
             else if (selector.isTermName) defn.RootClass.denot
             else defn.EmptyPackageClass.denot
           select(prefix, selector)
-        }
         recurSimple(path.length, wrap)
-    }
 
     val run = ctx.run
     if run == null then recur(path)
     else run.staticRefs.getOrElseUpdate(path, recur(path))
-  }
 
   /** If we are looking for a non-existing term name in a package,
     *  assume it is a package for which we do not have a directory and
@@ -1354,8 +1293,6 @@ object Denotations {
       NoSymbol
 
   /** An exception for accessing symbols that are no longer valid in current run */
-  class StaleSymbol(msg: => String) extends Exception {
+  class StaleSymbol(msg: => String) extends Exception:
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
-  }
-}

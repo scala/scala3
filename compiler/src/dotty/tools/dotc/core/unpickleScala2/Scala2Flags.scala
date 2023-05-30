@@ -11,7 +11,7 @@ package unpickleScala2
 
 /** Scala2 flags, adapted from https://github.com/scala/scala/blob/2.11.x/src/reflect/scala/reflect/internal/Flags.scala
  */
-object Scala2Flags {
+object Scala2Flags:
   inline val IMPLICIT      = 1 << 9
   inline val FINAL         = 1 << 5    // May not be overridden. Note that java final implies much more than scala final.
   inline val PRIVATE       = 1 << 2
@@ -104,4 +104,3 @@ object Scala2Flags {
   inline val METHOD_PKL     = (1 << 9)
   inline val MODULE_PKL     = (1 << 10)
   inline val INTERFACE_PKL  = (1 << 11)
-}

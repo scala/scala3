@@ -41,13 +41,13 @@ class ReplCompiler extends Compiler:
   )
 
   def newRun(initCtx: Context, state: State): Run =
-    val run = new Run(this, initCtx) {
+    val run = new Run(this, initCtx):
       /** Import previous runs and user defined imports */
-      override protected def rootContext(using Context): Context = {
+      override protected def rootContext(using Context): Context =
         def importContext(imp: tpd.Import)(using Context) =
           ctx.importContext(imp, imp.symbol)
 
-        def importPreviousRun(id: Int)(using Context) = {
+        def importPreviousRun(id: Int)(using Context) =
           // we first import the wrapper object id
           val path = nme.EMPTY_PACKAGE ++ "." ++ ReplCompiler.objectNames(id)
           val ctx0 = ctx.fresh
@@ -59,15 +59,12 @@ class ReplCompiler extends Compiler:
           if imports.isEmpty then ctx0
           else imports.foldLeft(ctx0.fresh.setNewScope)((ctx, imp) =>
             importContext(imp)(using ctx))
-        }
 
         val rootCtx = super.rootContext.fresh
           .withRootImports
           .fresh.setOwner(defn.EmptyPackageClass): Context
         (state.validObjectIndexes).foldLeft(rootCtx)((ctx, id) =>
           importPreviousRun(id)(using ctx))
-      }
-    }
     run.suppressions.initSuspendedMessages(state.context.run)
     run
   end newRun
@@ -95,17 +92,16 @@ class ReplCompiler extends Compiler:
   final def typeOf(expr: String)(using state: State): Result[String] =
     typeCheck(expr).map { tree =>
       given Context = state.context
-      tree.rhs match {
+      tree.rhs match
         case Block(xs, _) => xs.last.tpe.widen.show
         case _ =>
           """Couldn't compute the type of your expression, so sorry :(
             |
             |Please report this to my masters at github.com/lampepfl/dotty
           """.stripMargin
-      }
     }
 
-  def docOf(expr: String)(using state: State): Result[String] = inContext(state.context) {
+  def docOf(expr: String)(using state: State): Result[String] = inContext(state.context):
 
     /** Extract the "selected" symbol from `tree`.
      *
@@ -120,20 +116,18 @@ class ReplCompiler extends Compiler:
      *  This function returns the right symbol for the received expression, and all the symbols that are
      *  overridden.
      */
-    def extractSymbols(tree: tpd.Tree): Iterator[Symbol] = {
-      val sym = tree match {
+    def extractSymbols(tree: tpd.Tree): Iterator[Symbol] =
+      val sym = tree match
         case tree if tree.isInstantiation => tree.symbol.owner
         case tpd.closureDef(defdef) => defdef.rhs.symbol
         case _ => tree.symbol
-      }
       Iterator(sym) ++ sym.allOverriddenSymbols
-    }
 
-    typeCheck(expr).map {
+    typeCheck(expr).map:
       case ValDef(_, _, Block(stats, _)) if stats.nonEmpty =>
         val stat = stats.last.asInstanceOf[tpd.Tree]
         if (stat.tpe.isError) stat.tpe.show
-        else {
+        else
           val symbols = extractSymbols(stat)
           val doc = for {
             sym <- symbols
@@ -142,20 +136,17 @@ class ReplCompiler extends Compiler:
 
           if (doc.hasNext) doc.next()
           else s"// No doc for `$expr`"
-        }
 
       case _ =>
         """Couldn't display the documentation for your expression, so sorry :(
           |
           |Please report this to my masters at github.com/lampepfl/dotty
           """.stripMargin
-    }
-  }
 
-  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Result[tpd.ValDef] = {
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Result[tpd.ValDef] =
 
-    def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] = {
-      def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
+    def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Result[untpd.PackageDef] =
+      def wrap(trees: List[untpd.Tree]): untpd.PackageDef =
         import untpd._
 
         val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral).withSpan(Span(0, expr.length)))
@@ -164,9 +155,8 @@ class ReplCompiler extends Compiler:
           .withMods(Modifiers(Final))
           .withSpan(Span(0, expr.length))
         PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
-      }
 
-      ParseResult(sourceFile) match {
+      ParseResult(sourceFile) match
         case Parsed(_, trees, _) =>
           wrap(trees).result
         case SyntaxErrors(_, reported, trees) =>
@@ -177,32 +167,28 @@ class ReplCompiler extends Compiler:
             s"Couldn't parse '$expr' to valid scala",
             sourceFile.atSpan(Span(0, expr.length))
           )
-        ).errors
-      }
-    }
+          ).errors
 
-    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(using Context): Result[tpd.ValDef] = {
+    def unwrapped(tree: tpd.Tree, sourceFile: SourceFile)(using Context): Result[tpd.ValDef] =
       def error: Result[tpd.ValDef] =
         List(new Diagnostic.Error(s"Invalid scala expression",
           sourceFile.atSpan(Span(0, sourceFile.content.length)))).errors
 
       import tpd._
-      tree match {
+      tree match
         case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
           tmpl.body
               .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
               .getOrElse(error)
         case _ =>
           error
-      }
-    }
 
 
     val src = SourceFile.virtual("<typecheck>", expr)
     inContext(state.context.fresh
       .setReporter(newStoreReporter)
       .setSetting(state.context.settings.YstopAfter, List("typer"))
-    ) {
+    ):
       wrapped(expr, src, state).flatMap { pkg =>
         val unit = CompilationUnit(src)
         unit.untpdTree = pkg
@@ -213,8 +199,6 @@ class ReplCompiler extends Compiler:
         else
           ctx.reporter.removeBufferedMessages.errors
       }
-    }
-  }
 object ReplCompiler:
   val ReplState: Property.StickyKey[State] = Property.StickyKey()
   val objectNames = mutable.Map.empty[Int, TermName]
@@ -246,13 +230,12 @@ class ReplPhase extends Phase:
   def run(using Context): Unit =
     ctx.compilationUnit.untpdTree match
     case pkg @ PackageDef(_, stats) =>
-      pkg.getAttachment(ReplCompiler.ReplState).foreach {
+      pkg.getAttachment(ReplCompiler.ReplState).foreach:
         case given State =>
           val defs = definitions(stats)
           val res = wrapped(defs, Span(0, stats.last.span.end))
           res.putAttachment(ReplCompiler.ReplState, defs.state)
           ctx.compilationUnit.untpdTree = res
-      }
     case _ =>
   end run
 
@@ -262,13 +245,12 @@ class ReplPhase extends Phase:
     import untpd.*
 
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
-    val flattened = trees match {
+    val flattened = trees match
       case List(Block(stats, expr)) =>
         if (expr eq EmptyTree) stats // happens when expr is not an expression
         else stats :+ expr
       case _ =>
         trees
-    }
 
     val state = summon[State]
     var valIdx = state.valIndex
@@ -281,11 +263,11 @@ class ReplPhase extends Phase:
       case tuple: Tuple   => for t <- tuple.trees do maybeBumpValIdx(t)
       case patDef: PatDef => for p <- patDef.pats do maybeBumpValIdx(p)
       case tree: NameTree => tree.name.show.stripPrefix(str.REPL_RES_PREFIX).toIntOption match
-        case Some(n) if n >= valIdx => valIdx = n + 1
-        case _                      =>
+          case Some(n) if n >= valIdx => valIdx = n + 1
+          case _                      =>
       case _              =>
 
-    flattened.foreach {
+    flattened.foreach:
       case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
@@ -300,7 +282,6 @@ class ReplPhase extends Phase:
       case other =>
         maybeBumpValIdx(other)
         defs += other
-    }
 
     Definitions(defs.toList, state.copy(objectIndex = state.objectIndex + 1, valIndex = valIdx))
   end definitions

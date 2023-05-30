@@ -41,7 +41,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   override def changesMembers: Boolean = true // the phase introduces new members with mangled names
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    tree match {
+    tree match
       case t: DefDef =>
         val sym = t.symbol
         def hasWeakerAccess(other: Symbol) =
@@ -53,7 +53,6 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
         if (fail.exists)
           assert(false, i"${sym.showFullName}: ${sym.info} has weaker access than superclass method ${fail.showFullName}: ${fail.info}")
       case _ =>
-    }
 
   private def isVCPrivateParamAccessor(d: SymDenotation)(using Context) =
     d.isTerm && d.isAllOf(PrivateParamAccessor) && isDerivedValueClass(d.owner)
@@ -66,51 +65,44 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
   private def ensurePrivateAccessible(d: SymDenotation)(using Context) =
     if (isVCPrivateParamAccessor(d))
       d.ensureNotPrivate.installAfter(thisPhase)
-    else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.lexicallyEnclosingClass) {
+    else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.lexicallyEnclosingClass)
       // Paths `p1` and `p2` are similar if they have a common suffix that follows
       // possibly different directory paths. That is, their common suffix extends
       // in both cases either to the start of the path or to a file separator character.
       // TODO: should we test absolute paths instead?
-      def isSimilar(p1: String, p2: String): Boolean = {
+      def isSimilar(p1: String, p2: String): Boolean =
         var i = p1.length - 1
         var j = p2.length - 1
-        while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != separatorChar) {
+        while (i >= 0 && j >= 0 && p1(i) == p2(j) && p1(i) != separatorChar)
           i -= 1
           j -= 1
-        }
         (i < 0 || p1(i) == separatorChar) &&
         (j < 0 || p2(j) == separatorChar)
-      }
 
       assert(d.symbol.source.exists &&
              ctx.owner.source.exists &&
              isSimilar(d.symbol.source.path, ctx.owner.source.path),
           s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
       d.ensureNotPrivate.installAfter(thisPhase)
-    }
 
-  override def transformIdent(tree: Ident)(using Context): Ident = {
+  override def transformIdent(tree: Ident)(using Context): Ident =
     ensurePrivateAccessible(tree.symbol)
     tree
-  }
 
-  override def transformSelect(tree: Select)(using Context): Select = {
+  override def transformSelect(tree: Select)(using Context): Select =
     ensurePrivateAccessible(tree.symbol)
     tree
-  }
 
-  override def transformDefDef(tree: DefDef)(using Context): DefDef = {
+  override def transformDefDef(tree: DefDef)(using Context): DefDef =
     val sym = tree.symbol
-    tree.rhs match {
+    tree.rhs match
       case Apply(sel @ Select(_: Super, _), _)
       if sym.isAllOf(PrivateParamAccessor) && sel.symbol.is(ParamAccessor) && sym.name == sel.symbol.name =>
         sym.ensureNotPrivate.installAfter(thisPhase)
       case _ =>
         if (isVCPrivateParamAccessor(sym))
           sym.ensureNotPrivate.installAfter(thisPhase)
-    }
     tree
-  }
 }
 
 object ExpandPrivate:

@@ -8,7 +8,7 @@ import NameKinds.NonLocalReturnKeyName
 import config.SourceVersion.*
 import Decorators.em
 
-object NonLocalReturns {
+object NonLocalReturns:
   import ast.tpd._
 
   val name: String = "nonLocalReturns"
@@ -16,11 +16,10 @@ object NonLocalReturns {
 
   def isNonLocalReturn(ret: Return)(using Context): Boolean =
     !ret.from.symbol.is(Label) && (ret.from.symbol != ctx.owner.enclosingMethod || ctx.owner.is(Lazy))
-}
 
 /** Implement non-local returns using NonLocalReturnControl exceptions.
  */
-class NonLocalReturns extends MiniPhase {
+class NonLocalReturns extends MiniPhase:
 
   override def phaseName: String = NonLocalReturns.name
 
@@ -76,7 +75,7 @@ class NonLocalReturns extends MiniPhase {
    *    }
    *  }
    */
-  private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(using Context) = {
+  private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(using Context) =
     val keyDef = ValDef(key, New(defn.ObjectType, Nil))
     val ex = newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
@@ -87,7 +86,6 @@ class NonLocalReturns extends MiniPhase {
     val catches = CaseDef(pat, EmptyTree, rhs) :: Nil
     val tryCatch = Try(body, catches, EmptyTree)
     Block(keyDef :: Nil, tryCatch)
-  }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     nonLocalReturnKeys.remove(tree.symbol) match
@@ -103,4 +101,3 @@ class NonLocalReturns extends MiniPhase {
           errorFrom = future)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
     else tree
-}

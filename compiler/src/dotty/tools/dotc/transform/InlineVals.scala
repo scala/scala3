@@ -29,7 +29,7 @@ class InlineVals extends MiniPhase:
     tree
 
   /** Check that `tree.rhs` can be right hand-side of an `inline` value definition. */
-  private def checkInlineConformant(tree: ValDef)(using Context): Unit = {
+  private def checkInlineConformant(tree: ValDef)(using Context): Unit =
     if tree.symbol.is(Inline, butNot = DeferredOrTermParamOrAccessor)
       && !Inlines.inInlineMethod
     then
@@ -52,7 +52,6 @@ class InlineVals extends MiniPhase:
             report.error(em"`inline val` with `null` is not supported.\n\nTo inline a `null` consider using `inline def`", rhs)
           else
             report.error(em"inline value must contain a literal constant value.\n\nTo inline more complex types consider using `inline def`", rhs)
-  }
 
 object InlineVals:
   val name: String = "inlineVals"

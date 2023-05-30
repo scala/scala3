@@ -12,26 +12,21 @@ import Diagnostic.Error
 class ConsoleReporter(
   reader: BufferedReader = Console.in,
   writer: PrintWriter = new PrintWriter(Console.err, true)
-) extends ConsoleReporter.AbstractConsoleReporter {
+) extends ConsoleReporter.AbstractConsoleReporter:
   override def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
   override def flush()(using Context): Unit    = writer.flush()
 
-  override def doReport(dia: Diagnostic)(using Context): Unit = {
+  override def doReport(dia: Diagnostic)(using Context): Unit =
     super.doReport(dia)
     dia match
       case dia: Error if ctx.settings.Xprompt.value => Reporter.displayPrompt(reader, writer)
       case _                                        =>
-  }
-}
 
-object ConsoleReporter {
-  abstract class AbstractConsoleReporter extends AbstractReporter {
+object ConsoleReporter:
+  abstract class AbstractConsoleReporter extends AbstractReporter:
     /** Prints the message. */
     def printMessage(msg: String): Unit
 
     /** Prints the message with the given position indication. */
-    def doReport(dia: Diagnostic)(using Context): Unit = {
+    def doReport(dia: Diagnostic)(using Context): Unit =
       printMessage(messageAndPos(dia))
-    }
-  }
-}

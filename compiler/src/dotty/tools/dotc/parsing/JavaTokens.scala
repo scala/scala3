@@ -4,7 +4,7 @@ package parsing
 
 import collection.immutable.BitSet
 
-object JavaTokens extends TokensCommon {
+object JavaTokens extends TokensCommon:
   inline val minToken = EMPTY
   final def maxToken: Int = DOUBLE
 
@@ -92,4 +92,3 @@ object JavaTokens extends TokensCommon {
   inline val LONG = 186;             enter(LONG, "long")
   inline val FLOAT = 187;            enter(FLOAT, "float")
   inline val DOUBLE = 188;           enter(DOUBLE, "double")
-}

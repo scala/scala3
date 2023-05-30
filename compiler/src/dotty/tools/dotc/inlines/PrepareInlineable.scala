@@ -24,7 +24,7 @@ import config.Printers.inlining
 import util.Property
 import staging.StagingLevel
 
-object PrepareInlineable {
+object PrepareInlineable:
   import tpd._
 
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
@@ -40,20 +40,19 @@ object PrepareInlineable {
       case Some(inlineAccessors) => inlineAccessors.addAccessorDefs(cls, body)
       case _ => body
 
-  class InlineAccessors extends AccessProxies {
+  class InlineAccessors extends AccessProxies:
 
     /** If an inline accessor name wraps a unique inline name, this is taken as indication
      *  that the inline accessor takes its receiver as first parameter. Such accessors
      *  are created by MakeInlineablePassing.
      */
-    override def passReceiverAsArg(name: Name)(using Context): Boolean = name match {
+    override def passReceiverAsArg(name: Name)(using Context): Boolean = name match
       case InlineAccessorName(UniqueInlineName(_, _)) => true
       case _ => false
-    }
 
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
-    abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
+    abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert:
       def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
         val accName = InlineAccessorName(name)
         if site.isExtensibleClass then accName.expandedName(site) else accName
@@ -78,35 +77,30 @@ object PrepareInlineable {
 
       def preTransform(tree: Tree)(using Context): Tree
 
-      def postTransform(tree: Tree)(using Context): Tree = tree match {
+      def postTransform(tree: Tree)(using Context): Tree = tree match
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
           cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
         case _ =>
           tree
-      }
 
       override def transform(tree: Tree)(using Context): Tree =
         postTransform(super.transform(preTransform(tree)))
-    }
 
     /** Direct approach: place the accessor with the accessed symbol. This has the
      *  advantage that we can re-use the receiver as is. But it is only
      *  possible if the receiver is essentially this or an outer this, which is indicated
      *  by the test that we can find a host for the accessor.
      */
-    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
-      def preTransform(tree: Tree)(using Context): Tree = tree match {
+    class MakeInlineableDirect(inlineSym: Symbol) extends MakeInlineableMap(inlineSym):
+      def preTransform(tree: Tree)(using Context): Tree = tree match
         case tree: RefTree if needsAccessor(tree.symbol) =>
-          if (tree.symbol.isConstructor) {
+          if (tree.symbol.isConstructor)
             report.error("Implementation restriction: cannot use private constructors in inline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
-          }
           else useAccessor(tree)
         case _ =>
           tree
-      }
       override def ifNoHost(reference: RefTree)(using Context): Tree = reference
-    }
 
     /** Fallback approach if the direct approach does not work: Place the accessor method
      *  in the same class as the inline method, and let it take the receiver as parameter.
@@ -137,9 +131,9 @@ object PrepareInlineable {
      *  Since different calls might have different receiver types, we need to generate one
      *  such accessor per call, so they need to have unique names.
      */
-    class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym) {
+    class MakeInlineablePassing(inlineSym: Symbol) extends MakeInlineableMap(inlineSym):
 
-      def preTransform(tree: Tree)(using Context): Tree = tree match {
+      def preTransform(tree: Tree)(using Context): Tree = tree match
         case _: Apply | _: TypeApply | _: RefTree
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
           val refPart = funPart(tree)
@@ -149,9 +143,8 @@ object PrepareInlineable {
 
           // Need to dealias in order to catch all possible references to abstracted over types in
           // substitutions
-          val dealiasMap = new TypeMap {
+          val dealiasMap = new TypeMap:
             def apply(t: Type) = mapOver(t.dealias)
-          }
           val qualType = dealiasMap(qual.tpe.widen)
 
           // The types that are local to the inline method, and that therefore have
@@ -160,11 +153,10 @@ object PrepareInlineable {
             ref.isType && ref.symbol.isContainedIn(inlineSym)).toList
 
           // Add qualifier type as leading method argument to argument `tp`
-          def addQualType(tp: Type): Type = tp match {
+          def addQualType(tp: Type): Type = tp match
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
             case tp => MethodType(qualType.simplified :: Nil, tp)
-          }
 
           // Abstract accessed type over local refs
           def abstractQualType(mtpe: Type): Type =
@@ -202,8 +194,6 @@ object PrepareInlineable {
           tree
         case _ =>
           tree
-      }
-    }
 
     /** Adds accessors for all non-public term members accessed
      *  from `tree`. Non-public type members are currently left as they are.
@@ -213,7 +203,7 @@ object PrepareInlineable {
      *  @return If there are accessors generated, a thicket consisting of the rewritten `tree`
      *          and all accessors, otherwise the original tree.
      */
-    def makeInlineable(tree: Tree)(using Context): Tree = {
+    def makeInlineable(tree: Tree)(using Context): Tree =
       val inlineSym = ctx.owner
       if (inlineSym.owner.isTerm)
         // Inlineable methods in local scopes can only be called in the scope they are defined,
@@ -222,8 +212,6 @@ object PrepareInlineable {
       else
         new MakeInlineablePassing(inlineSym).transform(
           new MakeInlineableDirect(inlineSym).transform(tree))
-    }
-  }
 
   def isLocalOrParam(sym: Symbol, inlineMethod: Symbol)(using Context): Boolean =
     sym.isContainedIn(inlineMethod) && sym != inlineMethod
@@ -257,11 +245,11 @@ object PrepareInlineable {
    */
   def registerInlineInfo(
       inlined: Symbol, treeExpr: Context ?=> Tree)(using Context): Unit =
-    inlined.unforcedAnnotation(defn.BodyAnnot) match {
+    inlined.unforcedAnnotation(defn.BodyAnnot) match
       case Some(ann: ConcreteBodyAnnotation) =>
       case Some(ann: LazyBodyAnnotation) if ann.isEvaluated || ann.isEvaluating =>
       case _ =>
-        if (!ctx.isAfterTyper) {
+        if (!ctx.isAfterTyper)
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation {
             given ctx: Context = inlineCtx
@@ -273,16 +261,14 @@ object PrepareInlineable {
             inlining.println(i"Body to inline for $inlined: $inlinedBody")
             inlinedBody
           })
-        }
-    }
 
-  private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
+  private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type =
     if Inlines.inInlineMethod(using ctx.outer) then
       report.error(em"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
 
-    if (inlined.is(Macro) && !ctx.isAfterTyper) {
+    if (inlined.is(Macro) && !ctx.isAfterTyper)
 
-      def checkMacro(tree: Tree): Unit = tree match {
+      def checkMacro(tree: Tree): Unit = tree match
         case Splice(code) =>
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
@@ -308,9 +294,5 @@ object PrepareInlineable {
               | * The contents of the splice must call a static method
               | * All arguments must be quoted
             """.stripMargin, inlined.srcPos)
-      }
       checkMacro(body)
-    }
     body
-  }
-}

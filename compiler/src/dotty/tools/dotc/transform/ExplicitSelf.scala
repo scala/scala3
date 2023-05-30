@@ -19,7 +19,7 @@ import SymUtils.*
  *
  *  Also replaces idents referring to the self type with ThisTypes.
  */
-class ExplicitSelf extends MiniPhase {
+class ExplicitSelf extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = ExplicitSelf.name
@@ -38,7 +38,7 @@ class ExplicitSelf extends MiniPhase {
       report.error(em"self type $selfType of $cls may not be a value class", thiz.srcPos)
     cpy.Select(tree)(thiz.cast(AndType(selfType, thiz.tpe)), tree.name)
 
-  override def transformIdent(tree: Ident)(using Context): Tree = tree.tpe match {
+  override def transformIdent(tree: Ident)(using Context): Tree = tree.tpe match
     case tp: ThisType =>
       report.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
       This(tp.cls).withSpan(tree.span)
@@ -48,16 +48,13 @@ class ExplicitSelf extends MiniPhase {
       else tree
     case _ =>
       tree
-  }
 
-  override def transformSelect(tree: Select)(using Context): Tree = tree match {
+  override def transformSelect(tree: Select)(using Context): Tree = tree match
     case Select(thiz: This, name) if name.isTermName =>
       val cls = thiz.symbol.asClass
       if needsCast(tree, cls) then castQualifier(tree, cls, thiz)
       else tree
     case _ => tree
-  }
-}
 
 object ExplicitSelf:
   val  name: String = "explicitSelf"

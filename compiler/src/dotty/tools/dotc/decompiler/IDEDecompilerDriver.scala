@@ -15,9 +15,9 @@ import scala.quoted.runtime.impl.QuotesImpl
 /**
   * Decompiler to be used with IDEs
   */
-class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
+class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver:
 
-  private val myInitCtx: Context = {
+  private val myInitCtx: Context =
     val rootCtx = initCtx.fresh.addMode(Mode.Interactive | Mode.ReadPositions)
     rootCtx.setSetting(rootCtx.settings.YreadComments, true)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
@@ -25,16 +25,15 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
     val ctx = setup(settings.toArray :+ "dummy.scala", rootCtx).get._2
     ctx.initialize()(using ctx)
     ctx
-  }
 
   private val decompiler = new PartialTASTYDecompiler
 
-  def run(tastyFile: AbstractFile): (String, String) = {
+  def run(tastyFile: AbstractFile): (String, String) =
     val reporter = new StoreReporter(null) with HideNonSensicalMessages
 
     val run = decompiler.newRun(using myInitCtx.fresh.setReporter(reporter))
 
-    inContext(run.runContext) {
+    inContext(run.runContext):
       run.compile(List(tastyFile))
       run.printSummary()
       val unit = ctx.run.nn.units.head
@@ -44,6 +43,3 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
 
       reporter.removeBufferedMessages.foreach(message => System.err.println(message))
       (tree, decompiled)
-    }
-  }
-}

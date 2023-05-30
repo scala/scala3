@@ -10,7 +10,7 @@ import dotty.tools.dotc.util.SourcePosition
  *  A nested splice gets a new scope with the enclosing scope as its `outer`.
  *  This also applies for recursive splices.
  */
-trait Scope {
+trait Scope:
   /** Outer scope that was used to create the quote containing this splice.
    *  NoScope otherwise.
    */
@@ -26,7 +26,6 @@ trait Scope {
     this.toString :: (if outer.eq(NoScope) then Nil else outer.stack)
   /** If the two scopes correspond to the same splice in source. */
   def atSameLocation(scope: Scope): Boolean = false
-}
 
 /** Only used for outer scope of top level splice and staging `run` */
 object NoScope extends Scope:

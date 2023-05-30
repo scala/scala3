@@ -23,18 +23,18 @@ import dotty.tools.dotc.transform.SymUtils._
   *     Java8 supports those, but not vars, and JavaScript does not have interfaces at all.
   *  6. `@static` Lazy vals are currently unsupported.
   */
-class CheckStatic extends MiniPhase {
+class CheckStatic extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = CheckStatic.name
 
   override def description: String = CheckStatic.description
 
-  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree = {
+  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
     val defns = tree.body.collect{case t: ValOrDefDef => t}
     var hadNonStaticField = false
     for (defn <- defns)
-      if (defn.symbol.isScalaStatic) {
+      if (defn.symbol.isScalaStatic)
         if (!ctx.owner.isStaticOwner)
           report.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.srcPos)
           defn.symbol.resetFlag(JavaStatic)
@@ -55,14 +55,10 @@ class CheckStatic extends MiniPhase {
           report.error(LazyStaticField(), defn.srcPos)
         else if (defn.symbol.allOverriddenSymbols.nonEmpty)
           report.error(StaticOverridingNonStaticMembers(), defn.srcPos)
-      }
       else hadNonStaticField = hadNonStaticField || defn.isInstanceOf[ValDef]
 
     tree
-  }
-}
 
-object CheckStatic {
+object CheckStatic:
   val name: String = "checkStatic"
   val description: String = "check restrictions that apply to @static members"
-}

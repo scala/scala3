@@ -12,7 +12,7 @@ import scala.annotation.internal.sharable
 
 /** A source position is comprised of a span and a source file */
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition = NoSourcePosition)
-extends SrcPos, interfaces.SourcePosition, Showable {
+extends SrcPos, interfaces.SourcePosition, Showable:
 
   def sourcePos(using Context) = this
 
@@ -34,12 +34,11 @@ extends SrcPos, interfaces.SourcePosition, Showable {
     source.content.slice(source.startOfLine(start), source.nextLine(end))
 
   /** The lines of the position */
-  def lines: Range = {
+  def lines: Range =
     val startOffset = source.offsetToLine(start)
     val endOffset = source.offsetToLine(end - 1) // -1 to drop a line if no chars in it form part of the position
     if (startOffset >= endOffset) line to line
     else startOffset to endOffset
-  }
 
   def lineOffsets: List[Int] =
     lines.toList.map(source.lineToOffset(_))
@@ -72,27 +71,24 @@ extends SrcPos, interfaces.SourcePosition, Showable {
   /** Inner most position that is contained within the `outermost` position.
    *  Most precise position that comes from the call site.
    */
-  def nonInlined: SourcePosition = {
+  def nonInlined: SourcePosition =
     val om = outermost
     def rec(self: SourcePosition): SourcePosition =
       if om.contains(self) then self else rec(self.outer)
     rec(this)
-  }
 
 
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 
   def toText(printer: Printer): Text = printer.toText(this)
-}
 
 /** A sentinel for a non-existing source position */
-@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan, null) {
+@sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan, null):
   override def line: Int = -1
   override def column: Int = -1
   override def toString: String = "?"
   override def withOuter(outer: SourcePosition): SourcePosition = outer
-}
 
 /** Things that can produce a source position and a span */
 trait SrcPos:

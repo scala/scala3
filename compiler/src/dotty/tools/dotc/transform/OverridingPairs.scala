@@ -47,26 +47,23 @@ object OverridingPairs:
       sym1.isType || sym1.asSeenFrom(self).matches(sym2.asSeenFrom(self))
 
     /** The symbols that can take part in an overriding pair */
-    private val decls = {
+    private val decls =
       val decls = newScope
       // fill `decls` with overriding shadowing overridden */
-      def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match {
+      def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match
         case bc :: bcs1 =>
           fillDecls(bcs1, deferred)
           var e = bc.info.decls.lastEntry
-          while (e != null) {
+          while (e != null)
             if (e.sym.is(Deferred) == deferred && !exclude(e.sym))
               decls.enter(e.sym)
             e = e.prev
-          }
         case nil =>
-      }
       // first, deferred (this will need to change if we change lookup rules!
       fillDecls(base.info.baseClasses, deferred = true)
       // then, concrete.
       fillDecls(base.info.baseClasses, deferred = false)
       decls
-    }
 
     /** Is `parent` a qualified sub-parent of `bc`?
      *  @pre `parent` is a parent class of `base` and it derives from `bc`.
@@ -130,18 +127,15 @@ object OverridingPairs:
      *     nextEntry  = curEntry
      *     overriding = curEntry.sym
      */
-    private def nextOverriding(): Unit = {
+    private def nextOverriding(): Unit =
       @tailrec def loop(): Unit =
-        if (curEntry != null) {
+        if (curEntry != null)
           overriding = curEntry.uncheckedNN.sym
-          if (visited.contains(overriding)) {
+          if (visited.contains(overriding))
             curEntry = curEntry.uncheckedNN.prev
             loop()
-          }
-        }
       loop()
       nextEntry = curEntry
-    }
 
     /** @post
      *    hasNext    = there is another overriding pair

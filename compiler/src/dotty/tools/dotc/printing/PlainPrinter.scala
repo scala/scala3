@@ -17,7 +17,7 @@ import scala.annotation.switch
 import config.{Config, Feature}
 import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
 
-class PlainPrinter(_ctx: Context) extends Printer {
+class PlainPrinter(_ctx: Context) extends Printer:
 
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.
@@ -50,7 +50,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def homogenize(tp: Type): Type =
     if (homogenizedView)
-      tp match {
+      tp match
         case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
           requiredPackage(tp.cls.fullName).termRef
         case tp: TypeVar if tp.isInstantiated =>
@@ -73,16 +73,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
           tp.reduceProjection
         case _ =>
           tp
-      }
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
     try lo frozen_=:= hi catch { case NonFatal(ex) => false }
 
-  private def homogenizeArg(tp: Type) = tp match {
+  private def homogenizeArg(tp: Type) = tp match
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
     case _ => tp
-  }
 
   private def selfRecName(n: Int) = s"z$n"
 
@@ -112,12 +110,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** String representation of a refinement */
   protected def toTextRefinement(rt: RefinedType): Text =
-    val keyword = rt.refinedInfo match {
+    val keyword = rt.refinedInfo match
       case _: ExprType | _: MethodOrPoly => "def "
       case _: TypeBounds => "type "
       case _: TypeProxy => "val "
       case _ => ""
-    }
     (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
   protected def argText(arg: Type, isErased: Boolean = false): Text = keywordText("erased ").provided(isErased) ~ (homogenizeArg(arg) match {
@@ -166,7 +163,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   final protected def rootSetText = Str("{cap}")
 
   def toText(tp: Type): Text = controlled {
-    homogenize(tp) match {
+    homogenize(tp) match
       case tp: TypeType =>
         toTextRHS(tp)
       case tp: TermRef
@@ -198,10 +195,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           refinementChain(tp).reverse: @unchecked
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
       case tp: RecType =>
-        try {
+        try
           openRecs = tp :: openRecs
           "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
-        }
         finally openRecs = openRecs.tail
       case AndType(tp1, tp2) =>
         changePrec(AndTypePrec) { toText(tp1) ~ " & " ~ atPrec(AndTypePrec + 1) { toText(tp2) } }
@@ -209,11 +205,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(OrTypePrec) { toText(tp1) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(tp2) } }
       case MatchType(bound, scrutinee, cases) =>
         changePrec(GlobalPrec) {
-          def caseText(tp: Type): Text = tp match {
+          def caseText(tp: Type): Text = tp match
             case tp: HKTypeLambda => caseText(tp.resultType)
             case defn.MatchCase(pat, body) => "case " ~ toText(pat) ~ " => " ~ toText(body)
             case _ => "case " ~ toText(tp)
-          }
           def casesText = Text(cases.map(caseText), "\n")
           atPrec(InfixPrec) { toText(scrutinee) } ~
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
@@ -234,7 +229,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case NoPrefix =>
         "<noprefix>"
       case tp: MethodType =>
-        changePrec(GlobalPrec) {
+        changePrec(GlobalPrec):
           "("
           ~ keywordText("using ").provided(tp.isContextualMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
@@ -242,7 +237,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
           ~ ")"
           ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
           ~ toText(tp.resultType)
-        }
       case ExprType(restp) =>
         def arrowText: Text = restp match
           case ct @ EventuallyCapturingType(parent, refs) if ct.annot.symbol == defn.RetainsByNameAnnot =>
@@ -251,15 +245,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))
       case tp: HKTypeLambda =>
-        changePrec(GlobalPrec) {
+        changePrec(GlobalPrec):
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
-        }
       case tp: PolyType =>
-        changePrec(GlobalPrec) {
+        changePrec(GlobalPrec):
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~
           (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly]) ~
           toTextGlobal(tp.resultType)
-        }
       case AnnotatedType(tpe, annot) =>
         if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
         else toTextLocal(tpe) ~ " " ~ toText(annot)
@@ -267,7 +259,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def toTextCaret(tp: Type) = if printDebug then toTextLocal(tp) ~ Str("^") else toText(tp)
         if (tp.isInstantiated)
           toTextCaret(tp.instanceOpt)
-        else {
+        else
           val constr = ctx.typerState.constraint
           val bounds =
             if constr.contains(tp) then
@@ -277,30 +269,26 @@ class PlainPrinter(_ctx: Context) extends Printer {
           if (bounds.isTypeAlias) toTextCaret(bounds.lo)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
-        }
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch {
+          catch
             case ex: Throwable => Str("...")
-          }
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
       case _ =>
         tp.fallbackToText(this)
-    }
   }.close
 
   def toTextSingleton(tp: SingletonType): Text =
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
-  protected def paramsText(lam: LambdaType): Text = {
+  protected def paramsText(lam: LambdaType): Text =
     val erasedParams = lam.erasedParams
     def paramText(name: Name, tp: Type, erased: Boolean) =
       keywordText("erased ").provided(erased) ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
     Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(erasedParams).map(paramText), ", ")
-  }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
 
@@ -344,14 +332,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def trimPrefix(text: Text): Text =
     text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
-  protected def selectionString(tp: NamedType): String = {
+  protected def selectionString(tp: NamedType): String =
     val sym = if (homogenizedView) tp.symbol else tp.currentSymbol
     if (sym.exists) nameString(sym) else nameString(tp.name)
-  }
 
   /** The string representation of this type used as a prefix */
-  def toTextRef(tp: SingletonType): Text = controlled {
-    tp match {
+  def toTextRef(tp: SingletonType): Text = controlled:
+    tp match
       case tp: TermRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
       case tp: ThisType =>
@@ -372,17 +359,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (homogenizedView) toText(tp.info)
         else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
         else toText(tp.repr)
-    }
-  }
 
   /** The string representation of this type used as a prefix, including separator */
-  def toTextPrefix(tp: Type): Text = controlled {
-    homogenize(tp) match {
+  def toTextPrefix(tp: Type): Text = controlled:
+    homogenize(tp) match
       case NoPrefix => ""
       case tp: SingletonType => toTextRef(tp) ~ "."
       case tp => trimPrefix(toTextLocal(tp)) ~ "#"
-    }
-  }
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
@@ -399,10 +382,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a definition's type following its name,
    *  if symbol is completed, "?" otherwise.
    */
-  protected def toTextRHS(optType: Option[Type]): Text = optType match {
+  protected def toTextRHS(optType: Option[Type]): Text = optType match
     case Some(tp) => toTextRHS(tp)
     case None => "?"
-  }
 
   protected def decomposeLambdas(bounds: TypeBounds): (Text, TypeBounds) =
     def decompose(tp: Type): (Text, Type) = tp.stripTypeVar match
@@ -428,8 +410,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   end decomposeLambdas
 
   /** String representation of a definition's type following its name */
-  protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
-    homogenize(tp) match {
+  protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled:
+    homogenize(tp) match
       case tp: TypeBounds =>
         val (tparamStr, rhs) = decomposeLambdas(tp)
         val binder = rhs match
@@ -444,11 +426,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
         val tparamsText =
           if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
-        val selfText: Text = selfInfo match {
+        val selfText: Text = selfInfo match
           case NoType => Text()
           case sym: Symbol if !sym.isCompleted => "this: ? =>"
           case _ => "this: " ~ atPrec(InfixPrec) { toText(tp.selfType) } ~ " =>"
-        }
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)
         val declsText =
           if (trueDecls.isEmpty || !ctx.settings.Ydebug.value) Text()
@@ -466,8 +447,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ~ toTextGlobal(tp.resultType)
       case tp =>
         ": " ~ toTextGlobal(tp)
-    }
-  }
 
   protected def toTextParents(parents: List[Type]): Text = Text(parents.map(toTextLocal), " with ")
 
@@ -475,7 +454,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def treatAsTypeArg(sym: Symbol): Boolean = false
 
   /** String representation of symbol's kind. */
-  def kindString(sym: Symbol): String = {
+  def kindString(sym: Symbol): String =
     val flags = sym.flagsUNSAFE
     if (flags.is(PackageClass)) "package class"
     else if (flags.is(PackageVal)) "package"
@@ -499,10 +478,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (sym.is(Method)) "method"
     else if (sym.isTerm) "value"
     else ""
-  }
 
   /** String representation of symbol's definition keyword */
-  protected def keyString(sym: Symbol): String = {
+  protected def keyString(sym: Symbol): String =
     val flags = sym.flagsUNSAFE
     if (flags.isAllOf(JavaInterface)) "interface"
     else if (flags.is(Trait)) "trait"
@@ -514,7 +492,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (sym.is(Method)) "def"
     else if (sym.isTerm && !flags.is(Param)) "val"
     else ""
-  }
 
   protected def privateWithinString(sym: Symbol): String =
     if (sym.exists && sym.privateWithin.exists)
@@ -547,18 +524,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def locationText(sym: Symbol): Text =
     if (!sym.exists) ""
-    else {
+    else
       val ownr = sym.effectiveOwner
       if (ownr.isClass && !isEmptyPrefix(ownr)) " in " ~ toText(ownr) else Text()
-    }
 
   def locatedText(sym: Symbol): Text =
     (toText(sym) ~ locationText(sym)).close
 
   def extendedLocationText(sym: Symbol): Text =
     if (!sym.exists) ""
-    else {
-      def recur(ownr: Symbol, innerLocation: String): Text = {
+    else
+      def recur(ownr: Symbol, innerLocation: String): Text =
         def nextOuter(innerKind: String): Text =
           recur(ownr.effectiveOwner,
             if (!innerLocation.isEmpty) innerLocation
@@ -571,13 +547,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else if (ownr.isLocalDummy) showLocation(ownr.owner, "locally defined in")
         else if (ownr.isTerm && !ownr.isOneOf(Module | Method)) showLocation(ownr, "in the initializer of")
         else showLocation(ownr, "in")
-      }
       recur(sym.owner, "")
-    }
 
   def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
-  private def escapedChar(ch: Char): String = (ch: @switch) match {
+  private def escapedChar(ch: Char): String = (ch: @switch) match
     case '\b' => "\\b"
     case '\t' => "\\t"
     case '\n' => "\\n"
@@ -587,9 +561,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case '\'' => "\\\'"
     case '\\' => "\\\\"
     case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch).nn
-  }
 
-  def toText(const: Constant): Text = const.tag match {
+  def toText(const: Constant): Text = const.tag match
     case StringTag => stringText("\"" + escapedString(const.value.toString) + "\"")
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
@@ -597,7 +570,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case DoubleTag => literalText(const.doubleValue.toString + "d")
     case FloatTag => literalText(const.floatValue.toString + "f")
     case _ => literalText(String.valueOf(const.value).nn)
-  }
 
   /** Usual target for `Annotation#toText`, overridden in RefinedPrinter */
   def annotText(annot: Annotation): Text = s"@${annot.symbol.name}"
@@ -618,11 +590,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
   def toText[T <: Untyped](tree: Tree[T]): Text = {
-    def toTextElem(elem: Any): Text = elem match {
+    def toTextElem(elem: Any): Text = elem match
       case elem: Showable => elem.toText(this)
       case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
       case elem => elem.toString
-    }
     val nodeName = tree.productPrefix
     val elems =
       Text(tree.productIterator.map(toTextElem).toList, ", ")
@@ -640,19 +611,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
 
-  def toText(result: SearchResult): Text = result match {
+  def toText(result: SearchResult): Text = result match
     case result: SearchSuccess =>
       "SearchSuccess: " ~ toText(result.ref) ~ " via " ~ toText(result.tree)
     case result: SearchFailure =>
-      result.reason match {
+      result.reason match
         case _: NoMatchingImplicits => "No Matching Implicit"
         case _: DivergingImplicit => "Diverging Implicit"
         case result: AmbiguousImplicits =>
           "Ambiguous Implicit: " ~ toText(result.alt1.ref) ~ " and " ~ toText(result.alt2.ref)
         case _ =>
           "Search Failure: " ~ toText(result.tree)
-      }
-  }
 
   def toText(importInfo: ImportInfo): Text =
     val siteStr = importInfo.site.show
@@ -668,26 +637,24 @@ class PlainPrinter(_ctx: Context) extends Printer {
     try
       // The current TyperState constraint determines how type variables are printed
       ctx.typerState.constraint = c
-      def entryText(tp: Type) = tp match {
+      def entryText(tp: Type) = tp match
         case tp: TypeBounds =>
           toText(tp)
         case _ =>
           " := " ~ toText(tp)
-      }
       val indent = 3
       val uninstVarsText = " uninstantiated variables: " ~
         Text(c.uninstVars.map(toText), ", ")
       val constrainedText =
         " constrained types: " ~ Text(c.domainLambdas.map(toText), ", ")
       val boundsText =
-        " bounds: " ~ {
+        " bounds: " `~`:
           val assocs =
             for (param <- c.domainParams)
             yield (" " * indent) ~ toText(param) ~ entryText(c.entry(param))
           Text(assocs, "\n")
-        }
       val orderingText =
-        " ordering: " ~ {
+        " ordering: " `~`:
           val deps =
             for {
               param <- c.domainParams
@@ -698,7 +665,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
               (" " * indent) ~ toText(param) ~ " <: " ~
                 Text(ups.map(toText), ", ")
           Text(deps, "\n")
-        }
       val depsText = if Config.showConstraintDeps then c.depsToString else ""
       //Printer.debugPrintUnique = false
       Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText, depsText))
@@ -724,5 +690,4 @@ class PlainPrinter(_ctx: Context) extends Printer {
     if (ctx.useColors) color + text + SyntaxHighlighting.NoColor else text
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
-}
 

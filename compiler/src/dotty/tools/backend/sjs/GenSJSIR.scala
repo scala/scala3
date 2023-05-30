@@ -5,7 +5,7 @@ import Contexts._
 import Phases._
 
 /** Generates Scala.js IR files for the compilation unit. */
-class GenSJSIR extends Phase {
+class GenSJSIR extends Phase:
 
   override def phaseName: String = GenSJSIR.name
 
@@ -16,7 +16,6 @@ class GenSJSIR extends Phase {
 
   def run(using Context): Unit =
     new JSCodeGen().run()
-}
 
 object GenSJSIR:
   val name: String = "genSJSIR"

@@ -12,7 +12,7 @@ import io._
  *  single output location, but tools may use this functionality
  *  to set output location per source directory.
  */
-class OutputDirs {
+class OutputDirs:
   /** Pairs of source directory - destination directory. */
   private var outputDirs: List[(AbstractFile, AbstractFile)] = Nil
 
@@ -41,10 +41,9 @@ class OutputDirs {
   /** Set the single output directory. From now on, all files will
    *  be dumped in there, regardless of previous calls to 'add'.
    */
-  def setSingleOutput(outDir: String): Unit = {
+  def setSingleOutput(outDir: String): Unit =
     val dst = AbstractFile.getDirectory(outDir)
     setSingleOutput(checkDir(dst, outDir, true))
-  }
 
   def getSingleOutput: Option[AbstractFile] = singleOutDir
 
@@ -54,31 +53,27 @@ class OutputDirs {
   def setSingleOutput(dir: AbstractFile): Unit =
     singleOutDir = Some(dir)
 
-  def add(src: AbstractFile, dst: AbstractFile): Unit = {
+  def add(src: AbstractFile, dst: AbstractFile): Unit =
     singleOutDir = None
     outputDirs ::= ((src, dst))
-  }
 
   /** Return the list of source-destination directory pairs. */
   def outputs: List[(AbstractFile, AbstractFile)] = outputDirs
 
   /** Return the output directory for the given file.
    */
-  def outputDirFor(src: AbstractFile): AbstractFile = {
+  def outputDirFor(src: AbstractFile): AbstractFile =
     def isBelow(srcDir: AbstractFile, outDir: AbstractFile) =
       src.path.startsWith(srcDir.path)
 
-    singleOutDir match {
+    singleOutDir match
       case Some(d) => d
       case None =>
-        (outputs find (isBelow _).tupled) match {
+        (outputs find (isBelow _).tupled) match
           case Some((_, d)) => d
           case _ =>
             throw new FatalError("Could not find an output directory for "
               + src.path + " in " + outputs)
-        }
-    }
-  }
 
   /** Return the source file path(s) which correspond to the given
    *  classfile path and SourceFile attribute value, subject to the
@@ -97,21 +92,16 @@ class OutputDirs {
    *  output directory there will be two or more candidate source file
    *  paths.
    */
-  def srcFilesFor(classFile: AbstractFile, srcPath: String): List[AbstractFile] = {
+  def srcFilesFor(classFile: AbstractFile, srcPath: String): List[AbstractFile] =
     def isBelow(srcDir: AbstractFile, outDir: AbstractFile) =
       classFile.path.startsWith(outDir.path)
 
-    singleOutDir match {
+    singleOutDir match
       case Some(d) =>
-        d match {
+        d match
           case _: VirtualDirectory | _: io.ZipArchive => Nil
           case _ => List(d.lookupPathUnchecked(srcPath, false))
-        }
       case None =>
-        (outputs filter (isBelow _).tupled) match {
+        (outputs filter (isBelow _).tupled) match
           case Nil => Nil
           case matches => matches.map(_._1.lookupPathUnchecked(srcPath, false))
-        }
-    }
-  }
-}

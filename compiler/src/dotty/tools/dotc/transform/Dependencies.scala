@@ -165,11 +165,10 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
       println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
       throw ex
 
-  private def markCalled(callee: Symbol, caller: Symbol)(using Context): Unit = {
+  private def markCalled(callee: Symbol, caller: Symbol)(using Context): Unit =
     report.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
     assert(isLocal(callee))
     symSet(called, caller) += callee
-  }
 
   protected def process(tree: Tree)(using Context) =
     val sym = tree.symbol
@@ -279,11 +278,10 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
     do ()
 
   // initialization
-  inContext(rootContext) {
+  inContext(rootContext):
     CollectDependencies().traverse(root)
     computeFreeVars()
     computeLogicOwners()
-  }
 object Dependencies:
   private class NoPath extends Exception
 end Dependencies

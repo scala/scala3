@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package core
 
-object Flags {
+object Flags:
 
-  object opaques {
+  object opaques:
 
     /** A FlagSet represents a set of flags. Flags are encoded as follows:
     *  The first two bits indicate whether a flag set applies to terms,
@@ -17,12 +17,11 @@ object Flags {
     /** A flag set consisting of a single flag */
     opaque type Flag <: FlagSet = Long
     private[Flags] def Flag(bits: Long): Flag = bits
-  }
   export opaques.FlagSet
 
   type Flag = opaques.Flag
 
-  extension (x: FlagSet) {
+  extension (x: FlagSet)
 
     inline def bits: Long = opaques.toBits(x)
 
@@ -34,22 +33,20 @@ object Flags {
     def | (y: FlagSet): FlagSet =
       if (x.bits == 0) y
       else if (y.bits == 0) x
-      else {
+      else
         val tbits = x.bits & y.bits & KINDFLAGS
         if (tbits == 0)
           assert(false, s"illegal flagset combination: ${x.flagsString} and ${y.flagsString}")
         FlagSet(tbits | ((x.bits | y.bits) & ~KINDFLAGS))
-      }
 
     /** The intersection of the given flag sets */
     def & (y: FlagSet): FlagSet = FlagSet(x.bits & y.bits)
 
     /** The intersection of a flag set with the complement of another flag set */
-    def &~ (y: FlagSet): FlagSet = {
+    def &~ (y: FlagSet): FlagSet =
       val tbits = x.bits & KINDFLAGS
       if ((tbits & y.bits) == 0) x
       else FlagSet(tbits | ((x.bits & ~y.bits) & ~KINDFLAGS))
-    }
 
     def ^ (y: FlagSet) =
       FlagSet((x.bits | y.bits) & KINDFLAGS | (x.bits ^ y.bits) & ~KINDFLAGS)
@@ -57,10 +54,9 @@ object Flags {
     /** Does the given flag set contain the given flag?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
-    def is (flag: Flag): Boolean = {
+    def is (flag: Flag): Boolean =
       val fs = x.bits & flag.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
-    }
 
     /** Does the given flag set contain the given flag
      *  and at the same time contain none of the flags in the `butNot` set?
@@ -70,10 +66,9 @@ object Flags {
     /** Does the given flag set have a non-empty intersection with another flag set?
      *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
-    def isOneOf (flags: FlagSet): Boolean = {
+    def isOneOf (flags: FlagSet): Boolean =
       val fs = x.bits & flags.bits
       (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
-    }
 
     /** Does the given flag set have a non-empty intersection with another flag set,
      *  and at the same time contain none of the flags in the `butNot` set?
@@ -83,11 +78,10 @@ object Flags {
     /** Does a given flag set have all of the flags of another flag set?
      *  Pre: The intersection of the term/type flags of both sets must be non-empty.
      */
-    def isAllOf (flags: FlagSet): Boolean = {
+    def isAllOf (flags: FlagSet): Boolean =
       val fs = x.bits & flags.bits
       ((fs & KINDFLAGS) != 0 || flags.bits == 0) &&
       (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
-    }
 
     /** Does a given flag set have all of the flags in another flag set
      *  and at the same time contain none of the flags in the `butNot` set?
@@ -124,33 +118,29 @@ object Flags {
     /** The  list of non-empty names of flags with given index idx that are set in the given flag set */
     private def flagString(idx: Int): List[String] =
       if ((x.bits & (1L << idx)) == 0) Nil
-      else {
+      else
         def halfString(kind: Int) =
           if ((x.bits & (1L << kind)) != 0) flagName(idx)(kind) else ""
         val termFS = halfString(TERMindex)
         val typeFS = halfString(TYPEindex)
         val strs = termFS :: (if (termFS == typeFS) Nil else typeFS :: Nil)
         strs filter (_.nonEmpty)
-      }
 
     /** The list of non-empty names of flags that are set in the given flag set */
-    def flagStrings(privateWithin: String = ""): Seq[String] = {
+    def flagStrings(privateWithin: String = ""): Seq[String] =
       var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))
       	rawStrings = rawStrings :+ "private"
       val scopeStr = if (x.is(Local)) "this" else privateWithin
       if (scopeStr != "")
-        rawStrings.filter(_ != "<local>").map {
+        rawStrings.filter(_ != "<local>").map:
           case "private" => s"private[$scopeStr]"
           case "protected" => s"protected[$scopeStr]"
           case str => str
-        }
       else rawStrings
-    }
 
     /** The string representation of the given flag set */
     def flagsString: String = x.flagStrings("").mkString(" ")
-  }
 
   // Temporary while extension names are in flux
   def or(x1: FlagSet, x2: FlagSet) = x1 | x2
@@ -181,12 +171,11 @@ object Flags {
       if (isDefinedAsFlag(idx)) bits | (1L << idx) else bits))
 
   /** The union of all flags in given flag set */
-  def union(flagss: FlagSet*): FlagSet = {
+  def union(flagss: FlagSet*): FlagSet =
     var flag = EmptyFlags
     for (f <- flagss)
       flag |= f
     flag
-  }
 
   def commonFlags(flagss: FlagSet*): FlagSet = union(flagss.map(_.toCommonFlags): _*)
 
@@ -202,12 +191,11 @@ object Flags {
    *  @param name     The name to be used for the term flag
    *  @param typeName The name to be used for the type flag, if it is different from `name`.
    */
-  private def newFlags(index: Int, name: String, typeName: String = ""): (Flag, Flag, Flag) = {
+  private def newFlags(index: Int, name: String, typeName: String = ""): (Flag, Flag, Flag) =
     flagName(index)(TERMindex) = name
     flagName(index)(TYPEindex) = if (typeName.isEmpty) name else typeName
     val bits = 1L << index
     (opaques.Flag(KINDFLAGS | bits), opaques.Flag(TERMS | bits), opaques.Flag(TYPES | bits))
-  }
 
   // ----------------- Available flags -----------------------------------------------------
 
@@ -610,4 +598,3 @@ object Flags {
   val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
-}

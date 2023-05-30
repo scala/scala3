@@ -65,7 +65,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end synthesizedClassTag
 
   val synthesizedTypeTest: SpecialHandler =
-    (formal, span) => formal.argInfos match {
+    (formal, span) => formal.argInfos match
       case arg1 :: arg2 :: Nil if !defn.isBottomClass(arg2.typeSymbol) =>
         val srcPos = ctx.source.atSpan(span)
         val tp1 = fullyDefinedType(arg1, "TypeTest argument", srcPos)
@@ -78,7 +78,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           EmptyTreeNoError
         else
           // Generate SAM: (s: <tp1>) => if s.isInstanceOf[<tp2>] then Some(s.asInstanceOf[s.type & <tp2>]) else None
-          def body(args: List[Tree]): Tree = {
+          def body(args: List[Tree]): Tree =
             val arg :: Nil = args: @unchecked
             val t = arg.tpe & tp2
             If(
@@ -87,14 +87,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 .appliedToType(t)
                 .appliedTo(arg.select(nme.asInstanceOf_).appliedToType(t)),
               ref(defn.NoneModule))
-          }
           val tpe = MethodType(List(nme.s))(_ => List(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
           val meth = newAnonFun(ctx.owner, tpe, coord = span)
           val typeTestType = defn.TypeTestClass.typeRef.appliedTo(List(tp1, tp2))
           withNoErrors(Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span))
       case _ =>
         EmptyTreeNoError
-    }
   end synthesizedTypeTest
 
   val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
@@ -157,9 +155,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       */
     def validEqAnyArgs(tp1: Type, tp2: Type)(using Context) =
       typer.assumedCanEqual(tp1, tp2)
-       || withMode(Mode.StrictEquality) {
+      || withMode(Mode.StrictEquality):
             !hasEq(tp1) && !hasEq(tp2)
-          }
 
     /** Is an `CanEqual[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
     def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean =
@@ -385,11 +382,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         for
           lsrc <- reduce(l)
           rsrc <- reduce(r)
-          res <- locally {
+          res <- locally:
             if lsrc.isSub(rsrc) then Right(lsrc)
             else if rsrc.isSub(lsrc) then Right(rsrc)
             else Left(i"its subpart `$tp` is an intersection of unrelated definitions ${lsrc.show} and ${rsrc.show}.")
-          }
         yield
           res
       case tp: OrType =>
@@ -420,11 +416,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val elemsLabels = TypeOps.nestedPairs(elemLabels)
       checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
       checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
-      val mirrorType = formal.constrained_& {
+      val mirrorType = formal.`constrained_&`:
         mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name)
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
-      }
       val mirrorRef =
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
@@ -434,32 +429,30 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     MirrorSource.reduce(mirroredType) match
       case Right(msrc) => msrc match
-        case MirrorSource.Singleton(_, tref) =>
-          val singleton = tref.termSymbol // prefer alias name over the orignal name
-          val singletonPath = pathFor(tref).withSpan(span)
-          if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
-            val mirrorType = formal.constrained_& {
-              mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
-            }
-            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
-            withNoErrors(mirrorRef.cast(mirrorType))
-          else
-            val mirrorType = formal.constrained_& {
-              mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name)
-            }
-            withNoErrors(singletonPath.cast(mirrorType))
-        case MirrorSource.GenericTuple(tps) =>
-          val maxArity = Definitions.MaxTupleArity
-          val arity = tps.size
-          if tps.size <= maxArity then
-            val tupleCls = defn.TupleType(arity).nn.classSymbol
-            makeProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
-          else
-            val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
-            withErrors(i"${defn.PairClass} is not a generic product because $reason")
-        case MirrorSource.ClassSymbol(pre, cls) =>
-          if cls.isGenericProduct then makeProductMirror(pre, cls, None)
-          else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
+          case MirrorSource.Singleton(_, tref) =>
+            val singleton = tref.termSymbol // prefer alias name over the orignal name
+            val singletonPath = pathFor(tref).withSpan(span)
+            if tref.classSymbol.is(Scala2x) then // could be Scala 3 alias of Scala 2 case object.
+              val mirrorType = formal.`constrained_&`:
+                mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
+              val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
+              withNoErrors(mirrorRef.cast(mirrorType))
+            else
+              val mirrorType = formal.`constrained_&`:
+                mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name)
+              withNoErrors(singletonPath.cast(mirrorType))
+          case MirrorSource.GenericTuple(tps) =>
+            val maxArity = Definitions.MaxTupleArity
+            val arity = tps.size
+            if tps.size <= maxArity then
+              val tupleCls = defn.TupleType(arity).nn.classSymbol
+              makeProductMirror(tupleCls.owner.reachableThisType, tupleCls, Some(tps))
+            else
+              val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
+              withErrors(i"${defn.PairClass} is not a generic product because $reason")
+          case MirrorSource.ClassSymbol(pre, cls) =>
+            if cls.isGenericProduct then makeProductMirror(pre, cls, None)
+            else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
       case Left(msg) =>
         withErrors(i"type `$mirroredType` is not a generic product because $msg")
   end productMirror
@@ -549,11 +542,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
       val mirrorType =
         val labels = TypeOps.nestedPairs(elemLabels)
-        formal.constrained_& {
+        formal.`constrained_&`:
           mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name)
             .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
             .refinedWith(tpnme.MirroredElemLabels, TypeAlias(labels))
-        }
       val mirrorRef =
         if cls.useCompanionAsSumMirror then companionPath(mirroredType, span)
         else anonymousMirror(monoType, MirrorImpl.OfSum(childPres), span)
@@ -562,7 +554,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       withErrors(i"type `$mirroredType` is not a generic sum because $acceptableMsg")
     else if !clsIsGenericSum then
       withErrors(i"$cls is not a generic sum because ${cls.whyNotGenericSum(pre)}")
-      else
+    else
       EmptyTreeNoError
   end sumMirror
 

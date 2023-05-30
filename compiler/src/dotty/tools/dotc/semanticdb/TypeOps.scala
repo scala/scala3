@@ -66,7 +66,7 @@ class TypeOps:
     fakeSymbols.add(sym)
 
   extension (tpe: Type)
-    def lookupSym(name: Name)(using Context): Option[Symbol] = {
+    def lookupSym(name: Name)(using Context): Option[Symbol] =
       def loop(ty: Type): Option[Symbol] = ty match
         case rt: RefinedType =>
           refinementSymtab.lookup(rt, name).orElse(
@@ -81,11 +81,10 @@ class TypeOps:
         case _ =>
           None
       loop(tpe.dealias)
-    }
 
     def toSemanticSig(using LinkMode, Context, SemanticSymbolBuilder)(sym: Symbol): s.Signature =
       def enterParamRef(tpe: Type): Unit =
-        tpe match {
+        tpe match
           case lam: LambdaType =>
             // Find the "actual" binder type for nested LambdaType
             // For example, `def foo(x: T)(y: T): T` and for `<y>.owner.info` would be like
@@ -119,10 +118,9 @@ class TypeOps:
             enterParamRef(tb.hi)
 
           case _ => ()
-        }
 
       def enterRefined(tpe: Type): Unit =
-        tpe match {
+        tpe match
           case refined: RefinedType =>
             val key = (refined, sym.name)
             refinementSymtab(key) = sym
@@ -168,35 +166,31 @@ class TypeOps:
             enterRefined(t1)
             enterRefined(t2)
           case _ => ()
-        }
       if sym.exists && sym.owner.exists then
         enterParamRef(sym.owner.info)
         enterRefined(sym.owner.info)
 
-      def loop(tpe: Type): s.Signature = tpe match {
+      def loop(tpe: Type): s.Signature = tpe match
         case mp: MethodOrPoly =>
           def flatten(
             t: Type,
             paramss: List[List[SemanticSymbol]],
             tparams: List[SemanticSymbol]
-          ): (Type, List[List[SemanticSymbol]], List[SemanticSymbol]) = t match {
+          ): (Type, List[List[SemanticSymbol]], List[SemanticSymbol]) = t match
             case mt: MethodType =>
               val syms: List[SemanticSymbol] = mt.paramNames.zip(mt.paramInfos).map { (name, info) =>
-                paramRefSymtab.lookup(mt, name).getOrElse {
+                paramRefSymtab.lookup(mt, name).getOrElse:
                   TermParamRefSymbol(sym, name, info).tap(registerFakeSymbol)
-                }
               }
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms: List[SemanticSymbol] = pt.paramNames.zip(pt.paramInfos).map { (name, info) =>
-                paramRefSymtab.lookup(pt, name).getOrElse {
+                paramRefSymtab.lookup(pt, name).getOrElse:
                   TypeParamRefSymbol(sym, name, info).tap(registerFakeSymbol)
-                }
               }
               flatten(pt.resType, paramss, tparams ++ syms)
             case other =>
               (other, paramss, tparams)
-          }
           val (resType, paramss, tparams) = flatten(mp, Nil, Nil)
 
           val sparamss = paramss.map(_.sscope)
@@ -216,20 +210,18 @@ class TypeOps:
 
         case TypeBounds(lo, hi) =>
           // for `type X[T] = T` is equivalent to `[T] =>> T`
-          def tparams(tpe: Type): (Type, List[SemanticSymbol]) = tpe match {
+          def tparams(tpe: Type): (Type, List[SemanticSymbol]) = tpe match
             case lambda: HKTypeLambda =>
               val paramSyms: List[SemanticSymbol] = lambda.paramNames.zip(lambda.paramInfos).map { (paramName, bounds) =>
                 // def x[T[_]] = ???
                 if paramName.isWildcard then
                   WildcardTypeSymbol(sym, bounds).tap(registerFakeSymbol)
                 else
-                  paramRefSymtab.lookup(lambda, paramName).getOrElse {
+                  paramRefSymtab.lookup(lambda, paramName).getOrElse:
                     TypeParamRefSymbol(sym, paramName, bounds).tap(registerFakeSymbol)
-                  }
               }
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
-          }
           val (loRes, loParams) = tparams(lo)
           val (hiRes, hiParams) = tparams(hi)
           val stparams = (loParams ++ hiParams).distinctBy(_.name).sscopeOpt
@@ -241,12 +233,11 @@ class TypeOps:
           s.ValueSignature(
             other.toSemanticType(sym)
           )
-      }
       loop(tpe)
 
     def toSemanticType(sym: Symbol)(using LinkMode, SemanticSymbolBuilder, Context): s.Type =
       import ConstantOps._
-      def loop(tpe: Type): s.Type = tpe match {
+      def loop(tpe: Type): s.Type = tpe match
         case t if t.isFromJavaObject =>
           loop(defn.AnyType)
         case ExprType(tpe) =>
@@ -339,14 +330,13 @@ class TypeOps:
                 val key = (lam, paramName)
                 paramRefSymtab.get(key)
               }.sscope
-              lam.resType match {
+              lam.resType match
                 case defn.MatchCase(key, body) =>
                   s.MatchType.CaseType(
                     loop(key),
                     loop(body)
                   )
                 case _ => s.MatchType.CaseType() // shouldn't happen
-              }
             case defn.MatchCase(key, body) =>
               val skey = loop(key)
               val sbody = loop(body)
@@ -368,30 +358,27 @@ class TypeOps:
           //   refinedInfo = TypeRef(..., Int)
           // )
           type RefinedInfo = (core.Names.Name, Type)
-          def flatten(tpe: Type, acc: List[RefinedInfo]): (Type, List[RefinedInfo]) = tpe match {
+          def flatten(tpe: Type, acc: List[RefinedInfo]): (Type, List[RefinedInfo]) = tpe match
             case RefinedType(parent, name, info) =>
               flatten(parent, acc :+ (name, info))
             case _ =>
               (tpe, acc)
-          }
 
           // flatten parent types to list
           // e.g. `X with Y with Z { refined }`
           // RefinedType(parent = AndType(X, AndType(Y, Z)), ...)
           // => List(X, Y, Z)
-          def flattenParent(parent: Type): List[s.Type] = parent match {
+          def flattenParent(parent: Type): List[s.Type] = parent match
             case AndType(tp1, tp2) =>
               flattenParent(tp1) ++ flattenParent(tp2)
             case _ => List(loop(parent))
-          }
 
           val (parent, refinedInfos) = flatten(rt, List.empty)
           val stpe = s.IntersectionType(flattenParent(parent))
 
           val decls: List[SemanticSymbol] = refinedInfos.map { (name, info) =>
-            refinementSymtab.lookup(rt, name).getOrElse {
+            refinementSymtab.lookup(rt, name).getOrElse:
               RefinementSymbol(sym, name, info).tap(registerFakeSymbol)
-            }
           }
           val sdecls = decls.sscopeOpt(using LinkMode.HardlinkChildren)
           s.StructuralType(stpe, sdecls)
@@ -489,9 +476,8 @@ class TypeOps:
             if paramName.isWildcard then
               WildcardTypeSymbol(sym, bounds).tap(registerFakeSymbol)
             else
-              paramRefSymtab.lookup(lambda, paramName).getOrElse {
+              paramRefSymtab.lookup(lambda, paramName).getOrElse:
                 TypeParamRefSymbol(sym, paramName, bounds).tap(registerFakeSymbol)
-              }
           }
           val parameters =
             paramSyms.sscopeOpt(using LinkMode.HardlinkChildren)
@@ -506,14 +492,13 @@ class TypeOps:
 
         case _ =>
           s.Type.Empty
-      }
       loop(tpe)
 
     /** Return true if the prefix is like `_root_.this` */
     private def hasTrivialPrefix(using Context): Boolean =
       def checkTrivialPrefix(pre: Type, sym: Symbol)(using Context): Boolean =
         pre =:= sym.owner.thisType
-      tpe match {
+      tpe match
         case TypeRef(pre, sym: Symbol) =>
           checkTrivialPrefix(pre, sym)
         case tr @ TypeRef(pre, _) if tr.symbol != NoSymbol =>
@@ -523,7 +508,6 @@ class TypeOps:
         case tr @ TermRef(pre, _) if tr.symbol != NoSymbol =>
           checkTrivialPrefix(pre, tr.symbol)
         case _ => false
-      }
 
 
 object SymbolScopeOps:

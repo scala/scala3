@@ -11,34 +11,30 @@ import scala.annotation.internal.sharable
 @SerialVersionUID(0L)
 final case class TextDocuments(
     documents: _root_.scala.Seq[dotty.tools.dotc.semanticdb.TextDocument] = _root_.scala.Seq.empty
-    )  extends SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       documents.foreach { __item =>
         val __value = __item
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       }
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       documents.foreach { __v =>
         val __m = __v
         _output__.writeTag(1, 2)
         _output__.writeUInt32NoTag(__m.serializedSize)
         __m.writeTo(_output__)
       };
-    }
     def clearDocuments = copy(documents = _root_.scala.Seq.empty)
     def addDocuments(__vs: dotty.tools.dotc.semanticdb.TextDocument *): TextDocuments = addAllDocuments(__vs)
     def addAllDocuments(__vs: Iterable[dotty.tools.dotc.semanticdb.TextDocument]): TextDocuments = copy(documents = documents ++ __vs)
@@ -48,26 +44,22 @@ final case class TextDocuments(
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.TextDocuments])
-}
 
-object TextDocuments  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocuments] {
+object TextDocuments  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocuments]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocuments] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.TextDocuments = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.TextDocuments =
     val __documents: _root_.scala.collection.immutable.VectorBuilder[dotty.tools.dotc.semanticdb.TextDocument] = new _root_.scala.collection.immutable.VectorBuilder[dotty.tools.dotc.semanticdb.TextDocument]
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 10 =>
           __documents += LiteParser.readMessage[dotty.tools.dotc.semanticdb.TextDocument](_input__)
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.TextDocuments(
         documents = __documents.result()
     )
-  }
   
   
   
@@ -84,4 +76,3 @@ object TextDocuments  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
     documents
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.TextDocuments])
-}

@@ -13,10 +13,10 @@ final case class SymbolOccurrence(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None,
     symbol: _root_.scala.Predef.String = "",
     role: dotty.tools.dotc.semanticdb.SymbolOccurrence.Role = dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.UNKNOWN_ROLE
-    )  extends SemanticdbGeneratedMessage  derives CanEqual {
+    )  extends SemanticdbGeneratedMessage  derives CanEqual:
     @transient @sharable
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private[this] def __computeSerializedSize(): _root_.scala.Int =
       var __size = 0
       if (range.isDefined) {
         val __value = range.get
@@ -25,29 +25,24 @@ final case class SymbolOccurrence(
       
       {
         val __value = symbol
-        if (!__value.isEmpty) {
+        if (!__value.isEmpty)
           __size += SemanticdbOutputStream.computeStringSize(2, __value)
-        }
       };
       
       {
         val __value = role.value
-        if (__value != 0) {
+        if (__value != 0)
           __size += SemanticdbOutputStream.computeEnumSize(3, __value)
-        }
       };
       __size
-    }
-    override def serializedSize: _root_.scala.Int = {
+    override def serializedSize: _root_.scala.Int =
       var __size = __serializedSizeMemoized
-      if (__size == 0) {
+      if (__size == 0)
         __size = __computeSerializedSize() + 1
         __serializedSizeMemoized = __size
-      }
       __size - 1
       
-    }
-    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
+    def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit =
       range.foreach { __v =>
         val __m = __v
         _output__.writeTag(1, 2)
@@ -56,17 +51,14 @@ final case class SymbolOccurrence(
       };
       {
         val __v = symbol
-        if (!__v.isEmpty) {
+        if (!__v.isEmpty)
           _output__.writeString(2, __v)
-        }
       };
       {
         val __v = role.value
-        if (__v != 0) {
+        if (__v != 0)
           _output__.writeEnum(3, __v)
-        }
       };
-    }
     def getRange: dotty.tools.dotc.semanticdb.Range = range.getOrElse(dotty.tools.dotc.semanticdb.Range.defaultInstance)
     def clearRange: SymbolOccurrence = copy(range = _root_.scala.None)
     def withRange(__v: dotty.tools.dotc.semanticdb.Range): SymbolOccurrence = copy(range = Option(__v))
@@ -77,18 +69,17 @@ final case class SymbolOccurrence(
     
     
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.SymbolOccurrence])
-}
 
-object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.SymbolOccurrence] {
+object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.SymbolOccurrence]:
   implicit def messageCompanion: SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.semanticdb.SymbolOccurrence] = this
-  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.SymbolOccurrence = {
+  def parseFrom(`_input__`: SemanticdbInputStream): dotty.tools.dotc.semanticdb.SymbolOccurrence =
     var __range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None
     var __symbol: _root_.scala.Predef.String = ""
     var __role: dotty.tools.dotc.semanticdb.SymbolOccurrence.Role = dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.UNKNOWN_ROLE
     var _done__ = false
-    while (!_done__) {
+    while (!_done__)
       val _tag__ = _input__.readTag()
-      _tag__ match {
+      _tag__ match
         case 0 => _done__ = true
         case 10 =>
           __range = Option(__range.fold(LiteParser.readMessage[dotty.tools.dotc.semanticdb.Range](_input__))(LiteParser.readMessage(_input__, _)))
@@ -97,14 +88,11 @@ object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools
         case 24 =>
           __role = dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.fromValue(_input__.readEnum())
         case tag => _input__.skipField(tag)
-      }
-    }
     dotty.tools.dotc.semanticdb.SymbolOccurrence(
         range = __range,
         symbol = __symbol,
         role = __role
     )
-  }
   
   
   
@@ -116,52 +104,46 @@ object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools
     symbol = "",
     role = dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.UNKNOWN_ROLE
   )
-  sealed abstract class Role(val value: _root_.scala.Int)  extends SemanticdbGeneratedEnum  derives CanEqual {
+  sealed abstract class Role(val value: _root_.scala.Int)  extends SemanticdbGeneratedEnum  derives CanEqual:
     type EnumType = Role
     def isUnknownRole: _root_.scala.Boolean = false
     def isReference: _root_.scala.Boolean = false
     def isDefinition: _root_.scala.Boolean = false
     
     final def asRecognized: _root_.scala.Option[dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.SymbolOccurrence.Role.Recognized])
-  }
   
-  object Role  {
+  object Role:
     sealed trait Recognized extends Role
     
     
     @SerialVersionUID(0L)
-    case object UNKNOWN_ROLE extends Role(0) with Role.Recognized {
+    case object UNKNOWN_ROLE extends Role(0) with Role.Recognized:
       val index = 0
       val name = "UNKNOWN_ROLE"
       override def isUnknownRole: _root_.scala.Boolean = true
-    }
     
     @SerialVersionUID(0L)
-    case object REFERENCE extends Role(1) with Role.Recognized {
+    case object REFERENCE extends Role(1) with Role.Recognized:
       val index = 1
       val name = "REFERENCE"
       override def isReference: _root_.scala.Boolean = true
-    }
     
     @SerialVersionUID(0L)
-    case object DEFINITION extends Role(2) with Role.Recognized {
+    case object DEFINITION extends Role(2) with Role.Recognized:
       val index = 2
       val name = "DEFINITION"
       override def isDefinition: _root_.scala.Boolean = true
-    }
     
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Role(unrecognizedValue) with SemanticdbUnrecognizedEnum
     lazy val values = scala.collection.immutable.Seq(UNKNOWN_ROLE, REFERENCE, DEFINITION)
-    def fromValue(__value: _root_.scala.Int): Role = __value match {
+    def fromValue(__value: _root_.scala.Int): Role = __value match
       case 0 => UNKNOWN_ROLE
       case 1 => REFERENCE
       case 2 => DEFINITION
       case __other => Unrecognized(__other)
-    }
     
     
-  }
   final val RANGE_FIELD_NUMBER = 1
   final val SYMBOL_FIELD_NUMBER = 2
   final val ROLE_FIELD_NUMBER = 3
@@ -175,4 +157,3 @@ object SymbolOccurrence  extends SemanticdbGeneratedMessageCompanion[dotty.tools
     role
   )
   // @@protoc_insertion_point(GeneratedMessageCompanion[dotty.tools.dotc.semanticdb.SymbolOccurrence])
-}

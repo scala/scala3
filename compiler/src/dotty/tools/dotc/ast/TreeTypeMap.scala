@@ -38,7 +38,7 @@ class TreeTypeMap(
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
   val substTo: List[Symbol] = Nil,
-  cpy: tpd.TreeCopier = tpd.cpy)(using Context) extends tpd.TreeMap(cpy) {
+  cpy: tpd.TreeCopier = tpd.cpy)(using Context) extends tpd.TreeMap(cpy):
   import tpd._
 
   def copy(
@@ -56,34 +56,29 @@ class TreeTypeMap(
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
    */
-  private val mapOwnerThis = new TypeMap with cc.CaptureSet.IdempotentCaptRefMap {
-    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
+  private val mapOwnerThis = new TypeMap with cc.CaptureSet.IdempotentCaptRefMap:
+    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match
       case Nil => tp
       case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
       case _ :: from1 => mapPrefix(from1, to.tail, tp)
-    }
-    def apply(tp: Type): Type = tp match {
+    def apply(tp: Type): Type = tp match
       case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
       case _ => mapOver(tp)
-    }
-  }
 
   def mapType(tp: Type): Type =
     mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
     if (prevStats.isEmpty) assert(newStats.isEmpty)
-    else {
-      prevStats.head match {
+    else
+      prevStats.head match
         case pdef: MemberDef =>
           val prevSym = pdef.symbol
           val newSym = newStats.head.symbol
           val newCls = newSym.owner.asClass
           if (prevSym != newSym) newCls.replace(prevSym, newSym)
         case _ =>
-      }
       updateDecls(prevStats.tail, newStats.tail)
-    }
 
   def transformInlined(tree: Inlined)(using Context): Tree =
     val Inlined(call, bindings, expanded) = tree
@@ -91,7 +86,7 @@ class TreeTypeMap(
     val expanded1 = tmap1.transform(expanded)
     cpy.Inlined(tree)(call, bindings1, expanded1)
 
-  override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
+  override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match
     case impl @ Template(constr, _, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
@@ -102,7 +97,7 @@ class TreeTypeMap(
             (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
-      tree1.withType(mapType(tree1.tpe)) match {
+      tree1.withType(mapType(tree1.tpe)) match
         case id: Ident =>
           if needsSelect(id.tpe) then
             ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
@@ -125,10 +120,9 @@ class TreeTypeMap(
           val (tmap1, paramss1) = transformAllParamss(paramss)
           val res = cpy.DefDef(ddef)(name, paramss1, tmap1.transform(tpt), tmap1.transform(ddef.rhs))
           res.symbol.setParamssFromDefs(paramss1)
-          res.symbol.transformAnnotations {
+          res.symbol.transformAnnotations:
             case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
-          }
           res
         case tdef @ LambdaTypeTree(tparams, body) =>
           val (tmap1, tparams1) = transformDefs(tparams)
@@ -148,16 +142,13 @@ class TreeTypeMap(
           cpy.Labeled(labeled)(bind1, expr1)
         case tree1 =>
           super.transform(tree1)
-      }
-  }
 
   override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
     transformDefs(trees)._2
 
-  def transformDefs[TT <: Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
+  def transformDefs[TT <: Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) =
     val tmap = withMappedSyms(localSyms(trees))
     (tmap, tmap.transformSub(trees))
-  }
 
   private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
     case params :: paramss1 =>
@@ -177,7 +168,7 @@ class TreeTypeMap(
   /** The current tree map composed with a substitution [from -> to] */
   def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =
     if (from eq to) this
-    else {
+    else
       // assert that substitution stays idempotent, assuming its parts are
       // TODO: It might be better to cater for the asserted-away conditions, by
       // setting up a proper substitution abstraction with a compose operator that
@@ -194,7 +185,6 @@ class TreeTypeMap(
         to ++ newOwners,
         from ++ substFrom,
         to ++ substTo)
-    }
 
   /** Apply `typeMap` and `ownerMap` to given symbols `syms`
    *  and return a treemap that contains the substitution
@@ -233,4 +223,3 @@ class TreeTypeMap(
        |newOwners = ${showSyms(newOwners)}
        |substFrom = ${showSyms(substFrom)}
        |substTo   = ${showSyms(substTo)}""".stripMargin
-}

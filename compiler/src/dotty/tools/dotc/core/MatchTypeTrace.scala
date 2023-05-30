@@ -28,7 +28,7 @@ object MatchTypeTrace:
    */
   def record(op: Context ?=> Any)(using Context): String =
     val trace = new MatchTrace
-    inContext(ctx.fresh.setProperty(MatchTrace, trace)) {
+    inContext(ctx.fresh.setProperty(MatchTrace, trace)):
       op
       if trace.entries.isEmpty then ""
       else
@@ -37,7 +37,6 @@ object MatchTypeTrace:
            |Note: a match type could not be fully reduced:
            |
            |${trace.entries.reverse.map(explainEntry)}%\n%"""
-    }
 
   /** Are we running an operation that records a match type trace? */
   def isRecording(using Context): Boolean =

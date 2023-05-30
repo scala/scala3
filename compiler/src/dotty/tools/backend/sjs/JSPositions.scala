@@ -16,40 +16,35 @@ import dotty.tools.dotc.util.Spans.Span
 import org.scalajs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
-class JSPositions()(using Context) {
+class JSPositions()(using Context):
   import JSPositions._
 
-  private val sourceURIMaps: List[URIMap] = {
+  private val sourceURIMaps: List[URIMap] =
     ctx.settings.scalajsMapSourceURI.value.flatMap { option =>
       val uris = option.split("->")
-      if (uris.length != 1 && uris.length != 2) {
+      if (uris.length != 1 && uris.length != 2)
         report.error("-scalajs-mapSourceURI needs one or two URIs as argument (separated by '->').")
         Nil
-      } else {
-        try {
+      else
+        try
           val from = new URI(uris.head)
           val to = uris.lift(1).map(str => new URI(str))
           URIMap(from, to) :: Nil
-        } catch {
+        catch
           case e: URISyntaxException =>
             report.error(em"${e.getInput} is not a valid URI")
             Nil
-        }
-      }
     }
-  }
 
-  private def sourceAndSpan2irPos(source: SourceFile, span: Span): ir.Position = {
+  private def sourceAndSpan2irPos(source: SourceFile, span: Span): ir.Position =
     if (!span.exists) ir.Position.NoPosition
-    else {
+    else
       // dotty positions and IR positions are both 0-based
       val irSource = span2irPosCache.toIRSource(source)
       val point = span.point
       val line = source.offsetToLine(point)
       val column = source.column(point)
       ir.Position(irSource, line, column)
-    }
-  }
 
   /** Implicit conversion from dotty Span to ir.Position. */
   implicit def span2irPos(span: Span): ir.Position =
@@ -63,22 +58,20 @@ class JSPositions()(using Context) {
   implicit def implicitSourcePos2irPos(implicit sourcePos: SourcePosition): ir.Position =
     sourceAndSpan2irPos(sourcePos.source, sourcePos.span)
 
-  private object span2irPosCache {
+  private object span2irPosCache:
     import dotty.tools.dotc.util._
 
     private var lastDotcSource: SourceFile = null
     private var lastIRSource: ir.Position.SourceFile = null
 
-    def toIRSource(dotcSource: SourceFile): ir.Position.SourceFile = {
-      if (dotcSource != lastDotcSource) {
+    def toIRSource(dotcSource: SourceFile): ir.Position.SourceFile =
+      if (dotcSource != lastDotcSource)
         lastIRSource = convert(dotcSource)
         lastDotcSource = dotcSource
-      }
       lastIRSource
-    }
 
-    private def convert(dotcSource: SourceFile): ir.Position.SourceFile = {
-      dotcSource.file.file match {
+    private def convert(dotcSource: SourceFile): ir.Position.SourceFile =
+      dotcSource.file.file match
         case null =>
           new java.net.URI(
               "virtualfile",        // Pseudo-Scheme
@@ -92,11 +85,6 @@ class JSPositions()(using Context) {
               val relURI = from.relativize(srcURI)
               to.fold(relURI)(_.resolve(relURI))
           }.getOrElse(srcURI)
-      }
-    }
-  }
-}
 
-object JSPositions {
+object JSPositions:
   final case class URIMap(from: URI, to: Option[URI])
-}

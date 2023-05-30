@@ -8,7 +8,7 @@ import collection.immutable.BitSet
 import core.Decorators._
 import core.StdNames.nme
 
-abstract class TokensCommon {
+abstract class TokensCommon:
   def maxToken: Int
 
   type Token = Int
@@ -18,11 +18,10 @@ abstract class TokensCommon {
 
   val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
 
-  def enter(token: Int, str: String, debugStr: String = ""): Unit = {
+  def enter(token: Int, str: String, debugStr: String = ""): Unit =
     assert(tokenString(token) == null)
     tokenString(token) = str
     debugString(token) = if (debugStr.isEmpty) str else debugStr
-  }
 
   /** special tokens */
   inline val EMPTY = 0;             enter(EMPTY, "<empty>") // a missing token, used in lookahead
@@ -127,7 +126,7 @@ abstract class TokensCommon {
   inline val firstParen = LPAREN
   inline val lastParen = OUTDENT
 
-  def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
+  def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) =
     def start(tok: Token) = tokenString(tok).toTermName.asSimpleName.start
     def sourceKeywords = keywords.toList.filter { (kw: Token) =>
       val ts = tokenString(kw)
@@ -139,10 +138,8 @@ abstract class TokensCommon {
     val arr = Array.fill(lastKeywordStart + 1)(IDENTIFIER)
     for (kw <- sourceKeywords) arr(start(kw)) = kw
     (lastKeywordStart, arr)
-  }
-}
 
-object Tokens extends TokensCommon {
+object Tokens extends TokensCommon:
   inline val minToken = EMPTY
   final def maxToken: Int = XMLSTART
 
@@ -223,8 +220,8 @@ object Tokens extends TokensCommon {
 
   final val canStartExprTokens3: TokenSet =
       atomicExprTokens
-    | openParensTokens
-    | BitSet(INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
+      | openParensTokens
+      | BitSet(INDENT, QUOTE, IF, WHILE, FOR, NEW, TRY, THROW)
 
   final val canStartExprTokens2: TokenSet = canStartExprTokens3 | BitSet(DO)
 
@@ -293,8 +290,6 @@ object Tokens extends TokensCommon {
 
   def showTokenDetailed(token: Int): String = debugString(token)
 
-  def showToken(token: Int): String = {
+  def showToken(token: Int): String =
     val str = tokenString(token)
     if isKeyword(token) || token == COLONfollow || token == COLONeol then s"'$str'" else str
-  }
-}

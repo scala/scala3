@@ -4,7 +4,7 @@ package classfile
 
 import scala.annotation.switch
 
-object ClassfileConstants {
+object ClassfileConstants:
 
   inline val JAVA_MAGIC = 0xCAFEBABE
   inline val JAVA_MAJOR_VERSION = 45
@@ -332,12 +332,12 @@ object ClassfileConstants {
   inline val impdep2       = 0xff
 
   import Flags._
-  abstract class FlagTranslation {
+  abstract class FlagTranslation:
 
     protected def baseFlags(jflags: Int): FlagSet = EmptyFlags
     protected def isClass: Boolean = false
 
-    private def translateFlag(jflag: Int): FlagSet = (jflag: @switch) match {
+    private def translateFlag(jflag: Int): FlagSet = (jflag: @switch) match
       case JAVA_ACC_PRIVATE    => Private
       case JAVA_ACC_PROTECTED  => Protected
       case JAVA_ACC_FINAL      => Final
@@ -348,12 +348,11 @@ object ClassfileConstants {
       case JAVA_ACC_INTERFACE  => PureInterfaceCreationFlags | JavaDefined
       case JAVA_ACC_ANNOTATION => JavaAnnotation
       case _                   => EmptyFlags
-    }
 
     private def addFlag(base: FlagSet, jflag: Int): FlagSet =
       if (jflag == 0) base else base | translateFlag(jflag)
 
-    private def translateFlags(jflags: Int, baseFlags: FlagSet): FlagSet = {
+    private def translateFlags(jflags: Int, baseFlags: FlagSet): FlagSet =
       var res: FlagSet = baseFlags | JavaDefined
       res = addFlag(res, jflags & JAVA_ACC_PRIVATE)
       res = addFlag(res, jflags & JAVA_ACC_PROTECTED)
@@ -365,17 +364,11 @@ object ClassfileConstants {
       res = addFlag(res, jflags & JAVA_ACC_INTERFACE)
       res = addFlag(res, jflags & JAVA_ACC_ANNOTATION)
       res
-    }
 
     def flags(jflags: Int): FlagSet = translateFlags(jflags, baseFlags(jflags))
-  }
-  val classTranslation: FlagTranslation = new FlagTranslation {
+  val classTranslation: FlagTranslation = new FlagTranslation:
     override def isClass = true
-  }
-  val fieldTranslation: FlagTranslation = new FlagTranslation {
+  val fieldTranslation: FlagTranslation = new FlagTranslation:
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags
-  }
-  val methodTranslation: FlagTranslation = new FlagTranslation {
+  val methodTranslation: FlagTranslation = new FlagTranslation:
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags
-  }
-}

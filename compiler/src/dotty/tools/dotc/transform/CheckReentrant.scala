@@ -26,7 +26,7 @@ import Decorators._
  *     in an immutable way anyway. To do better, it would be helpful to have a type
  *     for immutable array.
  */
-class CheckReentrant extends MiniPhase {
+class CheckReentrant extends MiniPhase:
   import ast.tpd._
 
   override def phaseName: String = CheckReentrant.name
@@ -52,40 +52,33 @@ class CheckReentrant extends MiniPhase {
       // We would add @sharable annotations on ScalaJSVersions and
       // VersionChecks but we do not have control over that code
 
-  def scanning(sym: Symbol)(op: => Unit)(using Context): Unit = {
+  def scanning(sym: Symbol)(op: => Unit)(using Context): Unit =
     report.log(i"${"  " * indent}scanning $sym")
     indent += 1
     try op
     finally indent -= 1
-  }
 
   def addVars(cls: ClassSymbol)(using Context): Unit =
-    if (!seen.contains(cls) && !isIgnored(cls)) {
+    if (!seen.contains(cls) && !isIgnored(cls))
       seen += cls
-      scanning(cls) {
+      scanning(cls):
         for (sym <- cls.classInfo.decls)
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
-            if (sym.is(Mutable)) {
+            if (sym.is(Mutable))
               report.error(
                 em"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                     |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
-            }
             else if (!sym.is(Method) || sym.isOneOf(Accessor | ParamAccessor))
-              scanning(sym) {
+              scanning(sym):
                 sym.info.widenExpr.classSymbols.foreach(addVars)
-              }
         for (parent <- cls.parentSyms)
           addVars(parent.asClass)
-      }
-    }
 
-  override def transformTemplate(tree: Template)(using Context): Tree = {
+  override def transformTemplate(tree: Template)(using Context): Tree =
     if (ctx.settings.YcheckReentrant.value && tree.symbol.owner.isStaticOwner)
       addVars(tree.symbol.owner.asClass)
     tree
-  }
-}
 
 object CheckReentrant:
   val name: String = "checkReentrant"

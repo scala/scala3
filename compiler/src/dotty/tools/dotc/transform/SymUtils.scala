@@ -30,7 +30,7 @@ object SymUtils:
     *  through the superclass. Traits are given in the order they appear in the
     *  parents clause (which is the reverse of their order in baseClasses)
     */
-    def directlyInheritedTraits(using Context): List[ClassSymbol] = {
+    def directlyInheritedTraits(using Context): List[ClassSymbol] =
       val superCls = self.asClass.superClass
       val baseClasses = self.asClass.baseClasses
       if (baseClasses.isEmpty) Nil
@@ -39,7 +39,6 @@ object SymUtils:
           case bc :: bcs1 => if bc eq superCls then acc else recur(bcs1, bc :: acc)
           case nil => acc
         recur(baseClasses.tail, Nil)
-    }
 
     /** All traits implemented by a class, except for those inherited through the superclass.
     *  The empty list if `self` is a trait.
@@ -170,11 +169,11 @@ object SymUtils:
         s"it is not a sealed ${self.kindString}"
       else if (!self.isOneOf(AbstractOrTrait))
         "it is not an abstract class"
-      else {
+      else
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
         val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbol else NoSymbol
-        def problem(child: Symbol) = {
+        def problem(child: Symbol) =
 
           def accessibleMessage(sym: Symbol): String =
             def inherits(sym: Symbol, scope: Symbol): Boolean =
@@ -196,7 +195,7 @@ object SymUtils:
           if (child == self) "it has anonymous or inaccessible subclasses"
           else if (!childAccessible.isEmpty) i"its child $child is not accessible $childAccessible"
           else if (!child.isClass) "" // its a singleton enum value
-          else {
+          else
             val s = child.whyNotGenericProduct
             if s.isEmpty then s
             else if child.is(Sealed) then
@@ -205,11 +204,8 @@ object SymUtils:
               else i"its child $child is not a generic sum because $s"
             else
               i"its child $child is not a generic product because $s"
-          }
-        }
         if (children.isEmpty) "it does not have subclasses"
         else children.map(problem).find(!_.isEmpty).getOrElse("")
-      }
 
     def isGenericSum(pre: Type)(using Context): Boolean = whyNotGenericSum(pre).isEmpty
 
@@ -228,13 +224,12 @@ object SymUtils:
       else NoSymbol
 
     /** Apply symbol/symbol substitution to this symbol */
-    def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
+    def subst(from: List[Symbol], to: List[Symbol]): Symbol =
       @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =
         if (from.isEmpty) self
         else if (self eq from.head) to.head
         else loop(from.tail, to.tail)
       loop(from, to)
-    }
 
     def accessorNamed(name: TermName)(using Context): Symbol =
       self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
@@ -253,13 +248,12 @@ object SymUtils:
       if (self.name.is(TraitSetterName)) self
       else accessorNamed(Mixin.traitSetterName(self.asTerm))
 
-    def field(using Context): Symbol = {
+    def field(using Context): Symbol =
       val thisName = self.name.asTermName
       val fieldName =
         if (self.hasAnnotation(defn.ScalaStaticAnnot)) thisName.getterName
         else thisName.fieldName
       self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
-    }
 
     /** Is this symbol a constant expression final val?
      *
@@ -282,9 +276,8 @@ object SymUtils:
      *  @pre `self.isConstantExprFinalVal` is true.
      */
     def constExprFinalValConstantType(using Context): ConstantType =
-      atPhaseNoLater(erasurePhase) {
+      atPhaseNoLater(erasurePhase):
         self.info.resultType.asInstanceOf[ConstantType]
-      }
 
     def isField(using Context): Boolean =
       self.isTerm && !self.is(Method)
@@ -292,10 +285,9 @@ object SymUtils:
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)
 
-    def withAnnotationsCarrying(from: Symbol, meta: Symbol, orNoneOf: Set[Symbol] = Set.empty)(using Context): self.type = {
+    def withAnnotationsCarrying(from: Symbol, meta: Symbol, orNoneOf: Set[Symbol] = Set.empty)(using Context): self.type =
       self.addAnnotations(from.annotationsCarrying(Set(meta), orNoneOf))
       self
-    }
 
     def isEnum(using Context): Boolean = self.is(Enum, butNot = JavaDefined)
     def isEnumClass(using Context): Boolean = isEnum && !self.is(Case)
@@ -325,13 +317,12 @@ object SymUtils:
       self.owner.isTerm
 
     /** Is symbol directly or indirectly owned by a term symbol? */
-    @tailrec final def isLocal(using Context): Boolean = {
+    @tailrec final def isLocal(using Context): Boolean =
       val owner = self.maybeOwner
       if (!owner.exists) false
       else if (isLocalToBlock) true
       else if (owner.is(Package)) false
       else owner.isLocal
-    }
 
     /** Is symbol a type splice operation? */
     def isTypeSplice(using Context): Boolean =

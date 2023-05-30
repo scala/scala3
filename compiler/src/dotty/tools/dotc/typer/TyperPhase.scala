@@ -17,7 +17,7 @@ import util.Stats._
  * @param addRootImports Set to false in the REPL. Calling [[ImportInfo.withRootImports]] on the [[Context]]
  *                       for each [[CompilationUnit]] causes dotty.tools.repl.ScriptedTests to fail.
  */
-class TyperPhase(addRootImports: Boolean = true) extends Phase {
+class TyperPhase(addRootImports: Boolean = true) extends Phase:
 
   override def phaseName: String = TyperPhase.name
 
@@ -31,13 +31,12 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   // Run regardless of parsing errors
   override def isRunnable(implicit ctx: Context): Boolean = true
 
-  def enterSyms(using Context): Unit = monitor("indexing") {
+  def enterSyms(using Context): Unit = monitor("indexing"):
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: " + unit.source)
-  }
 
-  def typeCheck(using Context): Unit = monitor("typechecking") {
+  def typeCheck(using Context): Unit = monitor("typechecking"):
     val unit = ctx.compilationUnit
     try
       if !unit.suspended then
@@ -51,13 +50,11 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       case ex: Throwable =>
         println(s"$ex while typechecking $unit")
         throw ex
-  }
 
-  def javaCheck(using Context): Unit = monitor("checking java") {
+  def javaCheck(using Context): Unit = monitor("checking java"):
     val unit = ctx.compilationUnit
     if unit.isJava then
       JavaChecks.check(unit.tpdTree)
-  }
 
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended
@@ -75,7 +72,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
     unitContexts.foreach(enterSyms(using _))
 
-    ctx.base.parserPhase match {
+    ctx.base.parserPhase match
       case p: ParserPhase =>
         if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
           report.error(
@@ -83,7 +80,6 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
               |See https://github.com/scala/scala-xml for more information.""".stripMargin,
             p.firstXmlPos)
       case _ =>
-    }
 
     unitContexts.foreach(typeCheck(using _))
     record("total trees after typer", ast.Trees.ntrees)
@@ -94,15 +90,12 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     newUnits
 
   def run(using Context): Unit = unsupported("run")
-}
 
-object TyperPhase {
+object TyperPhase:
   val name: String = "typer"
   val description: String = "type the trees"
-}
 
 @deprecated(message = "FrontEnd has been split into TyperPhase and Parser. Refer to one or the other.")
-object FrontEnd {
+object FrontEnd:
   // For backwards compatibility: some plugins refer to FrontEnd so that they can schedule themselves after it.
   val name: String = TyperPhase.name
-}

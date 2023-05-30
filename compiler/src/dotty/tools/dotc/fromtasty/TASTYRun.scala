@@ -9,11 +9,10 @@ import core.Contexts._
 import core.Decorators.em
 import java.io.File
 
-class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
-  override def compile(files: List[AbstractFile]): Unit = {
+class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx):
+  override def compile(files: List[AbstractFile]): Unit =
     val units = tastyUnits(files)
     compileUnits(units)
-  }
 
   private def tastyUnits(files: List[AbstractFile]): List[TASTYCompilationUnit] =
     val fromTastyIgnoreList = ctx.settings.YfromTastyIgnoreList.value.toSet
@@ -32,4 +31,3 @@ class TASTYRun(comp: Compiler, ictx: Context) extends Run(comp, ictx) {
           Nil
     }
     classNames.map(new TASTYCompilationUnit(_))
-}

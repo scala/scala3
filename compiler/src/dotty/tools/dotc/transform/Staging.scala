@@ -19,7 +19,7 @@ import dotty.tools.dotc.staging.HealType
  *
  *  See `CrossStageSafety`
  */
-class Staging extends MacroTransform {
+class Staging extends MacroTransform:
   import tpd._
 
   override def phaseName: String = Staging.name
@@ -31,13 +31,13 @@ class Staging extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    if (ctx.phase <= stagingPhase) {
+    if (ctx.phase <= stagingPhase)
       // Recheck that staging level consistency holds but do not heal any inconsistent types as they should already have been heald
-      tree match {
+      tree match
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          val checker = new CrossStageSafety {
+          val checker = new CrossStageSafety:
             override protected def healType(pos: SrcPos)(tpe: Type)(using Context) = new HealType(pos) {
-              override protected def tryHeal(tp: TypeRef): TypeRef = {
+              override protected def tryHeal(tp: TypeRef): TypeRef =
                 val sym = tp.symbol
                 def symStr =
                   if (sym.is(ModuleClass)) sym.sourceModule.show
@@ -51,42 +51,33 @@ class Staging extends MacroTransform {
                       | - but the access is at level $level.$errMsg""")
 
                 tp
-              }
             }.apply(tpe)
-          }
           checker.transform(tree)
         case _ =>
-      }
-    }
     if !Inlines.inInlineMethod then
-      tree match {
+      tree match
         case tree: RefTree =>
           assert(level != 0 || tree.symbol != defn.QuotedTypeModule_of,
             "scala.quoted.Type.of at level 0 should have been replaced with Quote AST in staging phase")
         case _ =>
-      }
 
-      tree.tpe match {
+      tree.tpe match
         case tpe @ TypeRef(prefix, _) if tpe.typeSymbol.isTypeSplice =>
           // Type splices must have a know term ref, usually to an implicit argument
           // This is mostly intended to catch `quoted.Type[T]#splice` types which should just be `T`
           assert(prefix.isInstanceOf[TermRef] || prefix.isInstanceOf[ThisType], prefix)
         case _ =>
           // OK
-      }
   end checkPostCondition
 
   override def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
 
-  protected def newTransformer(using Context): Transformer = new Transformer {
+  protected def newTransformer(using Context): Transformer = new Transformer:
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       (new CrossStageSafety).transform(tree)
-  }
-}
 
 
-object Staging {
+object Staging:
   val name: String = "staging"
   val description: String = "check staging levels and heal staged types"
-}

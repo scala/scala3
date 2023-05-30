@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.printing.Texts._
 
 
-class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
+class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx):
 
   val debugPrint = _ctx.settings.YprintDebug.value
 
@@ -33,29 +33,24 @@ class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override def dclText(sym: Symbol): Text = if (debugPrint) super.dclText(sym) else
     ("lazy": Text).provided(sym.is(Lazy)) ~~
-    toText(sym) ~ {
-      if (sym.is(Method)) {
-        sym.info match {
+    toText(sym) `~`:
+      if (sym.is(Method))
+        sym.info match
           case tp: ExprType => ":" ~~ toText(tp.resType)
           case info => toText(info)
-        }
-      }
       else if (sym.isType && sym.info.isTypeAlias) toText(sym.info)
       else if (sym.isType || sym.isClass) ""
       else ":" ~~ toText(sym.info)
-    }
 
   override def toTextSingleton(tp: SingletonType): Text =
     if (debugPrint)
       super.toTextSingleton(tp)
     else
-      tp match {
+      tp match
         case ConstantType(const) => toText(const)
         case _                   => toTextRef(tp) ~ ".type"
-      }
 
   // We don't want the colors coming from RefinedPrinter as the REPL uses its
   // own syntax coloring mechanism.
   override def coloredStr(text: String, color: String): String = text
   override def coloredText(text: Text, color: String): Text = text
-}

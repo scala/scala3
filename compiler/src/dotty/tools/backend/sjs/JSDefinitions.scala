@@ -13,13 +13,12 @@ import StdNames._
 
 import dotty.tools.dotc.config.SJSPlatform
 
-object JSDefinitions {
+object JSDefinitions:
   /** The Scala.js-specific definitions for the current context. */
   def jsdefn(using Context): JSDefinitions =
     ctx.platform.asInstanceOf[SJSPlatform].jsDefinitions
-}
 
-final class JSDefinitions()(using Context) {
+final class JSDefinitions()(using Context):
 
   @threadUnsafe lazy val InlineAnnotType: TypeRef = requiredClassRef("scala.inline")
   def InlineAnnot(using Context) = InlineAnnotType.symbol.asClass
@@ -250,20 +249,18 @@ final class JSDefinitions()(using Context) {
     def Selectable_reflectiveSelectableFromLangReflectiveCalls(using Context) = Selectable_reflectiveSelectableFromLangReflectiveCallsR.symbol
 
   private var allRefClassesCache: Set[Symbol] = _
-  def allRefClasses(using Context): Set[Symbol] = {
-    if (allRefClassesCache == null) {
+  def allRefClasses(using Context): Set[Symbol] =
+    if (allRefClassesCache == null)
       val baseNames = List("Object", "Boolean", "Character", "Byte", "Short",
           "Int", "Long", "Float", "Double")
       val fullNames = baseNames.flatMap { base =>
         List(s"scala.runtime.${base}Ref", s"scala.runtime.Volatile${base}Ref")
       }
       allRefClassesCache = fullNames.map(name => requiredClass(name)).toSet
-    }
     allRefClassesCache
-  }
 
   /** Definitions related to scala.Enumeration. */
-  object scalaEnumeration {
+  object scalaEnumeration:
     val nmeValue = termName("Value")
     val nmeVal = termName("Val")
     val hasNext = termName("hasNext")
@@ -299,10 +296,9 @@ final class JSDefinitions()(using Context) {
 
     def isValCtorName(sym: Symbol)(using Context): Boolean =
       isValCtor(sym) && (sym == Enumeration_Val_StringArg || sym == Enumeration_Val_IntStringArg)
-  }
 
   /** Definitions related to the treatment of JUnit bootstrappers. */
-  object junit {
+  object junit:
     @threadUnsafe lazy val TestAnnotType: TypeRef = requiredClassRef("org.junit.Test")
     def TestAnnotClass(using Context): ClassSymbol = TestAnnotType.symbol.asClass
 
@@ -335,6 +331,4 @@ final class JSDefinitions()(using Context) {
 
     @threadUnsafe private lazy val SuccessModule_applyR = requiredModule("scala.util.Success").requiredMethodRef(nme.apply)
     def SuccessModule_apply(using Context): Symbol = SuccessModule_applyR.symbol
-  }
 
-}

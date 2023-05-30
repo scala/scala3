@@ -8,7 +8,7 @@ import SymUtils._
 import StdNames._, NameOps._
 import typer.Nullables
 
-class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
+class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context):
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass
@@ -18,7 +18,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
-  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
+  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol =
     val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
@@ -26,9 +26,8 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res
-  }
 
-  def superRef(target: Symbol, span: Span = cls.span): Tree = {
+  def superRef(target: Symbol, span: Span = cls.span): Tree =
     val sup = if (target.isConstructor && !target.owner.is(Trait))
       Super(This(cls), tpnme.EMPTY)
     else
@@ -37,22 +36,20 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     ast.untpd.Select(sup.withSpan(span), target.name)
       .withType(NamedType(sup.tpe, target))
     //sup.select(target)
-  }
 
   /** Is `sym` a member of implementing class `cls`?
    *  The test is performed at phase `thisPhase`.
    */
   def isInImplementingClass(sym: Symbol): Boolean =
-    atPhase(thisPhase) {
+    atPhase(thisPhase):
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
-    }
 
   /** Does `method` need a forwarder to in  class `cls`
    *  Method needs a forwarder in those cases:
    *   - there's a class defining a method with same signature
    *   - there are multiple traits defining method with same signature
    */
-  def needsMixinForwarder(meth: Symbol): Boolean = {
+  def needsMixinForwarder(meth: Symbol): Boolean =
     lazy val competingMethods = competingMethodsIterator(meth).toList
 
     def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
@@ -70,9 +67,8 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     !meth.isConstructor &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
     (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
-     generateJUnitForwarder || generateSerializationForwarder) &&
+    generateJUnitForwarder || generateSerializationForwarder) &&
     isInImplementingClass(meth)
-  }
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
@@ -101,4 +97,3 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       .filter(_ ne meth.owner)
       .map(base => meth.overriddenSymbol(base, cls))
       .filter(_.exists)
-}

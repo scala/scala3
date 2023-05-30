@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Phases
  * information from a symbol and its type to create the corresponding ClassBType. It requires
  * access to the compiler (global parameter).
  */
-class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAccess: PostProcessorFrontendAccess) extends BTypes {
+class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAccess: PostProcessorFrontendAccess) extends BTypes:
   import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
 
@@ -31,9 +31,8 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
 
-  val coreBTypes = new CoreBTypesFromSymbols[I]{
+  val coreBTypes = new CoreBTypesFromSymbols[I]:
     val bTypes: BTypesFromSymbols.this.type = BTypesFromSymbols.this
-  }
   import coreBTypes._
 
   @threadUnsafe protected lazy val classBTypeFromInternalNameMap =
@@ -47,7 +46,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
   /**
    * The ClassBType for a class symbol `sym`.
    */
-  final def classBTypeFromSymbol(classSym: Symbol): ClassBType = {
+  final def classBTypeFromSymbol(classSym: Symbol): ClassBType =
     assert(classSym != NoSymbol, "Cannot create ClassBType from NoSymbol")
     assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym")
     assert(
@@ -63,9 +62,8 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       convertedClasses(classSym) = classBType
       setClassInfo(classSym, classBType)
     })
-  }
 
-  final def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {
+  final def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType =
     assert(moduleClassSym.isTopLevelModuleClass, s"not a top-level module class: $moduleClassSym")
     val internalName = moduleClassSym.javaBinaryName.stripSuffix(StdNames.str.MODULE_SUFFIX)
     val bType = ClassBType(internalName)
@@ -77,20 +75,17 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       nestedInfo = None
     )
     bType
-  }
 
-  private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType = {
-    val superClassSym: Symbol =  {
+  private def setClassInfo(classSym: Symbol, classBType: ClassBType): ClassBType =
+    val superClassSym: Symbol =
       val t = classSym.asClass.superClass
       if (t.exists) t
-      else if (classSym.is(ModuleClass)) {
+      else if (classSym.is(ModuleClass))
         // workaround #371
 
         println(s"Warning: mocking up superclass for $classSym")
         defn.ObjectClass
-      }
       else t
-    }
     assert(
       if (classSym == defn.ObjectClass)
         superClassSym == NoSymbol
@@ -99,7 +94,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       else
         // A ClassBType for a primitive class (scala.Boolean et al) is only created when compiling these classes.
         ((superClassSym != NoSymbol) && !superClassSym.isInterface) || (isCompilingPrimitive && primitiveTypeMap.contains(classSym)),
-      s"Bad superClass for $classSym: $superClassSym"
+    s"Bad superClass for $classSym: $superClassSym"
     )
     val superClass = if (superClassSym == NoSymbol) None
                      else Some(classBTypeFromSymbol(superClassSym))
@@ -108,7 +103,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
      * All interfaces implemented by a class, except for those inherited through the superclass.
      * Redundant interfaces are removed unless there is a super call to them.
      */
-    extension (sym: Symbol) def superInterfaces: List[Symbol] = {
+    extension (sym: Symbol) def superInterfaces: List[Symbol] =
       val directlyInheritedTraits = sym.directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
@@ -117,7 +112,6 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
 //      if (additional.nonEmpty)
 //        println(s"$fullName: adding supertraits $additional")
       directlyInheritedTraits.filter(t => !allBaseClasses(t) || superCalls(t)) ++ additional
-    }
 
     val interfaces = classSym.superInterfaces.map(classBTypeFromSymbol)
 
@@ -127,7 +121,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
      * declared but not otherwise referenced in C (from the bytecode or a method / field signature).
      * We collect them here.
      */
-    val nestedClassSymbols = {
+    val nestedClassSymbols =
       // The lambdalift phase lifts all nested classes to the enclosing class, so if we collect
       // member classes right after lambdalift, we obtain all nested classes, including local and
       // anonymous ones.
@@ -146,13 +140,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       // For consistency, the InnerClass entry for D needs to be present in C - to Java it looks
       // like D is a member of C, not C$.
       val linkedClass = classSym.linkedClass
-      val companionModuleMembers = {
+      val companionModuleMembers =
         if (classSym.linkedClass.isTopLevelModuleClass) getMemberClasses(classSym.linkedClass)
         else Nil
-      }
 
       nestedClasses ++ companionModuleMembers
-    }
 
     /**
      * For nested java classes, the scala compiler creates both a class and a module (and therefore
@@ -161,14 +153,14 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
      * Here we get rid of the module class B, making sure that the class B is present.
      */
     val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => {
-      if (s.is(JavaDefined) && s.is(ModuleClass)) {
+      if (s.is(JavaDefined) && s.is(ModuleClass))
         // We could also search in nestedClassSymbols for s.linkedClassOfClass, but sometimes that
         // returns NoSymbol, so it doesn't work.
         val nb = nestedClassSymbols.count(mc => mc.name == s.name && mc.owner == s.owner)
         // this assertion is specific to how ScalaC works. It doesn't apply to dotty, as n dotty there will be B & B$
         // assert(nb == 2, s"Java member module without member class: $s - $nestedClassSymbols")
         false
-      } else true
+      else true
     })
 
     val memberClasses = nestedClassSymbolsNoJavaModuleClasses.map(classBTypeFromSymbol)
@@ -177,7 +169,6 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
 
     classBType.info = ClassInfo(superClass, interfaces, flags, memberClasses, nestedInfo)
     classBType
-  }
 
   /** For currently compiled classes: All locally defined classes including local classes.
    *  The empty list for classes that are not currently compiled.
@@ -191,36 +182,33 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
 
   private def definedClasses(sym: Symbol, phase: Phase) =
     if (sym.isDefinedInCurrentRun)
-      atPhase(phase) {
+      atPhase(phase):
         toDenot(sym).info.decls.filter(sym => sym.isClass && !sym.isEffectivelyErased)
-      }
     else Nil
 
-  private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] = {
+  private def buildNestedInfo(innerClassSym: Symbol): Option[NestedInfo] =
     assert(innerClassSym.isClass, s"Cannot build NestedInfo for non-class symbol $innerClassSym")
 
     val isNested = !innerClassSym.originalOwner.originalLexicallyEnclosingClass.is(PackageClass)
     if (!isNested) None
-    else {
+    else
       // See comment in BTypes, when is a class marked static in the InnerClass table.
       val isStaticNestedClass = innerClassSym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
-      val enclosingClassSym = {
-        if (innerClassSym.isClass) {
-          atPhase(flattenPhase.prev) {
+      val enclosingClassSym =
+        if (innerClassSym.isClass)
+          atPhase(flattenPhase.prev):
             toDenot(innerClassSym).owner.enclosingClass
-          }
-        }
         else atPhase(flattenPhase.prev)(innerClassSym.enclosingClass)
-      } //todo is handled specially for JavaDefined symbols in scalac
+      //todo is handled specially for JavaDefined symbols in scalac
 
       val enclosingClass: ClassBType = classBTypeFromSymbol(enclosingClassSym)
 
-      val outerName: Option[String] = {
-        if (isAnonymousOrLocalClass(innerClassSym)) {
+      val outerName: Option[String] =
+        if (isAnonymousOrLocalClass(innerClassSym))
           None
-        } else {
+        else
           val outerName = innerClassSym.originalOwner.originalLexicallyEnclosingClass.javaBinaryName
           def dropModule(str: String): String =
             if (!str.isEmpty && str.last == '$') str.take(str.length - 1) else str
@@ -229,20 +217,14 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
             if (innerClassSym.originalOwner.originalLexicallyEnclosingClass.isTopLevelModuleClass) dropModule(outerName)
             else outerName
           Some(outerNameModule.toString)
-        }
-      }
 
-      val innerName: Option[String] = {
+      val innerName: Option[String] =
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
-        else {
+        else
           val original = innerClassSym.initial
           Some(atPhase(original.validFor.phaseId)(innerClassSym.name).mangledString) // moduleSuffix for module classes
-        }
-      }
 
       Some(NestedInfo(enclosingClass, outerName, innerName, isStaticNestedClass))
-    }
-  }
 
   /**
    * This is basically a re-implementation of sym.isStaticOwner, but using the originalOwner chain.
@@ -275,7 +257,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
    *  (*) protected cannot be used, since inner classes 'see' protected members,
    *      and they would fail verification after lifted.
    */
-  final def javaFlags(sym: Symbol): Int = {
+  final def javaFlags(sym: Symbol): Int =
 
     // Classes are always emitted as public. This matches the behavior of Scala 2
     // and is necessary for object deserialization to work properly, otherwise
@@ -308,14 +290,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
       .addFlagIf(sym.is(Enum), ACC_ENUM)
-  }
 
-  def javaFieldFlags(sym: Symbol) = {
+  def javaFieldFlags(sym: Symbol) =
     import asm.Opcodes._
     import GenBCodeOps.addFlagIf
     javaFlags(sym)
       .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
       .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
       .addFlagIf(!sym.is(Mutable), ACC_FINAL)
-  }
-}

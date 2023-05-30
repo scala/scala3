@@ -31,20 +31,18 @@ import scala.util.Random.alphanumeric
  *
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-object Path {
+object Path:
   def isExtensionJarOrZip(jpath: JPath): Boolean = isExtensionJarOrZip(jpath.getFileName.toString)
-  def isExtensionJarOrZip(name: String): Boolean = {
+  def isExtensionJarOrZip(name: String): Boolean =
     val ext = extension(name)
     ext == "jar" || ext == "zip"
-  }
-  def extension(name: String): String = {
+  def extension(name: String): String =
     var i = name.length - 1
     while (i >= 0 && name.charAt(i) != '.')
       i -= 1
 
     if (i < 0) ""
     else name.substring(i + 1).toLowerCase
-  }
 
   def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
   def onlyDirs(xs: List[Path]): List[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
@@ -53,16 +51,15 @@ object Path {
   def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
 
   def apply(path: String): Path = apply(new java.io.File(path).toPath)
-  def apply(jpath: JPath): Path = try {
+  def apply(jpath: JPath): Path = try
     if (Files.isRegularFile(jpath)) new File(jpath)
     else if (Files.isDirectory(jpath)) new Directory(jpath)
     else new Path(jpath)
-  } catch { case ex: SecurityException => new Path(jpath) }
+  catch { case ex: SecurityException => new Path(jpath) }
 
   /** Avoiding any shell/path issues by only using alphanumerics. */
   private[io] def randomPrefix: String = alphanumeric take 6 mkString ""
   private[io] def fail(msg: String): Nothing = throw FileOperationException(msg)
-}
 import Path._
 
 /** The Path constructor is private so we can enforce some
@@ -70,7 +67,7 @@ import Path._
  *
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-class Path private[io] (val jpath: JPath) {
+class Path private[io] (val jpath: JPath):
   val separator: Char = java.io.File.separatorChar
   val separatorStr: String = java.io.File.separator
 
@@ -113,10 +110,9 @@ class Path private[io] (val jpath: JPath) {
   def walk: Iterator[Path] = walkFilter(_ => true)
 
   // identity
-  def name: String = jpath.getFileName() match {
+  def name: String = jpath.getFileName() match
     case null => ""
     case name => name.toString
-  }
   def path: String = jpath.toString
   def normalize: Path = new Path(jpath.normalize)
 
@@ -128,7 +124,7 @@ class Path private[io] (val jpath: JPath) {
   /**
    * @return The path of the parent directory, or root if path is already root
    */
-  def parent: Directory = {
+  def parent: Directory =
     // We don't call JPath#normalize here because it may result in resolving
     // to a different path than intended, such as when the given path contains
     // a `..` component and the preceding name is a symbolic link.
@@ -155,18 +151,15 @@ class Path private[io] (val jpath: JPath) {
         else Directory(".")
       case x =>
         Directory(x)
-  }
-  def parents: List[Directory] = {
+  def parents: List[Directory] =
     val p = parent
     if (p isSame this) Nil else p :: p.parents
-  }
   // if name ends with an extension (e.g. "foo.jpg") returns the extension ("jpg"), otherwise ""
   def extension: String = Path.extension(name)
   // compares against extensions in a CASE INSENSITIVE way.
-  def hasExtension(ext: String, exts: String*): Boolean = {
+  def hasExtension(ext: String, exts: String*): Boolean =
     val lower = extension.toLowerCase
     ext.toLowerCase == lower || exts.exists(_.toLowerCase == lower)
-  }
   // returns the filename without the extension.
   def stripExtension: String = name stripSuffix ("." + extension)
   // returns the Path with the extension.
@@ -202,19 +195,17 @@ class Path private[io] (val jpath: JPath) {
   def isFresher(other: Path): Boolean = lastModified.compareTo(other.lastModified) > 0
 
   // creations
-  def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory = {
+  def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory =
     val res = tryCreate(if (force) Files.createDirectories(jpath) else Files.createDirectory(jpath))
     if (!res && failIfExists && exists) fail("Directory '%s' already exists." format name)
     else if (isDirectory) toDirectory
     else new Directory(jpath)
-  }
-  def createFile(failIfExists: Boolean = false): File = {
+  def createFile(failIfExists: Boolean = false): File =
     val res = tryCreate(Files.createFile(jpath))
     Files.createFile(jpath)
     if (!res && failIfExists && exists) fail("File '%s' already exists." format name)
     else if (isFile) toFile
     else new File(jpath)
-  }
 
   private def tryCreate(create: => JPath): Boolean =
     try { create; true } catch { case _: FileAlreadyExistsException => false }
@@ -226,36 +217,29 @@ class Path private[io] (val jpath: JPath) {
   /** Deletes the path recursively. Returns false on failure.
    *  Use with caution!
    */
-  def deleteRecursively(): Boolean = {
+  def deleteRecursively(): Boolean =
     if (!exists) false
-    else {
+    else
       Files.walkFileTree(jpath, new SimpleFileVisitor[JPath]() {
-        override def visitFile(file: JPath, attrs: BasicFileAttributes) = {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes) =
           Files.delete(file)
           FileVisitResult.CONTINUE
-        }
 
-        override def postVisitDirectory(dir: JPath, exc: IOException) = {
+        override def postVisitDirectory(dir: JPath, exc: IOException) =
           Files.delete(dir)
           FileVisitResult.CONTINUE
-        }
       })
       true
-    }
-  }
 
   def truncate(): Boolean =
-    isFile && {
+    isFile `&&`:
       val raf = new RandomAccessFile(jpath.toFile, "rw")
       raf setLength 0
       raf.close()
       length == 0
-    }
 
   override def toString(): String = path
-  override def equals(other: Any): Boolean = other match {
+  override def equals(other: Any): Boolean = other match
     case x: Path  => path == x.path
     case _        => false
-  }
   override def hashCode(): Int = path.hashCode()
-}

@@ -24,10 +24,9 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
 
     def visit(sym: String): SymbolInformation =
       val symtabInfo = noteSymtab.get(sym).orElse(symtab.info(sym))
-      symtabInfo.getOrElse {
+      symtabInfo.getOrElse:
         val displayName = if sym.isGlobal then sym.desc.value else sym
         SymbolInformation(symbol = sym, displayName = displayName)
-      }
   end InfoNotes
 
   class InfoPrinter(notes: InfoNotes):
@@ -104,11 +103,10 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
             sb.append(tparams.infos.map(pprintDef).mkString("[", ", ", "] "))
           if (parents.nonEmpty)
             sb.append(parents.map(pprint).mkString("extends ", " with ", " "))
-          if (self.isDefined || decls.infos.nonEmpty) {
+          if (self.isDefined || decls.infos.nonEmpty)
             val selfStr = if (self.isDefined) s"self: ${pprint(self)} =>" else ""
             val declsStr = if (decls.infos.nonEmpty) s"+${decls.infos.length} decls" else ""
             sb.append(s"{ ${selfStr} ${declsStr} }")
-          }
           sb.toString
         case MethodSignature(tparams, paramss, res) =>
           val sb = new StringBuilder()
@@ -124,9 +122,9 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           val sb = new StringBuilder()
           if (tparams.infos.nonEmpty)
             sb.append(tparams.infos.map(pprintDef).mkString("[", ", ", "]"))
-          if (lo == hi) {
+          if (lo == hi)
             sb.append(s" = ${pprint(lo)}")
-          } else {
+          else
             lo match
               case TypeRef(Type.Empty, "scala/Nothing#", Nil) => ()
               case lo => sb.append(s" >: ${pprint(lo)}")
@@ -134,31 +132,28 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
               case TypeRef(Type.Empty, "scala/Any#", Nil) => ()
               case TypeRef(Type.Empty, "java/lang/Object#", Nil) => ()
               case hi => sb.append(s" <: ${pprint(hi)}")
-          }
           sb.toString
         case ValueSignature(tpe) =>
           pprint(tpe)
         case _ =>
           "<?>"
 
-    protected def pprint(tpe: Type): String = {
+    protected def pprint(tpe: Type): String =
       def prefix(tpe: Type): String = tpe match
         case TypeRef(pre, sym, args) =>
-          val preStr = pre match {
+          val preStr = pre match
             case _: SingleType | _: ThisType | _: SuperType =>
               s"${prefix(pre)}."
             case Type.Empty => ""
             case _ =>
               s"${prefix(pre)}#"
-          }
           val argsStr = if (args.nonEmpty) args.map(normal).mkString("[", ", ", "]") else ""
           s"${preStr}${pprintRef(sym)}${argsStr}"
         case SingleType(pre, sym) =>
-          pre match {
+          pre match
             case Type.Empty => pprintRef(sym)
             case _ =>
               s"${prefix(pre)}.${pprintRef(sym)}"
-          }
         case ThisType(sym) =>
           s"${pprintRef(sym)}.this"
         case SuperType(pre, sym) =>
@@ -209,15 +204,13 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
         case _ =>
           prefix(tpe)
       normal(tpe)
-    }
 
     private def pprint(ann: Annotation): String =
-      ann.tpe match {
+      ann.tpe match
         case Type.Empty => s"@<?>"
         case tpe => s"@${pprint(tpe)}"
-      }
 
-    protected def pprint(const: Constant): String = const match {
+    protected def pprint(const: Constant): String = const match
         case Constant.Empty =>
           "<?>"
         case UnitConstant() =>
@@ -244,7 +237,6 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           "\"" + value + "\""
         case NullConstant() =>
           "null"
-      }
 
     private def accessString(access: Access): String =
       access match
@@ -266,32 +258,28 @@ class SymbolInformationPrinter (symtab: PrinterSymtab):
           scope.hardlinks.toList
 
     extension (scope: Option[Scope])
-      private def infos: List[SymbolInformation] = scope match {
+      private def infos: List[SymbolInformation] = scope match
         case Some(s) => s.infos
         case None => Nil
-      }
   end InfoPrinter
 end SymbolInformationPrinter
 
 extension (info: SymbolInformation)
-  def prefixBeforeTpe: String = {
-    info.kind match {
+  def prefixBeforeTpe: String =
+    info.kind match
       case LOCAL | FIELD | PARAMETER | SELF_PARAMETER | UNKNOWN_KIND | Unrecognized(_) =>
         ": "
       case METHOD | CONSTRUCTOR | MACRO | TYPE | TYPE_PARAMETER | OBJECT | PACKAGE |
           PACKAGE_OBJECT | CLASS | TRAIT | INTERFACE =>
         " "
-    }
-  }
 
 trait PrinterSymtab:
   def info(symbol: String): Option[SymbolInformation]
 object PrinterSymtab:
   def fromTextDocument(doc: TextDocument): PrinterSymtab =
     val map = doc.symbols.map(info => (info.symbol, info)).toMap
-    new PrinterSymtab {
+    new PrinterSymtab:
       override def info(symbol: String): Option[SymbolInformation] = map.get(symbol)
-    }
 
 def processRange(sb: StringBuilder, range: Range): Unit =
   sb.append('[')
@@ -353,7 +341,7 @@ class SyntheticPrinter(symtab: PrinterSymtab, source: SourceFile) extends Symbol
       }
 
     private def processTree(tree: Tree)(using sb: StringBuilder): Unit =
-      tree match {
+      tree match
         case tree: ApplyTree =>
           processTree(tree.function)
           sb.append("(")
@@ -395,7 +383,6 @@ class SyntheticPrinter(symtab: PrinterSymtab, source: SourceFile) extends Symbol
 
         case _ =>
           sb.append("<?>")
-      }
 
 
 end SyntheticPrinter

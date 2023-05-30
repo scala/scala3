@@ -12,9 +12,9 @@ import Decorators.*
 import Definitions._
 import nme._
 
-object NameOps {
+object NameOps:
 
-  object compactify {
+  object compactify:
     lazy val md5: MessageDigest = MessageDigest.getInstance("MD5").nn
 
     inline val CLASSFILE_NAME_CHAR_LIMIT = 240
@@ -31,14 +31,14 @@ object NameOps {
      *
      *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
      */
-    def apply(s: String): String = {
+    def apply(s: String): String =
       val marker = "$$$$"
 
       val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6).min(
         2 * (CLASSFILE_NAME_CHAR_LIMIT - 6 - 2 * marker.length - 32)
       )
 
-      def toMD5(s: String, edge: Int): String = {
+      def toMD5(s: String, edge: Int): String =
         val prefix = s.take(edge)
         val suffix = s.takeRight(edge)
 
@@ -48,19 +48,15 @@ object NameOps {
         val md5chars = md5.digest().nn.map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
-      }
 
       if (s.length <= MaxNameLength) s else toMD5(s, MaxNameLength / 4)
-    }
-  }
 
-  extension [N <: Name](name: N) {
+  extension [N <: Name](name: N)
 
-    def testSimple(f: SimpleName => Boolean): Boolean = name match {
+    def testSimple(f: SimpleName => Boolean): Boolean = name match
       case name: SimpleName => f(name)
       case name: TypeName => name.toTermName.testSimple(f)
       case _ => false
-    }
 
     private def likeSpacedN(n: Name): N =
       name.likeSpaced(n).asInstanceOf[N]
@@ -85,39 +81,34 @@ object NameOps {
     /** Is name of a variable pattern? */
     def isVarPattern: Boolean =
       testSimple { n =>
-        n.length > 0 && {
+        n.length > 0 `&&`:
           def isLowerLetterSupplementary: Boolean =
             import Character.{isHighSurrogate, isLowSurrogate, isLetter, isLowerCase, isValidCodePoint, toCodePoint}
-            isHighSurrogate(n(0)) && n.length > 1 && isLowSurrogate(n(1)) && {
+            isHighSurrogate(n(0)) && n.length > 1 && isLowSurrogate(n(1)) `&&`:
               val codepoint = toCodePoint(n(0), n(1))
               isValidCodePoint(codepoint) && isLetter(codepoint) && isLowerCase(codepoint)
-            }
           val first = n.head
           ((first.isLower && first.isLetter || first == '_' || isLowerLetterSupplementary)
             && n != false_
             && n != true_
             && n != null_)
-        }
       } || name.is(PatMatGivenVarName)
 
-    def isOpAssignmentName: Boolean = name match {
+    def isOpAssignmentName: Boolean = name match
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
       case name: SimpleName =>
         name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.firstCodePoint)
       case _ =>
         false
-    }
 
     /** is this the name of an object enclosing packagel-level definitions? */
-    def isPackageObjectName: Boolean = name match {
+    def isPackageObjectName: Boolean = name match
       case name: TermName => name == nme.PACKAGE || name.endsWith(str.TOPLEVEL_SUFFIX)
       case name: TypeName =>
-        name.toTermName match {
+        name.toTermName match
           case ModuleClassName(original) => original.isPackageObjectName
           case _ => false
-        }
-    }
 
     /** Convert this module name to corresponding module class name */
     def moduleClassName: TypeName = name.derived(ModuleClassName).toTypeName
@@ -129,18 +120,16 @@ object NameOps {
      *  method needs to work on mangled as well as unmangled names because
      *  it is also called from the backend.
      */
-    def stripModuleClassSuffix: N = likeSpacedN {
+    def stripModuleClassSuffix: N = likeSpacedN:
       val semName = name.toTermName match
         case name: SimpleName if name.endsWith(str.MODULE_SUFFIX) && name.lastPart != MODULE_SUFFIX => name.unmangleClassName
         case _ => name
       semName.exclude(ModuleClassName)
-    }
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
-    def adjustIfModuleClass(flags: FlagSet): N = likeSpacedN {
+    def adjustIfModuleClass(flags: FlagSet): N = likeSpacedN:
       if (flags.is(ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName
-    }
 
     /** The expanded name.
      *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,
@@ -150,20 +139,16 @@ object NameOps {
       likeSpacedN { base.fullNameSeparated(ExpandPrefixName, kind, name) }
 
     /** Revert the expanded name. */
-    def unexpandedName: N = likeSpacedN {
-      name.replaceDeep {
+    def unexpandedName: N = likeSpacedN:
+      name.replaceDeep:
         case ExpandedName(_, unexp) => unexp
-      }
-    }
 
     def errorName: N = likeSpacedN(name ++ nme.ERROR)
 
-    def freshened(using Context): N = likeSpacedN {
-      name.toTermName match {
+    def freshened(using Context): N = likeSpacedN:
+      name.toTermName match
         case ModuleClassName(original) => ModuleClassName(original.freshened)
         case name => UniqueName.fresh(name)
-      }
-    }
 
     /** Do two target names match? An empty target name matchws any other name. */
     def matchesTargetName(other: Name) =
@@ -258,32 +243,29 @@ object NameOps {
       if suffixStart >= 0 then checkedFunArity(suffixStart) else -1
 
     /** The name of the generic runtime operation corresponding to an array operation */
-    def genericArrayOp: TermName = name match {
+    def genericArrayOp: TermName = name match
       case nme.apply => nme.array_apply
       case nme.length => nme.array_length
       case nme.update => nme.array_update
       case nme.clone_ => nme.array_clone
-    }
 
     /** The name of the primitive runtime operation corresponding to an array operation */
-    def primitiveArrayOp: TermName = name match {
+    def primitiveArrayOp: TermName = name match
       case nme.apply => nme.primitive.arrayApply
       case nme.length => nme.primitive.arrayLength
       case nme.update => nme.primitive.arrayUpdate
       case nme.clone_ => nme.clone_
-    }
 
     /** This method is to be used on **type parameters** from a class, since
      *  this method does sorting based on their names
      */
-    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N = {
+    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N =
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
       likeSpacedN(name ++ nme.specializedTypeNames.prefix ++
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
-    }
 
     /** Determines if the current name is the specialized name of the given base name.
      *  For example `typeName("Tuple2$mcII$sp").isSpecializedNameOf(tpnme.Tuple2) == true`
@@ -327,35 +309,30 @@ object NameOps {
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(using Context): TermName = termName(compactify(name.toString))
 
-    def unmangleClassName: N = name.toTermName match {
+    def unmangleClassName: N = name.toTermName match
       case name: SimpleName
       if name.endsWith(str.MODULE_SUFFIX) && !nme.falseModuleClassNames.contains(name) =>
         likeSpacedN(name.dropRight(str.MODULE_SUFFIX.length).moduleClassName)
       case _ => name
-    }
 
-    def unmangle(kind: NameKind): N = likeSpacedN {
+    def unmangle(kind: NameKind): N = likeSpacedN:
       name match
         case name: SimpleName =>
           kind.unmangle(name)
         case name: TypeName =>
           name.toTermName.unmangle(kind).toTypeName
         case _ =>
-          name replace {
+          name replace:
             case unmangled: SimpleName =>
               kind.unmangle(unmangled)
             case ExpandedName(prefix, last) =>
-              kind.unmangle(last) replace {
+              kind.unmangle(last) replace:
                 case kernel: SimpleName =>
                   ExpandedName(prefix, kernel)
-              }
-          }
-    }
 
-    def unmangle(kinds: List[NameKind]): N = {
+    def unmangle(kinds: List[NameKind]): N =
       val unmangled = kinds.foldLeft(name)(_.unmangle(_))
       if (unmangled eq name) name else unmangled.unmangle(kinds)
-    }
 
     def firstCodePoint: Int =
       val first = name.firstPart
@@ -364,9 +341,8 @@ object NameOps {
         val codepoint = toCodePoint(first(0), first(1))
         if isValidCodePoint(codepoint) then codepoint else first(0)
       else first(0)
-  }
 
-  extension (name: TermName) {
+  extension (name: TermName)
 
     def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
 
@@ -392,13 +368,12 @@ object NameOps {
       if (name.isScala2LocalSuffix) name.asSimpleName.dropRight(1) else name
 
     /** The name unary_x for a prefix operator x */
-    def toUnaryName: TermName = name match {
+    def toUnaryName: TermName = name match
       case raw.MINUS => UNARY_-
       case raw.PLUS  => UNARY_+
       case raw.TILDE => UNARY_~
       case raw.BANG  => UNARY_!
       case _ => name
-    }
 
     /** If this is a super accessor name, its underlying name, which is the name
      *  of the method that the super accessor forwards to.
@@ -408,5 +383,3 @@ object NameOps {
       case ExpandedName(_, name1)     => name1.originalOfSuperAccessorName
       case ExpandPrefixName(_, name1) => name1.originalOfSuperAccessorName
       case _ => name
-  }
-}

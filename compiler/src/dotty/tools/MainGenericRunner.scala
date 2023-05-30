@@ -42,7 +42,7 @@ case class Settings(
   modeShouldBePossibleRun: Boolean = false,
   modeShouldBeRun: Boolean = false,
   compiler: Boolean = false,
-) {
+):
   def withExecuteMode(em: ExecuteMode): Settings = this.executeMode match
     case ExecuteMode.Guess | ExecuteMode.PossibleRun =>
       this.copy(executeMode = em)
@@ -94,9 +94,8 @@ case class Settings(
 
   def withCompiler: Settings =
     this.copy(compiler = true)
-}
 
-object MainGenericRunner {
+object MainGenericRunner:
 
   val classpathSeparator = File.pathSeparator
 
@@ -212,7 +211,7 @@ object MainGenericRunner {
       case ExecuteMode.Run =>
         val scalaClasspath = ClasspathFromClassloader(Thread.currentThread().getContextClassLoader).split(classpathSeparator)
         val newClasspath = (settings.classPath.flatMap(_.split(classpathSeparator).filter(_.nonEmpty)) ++ removeCompiler(scalaClasspath) :+ ".").map(File(_).toURI.toURL)
-        ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap {
+        ObjectRunner.runAndCatch(newClasspath, settings.targetToRun, settings.residualArgs).flatMap:
           case ex: ClassNotFoundException if ex.getMessage == settings.targetToRun =>
             val file = settings.targetToRun
             Jar(file).mainClass match
@@ -221,7 +220,6 @@ object MainGenericRunner {
               case None =>
                 Some(IllegalArgumentException(s"No main class defined in manifest in jar: $file"))
           case ex => Some(ex)
-        }
 
       case ExecuteMode.Script =>
         val targetScript = Paths.get(settings.targetScript).toFile
@@ -250,10 +248,9 @@ object MainGenericRunner {
           scripting.Main.process(properArgs.toArray)
 
       case ExecuteMode.Expression =>
-        val cp = settings.classPath match {
+        val cp = settings.classPath match
           case Nil => ""
           case list => list.mkString(classpathSeparator)
-        }
         val cpArgs = if cp.isEmpty then Nil else List("-classpath", cp)
         val properArgs = cpArgs ++ settings.residualArgs ++ settings.scalaArgs
         val driver = StringDriver(properArgs.toArray, settings.targetExpression)
@@ -280,4 +277,3 @@ object MainGenericRunner {
   def main(args: Array[String]): Unit =
     if (!process(args)) System.exit(1)
 
-}

@@ -8,7 +8,7 @@ import core.Contexts._
 
 /** This trait implements `isHidden` so that multiple messages per position
   * are suppressed, unless they are of increasing severity. */
-trait UniqueMessagePositions extends Reporter {
+trait UniqueMessagePositions extends Reporter:
 
   private val positions = new mutable.HashMap[(SourceFile, Integer), Diagnostic]
 
@@ -35,4 +35,3 @@ trait UniqueMessagePositions extends Reporter {
           case Some(dia1) if dia1.hides(dia) =>
           case _ => positions((ctx.source, pos)) = dia
     super.markReported(dia)
-}

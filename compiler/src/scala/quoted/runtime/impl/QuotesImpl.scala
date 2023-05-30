@@ -23,7 +23,7 @@ import scala.quoted.runtime.impl.printers._
 
 import scala.reflect.TypeTest
 
-object QuotesImpl {
+object QuotesImpl:
 
   def apply()(using Context): Quotes =
     new QuotesImpl
@@ -34,7 +34,6 @@ object QuotesImpl {
     if ctx.settings.color.value == "always" then TreeAnsiCode.show(tree)
     else TreeCode.show(tree)
 
-}
 
 class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler, QuoteMatching:
 
@@ -63,7 +62,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf[X](using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
+    def asExprOf[X](using scala.quoted.Type[X]): scala.quoted.Expr[X] =
       if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
@@ -73,7 +72,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             |did not conform to type: ${reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X])}
             |""".stripMargin
         )
-    }
   end extension
 
   object reflect extends reflectModule:
@@ -235,21 +233,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val ctr = ctx.typeAssigner.assignType(untpdCtr, cls.primaryConstructor)
         tpd.ClassDefWithParents(cls.asClass, ctr, parents, body)
 
-      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
+      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef =
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original: @unchecked
         tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
-      }
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
         (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
 
-      def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
+      def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) =
         val cls = module.moduleClass
         val clsDef = ClassDef(cls, parents, body)
         val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
         val modVal = ValDef(module, Some(newCls))
         (modVal, clsDef)
-      }
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
@@ -396,17 +392,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def tpe: TypeRepr = self.tpe.widenSkolem
         def underlyingArgument: Term = new tpd.TreeOps(self).underlyingArgument
         def underlying: Term = new tpd.TreeOps(self).underlying
-        def etaExpand(owner: Symbol): Term = self.tpe.widen match {
+        def etaExpand(owner: Symbol): Term = self.tpe.widen match
           case mtpe: Types.MethodType if !mtpe.isParamDependent =>
-            val closureResType = mtpe.resType match {
+            val closureResType = mtpe.resType match
               case t: Types.MethodType => t.toFunctionType(isJava = self.symbol.is(dotc.core.Flags.JavaDefined))
               case t => t
-            }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newAnonFun(owner, closureTpe)
             tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
-        }
 
         def appliedTo(arg: Term): Term =
           self.appliedToArgs(arg :: Nil)
@@ -831,12 +825,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val meth = dotc.core.Symbols.newAnonFun(owner, tpe)
         withDefaultPos(tpd.Closure(meth, tss => xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth)))
 
-      def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
+      def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match
         case Block((ddef @ DefDef(_, tpd.ValDefs(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
-      }
     end Lambda
 
     type If = tpd.If
@@ -1675,13 +1668,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     type OmitSelector = untpd.ImportSelector
 
     object OmitSelectorTypeTest extends TypeTest[Selector, OmitSelector]:
-      def unapply(x: Selector): Option[OmitSelector & x.type] = x match {
+      def unapply(x: Selector): Option[OmitSelector & x.type] = x match
         case self: (untpd.ImportSelector & x.type) =>
           self.renamed match
             case dotc.ast.Trees.Ident(nme.WILDCARD) => Some(self)
             case _ => None
         case _ => None
-      }
     end OmitSelectorTypeTest
 
     object OmitSelector extends OmitSelectorModule:
@@ -1698,10 +1690,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     type GivenSelector = untpd.ImportSelector
 
     object GivenSelectorTypeTest extends TypeTest[Selector, GivenSelector]:
-      def unapply(x: Selector): Option[GivenSelector & x.type] = x match {
+      def unapply(x: Selector): Option[GivenSelector & x.type] = x match
         case self: (untpd.ImportSelector & x.type) if x.isGiven => Some(self)
         case _ => None
-      }
     end GivenSelectorTypeTest
 
     object GivenSelector extends GivenSelectorModule:
@@ -2592,11 +2583,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def docstring: Option[String] =
           import dotc.core.Comments.CommentsContext
-          val docCtx = ctx.docCtx.getOrElse {
+          val docCtx = ctx.docCtx.getOrElse:
             throw new RuntimeException(
               "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
             )
-          }
           docCtx.docstring(self).map(_.raw)
 
         def tree: Tree = FromSymbol.definitionFromSym(self)
@@ -2608,10 +2598,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.denot.getAnnotation(annotSym).map(_.tree)
 
         def annotations: List[Term] =
-          self.denot.annotations.flatMap {
+          self.denot.annotations.flatMap:
             case _: dotc.core.Annotations.BodyAnnotation => Nil
             case annot => annot.tree :: Nil
-          }
 
         def isDefinedInCurrentRun: Boolean =
           self.exists && self.topLevelClass.asClass.isDefinedInCurrentRun
@@ -2715,9 +2704,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def caseFields: List[Symbol] =
           if !self.isClass then Nil
-          else self.asClass.paramAccessors.collect {
+          else self.asClass.paramAccessors.collect:
             case sym if sym.is(dotc.core.Flags.CaseAccessor) => sym.asTerm
-          }
 
         def isTypeParam: Boolean = self.isTypeParam
         def signature: Signature = self.signature
@@ -2756,12 +2744,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SignatureMethods: SignatureMethods with
       extension (self: Signature)
         def paramSigs: List[String | Int] =
-          self.paramsSig.map {
+          self.paramsSig.map:
             case paramSig: dotc.core.Names.TypeName =>
               paramSig.toString
             case paramSig: Int =>
               paramSig
-          }
         def resultSig: String =
           self.resSig.toString
       end extension
@@ -2921,14 +2908,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     type SourceFile = dotc.util.SourceFile
 
-    object SourceFile extends SourceFileModule {
+    object SourceFile extends SourceFileModule:
       def current: SourceFile =
         val unit = ctx.compilationUnit
         if unit eq NoCompilationUnit then
           throw new java.lang.UnsupportedOperationException(
             "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
         else unit.source
-    }
 
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)

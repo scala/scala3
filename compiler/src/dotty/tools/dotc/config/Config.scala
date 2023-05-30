@@ -1,6 +1,6 @@
 package dotty.tools.dotc.config
 
-object Config {
+object Config:
 
   inline val cacheMembersNamed = true
   inline val cacheAsSeenFrom = true
@@ -246,4 +246,3 @@ object Config {
    *  cases, though.
    */
   inline val ccAllowUnsoundMaps = false
-}

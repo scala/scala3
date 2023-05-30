@@ -17,7 +17,7 @@ import annotation.tailrec
  *  get promoted to be first in the queue. Elements are evicted
  *  at the `last` position.
  */
-class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
+class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag]:
   import LRUCache._
   val keys: Array[Key] = new Array[Key](Retained)
   val values: Array[Value] = new Array(Retained)
@@ -31,29 +31,24 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
    *  As a side effect, sets `lastButOne` to the element before `last`
    *  if key was not found.
    */
-  def lookup(key: Key): Value = {
+  def lookup(key: Key): Value =
     @tailrec
-    def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value = {
+    def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value =
       val follow = nx(current)
-      if (keys(current) eq key) {
+      if (keys(current) eq key)
         // arrange so that found element is at position `first`.
         if (current == last) last = prev
-        else if (prev != last) {
+        else if (prev != last)
           next = next.updated(prev, follow)
           next = next.updated(current, first)
           next = next.updated(last, current)
-        }
         values(current)
-      }
-      else if (current == last) {
+      else if (current == last)
         lastButOne = prev
         null
-      }
       else
         lookupNext(current, follow, nx)
-    }
     lookupNext(last, first, next)
-  }
 
   /** Enter key/value in cache at position `last`.
    *  As a side effect, sets `last` to `lastButOne`.
@@ -62,37 +57,33 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
    *  first in the queue. If there was no preceding lookup, the element
    *  is inserted at a random position in the queue.
    */
-  def enter(key: Key, value: Value): Unit = {
+  def enter(key: Key, value: Value): Unit =
     keys(last) = key
     values(last) = value
     last = lastButOne
-  }
 
   /** Invalidate key. The invalidated element becomes
    *  the last in the queue.
    */
   def invalidate(key: Key): Unit =
-    if (lookup(key) != null) {
+    if (lookup(key) != null)
       keys(first) = null
       last = first
-    }
 
   def indices: Iterator[Int] = Iterator.iterate(first)(next.apply)
 
   def keysIterator: Iterator[Key] =
     indices take Retained map keys filter (_ != null)
 
-  override def toString: String = {
+  override def toString: String =
     val assocs = keysIterator
       .toList  // double reverse so that lookups do not perturb order
       .reverse
       .map(key => s"$key -> ${lookup(key)}")
       .reverse
     s"LRUCache(${assocs.mkString(", ")})"
-  }
-}
 
-object LRUCache {
+object LRUCache:
 
   /** The number of retained elements in the cache; must be at most 16. */
   val Retained: Int = 16
@@ -101,4 +92,3 @@ object LRUCache {
   val initialRing: SixteenNibbles =
     (0 until Retained).foldLeft(new SixteenNibbles(0L))((nibbles, idx) =>
       nibbles.updated(idx, (idx + 1) % Retained))
-}

@@ -40,7 +40,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
 
   private lazy val mirrorCodeGen = Impl.JMirrorBuilder()
 
-  def genUnit(unit: CompilationUnit): GeneratedDefs = {
+  def genUnit(unit: CompilationUnit): GeneratedDefs =
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
 
@@ -75,7 +75,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       import Impl.createJAttribute
-      for (binary <- unit.pickled.get(claszSymbol.asClass)) {
+      for (binary <- unit.pickled.get(claszSymbol.asClass))
         generatedTasty += GeneratedTasty(store, binary)
         val tasty =
           val uuid = new TastyHeaderUnpickler(binary()).readHeader()
@@ -91,66 +91,57 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
 
         val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
         store.visitAttribute(dataAttr)
-      }
 
     def genClassDefs(tree: Tree): Unit =
-      tree match {
+      tree match
         case EmptyTree => ()
         case PackageDef(_, stats) => stats foreach genClassDefs
         case ValDef(_, _, _) => () // module val not emitted
         case td: TypeDef =>  genClassDef(td)
-      }
 
     genClassDefs(unit.tpdTree)
     GeneratedDefs(generatedClasses.toList, generatedTasty.toList)
-  }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: interfaces.SourceFile): AbstractFile => Unit = clsFile => {
-    val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
+  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: interfaces.SourceFile): AbstractFile => Unit = clsFile =>
+    val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase):
       (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
-    }
 
     val className = cls.name.replace('/', '.')
     if (ctx.compilerCallback != null)
       ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
 
-    if (ctx.sbtCallback != null) {
+    if (ctx.sbtCallback != null)
       val jSourceFile = sourceFile.jfile.orElse(null)
       val cb = ctx.sbtCallback
       if (isLocal) cb.generatedLocalClass(jSourceFile, clsFile.file)
       else cb.generatedNonLocalClass(jSourceFile, clsFile.file, className, fullClassName)
-    }
-  }
 
   /** Convert a `dotty.tools.io.AbstractFile` into a
    *  `dotty.tools.dotc.interfaces.AbstractFile`.
    */
   private def convertAbstractFile(absfile: dotty.tools.io.AbstractFile): interfaces.AbstractFile =
-    new interfaces.AbstractFile {
+    new interfaces.AbstractFile:
       override def name = absfile.name
       override def path = absfile.path
       override def jfile = Optional.ofNullable(absfile.file)
-    }
 
-  private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode = {
+  private def genClass(cd: TypeDef, unit: CompilationUnit): ClassNode =
     val b = new Impl.PlainClassBuilder(unit)
     b.genPlainClass(cd)
     val cls = b.cnode
     checkForCaseConflict(cls.name, cd.symbol)
     cls
-  }
 
-  private def genMirrorClass(classSym: Symbol, unit: CompilationUnit): ClassNode = {
+  private def genMirrorClass(classSym: Symbol, unit: CompilationUnit): ClassNode =
     val cls = mirrorCodeGen.genMirrorClass(classSym, unit)
     checkForCaseConflict(cls.name, classSym)
     cls
-  }
 
   private val lowerCaseNames = mutable.HashMap.empty[String, Symbol]
-  private def checkForCaseConflict(javaClassName: String, classSymbol: Symbol) = {
+  private def checkForCaseConflict(javaClassName: String, classSymbol: Symbol) =
     val lowerCaseName = javaClassName.toLowerCase
-    lowerCaseNames.get(lowerCaseName) match {
+    lowerCaseNames.get(lowerCaseName) match
       case None =>
         lowerCaseNames.put(lowerCaseName, classSymbol)
       case Some(dupClassSym) =>
@@ -159,23 +150,18 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
           if (classSymbol.effectiveName.toString < dupClassSym.effectiveName.toString) (classSymbol, dupClassSym)
           else (dupClassSym, classSymbol)
         val same = classSymbol.effectiveName.toString == dupClassSym.effectiveName.toString
-        atPhase(typerPhase) {
+        atPhase(typerPhase):
           if same then
              // FIXME: This should really be an error, but then FromTasty tests fail
             report.warning(s"${cl1.show} and ${cl2.showLocated} produce classes that overwrite one another", cl1.sourcePos)
           else
             report.warning(s"${cl1.show} differs only in case from ${cl2.showLocated}. " +
               "Such classes will overwrite one another on case-insensitive filesystems.", cl1.sourcePos)
-        }
-    }
-  }
 
-  sealed transparent trait ImplEarlyInit{
+  sealed transparent trait ImplEarlyInit:
     val int: self.int.type = self.int
     val bTypes: self.bTypes.type = self.bTypes
     protected val primitives: DottyPrimitives = self.primitives
-  }
-  object Impl extends ImplEarlyInit with BCodeSyncAndTry {
+  object Impl extends ImplEarlyInit with BCodeSyncAndTry:
     class PlainClassBuilder(unit: CompilationUnit) extends SyncAndTryBuilder(unit)
-  }
 }

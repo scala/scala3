@@ -43,7 +43,7 @@ object PositionPickler:
     pickler.newSection(PositionsSection, buf)
 
     /** Pickle the number of lines followed by the length of each line */
-    def pickleLineOffsets(): Unit = {
+    def pickleLineOffsets(): Unit =
       val content = source.content()
       buf.writeNat(content.count(_ == '\n') + 1) // number of lines
       var lastIndex = content.indexOf('\n', 0)
@@ -53,12 +53,11 @@ object PositionPickler:
         val end = if nextIndex != -1 then nextIndex else content.length
         buf.writeNat(end - lastIndex - 1) // size of the next line
         lastIndex = nextIndex
-    }
     pickleLineOffsets()
 
     var lastIndex = 0
     var lastSpan = Span(0, 0)
-    def pickleDeltas(index: Int, span: Span) = {
+    def pickleDeltas(index: Int, span: Span) =
       val addrDelta = index - lastIndex
       val startDelta = span.start - lastSpan.start
       val endDelta = span.end - lastSpan.end
@@ -74,17 +73,15 @@ object PositionPickler:
         // that forwards to the specialized `addOne` in `BitSet`. Since the
         // current backend does not implement `@inline` we are missing the
         // specialization.
-    }
 
-    def pickleSource(source: SourceFile): Unit = {
+    def pickleSource(source: SourceFile): Unit =
       buf.writeInt(SOURCE)
       val relativePath = SourceFile.relativePath(source, relativePathReference)
       buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
-    }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
      */
-    def alwaysNeedsPos(x: Positioned) = x match {
+    def alwaysNeedsPos(x: Positioned) = x match
       case
           // initialSpan is inaccurate for trees with lazy field
           _: WithLazyFields
@@ -101,39 +98,33 @@ object PositionPickler:
           // they might lose their position
           | _: Trees.Hole[?] => true
       case _ => false
-    }
 
-    def traverse(x: Any, current: SourceFile): Unit = x match {
+    def traverse(x: Any, current: SourceFile): Unit = x match
       case x: untpd.Tree =>
-        if (x.span.exists) {
+        if (x.span.exists)
           val addr = addrOfTree(x)
-          if (addr != NoAddr) {
-            if (x.source != current) {
+          if (addr != NoAddr)
+            if (x.source != current)
               // we currently do not share trees when unpickling, so if one path to a tree contains
               // a source change while another does not, we have to record the position of the tree twice
               // in order not to miss the source change. Test case is t3232a.scala.
               pickleDeltas(addr.index, x.span)
               pickleSource(x.source)
-            }
             else if (!pickledIndices.contains(addr.index) &&
                      (x.span.toSynthetic != x.envelope(x.source) || alwaysNeedsPos(x)))
               pickleDeltas(addr.index, x.span)
-          }
-        }
         x match
           case x: untpd.MemberDef => traverse(treeAnnots(x), x.source)
           case _ =>
         val limit = x.productArity
         var n = 0
-        while (n < limit) {
+        while (n < limit)
           traverse(x.productElement(n), x.source)
           n += 1
-        }
       case y :: ys =>
         traverse(y, current)
         traverse(ys, current)
       case _ =>
-    }
     for (root <- roots)
       traverse(root, NoSource)
   end picklePositions

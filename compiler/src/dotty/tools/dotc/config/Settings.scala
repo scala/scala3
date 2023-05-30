@@ -44,14 +44,13 @@ object Settings:
     sstate: SettingsState,
     arguments: List[String],
     errors: List[String],
-    warnings: List[String]) {
+    warnings: List[String]):
 
     def fail(msg: String): Settings.ArgsSummary =
       ArgsSummary(sstate, arguments.tail, errors :+ msg, warnings)
 
     def warn(msg: String): Settings.ArgsSummary =
       ArgsSummary(sstate, arguments.tail, errors, warnings :+ msg)
-  }
 
   case class Setting[T: ClassTag] private[Settings] (
     name: String,
@@ -62,7 +61,7 @@ object Settings:
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
-    propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
+    propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int):
 
     private var changed: Boolean = false
 
@@ -77,14 +76,13 @@ object Settings:
     def isMultivalue: Boolean = summon[ClassTag[T]] == ListTag
 
     def legalChoices: String =
-      choices match {
+      choices match
         case Some(xs) if xs.isEmpty => ""
         case Some(r: Range)         => s"${r.head}..${r.last}"
         case Some(xs)               => xs.mkString(", ")
         case None                   => ""
-      }
 
-    def tryToSet(state: ArgsSummary): ArgsSummary = {
+    def tryToSet(state: ArgsSummary): ArgsSummary =
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state: @unchecked
       def update(value: Any, args: List[String]): ArgsSummary =
         var dangers = warnings
@@ -132,7 +130,7 @@ object Settings:
         catch case _: NumberFormatException =>
           fail(s"$argValue is not an integer argument for $name", args)
 
-      def doSet(argRest: String) = ((summon[ClassTag[T]], args): @unchecked) match {
+      def doSet(argRest: String) = ((summon[ClassTag[T]], args): @unchecked) match
         case (BooleanTag, _) =>
           setBoolean(argRest, args)
         case (OptionTag, _) =>
@@ -143,8 +141,8 @@ object Settings:
             val strings = argRest.split(",").toList
             choices match
               case Some(valid) => strings.filterNot(valid.contains) match
-                case Nil => update(strings, args)
-                case invalid => fail(s"invalid choice(s) for $name: ${invalid.mkString(",")}", args)
+                  case Nil => update(strings, args)
+                  case invalid => fail(s"invalid choice(s) for $name: ${invalid.mkString(",")}", args)
               case _ => update(strings, args)
         case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
           setString(argRest, args)
@@ -156,22 +154,19 @@ object Settings:
           val isJar = path.extension == "jar"
           if (!isJar && !path.isDirectory)
             fail(s"'$arg' does not exist or is not a directory or .jar file", args)
-          else {
+          else
             val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
             update(output, args)
-          }
         case (IntTag, args) if argRest.nonEmpty =>
           setInt(argRest, args)
         case (IntTag, arg2 :: args2) =>
           setInt(arg2, args2)
         case (VersionTag, _) =>
-          ScalaVersion.parse(argRest) match {
+          ScalaVersion.parse(argRest) match
             case Success(v) => update(v, args)
             case Failure(ex) => fail(ex.getMessage, args)
-          }
         case (_, Nil) =>
           missingArg
-      }
 
       def matches(argName: String) = (name :: aliases).exists(_ == argName)
 
@@ -181,8 +176,6 @@ object Settings:
         doSet(arg.dropWhile(_ != ':').drop(1))
       else
         state
-    }
-  }
 
   object Setting:
     extension [T](setting: Setting[T])
@@ -203,7 +196,7 @@ object Settings:
         s"\n- $name${if description.isEmpty() then "" else s" :\n\t${description.replace("\n","\n\t")}"}"
   end Setting
 
-  class SettingGroup {
+  class SettingGroup:
 
     private val _allSettings = new ArrayBuffer[Setting[?]]
     def allSettings: Seq[Setting[?]] = _allSettings.toSeq
@@ -266,11 +259,10 @@ object Settings:
     def processArguments(arguments: List[String], processAll: Boolean, settingsState: SettingsState = defaultState): ArgsSummary =
       processArguments(ArgsSummary(settingsState, arguments, Nil, Nil), processAll, Nil)
 
-    def publish[T](settingf: Int => Setting[T]): Setting[T] = {
+    def publish[T](settingf: Int => Setting[T]): Setting[T] =
       val setting = settingf(_allSettings.length)
       _allSettings += setting
       setting
-    }
 
     def BooleanSetting(name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
       publish(Setting(name, descr, initialValue, aliases = aliases))
@@ -313,5 +305,4 @@ object Settings:
 
     def OptionSetting[T: ClassTag](name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
       publish(Setting(name, descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
-  }
 end Settings

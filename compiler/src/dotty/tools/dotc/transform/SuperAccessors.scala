@@ -30,7 +30,7 @@ import NameKinds.{ SuperAccessorName, ExpandPrefixName }
  *
  *  (4) Super calls do not go to synthetic field accessors
  */
-class SuperAccessors(thisPhase: DenotTransformer) {
+class SuperAccessors(thisPhase: DenotTransformer):
 
   import tpd._
 
@@ -48,12 +48,11 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     */
   private var invalidEnclClass: Symbol = NoSymbol
 
-  def withInvalidCurrentClass[A](trans: => A)(using Context): A = {
+  def withInvalidCurrentClass[A](trans: => A)(using Context): A =
     val saved = invalidEnclClass
     invalidEnclClass = ctx.owner.enclosingClass
     try trans
     finally invalidEnclClass = saved
-  }
 
   private def validCurrentClass(using Context): Boolean =
     ctx.owner.enclosingClass != invalidEnclClass
@@ -62,7 +61,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
   private val accDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
   /** A super accessor call corresponding to `sel` */
-  private def superAccessorCall(sel: Select, mixName: Name = nme.EMPTY)(using Context) = {
+  private def superAccessorCall(sel: Select, mixName: Name = nme.EMPTY)(using Context) =
     val Select(qual, name) = sel
     val sym = sel.symbol
     val clazz = qual.symbol.asClass
@@ -78,7 +77,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val accRange = sel.span.focus
     val superAcc = clazz.info.decl(superName)
       .suchThat(_.signature == superInfo.signature).symbol
-      .orElse {
+      .orElse:
         report.debuglog(s"add super acc ${sym.showLocated} to $clazz")
         val maybeDeferred = if (clazz.is(Trait)) Deferred else EmptyFlags
         val acc = newSymbol(
@@ -92,15 +91,13 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             sel.srcPos)
         else accDefs(clazz) += DefDef(acc, EmptyTree).withSpan(accRange)
         acc
-    }
 
     This(clazz).select(superAcc).withSpan(sel.span)
-  }
 
   /** Check selection `super.f` for conforming to rules. If necessary,
     *  replace by a super accessor call.
     */
-  private def transformSuperSelect(sel: Select)(using Context): Tree = {
+  private def transformSuperSelect(sel: Select)(using Context): Tree =
     val Select(sup @ Super(_, mix), name) = sel: @unchecked
     val sym   = sel.symbol
     assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
@@ -112,7 +109,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       report.error(em"super may be not be used on ${sym.underlyingSymbol}", sel.srcPos)
     else if (isDisallowed(sym))
       report.error(em"super not allowed here: use this.${sel.name} instead", sel.srcPos)
-    else if (sym.is(Deferred)) {
+    else if (sym.is(Deferred))
       val member = sym.overridingSymbol(clazz.asClass)
       if (!mix.name.isEmpty ||
           !member.exists ||
@@ -121,20 +118,18 @@ class SuperAccessors(thisPhase: DenotTransformer) {
             em"${sym.showLocated} is accessed from super. It may not be abstract unless it is overridden by a member declared `abstract' and `override'",
             sel.srcPos)
       else report.log(i"ok super $sel ${sym.showLocated} $member $clazz ${member.isIncompleteIn(clazz)}")
-    }
-    else {
+    else
       val owner = sym.owner
       if (!owner.is(Trait))
         if (mix.name.isEmpty)
           // scala/bug#4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
-          for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
+          for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner))
             val overriding = sym.overridingSymbol(intermediateClass)
             if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
               report.error(
                 em"${sym.showLocated} cannot be directly accessed from ${clazz} because ${overriding.owner} redeclares it as abstract",
                 sel.srcPos)
-          }
-        else {
+        else
           // scala/scala-dev#143:
           //   a call `super[T].m` that resolves to `A.m` cannot be translated to correct bytecode if
           //   `A` is a class (not a trait / interface), but not the direct superclass. Invokespecial
@@ -150,15 +145,12 @@ class SuperAccessors(thisPhase: DenotTransformer) {
               em"""Super call cannot be emitted: the selected $sym is declared in $owner, which is not the direct superclass of $clazz.
               |An unqualified super call (super.${sym.name}) would be allowed.""",
               sel.srcPos)
-        }
-    }
 
     val needAccessor = name.isTermName && (
       clazz != currentClass || !validCurrentClass || mix.name.isEmpty && clazz.is(Trait))
 
     if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel, mix.name))
     else sel
-  }
 
   /** Disallow some super.XX calls targeting Any methods which would
     *  otherwise lead to either a compiler crash or runtime failure.
@@ -170,14 +162,14 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     (sym eq defn.Any_##)
 
   /** Transform select node, adding super and protected accessors as needed */
-  def transformSelect(tree: Tree, targs: List[Tree])(using Context): Tree = {
+  def transformSelect(tree: Tree, targs: List[Tree])(using Context): Tree =
     val sel @ Select(qual, name) = tree: @unchecked
     val sym = sel.symbol
 
     def needsSuperAccessor =
       ProtectedAccessors.needsAccessorIfNotInSubclass(sym) &&
       AccessProxies.hostForAccessorOf(sym).is(Trait)
-    qual match {
+    qual match
       case _: This if needsSuperAccessor =>
         /* Given a protected member m defined in class C,
          * and a trait T that calls m.
@@ -202,26 +194,20 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         transformSuperSelect(sel)
       case _ =>
         sel
-    }
-  }
 
   /** Wrap template to template transform `op` with needed initialization and finalization */
-  def wrapTemplate(tree: Template)(op: Template => Template)(using Context): Template = {
+  def wrapTemplate(tree: Template)(op: Template => Template)(using Context): Template =
     accDefs(currentClass) = new mutable.ListBuffer[Tree]
     val impl = op(tree)
     val accessors = accDefs.remove(currentClass).nn
     if (accessors.isEmpty) impl
-    else {
-      val (params, rest) = impl.body span {
+    else
+      val (params, rest) = impl.body span:
         case td: TypeDef => !td.isClassDef
         case vd: ValOrDefDef => vd.symbol.flags.is(ParamAccessor)
         case _ => false
-      }
       cpy.Template(impl)(body = params ++ accessors ++ rest)
-    }
-  }
 
   /** Wrap `DefDef` producing operation `op`, potentially setting `invalidClass` info */
   def wrapDefDef(ddef: DefDef)(op: => DefDef)(using Context): DefDef =
     if (isMethodWithExtension(ddef.symbol)) withInvalidCurrentClass(op) else op
-}

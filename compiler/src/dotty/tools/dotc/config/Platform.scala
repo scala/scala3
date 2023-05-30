@@ -10,7 +10,7 @@ import core.Flags.Module
 
 /** The platform dependent pieces of Global.
  */
-abstract class Platform {
+abstract class Platform:
 
   /** The root symbol loader. */
   def rootLoader(root: TermSymbol)(using Context): SymbolLoader
@@ -43,4 +43,3 @@ abstract class Platform {
   final def hasMainMethod(sym: Symbol)(using Context): Boolean =
     sym.info.member(nme.main).hasAltWith(d =>
       isMainMethod(d.symbol) && (sym.is(Module) || d.symbol.isStatic))
-}

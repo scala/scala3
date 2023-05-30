@@ -13,7 +13,7 @@ import reporting.Message
 import util.DiffUtil
 import Highlighting._
 
-object Formatting {
+object Formatting:
 
   object ShownDef:
     /** Represents a value that has been "shown" and can be consumed by StringFormatter.
@@ -119,10 +119,10 @@ object Formatting {
    *     of the string context *before* inserting the arguments. That way, we guard
    *     against accidentally treating an interpolated value as a margin.
    */
-  class StringFormatter(protected val sc: StringContext) {
+  class StringFormatter(protected val sc: StringContext):
     protected def showArg(arg: Any)(using Context): String = arg.tryToShow
 
-    private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.ctxShow match {
+    private def treatArg(arg: Shown, suffix: String)(using Context): (String, String) = arg.ctxShow match
       case arg: Seq[?] if suffix.indexOf('%') == 0 && suffix.indexOf('%', 1) != -1 =>
         val end = suffix.indexOf('%', 1)
         val sep = StringContext.processEscapes(suffix.substring(1, end))
@@ -131,22 +131,17 @@ object Formatting {
         (arg.map(showArg).mkString("[", ", ", "]"), suffix)
       case arg =>
         (showArg(arg), suffix)
-    }
 
-    def assemble(args: Seq[Shown])(using Context): String = {
+    def assemble(args: Seq[Shown])(using Context): String =
       def isLineBreak(c: Char) = c == '\n' || c == '\f' // compatible with StringLike#isLineBreak
-      def stripTrailingPart(s: String) = {
+      def stripTrailingPart(s: String) =
         val (pre, post) = s.span(c => !isLineBreak(c))
         pre ++ post.stripMargin
-      }
-      val (prefix, suffixes) = sc.parts.toList match {
+      val (prefix, suffixes) = sc.parts.toList match
         case head :: tail => (head.stripMargin, tail map stripTrailingPart)
         case Nil => ("", Nil)
-      }
       val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
       new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
-    }
-  }
 
   /** This method will produce a colored type diff from the given arguments.
     * The idea is to do this for known cases that are useful and then fall back
@@ -175,4 +170,3 @@ object Formatting {
   def hlAsKeyword(str: String)(using Context): String =
     if str.isEmpty || ctx.settings.color.value == "never" then str
     else s"${SyntaxHighlighting.KeywordColor}$str${SyntaxHighlighting.NoColor}"
-}

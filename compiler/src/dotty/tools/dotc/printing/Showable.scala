@@ -6,7 +6,7 @@ import core._
 import Contexts._, Texts._, Decorators._
 import config.Config.summarizeDepth
 
-trait Showable extends Any {
+trait Showable extends Any:
 
   /** The text representation of this showable element.
    *  This normally dispatches to a pattern matching
@@ -33,4 +33,3 @@ trait Showable extends Any {
    */
   def showSummary(depth: Int = summarizeDepth)(using Context): String =
     show(using ctx.fresh.setProperty(MessageLimiter, SummarizeMessageLimiter(depth)))
-}

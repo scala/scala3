@@ -14,7 +14,7 @@ import reporting._
 import collection.mutable
 
 
-object ErrorReporting {
+object ErrorReporting:
 
   import tpd._
 
@@ -27,15 +27,13 @@ object ErrorReporting {
   def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
-  def errorType(msg: Message, pos: SrcPos)(using Context): ErrorType = {
+  def errorType(msg: Message, pos: SrcPos)(using Context): ErrorType =
     report.error(msg, pos)
     ErrorType(msg)
-  }
 
-  def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
+  def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType =
     report.error(ex, pos)
     ErrorType(ex.toMessage)
-  }
 
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
@@ -70,7 +68,7 @@ object ErrorReporting {
           case _ => foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
 
-  class Errors(using Context) {
+  class Errors(using Context):
 
     /** An explanatory note to be added to error messages
      *  when there's a problem with abstract var defs */
@@ -89,30 +87,26 @@ object ErrorReporting {
       case tp @ IgnoredProto(deepTp: FunProto) if tp.wasDeepened => deepTp
       case _ => tp
 
-    def expectedTypeStr(tp: Type): String = tp match {
+    def expectedTypeStr(tp: Type): String = tp match
       case tp: PolyProto =>
         i"type arguments [${tp.targs.tpes}%, %] and ${expectedTypeStr(revealDeepenedArgs(tp.resultType))}"
       case tp: FunProto =>
         def argStr(tp: FunProto): String =
-          val result = revealDeepenedArgs(tp.resultType) match {
+          val result = revealDeepenedArgs(tp.resultType) match
             case restp: FunProto => argStr(restp)
             case _: WildcardType | _: IgnoredProto => ""
             case tp => i" and expected result type $tp"
-          }
           i"(${tp.typedArgs().tpes}%, %)$result"
         s"arguments ${argStr(tp)}"
       case _ =>
         i"expected type $tp"
-    }
 
-    def anonymousTypeMemberStr(tpe: Type): String = {
-      val kind = tpe match {
+    def anonymousTypeMemberStr(tpe: Type): String =
+      val kind = tpe match
         case _: TypeBounds => "type with bounds"
         case _: MethodOrPoly => "method"
         case _ => "value of type"
-      }
       i"$kind $tpe"
-    }
 
     def overloadedAltsStr(alts: List[SingleDenotation]): String =
       i"""overloaded alternatives of ${denotStr(alts.head)} with types
@@ -123,7 +117,7 @@ object ErrorReporting {
       else if (denot.symbol.exists) denot.symbol.showLocated
       else anonymousTypeMemberStr(denot.info)
 
-    def refStr(tp: Type): String = tp match {
+    def refStr(tp: Type): String = tp match
       case tp: NamedType =>
         if tp.denot.symbol.exists then tp.denot.symbol.showLocated
         else
@@ -132,7 +126,6 @@ object ErrorReporting {
             case _ => if tp.isType then "type" else "value"
           s"$kind ${tp.name}"
       case _ => anonymousTypeMemberStr(tp)
-    }
 
     /** Explain info of symbol `sym` as a member of class `base`.
      *   @param  showLocation  if true also show sym's location.
@@ -156,13 +149,12 @@ object ErrorReporting {
     def takesNoParamsMsg(tree: Tree, kind: String): Message =
       if (tree.tpe.widen.exists)
         em"${exprStr(tree)} does not take ${kind}parameters"
-      else {
+      else
         em"undefined: $tree # ${tree.uniqueId}: ${tree.tpe.toString} at ${ctx.phase}"
-      }
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree =
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
@@ -185,7 +177,6 @@ object ErrorReporting {
         case _ => ""
 
       errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
-    }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type): String =
@@ -270,7 +261,6 @@ object ErrorReporting {
         if add.isEmpty then ""
         else ", but could be made available as an extension method." ++ add
     end selectErrorAddendum
-  }
 
   def substitutableTypeSymbolsInScope(sym: Symbol)(using Context): List[Symbol] =
     sym.ownersIterator.takeWhile(!_.is(Flags.Package)).flatMap { ownerSym =>
@@ -283,4 +273,3 @@ object ErrorReporting {
       |they must be enabled with a `experimental.dependent` language import or setting""".stripMargin.toMessage
 
   def err(using Context): Errors = new Errors
-}

@@ -13,8 +13,8 @@ import dotty.tools.io.AbstractFile
 /**
  * Common methods related to Java files and abstract files used in the context of classpath
  */
-object FileUtils {
-  extension (file: AbstractFile) {
+object FileUtils:
+  extension (file: AbstractFile)
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 
     def isClass: Boolean = !file.isDirectory && file.hasExtension("class") && !file.name.endsWith("$class.class")
@@ -30,14 +30,12 @@ object FileUtils {
      * and returning given default value in other case
      */
     def toURLs(default: => Seq[URL] = Seq.empty): Seq[URL] = if (file.file == null) default else Seq(file.toURL)
-  }
 
-  extension (file: JFile) {
+  extension (file: JFile)
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.getName)
 
     def isClass: Boolean = file.isFile && file.getName.endsWith(".class") && !file.getName.endsWith("$class.class")
       // FIXME: drop last condition when we stop being compatible with Scala 2.11
-  }
 
   private val SUFFIX_CLASS = ".class"
   private val SUFFIX_SCALA = ".scala"
@@ -78,7 +76,5 @@ object FileUtils {
   def mayBeValidPackage(dirName: String): Boolean =
     (dirName != "META-INF") && (dirName != "") && (dirName.charAt(0) != '.')
 
-  def mkFileFilter(f: JFile => Boolean): FileFilter = new FileFilter {
+  def mkFileFilter(f: JFile => Boolean): FileFilter = new FileFilter:
     def accept(pathname: JFile): Boolean = f(pathname)
-  }
-}

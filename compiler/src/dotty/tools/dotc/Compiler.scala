@@ -15,7 +15,7 @@ import localopt.StringInterpolatorOpt
 /** The central class of the dotc compiler. The job of a compiler is to create
  *  runs, which process given `phases` in a given `rootContext`.
  */
-class Compiler {
+class Compiler:
 
   /** Meta-ordering constraint:
    *
@@ -152,17 +152,15 @@ class Compiler {
     Nil
 
   var runId: Int = 1
-  def nextRunId: Int = {
+  def nextRunId: Int =
     runId += 1; runId
-  }
 
-  def reset()(using Context): Unit = {
+  def reset()(using Context): Unit =
     ctx.base.reset()
     val run = ctx.run
     if (run != null) run.reset()
-  }
 
-  def newRun(using Context): Run = {
+  def newRun(using Context): Run =
     reset()
     val rctx =
       if ctx.settings.Xsemanticdb.value then
@@ -170,5 +168,3 @@ class Compiler {
       else
         ctx
     new Run(this, rctx)
-  }
-}

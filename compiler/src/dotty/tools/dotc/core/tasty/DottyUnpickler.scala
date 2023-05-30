@@ -15,33 +15,29 @@ import TreeUnpickler.UnpickleMode
 import dotty.tools.tasty.TastyReader
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
-object DottyUnpickler {
+object DottyUnpickler:
 
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
   class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler])
-  extends SectionUnpickler[TreeUnpickler](ASTsSection) {
+  extends SectionUnpickler[TreeUnpickler](ASTsSection):
     def unpickle(reader: TastyReader, nameAtRef: NameTable): TreeUnpickler =
       new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler)
-  }
 
-  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler](PositionsSection) {
+  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler](PositionsSection):
     def unpickle(reader: TastyReader, nameAtRef: NameTable): PositionUnpickler =
       new PositionUnpickler(reader, nameAtRef)
-  }
 
-  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler](CommentsSection) {
+  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler](CommentsSection):
     def unpickle(reader: TastyReader, nameAtRef: NameTable): CommentUnpickler =
       new CommentUnpickler(reader)
-  }
-}
 
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  *  @param mode          the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
-class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
+class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider:
   import tpd._
   import DottyUnpickler._
 
@@ -63,12 +59,10 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
 
   private var ids: Array[String] = null
 
-  override def mightContain(id: String)(using Context): Boolean = {
+  override def mightContain(id: String)(using Context): Boolean =
     if (ids == null)
       ids =
         unpickler.nameAtRef.contents.toArray.collect {
           case name: SimpleName => name.toString
         }.sorted
     ids.binarySearch(id) >= 0
-  }
-}

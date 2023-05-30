@@ -33,21 +33,20 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils._
 
 import JSEncoding._
 
-final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
+final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context):
   import jsCodeGen._
   import positionConversions._
 
   /** Info for a non-member export. */
-  sealed trait ExportInfo {
+  sealed trait ExportInfo:
     val pos: SourcePosition
-  }
 
   final case class TopLevelExportInfo(moduleID: String, jsName: String)(val pos: SourcePosition) extends ExportInfo
   final case class StaticExportInfo(jsName: String)(val pos: SourcePosition) extends ExportInfo
 
   private sealed trait ExportKind
 
-  private object ExportKind {
+  private object ExportKind:
     case object Module extends ExportKind
     case object JSClass extends ExportKind
     case object Constructor extends ExportKind
@@ -55,100 +54,85 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     case object Property extends ExportKind
     case object Field extends ExportKind
 
-    def apply(sym: Symbol): ExportKind = {
+    def apply(sym: Symbol): ExportKind =
       if (sym.is(Flags.Module) && sym.isStatic) Module
       else if (sym.isClass) JSClass
       else if (sym.isConstructor) Constructor
       else if (!sym.is(Flags.Method)) Field
       else if (sym.isJSProperty) Property
       else Method
-    }
-  }
 
-  private def topLevelExportsOf(sym: Symbol): List[TopLevelExportInfo] = {
+  private def topLevelExportsOf(sym: Symbol): List[TopLevelExportInfo] =
     def isScalaClass(sym: Symbol): Boolean =
       sym.isClass && !sym.isOneOf(Module | Trait) && !sym.isJSType
 
-    if (isScalaClass(sym)) {
+    if (isScalaClass(sym))
       // Scala classes are never exported; their constructors are
       Nil
-    } else if (sym.is(Accessor) || sym.is(Module, butNot = ModuleClass)) {
+    else if (sym.is(Accessor) || sym.is(Module, butNot = ModuleClass))
       /* - Accessors receive the `@JSExportTopLevel` annotation of their associated field,
        *   but only the field is really exported.
        * - Module values are not exported; their module class takes care of the export.
        */
       Nil
-    } else {
+    else
       val symForAnnot =
         if (sym.isConstructor && isScalaClass(sym.owner)) sym.owner
         else sym
 
-      symForAnnot.annotations.collect {
+      symForAnnot.annotations.collect:
         case annot if annot.symbol == jsdefn.JSExportTopLevelAnnot =>
           val jsName = annot.argumentConstantString(0).get
           val moduleID = annot.argumentConstantString(1).getOrElse(DefaultModuleID)
           TopLevelExportInfo(moduleID, jsName)(annot.tree.sourcePos)
-      }
-    }
-  }
 
-  private def staticExportsOf(sym: Symbol): List[StaticExportInfo] = {
-    if (sym.is(Accessor)) {
+  private def staticExportsOf(sym: Symbol): List[StaticExportInfo] =
+    if (sym.is(Accessor))
       Nil
-    } else {
-      sym.annotations.collect {
+    else
+      sym.annotations.collect:
         case annot if annot.symbol == jsdefn.JSExportStaticAnnot =>
-          val jsName = annot.argumentConstantString(0).getOrElse {
+          val jsName = annot.argumentConstantString(0).getOrElse:
             sym.defaultJSName
-          }
           StaticExportInfo(jsName)(annot.tree.sourcePos)
-      }
-    }
-  }
 
-  private def checkSameKind(tups: List[(ExportInfo, Symbol)]): Option[ExportKind] = {
+  private def checkSameKind(tups: List[(ExportInfo, Symbol)]): Option[ExportKind] =
     assert(tups.nonEmpty, "must have at least one export")
 
     val firstSym = tups.head._2
     val overallKind = ExportKind(firstSym)
     var bad = false
 
-    for ((info, sym) <- tups.tail) {
+    for ((info, sym) <- tups.tail)
       val kind = ExportKind(sym)
 
-      if (kind != overallKind) {
+      if (kind != overallKind)
         bad = true
         report.error(
             em"export overload conflicts with export of $firstSym: they are of different types (${kind.tryToShow} / ${overallKind.tryToShow})",
             info.pos)
-      }
-    }
 
     if (bad) None
     else Some(overallKind)
-  }
 
-  private def checkSingleField(tups: List[(ExportInfo, Symbol)]): Symbol = {
+  private def checkSingleField(tups: List[(ExportInfo, Symbol)]): Symbol =
     assert(tups.nonEmpty, "must have at least one export")
 
     val firstSym = tups.head._2
 
-    for ((info, _) <- tups.tail) {
+    for ((info, _) <- tups.tail)
       report.error(
           em"export overload conflicts with export of $firstSym: a field may not share its exported name with another export",
           info.pos)
-    }
 
     firstSym
-  }
 
-  def genTopLevelExports(classSym: ClassSymbol): List[js.TopLevelExportDef] = {
+  def genTopLevelExports(classSym: ClassSymbol): List[js.TopLevelExportDef] =
     val exports = for {
       sym <- classSym :: classSym.info.decls.toList
       info <- topLevelExportsOf(sym)
-    } yield {
+    } yield
       (info, sym)
-    }
 
     (for {
       (info, tups) <- exports.groupBy(_._1)
@@ -158,7 +142,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
       implicit val pos = info.pos
 
-      kind match {
+      kind match
         case Module =>
           js.TopLevelModuleExportDef(info.moduleID, info.jsName)
 
@@ -169,9 +153,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         case Constructor | Method =>
           val exported = tups.map(_._2)
 
-          val methodDef = withNewLocalNameScope {
+          val methodDef = withNewLocalNameScope:
             genExportMethod(exported, JSName.Literal(info.jsName), static = true)
-          }
 
           js.TopLevelMethodExportDef(info.moduleID, methodDef)
 
@@ -181,17 +164,14 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         case Field =>
           val sym = checkSingleField(tups)
           js.TopLevelFieldExportDef(info.moduleID, info.jsName, encodeFieldSym(sym))
-      }
     }).toList
-  }
 
-  def genStaticExports(classSym: Symbol): List[js.MemberDef] = {
+  def genStaticExports(classSym: Symbol): List[js.MemberDef] =
     val exports = for {
       sym <- classSym.info.decls.toList
       info <- staticExportsOf(sym)
-    } yield {
+    } yield
       (info, sym)
-    }
 
     (for {
       (info, tups) <- exports.groupBy(_._1)
@@ -203,7 +183,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
       import ExportKind._
 
-      kind match {
+      kind match
         case Method =>
           genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = false, alts, static = true)
 
@@ -223,35 +203,31 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
         case kind =>
           throw new AssertionError(s"unexpected static export kind: $kind")
-      }
     }).toList
-  }
 
   /** Generates exported methods and properties for a class.
    *
    *  @param classSym symbol of the class we export for
    */
-  def genMemberExports(classSym: ClassSymbol): List[js.MemberDef] = {
+  def genMemberExports(classSym: ClassSymbol): List[js.MemberDef] =
     val classInfo = classSym.info
     val allExports = classInfo.memberDenots(takeAllFilter, { (name, buf) =>
       if (isExportName(name))
         buf ++= classInfo.member(name).alternatives
     })
 
-    val newlyDeclaredExports = if (classSym.superClass == NoSymbol) {
+    val newlyDeclaredExports = if (classSym.superClass == NoSymbol)
       allExports
-    } else {
+    else
       allExports.filterNot { denot =>
         classSym.superClass.info.member(denot.name).hasAltWith(_.info =:= denot.info)
       }
-    }
 
     val newlyDeclaredExportNames = newlyDeclaredExports.map(_.name.toTermName).toList.distinct
 
     newlyDeclaredExportNames.map(genMemberExport(classSym, _))
-  }
 
-  private def genMemberExport(classSym: ClassSymbol, name: TermName): js.MemberDef = {
+  private def genMemberExport(classSym: ClassSymbol, name: TermName): js.MemberDef =
     /* This used to be `.member(name)`, but it caused #3538, since we were
      * sometimes selecting mixin forwarders, whose type history does not go
      * far enough back in time to see varargs. We now explicitly exclude
@@ -271,24 +247,20 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     // Check if we have a conflicting export of the other kind
     val conflicting = classSym.info.member(makeExportName(jsName, !isProp))
 
-    if (conflicting.exists) {
+    if (conflicting.exists)
       val kind = if (isProp) "property" else "method"
       val conflictingMember = conflicting.alternatives.head.symbol.fullName
-      val errorPos: SrcPos = alts.map(_.symbol).filter(_.owner == classSym) match {
+      val errorPos: SrcPos = alts.map(_.symbol).filter(_.owner == classSym) match
         case Nil         => classSym
         case altsInClass => altsInClass.minBy(_.span.point)
-      }
       report.error(em"Exported $kind $jsName conflicts with $conflictingMember", errorPos)
-    }
 
     genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts.map(_.symbol), static = false)
-  }
 
-  def genJSClassDispatchers(classSym: Symbol, dispatchMethodsNames: List[JSName]): List[js.MemberDef] = {
+  def genJSClassDispatchers(classSym: Symbol, dispatchMethodsNames: List[JSName]): List[js.MemberDef] =
     dispatchMethodsNames.map(genJSClassDispatcher(classSym, _))
-  }
 
-  private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef = {
+  private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef =
     val alts = classSym.info.membersBasedOnFlags(required = Method, excluded = Bridge)
       .map(_.symbol)
       .filter { sym =>
@@ -305,29 +277,25 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val (propSyms, methodSyms) = alts.partition(_.isJSProperty)
     val isProp = propSyms.nonEmpty
 
-    if (isProp && methodSyms.nonEmpty) {
+    if (isProp && methodSyms.nonEmpty)
       val firstAlt = alts.head
       report.error(
           em"Conflicting properties and methods for ${classSym.fullName}::$name.",
           firstAlt.srcPos)
       implicit val pos = firstAlt.span
       js.JSPropertyDef(js.MemberFlags.empty, genExpr(name)(firstAlt.sourcePos), None, None)
-    } else {
+    else
       genMemberExportOrDispatcher(name, isProp, alts, static = false)
-    }
-  }
 
   private def genMemberExportOrDispatcher(jsName: JSName, isProp: Boolean,
-      alts: List[Symbol], static: Boolean): js.MemberDef = {
-    withNewLocalNameScope {
+      alts: List[Symbol], static: Boolean): js.MemberDef =
+    withNewLocalNameScope:
       if (isProp)
         genExportProperty(alts, jsName, static)
       else
         genExportMethod(alts, jsName, static)
-    }
-  }
 
-  private def genExportProperty(alts: List[Symbol], jsName: JSName, static: Boolean): js.JSPropertyDef = {
+  private def genExportProperty(alts: List[Symbol], jsName: JSName, static: Boolean): js.JSPropertyDef =
     assert(!alts.isEmpty, s"genExportProperty with empty alternatives for $jsName")
 
     implicit val pos: Position = alts.head.span
@@ -350,22 +318,19 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       genApplyForSingleExported(new FormalArgsRegistry(0, false), new ExportedSymbol(getterSym, static), static)
     }
 
-    val setterArgAndBody = {
-      if (setters.isEmpty) {
+    val setterArgAndBody =
+      if (setters.isEmpty)
         None
-      } else {
+      else
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
         val (List(arg), None) = formalArgsRegistry.genFormalArgs(): @unchecked
         val body = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
             setters.map(new ExportedSymbol(_, static)), jstpe.AnyType, None)
         Some((arg, body))
-      }
-    }
 
     js.JSPropertyDef(flags, genExpr(jsName)(alts.head.sourcePos), getterBody, setterArgAndBody)
-  }
 
-  private def genExportMethod(alts0: List[Symbol], jsName: JSName, static: Boolean)(using Context): js.JSMethodDef = {
+  private def genExportMethod(alts0: List[Symbol], jsName: JSName, static: Boolean)(using Context): js.JSMethodDef =
     assert(alts0.nonEmpty, "need at least one alternative to generate exporter method")
 
     implicit val pos: SourcePosition = alts0.head.sourcePos
@@ -376,12 +341,11 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val flags = js.MemberFlags.empty.withNamespace(namespace)
 
     // toString() is always exported. We might need to add it here to get correct overloading.
-    val alts = jsName match {
+    val alts = jsName match
       case JSName.Literal("toString") if alts0.forall(_.info.paramInfoss.exists(_.nonEmpty)) =>
         defn.Any_toString :: alts0
       case _ =>
         alts0
-    }
 
     val overloads = alts.map(new ExportedSymbol(_, static))
 
@@ -390,10 +354,9 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
         OptimizerHints.empty, None)
-  }
 
   def genOverloadDispatch(jsName: JSName, alts: List[Exported], tpe: jstpe.Type)(
-      using pos: SourcePosition): (List[js.ParamDef], Option[js.ParamDef], js.Tree) = {
+      using pos: SourcePosition): (List[js.ParamDef], Option[js.ParamDef], js.Tree) =
 
     // Create the formal args registry
     val hasVarArg = alts.exists(_.hasRepeatedParam)
@@ -419,19 +382,17 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       else genExportMethodMultiAlts(formalArgsRegistry, maxNonRepeatedArgc, alts, tpe, jsName)
 
     (formalArgs, restParam, body)
-  }
 
   private def genExportMethodMultiAlts(formalArgsRegistry: FormalArgsRegistry,
       maxNonRepeatedArgc: Int, alts: List[Exported], tpe: jstpe.Type, jsName: JSName)(
-      implicit pos: SourcePosition): js.Tree = {
+      implicit pos: SourcePosition): js.Tree =
 
     // Generate tuples (argc, method)
     val methodArgCounts = for {
       alt <- alts
       argc <- alt.minArgc to (if (alt.hasRepeatedParam) maxNonRepeatedArgc else alt.maxNonRepeatedArgc)
-    } yield {
+    } yield
       (argc, alt)
-    }
 
     // Create a list of (argCount -> methods), sorted by argCount (methods may appear multiple times)
     val methodsByArgCount: List[(Int, List[Exported])] =
@@ -445,36 +406,31 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val cases = for {
       (argc, methods) <- methodsByArgCount
       if methods != altsWithVarArgs // exclude default case we're generating anyways for varargs
-    } yield {
+    } yield
       // body of case to disambiguates methods with current count
       val caseBody = genOverloadDispatchSameArgc(jsName, formalArgsRegistry, methods, tpe, Some(argc))
       List(js.IntLiteral(argc - formalArgsRegistry.minArgc)) -> caseBody
-    }
 
-    def defaultCase = {
+    def defaultCase =
       if (altsWithVarArgs.isEmpty)
         genThrowTypeError()
       else
         genOverloadDispatchSameArgc(jsName, formalArgsRegistry, altsWithVarArgs, tpe, None)
-    }
 
-    val body = {
-      if (cases.isEmpty) {
+    val body =
+      if (cases.isEmpty)
         defaultCase
-      } else if (cases.tail.isEmpty && altsWithVarArgs.isEmpty) {
+      else if (cases.tail.isEmpty && altsWithVarArgs.isEmpty)
         cases.head._2
-      } else {
+      else
         val restArgRef = formalArgsRegistry.genRestArgRef()
         js.Match(
             js.AsInstanceOf(js.JSSelect(restArgRef, js.StringLiteral("length")), jstpe.IntType),
             cases,
             defaultCase)(
             tpe)
-      }
-    }
 
     body
-  }
 
   /** Resolves method calls to [[alts]] while assuming they have the same parameter count.
    *
@@ -490,9 +446,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
    *    Maximum number of arguments to use for disambiguation
    */
   private def genOverloadDispatchSameArgc(jsName: JSName, formalArgsRegistry: FormalArgsRegistry,
-      alts: List[Exported], tpe: jstpe.Type, maxArgc: Option[Int]): js.Tree = {
+      alts: List[Exported], tpe: jstpe.Type, maxArgc: Option[Int]): js.Tree =
     genOverloadDispatchSameArgcRec(jsName, formalArgsRegistry, alts, tpe, paramIndex = 0, maxArgc)
-  }
 
   /** Resolves method calls to [[alts]] while assuming they have the same parameter count.
    *
@@ -510,13 +465,13 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
    *    Maximum number of arguments to use for disambiguation
    */
   private def genOverloadDispatchSameArgcRec(jsName: JSName, formalArgsRegistry: FormalArgsRegistry,
-      alts: List[Exported], tpe: jstpe.Type, paramIndex: Int, maxArgc: Option[Int]): js.Tree = {
+      alts: List[Exported], tpe: jstpe.Type, paramIndex: Int, maxArgc: Option[Int]): js.Tree =
 
     implicit val pos = alts.head.pos
 
-    if (alts.sizeIs == 1) {
+    if (alts.sizeIs == 1)
       alts.head.genBody(formalArgsRegistry)
-    } else if (maxArgc.exists(_ <= paramIndex) || !alts.exists(_.params.size > paramIndex)) {
+    else if (maxArgc.exists(_ <= paramIndex) || !alts.exists(_.params.size > paramIndex))
       // We reach here in three cases:
       // 1. The parameter list has been exhausted
       // 2. The optional argument count restriction has triggered
@@ -524,18 +479,18 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       // Therefore, we should fail
       reportCannotDisambiguateError(jsName, alts.map(_.sym))
       js.Undefined()
-    } else {
+    else
       val altsByTypeTest = groupByWithoutHashCode(alts) { exported =>
         typeTestForTpe(exported.exportArgTypeAt(paramIndex))
       }
 
-      if (altsByTypeTest.size == 1) {
+      if (altsByTypeTest.size == 1)
         // Testing this parameter is not doing any us good
         genOverloadDispatchSameArgcRec(jsName, formalArgsRegistry, alts, tpe, paramIndex + 1, maxArgc)
-      } else {
+      else
         // Sort them so that, e.g., isInstanceOf[String] comes before isInstanceOf[Object]
         val sortedAltsByTypeTest = topoSortDistinctsWith(altsByTypeTest) { (lhs, rhs) =>
-          (lhs._1, rhs._1) match {
+          (lhs._1, rhs._1) match
             // NoTypeTest is always last
             case (_, NoTypeTest) => true
             case (NoTypeTest, _) => false
@@ -548,7 +503,6 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
             case (_: PrimitiveTypeTest, _: InstanceOfTypeTest) => true
             case (_: InstanceOfTypeTest, _: PrimitiveTypeTest) => false
-          }
         }
 
         val defaultCase = genThrowTypeError()
@@ -563,28 +517,23 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
           def hasDefaultParam = subAlts.exists(_.hasDefaultAt(paramIndex))
 
-          val optCond = typeTest match {
+          val optCond = typeTest match
             case PrimitiveTypeTest(tpe, _) => Some(js.IsInstanceOf(paramRef, tpe))
             case InstanceOfTypeTest(tpe)   => Some(genIsInstanceOf(paramRef, tpe))
             case NoTypeTest                => None
-          }
 
           optCond.fold[js.Tree] {
             genSubAlts // note: elsep is discarded, obviously
           } { cond =>
-            val condOrUndef = if (!hasDefaultParam) cond else {
+            val condOrUndef = if (!hasDefaultParam) cond else
               js.If(cond, js.BooleanLiteral(true),
                   js.BinaryOp(js.BinaryOp.===, paramRef, js.Undefined()))(
                   jstpe.BooleanType)
-            }
             js.If(condOrUndef, genSubAlts, elsep)(tpe)
           }
         }
-      }
-    }
-  }
 
-  private def reportCannotDisambiguateError(jsName: JSName, alts: List[Symbol]): Unit = {
+  private def reportCannotDisambiguateError(jsName: JSName, alts: List[Symbol]): Unit =
     val currentClass = currentClassSym.get
 
     /* Find a position that is in the current class for decent error reporting.
@@ -592,9 +541,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
      * one coming last in the source text) so that we reliably display the
      * same error in all compilers.
      */
-    val validPositions = alts.collect {
+    val validPositions = alts.collect:
       case alt if alt.owner == currentClass => alt.sourcePos
-    }
     val pos: SourcePosition =
       if (validPositions.isEmpty) currentClass.sourcePos
       else validPositions.maxBy(_.point)
@@ -614,7 +562,6 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     report.error(
         em"Cannot disambiguate overloads for $fullKind $displayName with types\n  $altsTypesInfo",
         pos)
-  }
 
   /** Generates a call to the method represented by the given `exported` while using the formalArguments
    *  and potentially the argument array.
@@ -622,17 +569,15 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
    *  Also inserts default parameters if required.
    */
   private def genApplyForSingleExported(formalArgsRegistry: FormalArgsRegistry,
-      exported: Exported, static: Boolean): js.Tree = {
-    if (currentClassSym.isJSType && exported.sym.owner != currentClassSym.get) {
+      exported: Exported, static: Boolean): js.Tree =
+    if (currentClassSym.isJSType && exported.sym.owner != currentClassSym.get)
       assert(!static, s"nonsensical JS super call in static export of ${exported.sym}")
       genApplyForSingleExportedJSSuperCall(formalArgsRegistry, exported)
-    } else {
+    else
       genApplyForSingleExportedNonJSSuperCall(formalArgsRegistry, exported, static)
-    }
-  }
 
   private def genApplyForSingleExportedJSSuperCall(
-      formalArgsRegistry: FormalArgsRegistry, exported: Exported): js.Tree = {
+      formalArgsRegistry: FormalArgsRegistry, exported: Exported): js.Tree =
     implicit val pos = exported.pos
 
     val sym = exported.sym
@@ -641,51 +586,46 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     val allArgs = formalArgsRegistry.genAllArgsRefsForForwarder()
 
-    val superClass = {
+    val superClass =
       val superClassSym = currentClassSym.asClass.superClass
       if (superClassSym.isNestedJSClass)
         js.VarRef(js.LocalIdent(JSSuperClassParamName))(jstpe.AnyType)
       else
         js.LoadJSConstructor(encodeClassName(superClassSym))
-    }
 
     val receiver = js.This()(currentThisType)
     val nameTree = genExpr(sym.jsName)
 
-    if (sym.isJSGetter) {
+    if (sym.isJSGetter)
       assert(allArgs.isEmpty,
           s"getter symbol $sym does not have a getter signature")
       js.JSSuperSelect(superClass, receiver, nameTree)
-    } else if (sym.isJSSetter) {
+    else if (sym.isJSSetter)
       assert(allArgs.size == 1 && allArgs.head.isInstanceOf[js.Tree],
           s"setter symbol $sym does not have a setter signature")
       js.Assign(js.JSSuperSelect(superClass, receiver, nameTree),
           allArgs.head.asInstanceOf[js.Tree])
-    } else {
+    else
       js.JSSuperMethodCall(superClass, receiver, nameTree, allArgs)
-    }
-  }
 
   private def genApplyForSingleExportedNonJSSuperCall(
-      formalArgsRegistry: FormalArgsRegistry, exported: Exported, static: Boolean): js.Tree = {
+      formalArgsRegistry: FormalArgsRegistry, exported: Exported, static: Boolean): js.Tree =
 
     implicit val pos = exported.pos
 
     val varDefs = new mutable.ListBuffer[js.VarDef]
 
-    for ((param, i) <- exported.params.zipWithIndex) {
+    for ((param, i) <- exported.params.zipWithIndex)
       val rhs = genScalaArg(exported, i, formalArgsRegistry, param, static, captures = Nil)(
           prevArgsCount => varDefs.take(prevArgsCount).toList.map(_.ref))
 
       varDefs += js.VarDef(freshLocalIdent("prep" + i), NoOriginalName, rhs.tpe, mutable = false, rhs)
-    }
 
     val builtVarDefs = varDefs.result()
 
     val jsResult = genResult(exported, builtVarDefs.map(_.ref), static)
 
     js.Block(builtVarDefs :+ jsResult)
-  }
 
   /** Generates a Scala argument from dispatched JavaScript arguments
    *  (unboxing and default parameter handling).
@@ -693,34 +633,31 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   def genScalaArg(exported: Exported, paramIndex: Int, formalArgsRegistry: FormalArgsRegistry,
       param: JSParamInfo, static: Boolean, captures: List[js.Tree])(
       previousArgsValues: Int => List[js.Tree])(
-      implicit pos: SourcePosition): js.Tree = {
+      implicit pos: SourcePosition): js.Tree =
 
-    if (param.repeated) {
+    if (param.repeated)
       genJSArrayToVarArgs(formalArgsRegistry.genVarargRef(paramIndex))
-    } else {
+    else
       val jsArg = formalArgsRegistry.genArgRef(paramIndex)
 
       // Unboxed argument (if it is defined)
       val unboxedArg = unbox(jsArg, param.info)
 
-      if (exported.hasDefaultAt(paramIndex)) {
+      if (exported.hasDefaultAt(paramIndex))
         // If argument is undefined and there is a default getter, call it
         js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
           genCallDefaultGetter(exported.sym, paramIndex, static, captures)(previousArgsValues)
         }, {
           unboxedArg
         })(unboxedArg.tpe)
-      } else {
+      else
         // Otherwise, it is always the unboxed argument
         unboxedArg
-      }
-    }
-  }
 
   def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
       static: Boolean, captures: List[js.Tree])(
       previousArgsValues: Int => List[js.Tree])(
-      implicit pos: SourcePosition): js.Tree = {
+      implicit pos: SourcePosition): js.Tree =
 
     val targetSym = targetSymForDefaultGetter(sym)
     val defaultGetterDenot = this.defaultGetterDenot(targetSym, sym, paramIndex)
@@ -729,12 +666,12 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     assert(!defaultGetterDenot.isOverloaded, i"found overloaded default getter $defaultGetterDenot")
     val defaultGetter = defaultGetterDenot.symbol
 
-    val targetTree = {
-      if (sym.isClassConstructor || static) {
-        if (targetSym.isStatic) {
+    val targetTree =
+      if (sym.isClassConstructor || static)
+        if (targetSym.isStatic)
           assert(captures.isEmpty, i"expected empty captures for ${targetSym.fullName} at $pos")
           genLoadModule(targetSym)
-        } else {
+        else
           assert(captures.sizeIs == 1, "expected exactly one capture")
 
           // Find the module accessor. We cannot use memberBasedOnFlags because of scala-js/scala-js#4526.
@@ -751,45 +688,39 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
             genApplyJSClassMethod(receiver, modAccessor, Nil)
           else
             genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
-        }
-      } else {
+      else
         js.This()(currentThisType)
-      }
-    }
 
     // Pass previous arguments to defaultGetter
     val defaultGetterArgs = previousArgsValues(defaultGetter.info.paramInfoss.head.size)
 
-    val callGetter = if (targetSym.isJSType) {
-      if (defaultGetter.owner.isNonNativeJSClass) {
+    val callGetter = if (targetSym.isJSType)
+      if (defaultGetter.owner.isNonNativeJSClass)
         if (defaultGetter.hasAnnotation(jsdefn.JSOptionalAnnot))
           js.Undefined()
         else
           genApplyJSClassMethod(targetTree, defaultGetter, defaultGetterArgs)
-      } else if (defaultGetter.owner == targetSym) {
+      else if (defaultGetter.owner == targetSym)
         /* We get here if a non-native constructor has a native companion.
          * This is reported on a per-class level.
          */
         assert(sym.isClassConstructor,
             s"got non-constructor method $sym with default method in JS native companion")
         js.Undefined()
-      } else {
+      else
         report.error(
             "When overriding a native method with default arguments, " +
             "the overriding method must explicitly repeat the default arguments.",
             sym.srcPos)
         js.Undefined()
-      }
-    } else {
+    else
       genApplyMethod(targetTree, defaultGetter, defaultGetterArgs)
-    }
 
     // #15419 If the getter returns void, we must "box" it by returning undefined
     if (callGetter.tpe == jstpe.NoType)
       js.Block(callGetter, js.Undefined())
     else
       callGetter
-  }
 
   private def targetSymForDefaultGetter(sym: Symbol): Symbol =
     if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
@@ -803,7 +734,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
   /** Generate the final forwarding call to the exported method. */
   private def genResult(exported: Exported, args: List[js.Tree], static: Boolean)(
-      implicit pos: SourcePosition): js.Tree = {
+      implicit pos: SourcePosition): js.Tree =
 
     val sym = exported.sym
     val currentClass = currentClassSym.get
@@ -815,18 +746,16 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     def boxIfNeeded(call: js.Tree): js.Tree =
       box(call, atPhase(elimErasedValueTypePhase)(sym.info.resultType))
 
-    if (currentClass.isNonNativeJSClass) {
+    if (currentClass.isNonNativeJSClass)
       assert(sym.owner == currentClass, sym.fullName)
       boxIfNeeded(genApplyJSClassMethod(receiver, sym, args))
-    } else {
+    else
       if (sym.isClassConstructor)
         js.New(encodeClassName(currentClass), encodeMethodSym(sym), args)
       else if (sym.isPrivate)
         boxIfNeeded(genApplyMethodStatically(receiver, sym, args))
       else
         boxIfNeeded(genApplyMethod(receiver, sym, args))
-    }
-  }
 
   private def genThrowTypeError(msg: String = "No matching overload")(implicit pos: Position): js.Tree =
     js.Throw(js.JSNew(js.JSGlobalRef("TypeError"), js.StringLiteral(msg) :: Nil))
@@ -835,55 +764,48 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val sym: Symbol,
     // Parameters participating in overload resolution.
     val params: scala.collection.immutable.IndexedSeq[JSParamInfo]
-  ) {
+  ):
     assert(!params.exists(_.capture), "illegal capture params in Exported")
 
-    private val paramsHasDefault = {
-      if (!atPhase(elimRepeatedPhase)(sym.hasDefaultParams)) {
+    private val paramsHasDefault =
+      if (!atPhase(elimRepeatedPhase)(sym.hasDefaultParams))
         Vector.empty
-      } else {
+      else
         val targetSym = targetSymForDefaultGetter(sym)
         params.indices.map(i => defaultGetterDenot(targetSym, sym, i).exists)
-      }
-    }
 
     def hasDefaultAt(paramIndex: Int): Boolean =
       paramIndex < paramsHasDefault.size && paramsHasDefault(paramIndex)
 
     val hasRepeatedParam = params.nonEmpty && params.last.repeated
 
-    val minArgc = {
+    val minArgc =
       // Find the first default param or repeated param
       params
         .indices
         .find(i => hasDefaultAt(i) || params(i).repeated)
         .getOrElse(params.size)
-    }
 
     val maxNonRepeatedArgc = if (hasRepeatedParam) params.size - 1 else params.size
 
     def pos: SourcePosition = sym.sourcePos
 
-    def exportArgTypeAt(paramIndex: Int): Type = {
-      if (paramIndex < params.length) {
+    def exportArgTypeAt(paramIndex: Int): Type =
+      if (paramIndex < params.length)
         params(paramIndex).info
-      } else {
+      else
         assert(hasRepeatedParam, i"$sym does not have varargs nor enough params for $paramIndex")
         params.last.info
-      }
-    }
 
     def typeInfo: String = sym.info.toString
 
     def genBody(formalArgsRegistry: FormalArgsRegistry): js.Tree
-  }
 
   private class ExportedSymbol(sym: Symbol, static: Boolean)
-      extends Exported(sym, sym.jsParamInfos.toIndexedSeq) {
+      extends Exported(sym, sym.jsParamInfos.toIndexedSeq):
 
     def genBody(formalArgsRegistry: FormalArgsRegistry): js.Tree =
       genApplyForSingleExported(formalArgsRegistry, this, static)
-  }
 
   // !!! Hash codes of RTTypeTest are meaningless because of InstanceOfTypeTest
   private sealed abstract class RTTypeTest
@@ -891,42 +813,36 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   private case class PrimitiveTypeTest(tpe: jstpe.Type, rank: Int) extends RTTypeTest
 
   // !!! This class does not have a meaningful hash code
-  private case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
-    override def equals(that: Any): Boolean = {
-      that match {
+  private case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest:
+    override def equals(that: Any): Boolean =
+      that match
         case InstanceOfTypeTest(thatTpe) => tpe =:= thatTpe
         case _                           => false
-      }
-    }
-  }
 
   private case object NoTypeTest extends RTTypeTest
 
   /** Very simple O(n²) topological sort for elements assumed to be distinct. */
-  private def topoSortDistinctsWith[A <: AnyRef](coll: List[A])(lteq: (A, A) => Boolean): List[A] = {
+  private def topoSortDistinctsWith[A <: AnyRef](coll: List[A])(lteq: (A, A) => Boolean): List[A] =
     @tailrec
-    def loop(coll: List[A], acc: List[A]): List[A] = {
+    def loop(coll: List[A], acc: List[A]): List[A] =
       if (coll.isEmpty) acc
       else if (coll.tail.isEmpty) coll.head :: acc
-      else {
+      else
         val (lhs, rhs) = coll.span(x => !coll.forall(y => (x eq y) || !lteq(x, y)))
         assert(!rhs.isEmpty, s"cycle while ordering $coll")
         loop(lhs ::: rhs.tail, rhs.head :: acc)
-      }
-    }
 
     loop(coll, Nil)
-  }
 
-  private def typeTestForTpe(tpe: Type): RTTypeTest = {
-    tpe match {
+  private def typeTestForTpe(tpe: Type): RTTypeTest =
+    tpe match
       case tpe: ErasedValueType =>
         InstanceOfTypeTest(tpe.tycon.typeSymbol.typeRef)
 
       case _ =>
         import org.scalajs.ir.Names
 
-        (toIRType(tpe): @unchecked) match {
+        (toIRType(tpe): @unchecked) match
           case jstpe.AnyType => NoTypeTest
 
           case jstpe.NoType      => PrimitiveTypeTest(jstpe.UndefType, 0)
@@ -944,28 +860,23 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           case jstpe.ClassType(_)                      => InstanceOfTypeTest(tpe)
 
           case jstpe.ArrayType(_) => InstanceOfTypeTest(tpe)
-        }
-    }
-  }
 
   // Group-by that does not rely on hashCode(), only equals() - O(n²)
-  private def groupByWithoutHashCode[A, B](coll: List[A])(f: A => B): List[(B, List[A])] = {
+  private def groupByWithoutHashCode[A, B](coll: List[A])(f: A => B): List[(B, List[A])] =
     val m = new mutable.ArrayBuffer[(B, List[A])]
     m.sizeHint(coll.length)
 
-    for (elem <- coll) {
+    for (elem <- coll)
       val key = f(elem)
       val index = m.indexWhere(_._1 == key)
       if (index < 0)
         m += ((key, List(elem)))
       else
         m(index) = (key, elem :: m(index)._2)
-    }
 
     m.toList
-  }
 
-  class FormalArgsRegistry(val minArgc: Int, needsRestParam: Boolean) {
+  class FormalArgsRegistry(val minArgc: Int, needsRestParam: Boolean):
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[jsNames.LocalName] =
       (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(NoPosition).name)
 
@@ -973,53 +884,44 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
       else null
 
-    def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) = {
+    def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) =
       val fixedParamDefs = fixedParamNames.toList.map { paramName =>
         js.ParamDef(js.LocalIdent(paramName), NoOriginalName, jstpe.AnyType, mutable = false)
       }
 
-      val restParam = {
+      val restParam =
         if (needsRestParam)
           Some(js.ParamDef(js.LocalIdent(restParamName), NoOriginalName, jstpe.AnyType, mutable = false))
         else
           None
-      }
 
       (fixedParamDefs, restParam)
-    }
 
-    def genArgRef(index: Int)(implicit pos: Position): js.Tree = {
+    def genArgRef(index: Int)(implicit pos: Position): js.Tree =
       if (index < minArgc)
         js.VarRef(js.LocalIdent(fixedParamNames(index)))(jstpe.AnyType)
       else
         js.JSSelect(genRestArgRef(), js.IntLiteral(index - minArgc))
-    }
 
-    def genVarargRef(fixedParamCount: Int)(implicit pos: Position): js.Tree = {
+    def genVarargRef(fixedParamCount: Int)(implicit pos: Position): js.Tree =
       assert(fixedParamCount >= minArgc, s"genVarargRef($fixedParamCount) with minArgc = $minArgc at $pos")
       val restParam = genRestArgRef()
       if (fixedParamCount == minArgc)
         restParam
       else
         js.JSMethodApply(restParam, js.StringLiteral("slice"), List(js.IntLiteral(fixedParamCount - minArgc)))
-    }
 
-    def genRestArgRef()(implicit pos: Position): js.Tree = {
+    def genRestArgRef()(implicit pos: Position): js.Tree =
       assert(needsRestParam, s"trying to generate a reference to non-existent rest param at $pos")
       js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
-    }
 
-    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.TreeOrJSSpread] = {
+    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.TreeOrJSSpread] =
       val fixedArgRefs = fixedParamNames.toList.map { paramName =>
         js.VarRef(js.LocalIdent(paramName))(jstpe.AnyType)
       }
 
-      if (needsRestParam) {
+      if (needsRestParam)
         val restArgRef = js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
         fixedArgRefs :+ js.JSSpread(restArgRef)
-      } else {
+      else
         fixedArgRefs
-      }
-    }
-  }
-}

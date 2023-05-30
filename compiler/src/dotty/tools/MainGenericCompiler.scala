@@ -40,7 +40,7 @@ case class CompileSettings(
   compiler: Boolean = false,
   quiet: Boolean = false,
   colors: Boolean = false,
-) {
+):
   def withCompileMode(em: CompileMode): CompileSettings = this.compileMode match
     case CompileMode.Guess =>
       this.copy(compileMode = em)
@@ -83,9 +83,8 @@ case class CompileSettings(
 
   def withNoColors: CompileSettings =
     this.copy(colors = false)
-}
 
-object MainGenericCompiler {
+object MainGenericCompiler:
 
   val classpathSeparator = File.pathSeparator
 
@@ -185,4 +184,3 @@ object MainGenericCompiler {
 
     run(settings)
   end main
-}

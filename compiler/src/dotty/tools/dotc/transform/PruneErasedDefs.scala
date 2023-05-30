@@ -65,7 +65,7 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
       Feature.checkExperimentalFeature("erased", sym.sourcePos)
 }
 
-object PruneErasedDefs {
+object PruneErasedDefs:
   import tpd._
 
   val name: String = "pruneErasedDefs"
@@ -73,4 +73,3 @@ object PruneErasedDefs {
 
   def trivialErasedTree(tree: Tree)(using Context): Tree =
     ref(defn.Compiletime_erasedValue).appliedToType(tree.tpe).withSpan(tree.span)
-}

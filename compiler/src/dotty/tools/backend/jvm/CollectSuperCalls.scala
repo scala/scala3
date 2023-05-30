@@ -17,31 +17,26 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
  *  methods in a redundant mixin class could be implemented with a default abstract method,
  *  the redundant mixin class could be required as a parent by the JVM.
  */
-class CollectSuperCalls extends MiniPhase {
+class CollectSuperCalls extends MiniPhase:
   import tpd._
 
   override def phaseName: String = CollectSuperCalls.name
 
   override def description: String = CollectSuperCalls.description
 
-  override def transformSelect(tree: Select)(using Context): Tree = {
-    tree.qualifier match {
+  override def transformSelect(tree: Select)(using Context): Tree =
+    tree.qualifier match
       case sup: Super =>
         if (tree.symbol.owner.is(Trait))
           registerSuperCall(ctx.owner.enclosingClass.asClass, tree.symbol.owner.asClass)
       case _ =>
-    }
     tree
-  }
 
-  private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(using Context) = {
-    genBCodePhase match {
+  private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(using Context) =
+    genBCodePhase match
       case genBCodePhase: GenBCode =>
         genBCodePhase.registerSuperCall(sym, calls)
       case _ =>
-    }
-  }
-}
 
 object CollectSuperCalls:
   val name: String = "collectSuperCalls"

@@ -15,7 +15,7 @@ import annotation.internal.sharable
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
+abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable:
   import Positioned.{ids, nextId, debugId}
 
   private var mySpan: Span = _
@@ -63,7 +63,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    */
   def withSpan(span: Span): this.type =
     if (span == mySpan) this
-    else {
+    else
       val newpd: this.type =
         if !mySpan.exists then
           if span.exists then envelope(source, span.startPos) // fill in children spans
@@ -72,7 +72,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
           cloneIn(source)
       newpd.span = span
       newpd
-    }
 
   /** The union of startSpan and the spans of all positioned children that
    *  have the same source as this node, except that Inlined nodes only
@@ -83,19 +82,18 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  the left, or, if that one does not exist, to the start position of the envelope
    *  of all children to the right.
    */
-  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = (this: @unchecked) match {
+  def envelope(src: SourceFile, startSpan: Span = NoSpan): Span = (this: @unchecked) match
     case Trees.Inlined(call, _, _) =>
       call.span
     case _ =>
-      def include(span: Span, x: Any): Span = x match {
+      def include(span: Span, x: Any): Span = x match
         case p: Positioned =>
           if (p.source != src) span
           else if (p.span.exists) span.union(p.span)
-          else if (span.exists) {
+          else if (span.exists)
             if (span.end != MaxOffset)
               p.span = p.envelope(src, span.endPos)
             span
-          }
           else // No span available to assign yet, signal this by returning a span with MaxOffset end
             Span(MaxOffset, MaxOffset)
         case m: untpd.Modifiers =>
@@ -103,7 +101,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         case y :: ys =>
           include(include(span, y), ys)
         case _ => span
-      }
       val limit = productArity
       def includeChildren(span: Span, n: Int): Span =
         if (n < limit) includeChildren(include(span, productElement(n): @unchecked), n + 1)
@@ -121,18 +118,16 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
           // Go through it again with the known start position.
           includeChildren(span1.startPos, 0)
       span2.toSynthetic
-  }
 
   /** Clone this node but assign it a fresh id which marks it as a node in `file`. */
-  def cloneIn(src: SourceFile): this.type = {
+  def cloneIn(src: SourceFile): this.type =
     val newpd: this.type = clone.asInstanceOf[this.type]
     newpd.allocateId()
     newpd.mySource = src
     newpd
-  }
 
-  def contains(that: Positioned): Boolean = {
-    def isParent(x: Any): Boolean = x match {
+  def contains(that: Positioned): Boolean =
+    def isParent(x: Any): Boolean = x match
       case x: Positioned =>
         x.contains(that)
       case m: untpd.Modifiers =>
@@ -141,18 +136,14 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         xs.exists(isParent)
       case _ =>
         false
-    }
     (this eq that) ||
-      (this.span contains that.span) && {
+      (this.span contains that.span) `&&`:
         var n = productArity
         var found = false
-        while (!found && n > 0) {
+        while (!found && n > 0)
           n -= 1
           found = isParent(productElement(n))
-        }
         found
-    }
-  }
 
   private class LastPosRef:
     var positioned: Positioned | Null = null
@@ -162,10 +153,10 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  - Parent spans contain child spans
    *  - If item is a non-empty tree, it has a position
    */
-  def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
+  def checkPos(nonOverlapping: Boolean)(using Context): Unit = try
     import untpd._
     val last = LastPosRef()
-    def check(p: Any): Unit = p match {
+    def check(p: Any): Unit = p match
       case p: Positioned =>
         assert(span contains p.span,
           i"""position error, parent span does not contain child span
@@ -173,14 +164,13 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
              |parent span = $span,
              |child       = $p # ${p.uniqueId},
              |child span  = ${p.span}""".stripMargin)
-        p match {
+        p match
           case tree: Tree if !tree.isEmpty =>
             assert(tree.span.exists,
               s"position error: position not set for $tree # ${tree.uniqueId}")
           case _ =>
-        }
         if nonOverlapping then
-          this match {
+          this match
             case _: XMLBlock =>
               // FIXME: Trees generated by the XML parser do not satisfy `checkPos`
             case _: WildcardFunction
@@ -194,7 +184,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
                    |1st child span = ${last.span}
                    |2nd child      = $p
                    |2nd child span = ${p.span}""".stripMargin)
-          }
           last.positioned = p
           last.span = p.span
         p.checkPos(nonOverlapping)
@@ -204,8 +193,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       case xs: List[?] =>
         xs.foreach(check)
       case _ =>
-    }
-    this match {
+    this match
       case tree: DefDef if tree.name == nme.CONSTRUCTOR && tree.mods.is(JavaDefined) =>
         // Special treatment for constructors coming from Java:
         // Leave out leading type params, they are copied with wrong positions from parent class
@@ -222,20 +210,15 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       case _ =>
         val end = productArity
         var n = 0
-        while (n < end) {
+        while (n < end)
           check(productElement(n))
           n += 1
-        }
-    }
-  }
-  catch {
+  catch
     case ex: AssertionError =>
       println(i"error while checking $this")
       throw ex
-  }
-}
 
-object Positioned {
+object Positioned:
   @sharable private var debugId = Int.MinValue
   @sharable private var ids: java.util.WeakHashMap[Positioned, Int] | Null = null
   @sharable private var nextId: Int = 0
@@ -246,4 +229,3 @@ object Positioned {
        || debugId != ctx.settings.YdebugTreeWithId.default
     then
       ids = java.util.WeakHashMap()
-}

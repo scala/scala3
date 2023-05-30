@@ -12,23 +12,20 @@ import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds._
 
-object TastyUnpickler {
+object TastyUnpickler:
 
-  abstract class SectionUnpickler[R](val name: String) {
+  abstract class SectionUnpickler[R](val name: String):
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R
-  }
 
-  class NameTable extends (NameRef => TermName) {
+  class NameTable extends (NameRef => TermName):
     private val names = new mutable.ArrayBuffer[TermName]
     def add(name: TermName): mutable.ArrayBuffer[TermName] = names += name
     def apply(ref: NameRef): TermName = names(ref.index)
     def contents: Iterable[TermName] = names
-  }
-}
 
 import TastyUnpickler._
 
-class TastyUnpickler(reader: TastyReader) {
+class TastyUnpickler(reader: TastyReader):
   import reader._
 
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
@@ -39,15 +36,14 @@ class TastyUnpickler(reader: TastyReader) {
   private def readName(): TermName = nameAtRef(readNameRef())
   private def readString(): String = readName().toString
 
-  private def readParamSig(): Signature.ParamSig = {
+  private def readParamSig(): Signature.ParamSig =
     val ref = readInt()
     if (ref < 0)
       ref.abs
     else
       nameAtRef(NameRef(ref)).toTypeName
-  }
 
-  private def readNameContents(): TermName = {
+  private def readNameContents(): TermName =
     val tag = readByte()
     val length = readNat()
     val start = currentAddr
@@ -58,7 +54,7 @@ class TastyUnpickler(reader: TastyReader) {
       val sig = Signature(paramsSig, result)
       SignedName(original, sig, target)
 
-    val result = tag match {
+    val result = tag match
       case UTF8 =>
         goto(end)
         termName(bytes, start.index, length)
@@ -83,26 +79,21 @@ class TastyUnpickler(reader: TastyReader) {
         simpleNameKindOfTag(tag)(readName())
       case _ =>
         throw MatchError(s"unknown name tag ${nameTagToString(tag)}")
-    }
     assert(currentAddr == end, s"bad name $result $start $currentAddr $end")
     result
-  }
 
   new TastyHeaderUnpickler(reader).readHeader()
 
-  locally {
+  locally:
     until(readEnd()) { nameAtRef.add(readNameContents()) }
-    while (!isAtEnd) {
+    while (!isAtEnd)
       val secName = readString()
       val secEnd = readEnd()
       sectionReader(secName) = new TastyReader(bytes, currentAddr.index, secEnd.index, currentAddr.index)
       goto(secEnd)
-    }
-  }
 
   def unpickle[R](sec: SectionUnpickler[R]): Option[R] =
     for (reader <- sectionReader.get(sec.name)) yield
       sec.unpickle(reader, nameAtRef)
 
   private[dotc] def bytes: Array[Byte] = reader.bytes
-}
