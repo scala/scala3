@@ -40,7 +40,7 @@ trait PackageEntry {
   def name: String
 }
 
-private[dotty] case class ClassFileEntry(file: AbstractFile) extends ClassRepresentation {
+private[dotty] class ClassFileEntry(val file: AbstractFile) extends ClassRepresentation {
   final def fileName: String = file.name
   def name: String = FileUtils.stripClassExtension(file.name) // class name
 
@@ -48,7 +48,7 @@ private[dotty] case class ClassFileEntry(file: AbstractFile) extends ClassRepres
   def source: Option[AbstractFile] = None
 }
 
-private[dotty] case class SourceFileEntry(file: AbstractFile) extends ClassRepresentation {
+private[dotty] class SourceFileEntry(val file: AbstractFile) extends ClassRepresentation {
   final def fileName: String = file.name
   def name: String = FileUtils.stripSourceExtension(file.name)
 
@@ -56,7 +56,7 @@ private[dotty] case class SourceFileEntry(file: AbstractFile) extends ClassRepre
   def source: Option[AbstractFile] = Some(file)
 }
 
-private[dotty] case class ClassAndSourceFilesEntry(classFile: AbstractFile, srcFile: AbstractFile) extends ClassRepresentation {
+private[dotty] class ClassAndSourceFilesEntry(val classFile: AbstractFile, val srcFile: AbstractFile) extends ClassRepresentation {
   final def fileName: String = classFile.name
   def name: String = FileUtils.stripClassExtension(classFile.name)
 
