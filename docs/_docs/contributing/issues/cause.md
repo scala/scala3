@@ -9,12 +9,13 @@ In this section, you will be able to answer questions such as:
 - where is a particular object created?
 - where is a particular value assigned to a variable?
 
-> You may be able to quickly find the source responsible for an issue by consulting [common issue locations](../issues/areas.md)
+> You may be able to quickly find the source responsible for an issue by consulting [common issue locations](./areas.md)
 
 ## What phase generated a particular tree?
 
-As described in the [compiler lifecycle](../architecture/lifecycle.md#phases), each phase transforms the trees
-and types that represent your code in a certain way.
+As described in the [compiler lifecycle](../architecture/lifecycle.md#phases-2),
+each phase transforms the trees and types that represent your code in a certain
+way.
 
 To print the code as it is transformed through the compiler, use the compiler flag `-Xprint:all`.
 After each phase group is completed, you will see the resulting trees representing the code.
@@ -61,9 +62,10 @@ To discover why such a *spurious* error is generated, you can trace the code tha
 adding the `-Ydebug-error` compiler flag, e.g. `scala3/scalac -Ydebug-error Test.scala`.
 This flag forces a stack trace to be printed each time an error happens, from the site where it occurred.
 
-Analysing the trace will give you a clue about the objects involved in producing the error.
-For example, you can add some debug statements before the error is issued to discover
-the state of the compiler. [See some useful ways to debug values.](./inspection.md)
+Analysing the trace will give you a clue about the objects involved in producing
+the error. For example, you can add some debug statements before the error is
+issued to discover the state of the compiler. [See some useful ways to debug
+values.](./debugging/inspection.md)
 
 ### Where was a particular object created?
 
@@ -73,6 +75,7 @@ creation site of that object to understand the logic that created it.
 
 You can do this by injecting a *tracer* into the class of an instance in question.
 A tracer is the following variable:
+
 ```scala
 val tracer = Thread.currentThread.getStackTrace.mkString("\n")
 ```
