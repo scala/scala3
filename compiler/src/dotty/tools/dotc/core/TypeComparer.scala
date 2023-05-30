@@ -939,7 +939,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
-        isNewSubType(tp1.parent)
+         recur(tp1.parent, tp2)
+        //isNewSubType(tp1.parent)
       case tp1: RecType =>
         isNewSubType(tp1.parent)
       case tp1: HKTypeLambda =>
