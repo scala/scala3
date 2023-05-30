@@ -195,6 +195,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case MatchTypeScrutineeCannotBeHigherKindedID // errorNumber: 179
   case AmbiguousExtensionMethodID // errorNumber 180
   case UnqualifiedCallToAnyRefMethodID // errorNumber: 181
+  case NotConstantID // errorNumber: 182
 
   def errorNumber = ordinal - 1
 
