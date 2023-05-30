@@ -159,6 +159,9 @@ SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
+PPRINT=$(find_lib "*pprint*")
+FANSI=$(find_lib "*fansi*")
+SOURCECODE=$(find_lib "*sourcecode*")
 
 # jna-5 only appropriate for some combinations
 [[ ${conemu-} && ${msys-} ]] || JNA=$(find_lib "*jna-5*")
@@ -188,6 +191,11 @@ compilerJavaClasspathArgs () {
   toolchain+="$JLINE_TERMINAL$PSEP"
   toolchain+="$JLINE_TERMINAL_JNA$PSEP"
   [ -n "${JNA-}" ] && toolchain+="$JNA$PSEP"
+
+  # pprint
+  toolchain+="$PPRINT$PSEP"
+  toolchain+="$FANSI$PSEP"
+  toolchain+="$SOURCECODE$PSEP"
 
   if [ -n "${jvm_cp_args-}" ]; then
     jvm_cp_args="$toolchain$jvm_cp_args"
