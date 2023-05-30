@@ -75,11 +75,10 @@ object Type:
     def rec(tpe: TypeRepr): Option[Tuple] =
       tpe.widenTermRefByName.dealias match
         case AppliedType(fn, tpes) if defn.isTupleClass(fn.typeSymbol) =>
-          tpes.foldRight(Option[Tuple](EmptyTuple)) {
+          tpes.foldRight(Option[Tuple](EmptyTuple)):
             case (_, None) => None
             case (ValueOf(v), Some(acc)) => Some(v *: acc)
             case _ => None
-          }
         case AppliedType(tp, List(ValueOf(headValue), tail)) if tp.derivesFrom(cons) =>
           rec(tail) match
             case Some(tailValue) => Some(headValue *: tailValue)

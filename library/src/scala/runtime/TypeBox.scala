@@ -6,6 +6,5 @@ package scala.runtime
  *  instantiatable type variable. To be able to instantiate `X`, we cast the tree to type
  *  `X[$n.CAP]` where `$n` is a fresh skolem type with underlying type `TypeBox[L, U]`.
  */
-final abstract class TypeBox[-L <: U, +U] {
+final abstract class TypeBox[-L <: U, +U]:
   type CAP >: L <: U
-}

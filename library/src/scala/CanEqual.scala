@@ -11,7 +11,7 @@ sealed trait CanEqual[-L, -R]
  *  CanEqual instances involving primitive types or the Null type are handled directly in
  *  the compiler (see Implicits.synthesizedCanEqual), so they are not included here.
  */
-object CanEqual {
+object CanEqual:
   /** A universal `CanEqual` instance. */
   object derived extends CanEqual[Any, Any]
 
@@ -44,4 +44,3 @@ object CanEqual {
   given canEqualEither[L1, R1, L2, R2](
     using eqL: CanEqual[L1, L2], eqR: CanEqual[R1, R2]
   ): CanEqual[Either[L1, R1], Either[L2, R2]] = derived
-}

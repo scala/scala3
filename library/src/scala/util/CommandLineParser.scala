@@ -1,7 +1,7 @@
 package scala.util
 
 /** A utility object to support command line parsing for @main methods */
-object CommandLineParser {
+object CommandLineParser:
 
   /** An exception raised for an illegal command line
     *  @param idx  The index of the argument that's faulty (starting from 0)
@@ -12,12 +12,10 @@ object CommandLineParser {
   /** Parse command line argument `s`, which has index `n`, as a value of type `T`
    *  @throws ParseError if argument cannot be converted to type `T`.
    */
-  def parseString[T](str: String, n: Int)(using fs: FromString[T]): T = {
+  def parseString[T](str: String, n: Int)(using fs: FromString[T]): T =
     try fs.fromString(str)
-    catch {
+    catch
       case ex: IllegalArgumentException => throw ParseError(n, ex.toString)
-    }
-  }
 
   /** Parse `n`'th argument in `args` (counting from 0) as a value of type `T`
    *  @throws ParseError if argument does not exist or cannot be converted to type `T`.
@@ -34,26 +32,23 @@ object CommandLineParser {
     else Nil
 
   /** Print error message explaining given ParserError */
-  def showError(err: ParseError): Unit = {
+  def showError(err: ParseError): Unit =
     val where =
       if err.idx == 0 then ""
       else if err.idx == 1 then " after first argument"
       else s" after ${err.idx} arguments"
     println(s"Illegal command line$where: ${err.msg}")
-  }
 
-  trait FromString[T] {
+  trait FromString[T]:
     /** Can throw java.lang.IllegalArgumentException */
     def fromString(s: String): T
 
     def fromStringOption(s: String): Option[T] =
       try Some(fromString(s))
-      catch {
+      catch
         case ex: IllegalArgumentException => None
-      }
-  }
 
-  object FromString {
+  object FromString:
     given FromString[String] with
       def fromString(s: String) = s
 
@@ -77,5 +72,3 @@ object CommandLineParser {
 
     given FromString[Double] with
       def fromString(s: String) = s.toDouble
-  }
-}

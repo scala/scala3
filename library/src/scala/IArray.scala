@@ -606,7 +606,7 @@ object IArray:
    *  @param ys an array of AnyRef
    *  @return true if corresponding elements are equal
    */
-   def equals(xs: IArray[AnyRef], ys: IArray[AnyRef]): Boolean =
+  def equals(xs: IArray[AnyRef], ys: IArray[AnyRef]): Boolean =
     Array.equals(xs.asInstanceOf[Array[AnyRef]], ys.asInstanceOf[Array[AnyRef]])
 
   /** Returns a decomposition of the array into a sequence. This supports
@@ -624,15 +624,13 @@ object IArray:
     /** Apply `f` to each element for its side effects.
       * Note: [U] parameter needed to help scalac's type inference.
       */
-    def foreach[U](f: T => U): Unit = {
+    def foreach[U](f: T => U): Unit =
       val len = xs.length
       var i = 0
-      while(i < len) {
+      while(i < len)
         val x = xs(i)
         if(p(x)) f(x)
         i += 1
-      }
-    }
 
     /** Builds a new array by applying a function to all elements of this array.
       *
@@ -641,16 +639,14 @@ object IArray:
       *  @return       a new array resulting from applying the given function
       *                `f` to each element of this array and collecting the results.
       */
-    def map[U: ClassTag](f: T => U): IArray[U] = {
+    def map[U: ClassTag](f: T => U): IArray[U] =
       val b = IArray.newBuilder[U]
       var i = 0
-      while (i < xs.length) {
+      while (i < xs.length)
         val x = xs(i)
         if(p(x)) b += f(x)
         i = i + 1
-      }
       b.result()
-    }
 
     /** Builds a new array by applying a function to all elements of this array
       * and using the elements of the resulting collections.
@@ -660,16 +656,14 @@ object IArray:
       *  @return       a new array resulting from applying the given collection-valued function
       *                `f` to each element of this array and concatenating the results.
       */
-    def flatMap[U: ClassTag](f: T => IterableOnce[U]): IArray[U] = {
+    def flatMap[U: ClassTag](f: T => IterableOnce[U]): IArray[U] =
       val b = IArray.newBuilder[U]
       var i = 0
-      while(i < xs.length) {
+      while(i < xs.length)
         val x = xs(i)
         if(p(x)) b ++= f(xs(i))
         i += 1
-      }
       b.result()
-    }
 
     def flatMap[BS, U](f: T => BS)(using asIterable: BS => Iterable[U], m: ClassTag[U]): IArray[U] =
       flatMap[U](x => asIterable(f(x)))

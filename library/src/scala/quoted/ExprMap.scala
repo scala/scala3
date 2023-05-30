@@ -6,23 +6,21 @@ trait ExprMap:
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]
 
   /** Map sub-expressions an expression `e` with a type `T` */
-  def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
+  def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] =
     import quotes.reflect._
-    final class MapChildren() {
+    final class MapChildren():
 
-      def transformStatement(tree: Statement)(owner: Symbol): Statement = {
-        tree match {
+      def transformStatement(tree: Statement)(owner: Symbol): Statement =
+        tree match
           case tree: Term =>
             transformTerm(tree, TypeRepr.of[Any])(owner)
           case tree: Definition =>
             transformDefinition(tree)(owner)
           case tree @ (_:Import | _:Export) =>
             tree
-        }
-      }
 
-      def transformDefinition(tree: Definition)(owner: Symbol): Definition = {
-        tree match {
+      def transformDefinition(tree: Definition)(owner: Symbol): Definition =
+        tree match
           case tree: ValDef =>
             val owner = tree.symbol
             val rhs1 = tree.rhs.map(x => transformTerm(x, tree.tpt.tpe)(owner))
@@ -35,10 +33,8 @@ trait ExprMap:
           case tree: ClassDef =>
             val newBody = transformStats(tree.body)(owner)
             ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, newBody)
-        }
-      }
 
-      def transformTermChildren(tree: Term, tpe: TypeRepr)(owner: Symbol): Term = tree match {
+      def transformTermChildren(tree: Term, tpe: TypeRepr)(owner: Symbol): Term = tree match
         case Ident(name) =>
           tree
         case Select(qualifier, name) =>
@@ -49,10 +45,9 @@ trait ExprMap:
           tree
         case tree @ Apply(fun, args) =>
           val MethodType(_, tpes, _) = fun.tpe.widen: @unchecked
-          val tpes1 = tpes.map {
+          val tpes1 = tpes.map:
             case ByNameType(tpe) => tpe
             case tpe => tpe
-          }
           Apply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), transformTerms(args, tpes1)(owner))
         case TypeApply(fun, args) =>
           TypeApply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), args)
@@ -94,7 +89,6 @@ trait ExprMap:
           Repeated.copy(tree)(transformTerms(elems, elemtpt.tpe)(owner), elemtpt)
         case Inlined(call, bindings, expansion) =>
           Inlined.copy(tree)(call, transformDefinitions(bindings)(owner), transformTerm(expansion, tpe)(owner))
-      }
 
       def transformTerm(tree: Term, tpe: TypeRepr)(owner: Symbol): Term =
         tree match
@@ -148,10 +142,8 @@ trait ExprMap:
       def transformTypeCaseDefs(trees: List[TypeCaseDef])(owner: Symbol): List[TypeCaseDef] =
         trees.mapConserve(x => transformTypeCaseDef(x)(owner))
 
-    }
     new MapChildren()
       .transformTermChildren(e.asTerm, TypeRepr.of[T])(Symbol.spliceOwner)
       .asExprOf[T]
-  }
 
 end ExprMap

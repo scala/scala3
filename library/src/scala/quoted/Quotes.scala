@@ -287,7 +287,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given TreeMethods: TreeMethods
 
     /** Extension methods of `Tree` */
-    trait TreeMethods {
+    trait TreeMethods:
 
       extension (self: Tree)
         /** Position in the source code */
@@ -315,7 +315,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def changeOwner(newOwner: Symbol): ThisTree
       end extension
 
-    }
 
     /** Tree representing a package clause in the source code
      *
@@ -768,7 +767,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given TermMethods: TermMethods
 
     /** Extension methods of `Term` */
-    trait TermMethods {
+    trait TermMethods:
       extension (self: Term)
 
         /** TypeRepr of this term */
@@ -824,7 +823,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       end extension
 
-    }
 
     /** Tree representing a reference to definition */
     type Ref <: Term
@@ -2572,7 +2570,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given TypeReprMethods: TypeReprMethods
 
     /** Extension methods of `TypeRepr` */
-    trait TypeReprMethods {
+    trait TypeReprMethods:
       extension (self: TypeRepr)
 
         /** Shows the type as a String */
@@ -2713,7 +2711,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The applied type arguments (empty if there is no such arguments) */
         def typeArgs: List[TypeRepr]
       end extension
-    }
 
     /** A singleton type representing a known constant value */
     type ConstantType <: TypeRepr
@@ -3338,7 +3335,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given ConstantMethods: ConstantMethods
 
     /** Extension methods of `Constant` */
-    trait ConstantMethods {
+    trait ConstantMethods:
       extension (self: Constant)
         /** Returns the value of the constant */
         def value: Any
@@ -3347,7 +3344,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def show(using Printer[Constant]): String
 
       end extension
-    }
 
     /** Constant Boolean value */
     type BooleanConstant <: Constant
@@ -3846,7 +3842,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given SymbolMethods: SymbolMethods
 
     /** Extension methods of `Symbol` */
-    trait SymbolMethods {
+    trait SymbolMethods:
       extension (self: Symbol)
 
         /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
@@ -4123,7 +4119,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          */
         def termRef: TermRef
       end extension
-    }
 
     ////////////////
     // SIGNATURES //
@@ -4145,7 +4140,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given SignatureMethods: SignatureMethods
 
     /** Extension methods of `Signature` */
-    trait SignatureMethods {
+    trait SignatureMethods:
       extension (self: Signature)
 
         /** The signatures of the method parameters.
@@ -4161,7 +4156,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def resultSig: String
 
       end extension
-    }
 
     //////////////////////////
     // STANDARD DEFINITIONS //
@@ -4526,7 +4520,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given FlagsMethods: FlagsMethods
 
     /** Extension methods of `Flags` */
-    trait FlagsMethods {
+    trait FlagsMethods:
       extension (self: Flags)
         /** Is the given flag set a subset of this flag sets */
         def is(that: Flags): Boolean
@@ -4541,7 +4535,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def show: String
 
       end extension
-    }
 
 
     ///////////////
@@ -4568,7 +4561,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given PositionMethods: PositionMethods
 
     /** Extension methods of `Position` */
-    trait PositionMethods {
+    trait PositionMethods:
       extension (self: Position)
 
         /** The start offset in the source file */
@@ -4596,7 +4589,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def sourceCode: Option[String]
 
       end extension
-    }
 
     /** Scala source file */
     type SourceFile <: AnyRef
@@ -4614,7 +4606,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     given SourceFileMethods: SourceFileMethods
 
     /** Extension methods of `SourceFile` */
-    trait SourceFileMethods {
+    trait SourceFileMethods:
       extension (self: SourceFile)
         /** Path to this source file. May be `null` for virtual files such as in the REPL.  */
         @deprecated("Use getJPath, name, or path instead of jpath", "3.0.2")
@@ -4636,7 +4628,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Content of this source file */
         def content: Option[String]
       end extension
-    }
 
     ///////////////
     // REPORTING //
@@ -4727,8 +4718,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def foldTrees(x: X, trees: Iterable[Tree])(owner: Symbol): X = trees.foldLeft(x)((acc, y) => foldTree(acc, y)(owner))
 
-      def foldOverTree(x: X, tree: Tree)(owner: Symbol): X = {
-        tree match {
+      def foldOverTree(x: X, tree: Tree)(owner: Symbol): X =
+        tree match
           case Ident(_) =>
             x
           case Select(qualifier, _) =>
@@ -4812,8 +4803,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
           case SummonFrom(cases) => foldTrees(x, cases)(owner)
           case _ => throw MatchError(tree.show(using Printer.TreeStructure))
-        }
-      }
     end TreeAccumulator
 
 
@@ -4864,8 +4853,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     trait TreeMap:
 
-      def transformTree(tree: Tree)(owner: Symbol): Tree = {
-        tree match {
+      def transformTree(tree: Tree)(owner: Symbol): Tree =
+        tree match
           case tree: PackageClause =>
             PackageClause.copy(tree)(transformTerm(tree.pid)(owner).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
           case tree: Import =>
@@ -4892,11 +4881,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             TypedOrTest.copy(tree)(transformTree(inner)(owner), transformTypeTree(tpt)(owner))
           case _ =>
             throw MatchError(tree.show(using Printer.TreeStructure))
-        }
-      }
 
-      def transformStatement(tree: Statement)(owner: Symbol): Statement = {
-        tree match {
+      def transformStatement(tree: Statement)(owner: Symbol): Statement =
+        tree match
           case tree: Term =>
             transformTerm(tree)(owner)
           case tree: ValDef =>
@@ -4906,10 +4893,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             ValDef.copy(tree)(tree.name, tpt1, rhs1)
           case tree: DefDef =>
             val owner = tree.symbol
-            val newParamClauses = tree.paramss.mapConserve {
+            val newParamClauses = tree.paramss.mapConserve:
               case TypeParamClause(params) => TypeParamClause(transformSubTrees(params)(owner))
               case TermParamClause(params) => TermParamClause(transformSubTrees(params)(owner))
-            }
             DefDef.copy(tree)(tree.name, newParamClauses, transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
           case tree: TypeDef =>
             val owner = tree.symbol
@@ -4929,11 +4915,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             tree
           case _ =>
             throw MatchError(tree.show(using Printer.TreeStructure))
-        }
-      }
 
-      def transformTerm(tree: Term)(owner: Symbol): Term = {
-        tree match {
+      def transformTerm(tree: Term)(owner: Symbol): Term =
+        tree match
           case Ident(name) =>
             tree
           case Select(qualifier, name) =>
@@ -4978,10 +4962,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             SummonFrom.copy(tree)(transformCaseDefs(cases)(owner))
           case _ =>
             throw MatchError(tree.show(using Printer.TreeStructure))
-        }
-      }
 
-      def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree match {
+      def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree match
         case Inferred() => tree
         case tree: TypeIdent => tree
         case tree: TypeSelect =>
@@ -5008,15 +4990,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           TypeBlock.copy(tree)(tree.aliases, tree.tpt)
         case _ =>
           throw MatchError(tree.show(using Printer.TreeStructure))
-      }
 
-      def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef = {
+      def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef =
         CaseDef.copy(tree)(transformTree(tree.pattern)(owner), tree.guard.map(x => transformTerm(x)(owner)), transformTerm(tree.rhs)(owner))
-      }
 
-      def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef = {
+      def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef =
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern)(owner), transformTypeTree(tree.rhs)(owner))
-      }
 
       def transformStats(trees: List[Statement])(owner: Symbol): List[Statement] =
         trees mapConserve (x => transformStatement(x)(owner))

@@ -1,32 +1,28 @@
 package scala.runtime
 
-object Tuples {
+object Tuples:
 
   inline val MaxSpecialized = 22
 
-  def toArray(self: Tuple): Array[Object] = (self: Any) match {
+  def toArray(self: Tuple): Array[Object] = (self: Any) match
     case EmptyTuple => Array.emptyObjectArray
     case self: TupleXXL => self.toArray
     case self: Product => productToArray(self)
-  }
 
-  def toIArray(self: Tuple): IArray[Object] = (self: Any) match {
+  def toIArray(self: Tuple): IArray[Object] = (self: Any) match
     case EmptyTuple => Array.emptyObjectArray.asInstanceOf[IArray[Object]]
     case self: TupleXXL => self.elems
     case self: Product => productToArray(self).asInstanceOf[IArray[Object]]
-  }
 
-  def productToArray(self: Product): Array[Object] = {
+  def productToArray(self: Product): Array[Object] =
     val arr = new Array[Object](self.productArity)
     var i = 0
-    while (i < arr.length) {
+    while (i < arr.length)
       arr(i) = self.productElement(i).asInstanceOf[Object]
       i += 1
-    }
     arr
-  }
 
-  def fromArray(xs: Array[Object]): Tuple = xs.length match {
+  def fromArray(xs: Array[Object]): Tuple = xs.length match
     case 0  => EmptyTuple
     case 1  => Tuple1(xs(0))
     case 2  => Tuple2(xs(0), xs(1))
@@ -51,7 +47,6 @@ object Tuples {
     case 21 => Tuple21(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20))
     case 22 => Tuple22(xs(0), xs(1), xs(2), xs(3), xs(4), xs(5), xs(6), xs(7), xs(8), xs(9), xs(10), xs(11), xs(12), xs(13), xs(14), xs(15), xs(16), xs(17), xs(18), xs(19), xs(20), xs(21))
     case _ => TupleXXL.fromIArray(xs.clone().asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
-  }
 
   def fromIArray(xs: IArray[Object]): Tuple =
     if (xs.length <= 22) fromArray(xs.asInstanceOf[Array[Object]])
@@ -60,115 +55,93 @@ object Tuples {
   def fromProduct(xs: Product): Tuple = (xs.productArity match {
     case 0  => EmptyTuple
     case 1 =>
-      xs match {
+      xs match
         case xs: Tuple1[_] => xs
         case xs => Tuple1(xs.productElement(0))
-      }
     case 2 =>
-      xs match {
+      xs match
         case xs: Tuple2[_, _] => xs
         case xs => Tuple2(xs.productElement(0), xs.productElement(1))
-      }
     case 3 =>
-      xs match {
+      xs match
         case xs: Tuple3[_, _, _] => xs
         case xs => Tuple3(xs.productElement(0), xs.productElement(1), xs.productElement(2))
-      }
     case 4 =>
-      xs match {
+      xs match
         case xs: Tuple4[_, _, _, _] => xs
         case xs => Tuple4(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3))
-      }
     case 5 =>
-      xs match {
+      xs match
         case xs: Tuple5[_, _, _, _, _] => xs
         case xs => Tuple5(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4))
-      }
     case 6 =>
-      xs match {
+      xs match
         case xs: Tuple6[_, _, _, _, _, _] => xs
         case xs => Tuple6(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5))
-      }
     case 7 =>
-      xs match {
+      xs match
         case xs: Tuple7[_, _, _, _, _, _, _] => xs
         case xs => Tuple7(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6))
-      }
     case 8 =>
-      xs match {
+      xs match
         case xs: Tuple8[_, _, _, _, _, _, _, _] => xs
         case xs => Tuple8(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7))
-      }
     case 9 =>
-      xs match {
+      xs match
         case xs: Tuple9[_, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple9(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8))
-      }
     case 10 =>
-      xs match {
+      xs match
         case xs: Tuple10[_, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple10(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9))
-      }
     case 11 =>
-      xs match {
+      xs match
         case xs: Tuple11[_, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple11(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10))
-      }
     case 12 =>
-      xs match {
+      xs match
         case xs: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple12(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11))
-      }
     case 13 =>
-      xs match {
+      xs match
         case xs: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple13(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12))
-      }
     case 14 =>
-      xs match {
+      xs match
         case xs: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple14(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13))
-      }
     case 15 =>
-      xs match {
+      xs match
         case xs: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple15(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14))
-      }
     case 16 =>
-      xs match {
+      xs match
         case xs: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple16(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15))
-      }
     case 17 =>
-      xs match {
+      xs match
         case xs: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple17(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16))
-      }
     case 18 =>
-      xs match {
+      xs match
         case xs: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple18(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17))
-      }
     case 19 =>
-      xs match {
+      xs match
         case xs: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple19(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18))
-      }
     case 20 =>
-      xs match {
+      xs match
         case xs: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple20(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19))
-      }
     case 21 =>
-      xs match {
+      xs match
         case xs: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple21(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19), xs.productElement(20))
-      }
     case 22 =>
-      xs match {
+      xs match
         case xs: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
         case xs => Tuple22(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19), xs.productElement(20), xs.productElement(21))
-      }
     case _ =>
       (xs match {
         case xs: TupleXXL => xs
@@ -177,8 +150,8 @@ object Tuples {
   })
 
   // Cons for Tuple1 to Tuple22
-  private def specialCaseCons(x: Any, self: Tuple): Tuple = {
-    (self: Any) match {
+  private def specialCaseCons(x: Any, self: Tuple): Tuple =
+    (self: Any) match
       case EmptyTuple =>
         Tuple1(x)
       case self: Tuple1[_] =>
@@ -235,23 +208,19 @@ object Tuples {
           self._21.asInstanceOf[Object], self._22.asInstanceOf[Object],
         )
         TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
-    }
-  }
 
   // Cons for TupleXXL
-  private def xxlCons(x: Any, xxl: TupleXXL): TupleXXL = {
+  private def xxlCons(x: Any, xxl: TupleXXL): TupleXXL =
     val arr = new Array[Object](xxl.productArity + 1)
     arr(0) = x.asInstanceOf[Object]
     System.arraycopy(xxl.elems, 0, arr, 1, xxl.productArity)
     TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
-  }
 
-  def cons(x: Any, self: Tuple): Tuple = (self: Any) match {
+  def cons(x: Any, self: Tuple): Tuple = (self: Any) match
     case xxl: TupleXXL => xxlCons(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseCons(x, self)
-  }
 
-  def concat[This <: Tuple, That <: Tuple](self: This, that: That): Tuple = {
+  def concat[This <: Tuple, That <: Tuple](self: This, that: That): Tuple =
     val selfSize: Int = self.size
     // If one of the tuples is empty, we can leave early
     if selfSize == 0 then
@@ -264,28 +233,25 @@ object Tuples {
     val arr = new Array[Object](selfSize + thatSize)
 
     // Copies the tuple to an array, at the given offset
-    inline def copyToArray[T <: Tuple](tuple: T, size: Int, array: Array[Object], offset: Int): Unit = (tuple: Any) match {
+    inline def copyToArray[T <: Tuple](tuple: T, size: Int, array: Array[Object], offset: Int): Unit = (tuple: Any) match
       case xxl: TupleXXL =>
         System.arraycopy(xxl.elems, 0, array, offset, size)
       case _ =>
         tuple.productIterator.asInstanceOf[Iterator[Object]]
           .copyToArray(array, offset, size)
-    }
 
     // In the general case, we copy the two tuples to an array, and convert it back to a tuple
     copyToArray(self, selfSize, arr, 0)
     copyToArray(that, thatSize, arr, selfSize)
     fromIArray(arr.asInstanceOf[IArray[Object]])
-  }
 
-  def size(self: Tuple): Int = (self: Any) match {
+  def size(self: Tuple): Int = (self: Any) match
     case EmptyTuple => 0
     case self: Product => self.productArity
-  }
 
   // Tail for Tuple1 to Tuple22
-  private def specialCaseTail(self: Tuple): Tuple = {
-    (self: Any) match {
+  private def specialCaseTail(self: Tuple): Tuple =
+    (self: Any) match
       case self: Tuple1[_] =>
         EmptyTuple
       case self: Tuple2[_, _] =>
@@ -330,12 +296,10 @@ object Tuples {
         Tuple20(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
-    }
-  }
 
   // Tail for TupleXXL
-  private def xxlTail(xxl: TupleXXL): Tuple = {
-    if (xxl.productArity == 23) {
+  private def xxlTail(xxl: TupleXXL): Tuple =
+    if (xxl.productArity == 23)
       val elems = xxl.elems
       Tuple22(
         elems(1), elems(2), elems(3), elems(4), elems(5), elems(6), elems(7),
@@ -343,29 +307,25 @@ object Tuples {
         elems(15), elems(16), elems(17), elems(18), elems(19), elems(20),
         elems(21), elems(22)
       )
-    } else {
+    else
       val arr = new Array[Object](xxl.elems.length - 1)
       System.arraycopy(xxl.elems, 1, arr, 0, xxl.elems.length - 1)
       TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
-    }
-  }
 
-  def tail(self: NonEmptyTuple): Tuple = (self: Any) match {
+  def tail(self: NonEmptyTuple): Tuple = (self: Any) match
     case xxl: TupleXXL => xxlTail(xxl)
     case _ => specialCaseTail(self)
-  }
 
   // Append for TupleXXL
-  private def xxlAppend(x: Any, xxl: TupleXXL): TupleXXL = {
+  private def xxlAppend(x: Any, xxl: TupleXXL): TupleXXL =
     val arr = new Array[Object](xxl.productArity + 1)
     arr(xxl.productArity) = x.asInstanceOf[Object]
     System.arraycopy(xxl.elems, 0, arr, 0, xxl.productArity)
     TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]])
-  }
 
   // Append for Tuple1 to Tuple22
-  private def specialCaseAppend(x: Any, self: Tuple): Tuple = {
-    (self: Any) match {
+  private def specialCaseAppend(x: Any, self: Tuple): Tuple =
+    (self: Any) match
       case EmptyTuple =>
         Tuple1(x)
       case self: Tuple1[_] =>
@@ -422,17 +382,14 @@ object Tuples {
           self._21.asInstanceOf[Object], self._22.asInstanceOf[Object], x.asInstanceOf[Object]
         )
         TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
-    }
-  }
 
-  def append(x: Any, self: Tuple): Tuple = (self: Any) match {
+  def append(x: Any, self: Tuple): Tuple = (self: Any) match
     case xxl: TupleXXL => xxlAppend(x, xxl).asInstanceOf[Tuple]
     case _ => specialCaseAppend(x, self)
-  }
 
   // Init for TupleXXL
-  private def xxlInit(xxl: TupleXXL): Tuple = {
-    if (xxl.productArity == 23) {
+  private def xxlInit(xxl: TupleXXL): Tuple =
+    if (xxl.productArity == 23)
       val elems = xxl.elems
       Tuple22(
         elems(0), elems(1), elems(2), elems(3), elems(4), elems(5),
@@ -440,16 +397,14 @@ object Tuples {
         elems(12), elems(13), elems(14), elems(15), elems(16), elems(17),
         elems(18), elems(19), elems(20), elems(21)
       )
-    } else {
+    else
       val arr = new Array[Object](xxl.elems.length - 1)
       System.arraycopy(xxl.elems, 0, arr, 0, xxl.elems.length - 1)
       TupleXXL.fromIArray(arr.asInstanceOf[IArray[Object]]).asInstanceOf[Tuple]
-    }
-  }
 
   // Init for Tuple1 to Tuple22
-  private def specialCaseInit(self: Tuple): Tuple = {
-    (self: Any) match {
+  private def specialCaseInit(self: Tuple): Tuple =
+    (self: Any) match
       case _: Tuple1[_] =>
         EmptyTuple
       case self: Tuple2[_, _] =>
@@ -494,33 +449,27 @@ object Tuples {
         Tuple20(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20)
       case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
         Tuple21(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
-    }
-  }
 
-  def init(self: NonEmptyTuple): Tuple = (self: Any) match {
+  def init(self: NonEmptyTuple): Tuple = (self: Any) match
     case xxl: TupleXXL => xxlInit(xxl)
     case _ => specialCaseInit(self)
-  }
 
-  def last(self: NonEmptyTuple): Any = (self: Any) match {
+  def last(self: NonEmptyTuple): Any = (self: Any) match
     case self: Product => self.productElement(self.productArity - 1)
-  }
 
   def apply(self: NonEmptyTuple, n: Int): Any =
     self.productElement(n)
 
   // Benchmarks showed that this is faster than doing (it1 zip it2).copyToArray(...)
-  private def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] = {
+  private def zipIterators(it1: Iterator[Any], it2: Iterator[Any], size: Int): IArray[Object] =
     val arr = new Array[Object](size)
     var i = 0
-    while (i < size) {
+    while (i < size)
       arr(i) = (it1.next(), it2.next())
       i += 1
-    }
     arr.asInstanceOf[IArray[Object]]
-  }
 
-  def zip(t1: Tuple, t2: Tuple): Tuple = {
+  def zip(t1: Tuple, t2: Tuple): Tuple =
     val t1Size: Int = t1.size
     val t2Size: Int = t2.size
     val size = Math.min(t1Size, t2Size)
@@ -532,21 +481,19 @@ object Tuples {
         size
       )
     )
-  }
 
-  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = self match {
+  def map[F[_]](self: Tuple, f: [t] => t => F[t]): Tuple = self match
     case EmptyTuple => self
     case _ => fromIArray(self.productIterator.map(f(_).asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use toIArray
-  }
 
-  def take(self: Tuple, n: Int): Tuple = {
+  def take(self: Tuple, n: Int): Tuple =
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val selfSize: Int = self.size
     val actualN = Math.min(n, selfSize)
 
     if (actualN == 0) EmptyTuple
-    else {
-      val arr = (self: Any) match {
+    else
+      val arr = (self: Any) match
         case xxl: TupleXXL =>
           xxl.elems.asInstanceOf[Array[Object]].take(actualN)
         case _ =>
@@ -554,21 +501,18 @@ object Tuples {
           self.productIterator.asInstanceOf[Iterator[Object]]
             .copyToArray(arr, 0, actualN)
           arr
-      }
 
       fromIArray(arr.asInstanceOf[IArray[Object]])
-    }
-  }
 
-  def drop(self: Tuple, n: Int): Tuple = {
+  def drop(self: Tuple, n: Int): Tuple =
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
     val actualN = Math.min(n, size)
     val rem = size - actualN
 
     if (rem == 0) EmptyTuple
-    else {
-      val arr = (self: Any) match {
+    else
+      val arr = (self: Any) match
         case xxl: TupleXXL =>
           xxl.elems.asInstanceOf[Array[Object]].drop(actualN)
         case _ =>
@@ -576,17 +520,14 @@ object Tuples {
           self.productIterator.asInstanceOf[Iterator[Object]]
             .drop(actualN).copyToArray(arr, 0, rem)
           arr
-      }
 
       fromIArray(arr.asInstanceOf[IArray[Object]])
-    }
-  }
 
-  def splitAt(self: Tuple, n: Int): (Tuple, Tuple) = {
+  def splitAt(self: Tuple, n: Int): (Tuple, Tuple) =
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
     val size = self.size
     val actualN = Math.min(n, size)
-    val (arr1, arr2) = (self: Any) match {
+    val (arr1, arr2) = (self: Any) match
       case EmptyTuple => (Array.empty[Object], Array.empty[Object])
       case xxl: TupleXXL =>
         xxl.elems.asInstanceOf[Array[Object]].splitAt(actualN)
@@ -597,13 +538,11 @@ object Tuples {
         it.copyToArray(arr1, 0, actualN)
         it.copyToArray(arr2, 0, size - actualN)
         (arr1, arr2)
-    }
 
     (
       fromIArray(arr1.asInstanceOf[IArray[Object]]),
       fromIArray(arr2.asInstanceOf[IArray[Object]])
     )
-  }
 
   def consIterator(head: Any, tail: Tuple): Iterator[Any] =
     Iterator.single(head) ++ tail.productIterator
@@ -674,4 +613,3 @@ object Tuples {
       case _ =>
         false
 
-}

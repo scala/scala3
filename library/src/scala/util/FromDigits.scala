@@ -6,7 +6,7 @@ import annotation.internal.sharable
 
 /** A type class for types that admit numeric literals.
  */
-trait FromDigits[T] {
+trait FromDigits[T]:
 
   /** Convert `digits` string to value of type `T`
    *  `digits` can contain
@@ -19,21 +19,19 @@ trait FromDigits[T] {
    *                         floating point literal that produces a zero value)
    */
   def fromDigits(digits: String): T
-}
 
-object FromDigits {
+object FromDigits:
 
   /** A subclass of `FromDigits` that also allows to convert whole number literals
    *  with a radix other than 10
    */
-  trait WithRadix[T] extends FromDigits[T] {
+  trait WithRadix[T] extends FromDigits[T]:
     def fromDigits(digits: String): T = fromDigits(digits, 10)
 
     /** Convert digits string with given radix to number of type `T`.
      *  E.g. if radix is 16, digits `a..f` and `A..F` are also allowed.
      */
     def fromDigits(digits: String, radix: Int): T
-  }
 
   /** A subclass of `FromDigits` that also allows to convert number
    *  literals containing a decimal point ".".
@@ -68,18 +66,17 @@ object FromDigits {
    *  since these do not handle unsigned hex numbers greater than the maximal value
    *  correctly.
    */
-  private def integerFromDigits(digits: String, radix: Int, limit: Long): Long = {
+  private def integerFromDigits(digits: String, radix: Int, limit: Long): Long =
     var value: Long = 0
     val divider = if (radix == 10) 1 else 2
     var i = 0
     var negated = false
     val len = digits.length
-    if (0 < len && (digits(0) == '-' || digits(0) == '+')) {
+    if (0 < len && (digits(0) == '-' || digits(0) == '+'))
       negated = digits(0) == '-'
       i += 1
-    }
     if (i == len) throw MalformedNumber()
-    while (i < len) {
+    while (i < len)
       val ch = digits(i)
       val d =
         if (ch <= '9') ch - '0'
@@ -93,9 +90,7 @@ object FromDigits {
             !(negated && limit == value * radix - 1 + d)) throw NumberTooLarge()
       value = value * radix + d
       i += 1
-    }
     if (negated) -value else value
-  }
 
   /** Convert digit string to Int number
    *  @param digits            The string to convert
@@ -128,16 +123,14 @@ object FromDigits {
    *                           string contains non-zero digits before the exponent.
    *  @throws MalformedNumber  if digits is not a legal digit string for floating point numbers.
    */
-  def floatFromDigits(digits: String): Float = {
+  def floatFromDigits(digits: String): Float =
     val x: Float =
       try java.lang.Float.parseFloat(digits)
-      catch {
+      catch
         case ex: NumberFormatException => throw MalformedNumber()
-      }
     if (x.isInfinite) throw NumberTooLarge()
     if (x == 0.0f && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
     x
-  }
 
   /** Convert digit string to Double number
    *  @param digits            The string to convert
@@ -146,22 +139,17 @@ object FromDigits {
    *                           string contains non-zero digits before the exponent.
    *  @throws MalformedNumber  if digits is not a legal digit string for floating point numbers..
    */
-  def doubleFromDigits(digits: String): Double = {
+  def doubleFromDigits(digits: String): Double =
     val x: Double =
       try java.lang.Double.parseDouble(digits)
-      catch {
+      catch
         case ex: NumberFormatException => throw MalformedNumber()
-      }
     if (x.isInfinite) throw NumberTooLarge()
     if (x == 0.0d && !zeroFloat.pattern.matcher(digits).nn.matches) throw NumberTooSmall()
     x
-  }
 
-  given BigIntFromDigits: WithRadix[BigInt] with {
+  given BigIntFromDigits: WithRadix[BigInt] with
     def fromDigits(digits: String, radix: Int): BigInt = BigInt(digits, radix)
-  }
 
-  given BigDecimalFromDigits: Floating[BigDecimal] with {
+  given BigDecimalFromDigits: Floating[BigDecimal] with
     def fromDigits(digits: String): BigDecimal = BigDecimal(digits)
-  }
-}

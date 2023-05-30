@@ -3,7 +3,7 @@ package scala.quoted.runtime
 import scala.annotation.{Annotation, compileTimeOnly}
 
 @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns`")
-object Patterns {
+object Patterns:
 
   /** A splice in a quoted pattern is desugared by the compiler into a call to this method.
    *
@@ -40,4 +40,3 @@ object Patterns {
   @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns.fromAbove`")
   class fromAbove extends Annotation
 
-}

@@ -94,34 +94,30 @@ final class newMain extends MainAnnotation[FromString, Any]:
       Help.printExplain(info)
       None
     else
-      preProcessArgs(info, names, args).orElse {
+      preProcessArgs(info, names, args).orElse:
         Help.printUsage(info)
         None
-      }
   end command
 
-  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using p: FromString[T]): () => T = {
+  def argGetter[T](param: Parameter, arg: String, defaultArgument: Option[() => T])(using p: FromString[T]): () => T =
     if arg.nonEmpty then parse[T](param, arg)
     else
       assert(param.hasDefault)
 
       defaultArgument.get
-  }
 
-  def varargGetter[T](param: Parameter, args: Seq[String])(using p: FromString[T]): () => Seq[T] = {
+  def varargGetter[T](param: Parameter, args: Seq[String])(using p: FromString[T]): () => Seq[T] =
     val getters = args.map(arg => parse[T](param, arg))
     () => getters.map(_())
-  }
 
   def run(execProgram: () => Any): Unit =
     if !hasParseErrors then execProgram()
 
   private def preProcessArgs(info: Info, names: Names, args: Seq[String]): Option[Seq[String]] =
     var hasError: Boolean = false
-    def error(msg: String): Unit = {
+    def error(msg: String): Unit =
       hasError = true
       println(s"Error: $msg")
-    }
 
     val (positionalArgs, byNameArgsMap) =
       val positionalArgs = List.newBuilder[String]
@@ -235,7 +231,7 @@ final class newMain extends MainAnnotation[FromString, Any]:
     def printUsage(info: Info): Unit =
       def argsUsage: Seq[String] =
         for (param <- info.parameters)
-        yield {
+        yield
           val canonicalName = getNameWithMarker(param.name)
           val namesPrint = (canonicalName +: param.aliasNames).mkString("[", " | ", "]")
           val shortTypeName = param.typeName.split('.').last
@@ -243,20 +239,17 @@ final class newMain extends MainAnnotation[FromString, Any]:
           else if param.hasDefault then s"[$namesPrint <$shortTypeName>]"
           else if param.isFlag then s"$namesPrint"
           else s"$namesPrint <$shortTypeName>"
-        }
 
-      def wrapArgumentUsages(argsUsage: Seq[String], maxLength: Int): Seq[String] = {
+      def wrapArgumentUsages(argsUsage: Seq[String], maxLength: Int): Seq[String] =
         def recurse(args: Seq[String], currentLine: String, acc: Vector[String]): Seq[String] =
-          (args, currentLine) match {
+          (args, currentLine) match
             case (Nil, "") => acc
             case (Nil, l) => (acc :+ l)
             case (arg +: t, "") => recurse(t, arg, acc)
             case (arg +: t, l) if l.length + 1 + arg.length <= maxLength => recurse(t, s"$l $arg", acc)
             case (arg +: t, l) => recurse(t, arg, acc :+ l)
-          }
 
         recurse(argsUsage, "", Vector()).toList
-      }
 
       val printUsageBeginning = s"Usage: ${info.name} "
       val argsOffset = printUsageBeginning.length
@@ -268,49 +261,44 @@ final class newMain extends MainAnnotation[FromString, Any]:
     def printExplain(info: Info): Unit =
       def shiftLines(s: Seq[String], shift: Int): String = s.map(" " * shift + _).mkString("\n")
 
-      def wrapLongLine(line: String, maxLength: Int): List[String] = {
+      def wrapLongLine(line: String, maxLength: Int): List[String] =
         def recurse(s: String, acc: Vector[String]): Seq[String] =
           val lastSpace = s.trim.nn.lastIndexOf(' ', maxLength)
           if ((s.length <= maxLength) || (lastSpace < 0))
             acc :+ s
-          else {
+          else
             val (shortLine, rest) = s.splitAt(lastSpace)
             recurse(rest.trim.nn, acc :+ shortLine)
-          }
 
         recurse(line, Vector()).toList
-      }
 
       println()
 
       if (info.documentation.nonEmpty)
         println(wrapLongLine(info.documentation, maxUsageLineLength).mkString("\n"))
-      if (info.parameters.nonEmpty) {
+      if (info.parameters.nonEmpty)
         val argNameShift = 2
         val argDocShift = argNameShift + 2
 
         println("Arguments:")
         for param <- info.parameters do
           val canonicalName = getNameWithMarker(param.name)
-          val otherNames = param.aliasNames match {
+          val otherNames = param.aliasNames match
             case Seq() => ""
             case names => names.mkString("(", ", ", ") ")
-          }
           val argDoc = StringBuilder(" " * argNameShift)
           argDoc.append(s"$canonicalName $otherNames- ${param.typeName.split('.').last}")
           if param.isVarargs then argDoc.append(" (vararg)")
           else if param.hasDefault then argDoc.append(" (optional)")
 
-          if (param.documentation.nonEmpty) {
+          if (param.documentation.nonEmpty)
             val shiftedDoc =
               param.documentation.split("\n").nn
                   .map(line => shiftLines(wrapLongLine(line.nn, maxUsageLineLength - argDocShift), argDocShift))
                   .mkString("\n")
             argDoc.append("\n").append(shiftedDoc)
-          }
 
           println(argDoc)
-      }
     end printExplain
 
     def shouldPrintDefaultHelp(names: Names, args: Seq[String]): Boolean =

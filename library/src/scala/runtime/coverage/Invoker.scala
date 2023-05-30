@@ -8,7 +8,7 @@ import java.io.{File, FileWriter}
 import java.nio.file.Files
 
 @sharable // avoids false positive by -Ycheck-reentrant
-object Invoker {
+object Invoker:
   private val runtimeUUID = java.util.UUID.randomUUID()
 
   private val MeasurementsPrefix = "scoverage.measurements."
@@ -32,9 +32,8 @@ object Invoker {
   def invoked(id: Int, dataDir: String): Unit =
     val set = dataDirToSet.getOrElseUpdate(dataDir, BitSet.empty)
     if !set.contains(id) then
-      val added = set.synchronized {
+      val added = set.synchronized:
         set.add(id)
-      }
       if added then
         var writers = threadFiles.get()
         if writers == null then
@@ -53,4 +52,3 @@ object Invoker {
     dataDir,
     MeasurementsPrefix + runtimeUUID + "." + Thread.currentThread.nn.getId
   )
-}

@@ -5,7 +5,7 @@ import compiletime._
 import compiletime.ops.int._
 
 /** Tuple of arbitrary arity */
-sealed trait Tuple extends Product {
+sealed trait Tuple extends Product:
   import Tuple._
 
   /** Create a copy of this tuple as an Array */
@@ -78,59 +78,49 @@ sealed trait Tuple extends Product {
    */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
-}
 
-object Tuple {
+object Tuple:
 
   /** Type of a tuple with an element appended */
-  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match {
+  type Append[X <: Tuple, Y] <: NonEmptyTuple = X match
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
-  }
 
   /** Type of the head of a tuple */
-  type Head[X <: NonEmptyTuple] = X match {
+  type Head[X <: NonEmptyTuple] = X match
     case x *: _ => x
-  }
 
   /** Type of the initial part of the tuple without its last element */
-  type Init[X <: Tuple] <: Tuple = X match {
+  type Init[X <: Tuple] <: Tuple = X match
     case _ *: EmptyTuple => EmptyTuple
     case x *: xs =>
       x *: Init[xs]
-  }
 
   /** Type of the tail of a tuple */
-  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
+  type Tail[X <: NonEmptyTuple] <: Tuple = X match
     case _ *: xs => xs
-  }
 
   /** Type of the last element of a tuple */
-  type Last[X <: Tuple] = X match {
+  type Last[X <: Tuple] = X match
     case x *: EmptyTuple => x
     case _ *: xs => Last[xs]
-  }
 
   /** Type of the concatenation of two tuples */
-  type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match {
+  type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match
     case EmptyTuple => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
-  }
 
   /** Type of the element at position N in the tuple X */
-  type Elem[X <: Tuple, N <: Int] = X match {
+  type Elem[X <: Tuple, N <: Int] = X match
     case x *: xs =>
-      N match {
+      N match
         case 0 => x
         case S[n1] => Elem[xs, n1]
-      }
-  }
 
   /** Literal constant Int size of a tuple */
-  type Size[X <: Tuple] <: Int = X match {
+  type Size[X <: Tuple] <: Int = X match
     case EmptyTuple => 0
     case x *: xs => S[Size[xs]]
-  }
 
   /** Fold a tuple `(T1, ..., Tn)` into `F[T1, F[... F[Tn, Z]...]]]` */
   type Fold[Tup <: Tuple, Z, F[_, _]] = Tup match
@@ -138,16 +128,14 @@ object Tuple {
     case h *: t => F[h, Fold[t, Z, F]]
 
   /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
-  type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match {
+  type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match
     case EmptyTuple => EmptyTuple
     case h *: t => F[h] *: Map[t, F]
-  }
 
   /** Converts a tuple `(T1, ..., Tn)` to a flattened `(..F[T1], ..., ..F[Tn])` */
-  type FlatMap[Tup <: Tuple, F[_ <: Union[Tup]] <: Tuple] <: Tuple = Tup match {
+  type FlatMap[Tup <: Tuple, F[_ <: Union[Tup]] <: Tuple] <: Tuple = Tup match
     case EmptyTuple => EmptyTuple
     case h *: t => Concat[F[h], FlatMap[t, F]]
-  }
 
   /** Filters out those members of the tuple for which the predicate `P` returns `false`.
    *  A predicate `P[X]` is a type that can be either `true` or `false`. For example:
@@ -160,31 +148,27 @@ object Tuple {
    *  ```
    *  @syntax markdown
    */
-  type Filter[Tup <: Tuple, P[_] <: Boolean] <: Tuple = Tup match {
+  type Filter[Tup <: Tuple, P[_] <: Boolean] <: Tuple = Tup match
     case EmptyTuple => EmptyTuple
-    case h *: t => P[h] match {
-      case true => h *: Filter[t, P]
-      case false => Filter[t, P]
-    }
-  }
+    case h *: t => P[h] match
+        case true => h *: Filter[t, P]
+        case false => Filter[t, P]
 
   /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
    *  where at least one of `At` or `Bt` is `EmptyTuple` or `Tuple`,
    *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
    *  where `Ct` is `EmptyTuple` if `At` or `Bt` is `EmptyTuple`, otherwise `Ct` is `Tuple`.
    */
-  type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match {
+  type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match
     case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
     case (EmptyTuple, _) => EmptyTuple
     case (_, EmptyTuple) => EmptyTuple
     case _ => Tuple
-  }
 
   /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
-  type InverseMap[X <: Tuple, F[_]] <: Tuple = X match {
+  type InverseMap[X <: Tuple, F[_]] <: Tuple = X match
     case F[x] *: t => x *: InverseMap[t, F]
     case EmptyTuple => EmptyTuple
-  }
 
   /** Implicit evidence. IsMappedBy[F][X] is present in the implicit scope iff
    *  X is a tuple for which each element's type is constructed via `F`. E.g.
@@ -194,22 +178,18 @@ object Tuple {
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
-  type Take[T <: Tuple, N <: Int] <: Tuple = N match {
+  type Take[T <: Tuple, N <: Int] <: Tuple = N match
     case 0 => EmptyTuple
-    case S[n1] => T match {
-      case EmptyTuple => EmptyTuple
-      case x *: xs => x *: Take[xs, n1]
-    }
-  }
+    case S[n1] => T match
+        case EmptyTuple => EmptyTuple
+        case x *: xs => x *: Take[xs, n1]
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(Ti+1, ..., Tn)`. */
-  type Drop[T <: Tuple, N <: Int] <: Tuple = N match {
+  type Drop[T <: Tuple, N <: Int] <: Tuple = N match
     case 0 => T
-    case S[n1] => T match {
-      case EmptyTuple => EmptyTuple
-      case x *: xs => Drop[xs, n1]
-    }
-  }
+    case S[n1] => T match
+        case EmptyTuple => EmptyTuple
+        case x *: xs => Drop[xs, n1]
 
   /** Splits a tuple (T1, ..., Tn) into a pair of two tuples `(T1, ..., Ti)` and
    * `(Ti+1, ..., Tn)`.
@@ -231,23 +211,19 @@ object Tuple {
   def unapply(x: EmptyTuple): true = true
 
   /** Convert an array into a tuple of unknown arity and types */
-  def fromArray[T](xs: Array[T]): Tuple = {
-    val xs2 = xs match {
+  def fromArray[T](xs: Array[T]): Tuple =
+    val xs2 = xs match
       case xs: Array[Object] => xs
       case xs => xs.map(_.asInstanceOf[Object])
-    }
     runtime.Tuples.fromArray(xs2)
-  }
 
   /** Convert an immutable array into a tuple of unknown arity and types */
-  def fromIArray[T](xs: IArray[T]): Tuple = {
-    val xs2: IArray[Object] = xs match {
+  def fromIArray[T](xs: IArray[T]): Tuple =
+    val xs2: IArray[Object] = xs match
       case xs: IArray[Object] @unchecked => xs
       case _ =>
         xs.map(_.asInstanceOf[Object])
-    }
     runtime.Tuples.fromIArray(xs2)
-  }
 
   /** Convert a Product into a tuple of unknown arity and types */
   def fromProduct(product: Product): Tuple =
@@ -260,18 +236,16 @@ object Tuple {
   given canEqualTuple[H1, T1 <: Tuple, H2, T2 <: Tuple](
     using eqHead: CanEqual[H1, H2], eqTail: CanEqual[T1, T2]
   ): CanEqual[H1 *: T1, H2 *: T2] = CanEqual.derived
-}
 
 /** A tuple of 0 elements */
 type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
-case object EmptyTuple extends Tuple {
+case object EmptyTuple extends Tuple:
   override def toString(): String = "()"
-}
 
 /** Tuple of arbitrary non-zero arity */
-sealed trait NonEmptyTuple extends Tuple {
+sealed trait NonEmptyTuple extends Tuple:
   import Tuple._
 
   /** Get the i-th element of this tuple.
@@ -298,11 +272,9 @@ sealed trait NonEmptyTuple extends Tuple {
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 
-}
 
 @showAsInfix
 sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
-object *: {
+object `*:`:
   def unapply[H, T <: Tuple](x: H *: T): (H, T) = (x.head, x.tail)
-}

@@ -4,7 +4,7 @@ import scala.util.TupledFunction
 import scala.annotation.experimental
 
 @experimental
-object TupledFunctions {
+object TupledFunctions:
 
   def tupledFunction0[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => ((args: EmptyTuple) => f.asInstanceOf[() => Any].apply()).asInstanceOf[G],
@@ -162,4 +162,3 @@ object TupledFunctions {
     }.asInstanceOf[F]
   )
 
-}

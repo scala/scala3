@@ -22,9 +22,8 @@ object Predef:
    * }}}
    * @group utilities
    */
-  inline def valueOf[T]: T = summonFrom {
+  inline def valueOf[T]: T = summonFrom:
     case ev: ValueOf[T] => ev.value
-  }
 
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
    *

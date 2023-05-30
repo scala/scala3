@@ -7,7 +7,7 @@ package scala.quoted
 abstract class Expr[+T] private[scala] ()
 
 /** Constructors for expressions */
-object Expr {
+object Expr:
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
    *   however if `e` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
@@ -27,10 +27,9 @@ object Expr {
    *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
-  def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
+  def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] =
     import quotes.reflect._
     Block(statements.map(asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
-  }
 
   /** Creates an expression that will construct the value `x` */
   def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
@@ -78,8 +77,8 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
    */
-  def ofTupleFromSeq(seq: Seq[Expr[Any]])(using Quotes): Expr[Tuple] = {
-    seq.size match {
+  def ofTupleFromSeq(seq: Seq[Expr[Any]])(using Quotes): Expr[Tuple] =
+    seq.size match
       case 0 => '{ Tuple() }
       case 1 => ofTupleFromSeq1(seq)
       case 2 => ofTupleFromSeq2(seq)
@@ -104,8 +103,6 @@ object Expr {
       case 21 => ofTupleFromSeq21(seq)
       case 22 => ofTupleFromSeq22(seq)
       case _ => ofTupleFromSeqXXL(seq)
-    }
-  }
 
   private def ofTupleFromSeq1(seq: Seq[Expr[Any]])(using Quotes): Expr[Tuple] =
     seq match
@@ -228,10 +225,9 @@ object Expr {
     }
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
-  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using Quotes): Expr[Tuple.InverseMap[T, Expr]] = {
+  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using Quotes): Expr[Tuple.InverseMap[T, Expr]] =
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
     ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
-  }
 
   /** Find a given instance of type `T` in the current scope.
    *  Return `Some` containing the expression of the implicit or
@@ -239,12 +235,9 @@ object Expr {
    *
    *  @tparam T type of the implicit parameter
    */
-  def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
+  def summon[T](using Type[T])(using Quotes): Option[Expr[T]] =
     import quotes.reflect._
-    Implicits.search(TypeRepr.of[T]) match {
+    Implicits.search(TypeRepr.of[T]) match
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
-    }
-  }
 
-}

@@ -24,12 +24,11 @@ package scala.util
  */
 final class NotGiven[+T] private ()
 
-trait LowPriorityNotGiven {
+trait LowPriorityNotGiven:
 
   /** A fallback method used to emulate negation in Scala 2 */
   given default[T]: NotGiven[T] = NotGiven.value
-}
-object NotGiven extends LowPriorityNotGiven {
+object NotGiven extends LowPriorityNotGiven:
 
   private val cachedValue = new NotGiven[Nothing]()
 
@@ -44,4 +43,3 @@ object NotGiven extends LowPriorityNotGiven {
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
   given amb2[T](using ev: T): NotGiven[T] = ???
-}
