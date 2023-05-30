@@ -27,7 +27,7 @@ Some Scala 2 specific idioms are dropped in this version. The feature set suppor
   -[Fewer braces syntax](https://docs.scala-lang.org/scala3/reference/other-new-features/indentation.html#optional-braces-for-method-arguments-1) is enabled by default.
 - [`3.3-migration`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$3/3-migration$.html): the same as `3.3`
 
-- [`future-migration`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$future-migration$.html): Same as `future` but with additional helpers to migrate from `3.2`. Similarly to the helpers available under `3.0-migration`, these include migration warnings and optional rewrites.
+- [`future-migration`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$future-migration$.html): Same as `future` but with additional helpers to migrate from `3.3`. Similarly to the helpers available under `3.0-migration`, these include migration warnings and optional rewrites.
 
 There are two ways to specify a language version :
 
