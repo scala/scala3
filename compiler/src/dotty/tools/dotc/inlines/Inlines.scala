@@ -532,7 +532,7 @@ object Inlines:
       paramAccessorsMapper.registerParamValuesOf(parent)
       val stats = Inlines.defsToInline(parentSym).filterNot(stat => overriddenDecls.contains(stat.symbol))
       stats.map{
-        case member: MemberDef => Left((member, inlinedSym(member.symbol)))
+        case member: MemberDef => Left((member, inlinedSym(member.symbol))) // Private symbols must be entered before the RHSs are inlined
         case stat => Right(stat)
       }.map{
         case Left((tree, inlinedSym)) => expandStat(tree, inlinedSym)
