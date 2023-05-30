@@ -364,17 +364,13 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
       var pos: Int = bufferPos
       var i: Int = 0
       while (i < 10) {
-        {
-          if (buffer(({
-            pos += 1; pos - 1
-          })) >= 0) {
-            bufferPos = pos
-            return
-          }
+        if (buffer(({
+          pos += 1; pos - 1
+        })) >= 0) {
+          bufferPos = pos
+          return
         }
-        ({
-          i += 1; i - 1
-        })
+        i += 1; i - 1
       }
     }
     skipRawVarintSlowPath
