@@ -205,8 +205,9 @@ An application `´f(e_1, ..., e_m)´` applies the method `´f´` to the argument
 For this expression to be well-typed, the method must be *applicable* to its arguments:
 
 If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type.
-Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., m)´.
+Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., n)´.
 The method ´f´ must be _applicable_ to its arguments ´e_1, ..., e_n´ of types ´S_1, ..., S_n´.
+If the last parameter type of ´f´ is [repeated](04-basic-declarations-and-definitions.html#repeated-parameters), [harmonization](#harmonization) is attempted on the suffix ´e_m, ..., e_n´ of the expression list that match the repeated parameter.
 We say that an argument expression ´e_i´ is a _named_ argument if it has the form `´x_i=e'_i´` and `´x_i´` is one of the parameter names `´p_1, ..., p_n´`.
 
 Once the types ´S_i´ have been determined, the method ´f´ of the above method type is said to be applicable if all of the following conditions hold:
@@ -681,7 +682,8 @@ Expr1          ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ E
 The _conditional expression_ `if (´e_1´) ´e_2´ else ´e_3´` chooses one of the values of ´e_2´ and ´e_3´, depending on the value of ´e_1´.
 The condition ´e_1´ is expected to conform to type `Boolean`.
 The then-part ´e_2´ and the else-part ´e_3´ are both expected to conform to the expected type of the conditional expression.
-The type of the conditional expression is the [weak least upper bound](03-types.html#weak-conformance) of the types of ´e_2´ and ´e_3´.
+If there is no expected type, [harmonization](#harmonization) is attempted on ´e_2´ and ´e_3´.
+The type of the conditional expression is the [least upper bound](03-types.html#least-upper-bounds-and-greatest-lower-bounds) of the types of ´e_2´ and ´e_3´ after harmonization.
 A semicolon preceding the `else` symbol of a conditional expression is ignored.
 
 The conditional expression is evaluated by evaluating first ´e_1´.
@@ -883,7 +885,7 @@ More generally, if the handler is a `PartialFunction`, it is applied only if it 
 Let ´\mathit{pt}´ be the expected type of the try expression.
 The block ´b´ is expected to conform to ´\mathit{pt}´.
 The handler ´h´ is expected conform to type `scala.Function[scala.Throwable, ´\mathit{pt}\,´]`.
-The type of the try expression is the [weak least upper bound](03-types.html#weak-conformance) of the type of ´b´ and the result type of ´h´.
+The type of the try expression is the [least upper bound](03-types.html#least-upper-bounds-and-greatest-lower-bounds) of the type of ´b´ and the result type of ´h´.
 
 A try expression `try { ´b´ } finally ´e´` evaluates the block ´b´.
 If evaluation of ´b´ does not cause an exception to be thrown, the expression ´e´ is evaluated.
@@ -1042,6 +1044,29 @@ When prefixing a class or object definition, modifiers `abstract`, `final`, and 
 
 Evaluation of a statement sequence entails evaluation of the statements in the order they are written.
 
+## Harmonization
+
+_Harmonization_ of a list of expressions tries to adapt `Int` literals to match the types of sibling trees.
+For example, when writing
+
+```scala
+scala.collection.mutable.ArrayBuffer(5.4, 6, 6.4)
+```
+
+the inferred element type would be `AnyVal` without harmonization.
+Harmonization turns the integer literal `6` into the double literal `6.0` so that the element type becomes `Double`.
+
+Formally, given a list of expressions ´e_1, ..., e_n´ with types ´T_1, ..., T_n´, harmonization behaves as follows:
+
+1. If there is an expected type, return the original list.
+2. Otherwise, if there exists ´T_i´ that is not a primitive numeric type (`Char`, `Byte`, `Short`, `Int`, `Long`, `Float`, `Double`), return the original list.
+3. Otherwise,
+    1. Partition the ´e_i´ into the integer literals ´f_j´ and the other expressions ´g_k´.
+    2. If all the ´g_k´ have the same numeric type ´T´, possibly after widening, and if all the integer literals ´f_j´ can be converted without loss of precision to ´T´, return the list of ´e_i´ where every int literal is converted to ´T´.
+    3. Otherwise, return the original list.
+
+Harmonization is used in [conditional expressions](#conditional-expressions) and [pattern matches](./08-pattern-matching.html), as well as in [local type inference](#local-type-inference).
+
 ## Implicit Conversions
 
 Implicit conversions can be applied to expressions whose type does not match their expected type, to qualifiers in selections, and to unapplied methods.
@@ -1063,14 +1088,10 @@ An expression ´e´ of polymorphic type
 
 which does not appear as the function part of a type application is converted to a type instance of ´T´ by determining with [local type inference](#local-type-inference) instance types `´T_1, ..., T_n´` for the type variables `´a_1, ..., a_n´` and implicitly embedding ´e´ in the [type application](#type-applications) `´e´[´T_1, ..., T_n´]`.
 
-###### Numeric Widening
-If ´e´ has a primitive number type which [weakly conforms](03-types.html#weak-conformance) to the expected type, it is widened to the expected type using one of the numeric conversion methods `toShort`, `toChar`, `toInt`, `toLong`, `toFloat`, `toDouble` defined [in the standard library](12-the-scala-standard-library.html#numeric-value-types).
+###### Numeric Literal Conversion
+If the expected type is `Byte`, `Short`, `Long` or `Char`, and the expression ´e´ is an `Int` literal fitting in the range of that type, it is converted to the same literal in that type.
 
-Since conversions from `Int` to `Float` and from `Long` to `Float` or `Double` may incur a loss of precision, those implicit conversions are deprecated.
-The conversion is permitted for literals if the original value can be recovered, that is, if conversion back to the original type produces the original value.
-
-###### Numeric Literal Narrowing
-If the expected type is `Byte`, `Short` or `Char`, and the expression ´e´ is an integer literal fitting in the range of that type, it is converted to the same literal in that type.
+Likewise, if the expected type is `Float` or `Double`, and the expression ´e´ is a numeric literal (of any type) fitting in the range of that type, it is converted to the same literal in that type.
 
 ###### Value Discarding
 If ´e´ has some value type and the expected type is `Unit`, ´e´ is converted to the expected type by embedding it in the term `{ ´e´; () }`.
