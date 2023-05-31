@@ -843,7 +843,11 @@ The type of a return expression is `scala.Nothing`.
 The expression ´e´ may be omitted.
 The return expression `return` is type-checked and evaluated as if it were `return ()`.
 
-Returning from the method from within a nested function may be implemented by throwing and catching a `scala.runtime.NonLocalReturnControl`.
+### Non-Local Returns (deprecated)
+
+Returning from a method from within a nested function is deprecated.
+
+It is implemented by throwing and catching a `scala.runtime.NonLocalReturnControl`.
 Any exception catches between the point of return and the enclosing methods might see and catch that exception.
 A key comparison makes sure that this exception is only caught by the method instance which is terminated by the return.
 
