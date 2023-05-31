@@ -101,7 +101,12 @@ trait TypesSupport:
       case ByNameType(tpe) => keyword("=> ") :: inner(tpe)
       case ConstantType(constant) =>
         plain(constant.show).l
-      case ThisType(tpe) => inner(tpe)
+      case ThisType(tpe) =>
+        val prefix = findSupertype(elideThis, tpe.typeSymbol) match
+          case Some(_) => Nil
+          case None    => inner(tpe) ++ plain(".").l
+        val suffix = if skipTypeSuffix then Nil else List(plain("."), keyword("type"))
+        prefix ++ keyword("this").l ++ suffix
       case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
         inner(tpe) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
@@ -220,10 +225,6 @@ trait TypesSupport:
         }) ++ plain("]").l
 
       case tp @ TypeRef(qual, typeName) =>
-        def defaultSignature() =
-          val suffix = keyword("#").l ++ tpe(tp.typeSymbol)
-          inParens(inner(qual), shouldWrapInParens(qual, tp, true)) ++ suffix
-
         qual match {
           case r: RecursiveThis => tpe(s"this.$typeName").l
           case t if skipPrefix(t, elideThis) =>
@@ -232,10 +233,7 @@ trait TypesSupport:
             val suffix = if tp.typeSymbol == Symbol.noSymbol then tpe(typeName).l else tpe(tp.typeSymbol)
             inner(qual)(using skipTypeSuffix = true) ++ plain(".").l ++ suffix
           case ThisType(tr) =>
-            import dotty.tools.scaladoc.tasty.SymOps.isHiddenByVisibility
-
-            val supertype = getSupertypes(elideThis).filterNot((s, t) => s.isHiddenByVisibility).find((s, t) => s == tr.typeSymbol)
-            supertype match
+            findSupertype(elideThis, tr.typeSymbol) match
               case Some((sym, AppliedType(tr2, args))) =>
                 sym.tree.asInstanceOf[ClassDef].constructor.paramss.headOption match
                   case Some(TypeParamClause(tpc)) =>
@@ -243,10 +241,15 @@ trait TypesSupport:
                       case (TypeDef(name, _), arg) if name == typeName => arg
                     } match
                       case Some(tr) => inner(tr)
-                      case _ => defaultSignature()
-                  case _ => defaultSignature()
-              case _ => defaultSignature()
-          case _ => defaultSignature()
+                      case None => tpe(tp.typeSymbol)
+                  case _ => tpe(tp.typeSymbol)
+              case Some(_) => tpe(tp.typeSymbol)
+              case None =>
+                val sig = inParens(inner(qual)(using skipTypeSuffix = true), shouldWrapInParens(qual, tp, true))
+                sig ++ plain(".").l ++ tpe(tp.typeSymbol)
+          case _ =>
+            val sig = inParens(inner(qual), shouldWrapInParens(qual, tp, true))
+            sig ++ keyword("#").l ++ tpe(tp.typeSymbol)
         }
 
       case tr @ TermRef(qual, typeName) =>
@@ -325,6 +328,9 @@ trait TypesSupport:
         else
           regularTypeBounds(low, high)
       case _ => regularTypeBounds(low, high)
+
+  private def findSupertype(using Quotes)(c: reflect.ClassDef, sym: reflect.Symbol) =
+    getSupertypes(c).find((s, t) => s == sym)
 
   private def skipPrefix(using Quotes)(tr: reflect.TypeRepr, elideThis: reflect.ClassDef) =
     import reflect._
