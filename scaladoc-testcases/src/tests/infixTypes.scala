@@ -19,7 +19,11 @@ def someTrait3[G, H]: G SomeTrait2 H //expected: def someTrait3[G, H]: SomeTrait
 
 trait +++[A, B]
 
+trait ++*[A, B]
+
 trait ++:[A, B]
+
+trait +*:[A, B]
 
 trait ***[A, B]
 
@@ -30,25 +34,43 @@ def foo[A, B, C, D]: (A SomeTrait B) +++ (C SomeTrait2 D) //expected: def foo[A,
 
 // left-associative, same precedence
 
-def a0[X, Y, Z]: X +++ Y +++ Z //expected: def a0[X, Y, Z]: (X +++ Y) +++ Z
+def a0[X, Y, Z]: X +++ Y +++ Z
   = a1
 
-def a1[X, Y, Z]: (X +++ Y) +++ Z
+def a1[X, Y, Z]: (X +++ Y) +++ Z //expected: def a1[X, Y, Z]: X +++ Y +++ Z
   = a0
 
 def a2[X, Y, Z]: X +++ (Y +++ Z)
   = ???
 
+def a0x[X, Y, Z]: X +++ Y ++* Z //expected: def a0x[X, Y, Z]: (X +++ Y) ++* Z
+  = a1x
+
+def a1x[X, Y, Z]: (X +++ Y) ++* Z
+  = a0x
+
+def a2x[X, Y, Z]: X +++ (Y ++* Z)
+  = ???
+
 // right-associative, same precedence
 
-def a3[X, Y, Z]: X ++: Y ++: Z //expected: def a3[X, Y, Z]: X ++: (Y ++: Z)
-  = ???
+def a3[X, Y, Z]: X ++: Y ++: Z
+  = a5
 
 def a4[X, Y, Z]: (X ++: Y) ++: Z
   = ???
 
-def a5[X, Y, Z]: X ++: (Y ++: Z)
+def a5[X, Y, Z]: X ++: (Y ++: Z) //expected: def a5[X, Y, Z]: X ++: Y ++: Z
+  = a3
+
+def a3x[X, Y, Z]: X ++: Y +*: Z  //expected: def a3x[X, Y, Z]: X ++: (Y +*: Z)
+  = a5x
+
+def a4x[X, Y, Z]: (X ++: Y) +*: Z
   = ???
+
+def a5x[X, Y, Z]: X ++: (Y +*: Z)
+  = a3x
 
 // left and right associative, same precedence
 

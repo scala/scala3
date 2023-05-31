@@ -365,7 +365,11 @@ trait TypesSupport:
       case (at: AppliedType, _: OrType)  => at.isFunctionType || isInfix(at)
       case (_: AndType, at: AppliedType) => isInfix(at)
       case (_: OrType, at: AppliedType)  => isInfix(at)
-      case (at1: AppliedType, at2: AppliedType) => isInfix(at2) && (at1.isFunctionType || isInfix(at1))
+      case (at1: AppliedType, at2: AppliedType) =>
+        val leftAssoc = !at1.tycon.typeSymbol.name.endsWith(":")
+        isInfix(at2) && (at1.isFunctionType || isInfix(at1) && (
+          at1.tycon.typeSymbol != at2.tycon.typeSymbol || leftAssoc != isLeft
+        ))
       case _ => false
 
   private def isInfix(using Quotes)(at: reflect.AppliedType) =
