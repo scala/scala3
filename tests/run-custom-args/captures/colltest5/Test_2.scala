@@ -5,7 +5,7 @@ object Test {
   import colltest5.strawman.collections.*
   import CollectionStrawMan5.*
 
-  def seqOps(xs: Seq[Int]) = { // try with {*} Seq[Int]
+  def seqOps(xs: Seq[Int]) = { // try with Seq[Int]^{cap}
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
     val isEven: Int => Boolean = _ % 2 == 0
@@ -61,7 +61,7 @@ object Test {
     println(xs16)
   }
 
-  def viewOps(xs: {*} View[Int]) = {
+  def viewOps(xs: View[Int]^{cap}) = {
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
     val isEven: Int => Boolean = _ % 2 == 0
@@ -78,27 +78,27 @@ object Test {
     val x5 = xs.to(List)
     val y5: List[Int] = x5
     val (xs6, xs7) = xs.partition(isEven)
-    val ys6: {xs6, isEven} View[Int] = xs6
-    val ys7: {xs7, isEven} View[Int] = xs7
+    val ys6: View[Int]^{xs6, isEven} = xs6
+    val ys7: View[Int]^{xs7, isEven} = xs7
     val (xs6a, xs7a) = xs.partition(_ % 2 == 0)
-    val ys6a: {xs6} View[Int] = xs6
-    val ys7a: {xs7} View[Int] = xs7
+    val ys6a: View[Int]^{xs6} = xs6
+    val ys7a: View[Int]^{xs7} = xs7
     val xs8 = xs.drop(2)
-    val ys8: {xs8} View[Int] = xs8
+    val ys8: View[Int]^{xs8} = xs8
     val xs9 = xs.map(isNonNeg)
-    val ys9: {xs9} View[Boolean] = xs9
+    val ys9: View[Boolean]^{xs9} = xs9
     val xs10 = xs.flatMap(flips)
-    val ys10: {xs10} View[Int] = xs10
+    val ys10: View[Int]^{xs10} = xs10
     val xs11 = xs ++ xs
-    val ys11: {xs11} View[Int] = xs11
+    val ys11: View[Int]^{xs11} = xs11
     val xs12 = xs ++ Nil
-    val ys12: {xs12} View[Int] = xs12
+    val ys12: View[Int]^{xs12} = xs12
     val xs13 = Nil ++ xs
     val ys13: List[Int] = xs13
     val xs14 = xs ++ Cons("a", Nil)
-    val ys14: {xs14} View[Any] = xs14
+    val ys14: View[Any]^{xs14} = xs14
     val xs15 = xs.zip(xs9)
-    val ys15: {xs15} View[(Int, Boolean)] = xs15
+    val ys15: View[(Int, Boolean)]^{xs15} = xs15
     println("-------")
     println(x1)
     println(x2)

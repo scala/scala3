@@ -20,6 +20,8 @@ import ast.{tpd, untpd}
 import util.Chars._
 import collection.mutable
 import ProtoTypes._
+import staging.StagingLevel
+import inlines.Inlines.inInlineMethod
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -493,6 +495,18 @@ object TreeChecker {
       assert(tree.qual.typeOpt.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    override def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
+      val tree1 = super.typedNew(tree, pt).asInstanceOf[tpd.New]
+      val sym = tree1.tpe.typeSymbol
+      if postTyperPhase <= ctx.phase then // postTyper checks that `New` nodes can be instantiated
+        assert(!tree1.tpe.isInstanceOf[TermRef], s"New should not have a TermRef type: ${tree1.tpe}")
+        assert(
+          !sym.is(Module)
+          || ctx.erasedTypes // TODO add check for module initialization after erasure (LazyVals transformation)
+          || ctx.owner == sym.companionModule,
+          i"new of $sym module should only exist in ${sym.companionModule} but was in ${ctx.owner}")
+      tree1
+
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree = tree match
       case Apply(Select(qual, nme.CONSTRUCTOR), _)
           if !ctx.phase.erasedTypes
@@ -657,8 +671,39 @@ object TreeChecker {
       else
         super.typedPackageDef(tree)
 
+    override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
+      if ctx.phase <= stagingPhase.prev then
+        assert(tree.tags.isEmpty, i"unexpected tags in Quote before staging phase: ${tree.tags}")
+      else
+        assert(!tree.body.isInstanceOf[untpd.Splice] || inInlineMethod, i"missed quote cancellation in $tree")
+        assert(!tree.body.isInstanceOf[untpd.Hole] || inInlineMethod, i"missed quote cancellation in $tree")
+        if StagingLevel.level != 0 then
+          assert(tree.tags.isEmpty, i"unexpected tags in Quote at staging level ${StagingLevel.level}: ${tree.tags}")
+
+      for tag <- tree.tags do
+        assert(tag.isInstanceOf[RefTree], i"expected RefTree in Quote but was: $tag")
+
+      val tree1 = super.typedQuote(tree, pt)
+      for tag <- tree.tags do
+        assert(tag.typeOpt.derivesFrom(defn.QuotedTypeClass), i"expected Quote tag to be of type `Type` but was: ${tag.tpe}")
+
+      tree1 match
+        case Quote(body, targ :: Nil) if body.isType =>
+          assert(!(body.tpe =:= targ.tpe.select(tpnme.Underlying)), i"missed quote cancellation in $tree1")
+        case _ =>
+
+      tree1
+
+    override def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree =
+      if stagingPhase <= ctx.phase then
+        assert(!tree.expr.isInstanceOf[untpd.Quote] || inInlineMethod, i"missed quote cancellation in $tree")
+      super.typedSplice(tree, pt)
+
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
-      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
+      val tree1 @ Hole(isTerm, idx, args, content) = super.typedHole(tree, pt): @unchecked
+
+      assert(idx >= 0, i"hole should not have negative index: $tree")
+      assert(isTerm || tree.args.isEmpty, i"type hole should not have arguments: $tree")
 
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
@@ -666,8 +711,8 @@ object TreeChecker {
         assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
 
       // Check result type of the hole
-      if isTermHole then assert(tpt.typeOpt <:< pt)
-      else assert(tpt.typeOpt =:= pt)
+      if isTerm then assert(tree1.typeOpt <:< pt)
+      else assert(tree1.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
       val argQuotedTypes = args.map { arg =>
@@ -682,8 +727,8 @@ object TreeChecker {
         else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
       }
       val expectedResultType =
-        if isTermHole then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
-        else defn.QuotedTypeClass.typeRef.appliedTo(tpt.typeOpt)
+        if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =

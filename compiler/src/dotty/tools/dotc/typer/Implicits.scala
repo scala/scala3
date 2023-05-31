@@ -634,6 +634,13 @@ trait ImplicitRunInfo:
             case t: TypeLambda =>
               for p <- t.paramRefs do partSeen += p
               traverseChildren(t)
+            case t: MatchType =>
+              traverseChildren(t)
+              traverse(try t.normalized catch case _: MatchTypeReductionError => t)
+            case MatchType.InDisguise(mt)
+                if !t.isInstanceOf[LazyRef] // skip recursive applications (eg. Tuple.Map)
+            =>
+              traverse(mt)
             case t =>
               traverseChildren(t)
 
@@ -1591,7 +1598,6 @@ trait Implicits:
     * implicit search.
     *
     * @param cand The candidate implicit to be explored.
-    * @param pt   The target type for the above candidate.
     * @result     True if this candidate/pt are divergent, false otherwise.
     */
     def checkDivergence(cand: Candidate): Boolean =

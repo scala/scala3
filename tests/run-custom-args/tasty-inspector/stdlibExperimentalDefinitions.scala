@@ -53,15 +53,12 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
+  "scala.Pure",
   "scala.caps",
   "scala.caps$",
 
   //// New feature: into
   "scala.annotation.allowConversions",
-
-  //// New APIs: Mirror
-  // Can be stabilized in 3.3.0 or later.
-  "scala.deriving.Mirror$.fromProductTyped", // This API is a bit convoluted. We may need some more feedback before we can stabilize it.
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
@@ -69,6 +66,7 @@ val experimentalDefinitionInLibrary = Set(
    //// New APIs: Quotes
   // Should be stabilized in 3.4.0
   "scala.quoted.Quotes.reflectModule.defnModule.FunctionClass",
+  "scala.quoted.Quotes.reflectModule.FlagsModule.AbsOverride",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
   "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",

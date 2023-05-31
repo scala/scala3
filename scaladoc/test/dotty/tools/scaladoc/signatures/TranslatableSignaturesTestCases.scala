@@ -118,3 +118,5 @@ class PathDependentTypes extends SignatureTest("pathDependentTypes", SignatureTe
 class MatchTypeTuple extends SignatureTest("matchTypeTuple", SignatureTest.all)
 
 class InfixTypes extends SignatureTest("infixTypes", SignatureTest.all)
+
+class ExtendsCall extends SignatureTest("extendsCall", SignatureTest.all)

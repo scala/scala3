@@ -1,6 +1,6 @@
-package dotty.tools
+import language.experimental.captureChecking
 object test {
 
-  val x = caps.unsafe.unsafeBox
+  val x = caps.cap
 
 }

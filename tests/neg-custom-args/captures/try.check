@@ -1,17 +1,15 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
+-- Error: tests/neg-custom-args/captures/try.scala:23:16 ---------------------------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error
-   |                                                 ^
-   |                                                 Found:    ? ({*} CT[Exception]) -> CanThrow[Exception]
-   |                                                 Required: {*} CanThrow[Exception] -> box {*} CT[Exception]
-24 |    (x: CanThrow[Exception]) => x
-25 |  }{
-   |
-   | longer explanation available when compiling with `-explain`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          Sealed type variable R cannot  be instantiated to box CT[Exception]^ since
+   |          that type captures the root capability `cap`.
+   |          This is often caused by a local capability in the body of method handle
+   |          leaking as part of its result.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
 29 |  val b = handle[Exception, () -> Nothing] {  // error
    |                                           ^
-   |                                           Found:    ? (x: {*} CT[Exception]) -> {x} () -> Nothing
-   |                                           Required: {*} (x$0: CanThrow[Exception]) -> () -> Nothing
+   |                                           Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
+   |                                           Required: (x$0: CanThrow[Exception]) => () -> Nothing
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)
 31 |  } {
    |
@@ -22,23 +20,18 @@
 49 |    () =>
 50 |      raise(new Exception)(using x)
 51 |      22
-52 |} {  // error
+52 |} { // error
    |                        ^
-   |                        Found:    {x$0} () -> Int
+   |                        Found:    () ->{x$0} Int
    |                        Required: () -> Int
 53 |  (ex: Exception) => () => 22
 54 |}
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/try.scala:40:4 ----------------------------------------------------------------
-35 |  val xx = handle {
-36 |    (x: CanThrow[Exception]) =>
-37 |      () =>
-38 |        raise(new Exception)(using x)
-39 |        22
-40 |  } {  // error
-   |           ^
-   |           The expression's type box {x$0, *} () -> Int is not allowed to capture the root capability `*`.
-   |           This usually means that a capability persists longer than its allowed lifetime.
-41 |    (ex: Exception) => () => 22
-42 |  }
+-- Error: tests/neg-custom-args/captures/try.scala:35:11 ---------------------------------------------------------------
+35 |  val xx = handle {  // error
+   |           ^^^^^^
+   |           Sealed type variable R cannot  be instantiated to box () => Int since
+   |           that type captures the root capability `cap`.
+   |           This is often caused by a local capability in the body of method handle
+   |           leaking as part of its result.

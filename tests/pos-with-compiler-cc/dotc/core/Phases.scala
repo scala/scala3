@@ -285,7 +285,7 @@ object Phases {
     final def isTyper(phase: Phase): Boolean = phase.id == typerPhase.id
   }
 
-  abstract class Phase extends caps.Pure {
+  abstract class Phase extends Pure {
 
     /** A name given to the `Phase` that can be used to debug the compiler. For
      *  instance, it is possible to print trees after a given phase using:

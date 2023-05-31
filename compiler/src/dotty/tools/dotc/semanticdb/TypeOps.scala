@@ -483,9 +483,23 @@ class TypeOps:
         case NoPrefix =>
           s.Type.Empty
 
-        // Not yet supported
-        case _: HKTypeLambda =>
-          s.Type.Empty
+        case lambda: HKTypeLambda =>
+          val paramSyms: List[SemanticSymbol] = lambda.paramNames.zip(lambda.paramInfos).map { (paramName, bounds) =>
+            // def x[T[_]] = ???
+            if paramName.isWildcard then
+              WildcardTypeSymbol(sym, bounds).tap(registerFakeSymbol)
+            else
+              paramRefSymtab.lookup(lambda, paramName).getOrElse {
+                TypeParamRefSymbol(sym, paramName, bounds).tap(registerFakeSymbol)
+              }
+          }
+          val parameters =
+            paramSyms.sscopeOpt(using LinkMode.HardlinkChildren)
+          val resType = loop(lambda.resType)
+          s.LambdaType(
+            parameters,
+            resType
+          )
 
         case tvar: TypeVar =>
           loop(tvar.stripped)

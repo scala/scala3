@@ -591,7 +591,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val base = nonExprBaseType(tp1, cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if tp1.isLambdaSub && !tp1.isAnyKind then
+          else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(tp2))
         fourthTry
     }
@@ -3180,7 +3180,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             tp
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
-        throw TypeError(em"Match type reduction $casesText")
+        throw MatchTypeReductionError(em"Match type reduction $casesText")
 
     inFrozenConstraint {
       // Empty types break the basic assumption that if a scrutinee and a

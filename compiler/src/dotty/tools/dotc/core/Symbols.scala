@@ -40,7 +40,7 @@ object Symbols {
   val Ids: Property.Key[Array[String]] = new Property.Key
 
   /** A Symbol represents a Scala definition/declaration or a package.
-   *  @param coord  The coordinates of the symbol (a position or an index)
+   *  @param myCoord The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int, val nestingLevel: Int)
@@ -170,7 +170,7 @@ object Symbols {
       asInstanceOf[TermSymbol]
     }
     final def asType(using Context): TypeSymbol = {
-      assert(isType, s"isType called on not-a-Type $this");
+      assert(isType, s"asType called on not-a-Type $this");
       asInstanceOf[TypeSymbol]
     }
 

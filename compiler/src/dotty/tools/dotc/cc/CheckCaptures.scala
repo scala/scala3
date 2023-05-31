@@ -52,12 +52,12 @@ object CheckCaptures:
    *  @param outer0        the next enclosing environment
    */
   case class Env(
-    owner: Symbol,
-    nestedInOwner: Boolean,
-    captured: CaptureSet,
-    isBoxed: Boolean,
-    outer0: Env | Null
-  ):
+      owner: Symbol,
+      nestedInOwner: Boolean,
+      captured: CaptureSet,
+      isBoxed: Boolean,
+      outer0: Env | Null):
+
     def outer = outer0.nn
 
     def isOutermost = outer0 == null
@@ -72,16 +72,23 @@ object CheckCaptures:
    */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
-    def apply(tp: Type): Type = tp match
-      case tp: ParamRef =>
-        if tp.binder == from then to(tp.paramNum) else tp
-      case tp: NamedType =>
-        if tp.prefix `eq` NoPrefix then tp
-        else tp.derivedSelect(apply(tp.prefix))
-      case _: ThisType =>
-        tp
-      case _ =>
-        mapOver(tp)
+    /** This SubstParamsMap is exact if `to` only contains `CaptureRef`s. */
+    private val isExactSubstitution: Boolean = to.forall(_.isInstanceOf[CaptureRef])
+
+    /** As long as this substitution is exact, there is no need to create `Range`s when mapping invariant positions. */
+    override protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = !isExactSubstitution
+
+    def apply(tp: Type): Type =
+      tp match
+        case tp: ParamRef =>
+          if tp.binder == from then to(tp.paramNum) else tp
+        case tp: NamedType =>
+          if tp.prefix `eq` NoPrefix then tp
+          else tp.derivedSelect(apply(tp.prefix))
+        case _: ThisType =>
+          tp
+        case _ =>
+          mapOver(tp)
 
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
@@ -127,6 +134,20 @@ object CheckCaptures:
       val remaining = CaptureSet(others.map(_.toCaptureRef)*)
       if remaining.accountsFor(firstRef) then
         report.warning(em"redundant capture: $remaining already accounts for $firstRef", ann.srcPos)
+
+  def disallowRootCapabilitiesIn(tp: Type, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
+    val check = new TypeTraverser:
+      def traverse(t: Type) =
+        if variance >= 0 then
+        t.captureSet.disallowRootCapability: () =>
+          def part = if t eq tp then "" else i"the part $t of "
+          report.error(
+            em"""$what cannot $have $tp since
+                |${part}that type captures the root capability `cap`.
+                |$addendum""",
+            pos)
+        traverseChildren(t)
+    check.traverse(tp)
 
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
@@ -433,7 +454,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case defn.FunctionOf(ptformals, _, _)
             if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
               // Redo setup of the anonymous function so that formal parameters don't
-              // get capture sets. This is important to avoid false widenings to `*`
+              // get capture sets. This is important to avoid false widenings to `cap`
               // when taking the base type of the actual closures's dependent function
               // type so that it conforms to the expected non-dependent function type.
               // See withLogFile.scala for a test case.
@@ -525,6 +546,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       super.recheckTyped(tree)
 
+    override def recheckTry(tree: Try, pt: Type)(using Context): Type =
+      val tp = super.recheckTry(tree, pt)
+      if allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
+        disallowRootCapabilitiesIn(tp,
+          "Result of `try`", "have type",
+          "This is often caused by a locally generated exception capability leaking as part of its result.",
+          tree.srcPos)
+      tp
+
     /* Currently not needed, since capture checking takes place after ElimByName.
      * Keep around in case we need to get back to it
     def recheckByNameArg(tree: Tree, pt: Type)(using Context): Type =
@@ -582,13 +612,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           refs.disallowRootCapability { () =>
             val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
             report.error(
-              em"""The $kind's type $wtp is not allowed to capture the root capability `*`.
+              em"""The $kind's type $wtp is not allowed to capture the root capability `cap`.
                   |This usually means that a capability persists longer than its allowed lifetime.""",
               tree.srcPos)
           }
           checkNotUniversal(parent)
         case _ =>
-      checkNotUniversal(typeToCheck)
+      if !allowUniversalInBoxed then checkNotUniversal(typeToCheck)
       super.recheckFinish(tpe, tree, pt)
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
@@ -768,10 +798,10 @@ class CheckCaptures extends Recheck, SymTransformer:
             styp1.capturing(if alwaysConst then CaptureSet(cs1.elems) else cs1).forceBoxStatus(resultBoxed)
 
           if needsAdaptation then
-            val criticalSet =          // the set which is not allowed to have `*`
-              if covariant then cs1    // can't box with `*`
-              else expected.captureSet // can't unbox with `*`
-            if criticalSet.isUniversal && expected.isValueType then
+            val criticalSet =          // the set which is not allowed to have `cap`
+              if covariant then cs1    // can't box with `cap`
+              else expected.captureSet // can't unbox with `cap`
+            if criticalSet.isUniversal && expected.isValueType && !allowUniversalInBoxed then
               // We can't box/unbox the universal capability. Leave `actual` as it is
               // so we get an error in checkConforms. This tends to give better error
               // messages than disallowing the root capability in `criticalSet`.
@@ -779,13 +809,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                 println(i"cannot box/unbox $actual vs $expected")
               actual
             else
-              // Disallow future addition of `*` to `criticalSet`.
-              criticalSet.disallowRootCapability { () =>
-                report.error(
-                  em"""$actual cannot be box-converted to $expected
-                      |since one of their capture sets contains the root capability `*`""",
-                pos)
-              }
+              if !allowUniversalInBoxed then
+                // Disallow future addition of `cap` to `criticalSet`.
+                criticalSet.disallowRootCapability { () =>
+                  report.error(
+                    em"""$actual cannot be box-converted to $expected
+                        |since one of their capture sets contains the root capability `cap`""",
+                  pos)
+                }
               if !insertBox then  // unboxing
                 markFree(criticalSet, pos)
               adaptedType(!boxed)
@@ -860,7 +891,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
-     *  without an explicit self type have the universal capture set `{*}` on the
+     *  without an explicit self type have the universal capture set `{cap}` on the
      *  self type. If a class without explicit self type is not `effectivelyFinal`
      *  it is checked that the inferred self type is universal, in order to assure
      *  that joint and separate compilation give the same result.
@@ -917,13 +948,13 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  that this type parameter can't see.
      *  For example, when capture checking the following expression:
      *
-     *    def usingLogFile[T](op: (f: {*} File) => T): T = ...
+     *    def usingLogFile[T](op: (f: {cap} File) => T): T = ...
      *
-     *    usingLogFile[box ?1 () -> Unit] { (f: {*} File) => () => { f.write(0) } }
+     *    usingLogFile[box ?1 () -> Unit] { (f: {cap} File) => () => { f.write(0) } }
      *
      *  We may propagate `f` into ?1, making ?1 ill-formed.
-     *  This also causes soundness issues, since `f` in ?1 should be widened to `*`,
-     *  giving rise to an error that `*` cannot be included in a boxed capture set.
+     *  This also causes soundness issues, since `f` in ?1 should be widened to `cap`,
+     *  giving rise to an error that `cap` cannot be included in a boxed capture set.
      *
      *  To solve this, we still allow ?1 to capture parameter refs like `f`, but
      *  compensate this by pushing the widened capture set of `f` into ?1.
@@ -952,8 +983,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           recur(refs, Nil)
 
         private def healCaptureSet(cs: CaptureSet): Unit =
-          val toInclude = widenParamRefs(cs.elems.toList.filter(!isAllowed(_)).asInstanceOf)
-          toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+          def avoidance(elems: List[CaptureRef])(using Context): Unit =
+            val toInclude = widenParamRefs(elems.filter(!isAllowed(_)).asInstanceOf)
+            //println(i"HEAL $cs by widening to $toInclude")
+            toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+          cs.ensureWellformed(avoidance)
 
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
@@ -986,61 +1020,67 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
      */
     def postCheck(unit: tpd.Tree)(using Context): Unit =
-      unit.foreachSubTree {
-        case _: InferredTypeTree =>
-        case tree: TypeTree if !tree.span.isZeroExtent =>
-          tree.knownType.foreachPart { tp =>
-            checkWellformedPost(tp, tree.srcPos)
-            tp match
-              case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-                warnIfRedundantCaptureSet(annot.tree)
+      val checker = new TreeTraverser:
+        def traverse(tree: Tree)(using Context): Unit =
+          traverseChildren(tree)
+          check(tree)
+        def check(tree: Tree) = tree match
+          case _: InferredTypeTree =>
+          case tree: TypeTree if !tree.span.isZeroExtent =>
+            tree.knownType.foreachPart { tp =>
+              checkWellformedPost(tp, tree.srcPos)
+              tp match
+                case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
+                  warnIfRedundantCaptureSet(annot.tree)
+                case _ =>
+            }
+          case t: ValOrDefDef
+          if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
+            val sym = t.symbol
+            val isLocal =
+              sym.owner.ownersIterator.exists(_.isTerm)
+              || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
+            def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
+              sym.is(Private)                   // private symbols can always have inferred types
+              || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
+                                                // too annoying. This is a hole since a defualt getter's result type
+                                                // might leak into a type variable.
+              ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
+                isLocal                         // local symbols still need explicit types if
+                && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
+            def isNotPureThis(ref: CaptureRef) = ref match {
+              case ref: ThisType => !ref.cls.isPureClass
+              case _ => true
+            }
+            if !canUseInferred then
+              val inferred = t.tpt.knownType
+              def checkPure(tp: Type) = tp match
+                case CapturingType(_, refs)
+                if !refs.elems.filter(isNotPureThis).isEmpty =>
+                  val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
+                  report.error(
+                    em"""Non-local $sym cannot have an inferred$resultStr type
+                        |$inferred
+                        |with non-empty capture set $refs.
+                        |The type needs to be declared explicitly.""".withoutDisambiguation(),
+                    t.srcPos)
+                case _ =>
+              inferred.foreachPart(checkPure, StopAt.Static)
+          case t @ TypeApply(fun, args) =>
+            fun.knownType.widen match
+              case tl: PolyType =>
+                val normArgs = args.lazyZip(tl.paramInfos).map { (arg, bounds) =>
+                  arg.withType(arg.knownType.forceBoxStatus(
+                    bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
+                }
+                checkBounds(normArgs, tl)
               case _ =>
-          }
-        case t: ValOrDefDef
-        if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
-          val sym = t.symbol
-          val isLocal =
-            sym.owner.ownersIterator.exists(_.isTerm)
-            || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
-          def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-            sym.is(Private)                   // private symbols can always have inferred types
-            || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
-                                              // too annoying. This is a hole since a defualt getter's result type
-                                              // might leak into a type variable.
-            ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
-              isLocal                         // local symbols still need explicit types if
-              && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
-          def isNotPureThis(ref: CaptureRef) = ref match {
-            case ref: ThisType => !ref.cls.isPureClass
-            case _ => true
-          }
-          if !canUseInferred then
-            val inferred = t.tpt.knownType
-            def checkPure(tp: Type) = tp match
-              case CapturingType(_, refs)
-              if !refs.elems.filter(isNotPureThis).isEmpty =>
-                val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
-                report.error(
-                  em"""Non-local $sym cannot have an inferred$resultStr type
-                      |$inferred
-                      |with non-empty capture set $refs.
-                      |The type needs to be declared explicitly.""".withoutDisambiguation(),
-                  t.srcPos)
-              case _ =>
-            inferred.foreachPart(checkPure, StopAt.Static)
-        case t @ TypeApply(fun, args) =>
-          fun.knownType.widen match
-            case tl: PolyType =>
-              val normArgs = args.lazyZip(tl.paramInfos).map { (arg, bounds) =>
-                arg.withType(arg.knownType.forceBoxStatus(
-                  bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
-              }
-              checkBounds(normArgs, tl)
-            case _ =>
 
-          args.foreach(healTypeParam(_))
-        case _ =>
-      }
+            args.foreach(healTypeParam(_))
+          case _ =>
+        end check
+      end checker
+      checker.traverse(unit)
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

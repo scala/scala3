@@ -29,7 +29,7 @@ class CompilationTests {
 
   @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
-    aggregateTests(
+    var tests = List(
       compileFile("tests/pos/nullarify.scala", defaultOptions.and("-Ycheck:nullarify")),
       compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8),
       compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16),
@@ -65,8 +65,13 @@ class CompilationTests {
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
       compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
       compileFile("tests/pos-custom-args/i13044.scala", defaultOptions.and("-Xmax-inlines:33")),
-      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8")),
-    ).checkCompile()
+      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8"))
+    )
+
+    if scala.util.Properties.isJavaAtLeast("16") then
+      tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init"))
+
+    aggregateTests(tests*).checkCompile()
   }
 
   @Test def rewrites: Unit = {
@@ -81,6 +86,8 @@ class CompilationTests {
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i12340.scala", unindentOptions.and("-rewrite")),
+      compileFile("tests/rewrites/i17187.scala", unindentOptions.and("-rewrite")),
+      compileFile("tests/rewrites/i17399.scala", unindentOptions.and("-rewrite")),
     ).checkRewrites()
   }
 
@@ -183,6 +190,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
       compileFile("tests/neg-custom-args/i13838.scala", defaultOptions.and("-Ximplicit-search-limit", "1000")),
       compileFile("tests/neg-custom-args/jdk-9-app.scala", defaultOptions.and("-release:8")),
+      compileFile("tests/neg-custom-args/i10994.scala", defaultOptions.and("-source", "future")),
     ).checkExpectedErrors()
   }
 

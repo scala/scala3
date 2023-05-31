@@ -19,7 +19,23 @@ p {
   --header-height: calc(8 * var(--base-spacing));
 }
 
+.site-container img{
+  max-width: 100%;
+  height: auto;
+}
+
+/* Scrollbar */
+
 ::-webkit-scrollbar {
   width: 0;
   background: transparent;
+}
+
+#leftColumn ::-webkit-scrollbar{
+  width: 5px;
+}
+
+#leftColumn ::-webkit-scrollbar-thumb {
+  background: var(--code-syntax-highlighting-scrollbar);
+  border-radius: 2px;
 }

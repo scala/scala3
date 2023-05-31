@@ -44,7 +44,7 @@ sealed trait Plugin {
 trait StandardPlugin extends Plugin {
   /** Non-research plugins should override this method to return the phases
    *
-   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
+   *  @param options commandline options to the plugin.
    *  @return a list of phases to be added to the phase plan
    */
   def init(options: List[String]): List[PluginPhase]
@@ -57,8 +57,8 @@ trait StandardPlugin extends Plugin {
 trait ResearchPlugin extends Plugin {
   /** Research plugins should override this method to return the new phase plan
    *
-   *  @param options: commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
-   *  @param plan: the given phase plan
+   *  @param options commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
+   *  @param plan the given phase plan
    *  @return the new phase plan
    */
   def init(options: List[String], plan: List[List[Phase]])(using Context): List[List[Phase]]

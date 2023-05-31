@@ -1097,7 +1097,7 @@ trait Applications extends Compatibility {
         }
       else {
         val app = tree.fun match
-          case _: untpd.Splice if ctx.mode.is(Mode.QuotedPattern) => typedAppliedSplice(tree, pt)
+          case _: untpd.SplicePattern => typedAppliedSplice(tree, pt)
           case _ => realApply
         app match {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>

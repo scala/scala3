@@ -1,46 +1,46 @@
 trait Cap { def use(): Int; def close(): Unit }
-def mkCap(): {*} Cap = ???
+def mkCap(): Cap^ = ???
 
 def expect[T](x: T): x.type = x
 
-def withCap[T](op: ({*} Cap) => T): T = {
-  val cap: {*} Cap = mkCap()
+def withCap[T](op: Cap^ => T): T = {
+  val cap: Cap^ = mkCap()
   val result = op(cap)
   cap.close()
   result
 }
 
-def main(fs: {*} Cap): Unit = {
-  def badOp(io: {*} Cap): {} Unit -> Unit = {
-    val op1: {io} Unit -> Unit = (x: Unit) =>  // error // limitation
-      expect[{*} Cap] {
+def main(fs: Cap^): Unit = {
+  def badOp(io: Cap^{cap}): Unit ->{} Unit = {
+    val op1: Unit ->{io} Unit = (x: Unit) =>  // error // limitation
+      expect[Cap^] {
         io.use()
         fs
       }
 
-    val op2: {fs} Unit -> Unit = (x: Unit) =>  // error // limitation
-      expect[{*} Cap] {
+    val op2: Unit ->{fs} Unit = (x: Unit) =>  // error // limitation
+      expect[Cap^] {
         fs.use()
         io
       }
 
-    val op3: {io} Unit -> Unit = (x: Unit) =>  // ok
-      expect[{*} Cap] {
+    val op3: Unit ->{io} Unit = (x: Unit) =>  // ok
+      expect[Cap^] {
         io.use()
         io
       }
 
-    val op4: {} Unit -> Unit = (x: Unit) =>  // ok
-      expect[{*} Cap](io)
+    val op4: Unit ->{} Unit = (x: Unit) =>  // ok
+      expect[Cap^](io)
 
-    val op: {} Unit -> Unit = (x: Unit) =>  // error
-      expect[{*} Cap] {
+    val op: Unit -> Unit = (x: Unit) =>  // error
+      expect[Cap^] {
         io.use()
         io
       }
     op
   }
 
-  val leaked: {} Unit -> Unit = withCap(badOp)
+  val leaked: Unit -> Unit = withCap(badOp)
   leaked(())
 }

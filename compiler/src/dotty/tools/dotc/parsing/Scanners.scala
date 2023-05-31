@@ -523,7 +523,8 @@ object Scanners {
      *
      *      The following tokens can start an indentation region:
      *
-     *         :  =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match
+     *         :  =  =>  <-  if  then  else  while  do  try  catch  
+     *         finally  for  yield  match  throw  return  with
      *
      *      Inserting an INDENT starts a new indentation region with the indentation of the current
      *      token as indentation width.
@@ -610,11 +611,17 @@ object Scanners {
               case r: Indented =>
                 insert(OUTDENT, offset)
                 handleNewIndentWidth(r.enclosing, ir =>
-                  val lw = lastWidth
-                  errorButContinue(
-                    em"""The start of this line does not match any of the previous indentation widths.
-                        |Indentation width of current line : $nextWidth
-                        |This falls between previous widths: ${ir.width} and $lw"""))
+                  if next.token == DOT
+                      && !nextWidth.isClose(r.indentWidth)
+                      && !nextWidth.isClose(ir.indentWidth)
+                  then
+                    ir.otherIndentWidths += nextWidth
+                  else
+                    val lw = lastWidth
+                    errorButContinue(
+                      em"""The start of this line does not match any of the previous indentation widths.
+                          |Indentation width of current line : $nextWidth
+                          |This falls between previous widths: ${ir.width} and $lw"""))
               case r =>
                 if skipping then
                   if r.enclosing.isClosedByUndentAt(nextWidth) then
@@ -1664,6 +1671,17 @@ object Scanners {
     }
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
+
+    /** Does `this` differ from `that` by not more than a single space? */
+    def isClose(that: IndentWidth): Boolean = this match
+      case Run(ch1, n1) =>
+        that match
+          case Run(ch2, n2) => ch1 == ch2 && ch1 != '\t' && (n1 - n2).abs <= 1
+          case Conc(l, r) => false
+      case Conc(l1, r1) =>
+        that match
+          case Conc(l2, r2) => l1 == l2 && r1.isClose(r2)
+          case _ => false
 
     def toPrefix: String = this match {
       case Run(ch, n) => ch.toString * n

@@ -133,9 +133,8 @@ object Scala2Unpickler {
 /** Unpickle symbol table information descending from a class and/or module root
  *  from an array of bytes.
  *  @param bytes      bytearray from which we unpickle
- *  @param classroot  the top-level class which is unpickled, or NoSymbol if inapplicable
- *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
- *  @param filename   filename associated with bytearray, only used for error messages
+ *  @param classRoot  the top-level class which is unpickled, or NoSymbol if inapplicable
+ *  @param moduleClassRoot the top-level module class which is unpickled, or NoSymbol if inapplicable
  */
 class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
   extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {
@@ -154,6 +153,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   assert(moduleRoot.isTerm)
 
   checkVersion(using ictx)
+  checkScala2Stdlib(using ictx)
 
   private val loadingMirror = defn(using ictx) // was: mirrorThatLoaded(classRoot)
 
@@ -239,6 +239,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         "\n found: " + major + "." + minor +
         " in " + source)
   }
+
+  private def checkScala2Stdlib(using Context): Unit =
+    assert(!ctx.settings.Yscala2Stdlib.value, "No Scala 2 libraries should be unpickled under -Yscala2-stdlib")
 
   /** The `decls` scope associated with given symbol */
   protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope(0))

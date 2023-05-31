@@ -16,6 +16,8 @@ import util.Spans._
 import reporting._
 import config.Printers.{ transforms => debug }
 
+import patmat.Typ
+
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
  *  Any remaining type tests
@@ -51,7 +53,8 @@ object TypeTestsCasts {
    *  6. if `P = T1 | T2` or `P = T1 & T2`, checkable(X, T1) && checkable(X, T2).
    *  7. if `P` is a refinement type, "it's a refinement type"
    *  8. if `P` is a local class which is not statically reachable from the scope where `X` is defined, "it's a local class"
-   *  9. otherwise, ""
+   *  9. if `X` is `T1 | T2`, checkable(T1, P) && checkable(T2, P).
+   *  10. otherwise, ""
    */
   def whyUncheckable(X: Type, P: Type, span: Span)(using Context): String = atPhase(Phases.refchecksPhase.next) {
     extension (inline s1: String) inline def &&(inline s2: String): String = if s1 == "" then s2 else s1
@@ -129,7 +132,8 @@ object TypeTestsCasts {
 
     }
 
-    def recur(X: Type, P: Type): String = (X <:< P) ||| (P.dealias match {
+    def recur(X: Type, P: Type): String = trace(s"recur(${X.show}, ${P.show})") {
+      (X <:< P) ||| P.dealias.match
       case _: SingletonType     => ""
       case _: TypeProxy
       if isAbstract(P)          => i"it refers to an abstract type member or type parameter"
@@ -138,7 +142,7 @@ object TypeTestsCasts {
           case defn.ArrayOf(tpE)   => recur(tpE, tpT)
           case _                   => recur(defn.AnyType, tpT)
         }
-      case tpe: AppliedType     =>
+      case tpe @ AppliedType(tycon, targs)     =>
         X.widenDealias match {
           case OrType(tp1, tp2) =>
             // This case is required to retrofit type inference,
@@ -147,10 +151,10 @@ object TypeTestsCasts {
             //   - T1 & T2 <:< T3
             // See TypeComparer#either
             recur(tp1, P) && recur(tp2, P)
-          case _ =>
+
+          case x =>
             // always false test warnings are emitted elsewhere
-            X.classSymbol.exists && P.classSymbol.exists &&
-              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
+            TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
             || typeArgsTrivial(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
@@ -164,7 +168,7 @@ object TypeTestsCasts {
       if P.classSymbol.isLocal && foundClasses(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
         i"it's a local class"
       case _                    => ""
-    })
+    }
 
     val res = recur(X.widen, replaceP(P))
 
@@ -302,8 +306,8 @@ object TypeTestsCasts {
 
         /** Transform isInstanceOf
          *
-         *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
-         *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A | B]          ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
+         *    expr.isInstanceOf[A & B]          ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
          *    expr.isInstanceOf[Tuple]          ~~>  scala.runtime.Tuples.isInstanceOfTuple(expr)
          *    expr.isInstanceOf[EmptyTuple]     ~~>  scala.runtime.Tuples.isInstanceOfEmptyTuple(expr)
          *    expr.isInstanceOf[NonEmptyTuple]  ~~>  scala.runtime.Tuples.isInstanceOfNonEmptyTuple(expr)

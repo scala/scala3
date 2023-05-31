@@ -52,7 +52,6 @@ object Mirror {
 
   extension [T](p: ProductOf[T])
     /** Create a new instance of type `T` with elements taken from product `a`. */
-    @annotation.experimental
     def fromProductTyped[A <: scala.Product, Elems <: p.MirroredElemTypes](a: A)(using m: ProductOf[A] { type MirroredElemTypes = Elems }): T =
       p.fromProduct(a)
 

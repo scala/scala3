@@ -1,4 +1,5 @@
 import java.io.File
+import java.net.URI
 import java.nio.file.Paths
 import sbt._
 import Build._
@@ -48,7 +49,7 @@ object DocumentationWebsite {
     sbt.IO.touch(inkuireDestinationFile)
 
     def tryFetch(retries: Int, timeout: Duration): Unit = {
-      val downloadProcess = (new java.net.URL(inkuireLink) #> inkuireDestinationFile).run()
+      val downloadProcess = (new URI(inkuireLink).toURL #> inkuireDestinationFile).run()
       val result: Future[Int] = Future(blocking(downloadProcess.exitValue()))
       try {
         Await.result(result, timeout) match {

@@ -439,7 +439,28 @@ object Types {
       case _ => NoType
     }
 
-    /** Is this a higher-kinded type lambda with given parameter variances? */
+    /** Is this a higher-kinded type lambda with given parameter variances?
+     *  These lambdas are used as the RHS of higher-kinded abstract types or
+     *  type aliases. The variance info is strictly needed only for abstract types.
+     *  For type aliases we allow the user to write the variance, and we use it
+     *  to check that the structural variance of the type lambda is compatible
+     *  with the declared variance, and that the declared variance is compatible
+     *  with any abstract types that are overridden.
+     *
+     *  But it's important to note that the variance of a type parameter in
+     *  a type lambda is strictly determined by how it occurs in the body of
+     *  the lambda. Declared variances have no influence here. For instance
+     *  the following two lambdas are variant, even though no parameter variance
+     *  is indicated:
+     *
+     *      [X] =>> List[X]      // covariant
+     *      [X] =>> X => Unit    // contravariant
+     *
+     *  Why store declared variances in lambdas at all? It's because type symbols are just
+     *  normal symbols, and there is no field in a Symbol that keeps a list of variances.
+     *  Generally we have the design that we store all info that applies to some symbols
+     *  but not others in the symbol's types.
+     */
     def isDeclaredVarianceLambda: Boolean = false
 
     /** Does this type contain wildcard types? */
@@ -735,33 +756,24 @@ object Types {
         // TODO: change tp.parent to nullable or other values
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
-        else {
+        else
           //println(s"find member $pre . $name in $tp")
 
           // We have to be careful because we might open the same (wrt eq) recursive type
-          // twice during findMember which risks picking the wrong prefix in the `substRecThis(rt, pre)`
-          // call below. To avoid this problem we do a defensive copy of the recursive
-          // type first. But if we do this always we risk being inefficient and we ran into
-          // stackoverflows when compiling pos/hk.scala under the refinement encoding
-          // of hk-types. So we only do a copy if the type
-          // is visited again in a recursive call to `findMember`, as tracked by `tp.opened`.
-          // Furthermore, if this happens we mark the original recursive type with `openedTwice`
-          // which means that we always defensively copy the type in the future. This second
-          // measure is necessary because findMember calls might be cached, so do not
-          // necessarily appear in nested order.
-          // Without the `openedTwice` trick, Typer.scala fails to Ycheck
-          // at phase resolveSuper.
+          // twice during findMember with two different prefixes, which risks picking the wrong prefix
+          // in the `substRecThis(rt, pre)` call below. To avoid this problem we do a defensive copy
+          // of the recursive type if the new prefix `pre` is neq the prefix with which the
+          // type was previously opened.
+
+          val openedPre = tp.openedWithPrefix
           val rt =
-            if (tp.opened) { // defensive copy
-              tp.openedTwice = true
+            if openedPre.exists && (openedPre ne pre) then // defensive copy
               RecType(rt => tp.parent.substRecThis(tp, rt.recThis))
-            }
             else tp
-          rt.opened = true
+          rt.openedWithPrefix = pre
           try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
-          finally
-            if (!rt.openedTwice) rt.opened = false
-        }
+          finally rt.openedWithPrefix = NoType
+      end goRec
 
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
@@ -2102,7 +2114,7 @@ object Types {
      */
     final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
 
-    /** Is this reference the root capability `*` ? */
+    /** Is this reference the root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
@@ -3014,7 +3026,8 @@ object Types {
   abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
     override def underlying(using Context): Type = supertpe
     override def superType(using Context): Type =
-      thistpe.baseType(supertpe.typeSymbol)
+      if supertpe.typeSymbol.exists then thistpe.baseType(supertpe.typeSymbol)
+      else super.superType
     def derivedSuperType(thistpe: Type, supertpe: Type)(using Context): Type =
       if ((thistpe eq this.thistpe) && (supertpe eq this.supertpe)) this
       else SuperType(thistpe, supertpe)
@@ -3191,9 +3204,8 @@ object Types {
    */
   class RecType(parentExp: RecType => Type) extends RefinedOrRecType with BindingType {
 
-    // See discussion in findMember#goRec why these vars are needed
-    private[Types] var opened: Boolean = false
-    private[Types] var openedTwice: Boolean = false
+    // See discussion in findMember#goRec why this field is needed
+    private[Types] var openedWithPrefix: Type = NoType
 
     val parent: Type = parentExp(this: @unchecked)
 
@@ -3890,7 +3902,8 @@ object Types {
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
      */
-    def isParamDependent(using Context): Boolean = paramDependencyStatus == TrueDeps
+    def isParamDependent(using Context): Boolean =
+      paramDependencyStatus == TrueDeps || paramDependencyStatus == CaptureDeps
 
     /** Is there a dependency involving a reference in a capture set, but
      *  otherwise no true result dependency?
@@ -3970,10 +3983,15 @@ object Types {
 
     protected def toPInfo(tp: Type)(using Context): PInfo
 
+    /** If `tparam` is a sealed type parameter symbol of a polymorphic method, add
+     *  a @caps.Sealed annotation to the upperbound in `tp`.
+     */
+    protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type = tp
+
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(using Context): Type =
       if (params.isEmpty) resultType
       else apply(params.map(_.paramName))(
-        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+        tl => params.map(param => toPInfo(addSealed(param, tl.integrate(params, param.paramInfo)))),
         tl => tl.integrate(params, resultType))
   }
 
@@ -4294,6 +4312,16 @@ object Types {
         paramInfosExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(using Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
+
+    override protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type =
+      tparam match
+        case tparam: Symbol if tparam.is(Sealed) =>
+          tp match
+            case tp @ TypeBounds(lo, hi) =>
+              tp.derivedTypeBounds(lo,
+                AnnotatedType(hi, Annotation(defn.Caps_SealedAnnot, tparam.span)))
+            case _ => tp
+        case _ => tp
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -4999,9 +5027,9 @@ object Types {
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
-          else givenSelf match
-            case givenSelf @ EventuallyCapturingType(tp, _) =>
-              givenSelf.derivedAnnotatedType(tp & appliedRef, givenSelf.annot)
+          else givenSelf.dealiasKeepAnnots match
+            case givenSelf1 @ EventuallyCapturingType(tp, _) =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
             case _ =>
               AndType(givenSelf, appliedRef)
         }

@@ -18,7 +18,7 @@ trait TypeAssigner {
   import TypeAssigner.*
 
   /** The qualifying class of a this or super with prefix `qual` (which might be empty).
-   *  @param packageOk   The qualifier may refer to a package.
+   *  @param packageOK   The qualifier may refer to a package.
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(using Context): Symbol = {
     def qualifies(sym: Symbol) =

@@ -159,8 +159,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *   @param required   flags the result's symbol must have
    *   @param excluded   flags the result's symbol must not have
    *   @param pos        indicates position to use for error reporting
+   *   @param altImports a ListBuffer in which alternative imported references are
+   *                     collected in case `findRef` is called from an expansion of
+   *                     an extension method, i.e. when `e.m` is expanded to `m(e)` and
+   *                     a reference for `m` is searched. `null` in all other situations.
    */
-  def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos)(using Context): Type = {
+  def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos,
+      altImports: mutable.ListBuffer[TermRef] | Null = null)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
     def suppressErrors = excluded.is(ConstructorProxy)
@@ -231,15 +236,52 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx))
           previous
 
-      /** Recurse in outer context. If final result is same as `previous`, check that it
-       *  is new or shadowed. This order of checking is necessary since an
-       *  outer package-level definition might trump two conflicting inner
-       *  imports, so no error should be issued in that case. See i7876.scala.
+      /** Assemble and check alternatives to an imported reference. This implies:
+       *   - If we expand an extension method (i.e. altImports != null),
+       *     search imports on the same level for other possible resolutions of `name`.
+       *     The result and altImports together then contain all possible imported
+       *     references of the highest possible precedence, where `NamedImport` beats
+       *     `WildImport`.
+       *   - Find a posssibly shadowing reference in an outer context.
+       *     If the result is the same as `previous`, check that it is new or
+       *     shadowed. This order of checking is necessary since an outer package-level
+       *     definition might trump two conflicting inner imports, so no error should be
+       *     issued in that case. See i7876.scala.
+       *  @param previous   the previously found reference (which is an import)
+       *  @param prevPrec   the precedence of the reference (either NamedImport or WildImport)
+       *  @param prevCtx    the context in which the reference was found
+       *  @param using_Context the outer context of `precCtx`
        */
-      def recurAndCheckNewOrShadowed(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
-        val found = findRefRecur(previous, prevPrec, prevCtx)
-        if found eq previous then checkNewOrShadowed(found, prevPrec)(using prevCtx)
-        else found
+      def checkImportAlternatives(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
+
+        def addAltImport(altImp: TermRef) =
+          if !TypeComparer.isSameRef(previous, altImp)
+              && !altImports.uncheckedNN.exists(TypeComparer.isSameRef(_, altImp))
+          then
+            altImports.uncheckedNN += altImp
+
+        if Feature.enabled(Feature.relaxedExtensionImports) && altImports != null && ctx.isImportContext then
+          val curImport = ctx.importInfo.uncheckedNN
+          namedImportRef(curImport) match
+            case altImp: TermRef =>
+              if prevPrec == WildImport then
+                // Discard all previously found references and continue with `altImp`
+                altImports.clear()
+                checkImportAlternatives(altImp, NamedImport, ctx)(using ctx.outer)
+              else
+                addAltImport(altImp)
+                checkImportAlternatives(previous, prevPrec, prevCtx)(using ctx.outer)
+            case _ =>
+              if prevPrec == WildImport then
+                wildImportRef(curImport) match
+                  case altImp: TermRef => addAltImport(altImp)
+                  case _ =>
+              checkImportAlternatives(previous, prevPrec, prevCtx)(using ctx.outer)
+        else
+          val found = findRefRecur(previous, prevPrec, prevCtx)
+          if found eq previous then checkNewOrShadowed(found, prevPrec)(using prevCtx)
+          else found
+      end checkImportAlternatives
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean): Type =
         imp.importSym.info match
@@ -329,7 +371,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if (ctx.scope eq EmptyScope) previous
         else {
           var result: Type = NoType
-
           val curOwner = ctx.owner
 
           /** Is curOwner a package object that should be skipped?
@@ -367,11 +408,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // Does reference `tp` refer only to inherited symbols?
           def isInherited(denot: Denotation) =
             def isCurrent(mbr: SingleDenotation): Boolean =
-              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner
+              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner || ctx.owner.is(Package)
             denot match
               case denot: SingleDenotation => !isCurrent(denot)
               case denot => !denot.hasAltWith(isCurrent)
 
+          /* It is an error if an identifier x is available as an inherited member in an inner scope
+           * and the same name x is defined in an outer scope in the same source file, unless
+           * the inherited member (has an overloaded alternative that) coincides with
+           * (an overloaded alternative of) the definition x.
+           */
           def checkNoOuterDefs(denot: Denotation, last: Context, prevCtx: Context): Unit =
             def sameTermOrType(d1: SingleDenotation, d2: Denotation) =
               d2.containsSym(d1.symbol) || d2.hasUniqueSym && {
@@ -388,9 +434,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val owner = outer.owner
             if (owner eq last.owner) && (outer.scope eq last.scope) then
               checkNoOuterDefs(denot, outer, prevCtx)
-            else if !owner.is(Package) then
-              val scope = if owner.isClass then owner.info.decls else outer.scope
-              val competing = scope.denotsNamed(name).filterWithFlags(required, excluded)
+            else if !owner.isRoot then
+              val found =
+                if owner.is(Package) then
+                  owner.denot.asClass.membersNamed(name)
+                    .filterWithPredicate(d => !d.symbol.is(Package) && d.symbol.source == denot.symbol.source)
+                else
+                  val scope = if owner.isClass then owner.info.decls else outer.scope
+                  scope.denotsNamed(name)
+              val competing = found.filterWithFlags(required, excluded | Synthetic)
               if competing.exists then
                 val symsMatch = competing
                   .filterWithPredicate(sd => sameTermOrType(sd, denot))
@@ -450,11 +502,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             else if (isPossibleImport(NamedImport) && (curImport nen outer.importInfo)) {
               val namedImp = namedImportRef(curImport.uncheckedNN)
               if (namedImp.exists)
-                recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)
+                checkImportAlternatives(namedImp, NamedImport, ctx)(using outer)
               else if (isPossibleImport(WildImport) && !curImport.nn.importSym.isCompleting) {
                 val wildImp = wildImportRef(curImport.uncheckedNN)
                 if (wildImp.exists)
-                  recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(using outer)
+                  checkImportAlternatives(wildImp, WildImport, ctx)(using outer)
                 else {
                   updateUnimported()
                   loop(ctx)(using outer)
@@ -556,7 +608,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       ownType match
         case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
           findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos) match
-            case shadowed: TermRef =>
+            case shadowed: TermRef if !shadowed.symbol.maybeOwner.isEmptyPackage =>
               pt match
                 case pt: FunOrPolyProto =>
                   def err(shadowedIsApply: Boolean) =
@@ -1337,6 +1389,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedFunctionType(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(args, body) = tree
+    body match
+      case untpd.CapturesAndResult(refs, result) =>
+        return typedUnadapted(untpd.makeRetaining(
+          cpy.Function(tree)(args, result), refs, tpnme.retains), pt)
+      case _ =>
     var (funFlags, erasedParams) = tree match {
       case tree: untpd.FunctionWithMods => (tree.mods.flags, tree.erasedParams)
       case _ => (EmptyFlags, args.map(_ => false))
@@ -2214,15 +2271,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (tree.bound.isEmpty && isFullyDefined(pt, ForceDegree.none)) TypeTree(pt)
       else typed(tree.bound)
     val sel1 = typed(tree.selector)
+    val sel1Tpe = sel1.tpe
+    if sel1Tpe.isLambdaSub then
+      report.error(MatchTypeScrutineeCannotBeHigherKinded(sel1Tpe), sel1.srcPos)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
-    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
+    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
     assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 
-  def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(using Context): ByNameTypeTree = {
-    val result1 = typed(tree.result)
-    assignType(cpy.ByNameTypeTree(tree)(result1), result1)
-  }
+  def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(using Context): ByNameTypeTree = tree.result match
+    case untpd.CapturesAndResult(refs, tpe) =>
+      typedByNameTypeTree(
+        cpy.ByNameTypeTree(tree)(untpd.makeRetaining(tpe, refs, tpnme.retainsByName)))
+    case _ =>
+      val result1 = typed(tree.result)
+      assignType(cpy.ByNameTypeTree(tree)(result1), result1)
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree, pt: Type)(using Context): Tree =
     val TypeBoundsTree(lo, hi, alias) = tree
@@ -2378,11 +2441,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = {
-    if (!sym.info.exists) { // it's a discarded synthetic case class method, drop it
-      assert(sym.is(Synthetic) && desugar.isRetractableCaseClassMethodName(sym.name))
+    def canBeInvalidated(sym: Symbol): Boolean =
+      sym.is(Synthetic)
+      && (desugar.isRetractableCaseClassMethodName(sym.name) ||
+        (sym.isConstructor && sym.owner.derivesFrom(defn.JavaRecordClass)))
+
+    if !sym.info.exists then
+      // it's a discarded method (synthetic case class method or synthetic java record constructor), drop it
+      assert(canBeInvalidated(sym))
       sym.owner.info.decls.openForMutations.unlink(sym)
       return EmptyTree
-    }
+
     // TODO: - Remove this when `scala.language.experimental.erasedDefinitions` is no longer experimental.
     //       - Modify signature to `erased def erasedValue[T]: T`
     if sym.eq(defn.Compiletime_erasedValue) then
@@ -3033,6 +3102,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case untpd.EmptyTree => tpd.EmptyTree
           case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.Splice => typedSplice(tree, pt)
+          case tree: untpd.SplicePattern => typedSplicePattern(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)
           case _ => typedUnadapted(desugar(tree, pt), pt, locked)
@@ -3409,11 +3479,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect)
 
     def tryExtension(using Context): Tree =
-      findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos) match
+      val altImports = new mutable.ListBuffer[TermRef]()
+      findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos, altImports) match
         case ref: TermRef =>
-          extMethodApply(untpd.TypedSplice(tpd.ref(ref).withSpan(tree.nameSpan)), qual, pt)
+          def tryExtMethod(ref: TermRef)(using Context) =
+            extMethodApply(untpd.TypedSplice(tpd.ref(ref).withSpan(tree.nameSpan)), qual, pt)
+          if altImports.isEmpty then
+            tryExtMethod(ref)
+          else
+            // Try all possible imports and collect successes and failures
+            val successes, failures = new mutable.ListBuffer[(Tree, TyperState)]
+            for alt <- ref :: altImports.toList do
+              val nestedCtx = ctx.fresh.setNewTyperState()
+              val app = tryExtMethod(alt)(using nestedCtx)
+              (if nestedCtx.reporter.hasErrors then failures else successes)
+                += ((app, nestedCtx.typerState))
+            typr.println(i"multiple extensioin methods, success: ${successes.toList}, failure: ${failures.toList}")
+
+            def pick(alt: (Tree, TyperState)): Tree =
+              val (app, ts) = alt
+              ts.commit()
+              app
+
+            successes.toList match
+              case Nil => pick(failures.head)
+              case success :: Nil => pick(success)
+              case (expansion1, _) :: (expansion2, _) :: _ =>
+                report.error(AmbiguousExtensionMethod(tree, expansion1, expansion2), tree.srcPos)
+                expansion1
         case _ =>
           EmptyTree
+    end tryExtension
 
     def nestedFailure(ex: TypeError) =
       rememberSearchFailure(qual,
@@ -3508,7 +3604,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     adapt(tree, pt, ctx.typerState.ownedVars)
 
   private def adapt1(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
-    assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported)
+    assert(pt.exists && !pt.isInstanceOf[ExprType] || ctx.reporter.errorsReported, i"tree: $tree, pt: $pt")
     def methodStr = err.refStr(methPart(tree).tpe)
 
     def readapt(tree: Tree)(using Context) = adapt(tree, pt, locked)

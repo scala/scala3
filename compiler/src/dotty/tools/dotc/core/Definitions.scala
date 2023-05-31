@@ -106,7 +106,7 @@ class Definitions {
    *      }
    *  ImpureXYZFunctionN follow this template:
    *
-   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {*} XYZFunctionN[T0,...,T{N-1}, R]
+   *      type ImpureXYZFunctionN[-T0,...,-T{N-1}, +R] = {cap} XYZFunctionN[T0,...,T{N-1}, R]
    */
   private def newFunctionNType(name: TypeName): Symbol = {
     val impure = name.startsWith("Impure")
@@ -688,6 +688,7 @@ class Definitions {
   @tu lazy val JavaCalendarClass: ClassSymbol = requiredClass("java.util.Calendar")
   @tu lazy val JavaDateClass: ClassSymbol = requiredClass("java.util.Date")
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
+  @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
@@ -798,6 +799,7 @@ class Definitions {
 
   @tu lazy val ReflectPackageClass: Symbol = requiredPackage("scala.reflect.package").moduleClass
   @tu lazy val ClassTagClass: ClassSymbol = requiredClass("scala.reflect.ClassTag")
+    @tu lazy val ClassTagClass_unapply: Symbol = ClassTagClass.requiredMethod("unapply")
   @tu lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
     @tu lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
 
@@ -967,11 +969,14 @@ class Definitions {
   @tu lazy val BreakClass: Symbol = requiredClass("scala.util.boundary.Break")
 
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
-    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("*")
+    @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
+    @tu lazy val Caps_SealedAnnot: ClassSymbol = requiredClass("scala.caps.Sealed")
+
+  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1020,6 +1025,7 @@ class Definitions {
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
+  @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val WithPureFunsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WithPureFuns")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
@@ -1509,7 +1515,6 @@ class Definitions {
 
   /** Is an context function class.
    *   - ContextFunctionN for N >= 0
-   *   - ErasedContextFunctionN for N > 0
    */
   def isContextFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isContextFunction
 
@@ -1941,6 +1946,14 @@ class Definitions {
       case Some(pkgs) => pkgs.contains(sym.owner)
       case none => false
 
+  /** Experimental definitions that can nevertheless be accessed from a stable
+   *  compiler if capture checking is enabled.
+   */
+  @tu lazy val ccExperimental: Set[Symbol] = Set(
+    CapsModule, CapsModule.moduleClass, PureClass,
+    CapabilityAnnot, RequiresCapabilityAnnot,
+    RetainsAnnot, RetainsByNameAnnot, WithPureFunsAnnot)
+
   // ----- primitive value class machinery ------------------------------------------
 
   class PerRun[T](generate: Context ?=> T) {
@@ -2038,15 +2051,17 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
-    SimpleIdentityMap.empty[Symbol]
-      .updated(AnyClass, ObjectClass)
-      .updated(MatchableClass, ObjectClass)
-      .updated(AnyValClass, ObjectClass)
-      .updated(SingletonClass, ObjectClass)
-      .updated(TupleClass, ProductClass)
-      .updated(NonEmptyTupleClass, ProductClass)
-      .updated(PairClass, ObjectClass)
+  @tu lazy val specialErasure: collection.Map[Symbol, ClassSymbol] =
+    val m = mutable.Map[Symbol, ClassSymbol]()
+    m(AnyClass) = ObjectClass
+    m(MatchableClass) = ObjectClass
+    m(PureClass) = ObjectClass
+    m(AnyValClass) = ObjectClass
+    m(SingletonClass) = ObjectClass
+    m(TupleClass) = ProductClass
+    m(NonEmptyTupleClass) = ProductClass
+    m(PairClass) = ObjectClass
+    m
 
   // ----- Initialization ---------------------------------------------------
 

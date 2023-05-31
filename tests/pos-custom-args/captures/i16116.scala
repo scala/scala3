@@ -17,7 +17,7 @@ object Test {
 
   @capability
   class CpsTransform[F[_]] {
-     def await[T](ft: F[T]): { this } T = ???
+     def await[T](ft: F[T]): T^{ this } = ???
   }
 
   transparent inline def cpsAsync[F[_]](using m:CpsMonad[F]) =
@@ -27,7 +27,7 @@ object Test {
       def apply[A](expr: (CpsTransform[F], C) ?=> A): F[A] = ???
   }
 
-  def asyncPlus[F[_]](a:Int, b:F[Int])(using cps: CpsTransform[F]): { cps } Int =
+  def asyncPlus[F[_]](a:Int, b:F[Int])(using cps: CpsTransform[F]): Int^{ cps } =
     a + (cps.await(b).asInstanceOf[Int])
 
   def testExample1Future(): Unit =

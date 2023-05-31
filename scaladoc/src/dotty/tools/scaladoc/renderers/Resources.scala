@@ -2,16 +2,10 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import scala.jdk.CollectionConverters._
-import java.net.URI
-import java.net.URL
-import dotty.tools.scaladoc.site._
-import scala.util.Try
-import org.jsoup.Jsoup
+import java.net.{URI, URL}
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
-import java.io.File
 import dotty.tools.scaladoc.translators.FilterAttributes
 import util._
 import translators._
@@ -190,7 +184,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
     def docPartRenderPlain(d: DocPart): String =
       import dotty.tools.scaladoc.tasty.comments.wiki._
-      import com.vladsch.flexmark.util.ast.{Node => MdNode}
       def renderPlain(wd: WikiDocElement): String =
         wd match
           case Paragraph(text) => renderPlain(text)
@@ -572,4 +565,4 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case Resource.URL(url) =>
           Nil
         case Resource.URLToCopy(url, dest) =>
-          Seq(copy(new URL(url).openStream(), dest))
+          Seq(copy(URI(url).toURL.openStream(), dest))

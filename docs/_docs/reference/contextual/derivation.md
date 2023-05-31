@@ -312,9 +312,8 @@ worked out example of such a library, see [Shapeless 3](https://github.com/miles
 
 ## How to write a type class `derived` method using low level mechanisms
 
-The low-level method we will use to implement a type class `derived` method in this example exploits three new
-type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
-`Eq` type class,
+The low-level method we will use to implement a type class `derived` method in this example exploits three new type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`.
+Given this definition of the `Eq` type class,
 
 ```scala
 trait Eq[T]:
@@ -322,77 +321,98 @@ trait Eq[T]:
 ```
 
 we need to implement a method `Eq.derived` on the companion object of `Eq` that produces a given instance for `Eq[T]` given
-a `Mirror[T]`. Here is a possible implementation,
+a `Mirror[T]`.
+Here is a possible implementation,
 
 ```scala
 import scala.deriving.Mirror
 
-inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
-  val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
-  inline m match                                               // (2)
+inline def derived[T](using m: Mirror.Of[T]): Eq[T] =
+  lazy val elemInstances = summonInstances[T, m.MirroredElemTypes] // (1)
+  inline m match                                                   // (2)
     case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
     case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
 ```
 
-Note that `derived` is defined as an `inline` given. This means that the method will be expanded at
-call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a
-`derived Eq` clause), and also that it can be used recursively if necessary, to compute instances for children.
+Note that `derived` is defined as an `inline def`.
+This means that the method will be inlined at all call sites (for instance the compiler generated instance definitions in the companion objects of ADTs which have a `deriving Eq` clause).
 
-The body of this method (1) first materializes the `Eq` instances for all the child types of type the instance is
-being derived for. This is either all the branches of a sum type or all the fields of a product type. The
-implementation of `summonAll` is `inline` and uses Scala 3's `summonInline` construct to collect the instances as a
-`List`,
+> Inlining of complex code is potentially expensive if overused (meaning slower compile times) so we should be careful to limit how many times `derived` is called for the same type.
+> For example, when computing an instance for a sum type, it may be necessary to call `derived` recursively to compute an instance for a one of its child cases.
+> That child case may in turn be a product type, that declares a field referring back to the parent sum type.
+> To compute the instance for this field, we should not call `derived` recursively, but instead summon from the context.
+> Typically the found given instance will be the root given instance that initially called `derived`.
+
+The body of `derived` (1) first materializes the `Eq` instances for all the child types of type the instance is being derived for.
+This is either all the branches of a sum type or all the fields of a product type.
+The implementation of `summonInstances` is `inline` and uses Scala 3's `summonInline` construct to collect the instances as a `List`,
 
 ```scala
-inline def summonAll[T <: Tuple]: List[Eq[_]] =
-  inline erasedValue[T] match
+inline def summonInstances[T, Elems <: Tuple]: List[Eq[?]] =
+  inline erasedValue[Elems] match
+    case _: (elem *: elems) => deriveOrSummon[T, elem] :: summonInstances[T, elems]
     case _: EmptyTuple => Nil
-    case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
+
+inline def deriveOrSummon[T, Elem]: Eq[Elem] =
+  inline erasedValue[Elem] match
+    case _: T => deriveRec[T, Elem]
+    case _    => summonInline[Eq[Elem]]
+
+inline def deriveRec[T, Elem]: Eq[Elem] =
+  inline erasedValue[T] match
+    case _: Elem => error("infinite recursive derivation")
+    case _       => Eq.derived[Elem](using summonInline[Mirror.Of[Elem]]) // recursive derivation
 ```
 
 with the instances for children in hand the `derived` method uses an `inline match` to dispatch to methods which can
-construct instances for either sums or products (2). Note that because `derived` is `inline` the match will be
-resolved at compile-time and only the left-hand side of the matching case will be inlined into the generated code with
-types refined as revealed by the match.
+construct instances for either sums or products (2).
+Note that because `derived` is `inline` the match will be resolved at compile-time and only the right-hand side of the matching case will be inlined into the generated code with types refined as revealed by the match.
 
-In the sum case, `eqSum`, we use the runtime `ordinal` values of the arguments to `eqv` to first check if the two
-values are of the same subtype of the ADT (3) and then, if they are, to further test for equality based on the `Eq`
-instance for the appropriate ADT subtype using the auxiliary method `check` (4).
+In the sum case, `eqSum`, we use the runtime `ordinal` values of the arguments to `eqv` to first check if the two values are of the same subtype of the ADT (3) and then, if they are, to further test for equality based on the `Eq` instance for the appropriate ADT subtype using the auxiliary method `check` (4).
 
 ```scala
 import scala.deriving.Mirror
 
-def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =
+def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[?]]): Eq[T] =
   new Eq[T]:
     def eqv(x: T, y: T): Boolean =
       val ordx = s.ordinal(x)                            // (3)
-      (s.ordinal(y) == ordx) && check(elems(ordx))(x, y) // (4)
+      (s.ordinal(y) == ordx) && check(x, y, elems(ordx)) // (4)
 ```
 
-In the product case, `eqProduct` we test the runtime values of the arguments to `eqv` for equality as products based
-on the `Eq` instances for the fields of the data type (5),
+In the product case, `eqProduct` we test the runtime values of the arguments to `eqv` for equality as products based on the `Eq` instances for the fields of the data type (5),
 
 ```scala
 import scala.deriving.Mirror
 
-def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
+def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[?]]): Eq[T] =
   new Eq[T]:
     def eqv(x: T, y: T): Boolean =
-      iterator(x).zip(iterator(y)).zip(elems.iterator).forall {  // (5)
-        case ((x, y), elem) => check(elem)(x, y)
-      }
+      iterable(x).lazyZip(iterable(y)).lazyZip(elems).forall(check)
 ```
+
+Both `eqSum` and `eqProduct` have a by-name parameter `elems`, because the argument passed is the reference to the lazy `elemInstances` value.
 
 Pulling this all together we have the following complete implementation,
 
 ```scala
 import scala.deriving.*
-import scala.compiletime.{erasedValue, summonInline}
+import scala.compiletime.{error, erasedValue, summonInline}
 
-inline def summonAll[T <: Tuple]: List[Eq[_]] =
-  inline erasedValue[T] match
+inline def summonInstances[T, Elems <: Tuple]: List[Eq[?]] =
+  inline erasedValue[Elems] match
+    case _: (elem *: elems) => deriveOrSummon[T, elem] :: summonInstances[T, elems]
     case _: EmptyTuple => Nil
-    case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
+
+inline def deriveOrSummon[T, Elem]: Eq[Elem] =
+  inline erasedValue[Elem] match
+    case _: T => deriveRec[T, Elem]
+    case _    => summonInline[Eq[Elem]]
+
+inline def deriveRec[T, Elem]: Eq[Elem] =
+  inline erasedValue[T] match
+    case _: Elem => error("infinite recursive derivation")
+    case _       => Eq.derived[Elem](using summonInline[Mirror.Of[Elem]]) // recursive derivation
 
 trait Eq[T]:
   def eqv(x: T, y: T): Boolean
@@ -401,26 +421,25 @@ object Eq:
   given Eq[Int] with
     def eqv(x: Int, y: Int) = x == y
 
-  def check(elem: Eq[_])(x: Any, y: Any): Boolean =
+  def check(x: Any, y: Any, elem: Eq[?]): Boolean =
     elem.asInstanceOf[Eq[Any]].eqv(x, y)
 
-  def iterator[T](p: T) = p.asInstanceOf[Product].productIterator
+  def iterable[T](p: T): Iterable[Any] = new AbstractIterable[Any]:
+    def iterator: Iterator[Any] = p.asInstanceOf[Product].productIterator
 
-  def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[_]]): Eq[T] =
+  def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[?]]): Eq[T] =
     new Eq[T]:
       def eqv(x: T, y: T): Boolean =
         val ordx = s.ordinal(x)
-        (s.ordinal(y) == ordx) && check(elems(ordx))(x, y)
+        (s.ordinal(y) == ordx) && check(x, y, elems(ordx))
 
-  def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[_]]): Eq[T] =
+  def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[?]]): Eq[T] =
     new Eq[T]:
       def eqv(x: T, y: T): Boolean =
-        iterator(x).zip(iterator(y)).zip(elems.iterator).forall {
-          case ((x, y), elem) => check(elem)(x, y)
-        }
+        iterable(x).lazyZip(iterable(y)).lazyZip(elems).forall(check)
 
-  inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
-    lazy val elemInstances = summonAll[m.MirroredElemTypes]
+  inline def derived[T](using m: Mirror.Of[T]): Eq[T] =
+    lazy val elemInstances = summonInstances[T, m.MirroredElemTypes]
     inline m match
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
       case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
@@ -430,31 +449,38 @@ end Eq
 we can test this relative to a simple ADT like so,
 
 ```scala
-enum Opt[+T] derives Eq:
-  case Sm(t: T)
-  case Nn
+enum Lst[+T] derives Eq:
+  case Cns(t: T, ts: Lst[T])
+  case Nl
+
+extension [T](t: T) def ::(ts: Lst[T]): Lst[T] = Lst.Cns(t, ts)
 
 @main def test(): Unit =
-  import Opt.*
-  val eqoi = summon[Eq[Opt[Int]]]
-  assert(eqoi.eqv(Sm(23), Sm(23)))
-  assert(!eqoi.eqv(Sm(23), Sm(13)))
-  assert(!eqoi.eqv(Sm(23), Nn))
+  import Lst.*
+  val eqoi = summon[Eq[Lst[Int]]]
+  assert(eqoi.eqv(23 :: 47 :: Nl, 23 :: 47 :: Nl))
+  assert(!eqoi.eqv(23 :: Nl, 7 :: Nl))
+  assert(!eqoi.eqv(23 :: Nl, Nl))
 ```
 
-In this case the code that is generated by the inline expansion for the derived `Eq` instance for `Opt` looks like the
+In this case the code that is generated by the inline expansion for the derived `Eq` instance for `Lst` looks like the
 following, after a little polishing,
 
 ```scala
-given derived$Eq[T](using eqT: Eq[T]): Eq[Opt[T]] =
-  eqSum(
-    summon[Mirror[Opt[T]]],
+given derived$Eq[T](using eqT: Eq[T]): Eq[Lst[T]] =
+  eqSum(summon[Mirror.Of[Lst[T]]], {/* cached lazily */
     List(
-      eqProduct(summon[Mirror[Sm[T]]], List(summon[Eq[T]])),
-      eqProduct(summon[Mirror[Nn.type]], Nil)
+      eqProduct(summon[Mirror.Of[Cns[T]]], {/* cached lazily */
+        List(summon[Eq[T]], summon[Eq[Lst[T]]])
+      }),
+      eqProduct(summon[Mirror.Of[Nl.type]], {/* cached lazily */
+        Nil
+      })
     )
-  )
+  })
 ```
+
+The `lazy` modifier on `elemInstances` is necessary for preventing infinite recursion in the derived instance for recursive types such as `Lst`.
 
 Alternative approaches can be taken to the way that `derived` methods can be defined. For example, more aggressively
 inlined variants using Scala 3 macros, whilst being more involved for type class authors to write than the example
@@ -469,7 +495,7 @@ given eqSum[A](using inst: => K0.CoproductInstances[Eq, A]): Eq[A] with
     [t] => (eqt: Eq[t], t0: t, t1: t) => eqt.eqv(t0, t1)
   )
 
-given eqProduct[A](using inst: K0.ProductInstances[Eq, A]): Eq[A] with
+given eqProduct[A](using inst: => K0.ProductInstances[Eq, A]): Eq[A] with
   def eqv(x: A, y: A): Boolean = inst.foldLeft2(x, y)(true: Boolean)(
     [t] => (acc: Boolean, eqt: Eq[t], t0: t, t1: t) =>
       Complete(!eqt.eqv(t0, t1))(false)(true)

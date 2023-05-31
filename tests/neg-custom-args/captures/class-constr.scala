@@ -6,10 +6,10 @@ class C(x: Cap, @constructorOnly y: Cap)
 
 def test(a: Cap, b: Cap) =
   val f = () => C(a, b)
-  val f_ok: {a, b} () -> {a} C = f
-  val f_no1: {a, b} () -> C = f // error
-  val f_no2: {a} () -> {a} C = f // error
-  val f_no3: {b} () -> {a} C = f // error
+  val f_ok: () ->{a, b} C^{a} = f
+  val f_no1: () ->{a, b} C = f // error
+  val f_no2: () ->{a} C^{a} = f // error
+  val f_no3: () ->{a} C^{a} = f // error
 
   class D:
     val xz =
@@ -19,6 +19,6 @@ def test(a: Cap, b: Cap) =
       println(b)
       2
   val d = () => new D()
-  val d_ok1: {a, b} () -> {a, b} D = d
-  val d_ok2: () -> {a, b} D = d  // because of function shorthand
-  val d_ok3: {a, b} () -> {b} D = d // error, but should work
+  val d_ok1: () ->{a, b} D^{a, b} = d
+  val d_ok2: () -> D^{a, b} = d  // because of function shorthand
+  val d_ok3: () ->{a, b} D^{b} = d // error, but should work

@@ -110,6 +110,8 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(
       compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros")),
       compileFile("tests/pos-macros/i9570.scala", defaultOptions.and("-Xfatal-warnings")),
+      compileFile("tests/pos-macros/macro-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
+      compileFile("tests/pos-macros/macro-experimental.scala", defaultOptions.and("-Yno-experimental")),
     ).checkExpectedErrors()
   }
 

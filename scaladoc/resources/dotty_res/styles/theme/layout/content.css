@@ -8,6 +8,19 @@
   scroll-behavior: smooth;
 }
 
+/* blog footer */
+.blog-author {
+  color: gray;
+}
+
+.blog-author img#author-img {
+  width: auto;
+  height: auto;
+  max-width:100px;
+  max-height:100px;
+  border-radius: 50%;
+}
+
 #content {
   display: flex;
   flex-flow: row;
@@ -144,9 +157,9 @@
 }
 
 #content h2 {
-   color: var(--text-primary);
-    margin-block-start: calc(6* var(--base-spacing));
-    margin-block-end: calc(3* var(--base-spacing));
+  color: var(--text-primary);
+  margin-block-start: calc(6* var(--base-spacing));
+  margin-block-end: calc(3* var(--base-spacing));
 }
 
 #content .cover > h2 {
@@ -167,7 +180,7 @@
 
 /* content first paragraph */
 .first-p {
-    margin-block-start: calc(2* var(--base-spacing));
+  margin-block-start: calc(2* var(--base-spacing));
 }
 
 #content .first-p {
@@ -216,18 +229,41 @@
   vertical-align: top;
 }
 
+/* content blockquote */
+#content blockquote {
+  color: var(--text-secondary);
+  border-left: 4px solid var(--border-default);
+  padding: 0 calc(2 * var(--base-spacing));
+  margin-inline-start: calc(2 * var(--base-spacing));
+  margin-inline-end: calc(2 * var(--base-spacing));
+}
+
 /* content link */
 #content a {
-    color: var(--text-primary);
-    text-decoration: underline solid 1px;
-    -webkit-text-decoration-line: underline; /* Safari */
-    text-decoration-line: underline;
-    text-underline-offset: 2px;
-    transition: text-decoration-color .2s ease-in-out;
+  color: var(--text-primary);
+  text-decoration: underline solid 1px;
+  -webkit-text-decoration-line: underline; /* Safari */
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+  transition: text-decoration-color .2s ease-in-out;
 }
 
 #content a:hover {
   text-decoration-color: transparent;
+}
+
+#content a.anchor {
+  color: transparent;
+  margin-left: -23px;
+  padding-right: 3px;
+  transition: color .4s ease-out;
+}
+
+#content a.anchor::before {
+  content: "\f0c1";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  font-size: 20px;
 }
 
 #content .cover-header {

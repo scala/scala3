@@ -12,7 +12,6 @@ Expr         ::=  (Bindings | id | ‘_’) ‘=>’ Expr
 Expr1        ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
                |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
                |  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
-               |  ‘do’ Expr [semi] ‘while’ ‘(’ Expr ‘)’
                |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
                |  ‘throw’ Expr
                |  ‘return’ [Expr]
@@ -60,6 +59,7 @@ When we write "expression ´e´ is expected to conform to type ´T´", we mean:
 The following skolemization rule is applied universally for every expression:
 If the type of an expression would be an existential type ´T´, then the type of the expression is assumed instead to be a [skolemization](03-types.html#existential-types) of ´T´.
 
+<!-- TODO: Replace by description of Scala 3 skolemization -->
 Skolemization is reversed by type packing.
 Assume an expression ´e´ of type ´T´ and let ´t_1[\mathit{tps}\_1] >: L_1 <: U_1, ..., t_n[\mathit{tps}\_n] >: L_n <: U_n´ be all the type variables created by skolemization of some part of ´e´ which are free in ´T´.
 Then the _packed type_ of ´e´ is
@@ -201,8 +201,8 @@ ArgumentExprs ::=  ‘(’ [Exprs] ‘)’
 Exprs         ::=  Expr {‘,’ Expr}
 ```
 
-An application `´f(e_1, ..., e_m)´` applies the expression `´f´` to the argument expressions `´e_1, ..., e_m´`.
-For the overal expression to be well-typed, ´f´ must be *applicable* to its arguments, which is defined next by case analysis on ´f´'s type.
+An application `´f(e_1, ..., e_m)´` applies the method `´f´` to the argument expressions `´e_1, ..., e_m´`.
+For this expression to be well-typed, the method must be *applicable* to its arguments:
 
 If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type.
 Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., m)´.
@@ -214,12 +214,12 @@ Once the types ´S_i´ have been determined, the method ´f´ of the above metho
   - for every positional argument ´e_i´ the type ´S_i´ is [compatible](03-types.html#compatibility) with ´T_i´;
   - if the expected type is defined, the result type ´U´ is [compatible](03-types.html#compatibility) to it.
 
-If ´f´ is a polymorphic method, [local type inference](#local-type-inference) is used to instantiate ´f´'s type parameters.
-The polymorphic method is applicable if type inference can determine type arguments so that the instantiated method is applicable.
+If ´f´ is instead of some value type, the application is taken to be equivalent to `´f´.apply(´e_1, ..., e_m´)`, i.e. the application of an `apply` method defined by ´f´.
+Value `´f´` is applicable to the given arguments if `´f´.apply` is applicable.
 
-If ´f´ has some value type, the application is taken to be equivalent to `´f´.apply(´e_1, ..., e_m´)`, i.e. the application of an `apply` method defined by ´f´.
-The value `´f´` is applicable to the given arguments if `´f´.apply` is applicable.
-
+Notes:
+- In the case where ´f´ or `´f´.apply` is a polymorphic method, this is taken as an [ommitted type application](#type-applications).
+- `´f´` is applicable to the given arguments if the result of this type application is applicable.
 
 The application `´f´(´e_1, ..., e_n´)` evaluates ´f´ and then each argument ´e_1, ..., e_n´ from left to right, except for arguments that correspond to a by-name parameter (see below).
 Each argument expression is converted to the type of its corresponding formal parameter.
@@ -381,9 +381,13 @@ Type applications can be omitted if [local type inference](#local-type-inference
 ```ebnf
 SimpleExpr   ::=  ‘(’ [Exprs] ‘)’
 ```
+A _tuple expression_ `(´e_1´, ..., ´e_n´)` where ´n \geq 2´ is equivalent to the expression `´e_1´ *: ... *: ´e_n´ *: scala.EmptyTuple`.
 
-A _tuple expression_ `(´e_1´, ..., ´e_n´)` is an alias for the class instance creation `scala.Tuple´n´(´e_1´, ..., ´e_n´)`, where ´n \geq 2´.
-The empty tuple `()` is the unique value of type `scala.Unit`.
+Note: as calls to `*:` are slow, a more efficient translation is free to be implemented. For example, `(´e_1´, ´e_2´)` could be translated to `scala.Tuple2(´e_1´, ´e_2´)`, which is indeed equivalent to `´e_1´ *: ´e_2´ *: scala.EmptyTuple`.
+
+Notes:
+- The expression `(´e_1´)` is not equivalent to `´e_1´ *: scala.EmptyTuple`, but instead a regular parenthesized expression.
+- The expression `()` is not an alias for `scala.EmptyTuple`, but instead the unique value of type `scala.Unit`.
 
 ## Instance Creation Expressions
 
@@ -455,36 +459,18 @@ The final expression can be omitted, in which case the unit value `()` is assume
 The expected type of the final expression ´e´ is the expected type of the block.
 The expected type of all preceding statements is undefined.
 
-The type of a block `´s_1´; ...; ´s_n´; ´e´` is `´T´ forSome {´\,Q\,´}`, where ´T´ is the type of ´e´ and ´Q´ contains [existential clauses](03-types.html#existential-types) for every value or type name which is free in ´T´ and which is defined locally in one of the statements ´s_1, ..., s_n´.
-We say the existential clause _binds_ the occurrence of the value or type name.
-Specifically,
+<!-- TODO: Rewrite when type avoidance section is done -->
+The type of a block `´s_1´; ...; ´s_n´; ´e´` is some type ´T´ such that:
 
-- A locally defined type definition  `type´\;t = T´` is bound by the existential clause `type´\;t >: T <: T´`.
-It is an error if ´t´ carries type parameters.
-- A locally defined value definition `val´\;x: T = e´` is bound by the existential clause `val´\;x: T´`.
-- A locally defined class definition `class´\;c´ extends´\;t´` is bound by the existential clause `type´\;c <: T´` where ´T´ is the least class type or refinement type which is a proper supertype of the type ´c´.
-It is an error if ´c´ carries type parameters.
-- A locally defined object definition `object´\;x\;´extends´\;t´` is bound by the existential clause `val´\;x: T´` where ´T´ is the least class type or refinement type which is a proper supertype of the type `´x´.type`.
+- ´U <: T´ where ´U´ is the type of ´e´.
+- No value or type name is free in ´T´, i.e., ´T´ does not refer to any value or type locally defined in one of the statements ´s_1, ..., s_n´.
+- ´T´ is "as small as possible" (this is a soft requirement).
+
+The precise way in which we compute ´T´, called _type avoidance_, is currently not defined in this specification.
 
 Evaluation of the block entails evaluation of its statement sequence, followed by an evaluation of the final expression ´e´, which defines the result of the block.
 
-A block expression `{´c_1´; ...; ´c_n´}` where ´s_1, ..., s_n´ are case clauses forms a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions).
-
-###### Example
-Assuming a class `Ref[T](x: T)`, the block
-
-```scala
-{ class C extends B {´\ldots´} ; new Ref(new C) }
-```
-
-has the type `Ref[_1] forSome { type _1 <: B }`.
-The block
-
-```scala
-{ class C extends B {´\ldots´} ; new C }
-```
-
-simply has type `B`, because with the rules [here](03-types.html#simplification-rules) the existentially quantified type `_1 forSome { type _1 <: B }` can be simplified to `B`.
+A block expression `{´c_1´; ...; ´c_n´}` where ´c_1, ..., c_n´ are case clauses forms a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions).
 
 ## Prefix, Infix, and Postfix Operations
 
@@ -717,15 +703,6 @@ def whileLoop(cond: => Boolean)(body: => Unit): Unit  =
   if (cond) { body ; whileLoop(cond)(body) } else {}
 ```
 
-## Do Loop Expressions
-
-```ebnf
-Expr1          ::=  ‘do’ Expr [semi] ‘while’ ‘(’ Expr ‘)’
-```
-
-The _do loop expression_ `do ´e_1´ while (´e_2´)` is typed and evaluated as if it was the expression `(´e_1´ ; while (´e_2´) ´e_1´)`.
-A semicolon preceding the `while` symbol of a do loop expression is ignored.
-
 ## For Comprehensions and For Loops
 
 ```ebnf
@@ -736,7 +713,7 @@ Generator      ::=  [‘case’] Pattern1 ‘<-’ Expr {[semi] Guard | semi Pat
 Guard          ::=  ‘if’ PostfixExpr
 ```
 
-A _for loop_ `for (´\mathit{enums}\,´) ´e´` executes expression ´e´ for each binding generated by the enumerators ´\mathit{enums}´. 
+A _for loop_ `for (´\mathit{enums}\,´) ´e´` executes expression ´e´ for each binding generated by the enumerators ´\mathit{enums}´.
 A _for comprehension_ `for (´\mathit{enums}\,´) yield ´e´` evaluates expression ´e´ for each binding generated by the enumerators ´\mathit{enums}´ and collects the results.
 An enumerator sequence always starts with a generator; this can be followed by further generators, value definitions, or guards.
 
@@ -933,6 +910,9 @@ Binding         ::=  (id | ‘_’) [‘:’ Type]
 The anonymous function of arity ´n´, `(´x_1´: ´T_1, ..., x_n´: ´T_n´) => e` maps parameters ´x_i´ of types ´T_i´ to a result given by expression ´e´.
 The scope of each formal parameter ´x_i´ is ´e´.
 Formal parameters must have pairwise distinct names.
+Type bindings can be omitted, in which case the compiler will attempt to infer valid bindings.
+
+Note: `() => ´e´` defines a nullary function (´n´ = 0), and not for example `(_: Unit) => ´e´`.
 
 In the case of a single untyped formal parameter, `(´x\,´) => ´e´` can be abbreviated to `´x´ => ´e´`.
 If an anonymous function `(´x´: ´T\,´) => ´e´` with a single typed parameter appears as the result expression of a block, it can be abbreviated to `´x´: ´T´ => e`.
@@ -982,7 +962,7 @@ x => x                             // The identity function
 
 f => g => x => f(g(x))             // Curried function composition
 
-(x: Int,y: Int) => x + y           // A summation function
+(x: Int, y: Int) => x + y          // A summation function
 
 () => { count += 1; count }        // The function which takes an
                                    // empty parameter list ´()´,
@@ -1198,11 +1178,11 @@ question: given
 -->
 
 - A parameterized method ´m´ of type `(´p_1:T_1, ..., p_n:T_n´)´U´` is _as specific as_ some other member ´m'´ of type ´S´ if ´m'´ is [applicable](#method-applications) to arguments `(´p_1, ..., p_n´)` of types ´T_1, ..., T_n´.
-- A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is as specific as some other member of type ´S´ if ´T´ is as specific as ´S´ under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name bounded from below by ´L_i´ and from above by ´U_i´.
-- A member of any other type is always as specific as a parameterized method or a polymorphic method.
-- Given two members of types ´T´ and ´U´ which are neither parameterized nor polymorphic method types, the member of type ´T´ is as specific as the member of type ´U´ if the existential dual of ´T´ conforms to the existential dual of ´U´.
-Here, the existential dual of a polymorphic type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is `´T´ forSome { type ´a_1´ >: ´L_1´ <: ´U_1´, ..., type ´a_n´ >: ´L_n´ <: ´U_n´}`.
-The existential dual of every other type is the type itself.
+  If the last parameter `´p_n´` has a vararg type `´T*´`, then `m` must be applicable to arbitrary numbers of `´T´` parameters (which implies that it must be a varargs method as well).
+- A polymorphic method of type `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]´T´` is as specific as some other member ´m'´ of type ´S´ if ´T´ is as specific as ´S´ under the assumption that for ´i = 1, ..., n´ each ´a_i´ is an abstract type name bounded from below by ´L_i´ and from above by ´U_i´.
+- A member of any other type ´T´ is:
+  - always as specific as a parameterized method or a polymorphic method.
+  - as specific as a member ´m'´ of any other type ´S´ if ´T´ is [compatible](03-types.html#compatibility) with ´S´.
 
 The _relative weight_ of an alternative ´A´ over an alternative ´B´ is a
 number from 0 to 2, defined as the sum of

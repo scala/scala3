@@ -13,7 +13,7 @@ import annotation.constructorOnly
 /** Realizability status */
 object CheckRealizable {
 
-  sealed abstract class Realizability(val msg: String) extends caps.Pure {
+  sealed abstract class Realizability(val msg: String) extends Pure {
     def andAlso(other: => Realizability): Realizability =
       if (this == Realizable) other else this
     def mapError(f: Realizability -> Context ?-> Realizability)(using Context): Realizability =

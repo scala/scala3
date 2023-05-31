@@ -17,6 +17,18 @@ object NameNormalizer {
       val escaped = escapedName(constructorNormalizedName)
       escaped
     }
+    
+    def ownerNameChain: List[String] = {
+      import reflect.*
+      if s.isNoSymbol then List.empty
+      else if s == defn.EmptyPackageClass then List.empty
+      else if s == defn.RootPackage then List.empty
+      else if s == defn.RootClass then List.empty
+      else s.owner.ownerNameChain :+ s.normalizedName
+    }  
+      
+    def normalizedFullName: String =
+      s.ownerNameChain.mkString(".")
 
   private val ignoredKeywords: Set[String] = Set("this")
 

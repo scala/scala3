@@ -54,9 +54,9 @@ object Synthetics:
 
   /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
    *  An apply method in a case class like this:
-   *    case class CC(a: {d} A, b: B, {*} c: C)
+   *    case class CC(a: {d} A, b: B, {cap} c: C)
    *  would get type
-   *    def apply(a': {d} A, b: B, {*} c': C): {a', c'} CC { val a = {a'} A, val c = {c'} C }
+   *    def apply(a': {d} A, b: B, {cap} c': C): {a', c'} CC { val a = {a'} A, val c = {c'} C }
    *  where `'` is used to indicate the difference between parameter symbol and refinement name.
    *  Analogous for the copy method.
    */
@@ -123,7 +123,7 @@ object Synthetics:
     case _ =>
       info
 
-  /** Augment an unapply of type `(x: C): D` to `(x: {*} C): {x} D` */
+  /** Augment an unapply of type `(x: C): D` to `(x: {cap} C): {x} D` */
   private def addUnapplyCaptures(info: Type)(using Context): Type = info match
     case info: MethodType =>
       val paramInfo :: Nil = info.paramInfos: @unchecked

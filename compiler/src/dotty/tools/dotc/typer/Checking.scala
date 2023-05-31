@@ -506,7 +506,12 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
+      val illegal = sym.flags & ClassOnlyFlags
+      if sym.is(TypeParam) && illegal == Sealed && Feature.ccEnabled && cc.allowUniversalInBoxed then
+        if !sym.owner.is(Method) then
+          fail(em"only method type parameters can be sealed")
+      else
+        fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -779,7 +784,9 @@ object Checking {
     for case imp @ Import(qual, selectors) <- trees do
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros || name == Feature.erasedDefinitions
+        name == Feature.scala2macros
+        || name == Feature.erasedDefinitions
+        || name == Feature.captureChecking
 
       languageImport(qual) match
         case Some(nme.experimental)
@@ -1193,15 +1200,11 @@ trait Checking {
    */
   def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
     case vparam :: vparams1 =>
-      val check = new TreeTraverser {
-        def traverse(tree: Tree)(using Context) = tree match {
-          case id: Ident if vparams.exists(_.symbol == id.symbol) =>
-            report.error(em"illegal forward reference to method parameter", id.srcPos)
-          case _ =>
-            traverseChildren(tree)
-        }
+      vparam.tpt.foreachSubTree {
+        case id: Ident if vparams.exists(_.symbol == id.symbol) =>
+          report.error(em"illegal forward reference to method parameter", id.srcPos)
+        case _ =>
       }
-      check.traverse(vparam.tpt)
       checkNoForwardDependencies(vparams1)
     case Nil =>
   }

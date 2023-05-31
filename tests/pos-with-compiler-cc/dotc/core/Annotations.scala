@@ -17,7 +17,7 @@ object Annotations {
     if (tree.symbol.isConstructor) tree.symbol.owner
     else tree.tpe.typeSymbol
 
-  abstract class Annotation extends Showable, caps.Pure {
+  abstract class Annotation extends Showable, Pure {
 
     def tree(using Context): Tree
 
@@ -55,7 +55,7 @@ object Annotations {
      *  be overridden. Returns EmptyAnnotation if type type map produces a range
      *  type, since ranges cannot be types of trees.
      */
-    def mapWith(tm: TypeMap @retains(caps.*))(using Context) =
+    def mapWith(tm: TypeMap @retains(caps.cap))(using Context) =
       val args = arguments
       if args.isEmpty then this
       else

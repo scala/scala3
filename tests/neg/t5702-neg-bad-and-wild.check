@@ -10,10 +10,10 @@
    |                       pattern expected
    |
    | longer explanation available when compiling with `-explain`
--- [E040] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:13:22 ---------------------------------------------------
+-- [E040] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:13:23 ---------------------------------------------------
 13 |      case List(1, _*3:) =>  // error // error
-   |                      ^
-   |                      ')' expected, but ':' found
+   |                       ^
+   |                       an identifier expected, but ')' found
 -- [E032] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:15:18 ---------------------------------------------------
 15 |      case List(x*, 1) => // error: pattern expected
    |                  ^
@@ -56,6 +56,13 @@
    |                   Recursive value $1$ needs type
    |
    | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/t5702-neg-bad-and-wild.scala:13:22 ---------------------------------------------------------------
+13 |      case List(1, _*3:) =>  // error // error
+   |                      ^
+   |                  Type ascriptions after patterns other than:
+   |                    * variable pattern, e.g. `case x: String =>`
+   |                    * number literal pattern, e.g. `case 10.5: Double =>`
+   |                  are no longer supported. Remove the type ascription or move it to a separate variable pattern.
 -- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
 22 |    val K(x @ _*) = k
    |                    ^

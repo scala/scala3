@@ -5,7 +5,7 @@ import annotation.{experimental, tailrec, constructorOnly}
 import collection.mutable
 import language.`3.3`
 
-case class Symbol(name: String, initOwner: Symbol | Null) extends caps.Pure:
+case class Symbol(name: String, initOwner: Symbol | Null) extends Pure:
   def owner = initOwner.nn
   private var myInfo: Type = uninitialized
   def infoOrCompleter: Type = myInfo
@@ -29,7 +29,7 @@ object NoSymbol extends Symbol("", null):
   override def exists: Boolean = false
   override def orElse(alt: => Symbol): Symbol = alt
 
-abstract class Type extends caps.Pure:
+abstract class Type extends Pure:
   def exists = true
   def show: String
 case class IntType()(using @constructorOnly c: Context) extends Type:
@@ -83,7 +83,7 @@ abstract class Ctx:
   def run: Run
   def detached: DetachedContext
 
-type Context = {*} Ctx
+type Context = Ctx^
 
 abstract class DetachedContext extends Ctx:
   def outer: DetachedContext
@@ -110,9 +110,9 @@ object NoContext extends FreshCtx(-1):
   owner = NoSymbol
   scope = EmptyScope
 
-type FreshContext = {*} FreshCtx
+type FreshContext = FreshCtx^
 
-inline def ctx(using c: Context): {c} Ctx = c
+inline def ctx(using c: Context): Ctx^{c} = c
 
 // !cc! it does not work if ctxStack is an Array[FreshContext] instead.
 var ctxStack = Array.tabulate(16)(new FreshCtx(_))

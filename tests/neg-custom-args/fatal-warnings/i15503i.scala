@@ -17,10 +17,10 @@ class A {
   private def c2 = 2 // OK
   def c3 = c2
 
-  def d1(using x:Int): Int = default_int // error
+  def d1(using x:Int): Int = default_int // ok
   def d2(using x:Int): Int = x // OK
 
-  def e1(x: Int) = default_int // error
+  def e1(x: Int) = default_int // ok
   def e2(x: Int) = x // OK
   def f =
     val x = 1 // error
@@ -44,7 +44,8 @@ package foo.test.scala.annotation:
   val default_int = 12
 
   def a1(a: Int) = a // OK
-  def a2(a: Int) = default_int // error
+  def a2(a: Int) = default_int // ok
+
   def a3(@unused a: Int) = default_int //OK
 
   def b1 =
@@ -90,7 +91,7 @@ package foo.test.possibleclasses:
     k: Int, // OK
     private val y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     val t: Int, // OK
     private val z: Int // error
   )
@@ -131,7 +132,7 @@ package foo.test.possibleclasses.withvar:
     k: Int, // OK
     private var y: Int // OK /* Kept as it can be taken from pattern */
   )(
-    s: Int, // error /* But not these */
+    s: Int,
     var t: Int, // OK
     private var z: Int // error
   )
@@ -141,8 +142,8 @@ package foo.test.possibleclasses.withvar:
     private var y: Int // OK
   )(
     s: Int, // OK
-    var t: Int, // OK
-    private var z: Int // OK
+    var t: Int, // OK global scope can be set somewhere else
+    private var z: Int // error not set
   ) {
     def a = k + y + s + t + z
   }
@@ -158,11 +159,11 @@ package foo.test.possibleclasses.withvar:
 
   class AllUsed(
     k: Int, // OK
-    private var y: Int // OK
+    private var y: Int // error not set
   )(
     s: Int, // OK
-    var t: Int, // OK
-    private var z: Int // OK
+    var t: Int, // OK global scope can be set somewhere else
+    private var z: Int // error not set
   ) {
     def a = k + y + s + t + z
   }
@@ -273,3 +274,42 @@ package foo.test.i16679b:
     import Foo.x
     case class CoolClass(i: Int)
     println(summon[myPackage.CaseClassName[CoolClass]])
+
+package foo.test.i17156:
+  package a:
+    trait Foo[A]
+    object Foo:
+      inline def derived[T]: Foo[T] = new Foo{}
+
+  package b:
+    import a.Foo
+    type Xd[A] = Foo[A]
+
+  package c:
+    import b.Xd
+    trait Z derives Xd
+
+
+package foo.test.i17175:
+  val continue = true
+  def foo =
+    for {
+      i <- 1.until(10) // OK
+      if continue
+    } {
+      println(i)
+    }
+   
+package foo.test.i17117:
+  package example {
+    object test1 {
+      val test = "test"
+    }
+
+    object test2 {
+
+      import example.test1 as t1
+
+      val test = t1.test
+    }
+  }

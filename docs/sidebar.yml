@@ -92,7 +92,6 @@ subsection:
           - page: reference/changed-features/operators.md
           - page: reference/changed-features/wildcards.md
           - page: reference/changed-features/imports.md
-          - page: reference/changed-features/type-checking.md
           - page: reference/changed-features/type-inference.md
           - page: reference/changed-features/implicit-resolution.md
           - page: reference/changed-features/implicit-conversions.md
@@ -166,30 +165,44 @@ subsection:
     directory: docs/contributing
     index: contributing/index.md
     subsection:
-      - page: contributing/contribute-knowledge.md
       - page: contributing/getting-started.md
-      - page: contributing/workflow.md
-      - page: contributing/testing.md
-      - page: contributing/debugging.md
-      - title: IDEs and Tools
-        directory: tools
-        index: contributing/tools/index.md
+      - page: contributing/setting-up-your-ide.md
+      - index: contributing/issues/diagnosing-your-issue.md
         subsection:
-          - page: contributing/tools/ide.md
-          - page: contributing/tools/mill.md
-          - page: contributing/tools/scalafix.md
+          - page: contributing/issues/reproduce.md
+          - page: contributing/issues/cause.md
+          - page: contributing/issues/areas.md
+      - index: contributing/debugging/debugging.md
+        subsection:
+          - page: contributing/debugging/ide-debugging.md
+          - page: contributing/debugging/inspection.md
+          - page: contributing/debugging/other-debugging.md
+      - page: contributing/testing.md
+      - page: contributing/scaladoc.md
+      - page: contributing/sending-in-a-pr.md
+      - page: contributing/cheatsheet.md
       - title: Procedures
+        directory: procedures
         index: contributing/procedures/index.md
         subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
+      - title: High Level Architecture
+        directory: architecture
+        index: contributing/architecture/index.md
+        subsection:
+          - page: contributing/architecture/lifecycle.md
+          - page: contributing/architecture/context.md
+          - page: contributing/architecture/phases.md
+          - page: contributing/architecture/types.md
+          - page: contributing/architecture/time.md
+          - page: contributing/architecture/symbols.md
   - title: Internals
     directory: docs/internals
     index: internals/index.md
     subsection:
       - page: internals/backend.md
       - page: internals/classpaths.md
-      - page: internals/core-data-structures.md
       - page: internals/contexts.md
       - page: internals/dotc-scalac.md
       - page: internals/higher-kinded-v2.md

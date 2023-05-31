@@ -8,7 +8,7 @@ def foo(i: Int): (CanThrow[Ex1], CanThrow[Ex2]) ?-> Unit =
 
 class Cell[+T](val x: T)
 
-def test() =
+def test(): Unit =
   try  // error
     () => foo(1)
   catch
@@ -21,10 +21,10 @@ def test() =
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  val b = try  // ok here, but error on use
-    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {*} () => Unit]
+  val b = try  // error
+    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {cap} () => Unit]
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  b.x // error
+  b.x

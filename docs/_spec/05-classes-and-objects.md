@@ -41,6 +41,8 @@ The list of parents of a template must be well-formed.
 This means that the class denoted by the superclass constructor ´sc´ must be a subclass of the superclasses of all the traits ´mt_1, ..., mt_n´.
 In other words, the non-trait classes inherited by a template form a chain in the inheritance hierarchy which starts with the template's superclass.
 
+It is forbidden for a template's superclass constructor ´sc´ to be an [enum class](#enum-definitions), unless the template is the implementation of an [enum case](#enum-definitions) of ´sc´.
+
 The _least proper supertype_ of a template is the class type or [compound type](03-types.html#compound-types) consisting of all its parent class types.
 
 The statement sequence ´\mathit{stats}´ contains member definitions that define new members or overwrite members in the parent classes.
@@ -92,19 +94,11 @@ If this is not a template of a trait, then its _evaluation_ consists of the foll
 
 - First, the superclass constructor ´sc´ is
   [evaluated](#constructor-invocations).
-- Then, all base classes in the template's [linearization](#class-linearization) up to the template's superclass denoted by ´sc´ are mixin-evaluated.
-Mixin-evaluation happens in reverse order of occurrence in the linearization.
+- Then, all base classes in the template's [linearization](#class-linearization) up to the template's superclass denoted by ´sc´ are evaluated.
+evaluation happens in reverse order of occurrence in the linearization. Each evaluation occurs as follows:
+  - First, arguments to ´mt_i´ are evaluated from left to right, and set as parameters of ´mt_i´.
+  - ´mt_i´ is then mixin-evaluated.
 - Finally, the statement sequence ´\mathit{stats}\,´ is evaluated.
-
-###### Delayed Initialization
-This statement sequence constitutes the initialization code for an object or class after the superclass constructor invocation and the mixin-evaluation of the template's base classes as described above.
-Normally, this code is passed to a special hook, inaccessible to user code, which simply executes it.
-
-However, in objects and classes (but not traits) which extend `scala.DelayedInit`, the initialization code is passed to a `delayedInit` method which can be overridden to implement arbitrary semantics.
-
-```scala
-def delayedInit(body: => Unit): Unit
-```
 
 ### Constructor Invocations
 
@@ -196,7 +190,7 @@ A member definition ´M´ _matches_ a member definition ´M'´, if ´M´ and ´M
 
 1. Neither ´M´ nor ´M'´ is a method definition.
 2. ´M´ and ´M'´ define both monomorphic methods with equivalent argument types.
-3. ´M´ defines a parameterless method and ´M'´ defines a method with an empty parameter list `()` or _vice versa_.
+3. ´M´ is defined in Java and defines a method with an empty parameter list `()` and ´M'´ defines a parameterless method.
 4. ´M´ and ´M'´ define both polymorphic methods with equal number of argument types ´\overline T´, ´\overline T'´ and equal numbers of type parameters ´\overline t´, ´\overline t'´, say, and  ´\overline T' = [\overline t'/\overline t]\overline T´.
 
 <!--
@@ -267,7 +261,7 @@ Another restriction applies to abstract type members:
 An abstract type member with a [volatile type](03-types.html#volatile-types) as its upper bound may not override an abstract type member which does not have a volatile upper bound.
 
 A special rule concerns parameterless methods.
-If a parameterless method defined as `def ´f´: ´T´ = ...` or `def ´f´ = ...` overrides a method of type ´()T'´ which has an empty parameter list, then ´f´ is also assumed to have an empty parameter list.
+If a parameterless method defined as `def ´f´: ´T´ = ...` or `def ´f´ = ...` overrides a method defined in Java of type ´()T'´ which has an empty parameter list, then ´f´ is also assumed to have an empty parameter list.
 
 An overriding method inherits all default arguments from the definition in the superclass.
 By specifying default arguments in the overriding method it is possible to add new defaults (if the corresponding parameter in the superclass does not have a default) or to override the defaults of the superclass (otherwise).
@@ -304,57 +298,6 @@ It is a static error if the inheritance closure of a class type consists of an i
 (This restriction is necessary to make subtyping decidable[^kennedy]).
 
 [^kennedy]: Kennedy, Pierce. [On Decidability of Nominal Subtyping with Variance.]( https://research.microsoft.com/pubs/64041/fool2007.pdf) in FOOL 2007
-
-### Early Definitions
-
-```ebnf
-EarlyDefs         ::= ‘{’ [EarlyDef {semi EarlyDef}] ‘}’ ‘with’
-EarlyDef          ::=  {Annotation} {Modifier} PatVarDef
-```
-
-A template may start with an _early field definition_ clause, which serves to define certain field values before the supertype constructor is called.
-In a template
-
-```scala
-{ val ´p_1´: ´T_1´ = ´e_1´
-  ...
-  val ´p_n´: ´T_n´ = ´e_n´
-} with ´sc´ with ´mt_1´ with ´mt_n´ { ´\mathit{stats}´ }
-```
-
-The initial pattern definitions of ´p_1 , \ldots , p_n´ are called _early definitions_.
-They define fields which form part of the template.
-Every early definition must define at least one variable.
-
-An early definition is type-checked and evaluated in the scope which is in effect just before the template being defined, augmented by any type parameters of the enclosing class and by any early definitions preceding the one being defined.
-In particular, any reference to `this` in an early definition refers to the identity of `this` just outside the template.
-Consequently, it is impossible for an early definition to refer to the object being constructed by the template, or to refer to one of its fields and methods, except for any other preceding early definition in the same section.
-Furthermore, references to preceding early definitions always refer to the value that's defined there and do not take into account overriding definitions.
-In other words, a block of early definitions is evaluated exactly as if it were a local block containing a number of value definitions.
-
-Early definitions are evaluated before the superclass constructor of the template is called, in the order they are defined.
-
-###### Example
-Early definitions are particularly useful for traits, which do not have normal constructor parameters.
-Example:
-
-```scala
-trait Greeting {
-  val name: String
-  val msg = "How are you, "+name
-}
-class C extends {
-  val name = "Bob"
-} with Greeting {
-  println(msg)
-}
-```
-
-In the code above, the field `name` is initialized before the constructor of `Greeting` is called.
-Therefore, field `msg` in class `Greeting` is properly initialized to `"How are you, Bob"`.
-
-If `name` had been initialized instead in `C`'s normal class body, it would be initialized after the constructor of `Greeting`.
-In that case, `msg` would be initialized to `"How are you, <null>"`.
 
 ## Modifiers
 
@@ -599,10 +542,10 @@ These are defined by constructor definitions of the form `def this(´\mathit{ps}
 Such a definition introduces an additional constructor for the enclosing class, with parameters as given in the formal parameter lists ´\mathit{ps}_1 , ..., \mathit{ps}_n´, and whose evaluation is defined by the constructor expression ´e´.
 The scope of each formal parameter is the subsequent parameter sections and the constructor expression ´e´.
 A constructor expression is either a self constructor invocation `this(´\mathit{args}_1´)...(´\mathit{args}_n´)` or a block which begins with a self constructor invocation.
-The self constructor invocation must construct a generic instance of the class. 
+The self constructor invocation must construct a generic instance of the class.
 I.e. if the class in question has name ´C´ and type parameters `[´\mathit{tps}\,´]`, then a self constructor invocation must generate an instance of `´C´[´\mathit{tps}\,´]`; it is not permitted to instantiate formal type parameters.
 
-The signature and the self constructor invocation of a constructor definition are type-checked and evaluated in the scope which is in effect at the point of the enclosing class definition, augmented by any type parameters of the enclosing class and by any [early definitions](#early-definitions) of the enclosing template.
+The signature and the self constructor invocation of a constructor definition are type-checked and evaluated in the scope which is in effect at the point of the enclosing class definition, augmented by any type parameters of the enclosing class.
 The rest of the constructor expression is type-checked and evaluated as a method body in the current class.
 
 If there are auxiliary constructors of a class ´C´, they form together with ´C´'s primary [constructor](#class-definitions) an overloaded constructor definition.
@@ -723,13 +666,10 @@ This form of extensibility can be excluded by declaring the base class `Expr` `s
 ## Traits
 
 ```ebnf
-TmplDef          ::=  ‘trait’ TraitDef
-TraitDef         ::=  id [TypeParamClause] TraitTemplateOpt
-TraitTemplateOpt ::=  ‘extends’ TraitTemplate | [[‘extends’] TemplateBody]
+TmplDef          ::=  ‘trait’ ClassDef
 ```
 
 A _trait_ is a class that is meant to be added to some other class as a mixin.
-Unlike normal classes, traits cannot have constructor parameters.
 Furthermore, no constructor arguments are passed to the superclass of the trait.
 This is not necessary as traits are initialized after the superclass is initialized.
 
@@ -804,9 +744,80 @@ object MyTable extends ListTable[String, Int](0) with SynchronizedTable[String, 
 The object `MyTable` inherits its `get` and `set` method from `SynchronizedTable`.
 The `super` calls in these methods are re-bound to refer to the corresponding implementations in `ListTable`, which is the actual supertype of `SynchronizedTable` in `MyTable`.
 
+### Extending parameterized traits
+
+Extra rules apply for extending a trait with parameters:
+
+1. If a class `´C´` extends a parameterized trait `´T´`, and its superclass does not, `´C´` _must_ pass arguments to `´T´`.
+
+2. If a class `´C´` extends a parameterized trait `´T´`, and its superclass does as well, `´C´` _must not_  pass arguments to `´T´`.
+
+3. Traits must never pass arguments to parent traits.
+
+4. If a class `´C´` extends an unparameterized trait `´T_i´` and the base types of `´T_i´` include parameterized trait `´T_j´`, and the superclass of `´C´` does not extend `´T_j´`, then `´C´` _must_ also explicitly extend `´T_j´` and pass arguments.
+This rule is relaxed if the missing trait contains only context parameters. In that case the trait reference is implicitly inserted as an additional parent with inferred arguments.
+
+###### Example - Preventing ambiguities
+
+The following listing tries to extend `Greeting` twice, with different parameters.
+
+```scala
+trait Greeting(val name: String):
+  def msg = s"How are you, $name"
+
+class C extends Greeting("Bob")
+
+class D extends C, Greeting("Bill") // error
+
+@main def greet = println(D().msg)
+```
+
+Should this program print "Bob" or "Bill"? In fact this program is illegal, because it violates rule 2 above.
+Instead, `D` can extend `Greeting` without passing arguments.
+
+###### Example - Overriding
+
+Here's a variant of `Greeting` that overrides `msg`:
+```scala
+trait FormalGreeting extends Greeting:
+  override def msg = s"How do you do, $name"
+```
+
+Due to rule 4, the following class extending `FormalGreeting` is required to also extend `Greeting` with arguments:
+```scala
+class GreetBobFormally extends FormalGreeting, Greeting("Bob")
+```
+
+###### Example - Inferred context parameters
+
+Here's a variant of `Greeting` where the addressee is a context parameter of type `ImpliedName`:
+
+```scala
+trait ImpliedGreeting(using val iname: ImpliedName):
+  def msg = s"How are you, $iname"
+
+case class ImpliedName(name: String):
+  override def toString = name
+
+trait ImpliedFormalGreeting extends ImpliedGreeting:
+  override def msg = s"How do you do, $iname"
+
+class F(using iname: ImpliedName) extends ImpliedFormalGreeting
+```
+
+The definition of `F` in the last line is implicitly expanded to
+```scala
+class F(using iname: ImpliedName) extends
+  Object, // implicitly inserted
+  ImpliedGreeting(using iname), // implicitly inserted
+  ImpliedFormalGreeting
+```
+Due to rule 4, `F` is required to also extend `ImpliedGreeting` and pass arguments to it, however note that because `ImpliedGreeting` has only context parameters the extension was added implicitly.
+
 ## Object Definitions
 
 ```ebnf
+TmplDef         ::=  ‘object’ ObjectDef
 ObjectDef       ::=  id ClassTemplate
 ```
 
@@ -862,3 +873,342 @@ Generally, a _companion module_ of a class is an object which has the same name 
 Conversely, the class is called the _companion class_ of the module.
 
 Very much like a concrete class definition, an object definition may still contain declarations of abstract type members, but not of abstract term members.
+
+## Enum Definitions
+
+<!-- TODO: Agree with NTs of rest of spec -->
+```ebnf
+TmplDef   ::=  ‘enum’ EnumDef
+EnumDef   ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody
+EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumStat  ::=  TemplateStat
+            |  {Annotation [nl]} {Modifier} EnumCase
+EnumCase  ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps] | ids)
+```
+
+An _enum definition_ implies the definition of an _enum class_, a companion object, and one or more _enum cases_.
+
+Enum definitions are useful to encode both Generalised Algebraic Data Types and Enumerated Types.
+
+The compiler expands enum definitions to code that only uses Scala's other language features.
+As such, enum definitions in Scala are convenient _syntactic sugar_, but they are not essential to understand Scala's core.
+
+We now explain the expansion of enum definitions in detail.
+First, some terminology and notational conventions:
+
+- We use ´E´ as a name of an enum definition, and ´C´ as a name of an enum case that appears in ´E´.
+- We use `<...>` for syntactic constructs that in some circumstances might be empty.
+For instance, `<value-params>` represents one or more parameter lists `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` or nothing at all.
+- Enum classes fall into two categories:
+  - _parameterized_ enum classes have at least one of the following:
+     - a type parameter section, denoted as `[´\mathit{tps}\,´]`;
+     - one or more (possibly empty) parameter sections, denoted as `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
+  - _unparameterized_ enum classes have no type parameter sections and no parameter sections.
+- Enum cases fall into three categories:
+
+  - _Class cases_ are those cases that are parameterized, either with a type parameter section `[´\mathit{tps}\,´]` or with one or more (possibly empty) parameter sections `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
+  - _Simple cases_ are cases of an unparameterized enum that have neither parameters nor an extends clause or body.
+  That is, they consist of a name only.
+  - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) `extends` clause and/or a body.
+
+- Simple cases and value cases are collectively called _singleton cases_.
+
+###### Example
+
+An example enum for a `Planet` enumeration can be given as
+```scala
+enum Planet(mass: Double, radius: Double):
+  case Mercury extends Planet(3.303e+23, 2.4397e6)
+  case Venus   extends Planet(4.869e+24, 6.0518e6)
+  case Earth   extends Planet(5.976e+24, 6.37814e6)
+  case Mars    extends Planet(6.421e+23, 3.3972e6)
+  case Jupiter extends Planet(1.9e+27,   7.1492e7)
+  case Saturn  extends Planet(5.688e+26, 6.0268e7)
+  case Uranus  extends Planet(8.686e+25, 2.5559e7)
+  case Neptune extends Planet(1.024e+26, 2.4746e7)
+
+  private inline val G = 6.67300E-11
+  def surfaceGravity = G * mass / (radius * radius)
+  def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity
+end Planet
+```
+
+###### Example
+
+An example enum for the Option ADT can be given as
+```scala
+enum Option[+T]:
+  case Some(x: T)
+  case None
+```
+
+### Lowering of Enum Definitions
+
+###### Summary
+An enum class is represented as a `sealed` class that extends the `scala.reflect.Enum` trait.
+
+Enum cases are represented as follows:
+- a class case is mapped to a `case class`,
+- a singleton case is mapped to a `val` definition, where
+  - Simple cases all share a single implementation class.
+  - Value cases will each be implemented by a unique class.
+
+###### Precise rules
+The `scala.reflect.Enum` trait defines a single public method, `ordinal`:
+```scala
+package scala.reflect
+
+transparent trait Enum extends Any, Product, Serializable:
+
+  def ordinal: Int
+```
+There are nine desugaring rules.
+Rule (1) desugars enum definitions.
+Rules (2) and (3) desugar simple cases.
+Rules (4) to (6) define `extends` clauses for cases that are missing them.
+Rules (7) to (9) define how such cases with `extends` clauses map into `case class`es or `val`s.
+
+1.  An `enum` definition
+    ```scala
+    enum ´E´ ... { <defs> <cases> }
+    ```
+    expands to a `sealed abstract` class that extends the `scala.reflect.Enum` trait and an associated companion object that contains the defined cases, expanded according to rules (2 - 8).
+    The enum class starts with a compiler-generated import that imports the names `<caseIds>` of all cases so that they can be used without prefix in the class.
+    ```scala
+    sealed abstract class ´E´ ... extends <parents> with scala.reflect.Enum {
+        import ´E´.{ <caseIds> }
+        <defs>
+    }
+    object ´E´ { <cases> }
+    ```
+
+2. A singleton case consisting of a comma-separated list of enum names
+   ```scala
+   case ´C_1´, ..., ´C_n´
+   ```
+   expands to
+   ```scala
+   case ´C_1´; ...; case ´C_n´
+   ```
+   Any modifiers or annotations on the original case extend to all expanded cases.
+   This result is then further rewritten by either (3 or 4).
+
+3. A singleton case without an extends clause
+   ```scala
+   case ´C´
+   ```
+   of an unparameterized enum `´E´` expands to the following simple enum case in `´E´`'s companion object:
+   ```scala
+   val ´C´ = $new(n, "C")
+   ```
+   Here, `$new` is a private method that creates an instance of ´E´ (see below).
+
+4. A singleton case without an extends clause
+   ```scala
+   case ´C´
+   ```
+   of an enum `´E´` with type parameters
+   ```scala
+   ´\mathit{v}_1´ ´T_1´ >: ´L_1´ <: ´U_1´ ,   ... ,   ´\mathit{v}_n´ ´T_n´ >: ´L_n´ <: ´U_n´      (n > 0)
+   ```
+   where each of the variances `´\mathit{v}_i´` is either `'+'` or `'-'`, expands to the following value enum case:
+   ```scala
+   case ´C´ extends ´E´[´B_1´, ..., ´B_n´]
+   ```
+   where `´B_i´` is `´L_i´` if `´\mathit{v}_i´ = '+'` and `´U_i´` if `´\mathit{v}_i´ = '-'`.
+   This result is then further rewritten with rule (8).
+   **NOTE:** It is not permitted for enums with non-variant type parameters to have singleton cases without an extends clause.
+
+5. A class case without an extends clause
+   ```scala
+   case ´C´ <type-params> <value-params>
+   ```
+   of an enum `´E´` that does not take type parameters expands to
+   ```scala
+   case ´C´ <type-params> <value-params> extends ´E´
+   ```
+   This result is then further rewritten with rule (9).
+
+6. If `´E´` is an enum with type parameters `´\mathit{tps}´`, a class case with neither type parameters nor an extends clause
+   ```scala
+   case ´C´ <value-params>
+   ```
+   expands to
+   ```scala
+   case ´C´[´\mathit{tps}´] <value-params> extends ´E´[´\mathit{tps}´]
+   ```
+   This result is then further rewritten with rule (9).
+   For class cases that have type parameters themselves, an extends clause needs to be given explicitly.
+
+
+7. If `´E´` is an enum with type parameters `´\mathit{tps}´`, a class case without type parameters but with an extends clause
+   ```scala
+   case ´C´ <value-params> extends <parents>
+   ```
+   expands to
+   ```scala
+   case ´C´[´\mathit{tps}´] <value-params> extends <parents>
+   ```
+   provided at least one of the parameters `´\mathit{tps}´` is mentioned in a parameter type in `<value-params>` or in a type argument in `<parents>`.
+
+8. A value case
+   ```scala
+   case ´C´ extends <parents>
+   ```
+   expands to the following `val` definition in `´E´`'s companion object:
+   ```scala
+   val ´C´ = new <parents> { <body>; def ordinal = ´\mathit{n}´ }
+   ```
+   where `´\mathit{n}´` is the ordinal number of the case in the companion object, starting from 0.
+   The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
+   **NOTE:** It is an error if a value case refers to a type parameter of `´E´` in a type argument within `<parents>`.
+
+9. A class case
+   ```scala
+   case ´C´ <type-params> <value-params> extends <parents>
+   ```
+   expands analogous to a final case class in `´E´`'s companion object:
+   ```scala
+   final case class ´C´ <type-params> <value-params> extends <parents> {
+      def ordinal = ´\mathit{n}´
+   }
+   ```
+   where `´\mathit{n}´` is the ordinal number of the case in the companion object, starting from 0.
+   **NOTE:** It is an error if a class case refers to a type parameter of `´E´` in a parameter type in `<type-params>` or `<value-params>` or in a type argument of `<parents>`, unless that parameter is already a type parameter of the case, i.e. the parameter name is defined in `<type-params>`.
+
+###### Superclass of an enum case
+
+an enum case (singleton or class) with explicit extends clause
+```scala
+case ´C´ <type-params> <value-params> extends <parents>
+```
+
+must extend the parent enum `´E´` as the first parent of `<parents>`.
+
+###### Example
+Consider the enumeration `RGB`, consisting of simple enum cases:
+```scala
+enum RGB:
+  case Red, Green, Blue
+```
+
+The three simple cases will expand as follows in the companion of `RGB`:
+
+```scala
+val Red = $new(0, "Red")
+val Green = $new(1, "Green")
+val Blue = $new(2, "Blue")
+
+private def $new(_$ordinal: Int, $name: String) =
+  new RGB with scala.runtime.EnumValue:
+    def ordinal = _$ordinal
+    override def productPrefix = $name
+    override def toString = $name
+```
+
+
+###### Example
+
+Consider the more complex enumeration `Color`, consisting of value enum cases:
+```scala
+enum Color(val rgb: Int):
+  case Red   extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+  case Blue  extends Color(0x0000FF)
+```
+
+The three value cases will expand as follows in the companion of `Color`:
+
+```scala
+val Red = new Color(0xFF0000):
+  def ordinal: Int = 0
+  override def productPrefix: String = "Red"
+  override def toString: String = "Red"
+val Green = new Color(0x00FF00):
+  def ordinal: Int = 1
+  override def productPrefix: String = "Green"
+  override def toString: String = "Green"
+val Blue = new Color(0x0000FF):
+  def ordinal: Int = 2
+  override def productPrefix: String = "Blue"
+  override def toString: String = "Blue"
+```
+
+### Widening of enum cases post-construction
+The compiler-generated `apply` and `copy` methods of an class enum case
+```scala
+case ´C´[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´) extends ´P_1´, ..., ´P_n´
+```
+are treated specially.
+A call `´C´[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` of the `apply` method is ascribed the underlying type `´P_1´ & ... & ´P_n´` (dropping any [transparent traits](../other-new-features/transparent-traits.md)) as long as that type is still compatible with the expected type at the point of application.
+A call `t.copy[´\mathit{tps}\,´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` of `´C´`'s `copy` method is treated in the same way.
+
+### Translation of enums with only singleton cases
+
+An enum `´E´` (possibly generic) that defines one or more singleton cases, and no class cases will define the following additional synthetic members in its companion object (where `´E'´` denotes `´E´` with any type parameters replaced by wildcards):
+
+   - A method `valueOf(name: String): ´E'´`.
+   It returns the singleton case value whose identifier is `name`.
+   - A method `values` which returns an `Array[´E'´]` of all singleton case values defined by `E`, in the order of their definitions.
+
+### Factory method for simple enum cases
+
+If an enum `´E´` contains at least one simple case, its companion object will define in addition:
+
+  - A private method `$new` which defines a new simple case value with given ordinal number and name.
+  This method can be thought as being defined as follows.
+
+  ```scala
+  private def $new(_$ordinal: Int, $name: String): ´E´ with runtime.EnumValue
+  ```
+  - `$new` returns a new instance of an anonymous class which implements the abstract `Product` methods that it inherits from `Enum`.
+  - if `´E´` inherits from `java.lang.Enum` the anonymous class does not override the `ordinal` or `toString` methods, as these are final in `java.lang.Enum`.
+  Additionally `productPrefix` will delegate to `this.name`.
+
+### Translation of Java-compatible enums
+
+A Java-compatible enum is an enum that extends `java.lang.Enum`.
+The translation rules are the same as above, with the reservations defined in this section.
+
+- It is a compile-time error for a Java-compatible enum to have class cases.
+
+- Cases such as `case C` expand to a `@static val` as opposed to a `val`.
+This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
+
+### Scopes for Enum Cases
+
+A case in an `enum` is treated similarly to a secondary constructor.
+It can access neither the enclosing `enum` using `this`, nor its value parameters or instance members using simple identifiers.
+
+Even though translated enum cases are located in the enum's companion object, referencing this object or its members via `this` or a simple identifier is also illegal.
+The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
+
+### Variance for Type Parameters
+
+A parameterized enum case ´C´  of enum ´E´ with _inferred_ type parameters will copy variance annotations.
+e.g. type parameter ´T_{i}´ from ´E´ will have the same variance as type parameter `´T'_{i}´` in ´C´.
+
+###### Example
+
+The following enum `View` has a contravariant type parameter ´T´ and a single case `Refl`, representing a function mapping a type `T` to itself:
+
+```scala
+enum View[-´T´]:
+  case Refl(f: ´T´ => ´T´)
+```
+
+`Refl` expands to the following enum:
+
+```scala
+enum View[-´T´]:
+  case Refl[-´T'´](f: ´T'´ => ´T'´) extends View[´T'´]
+```
+
+The definition of `Refl` is incorrectly typed, as it uses contravariant type `´T'´` in the covariant result position of a function type.
+
+A correctly typed version would use an _explicit_, _invariant_ type parameter `´R´` on case `Refl`:
+
+```scala
+enum View[-´T´]:
+  case Refl[´R´](f: ´R´ => ´R´) extends View[´R´]
+```

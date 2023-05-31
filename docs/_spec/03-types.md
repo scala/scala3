@@ -8,13 +8,12 @@ chapter: 3
 
 ```ebnf
   Type              ::=  FunctionArgTypes ‘=>’ Type
-                      |  InfixType [ExistentialClause]
+                      |  TypeLambdaParams ‘=>>’ Type
+                      |  InfixType
   FunctionArgTypes  ::=  InfixType
                       |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
-  ExistentialClause ::=  ‘forSome’ ‘{’ ExistentialDcl
-                             {semi ExistentialDcl} ‘}’
-  ExistentialDcl    ::=  ‘type’ TypeDcl
-                      |  ‘val’ ValDcl
+  TypeLambdaParams  ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
+  TypeLambdaParam   ::=  {Annotation} (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
   InfixType         ::=  CompoundType {id [nl] CompoundType}
   CompoundType      ::=  AnnotType {‘with’ AnnotType} [Refinement]
                       |  Refinement
@@ -30,15 +29,16 @@ chapter: 3
 ```
 
 We distinguish between proper types and type constructors, which take type parameters and yield types.
+All types have a _kind_, either the kind of proper types or a _higher kind_.
 A subset of proper types called _value types_ represents sets of (first-class) values.
-Value types are either _concrete_ or _abstract_.
+Types are either _concrete_ or _abstract_.
 
 Every concrete value type can be represented as a _class type_, i.e. a [type designator](#type-designators) that refers to a [class or a trait](05-classes-and-objects.html#class-definitions) [^1], or as a [compound type](#compound-types) representing an intersection of types, possibly with a [refinement](#compound-types) that further constrains the types of its members.
 
 <!--
 A shorthand exists for denoting [function types](#function-types)
 -->
-Abstract value types are introduced by [type parameters](04-basic-declarations-and-definitions.html#type-parameters) and [abstract type bindings](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
+Abstract types are introduced by [type parameters](04-basic-declarations-and-definitions.html#type-parameters) and [abstract type bindings](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
 Parentheses in types can be used for grouping.
 
 [^1]: We assume that objects and packages also implicitly
@@ -49,9 +49,13 @@ Non-value types capture properties of identifiers that [are not values](#non-val
 For example, a [type constructor](#type-constructors) does not directly specify a type of values.
 However, when a type constructor is applied to the correct type arguments, it yields a proper type, which may be a value type.
 
-Non-value types are expressed indirectly in Scala. 
+Non-value types are expressed indirectly in Scala.
 E.g., a method type is described by writing down a method signature, which in itself is not a real type, although it  gives rise to a corresponding [method type](#method-types).
 Type constructors are another example, as one can write `type Swap[m[_, _], a,b] = m[b, a]`, but there is no syntax to write the corresponding anonymous type function directly.
+
+`AnyKind` is the super type of all types in the Scala type system.
+It has all possible kinds to encode [kind polymorphism](#kind-polymorphism).
+As such, it is neither a value type nor a type constructor.
 
 ## Paths
 
@@ -63,7 +67,7 @@ StableId        ::=  id
                   |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
 ClassQualifier  ::= ‘[’ id ‘]’
 ```
-
+<!-- TODO: Clarify paragraph -->
 Paths are not types themselves, but they can be a part of named types and in that function form a central role in Scala's type system.
 
 A path is one of the following.
@@ -134,7 +138,7 @@ SimpleType  ::=  StableId
 ```
 
 A _type designator_ refers to a named value type.
-It can be simple or qualified. 
+It can be simple or qualified.
 All such type designators are shorthands for type projections.
 
 Specifically, the unqualified type name ´t´ where ´t´ is bound in some class, object, or package ´C´ is taken as a shorthand for
@@ -163,13 +167,14 @@ SimpleType      ::=  SimpleType TypeArgs
 TypeArgs        ::=  ‘[’ Types ‘]’
 ```
 
-A _parameterized type_ ´T[ T_1, ..., T_n ]´ consists of a type designator ´T´ and type parameters ´T_1, ..., T_n´ where ´n \geq 1´.
+A _parameterized type_ ´T[ T_1, ..., T_n ]´ consists of a type designator ´T´ and type arguments ´T_1, ..., T_n´ where ´n \geq 1´.
 ´T´ must refer to a type constructor which takes ´n´ type parameters ´a_1, ..., a_n´.
 
+<!-- TODO Mention well-kinded conformance when we introduce kind-polymorphism -->
 Say the type parameters have lower bounds ´L_1, ..., L_n´ and upper bounds ´U_1, ..., U_n´.
-The parameterized type is well-formed if each actual type parameter _conforms to its bounds_, i.e. ´\sigma L_i <: T_i <: \sigma U_i´ where ´\sigma´ is the substitution ´[ a_1 := T_1, ..., a_n := T_n ]´.
+The parameterized type is well-formed if each type argument _conforms to its bounds_, i.e. ´\sigma L_i <: T_i <: \sigma U_i´ where ´\sigma´ is the substitution ´[ a_1 := T_1, ..., a_n := T_n ]´.
 
-###### Example Parameterized Types
+#### Example Parameterized Types
 
 Given the partial type definitions:
 
@@ -178,9 +183,9 @@ class TreeMap[A <: Comparable[A], B] { ... }
 class List[A] { ... }
 class I extends Comparable[I] { ... }
 
-class F[M[_], X] { ... }
+class F[M[A], X] { ... }
 class S[K <: String] { ... }
-class G[M[ Z <: I ], I] { ... }
+class G[M[Z <: I], I] { ... }
 ```
 
 the following parameterized types are well-formed:
@@ -194,9 +199,7 @@ F[List, Int]
 G[S, String]
 ```
 
-###### Example
-
-Given the [above type definitions](#example-parameterized-types), the following types are ill-formed:
+and the following types are ill-formed:
 
 ```scala
 TreeMap[I]            // illegal: wrong number of parameters
@@ -211,28 +214,77 @@ G[S, Int]             // illegal: S constrains its parameter to
                       //   that conforms to Int
 ```
 
+#### Wildcard Type Argument
+
+<!-- TODO Update the syntax to use '?' -->
+```ebnf
+WildcardType   ::=  ‘_’ TypeBounds
+```
+
+A _wildcard type argument_ is of the form `_´\;´>:´\,L\,´<:´\,U´`.
+A wildcard type must appear as a type argument of a parameterized type.
+The parameterized type to which the wildcard type is applied cannot be an abstract type constructor.
+
+Both bound clauses may be omitted.
+If both bounds are omitted, the real bounds are inferred from the bounds of the corresponding type parameter in the target type constructor.
+Otherwise, if a lower bound clause `>:´\,L´` is missing, `>:´\,´scala.Nothing` is assumed.
+Otherwise, if an upper bound clause `<:´\,U´` is missing, `<:´\,´scala.Any` is assumed.
+
+Given the [above type definitions](#example-parameterized-types), the following types are well-formed:
+
+```scala
+List[_] // inferred as List[_ >: Nothing <: Any]
+List[_ <: java.lang.Number]
+S[_ <: String]
+F[_, Boolean]
+```
+
+and the following code contains an ill-formed type:
+
+```scala
+trait H[F[A]]:
+  def f: F[_] // illegal : an abstract type constructor
+              // cannot be applied to wildcard arguments.
+```
+
+Wildcard types may also appear as parts of [infix types](#infix-types), [function types](#function-types), or [tuple types](#tuple-types).
+Their expansion is then the expansion in the equivalent parameterized type.
+
+##### Simplification Rules
+
+Let ´T[T_1, ..., T_n]´ be a parameterized type.
+Then, applying a wildcard type argument ´t´ of the form ´\\_ >: L <: U´ at the ´i´'th position obeys the following equivalences:
+
+- If the type parameter ´T_i´ is declared covariant, then ´t \equiv U´
+- If the type parameter ´T_i´ is declared contravariant, then ´t \equiv L´
+
 ### Tuple Types
 
 ```ebnf
 SimpleType    ::=   ‘(’ Types ‘)’
 ```
 
-A _tuple type_ ´(T_1 , ... , T_n)´ is an alias for the class `scala.Tuple´n´[´T_1´, ... , ´T_n´]`, where ´n \geq 2´.
+A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is an alias for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
+
+Notes:
+- `(´T´)` is just the type ´T´, and not `´T´ *: scala.EmptyTuple`.
+- `()` is not a valid type, and not `scala.EmptyTuple`.
+
+If ´n \leq 22´, the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple` is both a subtype and a supertype of tuple class `scala.Tuple´_n´[´T_1´, ..., ´T_n´]`.
 
 Tuple classes are case classes whose fields can be accessed using selectors `_1`, ..., `_n`.
-Their functionality is abstracted in a corresponding `Product` trait.
+Their functionality is abstracted in the corresponding `scala.Product_´n´` trait.
 The _n_-ary tuple class and product trait are defined at least as follows in the standard Scala library (they might also add other methods and implement other traits).
 
 ```scala
 case class Tuple´_n´[+´T_1´, ..., +´T_n´](_1: ´T_1´, ..., _n: ´T_n´)
 extends Product´_n´[´T_1´, ..., ´T_n´]
 
-trait Product´_n´[+´T_1´, ..., +´T_n´] {
+trait Product´_n´[+´T_1´, ..., +´T_n´] extends Product:
   override def productArity = ´n´
   def _1: ´T_1´
   ...
   def _n: ´T_n´
-}
 ```
 
 ### Annotated Types
@@ -262,14 +314,14 @@ RefineStat      ::=  Dcl
                   |
 ```
 
-A _compound type_ ´T_1´ `with` ... `with` ´T_n \\{ R \\}´ represents objects with members as given in the component types ´T_1, ..., T_n´ and the refinement ´\\{ R \\}´. 
+A _compound type_ ´T_1´ `with` ... `with` ´T_n \\{ R \\}´ represents objects with members as given in the component types ´T_1, ..., T_n´ and the refinement ´\\{ R \\}´.
 A refinement ´\\{ R \\}´ contains declarations and type definitions.
 If a declaration or definition overrides a declaration or definition in one of the component types ´T_1, ..., T_n´, the usual rules for [overriding](05-classes-and-objects.html#overriding) apply; otherwise the declaration or definition is said to be “structural” [^2].
 
 [^2]: A reference to a structurally defined member (method call or access to a value or variable) may generate binary code that is significantly slower than an equivalent code to a non-structural member.
 
-Within a method declaration in a structural refinement, the type of any value parameter may only refer to type parameters or abstract types that are contained inside the refinement. 
-That is, it must refer either to a type parameter of the method itself, or to a type definition within the refinement. 
+Within a method declaration in a structural refinement, the type of any value parameter may only refer to type parameters or abstract types that are contained inside the refinement.
+That is, it must refer either to a type parameter of the method itself, or to a type definition within the refinement.
 This restriction does not apply to the method's result type.
 
 If no refinement is given, the empty refinement is implicitly added, i.e. ´T_1´ `with` ... `with` ´T_n´ is a shorthand for ´T_1´ `with` ... `with` ´T_n \\{\\}´.
@@ -315,11 +367,63 @@ An _infix type_ ´T_1´ `op` ´T_2´ consists of an infix operator `op` which ge
 The type is equivalent to the type application `op`´[T_1, T_2]´.
 The infix operator `op` may be an arbitrary identifier.
 
-All type infix operators have the same precedence; parentheses have to be used for grouping.
-The [associativity](06-expressions.html#prefix,-infix,-and-postfix-operations) of a type operator is determined as for term operators: type operators ending in a colon ‘:’ are right-associative; all other operators are left-associative.
+Type operators follow the same [precedence and associativity as term operators](06-expressions.html#prefix-infix-and-postfix-operations).
+For example, `A + B * C` parses as `A + (B * C)` and `A | B & C` parses as `A | (B & C)`.
+Type operators ending in a colon ‘:’ are right-associative; all other operators are left-associative.
 
 In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´, all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same associativity.
 If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
+
+The type operators `|` and `&` are not really special.
+Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
+
+### Union and Intersection Types
+
+Syntactically, the types `S | T` and `S & T` are infix types, where the infix operators are `|` and `&`, respectively (see above).
+
+However, in this specification, ´S ｜ T´ and ´S ＆ T´ refer to the underlying core concepts of *union and intersection types*, respectively.
+
+- The type ´S ｜ T´ represents the set of values that are represented by *either* ´S´ or ´T´.
+- The type ´S ＆ T´ represents the set of values that are represented by *both* ´S´ and ´T´.
+
+From the [conformance rules](#conformance) rules on union and intersection types, we can show that ´＆´ and ´｜´ are *commutative* and *associative*.
+Moreover, `＆` is distributive over `｜`.
+For any type ´A´, ´B´ and ´C´, all of the following relationships hold:
+
+- ´A ＆ B \equiv B ＆ A´,
+- ´A ｜ B \equiv B ｜ A´,
+- ´(A ＆ B) ＆ C \equiv A ＆ (B ＆ C)´,
+- ´(A ｜ B) ｜ C \equiv A ｜ (B ｜ C)´, and
+- ´A ＆ (B ｜ C) \equiv (A ＆ B) ｜ (A ＆ C)´.
+
+If ´C´ is a type constructor, then ´C[A] ＆ C[B]´ can be simplified using the following three rules:
+
+- If ´C´ is covariant, ´C[A] ＆ C[B] \equiv C[A ＆ B]´
+- If ´C´ is contravariant, ´C[A] ＆ C[B] \equiv C[A | B]´
+- If ´C´ is invariant, emit a compile error
+
+From the above rules, we can derive the following conformance relationships:
+
+- When ´C´ is covariant, ´C[A ＆ B] <: C[A] ＆ C[B]´.
+- When ´C´ is contravariant, ´C[A ｜ B] <: C[A] ＆ C[B]´.
+
+#### Join of a union type
+
+In some situations, a union type might need to be widened to a non-union type.
+For this purpose, we define the _join_ of a union type ´T_1 ｜ ... ｜ T_n´ as the smallest intersection type of base class instances of ´T_1, ..., T_n´.
+Note that union types might still appear as type arguments in the resulting type, this guarantees that the join is always finite.
+
+For example, given
+
+```scala
+trait C[+T]
+trait D
+trait E
+class A extends C[A] with D
+class B extends C[B] with D with E
+```
+
+The join of ´A ｜ B´ is ´C[A ｜ B] ＆ D´
 
 ### Function Types
 
@@ -329,146 +433,30 @@ FunctionArgs      ::=  InfixType
                     |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
 ```
 
-The type ´(T_1, ..., T_n) \Rightarrow U´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´U´.
-In the case of exactly one argument type ´T \Rightarrow U´ is a shorthand for ´(T) \Rightarrow U´.
-An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters) of type ´T´.
+The type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
+The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.md#by-name-parameters) of type ´T´.
 
-Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow U´ is the same as ´S \Rightarrow (T \Rightarrow U)´.
+Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
+
+Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
 
 Function types are shorthands for class types that define an `apply` method.
-Specifically, the ´n´-ary function type ´(T_1 , \ldots , T_n) \Rightarrow U´ is a shorthand for the class type `Function´_n´[´T_1´ , … , ´T_n´, ´U´]`.
-Such class types are defined in the Scala library for ´n´ between 0 and 22 as follows.
+Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ is a shorthand for the class type `Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
+In particular ´() \Rightarrow R´ is a shorthand for class type `Function´_0´[´R´]`.
+
+Such class types behave as if they were instances of the following trait:
 
 ```scala
-package scala
-trait Function´_n´[-´T_1´, ..., -´T_n´, +´U´] {
-  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´U´
-  override def toString = "<function>"
-}
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
 ```
 
-Hence, function types are [covariant](04-basic-declarations-and-definitions.html#variance-annotations) in their result type and contravariant in their argument types.
-
-### Existential Types
-
-```ebnf
-Type               ::= InfixType ExistentialClauses
-ExistentialClauses ::= ‘forSome’ ‘{’ ExistentialDcl
-                       {semi ExistentialDcl} ‘}’
-ExistentialDcl     ::= ‘type’ TypeDcl
-                    |  ‘val’ ValDcl
-```
-
-An _existential type_ has the form `´T´ forSome { ´Q´ }` where ´Q´ is a sequence of [type declarations](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
-
-Let ´t_1[\mathit{tps}\_1] >: L_1 <: U_1 , \ldots , t_n[\mathit{tps}\_n] >: L_n <: U_n´ be the types declared in ´Q´ (any of the type parameter sections `[ ´\mathit{tps}_i´ ]` might be missing).
-The scope of each type ´t_i´ includes the type ´T´ and the existential clause ´Q´.
-The type variables ´t_i´ are said to be _bound_ in the type `´T´ forSome { ´Q´ }`.
-Type variables which occur in a type ´T´ but which are not bound in ´T´ are said to be _free_ in ´T´.
-
-A _type instance_ of `´T´ forSome { ´Q´ }` is a type ´\sigma T´ where ´\sigma´ is a substitution over ´t_1 , \ldots , t_n´ such that, for each ´i´, ´\sigma L_i <: \sigma t_i <: \sigma U_i´.
-The set of values denoted by the existential type `´T´ forSome {´\,Q\,´}` is the union of the set of values of all its type instances.
-
-A _skolemization_ of `´T´ forSome { ´Q´ }` is a type instance ´\sigma T´, where ´\sigma´ is the substitution ´[t_1'/t_1 , \ldots , t_n'/t_n]´ and each ´t_i'´ is a fresh abstract type with lower bound ´\sigma L_i´ and upper bound ´\sigma U_i´.
-
-#### Simplification Rules
-
-Existential types obey the following four equivalences:
-
-1. Multiple for-clauses in an existential type can be merged. E.g., `´T´ forSome { ´Q´ } forSome { ´Q'´ }` is equivalent to `´T´ forSome { ´Q´ ; ´Q'´}`.
-1. Unused quantifications can be dropped. 
-E.g., `´T´ forSome { ´Q´ ; ´Q'´}` where none of the types defined in ´Q'´ are referred to by ´T´ or ´Q´, is equivalent to `´T´ forSome {´ Q ´}`.
-1. An empty quantification can be dropped. E.g., `´T´ forSome { }` is equivalent to ´T´.
-1. An existential type `´T´ forSome { ´Q´ }` where ´Q´ contains a clause `type ´t[\mathit{tps}] >: L <: U´` is equivalent to the type `´T'´ forSome { ´Q´ }` where ´T'´ results from ´T´ by replacing every [covariant occurrence](04-basic-declarations-and-definitions.html#variance-annotations) of ´t´ in ´T´ by ´U´ and by replacing every contravariant occurrence of ´t´ in ´T´ by ´L´.
-
-#### Existential Quantification over Values
-
-As a syntactic convenience, the bindings clause in an existential type may also contain value declarations `val ´x´: ´T´`.
-An existential type `´T´ forSome { ´Q´; val ´x´: ´S\,´;´\,Q'´ }` is treated as a shorthand for the type `´T'´ forSome { ´Q´; type ´t´ <: ´S´ with Singleton; ´Q'´ }`, where ´t´ is a fresh type name and ´T'´ results from ´T´ by replacing every occurrence of `´x´.type` with ´t´.
-
-#### Placeholder Syntax for Existential Types
-
-```ebnf
-WildcardType   ::=  ‘_’ TypeBounds
-```
-
-Scala supports a placeholder syntax for existential types.
-A _wildcard type_ is of the form `_´\;´>:´\,L\,´<:´\,U´`.
-Both bound clauses may be omitted.
-If a lower bound clause `>:´\,L´` is missing, `>:´\,´scala.Nothing` is assumed.
-If an upper bound clause `<:´\,U´` is missing, `<:´\,´scala.Any` is assumed.
-A wildcard type is a shorthand for an existentially quantified type variable, where the existential quantification is implicit.
-
-A wildcard type must appear as a type argument of a parameterized type.
-Let ´T = p.c[\mathit{targs},T,\mathit{targs}']´ be a parameterized type where ´\mathit{targs}, \mathit{targs}'´ may be empty and ´T´ is a wildcard type `_´\ ´>:´\,L\,´<:´\,U´`.
-Then ´T´ is equivalent to the existential type
-
-```scala
-´p.c[\mathit{targs},t,\mathit{targs}']´ forSome { type ´t´ >: ´L´ <: ´U´ }
-```
-
-where ´t´ is some fresh type variable.
-Wildcard types may also appear as parts of [infix types](#infix-types), [function types](#function-types), or [tuple types](#tuple-types).
-Their expansion is then the expansion in the equivalent parameterized type.
-
-###### Example
-
-Assume the class definitions
-
-```scala
-class Ref[T]
-abstract class Outer { type T }
-```
-
-Here are some examples of existential types:
-
-```scala
-Ref[T] forSome { type T <: java.lang.Number }
-Ref[x.T] forSome { val x: Outer }
-Ref[x_type # T] forSome { type x_type <: Outer with Singleton }
-```
-
-The last two types in this list are equivalent.
-An alternative formulation of the first type above using wildcard syntax is:
-
-```scala
-Ref[_ <: java.lang.Number]
-```
-
-###### Example
-
-The type `List[List[_]]` is equivalent to the existential type
-
-```scala
-List[List[t] forSome { type t }]
-```
-
-###### Example
-
-Assume a covariant type
-
-```scala
-class List[+T]
-```
-
-The type
-
-```scala
-List[T] forSome { type T <: java.lang.Number }
-```
-
-is equivalent (by simplification rule 4 above) to
-
-```scala
-List[java.lang.Number] forSome { type T <: java.lang.Number }
-```
-
-which is in turn equivalent (by simplification rules 2 and 3 above) to `List[java.lang.Number]`.
+Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
 
 ## Non-Value Types
 
-The types explained in the following do not denote sets of values, nor do they appear explicitly in programs. 
-They are introduced in this report as the internal types of defined identifiers.
+The types explained in the following do not denote sets of values.
 
 ### Method Types
 
@@ -480,6 +468,7 @@ Method types associate to the right: ´(\mathit{Ps}\_1)(\mathit{Ps}\_2)U´ is tr
 A special case are types of methods without any parameters.
 They are written here `=> T`. Parameterless methods name expressions that are re-evaluated each time the parameterless method name is referenced.
 
+<!-- TODO: replace by reference to eta-expansion instead -->
 Method types do not exist as types of values.
 If a method name is used as a value, its type is [implicitly converted](06-expressions.html#implicit-conversions) to a corresponding function type.
 
@@ -524,20 +513,30 @@ union : [A >: Nothing <: Comparable[A]] (x: Set[A], xs: Set[A]) Set[A]
 
 ### Type Constructors
 
-A _type constructor_ is represented internally much like a polymorphic method type.
-`[´\pm´ ´a_1´ >: ´L_1´ <: ´U_1, ..., \pm a_n´ >: ´L_n´ <: ´U_n´] ´T´` represents a type that is expected by a [type constructor parameter](04-basic-declarations-and-definitions.html#type-parameters) or an [abstract type constructor binding](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases) with the corresponding type parameter clause.
-
-###### Example
-
-Consider this fragment of the `Iterable[+X]` class:
-
-```scala
-trait Iterable[+X] {
-  def flatMap[newType[+X] <: Iterable[X], S](f: X => newType[S]): newType[S]
-}
+```
+Type             ::=  ... |  TypeLambdaParams ‘=>>’ Type
+TypeParamClause  ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
+TypeLambdaParams ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
+TypeLambdaParam  ::=  {Annotation} (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
 ```
 
-Conceptually, the type constructor `Iterable` is a name for the anonymous type `[+X] Iterable[X]`, which may be passed to the `newType` type constructor parameter in `flatMap`.
+<!-- the definition of a parameterized type above uses the concept of a type constructor, so we can't define a type constructor as an unapplied parameterized type. -->
+
+A _type constructor_ is either:
+- a _type lambda_, of the form `[´\mathit{tps}\,´] =>> ´T´` where `[´\mathit{tps}\,´]` is a type parameter clause `[´a_1´ >: ´L_1´ <: ´U_1, ..., a_n´ >: ´L_n´ <: ´U_n´]` for some ´n \gt 0´ and ´T´ is either a value type
+or another type lambda.
+- a reference to a [desugared type declaration](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases) upper-bounded by a type lambda.
+- a reference to a [polymorphic class](05-classes-and-objects.html##class-definitions).
+
+Each type parameter ´a_i´ of a type lambda has a variance ´v_i´ which cannot be written down by the user but is inferred from the body of the type lambda to maximize the number of types that conform to the type lambda.
+<!-- TODO: write down the exact algorithm? -->
+
+#### Inferred type parameter clause
+
+To each type constructor corresponds an _inferred type parameter clause_ which is computed as follow:
+- For a type lambda, its type parameter clause (including variance annotations).
+- For a type declaration upper-bounded by a type lambda ´T´, the inferred clause of ´T´.
+- For a polymorphic class, its type parameter clause.
 
 <!-- ### Overloaded Types
 
@@ -572,6 +571,42 @@ val f = 0
 define a function `f} which has type `(x: T)T ´\overload´ Int`.
 -->
 
+## Kind Polymorphism
+
+Type parameters are normally partitioned into _kinds_, indicated by the top type of which it is a subtype.
+Proper types are the types of values and are subtypes of `Any`.
+Higher-kinded types are type constructors such as `List` or `Map`.
+Covariant single argument type constructors such as `List` are subtypes of `[+X] =>> Any`.
+The `Map` type constructor is a subtype of `[X, +Y] =>> Any`.
+
+A type can be used only as prescribed by its kind.
+Subtypes of `Any` cannot be applied to type arguments whereas subtypes of `[X] =>> Any` _must_ be applied to a type argument, unless they are passed to type parameters of the same kind.
+
+A type parameter whose upper bound is [`scala.AnyKind`](https://scala-lang.org/api/3.x/scala/AnyKind.html) can have any kind and is called an _any-kinded type_.
+
+```scala
+def f[T <: AnyKind] = ...
+```
+
+The actual type arguments of `f` can then be types of arbitrary kinds.
+So the following are all legal:
+
+```scala
+f[Int]
+f[List]
+f[Map]
+f[[X] =>> String]
+```
+
+Since the actual kind of an any-kinded type is unknown, its usage is heavily restricted.
+An any-kinded type can neither be the type of a value, nor be instantiated with type parameters.
+The only thing one can do with an any-kinded type is to pass it to another any-kinded type argument.
+
+`AnyKind` plays a special role in Scala's subtype system.
+It is a supertype of all other types, no matter what their kind is.
+It is also assumed to be kind-compatible with all other types.
+Furthermore, `AnyKind` is itself an any-kinded type, so it cannot be the type of values and it cannot be instantiated.
+
 ## Base Types and Member Definitions
 
 Types of class members depend on the way the members are referenced.
@@ -599,18 +634,15 @@ These notions are defined mutually recursively as follows.
   If ´T´ is an alias or abstract type, the previous clauses apply.
   Otherwise, ´T´ must be a (possibly parameterized) class type, which is defined in some class ´B´.
   Then the base types of `´S´#´T´` are the base types of ´T´ in ´B´ seen from the prefix type ´S´.
-  - The base types of an existential type `´T´ forSome { ´Q´ }` are all types `´S´ forSome { ´Q´ }` where ´S´ is a base type of ´T´.
 
 1. The notion of a type ´T´ _in class ´C´ seen from some prefix type ´S´_ makes sense only if the prefix type ´S´ has a type instance of class ´C´ as a base type, say `´S'´#´C´[´T_1, ..., T_n´]`.
 Then we define as follows.
   - If `´S´ = ´\epsilon´.type`, then ´T´ in ´C´ seen from ´S´ is ´T´ itself.
-  - Otherwise, if ´S´ is an existential type `´S'´ forSome { ´Q´ }`, and ´T´ in ´C´ seen from ´S'´ is ´T'´, then ´T´ in ´C´ seen from ´S´ is `´T'´ forSome {´\,Q\,´}`.
   - Otherwise, if ´T´ is the ´i´'th type parameter of some class ´D´, then
     - If ´S´ has a base type `´D´[´U_1, ..., U_n´]`, for some type parameters `[´U_1, ..., U_n´]`, then ´T´ in ´C´ seen from ´S´ is ´U_i´.
     - Otherwise, if ´C´ is defined in a class ´C'´, then ´T´ in ´C´ seen from ´S´ is the same as ´T´ in ´C'´ seen from ´S'´.
     - Otherwise, if ´C´ is not defined in another class, then ´T´ in ´C´ seen from ´S´ is ´T´ itself.
-  - Otherwise, if ´T´ is the singleton type `´D´.this.type` for some class ´D´
-    then
+  - Otherwise, if ´T´ is the singleton type `´D´.this.type` for some class ´D´ then
     - If ´D´ is a subclass of ´C´ and ´S´ has a type instance of class ´D´ among its base types, then ´T´ in ´C´ seen from ´S´ is ´S´.
     - Otherwise, if ´C´ is defined in a class ´C'´, then ´T´ in ´C´ seen from ´S´ is the same as ´T´ in ´C'´ seen from ´S'´.
     - Otherwise, if ´C´ is not defined in another class, then ´T´ in ´C´ seen from ´S´ is ´T´ itself.
@@ -621,6 +653,8 @@ If ´T´ is a possibly parameterized class type, where ´T´'s class is defined 
 1. The _member bindings_ of a type ´T´ are
   1. all bindings ´d´ such that there exists a type instance of some class ´C´ among the base types of ´T´ and there exists a definition or declaration ´d'´ in ´C´ such that ´d´ results from ´d'´ by replacing every type ´T'´ in ´d'´ by ´T'´ in ´C´ seen from ´T´, and
   2. all bindings of the type's [refinement](#compound-types), if it has one.
+2. The member bindinds of ´S ＆ T´ are all the binds of ´S´ *and* all the bindins of ´T´.
+3. The member bindings of ´S ｜ T´ are the member bindings of its [join](#join-of-a-union-type).
 
 The _definition_ of a type projection `S#T` is the member binding ´d_T´ of the type `T` in `S`.
 In that case, we also say that `S#T` _is defined by_ ´d_T´.
@@ -638,6 +672,8 @@ We define the following relations between types.
 
 ### Equivalence
 
+´\color{red}{\text{TODO SCALA3: Redefine equivalence as mutual conformance?}}´
+
 Equivalence ´(\equiv)´ between types is the smallest congruence [^congruence] such that the following holds:
 
 - If ´t´ is defined by a type alias `type ´t´ = ´T´`, then ´t´ is equivalent to ´T´.
@@ -651,7 +687,6 @@ Equivalence ´(\equiv)´ between types is the smallest congruence [^congruence] 
   - corresponding parameters have equivalent types.
     Note that the names of parameters do not matter for method type equivalence.
 - Two [polymorphic method types](#polymorphic-method-types) are equivalent if they have the same number of type parameters, and, after renaming one set of type parameters by another, the result types as well as lower and upper bounds of corresponding type parameters are equivalent.
-- Two [existential types](#existential-types) are equivalent if they have the same number of quantifiers, and, after renaming one list of type quantifiers by another, the quantified types as well as lower and upper bounds of corresponding quantifiers are equivalent.
 - Two [type constructors](#type-constructors) are equivalent if they have the same number of type parameters, and, after renaming one list of type parameters by another, the result types as well as variances, lower and upper bounds of corresponding type parameters are equivalent.
 
 [^congruence]: A congruence is an equivalence relation which is closed under formation of contexts.
@@ -661,31 +696,40 @@ Equivalence ´(\equiv)´ between types is the smallest congruence [^congruence] 
 
 The conformance relation ´(<:)´ is the smallest transitive relation that satisfies the following conditions.
 
-- Conformance includes equivalence. If `T \equiv U` then `T <: U`.
-- For every value type `T`, `scala.Nothing <: ´T´ <: scala.Any`.
-- For every type constructor ´T´ (with any number of type parameters), `scala.Nothing <: ´T´ <: scala.Any`.
+- Conformance includes equivalence. If ´T \equiv U´ then ´T <: U´.
+- For every type `´T´` (of any kind), `scala.Nothing <: ´T´ <: scala.AnyKind`.
+- For every value type `´T´`, `´T´ <: scala.Any`.
+- For every type constructor `´T´` with type parameters `[´U_1´, ..., ´U_n´]`, `[´U_1´, ..., ´U_n´] =>> scala.Nothing <: ´T´ <: [´U_1´, ..., ´U_n´] =>> scala.Any`.
 - For every value type ´T´, `scala.Null <: ´T´` unless `´T´ <: scala.AnyVal`.
 - A type variable or abstract type ´t´ conforms to its upper bound and its lower bound conforms to ´t´.
 - A class type or parameterized type conforms to any of its base-types.
 - A singleton type `´p´.type` conforms to the type of the path ´p´.
 - A singleton type `´p´.type` conforms to the type `scala.Singleton`.
 - A type projection `´T´#´t´` conforms to `´U´#´t´` if ´T´ conforms to ´U´.
-- A parameterized type `´T´[´T_1´, ..., ´T_n´]` conforms to `´T´[´U_1´, ..., ´U_n´]` if the following three conditions hold for ´i \in \{ 1, ..., n \}´:
-  1. If the ´i´'th type parameter of ´T´ is declared covariant, then ´T_i <: U_i´.
-  1. If the ´i´'th type parameter of ´T´ is declared contravariant, then ´U_i <: T_i´.
-  1. If the ´i´'th type parameter of ´T´ is declared neither covariant nor contravariant, then ´U_i \equiv T_i´.
+- A parameterized type `´T´[´T_1´, ..., ´T_n´]` conforms to `´T´[´U_1´, ..., ´U_n´]` if the following conditions hold for ´i \in \{ 1, ..., n \}´:
+  1. If the ´i´'th type parameter of ´T´ is declared covariant, then ´T_i <: U_i´. [^argisnotwildcard]
+  1. If the ´i´'th type parameter of ´T´ is declared contravariant, then ´U_i <: T_i´. [^argisnotwildcard]
+  1. If the ´i´'th type parameter of ´T´ is declared neither covariant nor contravariant:
+     1. If neither ´T_i´ nor ´U_i´ are wildcard type arguments, then ´U_i \equiv T_i´.
+     1. If ´T_i´ is a wildcard type argument of the form ´\\_ >: L_1 <: U_1´ and ´U_i´ is a wildcard argument of the form ´\\_ >: L_2 <: U_2´, then ´L_2 <: L_1´ and ´H_1 <: H_2´ (i.e., the ´T_i´ "interval" is contained in the ´U_i´ "interval").
+     1. If ´U_i´ is a wildcard type argument of the form ´\\_ >: L_2 <: U_2´, then ´L_2 <: T_i´ and ´T_i <: U_2´.
 - A compound type `´T_1´ with ... with ´T_n´ {´R\,´}` conforms to each of its component types ´T_i´.
 - If ´T <: U_i´ for ´i \in \{ 1, ..., n \}´ and for every binding ´d´ of a type or value ´x´ in ´R´ there exists a member binding of ´x´ in ´T´ which subsumes ´d´, then ´T´ conforms to the compound type `´U_1´ with ... with ´U_n´ {´R\,´}`.
-- The existential type `´T´ forSome {´\,Q\,´}` conforms to ´U´ if its [skolemization](#existential-types) conforms to ´U´.
-- The type ´T´ conforms to the existential type `´U´ forSome {´\,Q\,´}` if ´T´ conforms to one of the [type instances](#existential-types) of `´U´ forSome {´\,Q\,´}`.
+- If ´T <: U´, then ´T <: U ｜ W´ and ´T <: W ｜ U´.
+- If ´T <: W´ and ´U <: W´, then ´T ｜ U <: W´.
+- If ´T <: U´ and ´T <: W´, then ´T <: U ＆ W´.
+- If ´T <: W´, then ´T ＆ U <: W´ and ´U ＆ T <: W´.
 - If ´T_i \equiv T_i'´ for ´i \in \{ 1, ..., n\}´ and ´U´ conforms to ´U'´ then the method type ´(p_1:T_1, ..., p_n:T_n) U´ conforms to ´(p_1':T_1', ..., p_n':T_n') U'´.
 - The polymorphic type ´[a_1 >: L_1 <: U_1, ..., a_n >: L_n <: U_n] T´ conforms to the polymorphic type ´[a_1 >: L_1' <: U_1', ..., a_n >: L_n' <: U_n'] T'´ if, assuming ´L_1' <: a_1 <: U_1', ..., L_n' <: a_n <: U_n'´ one has ´T <: T'´ and ´L_i <: L_i'´ and ´U_i' <: U_i´ for ´i \in \{ 1, ..., n \}´.
-- Type constructors ´T´ and ´T'´ follow a similar discipline. We characterize ´T´ and ´T'´ by their type parameter clauses ´[a_1, ..., a_n]´ and ´[a_1', ..., a_n']´, where an ´a_i´ or ´a_i'´ may include a variance annotation, a higher-order type parameter clause, and bounds.
+- Type constructors ´T´ and ´T'´ follow a similar discipline.
+We characterize ´T´ and ´T'´ by their [inferred type parameter clauses](#inferred-type-parameter-clause) ´[a_1, ..., a_n]´ and ´[a_1', ..., a_n']´.
 Then, ´T´ conforms to ´T'´ if any list ´[t_1, ..., t_n]´ -- with declared variances, bounds and higher-order type parameter clauses -- of valid type arguments for ´T'´ is also a valid list of type arguments for ´T´ and ´T[t_1, ..., t_n] <: T'[t_1, ..., t_n]´.
 Note that this entails that:
   - The bounds on ´a_i´ must be weaker than the corresponding bounds declared for ´a'_i´.
   - The variance of ´a_i´ must match the variance of ´a'_i´, where covariance matches covariance, contravariance matches contravariance and any variance matches invariance.
   - Recursively, these restrictions apply to the corresponding higher-order type parameter clauses of ´a_i´ and ´a'_i´.
+
+ [^argisnotwildcard]: In these cases, if `T_i` and/or `U_i` are wildcard type arguments, the [simplification rules](#simplification-rules) for parameterized types allow to reduce them to real types.
 
 A declaration or definition in some compound type of class type ´C´ _subsumes_ another declaration of the same name in some compound type or class type ´C'´, if one of the following holds.
 
@@ -695,28 +739,15 @@ A declaration or definition in some compound type of class type ´C´ _subsumes_
 - A type declaration `type ´t´[´T_1´, ..., ´T_n´] >: ´L´ <: ´U´` subsumes a type declaration `type ´t´[´T_1´, ..., ´T_n´] >: ´L'´ <: ´U'´` if ´L' <: L´ and ´U <: U'´.
 - A type or class definition that binds a type name ´t´ subsumes an abstract type declaration `type t[´T_1´, ..., ´T_n´] >: L <: U` if ´L <: t <: U´.
 
-
 #### Least upper bounds and greatest lower bounds
+
 The ´(<:)´ relation forms pre-order between types, i.e. it is transitive and reflexive.
 This allows us to define _least upper bounds_ and _greatest lower bounds_ of a set of types in terms of that order.
-The least upper bound or greatest lower bound of a set of types does not always exist.
-For instance, consider the class definitions:
 
-```scala
-class A[+T] {}
-class B extends A[B]
-class C extends A[C]
-```
+- the _least upper bound_ of `A` and `B` is the smallest type `L` such that `A` <: `L` and `B` <: `L`.
+- the _greatest lower bound_ of `A` and `B` is the largest type `G` such that `G` <: `A` and `G` <: `B`.
 
-Then the types `A[Any], A[A[Any]], A[A[A[Any]]], ...` form a descending sequence of upper bounds for `B` and `C`.
-The least upper bound would be the infinite limit of that sequence, which does not exist as a Scala type.
-Since cases like this are in general impossible to detect, a Scala compiler is free to reject a term which has a type specified as a least upper or greatest lower bound, and that bound would be more complex than some compiler-set limit [^4].
-
-The least upper bound or greatest lower bound might also not be unique.
-For instance `A with B` and `B with A` are both greatest lower bounds of `A` and `B`.
-If there are several least upper bounds or greatest lower bounds, the Scala compiler is free to pick any one of them.
-
-[^4]: The current Scala compiler limits the nesting level of parameterization in such bounds to be at most two deeper than the maximum nesting level of the operand types
+By construction, for all types `A` and `B`, the least upper bound of `A` and `B` is `A ｜ B`, and their greatest lower bound is `A ＆ B`.
 
 ### Weak Conformance
 
@@ -738,20 +769,9 @@ A _weak least upper bound_ is a least upper bound with respect to weak conforman
 A type ´T´ is _compatible_ to a type ´U´ if ´T´ (or its corresponding function type) [weakly conforms](#weak-conformance) to ´U´ after applying [eta-expansion](06-expressions.html#eta-expansion).
 If ´T´ is a method type, it's converted to the corresponding function type.
 If the types do not weakly conform, the following alternatives are checked in order:
-- [view application](07-implicits.html#views): there's an implicit view from ´T´ to ´U´;
 - dropping by-name modifiers: if ´U´ is of the shape `´=> U'´` (and ´T´ is not), `´T <:_w U'´`;
 - SAM conversion: if ´T´ corresponds to a function type, and ´U´ declares a single abstract method whose type [corresponds](06-expressions.html#sam-conversion) to the function type ´U'´, `´T <:_w U'´`.
-
-<!--- TODO: include other implicit conversions in addition to view application?
-
-  trait Proc { def go(x: Any): Unit }
-
-  def foo(x: Any => Unit): Unit = ???
-  def foo(x: Proc): Unit = ???
-
-  foo((x: Any) => 1) // works when you drop either foo overload since value discarding is applied
-
--->
+- [implicit conversion](07-implicits.html#views): there's an implicit conversion from ´T´ to ´U´ in scope;
 
 #### Examples
 
@@ -790,8 +810,6 @@ A type designator is volatile if it is an alias of a volatile type, or if it des
 
 A singleton type `´p´.type` is volatile, if the underlying type of path ´p´ is volatile.
 
-An existential type `´T´ forSome {´\,Q\,´}` is volatile if ´T´ is volatile.
-
 ## Type Erasure
 
 A type is called _generic_ if it contains type arguments or type variables.
@@ -799,6 +817,7 @@ _Type erasure_ is a mapping from (possibly generic) types to non-generic types.
 We write ´|T|´ for the erasure of type ´T´.
 The erasure mapping is defined as follows.
 
+- The erasure of `scala.AnyKind` is `Object`.
 - The erasure of an alias type is the erasure of its right-hand side.
 - The erasure of an abstract type is the erasure of its upper bound.
 - The erasure of the parameterized type `scala.Array´[T_1]´` is `scala.Array´[|T_1|]´`.
@@ -806,8 +825,29 @@ The erasure mapping is defined as follows.
 - The erasure of a singleton type `´p´.type` is the erasure of the type of ´p´.
 - The erasure of a type projection `´T´#´x´` is `|´T´|#´x´`.
 - The erasure of a compound type `´T_1´ with ... with ´T_n´ {´R\,´}` is the erasure of the intersection dominator of ´T_1, ..., T_n´.
-- The erasure of an existential type `´T´ forSome {´\,Q\,´}` is ´|T|´.
+- The erasure of a union type ´S ｜ T´ is the _erased least upper bound_ (_elub_) of the erasures of ´S´ and ´T´.
+- The erasure of an intersection type ´S ＆ T´ is the _eglb_ (erased greatest lower bound) of the erasures of ´S´ and ´T´.
 
-The _intersection dominator_ of a list of types ´T_1, ..., T_n´ is computed as follows.
-Let ´T_{i_1}, ..., T_{i_m}´ be the subsequence of types ´T_i´ which are not supertypes of some other type ´T_j´.
-If this subsequence contains a type designator ´T_c´ that refers to a class which is not a trait, the intersection dominator is ´T_c´. Otherwise, the intersection dominator is the first element of the subsequence, ´T_{i_1}´.
+The erased LUB is computed as follows:
+
+- if both argument are arrays of objects, an array of the erased LUB of the element types
+- if both arguments are arrays of same primitives, an array of this primitive
+- if one argument is array of primitives and the other is array of objects, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- if one argument is an array, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- otherwise a common superclass or trait S of the argument classes, with the following two properties:
+  - S is minimal: no other common superclass or trait derives from S, and
+  - S is last: in the linearization of the first argument type ´|A|´ there are no minimal common superclasses or traits that come after S.
+  The reason to pick last is that we prefer classes over traits that way, which leads to more predictable bytecode and (?) faster dynamic dispatch.
+
+The rules for ´eglb(A, B)´ are given below in pseudocode:
+
+```
+eglb(scala.Array[A], JArray[B]) = scala.Array[eglb(A, B)]
+eglb(scala.Array[T], _)         = scala.Array[T]
+eglb(_, scala.Array[T])         = scala.Array[T]
+eglb(A, B)                      = A                     if A extends B
+eglb(A, B)                      = B                     if B extends A
+eglb(A, _)                      = A                     if A is not a trait
+eglb(_, B)                      = B                     if B is not a trait
+eglb(A, _)                      = A                     // use first
+```

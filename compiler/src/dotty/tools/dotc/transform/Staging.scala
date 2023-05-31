@@ -8,9 +8,9 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.staging.QuoteContext.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.CrossStageSafety
 import dotty.tools.dotc.staging.HealType
@@ -31,13 +31,14 @@ class Staging extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    if (ctx.phase <= splicingPhase) {
+    if (ctx.phase <= stagingPhase) {
       // Recheck that staging level consistency holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new CrossStageSafety {
-            override protected def healType(pos: SrcPos)(using Context) = new HealType(pos) {
-              override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos): TypeRef = {
+            override protected def healType(pos: SrcPos)(tpe: Type)(using Context) = new HealType(pos) {
+              override protected def tryHeal(tp: TypeRef): TypeRef = {
+                val sym = tp.symbol
                 def symStr =
                   if (sym.is(ModuleClass)) sym.sourceModule.show
                   else i"${sym.name}.this"
@@ -51,9 +52,17 @@ class Staging extends MacroTransform {
 
                 tp
               }
-            }
+            }.apply(tpe)
           }
           checker.transform(tree)
+        case _ =>
+      }
+    }
+    if !Inlines.inInlineMethod then
+      tree match {
+        case tree: RefTree =>
+          assert(level != 0 || tree.symbol != defn.QuotedTypeModule_of,
+            "scala.quoted.Type.of at level 0 should have been replaced with Quote AST in staging phase")
         case _ =>
       }
 
@@ -65,7 +74,7 @@ class Staging extends MacroTransform {
         case _ =>
           // OK
       }
-    }
+  end checkPostCondition
 
   override def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run

@@ -1,121 +1,142 @@
 ---
 layout: doc-page
-title: Testing in Dotty
+title: Testing Your Changes
+redirectFrom: /docs/contributing/issues/testing.html
 ---
+
+It is important to add tests before a pull request, to verify that everything is working as expected,
+and act as proof of what is valid/invalid Scala code (in case it is broken in the future).
+In this section you will see the testing procedures in Scala 3.
+
+## Running all Tests
 
 Running all tests in Dotty is as simple as:
 
 ```bash
 $ sbt test
 ```
-
 Specifically, `sbt test` runs all tests that do _not_ require a bootstrapped
 compiler. In practice, this means that it runs all compilation tests meeting
 this criterion, as well as all non-compiler tests.
 
-The entire suite of tests can be run using the bootstrapped compiler as follows:
+To run all tests of Scala 3, including for compiler, REPL, libraries and more, run the following in sbt:
 
 ```bash
 $ sbt
-> scala3-bootstrapped/test
+sbt:scala3> scala3-bootstrapped/test
 ```
 
-There are currently several forms of tests in Dotty. These can be split into
-two categories:
+Often however it is not necessary to test everything if your changes are localised to one area,
+you will see in the following sections the different kinds of tests, and how
+to run individual tests.
 
-## Unit tests
-These tests can be found in `<sub-project>/test` and are used to check
-functionality of specific parts of the codebase in isolation e.g: parsing,
-scanning and message errors.
+## Compilation Tests
 
-To run all tests in e.g., for the compiler test-suite you can write:
+Compilation tests run the compiler over input files, using various settings. Input files
+are found within the `tests/` directory at the root of the compiler repo.
 
-```bash
-$ sbt
-> scala3-compiler/test
+Test input files are categorised further by placing them in the subdirectories
+of the `tests/` directory. A small selection of test categories include:
+
+- `tests/pos` – tests that should compile: pass if compiles successfully.
+- `tests/neg` – should not compile: pass if fails compilation. Useful, e.g., to test an expected compiler error.
+- `tests/run` – these tests not only compile but are also run.
+
+### Naming and Running a Test Case
+
+Tests are, by convention, named after the number of the issue they are fixing.
+e.g. if you are fixing issue 101, then the test should be named `i101.scala`, for a single-file test,
+or be within a directory called `i101/` for a multi-file test.
+
+To run the test, invoke the sbt command `testCompilation i101` (this will match all tests with `"i101"` in
+the name, so it is useful to use a unique name)
+
+The test groups – `pos`, `negAll`, etc. – are defined in [CompilationTests]. If you want to run a group
+of tests, e.g. `pos`, you can do so via `testOnly *CompilationTests -- *pos` command.
+
+### Testing a Single Input File
+
+If your issue is reproducible by only one file, put that file under an appropriate category.
+For example, if your issue is about getting rid of a spurious compiler error (that is a code that doesn't compile should, in fact, compile), you can create a file `tests/pos/i101.scala`.
+
+### Testing Multiple Input Files
+
+If you need more than one file to reproduce an issue, create a directory instead of a file
+e.g. `tests/pos/i101/`, and put all the Scala files that are needed to reproduce the issue there.
+There are two ways to organise the input files within:
+
+**1: Requiring classpath dependency:** Sometimes issues require one file to be compiled after the other,
+(e.g. if the issue only happens with a library dependency, like with Java interop). In this case,
+the outputs of the first file compiled will be available to the next file compiled, available via the classpath.
+This is called *separate compilation*.
+
+To achieve this, within `tests/pos/i101/`, add a suffix `_n` to each file name, where `n` is an integer defining the
+order in which the file will compile. E.g. if you have two files, `Lib.scala` and `Main.scala`, and you need them
+compiled separately – Lib first, Main second, then name them `Lib_1.scala` and `Main_2.scala`.
+
+**2: Without classpath dependency:** If your issue does not require a classpath dependency, your files can be compiled
+in a single run, this is called *joint compilation*. In this case use file names without the `_n` suffix.
+
+### Checking Program Output
+
+`tests/run` tests verify the run-time behaviour of a test case. The output is checked by invoking a main method
+on a class `Test`, this can be done with either
+```scala
+@main def Test: Unit = assert(1 > 0)
+```
+or
+```scala
+object Test extends scala.App:
+  assert(1 > 0)
 ```
 
-To run a single test class you use `testOnly` and the fully qualified class name.
-For example:
+If your program also prints output, this can be compared against `*.check` files.
+These contain the expected output of a program. Checkfiles are named after the issue they are checking,
+e.g. `tests/run/i101.check` will check either `tests/run/i101.scala` or `tests/run/i101/`.
 
-```bash
-> testOnly dotty.tools.dotc.transform.TreeTransformerTest
-```
+### Checking Compilation Errors
 
-The test command follows a regular expression-based syntax `testOnly * -- *`.
-The right-hand side picks a range of names for methods and the left-hand side picks a range of class names and their
-fully-qualified paths.
+`tests/neg` tests verify that a file does not compile, and user-facing errors are produced. There are other neg
+categories such as `neg-custom-args`, i.e. with `neg` prefixing the directory name. Test files in the `neg*`
+categories require annotations for the lines where errors are expected. To do this add one `// error` token to the
+end of a line for each expected error. For example, if there are three expected errors, the end of the line should contain
+`// error // error // error`.
 
-Consequently, you can restrict the aforementioned executed test to a subset of methods by appending ``-- *method_name``.
-The example below picks up all methods with the name `canOverwrite`:
+You can verify the content of the error messages with a `*.check` file. These contain the expected output of the
+compiler. Checkfiles are named after the issue they are checking,
+e.g. `i101.check` will check either `tests/neg/i101.scala` or `tests/neg/i101/`.
+*Note:* checkfiles are not required for the test to pass, however they do add stronger constraints that the errors
+are as expected.
 
-```bash
-> testOnly dotty.tools.dotc.transform.TreeTransformerTest -- *canOverwrite
-```
+### If Checkfiles do not Match Output
 
-Additionally, you can run all tests named `method_name`, in any class, without providing a class name:
-
-```bash
-> testOnly -- *canOverwrite
-```
-
-You can also run all paths of classes of a certain name:
-
-```bash
-> testOnly *.TreeTransformerTest
-```
-
-### Testing with checkfiles
-Some tests support checking the output of the run or the compilation against a checkfile. A checkfile is a file in which the expected output of the compilation or run is defined. A test against a checkfile fails if the actual output mismatches the expected output.
-
-Currently, the `run` and `neg` (compilation must fail for the test to succeed) tests support the checkfiles. `run`'s checkfiles contain an expected run output of the successfully compiled program. `neg`'s checkfiles contain an expected error output during compilation.
-
-Absence of a checkfile is **not** a condition for the test failure. E.g. if a `neg` test fails with the expected number of errors and there is no checkfile for it, the test still passes.
-
-Checkfiles are located in the same directories as the tests they check, have the same name as these tests with the extension `*.check`. E.g. if you have a test named `tests/neg/foo.scala`, you can create a checkfile for it named `tests/neg/foo.check`. And if you have a test composed of several files in a single directory, e.g. `tests/neg/manyScalaFiles`, the checkfile will be `tests/neg/manyScalaFiles.check`.
-
-If the actual output mismatches the expected output, the test framework will dump the actual output in the file `*.check.out` and fail the test suite. It will also output the instructions to quickly replace the expected output with the actual output, in the following format:
+If the actual output mismatches the expected output, the test framework will dump the actual output in the file
+`*.check.out` and fail the test suite. It will also output the instructions to quickly replace the expected output
+with the actual output, in the following format:
 
 ```
-Test output dumped in: tests/playground/neg/Sample.check.out
+Test output dumped in: tests/neg/Sample.check.out
   See diff of the checkfile
-    > diff tests/playground/neg/Sample.check tests/playground/neg/Sample.check.out
+    > diff tests/neg/Sample.check tests/neg/Sample.check.out
   Replace checkfile with current output
-    > mv tests/playground/neg/Sample.check.out tests/playground/neg/Sample.check
+    > mv tests/neg/Sample.check.out tests/neg/Sample.check
 ```
+
+### Tips for creating Checkfiles
 
 To create a checkfile for a test, you can do one of the following:
 
-- Create a dummy checkfile with a random content, run the test, and, when it fails, use the `mv` command reported by the test to replace the dummy checkfile with the actual output.
-- Manually compile the file you are testing with `scalac` and copy-paste whatever console output the compiler produces to the checkfile.
+1. Create an empty checkfile
+   - then add arbitrary content
+   - run the test
+   - when it fails, use the `mv` command reported by the test to replace the initial checkfile with the actual output.
+2. Manually compile the file you are testing with `scala3/scalac`
+   - copy-paste whatever console output the compiler produces to the checkfile.
 
-## Integration tests
-These tests are Scala source files expected to compile with Dotty (pos tests),
-along with their expected output (run tests) or errors (neg tests).
+### Automatically Updating Checkfiles
 
-All of these tests are contained in the `./tests/*` directories and can be run with the `testCompilation` command. Tests in folders named `with-compiler` are an exception, see next section.
-
-Currently to run these tests you need to invoke from sbt:
-
-```bash
-$ sbt
-> testCompilation
-```
-
-(which is effectively the same with `testOnly dotty.tools.dotc.CompilationTests`)
-
-It is also possible to run tests filtered, again from sbt:
-
-```bash
-$ sbt
-> testCompilation companions
-```
-
-This will run both the test `./tests/pos/companions.scala` and
-`./tests/neg/companions.scala` since both of these match the given string.
-This also means that you could run `testCompilation` with no arguments to run all integration tests.
-
-When complex checkfiles must be updated, `testCompilation` can run in a mode where it overrides the checkfiles with the test outputs.
+When complex or many checkfiles must be updated, `testCompilation` can run in a mode where it overrides the
+checkfiles with the test outputs.
 ```bash
 $ sbt
 > testCompilation --update-checkfiles
@@ -127,14 +148,6 @@ $ sbt
 > testCompilation --help
 ```
 
-### Joint and separate sources compilation
-
-When the sources of a test consist of multiple source files places in a single directory they are passed to the compiler in a single run and the compiler decides in which order to compile them. In some cases, however, to reproduce a specific test scenario it might be necessary to compile the source files in several steps in a specified order. To achieve that one can add a `_${step_index}` suffix to a file name (before the `.scala` or `.java` extension) indicating the order of compilation. E.g. if the test directory contains files named `Foo_1.scala`, `Bar_2.scala` and `Baz_2.scala` then `Foo_1.scala` will be compiled first and after that `Bar_2.scala` together with `Baz_2.scala`.
-
-The other kind of suffix that can modify how particular files are compiled is `_c${compilerVersion}`. When specified, the file will be compiled with a specific version of the compiler instead of the one developed on the current branch.
-
-Different suffixes can be mixed together (their order is not important although consistency is advised), e.g. `Foo_1_c3.0.2`, `Bar_2_c3.1.0`.
-
 ### Bootstrapped-only tests
 
 To run `testCompilation` on a bootstrapped Dotty compiler, use
@@ -145,59 +158,47 @@ with `with-compiler` in their name.
 ### From TASTy tests
 
 `testCompilation` has an additional mode to run tests that compile code from a `.tasty` file.
- Modify blacklist and whitelists in `compiler/test/dotc` to enable or disable tests from `.tasty` files.
-
- ```bash
- $ sbt
- > testCompilation --from-tasty
- ```
-
- This mode can be run under `scala3-compiler-bootstrapped/testCompilation` to test on a bootstrapped Dotty compiler.
-
-### SemanticDB tests
+Modify the lists in [compiler/test/dotc] to enable or disable tests from `.tasty` files.
 
 ```bash
 $ sbt
-> scala3-compiler-bootstrapped/testOnly dotty.tools.dotc.semanticdb.SemanticdbTests
+> testCompilation --from-tasty
 ```
 
-The output of the `extractSemanticDB` phase, enabled with `-Xsemanticdb` is tested with the bootstrapped JUnit test
-`dotty.tools.dotc.semanticdb.SemanticdbTests`. It uses source files in `tests/semanticdb/expect` to generate
-two kinds of output file that are compared with "expect files": placement of semanticdb symbol occurrences inline in
-sourcecode (`*.expect.scala`), for human verification by inspection; and secondly metap formatted output which outputs
-all information stored in semanticdb (`metac.expect`).
+## Unit Tests
+
+Unit tests cover the other areas of the compiler, such as interactions with the REPL, scripting tools and more.
+They are defined in [compiler/test], so if your use case isn't covered by this guide,
+you may need to consult the codebase. Some common areas are highlighted below:
+
+### SemanticDB tests
+
+To test the SemanticDB output from the `extractSemanticDB` phase (enabled with the `-Xsemanticdb` flag), run the following sbt command:
+```bash
+$ sbt
+sbt:scala3> scala3-compiler-bootstrapped/testOnly
+  dotty.tools.dotc.semanticdb.SemanticdbTests
+```
+
+[SemanticdbTests] uses source files in `tests/semanticdb/expect` to generate "expect files":
+these verify both
+- SemanticDB symbol occurrences inline in sourcecode (`*.expect.scala`)
+- complete output of all SemanticDB information (`metac.expect`).
+
 Expect files are used as regression tests to detect changes in the compiler.
+Their correctness is determined by human inspection.
 
-The test suite will create a new file if it detects any difference, which can be compared with the
-original expect file, or if the user wants to globally replace all expect files for semanticdb they can use
-`scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
-control.
+If expect files change then [SemanticdbTests] will fail, and generate new expect files, providing instructions for
+comparing the differences and replacing the outdated expect files.
 
-### Test regimes
+If you are planning to update the SemanticDB output, you can do it in bulk by running the command
+```bash
+$ sbt
+sbt:scala3> scala3-compiler/Test/runMain
+  dotty.tools.dotc.semanticdb.updateExpect
+```
 
-Continuous integration, managed by GitHub Actions, does not run all jobs when a pull request is created.
-In particular, test jobs for testing under JDK 8 and Windows are not run. Those jobs are run only for the nightly build.
-
-If a PR may fail differentially under either JDK 8 or Windows, the test jobs may be triggered by adding
-a special command to the PR comment text:
-
-```
-[test_java8]
-[test_windows_full]
-```
-Furthermore, CI tests are bootstrapped. A job to also run tests non-bootstrapped may be triggered manually:
-```
-[test_non_bootstrapped]
-```
-A trivial PR, such as a fix for a typo in a comment or when contributing other documentation, may benefit by skipping CI tests altogether:
-```
-[skip ci]
-```
-Other jobs which are normally run can also be selectively skipped:
-```
-[skip community_build]
-[skip test_windows_fast]
-```
+then compare the changes via version control.
 
 ## Troubleshooting
 
@@ -205,3 +206,8 @@ Some of the tests depend on temporary state stored in the `out` directory. In ra
 can enter an inconsistent state and cause spurious test failures. If you suspect a spurious test failure,
 you can run `rm -rf out/*` from the root of the repository and run your tests again. If that fails, you
 can try `git clean -xfd`.
+
+[CompilationTests]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/dotc/CompilationTests.scala
+[compiler/test]: https://github.com/lampepfl/dotty/blob/master/compiler/test/
+[compiler/test/dotc]: https://github.com/lampepfl/dotty/tree/master/compiler/test/dotc
+[SemanticdbTests]: https://github.com/lampepfl/dotty/blob/master/compiler/test/dotty/tools/dotc/semanticdb/SemanticdbTests.scala
