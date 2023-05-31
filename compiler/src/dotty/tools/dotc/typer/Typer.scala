@@ -1335,7 +1335,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
-        case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
+        case pt1 @ SAMType(mt @ MethodTpe(_, formals, methResType)) =>
+          val restpe = methResType match
+            case mt: MethodType if !mt.isParamDependent => mt.toFunctionType(isJava = pt1.classSymbol.is(JavaDefined))
+            case tp => tp
           (formals,
            if (mt.isResultDependent)
              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
