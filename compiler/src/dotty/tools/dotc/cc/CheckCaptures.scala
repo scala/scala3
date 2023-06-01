@@ -775,6 +775,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val styp = if actual.isFromJavaObject then actual else actual.stripCapturing
           val cs = actual.captureSet
           val boxed = actual.isBoxedCapturing
+          val seps = SeparationSet.ofType(actual)
 
           // A box/unbox should be inserted, if the actual box status mismatches with the expectation
           val needsAdaptation = boxed != expected.isBoxedCapturing
@@ -812,7 +813,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
           // Compute the adapted type
           def adaptedType(resultBoxed: Boolean) =
-            styp1.capturing(if alwaysConst then CaptureSet(cs1.elems) else cs1).forceBoxStatus(resultBoxed)
+            styp1.capturing(if alwaysConst then CaptureSet(cs1.elems) else cs1).forceBoxStatus(resultBoxed).separated(seps)
 
           if needsAdaptation then
             val criticalSet =          // the set which is not allowed to have `cap`

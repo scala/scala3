@@ -277,8 +277,7 @@ extension (tp: AnnotatedType)
 
 extension (tp: Type)
   def separationSet(using Context): CaptureSet = tp match
-    case tp: AnnotatedType =>
-      tp.annot match
+    case tp: AnnotatedType => tp.annot match
       case ann: SeparationCaptureAnnotation => ann.seps
       case ann if ann.symbol == defn.RetainsWithSepAnnot =>
         try

@@ -18,6 +18,7 @@ import annotation.constructorOnly
 import compiletime.uninitialized
 import Decorators._
 import staging.StagingLevel.*
+import cc.CaptureSet
 
 object Trees {
 

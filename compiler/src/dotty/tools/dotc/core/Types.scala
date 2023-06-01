@@ -1897,6 +1897,11 @@ object Types {
         case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
         case _ => CapturingType(this, cs)
 
+    def separated(seps: CaptureSet)(using Context): Type =
+      this match
+        case CapturingType(parent, cs) => this.derivedCapturingType(parent, cs, seps = seps ++ this.separationSet)
+        case _ => CapturingType(this, refs = CaptureSet.empty, seps = seps, boxed = false)
+
     /** The set of distinct symbols referred to by this type, after all aliases are expanded */
     def coveringSet(using Context): Set[Symbol] =
       (new CoveringSetAccumulator).apply(Set.empty[Symbol], this)

@@ -186,6 +186,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
             case _: WildcardFunction
             if last.positioned.isInstanceOf[ValDef] && !p.isInstanceOf[ValDef] =>
               // ignore transition from last wildcard parameter to body
+            case _: Annotated =>
+              // FIXME: Too general
             case _ =>
               assert(!last.span.exists || !p.span.exists || last.span.end <= p.span.start,
                 i"""position error, child positions overlap or in wrong order

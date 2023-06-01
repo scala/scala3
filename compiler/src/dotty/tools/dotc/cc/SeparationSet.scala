@@ -31,7 +31,7 @@ object SeparationSet:
           recur(tp.underlying)
         case tp: TermParamRef => recur(tp.underlying)
         case CapturingType(parent, refs) =>
-          tp.separationSet
+          tp.separationSet ++ recur(parent)
         case _ => CaptureSet.empty
     }
     recur(tp)

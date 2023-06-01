@@ -19,6 +19,7 @@ import NameKinds.{WildcardParamName, QualifiedName}
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
+import ast.untpd
 import StdNames._
 import util.Spans._
 import Constants._
@@ -190,8 +191,11 @@ object Parsers {
     def isPureArrow(name: Name): Boolean = isIdent(name) && Feature.pureFunsEnabled
     def isPureArrow: Boolean = isPureArrow(nme.PUREARROW) || isPureArrow(nme.PURECTXARROW)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
+    def isSep = isIdent(nme.sep) && Feature.ccEnabled
     // Are we seeing an `erased` soft keyword that will not be an identifier?
     def isErasedKw = isErased && in.isSoftModifierInParamModifierPosition
+    // Similarly, are we seeing a `sep` soft keyword?
+    def isSepKw = isSep && in.isSoftModifierInParamModifierPosition
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -3292,6 +3296,14 @@ object Parsers {
         var mods = impliedMods.withAnnotations(annotations())
         if isErasedKw then
           mods = addModifier(mods)
+        val seps: List[Tree] | Null =
+          if isSepKw then
+            in.nextToken()
+            if in.token == LBRACE then
+              val cs = captureSet()
+              if cs.isEmpty then null else cs
+            else Nil
+          else null
         if (ofClass) {
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
@@ -3318,7 +3330,9 @@ object Parsers {
           if (in.token == ARROW && ofClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
               // needed?, it's checked later anyway
-          val tpt = paramType()
+          var tpt = paramType()
+          if seps ne null then
+            tpt = makeRetainingWithSep(tpt, Nil, Some(seps))
           val default =
             if (in.token == EQUALS) { in.nextToken(); subExpr() }
             else EmptyTree
