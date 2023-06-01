@@ -1,5 +1,3 @@
-// scalajs: --skip --pending
-
 import collection.mutable.ArrayBuffer
 object Test extends App {
   inline val b = 33
@@ -16,11 +14,11 @@ object Test extends App {
     val x8 = List(5.toByte, 11)    ; x8: List[Byte]
 
     val x9: List[AnyVal] = List(1.0f, 0)
-    assert(x9(0).getClass == classOf[java.lang.Float])
-    assert(x9(1).getClass == classOf[java.lang.Float]) // expected type not fully defined, since `List` is covariant
+    assert(x9(0).isInstanceOf[java.lang.Float])
+    assert(x9(1).isInstanceOf[java.lang.Float]) // expected type not fully defined, since `List` is covariant
     val x10 = List[Any](1.0f, 0)
-    assert(x10(0).getClass == classOf[java.lang.Float])
-    assert(x10(1).getClass == classOf[java.lang.Integer])
+    assert(x10(0).isInstanceOf[java.lang.Float])
+    assert(x10(1).isInstanceOf[java.lang.Integer])
   }
 
   locally {
@@ -35,11 +33,11 @@ object Test extends App {
     val x8 = ArrayBuffer(5.toByte, 11)    ; x8: ArrayBuffer[Byte]
 
     val x9: ArrayBuffer[AnyVal] = ArrayBuffer(1.0f, 0)
-    assert(x9(0).getClass == classOf[java.lang.Float])
-    assert(x9(1).getClass == classOf[java.lang.Integer]) // expected type fully defined since ArrayBuffer is nonvariant
+    assert(x9(0).isInstanceOf[java.lang.Float])
+    assert(x9(1).isInstanceOf[java.lang.Integer]) // expected type fully defined since ArrayBuffer is nonvariant
     val x10 = ArrayBuffer[Any](1.0f, 0)
-    assert(x10(0).getClass == classOf[java.lang.Float])
-    assert(x10(1).getClass == classOf[java.lang.Integer])
+    assert(x10(0).isInstanceOf[java.lang.Float])
+    assert(x10(1).isInstanceOf[java.lang.Integer])
   }
 
   locally {
@@ -56,11 +54,11 @@ object Test extends App {
     val x8 = Array(5.toByte, 11)    ; x8: Array[Int]
 
     val x9: Array[AnyVal] = Array(1.0f, 0)
-    assert(x9(0).getClass == classOf[java.lang.Float])
-    assert(x9(1).getClass == classOf[java.lang.Integer]) // expected type fully defined since Array is nonvariant
+    assert(x9(0).isInstanceOf[java.lang.Float])
+    assert(x9(1).isInstanceOf[java.lang.Integer]) // expected type fully defined since Array is nonvariant
     val x10 = Array[Any](1.0f, 0)
-    assert(x10(0).getClass == classOf[java.lang.Float])
-    assert(x10(1).getClass == classOf[java.lang.Integer])
+    assert(x10(0).isInstanceOf[java.lang.Float])
+    assert(x10(1).isInstanceOf[java.lang.Integer])
   }
 
   locally {
