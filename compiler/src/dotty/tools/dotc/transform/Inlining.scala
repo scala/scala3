@@ -71,24 +71,10 @@ class Inlining extends MacroTransform, SymTransformer {
   def transformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
     val body1 = tmpl.body.flatMap {
-      case innerClass @ tpd.TypeDef(name, tmpl1: Template) =>
-        val newTrait = cpy.TypeDef(innerClass)(name = newInnerClassName(name))
-        val upperBound = innerClass.symbol.primaryConstructor.info match {
-          case _: MethodType =>
-            newTrait.symbol.typeRef
-          case poly: PolyType =>
-            HKTypeLambda(poly.paramNames)(tl => poly.paramInfos, tl => newTrait.symbol.typeRef.appliedTo(tl.paramRefs.head))
-        }
-        val newTypeSym = newSymbol(
-          owner = inlineTrait.symbol,
-          name = name.asTypeName,
-          flags = innerClass.symbol.flags & (Private | Protected),
-          info = TypeBounds.upper(upperBound),
-          privateWithin = innerClass.symbol.privateWithin,
-          coord = innerClass.symbol.coord,
-          nestingLevel = innerClass.symbol.nestingLevel,
-        ).asType
-        List(newTrait, TypeDef(newTypeSym))
+      case innerClass: TypeDef if innerClass.symbol.isClass =>
+        val newTrait = makeTraitFromInnerClass(innerClass)
+        val newType = makeTypeFromInnerClass(inlineTrait.symbol, innerClass, newTrait.symbol)
+        List(newTrait, newType)
       case member: MemberDef =>
         List(member)
       case _ =>
@@ -96,6 +82,28 @@ class Inlining extends MacroTransform, SymTransformer {
     }
     val tmpl1 = cpy.Template(tmpl)(body = body1)
     cpy.TypeDef(inlineTrait)(rhs = tmpl1)
+
+  private def makeTraitFromInnerClass(innerClass: TypeDef)(using Context): TypeDef =
+    cpy.TypeDef(innerClass)(name = newInnerClassName(innerClass.name))
+
+  private def makeTypeFromInnerClass(parentSym: Symbol, innerClass: TypeDef, newTraitSym: Symbol)(using Context): TypeDef =
+    val upperBound = innerClass.symbol.primaryConstructor.info match {
+      case _: MethodType =>
+        newTraitSym.typeRef
+      case poly: PolyType =>
+        HKTypeLambda(poly.paramNames)(tl => poly.paramInfos, tl => newTraitSym.typeRef.appliedTo(tl.paramRefs.head))
+    }
+    val newTypeSym = newSymbol(
+      owner = parentSym,
+      name = newTraitSym.name.asTypeName,
+      flags = innerClass.symbol.flags & (Private | Protected),
+      info = TypeBounds.upper(upperBound),
+      privateWithin = innerClass.symbol.privateWithin,
+      coord = innerClass.symbol.coord,
+      nestingLevel = innerClass.symbol.nestingLevel,
+    ).asType
+    TypeDef(newTypeSym)
+  end makeTypeFromInnerClass
 
   private class InliningTreeMap extends TreeMapWithImplicits {
 
