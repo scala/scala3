@@ -78,13 +78,18 @@ class Inlining extends MacroTransform, SymTransformer {
       case member: MemberDef =>
         List(member)
       case _ =>
+        // Remove non-memberdefs, as they are normally placed into $init()
         Nil
     }
     val tmpl1 = cpy.Template(tmpl)(body = body1)
     cpy.TypeDef(inlineTrait)(rhs = tmpl1)
 
   private def makeTraitFromInnerClass(innerClass: TypeDef)(using Context): TypeDef =
-    cpy.TypeDef(innerClass)(name = newInnerClassName(innerClass.name))
+    val TypeDef(name, tmpl: Template) = innerClass: @unchecked
+    val newInnerParents = tmpl.parents.mapConserve(ConcreteParentStripper.apply)
+    val tmpl1 = cpy.Template(tmpl)(parents = newInnerParents) // TODO .withType(???)
+    cpy.TypeDef(innerClass)(name = newInnerClassName(name), rhs = tmpl1)
+  end makeTraitFromInnerClass
 
   private def makeTypeFromInnerClass(parentSym: Symbol, innerClass: TypeDef, newTraitSym: Symbol)(using Context): TypeDef =
     val upperBound = innerClass.symbol.primaryConstructor.info match {
@@ -164,6 +169,16 @@ class Inlining extends MacroTransform, SymTransformer {
   }
 
   private def newInnerClassName(name: Name): name.ThisName = name ++ str.INLINE_TRAIT_INNER_CLASS_SUFFIX
+
+  private object ConcreteParentStripper extends TreeAccumulator[Tree] {
+    def apply(tree: Tree)(using Context): Tree = apply(tree, tree)
+
+    override def apply(x: Tree, tree: Tree)(using Context): Tree = tree match {
+      case ident: Ident => ident
+      case tpt: TypeTree => tpt
+      case _ => foldOver(x, tree)
+    }
+  }
 }
 
 object Inlining:
