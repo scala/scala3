@@ -215,12 +215,17 @@ object Inlines:
     cls match {
       case cls @ tpd.TypeDef(_, impl: Template) =>
         val clsOverriddenSyms = cls.symbol.info.decls.toList.flatMap(_.allOverriddenSymbols).toSet
-        val inlineDefs = inlineTraitAncestors(cls).foldLeft(List.empty[Tree])(
-          (defs, parent) =>
-            val overriddenSymbols = clsOverriddenSyms ++ defs.flatMap(_.symbol.allOverriddenSymbols)
-            defs ::: InlineParentTrait(parent)(using ctx.withOwner(cls.symbol)).expandDefs(overriddenSymbols)
-        )
-        val impl1 = cpy.Template(impl)(body = inlineDefs ::: impl.body)
+        val newDefs = inContext(ctx.withOwner(cls.symbol)) {
+          inlineTraitAncestors(cls).foldLeft((List.empty[Tree], impl.body)){
+            case ((inlineDefs, childDefs), parent) =>
+              val parentTraitInliner = InlineParentTrait(parent)
+              val overriddenSymbols = clsOverriddenSyms ++ inlineDefs.flatMap(_.symbol.allOverriddenSymbols)
+              val inlinedDefs1 = inlineDefs ::: parentTraitInliner.expandDefs(overriddenSymbols)
+              val childDefs1 = parentTraitInliner.adaptDefs(childDefs)  // TODO do this outside of inlining: we need to adapt ALL references to inlined stuff
+              (inlinedDefs1, childDefs1)
+          }
+        }
+        val impl1 = cpy.Template(impl)(body = newDefs._1 ::: newDefs._2)
         cpy.TypeDef(cls)(rhs = impl1)
       case _ =>
         cls
@@ -540,6 +545,8 @@ object Inlines:
       }
     end expandDefs
 
+    def adaptDefs(definitions: List[Tree]): List[Tree] = definitions.mapconserve(defsAdapter(_))
+
     protected class InlineTraitTypeMap extends InlinerTypeMap {
       override def apply(t: Type) = super.apply(t) match {
         case t: ThisType if t.cls == parentSym => childThisType
@@ -697,6 +704,32 @@ object Inlines:
       else
         // TODO make version of inlined that does not return bindings?
         Inlined(tpd.ref(parentSym), Nil, inlined(rhs)._2).withSpan(parent.span)
+
+    private val defsAdapter =
+      val typeMap = new DeepTypeMap {
+        override def apply(tp: Type): Type = tp match {
+          case TypeRef(_, sym: Symbol) if innerClassNewSyms.contains(sym) =>
+            TypeRef(childThisType, innerClassNewSyms(sym))
+          case _ =>
+            mapOver(tp)
+        }
+      }
+      def treeMap(tree: Tree) = tree match {
+        case ident: Ident if innerClassNewSyms.contains(ident.symbol) =>
+          Ident(innerClassNewSyms(ident.symbol).namedType)
+        case tdef: TypeDef if tdef.symbol.isClass =>
+          tdef.symbol.info = typeMap(tdef.symbol.info)
+          tdef
+        case tree =>
+          tree
+      }
+      new TreeTypeMap(
+        typeMap = typeMap,
+        treeMap = treeMap,
+        substFrom = substFrom,
+        substTo = substTo,
+      )
+    end defsAdapter
 
     private class ParamAccessorsMapper:
       private val paramAccessorsTrees: mutable.Map[Symbol, Map[Name, Tree]] = mutable.Map.empty
