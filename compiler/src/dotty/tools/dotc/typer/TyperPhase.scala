@@ -46,11 +46,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         record("retained untyped trees", unit.untpdTree.treeSize)
         record("retained typed trees after typer", unit.tpdTree.treeSize)
         ctx.run.nn.suppressions.reportSuspendedMessages(unit.source)
-    catch
-      case ex: CompilationUnit.SuspendException =>
-      case ex: Throwable =>
-        println(s"$ex while typechecking $unit")
-        throw ex
+    catch case _: CompilationUnit.SuspendException => ()
   }
 
   def javaCheck(using Context): Unit = monitor("checking java") {
