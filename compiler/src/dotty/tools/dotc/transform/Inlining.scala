@@ -62,11 +62,11 @@ class Inlining extends MacroTransform, SymTransformer {
       new InliningTreeMap().transform(tree)
   }
 
-  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if sym.isClass && sym.owner.isInlineTrait && !sym.is(Module) then
-      sym.copySymDenotation(name = newInnerClassName(sym.name), initFlags = (sym.flags &~ Final) | Trait)
+  override def transformSym(symd: SymDenotation)(using Context): SymDenotation =
+    if symd.isClass && symd.owner.isInlineTrait && !symd.is(Module) then
+      symd.copySymDenotation(name = newInnerClassName(symd.name), initFlags = (symd.flags &~ Final) | Trait)
     else
-      sym
+      symd
 
   def transformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked
