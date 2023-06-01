@@ -2624,6 +2624,13 @@ extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
   def msg(using Context) = i"$tp is not a class type"
   def explain(using Context) = ""
 
+class NotConstant(suffix: String, tp: Type)(using Context)
+extends TypeMsg(NotConstantID), ShowMatchTrace(tp):
+  def msg(using Context) =
+    i"$tp is not a constant type"
+    + (if suffix.isEmpty then "" else i"; $suffix")
+  def explain(using Context) = ""
+
 class MissingImplicitArgument(
     arg: tpd.Tree,
     pt: Type,
