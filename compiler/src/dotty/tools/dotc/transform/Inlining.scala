@@ -88,7 +88,9 @@ class Inlining extends MacroTransform, SymTransformer {
     val TypeDef(name, tmpl: Template) = innerClass: @unchecked
     val newInnerParents = tmpl.parents.mapConserve(ConcreteParentStripper.apply)
     val tmpl1 = cpy.Template(tmpl)(parents = newInnerParents) // TODO .withType(???)
-    cpy.TypeDef(innerClass)(name = newInnerClassName(name), rhs = tmpl1)
+    val newTrait = cpy.TypeDef(innerClass)(name = newInnerClassName(name), rhs = tmpl1)
+    newTrait.symbol.setFlag(Synthetic)
+    newTrait
   end makeTraitFromInnerClass
 
   private def makeTypeFromInnerClass(parentSym: Symbol, innerClass: TypeDef, newTraitSym: Symbol)(using Context): TypeDef =
@@ -101,7 +103,7 @@ class Inlining extends MacroTransform, SymTransformer {
     val newTypeSym = newSymbol(
       owner = parentSym,
       name = newTraitSym.name.asTypeName,
-      flags = innerClass.symbol.flags & (Private | Protected),
+      flags = innerClass.symbol.flags & (Private | Protected) | Synthetic,
       info = TypeBounds.upper(upperBound),
       privateWithin = innerClass.symbol.privateWithin,
       coord = innerClass.symbol.coord,
