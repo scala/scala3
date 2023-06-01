@@ -151,7 +151,7 @@ object report:
 
     val info1 = formatExplain(List(
       "while compiling"    -> ctx.compilationUnit,
-      "during phase"       -> ctx.phase.prevMega,
+      "during phase"       -> ctx.phase.megaPhase,
       "mode"               -> ctx.mode,
       "library version"    -> scala.util.Properties.versionString,
       "compiler version"   -> dotty.tools.dotc.config.Properties.versionString,
