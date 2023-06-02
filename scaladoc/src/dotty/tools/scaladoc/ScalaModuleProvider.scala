@@ -8,7 +8,7 @@ case class Module(rootPackage: Member, members: Map[DRI, Member])
 
 object ScalaModuleProvider:
   def mkModule()(using ctx: DocContext): Module =
-    val (result, rootDoc) = ScaladocTastyInspector.loadDocs()
+    val (result, rootDoc) = ScaladocTastyInspector().result()
     val (rootPck, rest) = result.partition(_.name == "API")
     val (emptyPackages, nonemptyPackages) = (rest ++ rootPck.flatMap(_.members))
       .filter(p => p.members.nonEmpty || p.docs.nonEmpty).sortBy(_.name)
