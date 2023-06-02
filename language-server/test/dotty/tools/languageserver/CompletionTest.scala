@@ -32,13 +32,13 @@ class CompletionTest {
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }"
-      .completion(("Conversion", Class, "scala.Conversion"))
+      .completion(("Conversion", Class, "Conversion"))
   }
 
   @Test def completionFromScalaPackageObject: Unit = {
     code"class Foo { val foo: BigD${m1} }"
       .completion(
-        ("BigDecimal", Field, "scala.BigDecimal"),
+        ("BigDecimal", Field, "BigDecimal"),
         ("BigDecimal", Method, "=> math.BigDecimal.type"),
       )
   }
@@ -47,14 +47,14 @@ class CompletionTest {
     code"class Foo { val foo: IArr${m1} }"
       .completion(
         ("IArray", Module, "IArray"),
-        ("IArray", Field, "scala.IArray"),
+        ("IArray", Field, "IArray"),
       )
   }
 
   @Test def completionFromJavaDefaults: Unit = {
     code"class Foo { val foo: Runn${m1} }"
       .completion(
-        ("Runnable", Class, "java.lang.Runnable"),
+        ("Runnable", Class, "Runnable"),
         ("Runnable", Module, "Runnable"),
       )
   }
@@ -971,7 +971,7 @@ class CompletionTest {
           ("implicitNotFound", Module, "scala.annotation.implicitNotFound"),
       )
       .completion(m2,
-          ("main", Class, "scala.main"),
+          ("main", Class, "main"),
           ("main", Module, "main"),
       )
 
