@@ -1138,7 +1138,7 @@ trait Implicits:
               case _ => pt
             case _ => NoType
           def tryConversion(using Context) = {
-            val restpeConv = if ref.symbol.is(Given) then conversionResultType(ref.symbol.info) else NoType
+            val restpeConv = if ref.symbol.is(Given) then conversionResultType(ref.widenTermRefExpr) else NoType
             val untpdConv =
               if restpeConv.exists then
                 untpd.Select(
