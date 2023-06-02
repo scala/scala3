@@ -1122,17 +1122,29 @@ trait Implicits:
             adapt(generated, pt.widenExpr, locked)
         else {
           def untpdGenerated = untpd.TypedSplice(generated)
-          def producesConversion(info: Type): Boolean = info match
-            case info: PolyType => producesConversion(info.resType)
-            case info: MethodType if info.isImplicitMethod => producesConversion(info.resType)
-            case _ => info.derivesFrom(defn.ConversionClass)
+          def conversionResultType(info: Type): Type = info match
+            case info: PolyType => conversionResultType(info.resType)
+            case info: MethodType if info.isImplicitMethod => conversionResultType(info.resType)
+            case _ if info.derivesFrom(defn.ConversionClass) => pt match
+              case selProto: SelectionProto =>
+                info.baseType(defn.ConversionClass) match
+                  case AppliedType(_, List(_, restpe)) if selProto.isMatchedBy(restpe) =>
+                    // if we embed the SelectionProto as the Conversion result type
+                    // it might end up within a GADT cast type
+                    // so instead replace it with the targeted conversion type, if it matches
+                    // see tests/pos/i15867.scala.
+                    restpe
+                  case _ => pt
+              case _ => pt
+            case _ => NoType
           def tryConversion(using Context) = {
+            val restpeConv = if ref.symbol.is(Given) then conversionResultType(ref.symbol.info) else NoType
             val untpdConv =
-              if ref.symbol.is(Given) && producesConversion(ref.symbol.info) then
+              if restpeConv.exists then
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
-                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, pt),
+                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, restpeConv),
                       locked)),
                   nme.apply)
               else untpdGenerated
