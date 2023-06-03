@@ -11,13 +11,6 @@ package <empty> {
     val v4: String | Int = test[String | Int, Int | String](v2, v3)
     val v5: Int | String = test[Int | String, String | Int](v3, v2)
     val v6: String | Int = test[String | Int, Int | String](v4, v5)
-    val t0: List[Int] = Tuple1.apply[Int](1).toList
-    val t1: List[Int] = Tuple2.apply[Int, Int](1, 2).toList
-    val t2: List[Int] = Tuple3.apply[Int, Int, Int](1, 2, 3).toList
-    val t3: List[Int | String] =
-      Tuple3.apply[String, Int, Int]("A", 2, 3).toList
-    val t4: List[String | Int] =
-      Tuple3.apply[Int, String, String](1, "B", "C").toList
   }
 }
 
