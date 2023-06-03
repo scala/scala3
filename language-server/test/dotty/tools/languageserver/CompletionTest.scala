@@ -39,7 +39,7 @@ class CompletionTest {
     code"class Foo { val foo: BigD${m1} }"
       .completion(
         ("BigDecimal", Field, "BigDecimal"),
-        ("BigDecimal", Method, "=> math.BigDecimal.type"),
+        ("BigDecimal", Method, "=> scala.math.BigDecimal.type"),
       )
   }
 
