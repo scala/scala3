@@ -4,6 +4,6 @@
   |Cannot construct a collection of type List[String] with elements of type Int based on a collection of type List[Int]..
   |I found:
   |
-  |    collection.BuildFrom.buildFromIterableOps[CC, A0, A]
+  |    scala.collection.BuildFrom.buildFromIterableOps[CC, A0, A]
   |
-  |But method buildFromIterableOps in trait BuildFromLowPriority2 does not match type collection.BuildFrom[List[Int], Int, List[String]].
+  |But method buildFromIterableOps in trait BuildFromLowPriority2 does not match type scala.collection.BuildFrom[List[Int], Int, List[String]].

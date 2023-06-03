@@ -109,6 +109,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         if (tp.cls.isAnonymousClass) keywordStr("this")
         if (tp.cls.is(ModuleClass)) fullNameString(tp.cls.sourceModule)
         else super.toTextRef(tp)
+      case tp: TermRef if !printDebug =>
+        if tp.symbol.is(Package) then fullNameString(tp.symbol)
+        else super.toTextRef(tp)
       case _ =>
         super.toTextRef(tp)
     }
