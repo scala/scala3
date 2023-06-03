@@ -3485,9 +3485,9 @@ object Types {
       case _ => false
     }
 
-    /** Returns the set of non-union (leaf) types composing this union tree with Nothing types
-     *  absorbed by other types, if present. For example:<br>
-     *  `(A | B | C | B | (A & (B | C)) | Nothing)` returns `{A, B, C, (A & (B | C))}`.
+    /** Returns the set of non-union (leaf) types composing this union tree.
+     * For example:<br>
+     *  `(A | B | A | B | (A & (B | C)))` returns `{A, B, (A & (B | C))}`.
      */
     private def gatherTreeUniqueMembersAbsorbingNothingTypes(using Context): MutableSet[Type] = {
 
@@ -3499,9 +3499,6 @@ object Types {
           case head :: tail =>
             head match
               case OrType(l: OrType, r: OrType) =>
-                if (l.isSoft && r.isSoft)
-                  unvisitedSubtrees = l :: r :: tail
-                else if (!l.isSoft && r.isSoft)
                   unvisitedSubtrees = l :: r :: tail
               case OrType(l, r: OrType) =>
                 unvisitedSubtrees = r :: tail
@@ -3512,32 +3509,29 @@ object Types {
               case OrType(l, r) =>
                 unvisitedSubtrees = tail
                 uniqueTreeMembers += l
-                if !r.isNothingType then uniqueTreeMembers += r
+                uniqueTreeMembers += r
           case _ =>
       }
 
       uniqueTreeMembers
     }
 
-    /** Returns an equivalent union tree without repeated members, preserving order and absorbing
-     *  Nothing types, if present. Weaker than LUB.
+    /** Returns an equivalent union tree without repeated members. Weaker than LUB.
      */
     def deduplicatedAbsorbingNothingTypes(using Context): Type = {
-      if tp1 eq tp2 then tp1
-      else
+      if tp1.isInstanceOf[OrType] || tp2.isInstanceOf[OrType] then
         val uniqueTreeMembers = this.gatherTreeUniqueMembersAbsorbingNothingTypes
-        val factorCount = orFactorCount(isSoft) // TODO replace this by an actual softness check
 
         uniqueTreeMembers.size match {
           case 1 =>
             uniqueTreeMembers.iterator.next()
-          case uniqueMembersCount if uniqueMembersCount < factorCount =>
-            val members = uniqueTreeMembers.iterator
-            val startingUnion = OrType(members.next(), members.next(), isSoft)
-            members.foldLeft(startingUnion)(OrType(_, _, isSoft))
           case _ =>
-            this
+            val members = uniqueTreeMembers.iterator
+            val startingUnion = OrType(members.next(), members.next(), soft = true)
+            members.foldLeft(startingUnion)(OrType(_, _, soft = true))
         }
+      else if tp1 eq tp2 then tp1
+      else this
     }
   }
 
