@@ -727,7 +727,7 @@ object Objects:
    *
    * @param lhs         The value of the object to be mutated.
    * @param field       The symbol of the target field.
-   * @param lhs         The value to be assigned.
+   * @param rhs         The value to be assigned.
    * @param rhsTyp      The type of the right-hand side.
    */
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
