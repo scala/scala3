@@ -114,7 +114,7 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** All errors reported by this reporter (ignoring outer reporters) */
   def allErrors: List[Error] = errors
 
-  /** All errors reported by this reporter (ignoring outer reporters) */
+  /** All warnings reported by this reporter (ignoring outer reporters) */
   def allWarnings: List[Warning] = warnings
 
   /** Were sticky errors reported? Overridden in StoreReporter. */

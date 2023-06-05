@@ -38,7 +38,7 @@ class Compiler {
     List(new CheckUnused.PostTyper) ::  // Check for unused elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
-    List(new semanticdb.ExtractSemanticDB.PostTyper) :: // Extract info into .semanticdb files
+    List(new semanticdb.ExtractSemanticDB.PostTyper) :: // Extract info and attach to the tree of the unit file
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
@@ -51,7 +51,7 @@ class Compiler {
     List(new Inlining) ::           // Inline and execute macros
     List(new PostInlining) ::       // Add mirror support for inlined code
     List(new CheckUnused.PostInlining) ::  // Check for unused elements
-    List(new semanticdb.ExtractSemanticDB.PostInlining) :: // Extract info into .semanticdb files
+    List(new semanticdb.ExtractSemanticDB.PostInlining) :: // Attach warnings to extracted SemanticDB and write to .semanticdb file
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new Splicing) ::           // Replace level 1 splices with holes
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
