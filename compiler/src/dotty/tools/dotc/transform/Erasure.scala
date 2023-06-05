@@ -637,7 +637,7 @@ object Erasure {
       if (tree.typeOpt.isRef(defn.UnitClass))
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
-        checkNotErasedClass(clsOf(tree.const.typeValue).withSpan(tree.span))
+        checkNotErasedClass(clsOf(tree.const.typeValue))
       else
         super.typedLiteral(tree)
 
@@ -894,11 +894,6 @@ object Erasure {
         if (tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
           tree.typeOpt
         else valueErasure(tree.typeOpt)
-
-    override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
-      super.typedInlined(tree, pt) match {
-        case tree: Inlined => tree //Inlines.dropInlined(tree)
-      }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       if (sym.isEffectivelyErased) erasedDef(sym)
