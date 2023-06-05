@@ -923,6 +923,7 @@ Text => empty
 Language => Scala
 Symbols => 181 entries
 Occurrences => 148 entries
+Diagnostics => 1 entries
 Synthetics => 6 entries
 
 Symbols:
@@ -1258,6 +1259,9 @@ Occurrences:
 [68:9..68:16): Neptune <- _empty_/Enums.Planet.Neptune.
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
 
+Diagnostics:
+[48:13..48:13): [warning] `:` after symbolic operator is deprecated; use backticks around operator instead
+
 Synthetics:
 [52:9..52:13):Refl => *.unapply[Option[B]]
 [52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
@@ -1537,6 +1541,7 @@ Text => empty
 Language => Scala
 Symbols => 29 entries
 Occurrences => 65 entries
+Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -1636,6 +1641,11 @@ Occurrences:
 [26:50..26:55): empty -> a/b/Givens.Monoid#empty().
 [26:57..26:58): A -> a/b/Givens.foo().(A)
 [26:59..26:64): empty -> a/b/Givens.Monoid#empty().
+
+Diagnostics:
+[24:53..24:63): [warning] An inline given alias with a function value as right-hand side can significantly increase
+generated code size. You should either drop the `inline` or rewrite the given with an
+explicit `apply` method.
 
 Synthetics:
 [12:17..12:25):sayHello => *[Int]

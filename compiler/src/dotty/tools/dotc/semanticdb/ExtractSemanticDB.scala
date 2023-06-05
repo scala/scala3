@@ -25,16 +25,17 @@ import scala.PartialFunction.condOpt
 
 import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.io.{AbstractFile, JarArchive}
+import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.semanticdb.DiagnosticOps.*
+
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
  *  for a description of the format.
- *  TODO: Also extract type information
  */
-class ExtractSemanticDB extends Phase:
-  import Scala3.{_, given}
+class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode, suffix: String, _key: Property.Key[TextDocument]) extends Phase:
 
-  override val phaseName: String = ExtractSemanticDB.name
+  override def phaseName: String = ExtractSemanticDB.phaseNamePrefix + suffix
 
   override val description: String = ExtractSemanticDB.description
 
@@ -48,15 +49,93 @@ class ExtractSemanticDB extends Phase:
 
   override def run(using Context): Unit =
     val unit = ctx.compilationUnit
-    val extractor = Extractor()
-    extractor.extract(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
+    if (phaseMode == ExtractSemanticDB.PhaseMode.PostTyper)
+      val extractor = ExtractSemanticDB.Extractor()
+      extractor.extract(unit.tpdTree)
+      unit.tpdTree.putAttachment(_key, extractor.toTextDocument(unit.source))
+    else
+      unit.tpdTree.getAttachment(_key) match
+        case None => ???
+        case Some(doc) =>
+          val warnings = ctx.reporter.allWarnings.collect {
+            case w if w.pos.source == ctx.source => w.toSemanticDiagnostic
+          }
+          ExtractSemanticDB.write(unit.source, doc.copy(diagnostics = warnings))
+end ExtractSemanticDB
+
+object ExtractSemanticDB:
+  import java.nio.file.Path
+  import java.nio.file.Files
+  import java.nio.file.Paths
+
+  val phaseNamePrefix: String = "extractSemanticDB"
+  val description: String = "extract info into .semanticdb files"
+
+  enum PhaseMode:
+    case PostTyper
+    case PostInlining
+
+  /**
+   * The key used to retrieve the "unused entity" analysis metadata,
+   * from the compilation `Context`
+   */
+  private val _key = Property.StickyKey[TextDocument]
+
+  class PostTyper extends ExtractSemanticDB(PhaseMode.PostTyper, "PostTyper", _key)
+
+  class PostInlining extends ExtractSemanticDB(PhaseMode.PostInlining, "PostInlining", _key)
+
+  private def semanticdbTarget(using Context): Option[Path] =
+    Option(ctx.settings.semanticdbTarget.value)
+      .filterNot(_.isEmpty)
+      .map(Paths.get(_))
+
+  private def outputDirectory(using Context): AbstractFile = ctx.settings.outputDir.value
+
+  private def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
+
+  private def write(
+    source: SourceFile,
+    doc: TextDocument
+  )(using Context): Unit =
+    val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
+    val outpath = absolutePath(semanticdbTarget.getOrElse(outputDirectory.jpath))
+      .resolve("META-INF")
+      .resolve("semanticdb")
+      .resolve(relPath)
+      .resolveSibling(source.name + ".semanticdb")
+    Files.createDirectories(outpath.getParent())
+    val docs = TextDocuments(List(doc))
+    val out = Files.newOutputStream(outpath)
+    try
+      val stream = internal.SemanticdbOutputStream.newInstance(out)
+      docs.writeTo(stream)
+      stream.flush()
+    finally
+      out.close()
+  end write
+
 
   /** Extractor of symbol occurrences from trees */
-  class Extractor extends TreeTraverser:
+  private class Extractor extends TreeTraverser:
+    import Scala3.{_, given}
     given s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
     val synth = SyntheticsExtractor()
     given converter: s.TypeOps = s.TypeOps()
+
+
+    def toTextDocument(source: SourceFile)(using Context): TextDocument =
+      val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
+      TextDocument(
+        schema = Schema.SEMANTICDB4,
+        language = Language.SCALA,
+        uri = Tools.mkURIstring(Paths.get(relPath)),
+        text = "",
+        md5 = internal.MD5.compute(String(source.content)),
+        symbols = symbolInfos.toList,
+        occurrences = occurrences.toList,
+        synthetics = synthetics.toList,
+      )
 
     /** The bodies of synthetic locals */
     private val localBodies = mutable.HashMap[Symbol, Tree]()
@@ -468,52 +547,5 @@ class ExtractSemanticDB extends Phase:
           registerSymbol(vparam.symbol, symkinds)
         traverse(vparam.tpt)
       tparams.foreach(tp => traverse(tp.rhs))
-
-
-object ExtractSemanticDB:
-  import java.nio.file.Path
-  import java.nio.file.Files
-  import java.nio.file.Paths
-
-  val name: String = "extractSemanticDB"
-  val description: String = "extract info into .semanticdb files"
-
-  private def semanticdbTarget(using Context): Option[Path] =
-    Option(ctx.settings.semanticdbTarget.value)
-      .filterNot(_.isEmpty)
-      .map(Paths.get(_))
-
-  private def outputDirectory(using Context): AbstractFile = ctx.settings.outputDir.value
-
-  def write(
-    source: SourceFile,
-    occurrences: List[SymbolOccurrence],
-    symbolInfos: List[SymbolInformation],
-    synthetics: List[Synthetic],
-  )(using Context): Unit =
-    def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
-    val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
-    val outpath = absolutePath(semanticdbTarget.getOrElse(outputDirectory.jpath))
-      .resolve("META-INF")
-      .resolve("semanticdb")
-      .resolve(relPath)
-      .resolveSibling(source.name + ".semanticdb")
-    Files.createDirectories(outpath.getParent())
-    val doc: TextDocument = TextDocument(
-      schema = Schema.SEMANTICDB4,
-      language = Language.SCALA,
-      uri = Tools.mkURIstring(Paths.get(relPath)),
-      text = "",
-      md5 = internal.MD5.compute(String(source.content)),
-      symbols = symbolInfos,
-      occurrences = occurrences,
-      synthetics = synthetics,
-    )
-    val docs = TextDocuments(List(doc))
-    val out = Files.newOutputStream(outpath)
-    try
-      val stream = internal.SemanticdbOutputStream.newInstance(out)
-      docs.writeTo(stream)
-      stream.flush()
-    finally
-      out.close()
+  end Extractor
+end ExtractSemanticDB

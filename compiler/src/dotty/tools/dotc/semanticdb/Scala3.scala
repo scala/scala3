@@ -484,6 +484,8 @@ object Scala3:
 
   given Ordering[SymbolInformation] = Ordering.by[SymbolInformation, String](_.symbol)(IdentifierOrdering())
 
+  given Ordering[Diagnostic] = (x, y) => compareRange(x.range, y.range)
+
   given Ordering[Synthetic] = (x, y) => compareRange(x.range, y.range)
 
   /**
