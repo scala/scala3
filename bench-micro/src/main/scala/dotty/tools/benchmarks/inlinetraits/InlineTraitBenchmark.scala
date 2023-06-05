@@ -13,23 +13,24 @@ import scala.util.Random
 @State(Scope.Benchmark)
 class InlineTraitBenchmark {
   // @Param(Array("100", "200", "300"))
-  var n: Int = 300
+  var matrixSize: Int = 300
 
-  def intMatrixElems(): Seq[Seq[Int]] =
-    Seq.tabulate(n, n)((_, _) => Random.nextInt())
+  def intMatrixElems: List[List[Int]] =
+    List.tabulate(matrixSize, matrixSize)((_, _) => Random.nextInt())
 
   @Param(Array("standard", "specialized", "inlinetrait"))
-  var matrixLibType: String = ""
+  var libType: String = _
 
-  var m1 = BenchmarkMatrix.empty
-  var m2 = BenchmarkMatrix.empty
+  var m1: BenchmarkMatrix = _
+  var m2: BenchmarkMatrix = _
 
   @Setup(Level.Trial)
   def setup = {
-    Random.setSeed(n)
-    val matrixFactory = BenchmarkMatrix.ofType(matrixLibType)
-    m1 = matrixFactory(intMatrixElems())
-    m2 = matrixFactory(intMatrixElems())
+    Random.setSeed(matrixSize)
+
+    val matrixFactory = BenchmarkMatrix.ofType(libType)
+    m1 = matrixFactory(intMatrixElems)
+    m2 = matrixFactory(intMatrixElems)
   }
 
   @Benchmark

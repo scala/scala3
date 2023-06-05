@@ -16,12 +16,6 @@ object BenchmarkMatrix:
       case "inlinetrait" => InlBenchmarkMatrix(InlIntMatrix(elems*))
     }
 
-  val empty: BenchmarkMatrix = new BenchmarkMatrix {
-    override def +(n: BenchmarkMatrix): BenchmarkMatrix = ???
-    override def *(n: BenchmarkMatrix): BenchmarkMatrix = ???
-  }
-
-
 private class StdBenchmarkMatrix(val m: StdIntMatrix) extends BenchmarkMatrix:
   override def +(n: BenchmarkMatrix): StdBenchmarkMatrix = n match {
     case stdN: StdBenchmarkMatrix => StdBenchmarkMatrix(this.m + stdN.m)
