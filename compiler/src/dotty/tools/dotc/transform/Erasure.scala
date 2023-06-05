@@ -637,7 +637,7 @@ object Erasure {
       if (tree.typeOpt.isRef(defn.UnitClass))
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
-        checkNotErasedClass(clsOf(tree.const.typeValue))
+        checkNotErasedClass(clsOf(tree.const.typeValue).withSpan(tree.span))
       else
         super.typedLiteral(tree)
 
