@@ -1,8 +1,8 @@
-assertImpl: Test$.main(Test_2.scala:16)
+assertImpl: Test$.main(Test_2.scala:17)
 true
-assertImpl: Test$.main(Test_2.scala:16)
+assertImpl: Test$.main(Test_2.scala:21)
 false
-assertImpl: Test$.main(Test_2.scala:18)
+assertImpl: Test$.main(Test_2.scala:25)
 hi: Test$.main(Test_2.scala:10)
 hi again: Test$.main(Test_2.scala:11)
 false
