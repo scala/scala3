@@ -696,7 +696,7 @@ trait Applications extends Compatibility {
 
         def SAMargOK =
           defn.isFunctionType(argtpe1) && formal.match
-            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+            case SAMType.WithFunctionType(_, fntpe) => argtpe <:< fntpe
             case _ => false
 
         isCompatible(argtpe, formal)

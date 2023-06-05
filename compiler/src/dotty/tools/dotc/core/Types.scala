@@ -5568,6 +5568,17 @@ object Types {
         else None
       }
       else None
+
+    object WithFunctionType:
+      def unapply(tp: Type)(using Context): Option[(MethodType, Type)] = tp match
+        case SAMType(mt) if !isParamDependentRec(mt) =>
+          Some((mt, mt.toFunctionType(isJava = tp.classSymbol.is(JavaDefined))))
+        case _ => None
+
+      private def isParamDependentRec(mt: MethodType)(using Context): Boolean =
+        mt.isParamDependent || mt.resultType.match
+          case mt: MethodType => isParamDependentRec(mt)
+          case _              => false
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

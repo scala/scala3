@@ -1335,10 +1335,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
-        case pt1 @ SAMType(mt @ MethodTpe(_, formals, methResType)) =>
-          val restpe = methResType match
-            case mt: MethodType if !mt.isParamDependent => mt.toFunctionType(isJava = pt1.classSymbol.is(JavaDefined))
-            case tp => tp
+        case SAMType.WithFunctionType(mt @ MethodTpe(_, formals, _), defn.FunctionOf(_, restpe, _)) =>
           (formals,
            if (mt.isResultDependent)
              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
@@ -4131,8 +4128,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
-            case SAMType(sam)
-            if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>
+            case SAMType.WithFunctionType(_, fntpe)
+            if wtp <:< fntpe =>
               // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
