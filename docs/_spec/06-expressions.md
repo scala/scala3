@@ -19,13 +19,14 @@ Expr1        ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Exp
                |  SimpleExpr1 ArgumentExprs ‘=’ Expr
                |  PostfixExpr
                |  PostfixExpr Ascription
-               |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
 PostfixExpr  ::=  InfixExpr [id [nl]]
 InfixExpr    ::=  PrefixExpr
                |  InfixExpr id [nl] InfixExpr
+               |  InfixExpr MatchClause
 PrefixExpr   ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr
 SimpleExpr   ::=  ‘new’ (ClassTemplate | TemplateBody)
                |  BlockExpr
+               |  SimpleExpr ‘.’ MatchClause
                |  SimpleExpr1 [‘_’]
 SimpleExpr1  ::=  Literal
                |  Path
@@ -36,6 +37,7 @@ SimpleExpr1  ::=  Literal
                |  SimpleExpr1 ArgumentExprs
                |  XmlExpr
 Exprs        ::=  Expr {‘,’ Expr}
+MatchClause  ::=  ‘match’ ‘{’ CaseClauses ‘}’
 BlockExpr    ::=  ‘{’ CaseClauses ‘}’
                |  ‘{’ Block ‘}’
 Block        ::=  BlockStat {semi BlockStat} [ResultExpr]
