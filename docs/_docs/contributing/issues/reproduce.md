@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Reproducing an Issue
+redirectFrom: /docs/contributing/workflow/reproduce.html
 ---
 
 The first step is to reproduce the issue you're trying to fix. Say you want to

@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Finding the Cause of an Issue
+redirectFrom: /docs/contributing/workflow/cause.html
 ---
 
 In this section, you will be able to answer questions such as:

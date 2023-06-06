@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: Testing Your Changes
-redirectFrom: /docs/contributing/issues/testing.html
+redirectFrom: /docs/contributing/workflow/testing.html
 ---
 
 It is important to add tests before a pull request, to verify that everything is working as expected,
