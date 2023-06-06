@@ -330,6 +330,9 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ => p(tree)
   }
 
+  /** The tree stripped of the possibly nested applications (term and type).
+   *  The original tree if it's not an application.
+   */
   def appliedCore(tree: Tree): Tree = tree match {
     case Apply(fn, _) => appliedCore(fn)
     case TypeApply(fn, _)       => appliedCore(fn)

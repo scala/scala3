@@ -261,9 +261,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       def check(qual: Tree) =
         if !qual.tpe.isStable then
           report.error(em"Parameter untupling cannot be used for call-by-name parameters", tree.srcPos)
-      tree match
-        case Select(qual, _) => check(qual)    // simple select _n
-        case Apply(TypeApply(Select(qual, _), _), _) => check(qual) // generic select .apply[T](n)
+      appliedCore(closureBody(tree)) match
+        case Select(qual, _) => check(qual)
+        // simple select _n                    Select(qual, _n)
+        // generic select .apply[T](n)         Apply(TypeApply(Select(qual, _), _), _)
+        // context closure x ?=> f(using x)    Block(List(DefDef($anonfun, _, _, Apply(Select(Select(qual, _n), _), _)))
 
     def checkNotPackage(tree: Tree)(using Context): Tree =
       if !tree.symbol.is(Package) then tree
