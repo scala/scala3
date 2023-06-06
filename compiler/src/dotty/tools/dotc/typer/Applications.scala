@@ -695,9 +695,7 @@ trait Applications extends Compatibility {
         val argtpe1 = argtpe.widen
 
         def SAMargOK =
-          defn.isFunctionType(argtpe1) && formal.match
-            case SAMType.WithFunctionType(_, fntpe) => argtpe <:< fntpe
-            case _ => false
+          defn.isFunctionType(argtpe1) && SAMType.isSamCompatible(argtpe, formal)
 
         isCompatible(argtpe, formal)
         // Only allow SAM-conversion to PartialFunction if implicit conversions
