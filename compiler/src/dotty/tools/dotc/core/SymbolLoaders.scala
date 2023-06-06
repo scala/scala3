@@ -14,7 +14,7 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
 import NameOps._
 import StdNames._
-import classfile.ClassfileParser
+import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
 import Decorators._
 
 import util.Stats
@@ -24,6 +24,7 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
+import dotty.tools.tasty.TastyHeaderUnpickler
 
 
 object SymbolLoaders {
@@ -421,14 +422,25 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
 
   override def doComplete(root: SymDenotation)(using Context): Unit =
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    val unpickler =
-      val tastyBytes = tastyFile.toByteArray
-      new tasty.DottyUnpickler(tastyBytes)
+    val tastyBytes = tastyFile.toByteArray
+    val unpickler = new tasty.DottyUnpickler(tastyBytes)
     unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
     if mayLoadTreesFromTasty then
       classRoot.classSymbol.rootTreeOrProvider = unpickler
       moduleRoot.classSymbol.rootTreeOrProvider = unpickler
-    // TODO check TASTy UUID matches classfile
+    checkTastyUUID(tastyFile, tastyBytes)
+
+
+  private def checkTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
+    var classfile = tastyFile.resolveSibling(tastyFile.name.stripSuffix(".tasty") + ".class")
+    if classfile == null then
+      classfile = tastyFile.resolveSibling(tastyFile.name.stripSuffix(".tasty") + "$.class")
+    if classfile != null then
+      val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+      new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
+    else
+      // This will be the case in any of our tests that compile with `-Youtput-only-tasty`
+      report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
