@@ -64,6 +64,14 @@ trait ConstraintHandling {
    */
   protected var canWidenAbstract: Boolean = true
 
+  /**
+   * Used for match type reduction.
+   * When an abstract type may not be widened, according to `widenAbstractOKFor`,
+   * we record it in this set, so that we can ultimately fail the reduction, but
+   * with all the information that comes out from continuing to widen the abstract type.
+   */
+  protected var poisoned: Set[TypeParamRef] = Set.empty
+
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping
    *  judgment to be true, we sometimes need to approximate the constraint

@@ -24,6 +24,7 @@ import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
 import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
+import NameKinds.WildcardParamName
 
 /** Provides methods to compare types.
  */
@@ -865,10 +866,36 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fourthTry
     }
 
+    /** Can we widen an abstract type when comparing with `tp`?
+    *   This is the case with the following cases:
+    *    - if `canWidenAbstract` is true.
+     *
+     *  Secondly, if `tp` is a type parameter, we can widen if:
+     *    - if `tp` is not a type parameter of the matched-against case lambda
+     *    - if `tp` is an invariant or wildcard type parameter
+     *    - finally, allow widening, but record the type parameter in `poisoned`,
+     *      so that can be accounted for during the reduction step
+     */
+    def widenAbstractOKFor(tp: Type): Boolean =
+      val acc = new TypeAccumulator[Boolean]:
+        override def apply(x: Boolean, t: Type) =
+          x && t.match
+            case t: TypeParamRef =>
+              variance == 0
+              || (t.binder ne caseLambda)
+              || t.paramName.is(WildcardParamName)
+              || { poisoned += t; true }
+            case _ =>
+              foldOver(x, t)
+
+      canWidenAbstract && acc(true, tp)
+
     def tryBaseType(cls2: Symbol) = {
       val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
       if base.exists && (base ne tp1)
-        && (!caseLambda.exists || canWidenAbstract || tp1.widen.underlyingClassRef(refinementOK = true).exists)
+          && (!caseLambda.exists
+              || widenAbstractOKFor(tp2)
+              || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
         && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
@@ -889,8 +916,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
               && (tp2.isAny || GADTusage(tp1.symbol))
 
-            (!caseLambda.exists || canWidenAbstract)
-                && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
+            (!caseLambda.exists || widenAbstractOKFor(tp2))
+              && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
             || compareGADT
             || tryLiftedToThis1
           case _ =>
@@ -984,7 +1011,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             tp1.cases.corresponds(tp2.cases)(isSubType)
           case _ => false
         }
-        recur(tp1.underlying, tp2) || compareMatch
+        (!caseLambda.exists || canWidenAbstract) && recur(tp1.underlying, tp2) || compareMatch
       case tp1: AnnotatedType if tp1.isRefining =>
         isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>
@@ -3091,6 +3118,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
+    // a reference for the type parameters poisoned during matching
+    // for use during the reduction step
+    var poisoned: Set[TypeParamRef] = Set.empty
 
     def paramInstances(canApprox: Boolean) = new TypeAccumulator[Array[Type]]:
       def apply(insts: Array[Type], t: Type) = t match
@@ -3102,16 +3132,24 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               case entry: TypeBounds =>
                 val lo = fullLowerBound(param)
                 val hi = fullUpperBound(param)
-                if isSubType(hi, lo) then lo.simplified else Range(lo, hi)
+                if !poisoned(param) && isSubType(hi, lo) then lo.simplified else Range(lo, hi)
               case inst =>
                 assert(inst.exists, i"param = $param\nconstraint = $constraint")
-                inst.simplified
+                if !poisoned(param) then inst.simplified else Range(inst, inst)
           insts
         case _ =>
           foldOver(insts, t)
 
     def instantiateParams(insts: Array[Type]) = new ApproximatingTypeMap {
       variance = 0
+
+      override def range(lo: Type, hi: Type): Type =
+        if variance == 0 && (lo eq hi) then
+          // override the default `lo eq hi` test, which removes the Range
+          // which leads to a Reduced result, instead of NoInstance
+          Range(lower(lo), upper(hi))
+        else super.range(lo, hi)
+
       def apply(t: Type) = t match {
         case t @ TypeParamRef(b, n) if b `eq` caseLambda => insts(n)
         case t: LazyRef => apply(t.ref)
@@ -3133,9 +3171,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
       def matches(canWidenAbstract: Boolean): Boolean =
         val saved = this.canWidenAbstract
+        val savedPoisoned = this.poisoned
         this.canWidenAbstract = canWidenAbstract
+        this.poisoned = Set.empty
         try necessarySubType(scrut, pat)
-        finally this.canWidenAbstract = saved
+        finally
+          poisoned = this.poisoned
+          this.poisoned = savedPoisoned
+          this.canWidenAbstract = saved
 
       def redux(canApprox: Boolean): MatchResult =
         caseLambda match
