@@ -229,15 +229,15 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
           pushInBlockTemplatePackageDef(tree)
           traverseChildren(tree)(using newCtx)
           popOutBlockTemplatePackageDef()
-        case t:tpd.ValDef =>
+        case t: tpd.ValDef =>
           prepareForValDef(t)
           traverseChildren(tree)(using newCtx)
           transformValDef(t)
-        case t:tpd.DefDef =>
+        case t: tpd.DefDef =>
           prepareForDefDef(t)
           traverseChildren(tree)(using newCtx)
           transformDefDef(t)
-        case t:tpd.TypeDef =>
+        case t: tpd.TypeDef =>
           prepareForTypeDef(t)
           traverseChildren(tree)(using newCtx)
           transformTypeDef(t)
@@ -248,6 +248,10 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
           prepareForAssign(t)
           traverseChildren(tree)
         case _: tpd.InferredTypeTree =>
+        case t@tpd.RefinedTypeTree(tpt, refinements) =>
+          //! DIFFERS FROM MINIPHASE
+          typeTraverser(unusedDataApply).traverse(t.tpe)
+          traverse(tpt)(using newCtx)
         case t@tpd.TypeTree() =>
           //! DIFFERS FROM MINIPHASE
           typeTraverser(unusedDataApply).traverse(t.tpe)
