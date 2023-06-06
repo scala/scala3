@@ -164,7 +164,7 @@ A variable definition  `var ´p´ = ´e´` where ´p´ is a pattern other than a
 
 The name of any declared or defined variable may not end in `_=`.
 
-A variable definition `var ´x´: ´T´ = _` can appear only as a member of a template.
+The right-hand-side of a mutable variable definition that is a member of a template can be the special reference `scala.compiletime.uninitialized`: `var ´x´: ´T´ = scala.compiletime.uninitialized`.
 It introduces a mutable field with type ´T´ and a default initial value.
 The default value depends on the type ´T´ as follows:
 
@@ -177,6 +177,9 @@ The default value depends on the type ´T´ as follows:
 |`false`   | `Boolean`                          |
 |`()`      | `Unit`                             |
 |`null`    | all other types                    |
+
+`scala.compiletime.uninitialized` can never appear anywhere else.
+For compatibility with Scala 2, the syntax `var ´x´: ´T´ = _` is accepted as equivalent to using `uninitialized`.
 
 When they occur as members of a template, both forms of variable definition also introduce a getter method ´x´ which returns the value currently assigned to the variable, as well as a setter method `´x´_=` which changes the value currently assigned to the variable.
 The methods have the same signatures as for a variable declaration.
