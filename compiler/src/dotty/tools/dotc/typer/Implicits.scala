@@ -1122,17 +1122,33 @@ trait Implicits:
             adapt(generated, pt.widenExpr, locked)
         else {
           def untpdGenerated = untpd.TypedSplice(generated)
-          def producesConversion(info: Type): Boolean = info match
-            case info: PolyType => producesConversion(info.resType)
-            case info: MethodType if info.isImplicitMethod => producesConversion(info.resType)
-            case _ => info.derivesFrom(defn.ConversionClass)
+          def conversionResultType(info: Type): Type = info match
+            case info: PolyType => conversionResultType(info.resType)
+            case info: MethodType if info.isImplicitMethod => conversionResultType(info.resType)
+            case _ =>
+              if info.derivesFrom(defn.ConversionClass) then
+                pt match
+                  case selProto: SelectionProto =>
+                    // we want to avoid embedding a SelectionProto in a Conversion, as the result type
+                    // as it might end up within a GADT cast type, e.g. tests/pos/i15867.scala
+                    // so, if we can find the target result type - as in,
+                    // if it matches the selection prototype, then let's adapt to that instead
+                    // otherwise just skip adapting with a prototype (by returning NoType)
+                    info.baseType(defn.ConversionClass) match
+                      case AppliedType(_, List(_, restpe)) if selProto.isMatchedBy(restpe) =>
+                        restpe
+                      case _ => NoType // can't find conversion result type, avoid adapting with SelectionProto
+                  case _: ProtoType => NoType // avoid adapting with ProtoType
+                  case _            => pt     // not a ProtoType, so use it for adapting
+              else NoType // not a Conversion, don't adapt
           def tryConversion(using Context) = {
+            val restpeConv = if ref.symbol.is(Given) then conversionResultType(ref.widenTermRefExpr) else NoType
             val untpdConv =
-              if ref.symbol.is(Given) && producesConversion(ref.symbol.info) then
+              if restpeConv.exists then
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
-                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, pt),
+                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, restpeConv),
                       locked)),
                   nme.apply)
               else untpdGenerated
