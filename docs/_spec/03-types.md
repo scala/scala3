@@ -10,14 +10,9 @@ chapter: 3
 Type                  ::=  FunType
                         |  TypeLambda
                         |  InfixType
-FunType               ::=  FunctionArgTypes ‘=>’ Type
+FunType               ::=  FunTypeArgs ‘=>’ Type
                         |  TypeLambdaParams '=>' Type
-FunctionArgTypes      ::=  InfixType
-                        |  ‘(’ [ FunArgTypes ] ‘)’
-                        |  FunParamClause
-FunParamClause        ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
-TypedFunParam         ::=  id ‘:’ Type
-TypeLambda            ::= TypeLambdaParams ‘=>>’ Type
+TypeLambda            ::=  TypeLambdaParams ‘=>>’ Type
 InfixType             ::=  RefinedType
                         |  RefinedTypeOrWildcard id [nl] RefinedTypeOrWildcard {id [nl] RefinedTypeOrWildcard}
 RefinedType           ::=  AnnotType {[nl] Refinement}
@@ -37,13 +32,19 @@ Singleton             ::=  SimpleRef
 SimpleRef             ::=  id
                         |  [id ‘.’] ‘this’
                         |  [id ‘.’] ‘super’ [‘[’ id ‘]’] ‘.’ id
-FunArgTypes           ::=  FunArgType { ‘,’ FunArgType }
-FunArgType            ::=  Type
-                        |  ‘=>’ Type
 ParamType             ::=  [‘=>’] ParamValueType
 ParamValueType        ::=  ParamValueType [‘*’]
 TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
 Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+
+FunTypeArgs           ::=  InfixType
+                        |  ‘(’ [ FunArgTypes ] ‘)’
+                        |  FunParamClause
+FunArgTypes           ::=  FunArgType { ‘,’ FunArgType }
+FunArgType            ::=  Type
+                        |  ‘=>’ Type
+FunParamClause        ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+TypedFunParam         ::=  id ‘:’ Type
 
 TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
 TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
@@ -177,14 +178,20 @@ Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which re
 ### Function Types
 
 ```ebnf
-Type              ::=  FunctionArgTypes ‘=>’ Type
-FunctionArgTypes  ::=  InfixType
-                    |  ‘(’ [ ParamType {‘,’ ParamType } ] ‘)’
+Type              ::=  FunTypeArgs ‘=>’ Type
+FunTypeArgs       ::=  InfixType
+                    |  ‘(’ [ FunArgTypes ] ‘)’
+                    |  FunParamClause
+FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
+FunArgType        ::=  Type
+                    |  ‘=>’ Type
+FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+TypedFunParam     ::=  id ‘:’ Type
 ```
 
-The concrete type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
+The concrete function type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
 The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
-An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.md#by-name-parameters) of type ´T´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters) of type ´T´.
 
 Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
 
@@ -202,6 +209,26 @@ trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
 ```
 
 Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
+
+_Dependent function types_ are function types whose parameters are named and can referred to in result types.
+In the concrete type ´(x_1: T_1, ..., x_n: T_n) \Rightarrow R´, ´R´ can refer to the parameters ´x_i´, notably to form path-dependent types.
+It translates to the internal [refined type](#refined-types)
+```scala
+scala.Function´_n´[´T_1´, ..., ´T_n´, ´S´] {
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+}
+```
+where ´S´ is the least super type of ´R´ that does not mention any of the ´x_i´.
+
+_Polymorphic function types_ are function types that take type arguments.
+Their result type must be a function type.
+In the concrete type ´[a_1 >: L_1 <: H_1, ..., a_n >: L_1 <: H_1] => (T_1, ..., T_m) => R´, the types ´T_j´ and ´R´ can refer to the type parameters ´a_i´.
+It translates to the internal refined type
+```scala
+scala.PolyFunction {
+  def apply[´a_1 >: L_1 <: H_1, ..., a_n >: L_1 <: H_1´](´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+}
+```
 
 ### Concrete Refined Types
 
@@ -309,7 +336,7 @@ Every stable type ´T´ is concrete and has an _underlying_ type ´U´ such that
 
 ### Type Constructors
 
-To each type constructor corresponds an _inferred type parameter clause_ which is computed as follow:
+To each type constructor corresponds an _inferred type parameter clause_ which is computed as follows:
 
 - For a [type lambda](#type-lambdas), its type parameter clause (including variance annotations).
 - For a [polymorphic class type](#type-designators), the type parameter clause of the referenced class definition.
@@ -351,6 +378,21 @@ If some type constructor `´T <:´ [´\pm a_1 >: L_1 <: H_1´, ..., ´\pm a_n >:
 Note: the concrete syntax of type lambdas does not allow to specify variances for type parameters.
 Instead, variances are inferred from the body of the lambda to be as general as possible.
 
+##### Example
+
+```scala
+type Lst = [T] =>> List[T] // T is inferred to be covariant with bounds >: Nothing <: Any
+type Fn = [A <: Seq[?], B] =>> (A => B) // A is inferred to be contravariant, B covariant
+
+val x: Lst[Int] = List(1) // ok, Lst[Int] expands to List[Int]
+val f: Fn[List[Int], Int] = (x: List[Int]) => x.head // ok
+
+val g: Fn[Int, Int] = (x: Int) => x // error: Int does not conform to the bound Seq[?]
+
+def liftPair[F <: [T] =>> Any](f: F[Int]): Any = f
+liftPair[Lst](List(1)) // ok, Lst <: ([T] =>> Any)
+```
+
 ### Designator Types
 
 ```ebnf
@@ -374,7 +416,7 @@ They refer to local definitions available in the scope:
 - Local `type`, `object`, `val`, `lazy val`, `var` or `def` definitions
 - Term or type parameters
 
-The `id` of direct designators are protected from accidental shadowing in the abstract syntax.
+The `id`s of direct designators are protected from accidental shadowing in the abstract syntax.
 They retain the identity of the exact definition they refer to, rather than relying on scope-based name resolution. [^debruijnoralpha]
 
 [^debruijnoralpha]: In the literature, this is often achieved through De Bruijn indices or through alpha-renaming when needed. In a concrete implementation, this is often achieved through retaining *symbolic* references in a symbol table.
@@ -428,8 +470,8 @@ The parameterized type is well-formed if
   - if ´T_i´ is a type and ´\sigma L_i <: T_i <: \sigma H_i´, or
   - ´T_i´ is a wildcard type argument ´? >: L_{Ti} <: H_{Ti}´ and ´\sigma L_i <: L_{Ti}´ and ´H_{Ti} <: \sigma H_i´.
 
-´T[T_1, ..., T_n]´ is an _applied class type_ if and only if ´T´ is a [class type](#type-designators).
-All applied class types are value types.
+´T[T_1, ..., T_n]´ is a _parameterized class type_ if and only if ´T´ is a [class type](#type-designators).
+All parameterized class types are value types.
 
 In the concrete syntax of wildcard type arguments, if both bounds are omitted, the real bounds are inferred from the bounds of the corresponding type parameter in the target type constructor (which must be concrete).
 If only one bound is omitted, `Nothing` or `Any` is used, as usual.
@@ -441,8 +483,8 @@ Wildcard type arguments used in covariant or contravariant positions can always 
 Let ´T[T_1, ..., T_n]´ be a parameterized type for a concrete type constructor.
 Then, applying a wildcard type argument ´? >: L <: H´ at the ´i´'th position obeys the following equivalences:
 
-- If the type parameter ´T_i´ is declared covariant, then ´T[..., ? >: L <: H, ...] \equiv T[..., H, ...]´.
-- If the type parameter ´T_i´ is declared contravariant, then ´T[..., ? >: L <: H, ...] \equiv T[..., L, ...]´.
+- If the type parameter ´T_i´ is declared covariant, then ´T[..., ? >: L <: H, ...] =:= T[..., H, ...]´.
+- If the type parameter ´T_i´ is declared contravariant, then ´T[..., ? >: L <: H, ...] =:= T[..., L, ...]´.
 
 #### Example Parameterized Types
 
@@ -543,6 +585,18 @@ However, only literal types for `Int`, `Long`, `Float`, `Double`, `Boolean`, `Ch
 
 Literal types are stable types.
 Their underlying type is the primitive type containing their value.
+
+##### Example
+
+```scala
+val x: 1 = 1
+val y: false = false
+val z: false = y
+val int: Int = x
+
+val badX: 1 = int       // error: Int is not a subtype of 1
+val badY: false = true  // error: true is not a subtype of false
+```
 
 ### By-Name Types
 
@@ -696,22 +750,21 @@ From the [conformance rules](#conformance) rules on union and intersection types
 Moreover, `＆` is distributive over `｜`.
 For any type ´A´, ´B´ and ´C´, all of the following relationships hold:
 
-- ´A ＆ B \equiv B ＆ A´,
-- ´A ｜ B \equiv B ｜ A´,
-- ´(A ＆ B) ＆ C \equiv A ＆ (B ＆ C)´,
-- ´(A ｜ B) ｜ C \equiv A ｜ (B ｜ C)´, and
-- ´A ＆ (B ｜ C) \equiv (A ＆ B) ｜ (A ＆ C)´.
+- ´A ＆ B =:= B ＆ A´,
+- ´A ｜ B =:= B ｜ A´,
+- ´(A ＆ B) ＆ C =:= A ＆ (B ＆ C)´,
+- ´(A ｜ B) ｜ C =:= A ｜ (B ｜ C)´, and
+- ´A ＆ (B ｜ C) =:= (A ＆ B) ｜ (A ＆ C)´.
 
-If ´C´ is a type constructor, then ´C[A] ＆ C[B]´ can be simplified using the following three rules:
+If ´C´ is a co- or contravariant type constructor, ´C[A] ＆ C[B]´ can be simplified using the following rules:
 
-- If ´C´ is covariant, ´C[A] ＆ C[B] \equiv C[A ＆ B]´
-- If ´C´ is contravariant, ´C[A] ＆ C[B] \equiv C[A | B]´
-- If ´C´ is invariant, emit a compile error
+- If ´C´ is covariant, ´C[A] ＆ C[B] =:= C[A ＆ B]´
+- If ´C´ is contravariant, ´C[A] ＆ C[B] =:= C[A | B]´
 
-From the above rules, we can derive the following conformance relationships:
+The right-to-left validity of the above two rules can be derived from the definition of covariance and contravariance and the conformance rules of union and intersection types:
 
-- When ´C´ is covariant, ´C[A ＆ B] <: C[A] ＆ C[B]´.
-- When ´C´ is contravariant, ´C[A ｜ B] <: C[A] ＆ C[B]´.
+- When ´C´ is covariant, we can derive ´C[A ＆ B] <: C[A] ＆ C[B]´.
+- When ´C´ is contravariant, we can derive ´C[A ｜ B] <: C[A] ＆ C[B]´.
 
 #### Join of a union type
 
@@ -738,14 +791,14 @@ SkolemType  ::=  ‘∃‘ skolemid ‘:‘ Type
 ```
 
 Skolem types cannot directly be written in the concrete syntax.
-Moreover, although they are proper types, they are never inferred as the type given to terms.
-Skolem types are exclusively used temporarily during subtyping derivations.
-They are stable types.
+Moreover, although they are proper types, they can never be inferred to be part of the types of term definitions (`val`s, `var`s and `def`s).
+They are exclusively used temporarily during subtyping derivations.
 
+Skolem types are stable types.
 A skolem type of the form ´∃ \alpha : T´ represents a stable reference to unknown value of type ´T´.
 The identifier ´\alpha´ is chosen uniquely every time a skolem type is created.
 However, as a skolem type is stable, it can be substituted in several occurrences in other types.
-When "copied" through substutition, all the copies retain the same ´\alpha´, and are therefore equivalent.
+When "copied" through substitution, all the copies retain the same ´\alpha´, and are therefore equivalent.
 
 ## Methodic Types
 
@@ -851,9 +904,8 @@ For brevity, we write `´p.X´[´U_1, ..., U_n´]` instead of `´p.X´` with ´n
 - `baseType(´p.D´[´T_1, ..., T_n´], ´C´)` with `´D´ ≠ ´C ≜ \sigma W´` if ´Q´ is defined where
   - ´D´ is declared as `´D[\pm a_1 >: L_1 <: H_1, ..., \pm a_n >: L_n <: H_n]´ extends ´P_1, ..., P_m´`
   - `´Q =´ meet(baseType(´P_i´, ´C´)` for all ´i´ such that `baseType(´P_i´, ´C´)` is defined`)`
-  - if ´p = \epsilon´ or if ´p´ is a package ref, let `´W = Q´`; otherwise, ´p´ is a stable type and ´D´ must be declared inside another class ´B´, and let `´W =´ asSeenFrom(´Q´, ´D´, ´p´)`
+  - `´W = Q´` if ´p = \epsilon´ or if ´p´ is a package ref; otherwise, `´W =´ asSeenFrom(´Q´, ´D´, ´p´)` (in that case, ´p´ is a stable type and ´D´ must be declared inside another class ´B´)
   - `´\sigma = [a_1 := T_1, ..., a_n := T_n]´` the substitution of the declared type parameters of ´D´ by the actual type arguments
-- `baseType(´p.X´[´T_1, ..., T_n´], ´C´)` where ´p.X´ is not a class type designator `´≜ T´`
 - `baseType(´T_1 ＆ T_2´, ´C´) ´≜´ meet´(´baseType(´T_1´, ´C´), baseType(´T_2´, ´C´)´)´`
 - `baseType(´T_1 ｜ T_2´, ´C´) ´≜´ join´(´baseType(´T_1´, ´C´), baseType(´T_2´, ´C´)´)´`
 - `baseType(´T´, ´C´) ´≜´ baseType(superType(´T´), ´C´)` if `superType(´T´)` is defined
@@ -871,13 +923,13 @@ Note that the cases of `superType` do not overlap with each other nor with any `
 The cases of `baseType` therefore do not overlap with each other either.
 That makes `baseType` an algorithmic partial function.
 
-`meet(´p.C[T_1, ..., T_n]´, ´q.C[U_1, ..., U_n]´)` computes an intersection of two (applied) class types for the same class, and `join` computes a union:
+`meet(´p.C[T_1, ..., T_n]´, ´q.C[U_1, ..., U_n]´)` computes an intersection of two (parameterized) class types for the same class, and `join` computes a union:
 
-- if `´p \equiv q´` is false, then it is not defined
+- if `´p =:= q´` is false, then it is not defined
 - otherwise, let ´W_i´ for ´i \in 1, ..., n´ be:
   - ´T_i ＆ U_i´ for `meet` (resp. ´T_i ｜ U_i´ for `join`) if the ´i´th type parameter of ´C´ is covariant
   - ´T_i ｜ U_i´ for `meet` (resp. ´T_i ＆ U_i´ for `join`) if the ´i´th type parameter of ´C´ is contravariant
-  - ´T_i´ if ´T_i \equiv U_i´ and the ´i´th type parameter of ´C´ is invariant
+  - ´T_i´ if ´T_i =:= U_i´ and the ´i´th type parameter of ´C´ is invariant
   - not defined otherwise
 - if any of the ´W_i´ are not defined, the result is not defined
 - otherwise, the result is `´p.C[W_1, ..., W_n]´`
@@ -1002,16 +1054,10 @@ We define the following relations between types.
 
 | Name             | Symbolically   | Interpretation                                     |
 |------------------|----------------|----------------------------------------------------|
-| Equivalence      | ´T \equiv U´   | ´T´ and ´U´ are interchangeable in all contexts.   |
 | Conformance      | ´T <: U´       | Type ´T´ conforms to ("is a subtype of") type ´U´. |
+| Equivalence      | ´T =:= U´      | ´T´ and ´U´ conform to each other.                 |
 | Weak Conformance | ´T <:_w U´     | Augments conformance for primitive numeric types.  |
 | Compatibility    |                | Type ´T´ conforms to type ´U´ after conversions.   |
-
-### Equivalence
-
-Equivalence is defined in terms of conformance.
-
-´S \equiv T´ if and only if both ´S <: T´ and ´T <: S´.
 
 ### Conformance
 
@@ -1024,14 +1070,14 @@ Note that the conditions are not all mutually exclusive.
 - ´S´ is a stable type with underlying type ´S_1´ and ´S_1 <: T´.
 - ´S = p.x´ and ´T = q.x´ are term designators and
   - `isSubPrefix(´p´, ´q´)`.
-- ´S = p.X[S_1, ..., S_n]´ and ´T = q.X[T_1, ..., T_n]´ are possibly applied type designators with ´n \geq 0´ and:
+- ´S = p.X[S_1, ..., S_n]´ and ´T = q.X[T_1, ..., T_n]´ are possibly parameterized type designators with ´n \geq 0´ and:
   - `isSubPrefix(´p´, ´q´)`, and
   - it is not the case that ´p.x´ and ´q.X´ are class type designators for different classes, and
   - for each ´i \in \{ 1, ..., n \}´:
       - the ´i´th type parameter of ´q.X´ is covariant and ´S_i <: T_i´ [^argisnotwildcard], or
       - the ´i´th type parameter of ´q.X´ is contravariant and ´T_i <: S_i´ [^argisnotwildcard], or
       - the ´i´th type parameter of ´q.X´ is invariant and:
-          - ´S_i´ and ´T_i´ are types and ´S_i \equiv T_i´, or
+          - ´S_i´ and ´T_i´ are types and ´S_i =:= T_i´, or
           - ´S_i´ is a type and ´T_i´ is a wildcard type argument of the form ´? >: L_2 <: H_2´ and ´L_2 <: S_i´ and ´S_i <: H_2´, or
           - ´S_i´ is a wildcard type argument of the form ´? >: L_1 <: H_1´ and ´T_i´ is a wildcard type argument of the form ´? >: L_2 <: H_2´ and ´L_2 <: L_1´ and ´H_1 <: H_2´ (i.e., the ´S_i´ "interval" is contained in the ´T_i´ "interval").
 - ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and `baseType(´S´, ´C´)` is defined and `baseType(´S´, ´C´) ´<: T´.
@@ -1057,7 +1103,7 @@ Note that the conditions are not all mutually exclusive.
       - ´\sigma (>: M_i <: G_i)´ is contained in ´>: L_i <: H_i´ (i.e., ´L_i <: \sigma M_i´ and ´\sigma G_i <: H_i´).
 - ´S = p.X´ and `´T = [\pm b_1 >: M_1 <: G_1, ..., \pm b_n >: M_n <: G_n]´ =>> ´T_1´` and ´S´ is a type constructor with ´n´ type parameters and:
   - `´([\pm a_1 >: L_1 <: H_1, ..., \pm a_n >: L_n <: H_n]´ =>> ´S[a_1, ..., a_n]) <: T´` where the ´a_i´ are copies of the type parameters of ´S´ (i.e., we can eta-expand ´S´ to compare it to a type lambda).
-- `´T = T_1´ { ´R´ }` and ´S <: T´ and ´S´ is a stable type ´p´ (TODO: what if it is not stable?) and:
+- `´T = T_1´ { ´R´ }` and ´S <: T_1´ and, given ´p = S´ if ´S´ is a stable type and ´p = ∃ \alpha : S´ otherwise:
   - `´R =´ type ´X >: L <: H´` and `memberType(´p´, ´X´)` is a class result for ´C´ and ´L <: p.C´ and ´p.C <: H´, or
   - `´R =´ type ´X >: L_2 <: H_2´` and `memberType(´p´, ´X´)` is a type result with bounds ´>: L_1 <: H_1´ and ´L_2 <: L_1´ and ´H_1 <: H_2´, or
   - `´R =´ val ´X: T_2´` and `memberType(´p´, ´X´)` is a stable term result with type ´S_2´ and ´S_2 <: T_2´, or
@@ -1085,11 +1131,9 @@ We define `isSubPrefix(´p´, ´q´)` where ´p´ and ´q´ are prefixes as:
 
 We define `matches(´S´, ´T´)` where ´S´ and ´T´ are types or methodic types as:
 
-<!-- TODO We should mention parameter substitution here. -->
-
 - If ´S´ and ´T´ are types, then ´S <: T´.
-- If ´S´ and ´T´ are method types, then the parameter types of ´S´ and ´T´ are pairwise ´\equiv´ and `matches(´S_1´, ´T_1´)` where ´S_1´ is the result type of ´S´ and ´T_1´ is the result type of ´T´.
-- If ´S´ and ´T´ are poly types, then the type parameter bounds of ´S´ and ´T´ are pairwise ´\equiv´ and `matches(´S_1´, ´T_1´)` where ´S_1´ is the result type of ´S´ and ´T_1´ is the result type of ´T´.
+- If ´S´ and ´T´ are method types ´(a_1: S_1, ..., a_n: S_n)S'´ and ´(b_1: T_1, ..., b_n: T_n)T'´, then ´\sigma S_i =:= T_i´ for each ´i´ and `matches(´\sigma S'´,  ´T'´)`, where ´\sigma = [a_1 := b_1, ..., a_n := b_n]´.
+- If ´S´ and ´T´ are poly types ´[a_1 >: L_{s1} <: H_{s1}, ..., a_n >: L_{sn} <: H_{sn}]S'´ and ´[b_1 >: L_{t1} <: H_{t1}, ..., b_n >: L_{tn} <: H_{tn}]T'´, then ´\sigma L_{si} =:= L_{ti}´ and ´\sigma H_{si} =:= H_{ti}´ for each ´i´ and `matches(´\sigma S'´, ´T'´)`, where ´\sigma = [a_1 := b_1, ..., a_n := b_n]´.
 
 Note that conformance in Scala is _not_ transitive.
 Given two abstract types ´A´ and ´B´, and one abstract `type ´C >: A <: B´` available on prefix ´p´, we have ´A <: p.C´ and ´C <: p.B´ but not necessarily ´A <: B´.
@@ -1105,6 +1149,12 @@ This allows us to define _least upper bounds_ and _greatest lower bounds_ of a s
 - the _greatest lower bound_ of `A` and `B` is the largest type `G` such that `G` <: `A` and `G` <: `B`.
 
 By construction, for all types `A` and `B`, the least upper bound of `A` and `B` is `A ｜ B`, and their greatest lower bound is `A ＆ B`.
+
+### Equivalence
+
+Equivalence is defined as mutual conformance.
+
+´S =:= T´ if and only if both ´S <: T´ and ´T <: S´.
 
 ### Weak Conformance
 
@@ -1174,14 +1224,16 @@ _Type erasure_ is a mapping from (possibly generic) types to non-generic types.
 We write ´|T|´ for the erasure of type ´T´.
 The erasure mapping is defined as follows.
 
-- The erasure of `scala.AnyKind` is `Object`.
-- The erasure of an alias type is the erasure of its right-hand side.
-- The erasure of an abstract type is the erasure of its upper bound.
+- The erasure of `AnyKind` is `Object`.
+- The erasure of a non-class type designator is the erasure of its underlying upper bound.
+- The erasure of a term designator is the erasure of its underlying type.
 - The erasure of the parameterized type `scala.Array´[T_1]´` is `scala.Array´[|T_1|]´`.
 - The erasure of every other parameterized type ´T[T_1, ..., T_n]´ is ´|T|´.
-- The erasure of a singleton type `´p´.type` is the erasure of the type of ´p´.
-- The erasure of a type projection `´T´#´x´` is `|´T´|#´x´`.
-- The erasure of a compound type `´T_1´ with ... with ´T_n´ {´R\,´}` is the erasure of the intersection dominator of ´T_1, ..., T_n´.
+- The erasure of a stable type `´p´` is the erasure of the underlying type of ´p´.
+- The erasure of a by-name type `=> ´T_1´` is `scala.Function0`.
+- The erasure of an annotated type ´T_1 a´ is ´|T_1|´.
+- The erasure of a refined type `´T_1´ { ´R´ }` is ´|T_1|´.
+- The erasure of a recursive type `{ ´\alpha´ => ´T_1´ }` and the associated recursive this type ´\alpha´ is ´|T_1|´.
 - The erasure of a union type ´S ｜ T´ is the _erased least upper bound_ (_elub_) of the erasures of ´S´ and ´T´.
 - The erasure of an intersection type ´S ＆ T´ is the _eglb_ (erased greatest lower bound) of the erasures of ´S´ and ´T´.
 
