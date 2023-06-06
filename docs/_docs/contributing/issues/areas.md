@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: Common Issue Locations
+redirectFrom: /docs/contributing/workflow/areas.html
 ---
 
 Many issues are localised to small domains of the compiler and are self-contained,

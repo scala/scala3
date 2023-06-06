@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: How to Inspect Values
-redirectFrom: /docs/contributing/issues/inspection.html
+redirectFrom: /docs/contributing/workflow/inspection.html
 ---
 
 In this section, you will find out how to debug the contents of certain objects
