@@ -97,6 +97,23 @@ Here is the body of your pr with some more information
 Closes #2
 ```
 
+#### Skipping parts of CI
+
+Depending on what your PR is addressing, sometimes it doesn't make sense to run
+every part of CI. For example, maybe you're just updating some documentation and
+there is no need to run the community build for this. We skip parts of the CI by
+utilizing keywords inside of brackets. The most up-to-date way to see this are
+by looking in the `if` statements of jobs. For example you can see some
+[here](https://github.com/lampepfl/dotty/blob/5d2812a5937389f8a46f9e97ab9cbfbb3f298d87/.github/workflows/ci.yaml#L54-L64).
+Below are commonly used ones:
+
+
+|---------------------------|---------------------------------|
+| `[skip ci]`               | Skip the entire CI              |
+| `[skip community_build]`  | Skip the entire community build |
+| `[skip community_build_a]`| Skip the "a" community build    |
+| `[skip docs]`             | Skip the scaladoc tests         |
+
 ### 7: Create your PR!
 
 When the feature or fix is completed you should open a [Pull
