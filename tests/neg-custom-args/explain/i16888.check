@@ -1,7 +1,7 @@
 -- [E172] Type Error: tests/neg-custom-args/explain/i16888.scala:1:38 --------------------------------------------------
 1 |def test = summon[scala.quoted.Quotes] // error
   |                                      ^
-  |               No given instance of type quoted.Quotes was found for parameter x of method summon in object Predef
+  |         No given instance of type scala.quoted.Quotes was found for parameter x of method summon in object Predef
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
