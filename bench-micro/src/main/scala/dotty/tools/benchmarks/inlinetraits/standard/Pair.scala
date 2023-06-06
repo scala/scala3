@@ -1,5 +1,4 @@
 package dotty.tools.benchmarks.inlinetraits
 package standard
 
-case class Pair[+T1, +T2](_1: T1, _2: T2):
-  final def toTuple: (T1, T2) = (_1, _2)
+class Pair[+T1, +T2](val _1: T1, val _2: T2)

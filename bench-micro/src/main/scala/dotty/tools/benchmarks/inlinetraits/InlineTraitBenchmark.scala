@@ -40,8 +40,8 @@ class InlineTraitBenchmark {
     m1 = matrixFactory(intMatrixElems)
     m2 = matrixFactory(intMatrixElems)
 
-    val pairFactory = BenchmarkPair.ofType(libType)
-    pairs = pairElems.map((_1, _2) => pairFactory(_1, _2))
+    val pairFactory = (l: List[(First, Second)]) => l.map((_1, _2) => BenchmarkPair.ofType(libType)(_1, _2))
+    pairs = pairFactory(pairElems)
   }
 
   @Benchmark

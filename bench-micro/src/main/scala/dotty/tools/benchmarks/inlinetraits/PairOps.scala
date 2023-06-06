@@ -20,7 +20,13 @@ object BenchmarkPair:
   def ofType(tpe: String): (First, Second) => BenchmarkPair =
     (_1: First, _2: Second) => tpe.toLowerCase() match {
       case "standard" => BenchmarkPair(StdPair(_1, _2))
-      case "specialized" => BenchmarkPair(SpePair(_1, _2))
+      case "specialized" =>
+        val concretePair: SpePair[First, Second] = (_1, _2) match {
+          case (_1: Int, _2: Double) => SpePair(_1, _2)
+          case (_1: Char, _2: Short) => SpePair(_1, _2)
+          case _ => ???
+        }
+        BenchmarkPair(concretePair)
       case "inlinetrait" =>
         val concretePair: InlPair[First, Second] = (_1, _2) match {
           case (_1: Int, _2: Double) => IDPair(_1, _2)
