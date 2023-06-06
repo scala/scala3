@@ -664,8 +664,7 @@ object desugar {
     //       new C[...](p1, ..., pN)(moreParams)
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
-        val mods = if caseClassInScala2StdLib then synthetic | Inline else synthetic
-        DefDef(name, Nil, tpt, rhs).withMods(mods)
+        DefDef(name, Nil, tpt, rhs).withMods(synthetic)
 
       def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
