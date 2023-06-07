@@ -489,6 +489,7 @@ Therefore, the right hand side of the case clause, `y.n`, of type `Int`, is foun
   Expr            ::=  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
   CaseClauses     ::=  CaseClause {CaseClause}
   CaseClause      ::=  ‘case’ Pattern [Guard] ‘=>’ Block
+  ExprCaseClause  ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
 ```
 
 A _pattern matching expression_
