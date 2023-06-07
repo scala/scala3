@@ -547,6 +547,8 @@ This expression is then interpreted as ´e.\mathit{op}(e_1,...,e_n)´.
 A left-associative binary operation ´e_1;\mathit{op};e_2´ is interpreted as ´e_1.\mathit{op}(e_2)´. If ´\mathit{op}´ is right-associative and its parameter is passed by name, the same operation is interpreted as ´e_2.\mathit{op}(e_1)´.
 If ´\mathit{op}´ is right-associative and its parameter is passed by value, it is interpreted as `{ val ´x´=´e_1´; ´e_2´.´\mathit{op}´(´x\,´) }`, where ´x´ is a fresh name.
 
+Under `-source:future`, if the method name is alphanumeric and the target method is not marked [`infix`](./05-classes-and-objects.html#infix), a deprecation warning is emitted.
+
 ### Assignment Operators
 
 An _assignment operator_ is an operator symbol (syntax category `op` in [Identifiers](01-lexical-syntax.html#identifiers)) that ends in an equals character “`=`”, with the following exceptions:

@@ -164,7 +164,7 @@ Scala is a line-oriented language where statements may be terminated by semi-col
 A newline in a Scala source text is treated as the special token “nl” if the three following criteria are satisfied:
 
 1. The token immediately preceding the newline can terminate a statement.
-1. The token immediately following the newline can begin a statement.
+1. The token immediately following the newline can begin a statement and is not a _leading infix operator_.
 1. The token appears in a region where newlines are enabled.
 
 The tokens that can terminate a statement are: literals, identifiers and the following delimiters and reserved words:
@@ -184,6 +184,14 @@ with    yield    ,    .    ;    :    =    =>    <-    <:    <%
 
 A `case` token can begin a statement only if followed by a
 `class` or `object` token.
+
+A _leading infix operator_ is a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks that:
+
+- starts a new line, and
+- is not following a blank line, and
+- is followed by at least one whitespace character (including new lines) and a token that can start an expression.
+
+Furthermore, if the operator appears on its own line, the next line must have at least the same indentation width as the operator.
 
 Newlines are enabled in:
 
