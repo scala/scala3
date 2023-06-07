@@ -33,7 +33,7 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
-import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotedPattern}
+import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion._
@@ -854,19 +854,15 @@ trait Checking {
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
           em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
         case RefutableExtractor =>
-          val extractor =
-            val UnApply(fn, _, _) = pat: @unchecked
-            tpd.funPart(fn) match
-              case Select(id, _) => id
-              case _ => EmptyTree
-          if extractor.isEmpty then
-            em"pattern binding uses refutable extractor"
-          else if extractor.symbol eq defn.QuoteMatching_ExprMatch then
-            em"pattern binding uses refutable extractor `'{...}`"
-          else if extractor.symbol eq defn.QuoteMatching_TypeMatch then
-            em"pattern binding uses refutable extractor `'[...]`"
-          else
-            em"pattern binding uses refutable extractor `$extractor`"
+          val extractor = pat match
+            case UnApply(fn, _, _) =>
+              tpd.funPart(fn) match
+                case Select(id, _) if !id.isEmpty => id.show
+                case _ => ""
+            case QuotePattern(_, body, _) =>
+              if body.isTerm then "'{...}" else "'[...]"
+          if extractor.isEmpty then em"pattern binding uses refutable extractor"
+          else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -905,7 +901,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn, pats.length) || isIrrefutableQuotedPattern(fn, implicits, pt) || fail(pat, pt, Reason.RefutableExtractor)) && {
+            (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -915,6 +911,8 @@ trait Checking {
             check(pat, pt) && recur(arg, pt)
           case Ident(nme.WILDCARD) =>
             true
+          case pat: QuotePattern =>
+            isIrrefutableQuotePattern(pat, pt) || fail(pat, pt, Reason.RefutableExtractor)
           case _ =>
             check(pat, pt)
         }

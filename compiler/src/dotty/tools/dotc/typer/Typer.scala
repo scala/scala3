@@ -3152,6 +3152,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case untpd.EmptyTree => tpd.EmptyTree
           case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.Splice => typedSplice(tree, pt)
+          case tree: untpd.QuotePattern => typedQuotePattern(tree, pt)
           case tree: untpd.SplicePattern => typedSplicePattern(tree, pt)
           case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case tree: untpd.Hole => typedHole(tree, pt)

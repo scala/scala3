@@ -111,6 +111,25 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
     val expr1 = typed(tree.expr, quoteType)(using spliceContext)
     untpd.cpy.Splice(tree)(expr1).withType(tree.typeOpt)
 
+  override def typedQuotePattern(tree: untpd.QuotePattern, pt: Type)(using Context): Tree =
+    assertTyped(tree)
+    val bindings1 = tree.bindings.map(typed(_))
+    val bodyCtx = quoteContext.retractMode(Mode.Pattern).addMode(Mode.QuotedPattern)
+    val body1 = typed(tree.body, tree.bodyType)(using bodyCtx)
+    val quotes1 = typed(tree.quotes, defn.QuotesClass.typeRef)
+    untpd.cpy.QuotePattern(tree)(bindings1, body1, quotes1).withType(tree.typeOpt)
+
+  override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
+    assertTyped(tree)
+    val args1 = tree.args.mapconserve(typedExpr(_))
+    val patternTpe =
+      if args1.isEmpty then tree.typeOpt
+      else defn.FunctionType(args1.size).appliedTo(args1.map(_.tpe) :+ tree.typeOpt)
+    val bodyCtx = spliceContext.addMode(Mode.Pattern).retractMode(Mode.QuotedPattern)
+    val body1 = typed(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patternTpe))(using bodyCtx)
+    val args = tree.args.mapconserve(typedExpr(_))
+    untpd.cpy.SplicePattern(tree)(body1, args1).withType(tree.typeOpt)
+
   override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
     promote(tree)
 

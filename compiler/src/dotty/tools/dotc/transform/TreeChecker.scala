@@ -699,6 +699,25 @@ object TreeChecker {
         assert(!tree.expr.isInstanceOf[untpd.Quote] || inInlineMethod, i"missed quote cancellation in $tree")
       super.typedSplice(tree, pt)
 
+    override def typedQuotePattern(tree: untpd.QuotePattern, pt: Type)(using Context): Tree =
+      assert(ctx.mode.is(Mode.Pattern))
+      for binding <- tree.bindings do
+        assert(binding.isInstanceOf[untpd.Bind], i"expected Bind in QuotePattern bindings but was: $binding")
+      super.typedQuotePattern(tree, pt)
+
+    override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
+      assert(ctx.mode.is(Mode.QuotedPattern))
+      def isAppliedIdent(rhs: untpd.Tree): Boolean = rhs match
+        case _: Ident => true
+        case rhs: GenericApply => isAppliedIdent(rhs.fun)
+        case _ => false
+      def isEtaExpandedIdent(arg: untpd.Tree): Boolean = arg match
+        case closureDef(ddef) => isAppliedIdent(ddef.rhs) || isEtaExpandedIdent(ddef.rhs)
+        case _ => false
+      for arg <- tree.args do
+        assert(arg.isInstanceOf[untpd.Ident] || isEtaExpandedIdent(arg), i"HOAS argument expected Ident or eta-expanded Ident but was: $arg")
+      super.typedSplicePattern(tree, pt)
+
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
       val tree1 @ Hole(isTerm, idx, args, content) = super.typedHole(tree, pt): @unchecked
 

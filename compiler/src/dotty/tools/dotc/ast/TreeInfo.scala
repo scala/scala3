@@ -807,11 +807,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
-    val acc = new TreeAccumulator[List[Symbol]] {
+    val acc = new TreeAccumulator[List[Symbol]] { outer =>
       def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
         case Annotated(tree, id @ Ident(tpnme.BOUNDTYPE_ANNOT)) => apply(id.symbol :: syms, tree)
+        case QuotePattern(bindings, body, _) => quotePatVars(bindings.map(_.symbol) ::: syms, body)
         case _ => foldOver(syms, tree)
+      }
+      private object quotePatVars extends TreeAccumulator[List[Symbol]] {
+        def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
+          case SplicePattern(pat, _) => outer.apply(syms, pat)
+          case _ => foldOver(syms, tree)
+        }
       }
     }
     acc(Nil, tree)

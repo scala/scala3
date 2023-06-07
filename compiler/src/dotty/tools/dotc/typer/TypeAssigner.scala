@@ -512,6 +512,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)
 
+  def assignType(tree: untpd.QuotePattern, proto: Type)(using Context): QuotePattern =
+    tree.withType(proto)
+
   def assignType(tree: untpd.ValDef, sym: Symbol)(using Context): ValDef =
     tree.withType(if (sym.exists) assertExists(sym.termRef) else NoType)
 

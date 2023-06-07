@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.inlines.PrepareInlineable
+import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.ErrorReporting.errorTree
@@ -101,6 +102,9 @@ trait QuotesAndSplices {
         cpy.Splice(tree)(spliced)
       case tree => tree
   }
+
+  def typedQuotePattern(tree: untpd.QuotePattern, pt: Type)(using Context): Tree =
+    throw new UnsupportedOperationException("cannot type check a Hole node")
 
   def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree = {
     record("typedSplicePattern")
@@ -301,6 +305,7 @@ trait QuotesAndSplices {
         super.transform(tdef)
       }
     }
+
     val shape0 = splitter.transform(quoted)
     val patterns = (splitter.typePatBuf.iterator ++ splitter.freshTypePatBuf.iterator ++ splitter.patBuf.iterator).toList
     val freshTypeBindings = splitter.freshTypeBindingsBuff.result()
@@ -511,13 +516,17 @@ trait QuotesAndSplices {
       else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(quotes)
 
     val matchModule = if quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
-    val unapplyFun = quotes.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)
+    val unapplySym = if quoted.isTerm then defn.QuoteMatching_ExprMatch_unapply else defn.QuoteMatching_TypeMatch_unapply
+    val unapplyFun = quotes.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(unapplySym)
 
-    UnApply(
+    val encodedPattern = UnApply(
       fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits = quotedPattern :: Nil,
       patterns = splicePat :: Nil,
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe)))
+
+    if ctx.reporter.hasErrors then encodedPattern
+    else QuotePatterns.decode(encodedPattern) // TODO type directly into the encoded version
   }
 }
 

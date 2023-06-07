@@ -10,8 +10,9 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.staging.StagingLevel.*
+import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.staging.QuoteTypeTags.*
+import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.SrcPos
@@ -103,6 +104,19 @@ class CrossStageSafety extends TreeMapWithStages {
           super.transform(tree)
       case _: DefDef if tree.symbol.isInlineMethod =>
         tree
+
+      case tree: CaseDef if level == 0 =>
+        val pat1 = new TreeMap {
+          // Encode all quote patterns to materialize the given `Type[ti]` bindings
+          // for each type binding `ti` of the quote pattern. These will be summoned
+          // by HealType in the right hand side of the case definition.
+          override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match
+            case tree: QuotePattern if level == 0 =>
+              super.transform(QuotePatterns.encode(tree))
+            case tree => super.transform(tree)
+        }.transform(tree.pat)
+        val tree1 = cpy.CaseDef(tree)(pat1, tree.guard, tree.body)
+        super.transform(tree1)
 
       case _ if !inQuoteOrSpliceScope =>
         checkAnnotations(tree) // Check quotes in annotations
