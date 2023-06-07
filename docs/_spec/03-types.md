@@ -493,6 +493,9 @@ All parameterized class types are value types.
 In the concrete syntax of wildcard type arguments, if both bounds are omitted, the real bounds are inferred from the bounds of the corresponding type parameter in the target type constructor (which must be concrete).
 If only one bound is omitted, `Nothing` or `Any` is used, as usual.
 
+Also in the concrete syntax, `_` can be used instead of `?` for compatibility reasons, with the same meaning.
+This alternative will be deprecated in the future, and is already deprecated under `-source:future`.
+
 #### Simplification Rules
 
 Wildcard type arguments used in covariant or contravariant positions can always be simplified to regular types.
