@@ -1197,25 +1197,28 @@ The application `foo((x: Int) => x.toString)` [resolves](06-expressions.html#ove
 - `Int => String` is compatible to `ToString` -- when expecting a value of type `ToString`, you may pass a function literal from `Int` to `String`, as it will be SAM-converted to said function;
 - `ToString` is not compatible to `Int => String` -- when expecting a function from `Int` to `String`, you may not pass a `ToString`.
 
-## Volatile Types
+## Realizability
 
-Type volatility approximates the possibility that a type parameter or abstract type instance of a type does not have any non-null values.
-A value member of a volatile type cannot appear in a [path](#paths).
+A type ´T´ is _realizable_ if and only if it is inhabited by non-null values.
+It is defined as:
 
-A type is _volatile_ if it falls into one of four categories:
+- A term designator ´p.x´ with underlying type ´U´ is realizable if ´p´ is ´\epsilon´ or a package ref or a realizable type and
+  - `memberType(´p´, ´x´)` has the stable flag, or
+  - the type returned by `memberType(´p´, ´x´)` is realizable.
+- A stable type that is not a term designator is realizable.
+- Another type ´T´ is realizable if
+  - ´T´ is concrete, and
+  - ´T´ has good bounds.
 
-A compound type `´T_1´ with ... with ´T_n´ {´R\,´}` is volatile if one of the following three conditions hold.
+A concrete type ´T´ has good bounds if all of the following apply:
 
-1. One of ´T_2, ..., T_n´ is a type parameter or abstract type, or
-1. ´T_1´ is an abstract type and either the refinement ´R´ or a type ´T_j´ for ´j > 1´ contributes an abstract member to the compound type, or
-1. one of ´T_1, ..., T_n´ is a singleton type.
+- all its non-class type members have good bounds, i.e., their bounds ´L´ and ´H´ are such that ´L <: H´,
+- all its type refinements have good bounds, and
+- for all base classes ´C´ of ´T´:
+  - `baseType(´T´, ´C´)` is defined with some result ´p.C[T_1, ..., T_n]´, and
+  - for all ´i \in \{ 1, ..., n \}´, ´T_i´ is a real type or (when it is a wildcard type argument) it has good bounds.
 
-Here, a type ´S´ _contributes an abstract member_ to a type ´T´ if ´S´ contains an abstract member that is also a member of ´T´.
-A refinement ´R´ contributes an abstract member to a type ´T´ if ´R´ contains an abstract declaration which is also a member of ´T´.
-
-A type designator is volatile if it is an alias of a volatile type, or if it designates a type parameter or abstract type that has a volatile type as its upper bound.
-
-A singleton type `´p´.type` is volatile, if the underlying type of path ´p´ is volatile.
+Note: it is possible for `baseType(´T´, ´C´)` not to be defined because of the `meet` computation, which may fail to merge prefixes and/or invariant type arguments.
 
 ## Type Erasure
 
