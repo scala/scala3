@@ -172,6 +172,8 @@ Type operators ending in a colon ‘:’ are right-associative; all other operat
 In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´, all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same associativity.
 If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
 
+Under `-source:future`, if the type name is alphanumeric and the target type is not marked [`infix`](./05-classes-and-objects.html#infix), a deprecation warning is emitted.
+
 The type operators `|` and `&` are not really special.
 Nevertheless, unless shadowed, they resolve to [the fundamental type aliases `scala.|` and `scala.&`](./12-the-scala-standard-library.html#fundamental-type-aliases), which represent [union and intersection types](#union-and-intersection-types), respectively.
 

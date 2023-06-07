@@ -575,6 +575,9 @@ The scope of a type parameter includes the whole signature, including any of the
 
 A _value parameter clause_ ´\mathit{ps}´ consists of zero or more formal parameter bindings such as `´x´: ´T´` or `´x: T = e´`, which bind value parameters and associate them with their types.
 
+A unary operator must not have explicit parameter lists even if they are empty.
+A unary operator is a method named `"unary_´op´"` where ´op´ is one of `+`, `-`, `!`, or `~`.
+
 ### Default Arguments
 
 Each value parameter declaration may optionally define a default argument.
