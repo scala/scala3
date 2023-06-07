@@ -158,8 +158,8 @@ class CheckShadowing extends MiniPhase:
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
         case t:tpd.Import =>
-          shadowingDataApply(sd => sd.registerImport(t))
-          traverseChildren(tree)
+          val newCtx = shadowingDataApply(sd => sd.registerImport(t))
+          traverseChildren(tree)(using newCtx)
         case _ =>
           traverseChildren(tree)
 
@@ -180,9 +180,9 @@ object CheckShadowing:
     private val renamedImports = MutStack[MutMap[SimpleName, Name]]() // original name -> renamed name
 
     private val typeParamCandidates = MutMap[Symbol, Seq[tpd.TypeDef]]().withDefaultValue(Seq())
-    private val shadowedTypeDefs = MutSet[TypeParamShadowWarning]()
+    private val typeParamShadowWarnings = MutSet[TypeParamShadowWarning]()
 
-    private val shadowedPrivateDefs = MutSet[PrivateShadowWarning]()
+    private val privateShadowWarnings = MutSet[PrivateShadowWarning]()
 
     def inNewScope()(using Context) =
       explicitsImports.push(MutSet())
@@ -194,7 +194,6 @@ object CheckShadowing:
 
     /** Register the Root imports (at once per compilation unit)*/
     def registerRootImports()(using Context) =
-      ctx.definitions.rootImportTypes.foreach(rimp => println())
       val langPackageName = ctx.definitions.JavaLangPackageVal.name.toSimpleName // excludes lang package
       rootImports.addAll(ctx.definitions.rootImportTypes.withFilter(_.name.toSimpleName != langPackageName).flatMap(_.typeMembers))
 
@@ -222,7 +221,7 @@ object CheckShadowing:
               .orElse(lookForUnitShadowedType(sym))
           shadowedType.foreach(shadowed =>
             if !renamedImports.exists(_.contains(shadowed.name.toSimpleName)) then
-              shadowedTypeDefs += TypeParamShadowWarning(typeDef.srcPos, typeDef.symbol, parent, shadowed)
+              typeParamShadowWarnings += TypeParamShadowWarning(typeDef.srcPos, typeDef.symbol, parent, shadowed)
           )
         })
 
@@ -247,7 +246,7 @@ object CheckShadowing:
     /** Register if the valDef is a private declaration that shadows an inherited field */
     def registerPrivateShadows(valDef: tpd.ValDef)(using Context): Unit =
       lookForShadowedField(valDef.symbol).foreach(shadowedField =>
-        shadowedPrivateDefs += PrivateShadowWarning(valDef.startPos, valDef.symbol, shadowedField)
+        privateShadowWarnings += PrivateShadowWarning(valDef.startPos, valDef.symbol, shadowedField)
       )
 
     private def lookForShadowedField(symDecl: Symbol)(using Context): Option[Symbol] =
@@ -266,18 +265,17 @@ object CheckShadowing:
 
     /** Get the shadowing analysis's result */
     def getShadowingResult(using Context): ShadowResult =
-
-      val privateShadowWarnings: List[ShadowWarning] =
+      val privateWarnings: List[ShadowWarning] =
         if ctx.settings.XlintHas.privateShadow then
-          shadowedPrivateDefs.toList
+          privateShadowWarnings.toList
         else
           Nil
-      val typeParamShadowWarnings: List[ShadowWarning] =
+      val typeParamWarnings: List[ShadowWarning] =
         if ctx.settings.XlintHas.typeParameterShadow then
-          shadowedTypeDefs.toList
+          typeParamShadowWarnings.toList
         else
           Nil
-      ShadowResult(privateShadowWarnings ++ typeParamShadowWarnings)
+      ShadowResult(privateWarnings ++ typeParamWarnings)
 
     extension (sym: Symbol)
       /** Given an import and accessibility, return the import's symbol that matches import<->this symbol */
@@ -285,8 +283,8 @@ object CheckShadowing:
         val tpd.Import(qual, sels) = imp
         val simpleSelections = qual.tpe.member(sym.name).alternatives
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
-
-        sels.find(is => is.rename.toSimpleName == sym.name.toSimpleName).map(_.symbol)
+        sels
+          .find(is => is.rename.toSimpleName == sym.name.toSimpleName).map(_.symbol)
           .orElse(typeSelections.map(_.symbol).find(sd => sd.name == sym.name))
           .orElse(simpleSelections.map(_.symbol).find(sd => sd.name == sym.name))
 
