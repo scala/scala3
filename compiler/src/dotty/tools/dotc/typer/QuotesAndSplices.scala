@@ -443,6 +443,6 @@ trait QuotesAndSplices {
       fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits = quotedPattern :: Nil,
       patterns = splicePat :: Nil,
-      proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
+      proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe)))
   }
 }
