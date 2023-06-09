@@ -12,7 +12,6 @@ object MatchTypeTrace:
 
   private enum TraceEntry:
     case TryReduce(scrut: Type)
-    case NoMatches(scrut: Type, cases: List[Type])
     case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
     case NoInstance(scrut: Type, stuckCase: Type, fails: List[(Name, TypeBounds)])
     case EmptyScrutinee(scrut: Type)
@@ -50,12 +49,6 @@ object MatchTypeTrace:
           case (e: TryReduce) :: es => trace.entries = entry :: trace.entries
           case _ =>
       case _ =>
-
-  /** Record a failure that scrutinee `scrut` does not match any case in `cases`.
-   *  Only the first failure is recorded.
-   */
-  def noMatches(scrut: Type, cases: List[Type])(using Context) =
-    matchTypeFail(NoMatches(scrut, cases))
 
   /** Record a failure that scrutinee `scrut` does not match `stuckCase` but is
    *  not disjoint from it either, which means that the remaining cases `otherCases`
@@ -99,11 +92,6 @@ object MatchTypeTrace:
   private def explainEntry(entry: TraceEntry)(using Context): String = entry match
     case TryReduce(scrut: Type) =>
       i"  trying to reduce  $scrut"
-    case NoMatches(scrut, cases) =>
-      i"""  failed since selector $scrut
-         |  matches none of the cases
-         |
-         |    ${casesText(cases)}"""
     case EmptyScrutinee(scrut) =>
       i"""  failed since selector $scrut
          |  is uninhabited (there are no values of that type)."""
@@ -127,6 +115,7 @@ object MatchTypeTrace:
          |  The computed bounds for the $params are:
          |    ${fails.map((name, bounds) => i"$name$bounds")}%\n    %"""
 
+  /** The failure message when the scrutinee `scrut` does not match any case in `cases`. */
   def noMatchesText(scrut: Type, cases: List[Type])(using Context): String =
     i"""failed since selector $scrut
        |matches none of the cases

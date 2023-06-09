@@ -197,6 +197,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case UnqualifiedCallToAnyRefMethodID // errorNumber: 181
   case NotConstantID // errorNumber: 182
   case ClosureCannotHaveInternalParameterDependenciesID // errorNumber: 183
+  case MatchTypeNoCasesID // errorNumber: 184
 
   def errorNumber = ordinal - 1
 

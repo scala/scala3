@@ -3138,7 +3138,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case xtree: untpd.NameTree => typedNamed(xtree, pt)
               case xtree => typedUnnamed(xtree)
 
+          val unsimplifiedType = result.tpe
           simplify(result, pt, locked)
+          result.tpe.stripTypeVar match
+            case e: ErrorType if !unsimplifiedType.isErroneous => errorTree(xtree, e.msg, xtree.srcPos)
+            case _ => result
         catch case ex: TypeError => errorTree(xtree, ex, xtree.srcPos.focus)
           // use focussed sourcePos since tree might be a large definition
           // and a large error span would hide all errors in interior.
