@@ -212,6 +212,7 @@ object Objects:
         given Trace = Trace.empty.add(classSym.defTree)
         given Env.Data = Env.emptyEnv(tpl.constr.symbol)
         given Heap.MutableData = Heap.empty()
+        given returns: Returns.Data = Returns.empty()
         given regions: Regions.Data = Regions.empty // explicit name to avoid naming conflict
 
         val obj = ObjectRef(classSym)
@@ -487,7 +488,33 @@ object Objects:
 
   inline def cache(using c: Cache.Data): Cache.Data = c
 
-  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Trace) ?=> T
+
+  /**
+   * Handle return statements in methods and non-local returns in functions.
+   */
+  object Returns:
+    private class ReturnData(val method: Symbol, val values: mutable.ArrayBuffer[Value])
+    opaque type Data = mutable.ArrayBuffer[ReturnData]
+
+    def empty(): Data = mutable.ArrayBuffer()
+
+    def installHandler(meth: Symbol)(using data: Data): Unit =
+      data.addOne(ReturnData(meth, mutable.ArrayBuffer()))
+
+    def popHandler(meth: Symbol)(using data: Data): Value =
+      val returnData = data.remove(data.size - 1)
+      assert(returnData.method == meth, "Symbol mismatch in return handlers, expect = " + meth + ", found = " + returnData.method)
+      returnData.values.join
+
+    def handle(meth: Symbol, value: Value)(using data: Data, trace: Trace, ctx: Context): Unit =
+      data.findLast(_.method == meth) match
+        case Some(returnData) =>
+          returnData.values.addOne(value)
+
+        case None =>
+          report.error("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
+
+  type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
 
   // --------------------------- domain operations -----------------------------
 
@@ -595,7 +622,13 @@ object Objects:
           val env2 = Env.of(ddef, args.map(_.value), outerEnv)
           extendTrace(ddef) {
             given Env.Data = env2
-            eval(ddef.rhs, ref, cls, cacheResult = true)
+            // eval(ddef.rhs, ref, cls, cacheResult = true)
+            cache.cachedEval(ref, ddef.rhs, cacheResult = true) { expr =>
+              Returns.installHandler(meth)
+              val res = cases(expr, thisV, cls)
+              val returns = Returns.popHandler(meth)
+              res.join(returns)
+            }
           }
         else
           Bottom
@@ -1079,7 +1112,8 @@ object Objects:
         evalExprs(cases.map(_.body), thisV, klass).join
 
       case Return(expr, from) =>
-        eval(expr, thisV, klass)
+        Returns.handle(from.symbol, eval(expr, thisV, klass))
+        Bottom
 
       case WhileDo(cond, body) =>
         evalExprs(cond :: body :: Nil, thisV, klass)
