@@ -584,6 +584,8 @@ object Checking {
       report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
     if mods.is(Final, butNot = Synthetic) then
       report.warning(RedundantModifier(Final), flagSourcePos(Final))
+    if mods.is(Infix) then
+      report.error(ModifierNotAllowedForDefinition(Infix), flagSourcePos(Infix))
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
    *  to a private type or value which is invisible at a point where `M` is still

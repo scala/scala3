@@ -1,0 +1,1 @@
+infix object ToplevelInfixObject // error
