@@ -1739,10 +1739,12 @@ class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathI
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
 
-class WrongNumberOfParameters(expected: Int)(using Context)
+class WrongNumberOfParameters(expected: Int, found: Int, pt: Type, tree: tpd.Tree)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
-  def msg(using Context) = s"Wrong number of parameters, expected: $expected"
-  def explain(using Context) = ""
+  def msg(using Context) = s"Wrong number of parameters, expected $expected, but found $found"
+    def explain(using Context) =
+    i"""|Expected pattern: $pt
+        |Found pattern   : ${tree.srcPos}"""
 }
 
 class DuplicatePrivateProtectedQualifier()(using Context)
