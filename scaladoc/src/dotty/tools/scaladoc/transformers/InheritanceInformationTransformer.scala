@@ -3,16 +3,16 @@ package transformers
 
 class InheritanceInformationTransformer(using DocContext) extends (Module => Module):
   override def apply(original: Module): Module =
-    val subtypes = getSupertypes(original.rootPackage).groupMap(_(0))(_(1))
+    val subtypes = getSupertypes(original.rootPackage).groupMap(_(0))(_(1)).view.mapValues(_.distinct).toMap
     original.updateMembers { m =>
       val edges = getEdges(m.asLink.copy(kind = bareClasslikeKind(m.kind)), subtypes)
       val st: Seq[LinkToType] = edges.map(_._1).distinct
-      m.withKnownChildren(st).withNewGraphEdges(edges)
+      m.withKnownChildren(st).withNewGraphEdges(edges.toSeq)
     }
 
   private def getEdges(ltt: LinkToType, subtypes: Map[DRI, Seq[LinkToType]]): Seq[(LinkToType, LinkToType)] =
-    val st: Seq[LinkToType] = subtypes.getOrElse(ltt.dri, Nil)
-    st.flatMap(s => Seq(s -> ltt) ++ getEdges(s, subtypes))
+    val st: Seq[LinkToType] = subtypes.getOrElse(ltt.dri, Vector.empty)
+    st.flatMap(s => Vector(s -> ltt) ++ getEdges(s, subtypes))
 
   private def bareClasslikeKind(kind: Kind): Kind = kind match
     case _: Kind.Trait => Kind.Trait(Nil, Nil)
