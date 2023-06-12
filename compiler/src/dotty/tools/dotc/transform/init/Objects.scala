@@ -512,7 +512,7 @@ object Objects:
           returnData.values.addOne(value)
 
         case None =>
-          report.error("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
+          report.warning("[Internal error] Unhandled return for method " + meth + " in " + meth.owner.show + ". Trace:\n" + Trace.show, Trace.position)
 
   type Contextual[T] = (Context, State.Data, Env.Data, Cache.Data, Heap.MutableData, Regions.Data, Returns.Data, Trace) ?=> T
 
@@ -636,7 +636,7 @@ object Objects:
         select(ref, target, receiver, needResolve = false)
       else
         if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-          report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
+          report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
           Bottom
         else
           // This is possible due to incorrect type cast.
@@ -688,7 +688,7 @@ object Objects:
         Bottom
 
     case _ =>
-      report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + thisV + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected constructor call, meth = " + ctor + ", this = " + thisV + Trace.show, Trace.position)
       Bottom
   }
 
@@ -737,7 +737,7 @@ object Objects:
 
       else
         if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-          report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
+          report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
           Bottom
         else
           // This is possible due to incorrect type cast.
@@ -745,7 +745,7 @@ object Objects:
           Bottom
 
     case fun: Fun =>
-      report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
+      report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
       Bottom
 
     case Bottom =>
@@ -766,7 +766,7 @@ object Objects:
   def assign(lhs: Value, field: Symbol, rhs: Value, rhsTyp: Type): Contextual[Value] = log("Assign" + field.show + " of " + lhs.show + ", rhs = " + rhs.show, printer, (_: Value).show) {
     lhs match
     case fun: Fun =>
-      report.error("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden", Trace.position)
@@ -801,7 +801,7 @@ object Objects:
     outer match
 
     case _ : Fun | _: OfArray  =>
-      report.error("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
+      report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
 
     case value: (Bottom.type | ObjectRef | OfClass | Cold.type) =>
@@ -1161,7 +1161,7 @@ object Objects:
         init(tpl, thisV.asInstanceOf[Ref], klass)
 
       case _ =>
-        report.error("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
+        report.warning("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
         Bottom
   }
 
@@ -1243,12 +1243,12 @@ object Objects:
           case arg @ Literal(c: Constants.Constant) =>
             val height = c.intValue
             if height < 0 then
-              report.error("The argument should be positive", arg)
+              report.warning("The argument should be positive", arg)
               res.widen(1)
             else
               res.widen(c.intValue)
           case arg =>
-            report.error("The argument should be a constant integer value", arg)
+            report.warning("The argument should be a constant integer value", arg)
             res.widen(1)
         case _ =>
           res.widen(1)
@@ -1410,14 +1410,14 @@ object Objects:
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !ref.hasOuter(klass) then
             val error = "[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + Trace.show
-            report.error(error, Trace.position)
+            report.warning(error, Trace.position)
             Bottom
           else
             resolveThis(target, ref.outerValue(klass), outerCls)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass)).join
         case fun: Fun =>
-          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
+          report.warning("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Bottom
   }
 
