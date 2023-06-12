@@ -5,6 +5,7 @@ package scala.annotation
  *  Programmers usually do not need to use any annotations. They are intended for complex initialization
  *  code in static objects.
  */
+@experimental
 object init:
 
   /** Widen the abstract value of the argument so that its height is below the specified height.
@@ -27,6 +28,7 @@ object init:
    *  the checker will issue a warning for the method call `c.a.square()` because
    *  it is forbidden to call methods or access fields on cold values.
    */
+  @experimental
   final class widen(height: Int) extends StaticAnnotation
 
   /** Introduce a region context.
@@ -52,4 +54,5 @@ object init:
    *  the method call `box1.value.foo()` will be invalid, because it reaches `A.m`, which is not yet initialized.
    *  The explicit context annotation solves the problem.
    */
+  @experimental
   def region[T](v: T): T = v
