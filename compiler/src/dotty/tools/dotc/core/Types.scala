@@ -4407,6 +4407,10 @@ object Types {
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
 
+    private var myReducing: Boolean = false
+    private var myUnreduced: Type = uninitialized
+    private var myUnreduceRunId: RunId = NoRunId
+
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
@@ -4467,10 +4471,23 @@ object Types {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
-            trace(i"normalize $this", typr, show = true) {
-              MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
-              }
+            trace(i"normalize($this)", typr) {
+              if myReducing then
+                NoType
+              else try
+                myReducing = true
+                MatchTypeTrace.recurseWith(this) {
+                  val app = if myUnreduceRunId != ctx.runId then
+                    val app = alias.applyIfParameterized(args)
+                    if !isProvisional then
+                      myUnreduced = app
+                      myUnreduceRunId = ctx.runId
+                    app
+                  else myUnreduced
+                  val norm = app.tryNormalize
+                  if norm eq this then NoType else norm
+                }
+              finally myReducing = false
             }
           case _ =>
             NoType
