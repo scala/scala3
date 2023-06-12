@@ -87,6 +87,12 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     false
   )
 
+  val noLinkAssetWarnings: Setting[Boolean] = BooleanSetting(
+    "-no-link-asset-warnings",
+    "Avoid warnings for incorrect links of assets like images, static pages, etc.",
+    false
+  )
+
   val versionsDictionaryUrl: Setting[String] = StringSetting(
     "-versions-dictionary-url",
     "versions dictionary url",
