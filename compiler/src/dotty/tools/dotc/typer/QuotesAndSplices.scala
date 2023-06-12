@@ -214,13 +214,7 @@ trait QuotesAndSplices {
   private def splitQuotePattern(quoted: Tree)(using Context): (collection.Map[Symbol, Bind], Tree, List[Tree]) = {
     val ctx0 = ctx
 
-    val typeBindings: mutable.Map[Symbol, Bind] = mutable.LinkedHashMap.empty
-    def getBinding(sym: Symbol): Bind =
-      typeBindings.getOrElseUpdate(sym, {
-        val bindingBounds = sym.info
-        val bsym = newPatternBoundSymbol(sym.name.toString.stripPrefix("$").toTypeName, bindingBounds, quoted.span)
-        Bind(bsym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span)
-      })
+    val bindSymMapping: collection.Map[Symbol, Bind] = unapplyBindingsMapping(quoted)
 
     object splitter extends tpd.TreeMap {
       private var variance: Int = 1
@@ -300,7 +294,7 @@ trait QuotesAndSplices {
           report.error(IllegalVariableInPatternAlternative(tdef.symbol.name), tdef.srcPos)
         if variance == -1 then
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
-        val bindingType = getBinding(tdef.symbol).symbol.typeRef
+        val bindingType = bindSymMapping(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitVal)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
@@ -337,7 +331,56 @@ trait QuotesAndSplices {
         new TreeTypeMap(typeMap = typeMap).transform(shape1)
       }
 
-    (typeBindings, shape2, patterns)
+    (bindSymMapping, shape2, patterns)
+  }
+
+  /** For each type variable defined in the quote pattern we generate an equivalent
+   *  binding that will be as type variable in the encoded `unapply` of the quote pattern.
+   *
+   *  @return Mapping from type variable symbols defined in the quote pattern into
+   *          type variable `Bind` definitions for the `unapply` of the quote pattern.
+   *          This mapping retains the original type variable definition order.
+   */
+  private def unapplyBindingsMapping(quoted: Tree)(using Context): collection.Map[Symbol, Bind] = {
+    // Collect all existing type variable bindings and create new symbols for them.
+    // The old info is used, it may contain references to the old symbols.
+    val (oldBindings, newBindings) = {
+      val seen = mutable.Set.empty[Symbol]
+      val oldBindingsBuffer = mutable.LinkedHashSet.empty[Symbol]
+      val newBindingsBuffer = mutable.ListBuffer.empty[Symbol]
+
+      new tpd.TreeTraverser {
+        def traverse(tree: Tree)(using Context): Unit = tree match {
+          case _: SplicePattern =>
+          case Select(pat: Bind, _) if tree.symbol.isTypeSplice =>
+            val sym = tree.tpe.dealias.typeSymbol
+            if sym.exists then registerNewBindSym(sym)
+          case tdef: TypeDef  =>
+            if tdef.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) then
+              registerNewBindSym(tdef.symbol)
+            traverseChildren(tdef)
+          case _ =>
+            traverseChildren(tree)
+        }
+        private def registerNewBindSym(sym: Symbol): Unit =
+          if !seen(sym) then
+            seen += sym
+            oldBindingsBuffer += sym
+            newBindingsBuffer += newSymbol(ctx.owner, sym.name.toString.stripPrefix("$").toTypeName, Case | sym.flags, sym.info, coord = quoted.span)
+      }.traverse(quoted)
+      (oldBindingsBuffer.toList, newBindingsBuffer.toList)
+    }
+
+    // Replace symbols in `mapping` in the infos of the new symbol and register GADT bounds.
+    // GADT bounds need to be added after the info is updated to avoid references to the old symbols.
+    val newBindingsRefs = newBindings.map(_.typeRef)
+    for newBindings <- newBindings do
+      newBindings.info = newBindings.info.subst(oldBindings.toList, newBindingsRefs)
+      ctx.gadtState.addToConstraint(newBindings) // This must be performed after the info has been updated
+
+    // Map into Bind nodes retaining the original order
+    val newBindingBinds = newBindings.map(newSym => Bind(newSym, untpd.Ident(nme.WILDCARD).withType(newSym.info)).withSpan(quoted.span))
+    mutable.LinkedHashMap.from(oldBindings.lazyZip(newBindingBinds))
   }
 
   /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
