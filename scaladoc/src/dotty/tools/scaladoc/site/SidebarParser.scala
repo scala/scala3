@@ -7,6 +7,8 @@ import com.fasterxml.jackson.core.`type`.TypeReference;
 import scala.jdk.CollectionConverters._
 import java.util.Optional
 import scala.beans._
+import java.nio.file.{Files, Paths}
+import scala.io.Source
 
 enum Sidebar:
   case Category(
@@ -30,16 +32,31 @@ object Sidebar:
 
   private object RawInputTypeRef extends TypeReference[RawInput]
 
-  private def toSidebar(r: RawInput)(using CompilerContext): Sidebar = r match
+  private def toSidebar(r: RawInput, content: String | java.io.File)(using CompilerContext): Sidebar = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
+      val sidebarPath = content match
+        case s: String => Paths.get(s)
+        case f: java.io.File => f.toPath()
+      val basePath = sidebarPath.getParent().resolve("_docs")
+      val pagePath = basePath.resolve(page)
+      if !Files.exists(pagePath) then
+        report.error(s"Page $page does not exist.")
       Sidebar.Page(Option.when(title.nonEmpty)(title), page, hidden)
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
-      Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar).toList, Option.when(dir.nonEmpty)(dir))
+      Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar(_, content)).toList, Option.when(dir.nonEmpty)(dir))
     case RawInput(title, page, index, subsection, dir, hidden) =>
-      report.error(s"Error parsing YAML configuration file.\n$schemaMessage")
+      if title.isEmpty() && index.isEmpty() then
+        val msg = "`title` property is missing for some page."
+        report.error(s"$msg\n$schemaMessage")
+      else if title.nonEmpty && (page.isEmpty() || index.isEmpty()) then
+        val msg = s"Error parsing YAML configuration file: 'index' or 'page' path is missing for title '$title'."
+        report.error(s"$msg\n$schemaMessage")
+      else
+        val msg = "Problem when parsing YAML configuration file."
+        report.warning(s"$msg\n$schemaMessage")
       Sidebar.Page(None, page, hidden)
 
-  private def schemaMessage: String =
+  def schemaMessage: String =
     s"""Static site YAML configuration file should comply with the following description:
       |The root element of static site needs to be <subsection>
       |`title` and `directory` properties are ignored in root subsection.
@@ -57,8 +74,7 @@ object Sidebar:
       |  hidden: <boolean> # optional - Default value is false.
       |
       |For more information visit:
-      |https://docs.scala-lang.org/scala3/guides/scaladoc/static-site.html
-      |""".stripMargin
+      |https://docs.scala-lang.org/scala3/guides/scaladoc/static-site.html""".stripMargin
 
   def load(content: String | java.io.File)(using CompilerContext): Sidebar.Category =
     import scala.util.Try
@@ -75,7 +91,7 @@ object Sidebar:
         },
         identity
       )
-    toSidebar(root) match
+    toSidebar(root, content) match
       case c: Sidebar.Category => c
       case _ =>
         report.error(s"Root element is not a subsection.\n$schemaMessage")
