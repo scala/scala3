@@ -28,6 +28,7 @@ object MiMaFilters {
   val LibraryForward: Map[String, Seq[ProblemFilter]] = Map(
     // Additions that require a new minor version of the library
     Build.previousDottyVersion -> Seq(
+      ProblemFilters.exclude[DirectMissingMethodProblem]("scala.compiletime.testing.Error.defaultArgument"),
     ),
 
     // Additions since last LTS
@@ -62,6 +63,7 @@ object MiMaFilters {
     ),
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
+    ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyVersion.defaultArgument"),
   )
   val Interfaces: Seq[ProblemFilter] = Seq(
   )

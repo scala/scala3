@@ -1,5 +1,8 @@
 package scala.deriving
 
+import java.util.NoSuchElementException
+import scala.annotation.experimental
+
 /** Mirrors allows typelevel access to enums, case classes and objects, and their sealed parents.
  */
 sealed trait Mirror {
@@ -27,6 +30,14 @@ object Mirror {
 
     /** Create a new instance of type `T` with elements taken from product `p`. */
     def fromProduct(p: scala.Product): MirroredMonoType
+
+    /** Whether each product element has a default value */
+    @experimental type MirroredElemHasDefaults <: Tuple
+
+    /** The default argument of the product argument at given `index` */
+    @experimental def defaultArgument(index: Int): Any =
+      throw NoSuchElementException(String.valueOf(index))
+
   }
 
   trait Singleton extends Product {

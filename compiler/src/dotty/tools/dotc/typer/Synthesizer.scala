@@ -409,25 +409,30 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
       val accessors = cls.caseAccessors
-      val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
-      val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
-      val nestedPairs = TypeOps.nestedPairs(typeElems)
-      val (monoType, elemsType) = mirroredType match
+      val Seq(elemLabels, elemHasDefaults, elemTypes1) =
+        Seq(
+          accessors.map(acc => ConstantType(Constant(acc.name.toString))),
+          accessors.map(acc => ConstantType(Constant(acc.is(HasDefault)))),
+          tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
+        ).map(TypeOps.nestedPairs)
+      val (monoType, elemTypes) = mirroredType match
         case mirroredType: HKTypeLambda =>
-          (mkMirroredMonoType(mirroredType), mirroredType.derivedLambdaType(resType = nestedPairs))
+          (mkMirroredMonoType(mirroredType), mirroredType.derivedLambdaType(resType = elemTypes1))
         case _ =>
-          (mirroredType, nestedPairs)
-      val elemsLabels = TypeOps.nestedPairs(elemLabels)
-      checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
-      checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
+          (mirroredType, elemTypes1)
+
+      checkRefinement(formal, tpnme.MirroredElemTypes, elemTypes, span)
+      checkRefinement(formal, tpnme.MirroredElemLabels, elemLabels, span)
+      checkRefinement(formal, tpnme.MirroredElemHasDefaults, elemHasDefaults, span)
       val mirrorType = formal.constrained_& {
         mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name)
-          .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-          .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
+          .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemTypes))
+          .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemLabels))
+          .refinedWith(tpnme.MirroredElemHasDefaults, TypeAlias(elemHasDefaults))
       }
       val mirrorRef =
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
-        else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
+        else if defn.isTupleClass(cls) then newTupleMirror(accessors.size) // TODO: cls == defn.PairClass when > 22
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
       withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
     end makeProductMirror
