@@ -88,7 +88,7 @@ object Scanners {
 
     def isOperator =
       token == BACKQUOTED_IDENT
-      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      || token == IDENTIFIER && isOperatorPart(name.last)
 
     def isArrow =
       token == ARROW || token == CTXARROW
@@ -268,11 +268,10 @@ object Scanners {
       if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
       else IDENTIFIER
 
-    def newTokenData: TokenData = new TokenData {}
-
     /** We need one token lookahead and one token history
      */
     val next = newTokenData
+    val last = newTokenData
     private val prev = newTokenData
 
     /** The current region. This is initially an Indented region with zero indentation width. */
@@ -527,7 +526,7 @@ object Scanners {
      *
      *      The following tokens can start an indentation region:
      *
-     *         :  =  =>  <-  if  then  else  while  do  try  catch  
+     *         :  =  =>  <-  if  then  else  while  do  try  catch
      *         finally  for  yield  match  throw  return  with
      *
      *      Inserting an INDENT starts a new indentation region with the indentation of the current
@@ -1665,18 +1664,11 @@ object Scanners {
     case Run(ch: Char, n: Int)
     case Conc(l: IndentWidth, r: Run)
 
-    def <= (that: IndentWidth): Boolean = this match {
-      case Run(ch1, n1) =>
-        that match {
-          case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
-          case Conc(l, r) => this <= l
-        }
-      case Conc(l1, r1) =>
-        that match {
-          case Conc(l2, r2) => l1 == l2 && r1 <= r2
-          case _ => false
-        }
-    }
+    def <= (that: IndentWidth): Boolean = (this, that) match
+      case (Run(ch1, n1), Run(ch2, n2)) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
+      case (Conc(l1, r1), Conc(l2, r2)) => (l1 == l2 && r1 <= r2) || this <= l2
+      case (_, Conc(l2, _)) => this <= l2
+      case _ => false
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
 
