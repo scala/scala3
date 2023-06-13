@@ -762,8 +762,6 @@ object Scanners {
         if endMarkerTokens.contains(lookahead.token)
           && source.offsetToLine(lookahead.offset) == endLine
         then
-          if rewriteToIndent && lookahead.token == MATCH then
-            patch(Span(offset, offset + 3), "`end`")
           lookahead.nextToken()
           if lookahead.token == EOF
           || source.offsetToLine(lookahead.offset) > endLine
