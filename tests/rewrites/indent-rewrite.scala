@@ -182,6 +182,7 @@ m10 { 5 } {
     o match
     case Some(x) => x
     case None => ""
+    end match
 
     o match {
     case None =>

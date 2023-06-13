@@ -766,6 +766,9 @@ object Scanners {
           if lookahead.token == EOF
           || source.offsetToLine(lookahead.offset) > endLine
           then return true
+
+          if lookahead.token == LBRACE && rewriteToIndent then
+            patch(Span(offset, offset + 3), s"`end`")
       false
 
     /** Is there a blank line between the current token and the last one?
