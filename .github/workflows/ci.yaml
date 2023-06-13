@@ -31,7 +31,7 @@ concurrency:
   # Taken from scalameta/metals
   # On main, we don't want any jobs cancelled so the sha is used to name the group
   # On PR branches, we cancel the job if new commits are pushed
-  # You can also bypass that making sure[no cancel] is in your pull request body
+  # You can also bypass that making sure [no cancel] is in your pull request body
   group: ${{
       ((github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags'))
         && format('contributor-pr-base-{0}', github.sha) 
