@@ -104,7 +104,6 @@ object MiMaFilters {
         "scala.collection.immutable.ArraySeq#*.elemTag",
         "scala.collection.immutable.HashCollisionSetNode.copy",
         "scala.collection.immutable.MapKeyValueTupleHashIterator.next",
-        "scala.collection.immutable.TreeSet.sortedIterableFactory",
         "scala.collection.LinearSeqIterator#LazyCell.this",
         "scala.collection.mutable.AnyRefMap#ToBuildFrom.newBuilder",
         "scala.collection.mutable.ArraySeq#*.elemTag",
