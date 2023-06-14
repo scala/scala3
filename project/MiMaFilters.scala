@@ -118,7 +118,6 @@ object MiMaFilters {
         "scala.concurrent.duration.Deadline.apply", "scala.concurrent.duration.Deadline.copy", "scala.concurrent.duration.Deadline.copy$default$1", "scala.concurrent.duration.FiniteDuration.unary_-",
         "scala.Enumeration#ValueOrdering.this",
         "scala.io.Source#RelaxedPosition.this",
-        "scala.math.BigDecimal.underlying",
         "scala.PartialFunction#OrElse.andThen", "scala.PartialFunction#OrElse.orElse",
         "scala.runtime.Rich*.num", "scala.runtime.Rich*.ord",
         "scala.ScalaReflectionException.andThen", "scala.ScalaReflectionException.compose",
