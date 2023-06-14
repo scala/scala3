@@ -2021,7 +2021,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         || (tp1.isStable && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
 
       tp1.member(name) match // inlined hasAltWith for performance
-        case mbr: SingleDenotation => qualifies(mbr)
+        case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
         case mbr => mbr hasAltWith qualifies
     }
 
