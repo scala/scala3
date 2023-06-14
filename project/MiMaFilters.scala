@@ -86,7 +86,6 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.NoPositioner"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPosition"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#*.empty"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.RedBlackTree#EqualsIterator.nextResult"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.SortedMapOps.coll"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.empty"),
@@ -102,7 +101,6 @@ object MiMaFilters {
         ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.immutable.SortedMapOps.coll"),
       ) ++
       Seq( // DirectMissingMethodProblem
-        "scala.collection.convert.JavaCollectionWrappers#*.iterableFactory", "scala.collection.convert.JavaCollectionWrappers#*.mapFactory", "scala.collection.convert.JavaCollectionWrappers#IteratorWrapper.remove",
         "scala.collection.immutable.ArraySeq#*.elemTag",
         "scala.collection.immutable.HashCollisionSetNode.copy",
         "scala.collection.immutable.MapKeyValueTupleHashIterator.next",
@@ -158,9 +156,6 @@ object MiMaFilters {
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.mutable.ArrayBuilder#ofUnit.addAll"),
 
         // Non-categorized
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JConcurrentMapWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JMapWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JPropertiesWrapper.empty"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.RedBlackTree#EqualsIterator.nextResult"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.SortedMapOps.coll"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashMap.newBuilder"),

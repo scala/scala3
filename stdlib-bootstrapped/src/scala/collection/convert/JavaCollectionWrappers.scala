@@ -33,7 +33,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def next() = underlying.next()
     def hasMoreElements = underlying.hasNext
     def nextElement() = underlying.next()
-    override def remove() = throw new UnsupportedOperationException
+    override def remove(): Nothing = throw new UnsupportedOperationException
   }
 
   @SerialVersionUID(3L)
@@ -64,7 +64,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       with StrictOptimizedIterableOps[A, Iterable, Iterable[A]]
       with Serializable {
     def iterator = underlying.iterator.asScala
-    override def iterableFactory = mutable.ArrayBuffer
+    override def iterableFactory: mutable.ArrayBuffer.type = mutable.ArrayBuffer
     override def isEmpty: Boolean = !underlying.iterator().hasNext
   }
 
@@ -77,7 +77,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     override def size = underlying.size
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
     override def isEmpty = underlying.isEmpty
-    override def iterableFactory = mutable.ArrayBuffer
+    override def iterableFactory: mutable.ArrayBuffer.type = mutable.ArrayBuffer
   }
 
   @SerialVersionUID(3L)
@@ -134,7 +134,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
       this
     }
     def remove(from: Int, n: Int): Unit = underlying.subList(from, from+n).clear()
-    override def iterableFactory = mutable.ArrayBuffer
+    override def iterableFactory: mutable.ArrayBuffer.type = mutable.ArrayBuffer
     override def subtractOne(elem: A): this.type = { underlying.remove(elem.asInstanceOf[AnyRef]); this }
   }
 
@@ -417,7 +417,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
-    override def empty = new JMapWrapper(new ju.HashMap[K, V])
+    override def empty: JMapWrapper[K, V] = new JMapWrapper(new ju.HashMap[K, V])
   }
 
   @SerialVersionUID(3L)
@@ -464,7 +464,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     override def isEmpty: Boolean = underlying.isEmpty
     override def knownSize: Int = if (underlying.isEmpty) 0 else super.knownSize
-    override def empty = new JConcurrentMapWrapper(new juc.ConcurrentHashMap[K, V])
+    override def empty: JConcurrentMapWrapper[K, V] = new JConcurrentMapWrapper(new juc.ConcurrentHashMap[K, V])
 
     def putIfAbsent(k: K, v: V): Option[V] = Option(underlying.putIfAbsent(k, v))
 
@@ -543,7 +543,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     override def clear() = iterator.foreach(entry => underlying.remove(entry._1))
 
-    override def mapFactory = mutable.HashMap
+    override def mapFactory: mutable.HashMap.type = mutable.HashMap
   }
 
   @SerialVersionUID(3L)
@@ -588,7 +588,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     override def clear() = underlying.clear()
 
-    override def empty = new JPropertiesWrapper(new ju.Properties)
+    override def empty: JPropertiesWrapper = new JPropertiesWrapper(new ju.Properties)
 
     def getProperty(key: String) = underlying.getProperty(key)
 
@@ -598,7 +598,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def setProperty(key: String, value: String) =
       underlying.setProperty(key, value)
 
-    override def mapFactory = mutable.HashMap
+    override def mapFactory: mutable.HashMap.type = mutable.HashMap
   }
 
   /** Thrown when certain Map operations attempt to put a null value. */
