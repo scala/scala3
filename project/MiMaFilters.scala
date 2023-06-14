@@ -117,7 +117,6 @@ object MiMaFilters {
         "scala.collection.mutable.LinkedHashMap.newBuilder", "scala.collection.mutable.LinkedHashSet.newBuilder",
         "scala.collection.mutable.LongMap#ToBuildFrom.newBuilder",
         "scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this",
-        "scala.collection.mutable.TreeMap.sortedMapFactory",
         "scala.collection.StringView.andThen", "scala.collection.StringView.compose",
         "scala.collection.View#*.iterator",
         "scala.concurrent.BatchingExecutor#AbstractBatch.this",
