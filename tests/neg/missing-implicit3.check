@@ -7,3 +7,8 @@
    |       ord.Ord.ordered[ord.Foo](/* missing */summon[ord.Foo => Comparable[? >: ord.Foo]])
    |
    |   But no implicit values were found that match type ord.Foo => Comparable[? >: ord.Foo].
+   |
+   |   The following import might make progress towards fixing the problem:
+   |
+   |     import scala.math.Ordered.orderingToOrdered
+   |

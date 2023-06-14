@@ -2848,10 +2848,17 @@ class MissingImplicitArgument(
             i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
             ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
           )
+        def importSuggestionAddendum: String =
+          arg.tpe match
+            // If the failure was caused by an underlying NoMatchingImplicits, compute the addendum for its expected type
+            case noMatching: NoMatchingImplicits => // FIXME also handle SynthesisFailure
+              ctx.typer.importSuggestionAddendum(noMatching.expectedType)
+            case _ =>
+              ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
-            .getOrElse(ctx.typer.importSuggestionAddendum(pt))
+            .getOrElse(importSuggestionAddendum)
 
   def explain(using Context) = userDefinedImplicitNotFoundMessage(explain = true)
     .getOrElse("")
