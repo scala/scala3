@@ -22,6 +22,7 @@
 [submodule "community-build/community-projects/stdLib213"]
 	path = community-build/community-projects/stdLib213
 	url = https://github.com/dotty-staging/scala213
+	branch = 2.13.x
 [submodule "community-build/community-projects/sourcecode"]
 	path = community-build/community-projects/sourcecode
 	url = https://github.com/dotty-staging/sourcecode

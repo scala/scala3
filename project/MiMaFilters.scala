@@ -21,7 +21,7 @@ object MiMaFilters {
   )
 
   val StdlibBootstrappedBackwards: Map[String, Seq[ProblemFilter]] = Map(
-    "2.13.10" -> {
+    "2.13.11" -> {
       Seq(
         // Files that are not compiled in the bootstrapped library
         ProblemFilters.exclude[MissingClassProblem]("scala.AnyVal"),
@@ -137,7 +137,7 @@ object MiMaFilters {
   )
 
   val StdlibBootstrappedForward: Map[String, Seq[ProblemFilter]] = Map(
-    "2.13.10" -> {
+    "2.13.11" -> {
       Seq(
         // Scala language features
         ProblemFilters.exclude[FinalClassProblem]("scala.languageFeature$*$"),
