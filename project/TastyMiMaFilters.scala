@@ -11,6 +11,9 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*$extension"),
     ProblemMatcher.make(ProblemKind.IncompatibleSelfTypeChange, "scala.*"),
 
+    // Probably OK: object singleton type
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"),
+
     // Probably OK: by-name arguments in signatures
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.App.delayedInit"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.Array.fill"),
@@ -115,8 +118,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.mutable.LinkedHash*.newBuilder"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.TreeSet.sortedIterableFactory"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.BitSet.bitSetFactory"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.View.*PartitionMapped.iterator"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.process.ProcessBuilderImpl.*.toSink"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.process.ProcessBuilderImpl.*.toSource"),
