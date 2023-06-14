@@ -246,7 +246,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
             def getKey = k
             def getValue = v
             def setValue(v1 : V) = self.put(k, v1)
-            
+
             // It's important that this implementation conform to the contract
             // specified in the javadocs of java.util.Map.Entry.hashCode
             //
