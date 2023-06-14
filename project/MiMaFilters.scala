@@ -111,7 +111,6 @@ object MiMaFilters {
         "scala.collection.mutable.LongMap#ToBuildFrom.newBuilder",
         "scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this",
         "scala.collection.StringView.andThen", "scala.collection.StringView.compose",
-        "scala.collection.View#*.iterator",
         "scala.concurrent.BatchingExecutor#AbstractBatch.this",
         "scala.concurrent.Channel#LinkedList.this",
         "scala.concurrent.duration.Deadline.apply", "scala.concurrent.duration.Deadline.copy", "scala.concurrent.duration.Deadline.copy$default$1", "scala.concurrent.duration.FiniteDuration.unary_-",
