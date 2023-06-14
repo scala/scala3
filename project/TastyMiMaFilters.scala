@@ -119,13 +119,10 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.TreeSet.sortedIterableFactory"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.View.*PartitionMapped.iterator"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.process.ProcessBuilderImpl.*.toSink"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.process.ProcessBuilderImpl.*.toSource"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.concurrent.duration.FiniteDuration.unary_-"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IteratorWrapper.remove"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.sys.process.ProcessBuilderImpl.*.createProcess"),
 
     // Problem: implicit class (method should not be final)
     ProblemMatcher.make(ProblemKind.FinalMember, "scala.collection.convert.*.*"),
