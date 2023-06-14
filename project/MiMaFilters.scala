@@ -217,7 +217,6 @@ object MiMaFilters {
         "scala.io.Source#RelaxedPosition.this",
         "scala.jdk.Accumulator#AccumulatorFactoryShape.anyAccumulatorFactoryShape", "scala.jdk.Accumulator#AccumulatorFactoryShape.doubleAccumulatorFactoryShape", "scala.jdk.Accumulator#AccumulatorFactoryShape.intAccumulatorFactoryShape", "scala.jdk.Accumulator#AccumulatorFactoryShape.jDoubleAccumulatorFactoryShape", "scala.jdk.Accumulator#AccumulatorFactoryShape.jIntegerAccumulatorFactoryShape", "scala.jdk.Accumulator#AccumulatorFactoryShape.jLongAccumulatorFactoryShape", "scala.jdk.Accumulator#AccumulatorFactoryShape.longAccumulatorFactoryShape",
         "scala.jdk.FunctionWrappers#*",
-        "scala.math.Ordering.tryCompare",
         "scala.PartialFunction.unlifted",
         "scala.sys.process.BasicIO.connectNoOp", "scala.sys.process.BasicIO.connectToStdIn",
         "scala.sys.process.Process.Future",

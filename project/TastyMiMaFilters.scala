@@ -114,7 +114,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.convert.JavaCollectionWrappers.*.mapFactory"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.mutable.LinkedHash*.newBuilder"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Ordering.tryCompare"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.TreeSet.sortedIterableFactory"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.BitSet.bitSetFactory"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"),
