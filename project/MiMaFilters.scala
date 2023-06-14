@@ -113,7 +113,7 @@ object MiMaFilters {
         "scala.collection.StringView.andThen", "scala.collection.StringView.compose",
         "scala.concurrent.BatchingExecutor#AbstractBatch.this",
         "scala.concurrent.Channel#LinkedList.this",
-        "scala.concurrent.duration.Deadline.apply", "scala.concurrent.duration.Deadline.copy", "scala.concurrent.duration.Deadline.copy$default$1", "scala.concurrent.duration.FiniteDuration.unary_-",
+        "scala.concurrent.duration.Deadline.apply", "scala.concurrent.duration.Deadline.copy", "scala.concurrent.duration.Deadline.copy$default$1",
         "scala.Enumeration#ValueOrdering.this",
         "scala.io.Source#RelaxedPosition.this",
         "scala.PartialFunction#OrElse.andThen", "scala.PartialFunction#OrElse.orElse",
