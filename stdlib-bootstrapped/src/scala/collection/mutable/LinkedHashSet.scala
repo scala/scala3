@@ -165,7 +165,7 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
       case _ => Growable.from(empty[E], it)
     }
 
-  def newBuilder[A] = new GrowableBuilder(empty[A])
+  def newBuilder[A]: GrowableBuilder[A, LinkedHashSet[A]] = new GrowableBuilder(empty[A])
 
   /** Class for the linked hash set entry, used internally.
    */

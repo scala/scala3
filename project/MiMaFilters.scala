@@ -92,8 +92,6 @@ object MiMaFilters {
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.empty"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.fromSpecific"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.ArrayBuilder#ofUnit.addAll"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashMap.newBuilder"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashSet.newBuilder"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.TreeMap.empty"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.TreeMap.fromSpecific"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NothingManifest.newArray"),
