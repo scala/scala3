@@ -696,12 +696,14 @@ object desugar {
             cpy.ValDef(vparam)(rhs = refOfDef(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
+          var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
+          if ctx.settings.Yscala2Stdlib.value then flags &~= Private
           DefDef(
             nme.copy,
             joinParams(derivedTparams, copyFirstParams :: copyRestParamss),
             TypeTree(),
             creatorExpr
-          ).withMods(Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags, constr1.mods.privateWithin)) :: Nil
+          ).withMods(Modifiers(flags, constr1.mods.privateWithin)) :: Nil
         }
       }
 
@@ -755,7 +757,9 @@ object desugar {
           if (mods.is(Abstract)) Nil
           else {
             val appMods =
-              Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags).withPrivateWithin(constr1.mods.privateWithin)
+              var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
+              if ctx.settings.Yscala2Stdlib.value then flags &~= Private
+              Modifiers(flags).withPrivateWithin(constr1.mods.privateWithin)
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
