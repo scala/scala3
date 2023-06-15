@@ -569,7 +569,7 @@ object Objects:
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case Cold =>
-      report.warning("Using cold alias", Trace.position)
+      report.warning("Using cold alias. Calling trace:\n" + Trace.show, Trace.position)
       Bottom
 
     case Bottom =>
@@ -769,7 +769,7 @@ object Objects:
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
 
     case Cold =>
-      report.warning("Assigning to cold aliases is forbidden", Trace.position)
+      report.warning("Assigning to cold aliases is forbidden. Calling trace:\n" + Trace.show, Trace.position)
 
     case Bottom =>
 
@@ -784,7 +784,7 @@ object Objects:
         else
           Heap.write(addr, rhs)
       else
-        report.warning("Mutating a field before its initialization: " + field.show, Trace.position)
+        report.warning("Mutating a field before its initialization: " + field.show + ". Calling trace:\n" + Trace.show, Trace.position)
     end match
 
     Bottom
@@ -915,7 +915,7 @@ object Objects:
         Heap.write(addr, value)
 
     case _ =>
-      report.warning("Assigning to variables in outer scope", Trace.position)
+      report.warning("Assigning to variables in outer scope. Calling trace:\n" + Trace.show, Trace.position)
 
     Bottom
   }
@@ -1002,7 +1002,7 @@ object Objects:
       case Apply(ref, arg :: Nil) if ref.symbol == defn.InitRegionMethod =>
         val regions2 = Regions.extend(expr.sourcePos)
         if Regions.exists(expr.sourcePos) then
-          report.warning("Cyclic region detected. Trace: " + Trace.show, expr)
+          report.warning("Cyclic region detected. Trace:\n" + Trace.show, expr)
           Bottom
         else
           given Regions.Data = regions2
