@@ -11,6 +11,9 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*$extension"),
     ProblemMatcher.make(ProblemKind.IncompatibleSelfTypeChange, "scala.*"),
 
+    // Probably OK: object singleton type
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"),
+
     // Probably OK: by-name arguments in signatures
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.App.delayedInit"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.Array.fill"),
@@ -108,25 +111,12 @@ object TastyMiMaFilters {
     // Problem: Case class with varargs
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.StringContext.parts"),
 
-    // Problem: Inferred result type of non-private member differs
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.convert.JavaCollectionWrappers.*.iterableFactory"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.convert.JavaCollectionWrappers.*.empty"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.convert.JavaCollectionWrappers.*.mapFactory"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.mutable.LinkedHash*.newBuilder"),
+    // Problem: ???
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Ordering.tryCompare"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.TreeSet.sortedIterableFactory"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.BitSet.bitSetFactory"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.View.*PartitionMapped.iterator"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.process.ProcessBuilderImpl.*.toSink"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.process.ProcessBuilderImpl.*.toSource"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.concurrent.duration.FiniteDuration.unary_-"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IteratorWrapper.remove"),
+
+    // Problem: Inferred result type of non-private member differs
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.sys.process.ProcessBuilderImpl.*.createProcess"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.TreeMap.sortedMapFactory"),
 
     // Problem: implicit class (method should not be final)
     ProblemMatcher.make(ProblemKind.FinalMember, "scala.collection.convert.*.*"),
