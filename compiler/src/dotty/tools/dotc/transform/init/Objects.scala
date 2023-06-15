@@ -1109,7 +1109,9 @@ object Objects:
 
       case Match(selector, cases) =>
         eval(selector, thisV, klass)
-        evalExprs(cases.map(_.body), thisV, klass).join
+        // TODO: handle pattern match properly
+        report.warning("[initChecker] Pattern match is skipped. Trace:\n" + Trace.show, expr)
+        Bottom
 
       case Return(expr, from) =>
         Returns.handle(from.symbol, eval(expr, thisV, klass))
