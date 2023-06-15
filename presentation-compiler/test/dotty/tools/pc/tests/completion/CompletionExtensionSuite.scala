@@ -113,3 +113,64 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |def main = 100.plus($0)
          |""".stripMargin
     )
+
+  @Test def `simple-empty` =
+    check(
+      """|package example
+         |
+         |object enrichments:
+         |  extension (num: Int)
+         |    def incr: Int = num + 1
+         |
+         |def main = 100.@@
+         |""".stripMargin,
+      """|incr: Int (extension)
+         |""".stripMargin,
+      filter = _.contains("(extension)")
+    )
+
+  @Test def `directly-in-pkg1` =
+    check(
+      """|
+         |package example:
+         |  extension (num: Int)
+         |    def incr: Int = num + 1
+         |
+         |package example2:
+         |  def main = 100.inc@@
+         |""".stripMargin,
+      """|incr: Int (extension)
+         |""".stripMargin
+    )
+
+  @Test def `directly-in-pkg2` =
+    check(
+      """|package example:
+         |  object X:
+         |    def fooBar(num: Int) = num + 1
+         |  extension (num: Int) def incr: Int = num + 1
+         |
+         |package example2:
+         |  def main = 100.inc@@
+         |""".stripMargin,
+      """|incr: Int (extension)
+         |""".stripMargin
+    )
+
+  @Test def `nested-pkg` =
+    check(
+      """|package a:  // some comment
+         |  package c:
+         |    extension (num: Int)
+         |        def increment2 = num + 2
+         |  extension (num: Int)
+         |    def increment = num + 1
+         |
+         |
+         |package b:
+         |  def main: Unit = 123.incre@@
+         |""".stripMargin,
+      """|increment: Int (extension)
+         |increment2: Int (extension)
+         |""".stripMargin
+    )

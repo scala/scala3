@@ -1,16 +1,17 @@
 package dotty.tools.pc.tests.hover
 
+import scala.meta.pc.SymbolDocumentation
+
 import dotty.tools.pc.base.BaseHoverSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.junit.{Ignore, Test}
-import dotty.tools.pc.utils.MockEntries
-import scala.meta.pc.SymbolDocumentation
 
 class HoverNamedArgSuite extends BaseHoverSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      ScalaMockDocumentation("a/b.foo().(named)", "foo", List("named")),
+      ScalaMockDocumentation("a/b.foo().(named)", "foo", List("named"))
     )
 
   @Test def `named` =

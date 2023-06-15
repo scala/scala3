@@ -136,18 +136,21 @@ object IndexedContext:
   )
 
   private def extractNames(ctx: Context): Names =
+    def isAccessibleFromSafe(sym: Symbol, site: Type): Boolean =
+      try sym.isAccessibleFrom(site, superAccess = false)
+      catch
+        case NonFatal(e) =>
+          false
 
     def accessibleSymbols(site: Type, tpe: Type)(using
         Context
     ): List[Symbol] =
-      tpe.decls.toList.filter(sym =>
-        sym.isAccessibleFrom(site, superAccess = false)
-      )
+      tpe.decls.toList.filter(sym => isAccessibleFromSafe(sym, site))
 
     def accesibleMembers(site: Type)(using Context): List[Symbol] =
       site.allMembers
         .filter(denot =>
-          try denot.symbol.isAccessibleFrom(site, superAccess = false)
+          try isAccessibleFromSafe(denot.symbol, site)
           catch
             case NonFatal(e) =>
               false

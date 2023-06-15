@@ -579,7 +579,7 @@ class Completions(
               ).map(visit).forall(_ == true),
         )
         Some(search.search(query, buildTargetIdentifier, visitor))
-      case CompletionKind.Members if query.nonEmpty =>
+      case CompletionKind.Members =>
         val visitor = new CompilerSearchVisitor(sym =>
           if sym.is(ExtensionMethod) &&
             qualType.widenDealias <:< sym.extensionParam.info.widenDealias
@@ -592,8 +592,6 @@ class Completions(
           else false,
         )
         Some(search.searchMethods(query, buildTargetIdentifier, visitor))
-      case CompletionKind.Members => // query.isEmpry
-        Some(SymbolSearch.Result.INCOMPLETE)
     end match
   end enrichWithSymbolSearch
 

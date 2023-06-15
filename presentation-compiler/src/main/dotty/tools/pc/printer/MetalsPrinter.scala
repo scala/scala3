@@ -2,8 +2,13 @@ package dotty.tools.pc.printer
 
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.Report
+import scala.meta.internal.metals.ReportContext
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
@@ -28,7 +33,8 @@ class MetalsPrinter(
     includeDefaultParam: MetalsPrinter.IncludeDefaultParam =
       IncludeDefaultParam.ResolveLater,
 )(using
-    Context
+    Context,
+    ReportContext
 ):
 
   private val methodFlags =
@@ -63,8 +69,26 @@ class MetalsPrinter(
       case _ => None
 
   def tpe(tpe: Type): String =
-    val short = names.shortType(tpe)
+    val short = Try(names.shortType(tpe)) match
+      case Success(short) => short
+      case Failure(e) =>
+        val reportContext = summon[ReportContext]
+        val report = Report(
+          "short-name-error",
+          s"""|Error while printing type, could not create short name for type:
+              |
+              |$tpe
+              |
+              |Exception:
+              |${e.getMessage}
+              |${e.getStackTrace.mkString("\n")}
+              |""".stripMargin,
+          tpe.typeSymbol.name.show
+        )
+        reportContext.unsanitized.create(report, ifVerbose = false)
+        tpe
     dotcPrinter.tpe(short)
+  end tpe
 
   def hoverSymbol(sym: Symbol, info: Type)(using Context): String =
     val typeSymbol = info.typeSymbol
@@ -322,7 +346,7 @@ class MetalsPrinter(
       index: Int,
       defaultValues: => Seq[SymbolDocumentation],
       nameToInfo: Map[Name, Type]
-  ): String =
+  )(using ReportContext): String =
     val docInfo = defaultValues.lift(index)
     val rawKeywordName = dotcPrinter.name(param)
     val keywordName = docInfo match
@@ -409,7 +433,7 @@ object MetalsPrinter:
       symbolSearch: SymbolSearch,
       includeDefaultParam: IncludeDefaultParam,
       renames: Map[Symbol, String] = Map.empty
-  ): MetalsPrinter =
+  )(using ReportContext): MetalsPrinter =
     import indexed.ctx
     MetalsPrinter(
       new ShortenedNames(indexed, renames),
@@ -423,7 +447,7 @@ object MetalsPrinter:
       indexed: IndexedContext,
       symbolSearch: SymbolSearch,
       includeDefaultParam: IncludeDefaultParam
-  ): MetalsPrinter =
+  )(using ReportContext): MetalsPrinter =
     import shortenedNames.indexedContext.ctx
     MetalsPrinter(
       shortenedNames,

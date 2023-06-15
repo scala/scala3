@@ -1,6 +1,7 @@
 package dotty.tools.pc.base
 
 import java.net.URI
+import java.nio.file.Paths
 
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
@@ -12,7 +13,6 @@ import dotty.tools.pc.utils.TextEdits
 
 import org.eclipse.lsp4j.TextEdit
 import org.eclipse.lsp4j as l
-import java.nio.file.Paths
 
 abstract class BasePcDefinitionSuite extends BasePCSuite:
 

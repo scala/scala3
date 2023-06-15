@@ -65,6 +65,15 @@ object DotcPrinter:
     def fullName(sym: Symbol): String =
       fullNameString(sym)
 
+    override def toTextRef(tp: SingletonType): Text = controlled {
+      tp match
+        case tp: TermRef if !printDebug && tp.symbol.is(Package) =>
+          toTextPrefix(tp.prefix) ~
+            tp.symbol.name.stripModuleClassSuffix.toString()
+        case _ =>
+          super.toTextRef(tp)
+    }
+
     override def toText(tp: Type): Text =
       // Override the behavior for `AppliedType` because
       // `toText` in RefinedPrinter doesn't pretty print AppliedType

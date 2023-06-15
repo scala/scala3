@@ -114,7 +114,11 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
       pos.offset() <= other.start && pos.endOffset() >= other.end
 
   extension (sym: Symbol)(using Context)
-    def fullNameBackticked: String = fullNameBackticked(Set.empty)
+    def fullNameBackticked: String = fullNameBackticked(Set.empty[String])
+
+    def fullNameBackticked(backtickSoftKeyword: Boolean = true): String =
+      if backtickSoftKeyword then fullNameBackticked(Set.empty[String])
+      else fullNameBackticked(KeywordWrapper.Scala3SoftKeywords)
 
     def fullNameBackticked(exclusions: Set[String]): String =
       @tailrec
@@ -131,7 +135,11 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def companion: Symbol =
       if sym.is(Module) then sym.companionClass else sym.companionModule
 
-    def nameBackticked: String = nameBackticked(Set.empty)
+    def nameBackticked: String = nameBackticked(Set.empty[String])
+
+    def nameBackticked(backtickSoftKeyword: Boolean = true): String =
+      if backtickSoftKeyword then nameBackticked(Set.empty[String])
+      else nameBackticked(KeywordWrapper.Scala3SoftKeywords)
 
     def nameBackticked(exclusions: Set[String]): String =
       KeywordWrapper.Scala3.backtickWrap(sym.decodedName, exclusions)
@@ -169,8 +177,12 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def decoded: String = name.stripModuleClassSuffix.show
 
   extension (s: String)
-    def backticked: String =
-      KeywordWrapper.Scala3.backtickWrap(s)
+    def backticked: String = s.backticked()
+
+    def backticked(backtickSoftKeyword: Boolean = true): String =
+      if backtickSoftKeyword then KeywordWrapper.Scala3.backtickWrap(s)
+      else
+        KeywordWrapper.Scala3.backtickWrap(s, KeywordWrapper.Scala3SoftKeywords)
 
     def stripBackticks: String = s.stripPrefix("`").stripSuffix("`")
 

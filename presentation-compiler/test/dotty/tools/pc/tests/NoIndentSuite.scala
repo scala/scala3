@@ -3,9 +3,9 @@ package dotty.tools.pc.tests
 import java.nio.file.Path
 
 import dotty.tools.pc.base.{BaseCompletionSuite, BaseExtractMethodSuite}
+import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
-import dotty.tools.pc.utils.MockEntries
 
 class ExtractMethodNoIndentSuite extends BaseExtractMethodSuite:
   override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =

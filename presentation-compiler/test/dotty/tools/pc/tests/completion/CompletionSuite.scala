@@ -164,14 +164,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """|ProcessBuilder java.lang
          |ProcessBuilder - scala.sys.process
-         |CertPathBuilder - java.security.cert
-         |CertPathBuilderSpi - java.security.cert
-         |CertPathBuilderResult - java.security.cert
-         |PKIXBuilderParameters - java.security.cert
-         |CertPathBuilderException - java.security.cert
-         |PKIXCertPathBuilderResult - java.security.cert
          |""".stripMargin,
-      filter = !_.contains("javax.sql") // Not shipped with all JDKs
+      filter = _.contains("ProcessBuilder")
     )
 
   @Test def companion =
@@ -852,11 +846,11 @@ class CompletionSuite extends BaseCompletionSuite:
           |  languageFeature.@@
           |}
           |""".stripMargin,
-      """|dynamics scala.languageFeature
-         |existentials scala.languageFeature
-         |experimental scala.languageFeature
-         |higherKinds scala.languageFeature
-         |implicitConversions scala.languageFeature
+      """|dynamics languageFeature
+         |existentials languageFeature
+         |experimental languageFeature
+         |higherKinds languageFeature
+         |implicitConversions languageFeature
          |""".stripMargin,
       topLines = Some(5)
     )

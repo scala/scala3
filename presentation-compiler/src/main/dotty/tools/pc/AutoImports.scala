@@ -19,7 +19,7 @@ import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j as l
 
-object AutoImports extends AutoImportsBackticks:
+object AutoImports:
 
   object AutoImport:
     def renameConfigMap(config: PresentationCompilerConfig)(using
@@ -199,7 +199,7 @@ object AutoImports extends AutoImportsBackticks:
               (
                 SymbolIdent.Select(
                   ownerImport.ident,
-                  symbol.nameBacktickedImport
+                  symbol.nameBackticked(false)
                 ),
                 ownerImport.importSel,
               )
@@ -233,7 +233,7 @@ object AutoImports extends AutoImportsBackticks:
                 symbol,
                 SymbolIdent.Select(
                   SymbolIdent.direct(rename),
-                  symbol.nameBacktickedImport
+                  symbol.nameBackticked(false)
                 ),
                 importSel
               )
@@ -272,7 +272,7 @@ object AutoImports extends AutoImportsBackticks:
           .map {
             case ImportSel.Direct(sym) => importName(sym)
             case ImportSel.Rename(sym, rename) =>
-              s"${importName(sym.owner)}.{${sym.nameBacktickedImport} => $rename}"
+              s"${importName(sym.owner)}.{${sym.nameBackticked(false)} => $rename}"
           }
           .map(sel => s"${indent}import $sel")
           .mkString(topPadding, "\n", "\n")
@@ -283,8 +283,8 @@ object AutoImports extends AutoImportsBackticks:
 
     private def importName(sym: Symbol): String =
       if indexedContext.importContext.toplevelClashes(sym) then
-        s"_root_.${sym.fullNameBacktickedImport}"
-      else sym.fullNameBacktickedImport
+        s"_root_.${sym.fullNameBackticked(false)}"
+      else sym.fullNameBackticked(false)
   end AutoImportsGenerator
 
   private def autoImportPosition(
@@ -361,9 +361,12 @@ object AutoImports extends AutoImportsBackticks:
               else
                 ScriptFirstImportPosition.scalaCliScStartOffset(text, comments)
 
-            scriptOffset.getOrElse(
-              pos.source.lineToOffset(tmpl.self.srcPos.line)
-            )
+            scriptOffset.getOrElse {
+              val tmplPoint = tmpl.self.srcPos.span.point
+              if tmplPoint >= 0 && tmplPoint < pos.source.length
+              then pos.source.lineToOffset(tmpl.self.srcPos.line)
+              else 0
+            }
         new AutoImportPosition(offset, text, false)
       }
     end forScript
@@ -388,11 +391,3 @@ object AutoImports extends AutoImportsBackticks:
   end autoImportPosition
 
 end AutoImports
-
-trait AutoImportsBackticks:
-  // Avoids backticketing import parts that match soft keywords
-  extension (sym: Symbol)(using Context)
-    def fullNameBacktickedImport: String =
-      sym.fullNameBackticked(KeywordWrapper.Scala3SoftKeywords)
-    def nameBacktickedImport: String =
-      sym.nameBackticked(KeywordWrapper.Scala3SoftKeywords)

@@ -234,3 +234,13 @@ class HoverDefnSuite extends BaseHoverSuite:
          |```
          |""".stripMargin.hover
     )
+
+  @Test def `trailing-whitespace` =
+    check(
+      """|object A {
+         |
+         |  <<val foo@@ = 123>>
+         |}
+         |""".stripMargin,
+      "val foo: Int".hover
+    )

@@ -3,6 +3,7 @@ package dotty.tools.pc
 import java.nio.file.Paths
 
 import scala.annotation.tailrec
+import scala.meta.internal.metals.ReportContext
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
@@ -50,7 +51,7 @@ final class InferredTypeProvider(
     driver: InteractiveDriver,
     config: PresentationCompilerConfig,
     symbolSearch: SymbolSearch
-):
+)(using ReportContext):
 
   case class AdjustTypeOpts(
       text: String,

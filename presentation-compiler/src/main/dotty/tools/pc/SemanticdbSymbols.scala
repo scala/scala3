@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.semanticdb._
+import dotty.tools.dotc.semanticdb.*
 
 object SemanticdbSymbols:
 

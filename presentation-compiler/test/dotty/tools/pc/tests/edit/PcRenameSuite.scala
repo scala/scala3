@@ -463,3 +463,11 @@ class PcRenameSuite extends BasePcRenameSuite:
         |  x
         |}""".stripMargin
     )
+  @Test def `for-comprehension` =
+    check(
+      """|val a = for {
+         |  <<ab@@c>> <- List("a", "b", "c")
+         |  _ = println("print!")
+         |} yield <<a@@bc>>
+         |""".stripMargin
+    )

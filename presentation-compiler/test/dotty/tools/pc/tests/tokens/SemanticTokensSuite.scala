@@ -310,3 +310,25 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |}
          |""".stripMargin
     )
+
+  @Test def `main-annot` =
+    check(
+      """|@<<main>>/*class*/ def <<main>>/*method,definition*/(<<args>>/*parameter,declaration,readonly*/: <<Array>>/*class*/[<<String>>/*type*/]): <<Unit>>/*class,abstract*/ = ()
+         |""".stripMargin
+    )
+
+  // When for-comprehension includes line with `=`, we get `scala.x$1`, `scala.x$2` symbols on `foo`.
+  // Both `scala` and `x$#` have position on `foo`, and we don't want to highlight it as a `scala` package,
+  // so we need `namespace` to have lower priority than `variable`.
+  @Test def `for-comprehension` =
+    check(
+      """|package <<example>>/*namespace*/
+         |
+         |object <<B>>/*class*/ {
+         |  val <<a>>/*variable,definition,readonly*/ = for {
+         |    <<foo>>/*variable,definition,readonly*/ <- <<List>>/*class*/("a", "b", "c")
+         |    <<_>>/*class,abstract*/ = <<println>>/*method*/("print!")
+         |  } yield <<foo>>/*variable,readonly*/
+         |}
+         |""".stripMargin
+    )

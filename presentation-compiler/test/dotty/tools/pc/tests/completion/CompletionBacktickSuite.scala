@@ -111,3 +111,71 @@ class CompletionBacktickSuite extends BaseCompletionSuite:
           |""".stripMargin,
       filter = _.contains("a: String")
     )
+
+  @Test def `soft-keyword-select` =
+    checkEdit(
+      """|object Main {
+         |  case class Pos(start: Int, end: Int)
+         |  val a = Pos(1,2)
+         |  val b = a.end@@
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  case class Pos(start: Int, end: Int)
+         |  val a = Pos(1,2)
+         |  val b = a.end
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `soft-keyword-ident` =
+    checkEdit(
+      """|object Main {
+         |  case class Pos(start: Int, end: Int) {
+         |    val point = start - end@@
+         |  }
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  case class Pos(start: Int, end: Int) {
+         |    val point = start - `end`
+         |  }
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `soft-keyword-extension` =
+    checkEdit(
+      """|object A {
+         |  extension (a: String) def end = a.last
+         |}
+         |object Main {
+         |  val a = "abc".end@@
+         |}
+         |""".stripMargin,
+      """|import A.end
+         |object A {
+         |  extension (a: String) def end = a.last
+         |}
+         |object Main {
+         |  val a = "abc".end
+         |}
+         |""".stripMargin,
+      filter = _.contains("end: Char")
+    )
+
+  @Test def `keyword-select` =
+    checkEdit(
+      """|object Main {
+         |  case class Pos(start: Int, `lazy`: Boolean)
+         |  val a = Pos(1,true)
+         |  val b = a.laz@@
+         |}
+         |""".stripMargin,
+      """|object Main {
+         |  case class Pos(start: Int, `lazy`: Boolean)
+         |  val a = Pos(1,true)
+         |  val b = a.`lazy`
+         |}
+         |""".stripMargin
+    )

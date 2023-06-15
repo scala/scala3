@@ -1,15 +1,15 @@
 package dotty.tools.pc.tests.completion
 
 import dotty.tools.pc.base.BaseCompletionSuite
+import dotty.tools.pc.utils.MockEntries
 
 import org.junit.Test
-import dotty.tools.pc.utils.MockEntries
 
 class CompletionMatchSuite extends BaseCompletionSuite:
 
   override protected def mockEntries = new MockEntries:
     override def definitionSourceTopLevels = Map[String, List[String]](
-      "scala/Option#" -> List("scala/Some.", "scala/None."),
+      "scala/Option#" -> List("scala/Some.", "scala/None.")
     )
 
   @Test def `match` =

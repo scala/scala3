@@ -5,6 +5,7 @@ import dotty.tools.pc.base.BaseCompletionSuite
 import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runners.MethodSorters
+import org.junit.Ignore
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class CompletionArgSuite extends BaseCompletionSuite:
@@ -541,3 +542,125 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       topLines = Some(1)
     )
+
+  @Ignore
+  @Test def `second-arg-first` =
+    check(
+      """|case class Test(
+         |    testA: String,
+         |    testB: Option[String],
+         |    testC: String,
+         |)
+         |object Main {
+         |  def test(x: Test) = {
+         |    x.copy(testB = ???, te@@)
+         |  }
+         |}
+         |""".stripMargin,
+      """|testA = : String
+         |testC = : String
+         |""".stripMargin,
+      topLines = Some(2)
+    )
+
+  @Test def `case-class-apply` =
+    check(
+      """|object Main {
+         |  def m() = {
+         |    case class A(foo: Int, fooBar: Int)
+         |    println(A(foo@@))
+         |  }
+         |}
+         |""".stripMargin,
+      """|foo = : Int
+         |fooBar = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `case-class-apply1` =
+    check(
+      """|object Main {
+         |  def m() = {
+         |    case class A(foo: Int, fooBar: Int)
+         |    object A { def apply(foo: Int) = new A(foo, 3) }
+         |    println(A(foo@@))
+         |  }
+         |}
+         |""".stripMargin,
+      """|foo = : Int
+         |""".stripMargin,
+    )
+
+  @Test def `case-class-apply2` =
+    check(
+      """|object Main {
+         |  def m() = {
+         |    case class A(foo: Int, fooBar: Int)
+         |    object A { def apply(foo: Int) = new A(foo, 3) }
+         |    println(A(foo = 1, foo@@))
+         |  }
+         |}
+         |""".stripMargin,
+      """|fooBar = : Int
+         |""".stripMargin,
+    )
+
+  @Ignore
+  @Test def `case-class-apply3` =
+    check(
+      """|case class A(val foo: Int, val fooBar: Int)
+         |object A {
+         |  def apply(foo: Int): A = new A(foo, 3)
+         |}
+         |
+         |object Main {
+         |  for {
+         |      a <- List(1, 2, 3)
+         |      x = A(foo@@)
+         |   }
+         |}
+         |""".stripMargin,
+      """|foo = : Int
+         |foo = a : Int
+         |""".stripMargin,
+    )
+
+  @Ignore
+  @Test def `case-class-apply4` =
+    check(
+      """|case class A(val foo: Int, val fooBar: Int)
+         |object A {
+         |  def apply(foo: Int): A = new A(foo, 3)
+         |}
+         |
+         |object Main {
+         |  for {
+         |      a <- List(1, 2, 3)
+         |      x = A(foo = 1, foo@@)
+         |   }
+         |}
+         |""".stripMargin,
+      """|fooBar = : Int
+         |fooBar = a : Int
+         |""".stripMargin,
+    )
+
+  @Test def `case-class-for-comp` =
+    check(
+      """|case class Abc(foo: Int, fooBar: Int)
+         |object Main {
+         |   for {
+         |      a <- List(1, 2, 3)
+         |      x = Abc(foo@@)
+         |   }
+         |}
+         |""".stripMargin,
+      """|foo = : Int
+         |foo = a : Int
+         |fooBar = : Int
+         |fooBar = a : Int
+         |""".stripMargin,
+      topLines = Some(4),
+    )
+

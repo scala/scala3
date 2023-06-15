@@ -70,4 +70,3 @@ class MockSymbolSearch(
       .map(symbol => mockEntries.documentations.find(_.symbol == symbol))
       .collectFirst { case Some(doc) => doc }
       .toJava
-

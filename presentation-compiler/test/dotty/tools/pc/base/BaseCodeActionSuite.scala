@@ -14,7 +14,7 @@ abstract class BaseCodeActionSuite extends BasePCSuite:
   def params(
       code: String
   ): (String, String, Int) =
-    val filename = "test.scala"
+    val filename = "A.scala"
     val targetRegex = "<<(.+)>>".r
     val target = targetRegex.findAllMatchIn(code).toList match
       case immutable.Nil => fail("Missing <<target>>")

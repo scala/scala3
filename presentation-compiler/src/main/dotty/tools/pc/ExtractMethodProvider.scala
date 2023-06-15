@@ -2,6 +2,7 @@ package dotty.tools.pc
 
 import java.nio.file.Paths
 
+import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.pc.ExtractMethodUtils
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.RangeParams
@@ -33,7 +34,8 @@ final class ExtractMethodProvider(
     driver: InteractiveDriver,
     search: SymbolSearch,
     noIndent: Boolean
-) extends ExtractMethodUtils:
+)(using ReportContext)
+    extends ExtractMethodUtils:
 
   def extractMethod(): List[TextEdit] =
     val text = range.text()

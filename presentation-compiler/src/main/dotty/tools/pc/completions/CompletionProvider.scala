@@ -218,6 +218,10 @@ class CompletionProvider(
         case _ =>
           false
 
+    lazy val backtickSoftKeyword = path match
+      case (_: Select) :: _ => false
+      case _ => true
+
     def mkItemWithImports(
         v: CompletionValue.Workspace | CompletionValue.Extension |
           CompletionValue.Interpolator
@@ -225,7 +229,7 @@ class CompletionProvider(
       val sym = v.symbol
       path match
         case (_: Ident) :: (_: Import) :: _ =>
-          mkItem(sym.fullNameBackticked)
+          mkItem(sym.fullNameBackticked(backtickSoftKeyword = false))
         case _ =>
           autoImports.editsForSymbol(v.importSymbol) match
             case Some(edits) =>
@@ -239,7 +243,9 @@ class CompletionProvider(
                 case _ =>
                   mkItem(
                     v.insertText.getOrElse(
-                      ident.backticked + completionTextSuffix
+                      ident.backticked(
+                        backtickSoftKeyword
+                      ) + completionTextSuffix
                     ),
                     edits.edits,
                     range = v.range
@@ -249,14 +255,18 @@ class CompletionProvider(
               r match
                 case IndexedContext.Result.InScope =>
                   mkItem(
-                    ident.backticked + completionTextSuffix
+                    ident.backticked(backtickSoftKeyword) + completionTextSuffix
                   )
                 case _ if isInStringInterpolation =>
                   mkItem(
                     "{" + sym.fullNameBackticked + completionTextSuffix + "}"
                   )
                 case _ =>
-                  mkItem(sym.fullNameBackticked + completionTextSuffix)
+                  mkItem(
+                    sym.fullNameBackticked(
+                      backtickSoftKeyword
+                    ) + completionTextSuffix
+                  )
               end match
           end match
       end match
@@ -268,7 +278,8 @@ class CompletionProvider(
       case v: CompletionValue.Interpolator if v.isWorkspace || v.isExtension =>
         mkItemWithImports(v)
       case _ =>
-        val insert = completion.insertText.getOrElse(ident.backticked)
+        val insert =
+          completion.insertText.getOrElse(ident.backticked(backtickSoftKeyword))
         mkItem(
           insert + completionTextSuffix,
           range = completion.range

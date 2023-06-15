@@ -91,18 +91,22 @@ abstract class PcCollector[T](
         else pos1
 
       val pos =
-        if sourceText(pos0.`end` - 1) == ',' then pos0.withEnd(pos0.`end` - 1)
+        if pos0.end > 0 && sourceText(pos0.end - 1) == ',' then
+          pos0.withEnd(pos0.end - 1)
         else pos0
       val isBackticked =
-        sourceText(pos.start) == '`' && sourceText(pos.end - 1) == '`'
+        sourceText(pos.start) == '`' &&
+          pos.end > 0 &&
+          sourceText(pos.end - 1) == '`'
       // when the old name contains backticks, the position is incorrect
       val isOldNameBackticked = sourceText(pos.start) != '`' &&
+        pos.start > 0 &&
         sourceText(pos.start - 1) == '`' &&
         sourceText(pos.end) == '`'
       if isBackticked && forRename then
-        (pos.withStart(pos.start + 1).withEnd(pos.`end` - 1), true)
+        (pos.withStart(pos.start + 1).withEnd(pos.end - 1), true)
       else if isOldNameBackticked then
-        (pos.withStart(pos.start - 1).withEnd(pos.`end` + 1), false)
+        (pos.withStart(pos.start - 1).withEnd(pos.end + 1), false)
       else (pos, false)
   end adjust
 

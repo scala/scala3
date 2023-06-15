@@ -74,7 +74,7 @@ abstract class BasePCSuite extends PcAssertions:
     immutable.Seq.empty
   protected def mockEntries: MockEntries = new MockEntries {}
 
-  def params(code: String, filename: String = "test.scala"): (String, Int) =
+  def params(code: String, filename: String = "A.scala"): (String, Int) =
     val code2 = code.replace("@@", "")
     val offset = code.indexOf("@@")
     if (offset < 0) {
@@ -85,7 +85,7 @@ abstract class BasePCSuite extends PcAssertions:
 
   def hoverParams(
       code: String,
-      filename: String = "test.scala"
+      filename: String = "A.scala"
   ): (String, Int, Int) =
     val code2 = code.replace("@@", "").replace("%<%", "").replace("%>%", "")
     val positionOffset =
