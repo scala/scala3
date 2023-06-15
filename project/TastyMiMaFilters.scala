@@ -9,8 +9,14 @@ object TastyMiMaFilters {
     // Probably OK: Case class with varargs
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.StringContext.parts"), // before: scala.<repeated>[Predef.String]; after: scala.collection.immutable.Seq[Predef.String] @scala.annotation.internal.Repeated
 
-    // Problem: Missing Serializable in companions of serializable classes
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.*$"),
+    // Problem: Missing type {scala.runtime.AbstractFunction1}
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.collection.Searching.Found$"),
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.collection.Searching.InsertionPoint$"),
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.collection.StringView$"),
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.jdk.FunctionWrappers.AsJava*$"),
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.jdk.FunctionWrappers.FromJava*$"),
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.ScalaReflectionException$"),
+    ProblemMatcher.make(ProblemKind.MissingParent, "scala.UninitializedFieldError$"),
 
     // Problem: Class[T] or ClassTag[T] with `T` equal to wildcard `_ >: Nothing <: AnyVal` instead of a specific primitive type `T`
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.reflect.ManifestFactory.*.runtimeClass"),

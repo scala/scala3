@@ -60,7 +60,7 @@ object PostTyper {
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
+class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   import tpd._
 
   override def phaseName: String = PostTyper.name
@@ -425,7 +425,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 if sym.isOpaqueAlias then
                   VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
               case _ =>
-          processMemberDef(super.transform(tree))
+          processMemberDef(super.transform(scala2LibPatch(tree)))
         case tree: Bind =>
           if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
             Checking.checkGoodBounds(tree.symbol)
@@ -534,5 +534,30 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
         sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
+    private def scala2LibPatch(tree: TypeDef)(using Context) =
+      val sym = tree.symbol
+      if ctx.settings.Yscala2Stdlib.value
+        && sym.is(ModuleClass) && !sym.derivesFrom(defn.SerializableClass)
+        && sym.companionClass.derivesFrom(defn.SerializableClass)
+      then
+        // Add Serializable to companion objects of serializable classes
+        tree.rhs match
+          case impl: Template =>
+            val parents1 = impl.parents :+ TypeTree(defn.SerializableType)
+            val impl1 = cpy.Template(impl)(parents = parents1)
+            cpy.TypeDef(tree)(rhs = impl1)
+      else tree
   }
+
+  protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
+    ctx.settings.Yscala2Stdlib.value && sym.isAllOf(ModuleClass, butNot = Package)
+
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
+    case info: ClassInfo =>
+      if !sym.derivesFrom(defn.SerializableClass)
+        && sym.companionClass.derivesFrom(defn.SerializableClass)
+      then
+        info.derivedClassInfo(declaredParents = info.parents :+ defn.SerializableType)
+      else tp
+    case _ => tp
 }

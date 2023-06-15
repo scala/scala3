@@ -42,7 +42,11 @@ object MiMaFilters {
 
         // Companion module class
         ProblemFilters.exclude[FinalClassProblem]("scala.*$"),
-        ProblemFilters.exclude[MissingTypesProblem]("scala.*$"),
+
+        // Missing types {scala.runtime.AbstractFunction1}
+        ProblemFilters.exclude[MissingTypesProblem]("scala.ScalaReflectionException$"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.UninitializedFieldError$"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.StringView$"),
 
         // Tuples
         ProblemFilters.exclude[FinalClassProblem]("scala.Tuple1"),
