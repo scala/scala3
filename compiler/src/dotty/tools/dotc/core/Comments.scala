@@ -10,7 +10,7 @@ import util.{SourceFile, ReadOnlyMap}
 import util.Spans._
 import util.CommentParsing._
 import util.Property.Key
-import parsing.Parsers.Parser
+import parsing.Parsers
 import reporting.ProperDefinitionNotFound
 
 object Comments {
@@ -125,7 +125,7 @@ object Comments {
   object UseCase {
     def apply(code: String, codePos: Span)(using Context): UseCase = {
       val tree = {
-        val tree = new Parser(SourceFile.virtual("<usecase>", code)).localDef(codePos.start)
+        val tree = Parsers.parser(SourceFile.virtual("<usecase>", code)).localDef(codePos.start)
         tree match {
           case tree: untpd.DefDef =>
             val newName = ctx.compilationUnit.freshNames.newName(tree.name, NameKinds.DocArtifactName)

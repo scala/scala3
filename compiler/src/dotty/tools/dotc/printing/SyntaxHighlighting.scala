@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.parsing.Parsers.Parser
+import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.parsing.Scanners.Scanner
 import dotty.tools.dotc.parsing.Tokens._
 import dotty.tools.dotc.reporting.Reporter
@@ -124,7 +124,7 @@ object SyntaxHighlighting {
         }
       }
 
-      val parser = new Parser(source)
+      val parser = Parsers.parser(source)
       val trees = parser.blockStatSeq()
       TreeHighlighter.highlight(trees)
 
