@@ -108,11 +108,28 @@ by looking in the `if` statements of jobs. For example you can see some
 Below are commonly used ones:
 
 
-|---------------------------|---------------------------------|
-| `[skip ci]`               | Skip the entire CI              |
-| `[skip community_build]`  | Skip the entire community build |
-| `[skip community_build_a]`| Skip the "a" community build    |
-| `[skip docs]`             | Skip the scaladoc tests         |
+|---------------------------|----------------------------------------|
+| `[skip ci]`               | Skip the entire CI                     |
+| `[skip community_build]`  | Skip the entire community build        |
+| `[skip community_build_a]`| Skip the "a" community build           |
+| `[skip community_build_b]`| Skip the "b" community build           |
+| `[skip community_build_c]`| Skip the "c" community build           |
+| `[skip docs]`             | Skip the scaladoc tests                |
+| `[skip test]`             | Skip the unit tests                    |
+| `[skip test_windows_fast]`| Skip the unit tests subset on Windows  |
+| `[skip mima]`             | Skip the MiMa checks                   |
+| `[skip test_sbt]`         | Skip the SBT scripted tests            |
+
+
+#### Executes parts of the CI that are skipped on PRs
+Depending on what your PR is addressing, sometimes it doesn't make sense to run
+parts of the CI that usually ony runs on nightly builds.
+
+|---------------------------|----------------------------------------------------|
+| `[test_java8]`            | Execute unit tests on Java 8                       |
+| `[test_windows_full]`     | Execute unit tests on Windows                      |
+| `[test_non_bootstrapped]` | Execute unit tests using non-bootstrapped compiler |
+
 
 ### 7: Create your PR!
 
