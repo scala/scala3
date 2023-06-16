@@ -1,5 +1,3 @@
-import scala.quoted.*
-
 package mylib:
   object Export:
     transparent inline def exported: Any = 1
