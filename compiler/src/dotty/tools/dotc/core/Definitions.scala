@@ -1047,6 +1047,11 @@ class Definitions {
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
+  // Initialization annotations
+  @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
+    @tu lazy val InitWidenAnnot: ClassSymbol = InitModule.requiredClass("widen")
+    @tu lazy val InitRegionMethod: Symbol = InitModule.requiredMethod("region")
+
   // A list of meta-annotations that are relevant for fields and accessors
   @tu lazy val NonBeanMetaAnnots: Set[Symbol] =
     Set(FieldMetaAnnot, GetterMetaAnnot, ParamMetaAnnot, SetterMetaAnnot, CompanionClassMetaAnnot, CompanionMethodMetaAnnot)
