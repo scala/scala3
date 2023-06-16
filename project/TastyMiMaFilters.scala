@@ -9,17 +9,6 @@ object TastyMiMaFilters {
     // Probably OK: Case class with varargs
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.StringContext.parts"), // before: scala.<repeated>[Predef.String]; after: scala.collection.immutable.Seq[Predef.String] @scala.annotation.internal.Repeated
 
-    // Problem: The symbol scala.*.<init> has a more restrictive visibility qualifier in current version
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Boolean.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Byte.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Short.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Int.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Long.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Float.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Double.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Char.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Unit.<init>"),
-
     // Problem: Missing Serializable in companions of serializable classes
     ProblemMatcher.make(ProblemKind.MissingParent, "scala.*$"),
 

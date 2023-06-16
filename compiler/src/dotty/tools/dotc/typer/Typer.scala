@@ -2697,6 +2697,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     checkEnumParent(cls, firstParent)
 
+    if defn.ScalaValueClasses()(cls) && ctx.settings.Yscala2Stdlib.value then
+      constr1.symbol.resetFlag(Private)
+
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
       // fail fast to avoid typing the body with an error type

@@ -25,15 +25,6 @@ object MiMaFilters {
       Seq(
         // Files that are not compiled in the bootstrapped library
         ProblemFilters.exclude[MissingClassProblem]("scala.AnyVal"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Unit.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Boolean.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.this"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.this"),
 
 
         // Scala language features
