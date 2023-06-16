@@ -116,9 +116,10 @@ class Pickler extends Phase {
             }
 
           // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-          if pickling ne noPrinter then
+          if ctx.settings.YprintTasty.value || pickling != noPrinter then
             println(i"**** pickled info of $cls")
             println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
+            println(i"**** end of pickled info of $cls")
           pickled
         }
       }
