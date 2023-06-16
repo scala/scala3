@@ -95,3 +95,7 @@ contributors.js
 content-contributors.css
 docs/_spec/_site/
 docs/_spec/.jekyll-metadata
+
+# scaladoc related
+scaladoc/output/
+
