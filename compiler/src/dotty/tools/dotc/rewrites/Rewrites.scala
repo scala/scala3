@@ -26,7 +26,8 @@ object Rewrites {
       pbuf += Patch(span, replacement)
 
     def patchOver(span: Span, replacement: String): Unit =
-      pbuf.indices.reverse.find(i => span.contains(pbuf(i).span)).foreach(pbuf.remove)
+      val prevPatchIdx = pbuf.lastIndexWhere(p => span.contains(p.span))
+      if prevPatchIdx >= 0 then pbuf.remove(prevPatchIdx)
       pbuf += Patch(span, replacement)
 
     def apply(cs: Array[Char]): Array[Char] = {
