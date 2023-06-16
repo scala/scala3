@@ -6,6 +6,9 @@ object TastyMiMaFilters {
     // OK
     ProblemMatcher.make(ProblemKind.MissingClass, "scala.*.<local child>"),
 
+    // OK: constructors have a result type the return Unit instead of the class type
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.*.<init>"), // scala.math.Numeric.CharIsIntegral.<init>; before: (): scala.math.Numeric.CharIsIntegral; after: (): Unit
+
     // Probably OK
     ProblemMatcher.make(ProblemKind.InternalError, "scala.*"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*$extension"),
@@ -63,22 +66,35 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.util.hashing.Hashing.fromFunction"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.IterableOnceOps.aggregate"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.sys.package.addShutdownHook"),
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.HashTable.init"),
 
-    // Problems with class constructors
+    // Probably OK: Case class with varargs
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.StringContext.parts"), // before: scala.<repeated>[Predef.String]; after: scala.collection.immutable.Seq[Predef.String] @scala.annotation.internal.Repeated
+
+    // Probably OK: default parameter
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*$default$*"),
+
+    // Problem: secondary constructors?
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*.<init>"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.*.<init>"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.*.<init>"),
+
+    // Problem: The symbol scala.*.<init> has a more restrictive visibility qualifier in current version
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Boolean.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Byte.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Short.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Int.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Long.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Float.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Double.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Char.<init>"),
+    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.Unit.<init>"),
 
     // Problem: Missing trait constructor
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*.$init$"),
 
-    // Problem: default parameter
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.*$default$*"), // To check (semantic names vs mangled name?)
-
     // Problem: Missing Serializable in companions of serializable classes
     ProblemMatcher.make(ProblemKind.MissingParent, "scala.*$"),
 
-    // Problem: Class[T] or ClassTag[T] return type
+    // Problem: Class[T] or ClassTag[T] with `T` equal to wildcard `_ >: Nothing <: AnyVal` instead of a specific primitive type `T`
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.*.getClass"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.reflect.ManifestFactory.*.runtimeClass"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.*.elemTag"),
@@ -96,27 +112,24 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.*.C"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.jdk.Accumulator.CC"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.EvidenceIterableFactory*.Ev"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.package.LinearSeq"),
 
     // Problem: Incompatible type change is `with` intersection types
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.convert.impl.*.Semi"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.*MapOps.coll"),
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.convert.impl.*.Semi"), // scala.collection.convert.impl.BinaryTreeStepperBase.Semi; source: Semi <: Sub with BinaryTreeStepperBase[A, T, _, _]; before: _ :> scala.Nothing <: scala.Any; after: :> scala.Nothing <: scala.collection.convert.impl.BinaryTreeStepperBase.Sub & scala.collection.convert.impl.BinaryTreeStepperBase[scala.collection.convert.impl.BinaryTreeStepperBase.A, scala.collection.convert.impl.BinaryTreeStepperBase.T, _ :> scala.Nothing <: scala.Any, _ :> scala.Nothing <: scala.Any]
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.*MapOps.coll"), // scala.collection.immutable.MapOps.coll; source: C with CC[K, V]; before: scala.Any; after: scala.&[scala.collection.immutable.MapOps.C, scala.collection.immutable.MapOps.CC[scala.collection.immutable.MapOps.K, scala.collection.immutable.MapOps.V]]
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.package.LinearSeq"), // before: [X] =>> Any; after:  [X] ==> scala.&[scala.collection.mutable.Seq[X], scala.collection.LinearSeq[X]]
 
     // Problem: Refined type in signature
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.runtime.ScalaRunTime.drop"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.generic.IsMap.Tupled"),
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.generic.IsMap.Tupled"), // scala.collection.generic.IsMap.Tupled; source: type Tupled[F[+_]] = { type Ap[X, Y] = F[(X, Y)] }; before: [F] =>> Any; after: [F] =>> { type Ap = [X, Y] =>> F[(X,Y)]}
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.generic.IsMap.*IsMap"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.generic.IsSeq.*IsSeq"),
-
-    // Problem: Case class with varargs
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.StringContext.parts"),
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.runtime.ScalaRunTime.drop"),
 
     // Problem: ???
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
 
     // Problem: Inferred result type of non-private member differs
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"),
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"), // before: scala.Any; after: scala.collection.AbstractIterator[scala.util.matching.Regex] & scala.util.matching.Regex.Replacement
 
     // Problem: implicit class (method should not be final)
     ProblemMatcher.make(ProblemKind.FinalMember, "scala.collection.convert.*.*"),
@@ -128,7 +141,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.generic.IsIterable.*OpsIsIterable"),
 
     // Non-categorized
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.HashTable.init"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.immutable.::.next$access$1"),
     ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.generic.DefaultSerializable._$1"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.*_="),
