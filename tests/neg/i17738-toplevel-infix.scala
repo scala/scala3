@@ -7,6 +7,9 @@ infix type B[b, a] = b match {
 infix class C[A, B]
 infix trait D[A, B]
 
+extension (x: Boolean)
+  infix def or (y: => Boolean) = x || y
+
 infix val toplevelVal = ??? // error
 infix var toplevelVar = ??? // error
 infix def toplevelDef = ??? // error

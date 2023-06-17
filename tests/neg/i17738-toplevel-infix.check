@@ -1,20 +1,20 @@
--- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:10:10 ----------------------------------------------------
-10 |infix val toplevelVal = ??? // error
+-- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:13:10 ----------------------------------------------------
+13 |infix val toplevelVal = ??? // error
    |          ^
    |          a toplevel val cannot be infix
--- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:11:10 ----------------------------------------------------
-11 |infix var toplevelVar = ??? // error
+-- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:14:10 ----------------------------------------------------
+14 |infix var toplevelVar = ??? // error
    |          ^
    |          a toplevel var cannot be infix
--- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:12:10 ----------------------------------------------------
-12 |infix def toplevelDef = ??? // error
+-- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:15:10 ----------------------------------------------------
+15 |infix def toplevelDef = ??? // error
    |          ^
    |          a toplevel def cannot be infix
--- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:13:12 ----------------------------------------------------
-13 |infix given toplevelGiven: Int = ??? // error
+-- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:16:12 ----------------------------------------------------
+16 |infix given toplevelGiven: Int = ??? // error
    |            ^
    |            a toplevel given cannot be infix
--- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:14:19 ----------------------------------------------------
-14 |infix implicit val topevelImplicit: Int = ??? // error
+-- [E183] Syntax Error: tests/neg/i17738-toplevel-infix.scala:17:19 ----------------------------------------------------
+17 |infix implicit val topevelImplicit: Int = ??? // error
    |                   ^
    |                   a toplevel val cannot be infix
