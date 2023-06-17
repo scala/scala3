@@ -212,9 +212,7 @@ object ProtoTypes {
               || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
                 // Note: can't use `m.info` here because if `m` is a method, `m.info`
                 //       loses knowledge about `m`'s default arguments.
-          mbr match // hasAltWith inlined for performance
-            case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
-            case _ => mbr hasAltWith qualifies
+          mbr.hasAltWithInline(qualifies)
         catch case ex: TypeError =>
           // A scenario where this can happen is in pos/15673.scala:
           // We have a type `CC[A]#C` where `CC`'s upper bound is `[X] => Any`, but
