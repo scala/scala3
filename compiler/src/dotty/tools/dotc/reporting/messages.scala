@@ -2938,3 +2938,13 @@ class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
       i"""cannot turn method type $mt into closure
          |because it has internal parameter dependencies"""
     def explain(using Context) = ""
+    
+class ToplevelDefCantBeInfix(sym: Symbol)(using Context)
+  extends SyntaxMsg(ToplevelDefCantBeInfixID):
+    def msg(using Context) = i"a toplevel $defName cannot be infix"
+    def explain(using Context) = ""
+    private val defName = 
+      if sym.flags.is(Method) then "def"
+      else if sym.flags.is(Mutable) then "var"
+      else if sym.flags.is(Given) then "given"
+      else "val"

@@ -561,6 +561,7 @@ object Checking {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
+    if sym.isWrappedToplevelDef && !sym.isType then fail(ToplevelDefCantBeInfix(sym))
     checkApplicable(Erased,
       !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
     checkCombination(Final, Open)
