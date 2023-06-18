@@ -5577,6 +5577,16 @@ object Types {
         else None
       }
       else None
+
+    def isSamCompatible(lhs: Type, rhs: Type)(using Context): Boolean = rhs match
+      case SAMType(mt) if !isParamDependentRec(mt) =>
+        lhs <:< mt.toFunctionType(isJava = rhs.classSymbol.is(JavaDefined))
+      case _ => false
+
+    def isParamDependentRec(mt: MethodType)(using Context): Boolean =
+      mt.isParamDependent || mt.resultType.match
+        case mt: MethodType => isParamDependentRec(mt)
+        case _              => false
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

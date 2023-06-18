@@ -1324,7 +1324,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
-        case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
+        case pt1 @ SAMType(mt @ MethodTpe(_, formals, _)) if !SAMType.isParamDependentRec(mt) =>
+          val restpe = mt.resultType match
+            case mt: MethodType => mt.toFunctionType(isJava = pt1.classSymbol.is(JavaDefined))
+            case tp => tp
           (formals,
            if (mt.isResultDependent)
              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
@@ -4115,17 +4118,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
-        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
-          pt match {
-            case SAMType(sam)
-            if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>
-              // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
-              // but this prevents case blocks from implementing polymorphic partial functions,
-              // since we do not know the result parameter a priori. Have to wait until the
-              // body is typechecked.
-              return toSAM(tree)
-            case _ =>
-          }
+        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) && SAMType.isSamCompatible(wtp, pt) =>
+          // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
+          // but this prevents case blocks from implementing polymorphic partial functions,
+          // since we do not know the result parameter a priori. Have to wait until the
+          // body is typechecked.
+          return toSAM(tree)
         case _ =>
       }
 
