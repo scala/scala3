@@ -940,6 +940,7 @@ object Build {
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Yscala2-stdlib",
+      scalacOptions += "-Ycheck:all",
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
