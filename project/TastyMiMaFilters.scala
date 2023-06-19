@@ -131,9 +131,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"), // before: scala.Any; after: scala.collection.AbstractIterator[scala.util.matching.Regex] & scala.util.matching.Regex.Replacement
 
-    // Problem: implicit class (method should not be final)
-    ProblemMatcher.make(ProblemKind.FinalMember, "scala.collection.convert.*.*"),
-
     // Problem: implicit class
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.generic.IsIterableLowPriority.is*LikeIsIterable"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.generic.IsIterableOnce.iterableOnceIsIterableOnce"),
