@@ -62,7 +62,7 @@ If the trait `T` is parametrised such that `new T{}` would be a legal annonymous
 ```scala
 trait withLastName(val lastName: String = "")
 
-case class Person extends withLastName
+case class Person() extends withLastName
 // identical to
 case class Person extends withLastName("")
 ```
