@@ -244,6 +244,7 @@ object Positioned {
     debugId = ctx.settings.YdebugTreeWithId.value
     if ids == null && ctx.settings.YshowTreeIds.value
        || debugId != ctx.settings.YdebugTreeWithId.default
+       || ctx.settings.Ycheck.value.nonEmpty
     then
       ids = java.util.WeakHashMap()
 }
