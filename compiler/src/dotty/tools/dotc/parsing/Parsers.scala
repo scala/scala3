@@ -168,10 +168,13 @@ object Parsers {
     }
   }
 
-  class Parser private[parsing] (source: SourceFile, allowRewrite: Boolean = true)(using Context) extends ParserCommon(source) {
+  class Parser private[Parsers] (source: SourceFile, allowRewrite: Boolean = true)(using Context) extends ParserCommon(source) {
 
-    val in: Scanner = new Scanner(source, profile = Profile.current, allowRewrite = allowRewrite)
+    val in: Scanner = createScanner()
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
+
+    def createScanner() =
+      new Scanner(source, profile = Profile.current, allowRewrite = allowRewrite)
 
     /** This is the general parse entry point.
      */
@@ -4318,19 +4321,17 @@ object Parsers {
   }
 
   /** The Scala parser that can rewrite to indent */
-  class ToIndentParser(source: SourceFile)(using Context) extends Parser(source):
-    class ToIndentScanner(source: SourceFile)(using Context) extends Scanner(source):
-      /** A copy of the previous token */
-      var prev: TokenData = Scanners.newTokenData
+  private class ToIndentParser(source: SourceFile)(using Context) extends Parser(source):
 
+    override def createScanner(): Scanner = new Scanner(source):
       override def nextToken(): Unit =
         if token != EMPTY then patchIndent()
         prev = saveCopy
         super.nextToken()
-    end ToIndentScanner
 
-    override val in: ToIndentScanner = new ToIndentScanner(source)
     assert(in.rewriteToIndent)
+    
+    private var prev: TokenData = Scanners.newTokenData
 
     /** The last offset where a colon at the end of line would be required if a subsequent { ... }
      *  block would be converted to an indentation region. */
@@ -4378,7 +4379,7 @@ object Parsers {
      *   7. last token is not a leading operator
      */
     private def bracesToIndented[T](body: => T, rewriteWithColon: Boolean): T =
-      val prevSaved = in.prev.saveCopy
+      val prevSaved = prev.saveCopy
       val lastOffsetSaved = in.lastOffset
       val underColonSyntax = possibleColonOffset == in.lastOffset
       val colonRequired = rewriteWithColon || underColonSyntax

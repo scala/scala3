@@ -1553,7 +1553,7 @@ object Scanners {
 
    /* Initialization: read first char, then first token */
     nextChar()
-    nextToken()
+    (this: @unchecked).nextToken()
     currentRegion = topLevelRegion(indentWidth(offset))
   }
   end Scanner
