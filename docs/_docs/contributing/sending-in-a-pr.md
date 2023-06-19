@@ -130,16 +130,6 @@ parts of the CI that usually ony runs on nightly builds.
 | `[test_windows_full]`     | Execute unit tests on Windows                      |
 | `[test_non_bootstrapped]` | Execute unit tests using non-bootstrapped compiler |
 
-
-#### Making sure every commit triggers a new run
-
-By default the Dotty CI will cancel your previous runs if you push a new commit.
-This helps make sure the CI keeps moving without getting stuck running a ton of
-jobs if you push multiple times in a row. _However_, there are times you may
-want to run every commit. To do this, make sure your PR body contains `[no
-cancel]`. This will ensure that there are no cancellations of your previous
-runs.
-
 ### 7: Create your PR!
 
 When the feature or fix is completed you should open a [Pull
