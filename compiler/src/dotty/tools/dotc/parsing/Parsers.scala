@@ -3028,7 +3028,9 @@ object Parsers {
       val name = in.name
       val mod = atSpan(in.skipToken()) { modOfToken(tok, name) }
 
-      if (mods.isOneOf(mod.flags)) syntaxError(RepeatedModifier(mod.flags.flagsString))
+      if mods.isOneOf(mod.flags) then
+        syntaxError(RepeatedModifier(mod.flags.flagsString), mod.span)
+
       addMod(mods, mod)
     }
 

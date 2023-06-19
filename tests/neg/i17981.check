@@ -1,0 +1,6 @@
+-- [E015] Syntax Error: tests/neg/i17981.scala:1:6 ---------------------------------------------------------------------
+1 |final final case class Foo() // error
+  |      ^^^^^
+  |      Repeated modifier final
+  |
+  | longer explanation available when compiling with `-explain`
