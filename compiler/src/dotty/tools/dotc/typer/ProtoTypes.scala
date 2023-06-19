@@ -17,6 +17,7 @@ import Inferencing.*
 import ErrorReporting.*
 import util.SourceFile
 import TypeComparer.necessarySubType
+import dotty.tools.dotc.core.Flags.Transparent
 
 import scala.annotation.internal.sharable
 
@@ -105,14 +106,14 @@ object ProtoTypes {
       if !res then ctx.typerState.constraint = savedConstraint
       res
 
-    /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
+    /** Constrain result with special case if `meth` is a transparent inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,
      *  because the actual return type can be a subtype of the currently known return type.
      *  However, we should constrain parameters of the declared return type. This distinction is
      *  achieved by replacing expected type parameters with wildcards.
      */
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
-      if (Inlines.isInlineable(meth)) {
+      if (Inlines.isInlineable(meth) && meth.is(Transparent)) {
         constrainResult(mt, wildApprox(pt))
         true
       }
