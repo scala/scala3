@@ -1,5 +1,3 @@
-import scala.quoted._
-
 object Macro:
   opaque type StrCtx = StringContext
   def apply(ctx: StringContext): StrCtx = ctx
