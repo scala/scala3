@@ -1,0 +1,24 @@
+-- [E008] Not Found Error: tests/neg/i17757.scala:3:17 -----------------------------------------------------------------
+3 |  println(_root_.length)  // error
+  |          ^^^^^^^^^^^^^
+  |          value length is not a member of <root>
+-- [E119] Type Error: tests/neg/i17757.scala:4:10 ----------------------------------------------------------------------
+4 |  println(_root_)  // error
+  |          ^^^^^^
+  |          package _root_ is not a value
+-- [E119] Type Error: tests/neg/i17757.scala:7:2 -----------------------------------------------------------------------
+7 |  _root_  // error
+  |  ^^^^^^
+  |  package _root_ is not a value
+-- [E119] Type Error: tests/neg/i17757.scala:8:9 -----------------------------------------------------------------------
+8 |  _root_.scala  // error
+  |  ^^^^^^^^^^^^
+  |  package scala is not a value
+-- [E119] Type Error: tests/neg/i17757.scala:9:10 ----------------------------------------------------------------------
+9 |  println(_root_)  // error
+  |          ^^^^^^
+  |          package _root_ is not a value
+-- [E119] Type Error: tests/neg/i17757.scala:10:17 ---------------------------------------------------------------------
+10 |  println(_root_.scala)  // error
+   |          ^^^^^^^^^^^^
+   |          package scala is not a value

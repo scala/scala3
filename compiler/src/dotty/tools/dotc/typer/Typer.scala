@@ -561,30 +561,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return typedQuotedTypeVar(tree, pt)
     end if
 
-    // Shortcut for the root package, this is not just a performance
-    // optimization, it also avoids forcing imports thus potentially avoiding
-    // cyclic references.
-    if (name == nme.ROOTPKG)
-      return tree.withType(defn.RootPackage.termRef)
-
-    val rawType =
-      val saved1 = unimported
-      val saved2 = foundUnderScala2
-      unimported = Set.empty
-      foundUnderScala2 = NoType
-      try
-        val found = findRef(name, pt, EmptyFlags, EmptyFlags, tree.srcPos)
-        if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
-          report.migrationWarning(
-            em"""Name resolution will change.
-              | currently selected                          : $foundUnderScala2
-              | in the future, without -source 3.0-migration: $found""", tree.srcPos)
-          foundUnderScala2
-        else found
-      finally
-      	unimported = saved1
-      	foundUnderScala2 = saved2
-
     /** Normally, returns `ownType` except if `ownType` is a constructor proxy,
      *  and there is another shadowed type accessible with the same name that is not:
      *    - if the prototype is an application:
@@ -622,6 +598,31 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val tree2 = toNotNullTermRef(tree1, pt)
       checkLegalValue(tree2, pt)
       tree2
+
+    // Shortcut for the root package, this is not just a performance
+    // optimization, it also avoids forcing imports thus potentially avoiding
+    // cyclic references.
+    if (name == nme.ROOTPKG)
+      return setType(defn.RootPackage.termRef)
+
+    val rawType =
+      val saved1 = unimported
+      val saved2 = foundUnderScala2
+      unimported = Set.empty
+      foundUnderScala2 = NoType
+      try
+        val found = findRef(name, pt, EmptyFlags, EmptyFlags, tree.srcPos)
+        if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
+          report.migrationWarning(
+            em"""Name resolution will change.
+              | currently selected                          : $foundUnderScala2
+              | in the future, without -source 3.0-migration: $found""", tree.srcPos)
+          foundUnderScala2
+        else found
+      finally
+      	unimported = saved1
+      	foundUnderScala2 = saved2
+
 
     def isLocalExtensionMethodRef: Boolean = rawType match
       case rawType: TermRef =>
