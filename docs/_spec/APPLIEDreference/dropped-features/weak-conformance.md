@@ -44,4 +44,5 @@ Therefore, Scala 3 drops the general notion of weak conformance, and
 instead keeps one rule: `Int` literals are adapted to other numeric
 types if necessary.
 
-[More details](weak-conformance-spec.md)
+For more details, see Sections "Types > Weak Conformance" and "Expressions > Harmonization" in the specification.
+TODO Link to the spec when it is published.
