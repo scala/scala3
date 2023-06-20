@@ -83,7 +83,7 @@ class CheckShadowing extends MiniPhase:
     ctx
 
   override def prepareForOther(tree: tpd.Tree)(using Context): Context =
-    importTraverser(tree.symbol).traverse(tree)
+    importTraverser.traverse(tree)
     ctx
 
   override def prepareForValDef(tree: tpd.ValDef)(using Context): Context =
@@ -152,7 +152,7 @@ class CheckShadowing extends MiniPhase:
   end nestedTypeTraverser
 
   // To reach the imports during a miniphase traversal
-  private def importTraverser(parent: Symbol) = new TreeTraverser:
+  private def importTraverser = new TreeTraverser:
     import tpd._
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
