@@ -63,7 +63,10 @@ trait SiteRenderer(using DocContext) extends Locations:
         .orElse(asStaticSite)
         .orElse(asAsset)
         .getOrElse {
-          report.warn(s"Unable to resolve link '$str'", content.template.templateFile.file)
+          if (!summon[DocContext].args.noLinkAssetWarnings){
+            val msg = s"Unable to resolve link '$str'"
+            report.warn(msg, content.template.templateFile.file)
+          }
           str
         }
 
