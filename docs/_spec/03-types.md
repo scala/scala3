@@ -173,7 +173,7 @@ In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \
 If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
 
 The type operators `|` and `&` are not really special.
-Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
+Nevertheless, unless shadowed, they resolve to [the fundamental type aliases `scala.|` and `scala.&`](./12-the-scala-standard-library.html#fundamental-type-aliases), which represent [union and intersection types](#union-and-intersection-types), respectively.
 
 ### Function Types
 
@@ -230,6 +230,21 @@ scala.PolyFunction {
 }
 ```
 
+### Tuple Types
+
+```ebnf
+SimpleType1           ::=  ...
+                        |  ‘(’ TypesOrWildcards ‘)’
+```
+
+A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is sugar for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`, which is itself a series of nested infix types which are sugar for `*:[´T_1´, *:[´T_2´, ... *[´T_n´, scala.EmptyTuple]]]`.
+The ´T_i´ can be wildcard type arguments.
+
+Notes:
+
+- `(´T_1´)` is the type ´T_1´, and not `´T_1´ *: scala.EmptyTuple` (´T_1´ cannot be a wildcard type argument in that case).
+- `()` is not a valid type (not even `scala.EmptyTuple`).
+
 ### Concrete Refined Types
 
 ```ebnf
@@ -285,7 +300,7 @@ _Types_ are either _proper types_, _type constructors_ or _poly-kinded types_.
 
 All types live in a single lattice with respect to a [_conformance_](#conformance) relationship ´<:´.
 The _top type_ is `AnyKind` and the _bottom type_ is `Nothing`: all types conform to `AnyKind`, and `Nothing` conforms to all types.
-They can be referred to as the standard library entities `scala.AnyKind` and `scala.Nothing`, respectively.
+They can be referred to with [the fundamental type aliases `scala.AnyKind` and `scala.Nothing`](./12-the-scala-standard-library.html#fundamental-type-aliases), respectively.
 
 Types can be _concrete_ or _abstract_.
 An abstract type ´T´ always has lower and upper bounds ´L´ and ´H´ such that ´L >: T´ and ´T <: H´.
@@ -1086,7 +1101,7 @@ Note that the conditions are not all mutually exclusive.
           - ´S_i´ and ´T_i´ are types and ´S_i =:= T_i´, or
           - ´S_i´ is a type and ´T_i´ is a wildcard type argument of the form ´? >: L_2 <: H_2´ and ´L_2 <: S_i´ and ´S_i <: H_2´, or
           - ´S_i´ is a wildcard type argument of the form ´? >: L_1 <: H_1´ and ´T_i´ is a wildcard type argument of the form ´? >: L_2 <: H_2´ and ´L_2 <: L_1´ and ´H_1 <: H_2´ (i.e., the ´S_i´ "interval" is contained in the ´T_i´ "interval").
-- ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and `baseType(´S´, ´C´)` is defined and `baseType(´S´, ´C´) ´<: T´.
+- ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and `baseType(´S´, ´C´)` is defined and `baseType(´S´, ´C´) ´<: T´`.
 - ´S = p.X[S_1, ..., S_n]´ and ´p.X´ is non-class type designator and ´H <: T´ where ´H´ is the upper bound of the underlying type definition of ´p.X´.
 - ´S = p.C´ and `´T = C´.this` and ´C´ is the hidden class of an `object` and:
   - ´p = \epsilon´ or ´p´ is a package ref, or
@@ -1129,6 +1144,7 @@ Note that the conditions are not all mutually exclusive.
 - ´S´ is a stable type and ´T = q.x´ is a term designator with underlying type ´T_1´ and ´T_1´ is a stable type and ´S <: T_1´.
 - `´S = S_1´ { ´R´ }` and ´S_1 <: T´.
 - `´S =´ { ´\alpha´ => ´S_1´ }` and ´S_1 <: T´.
+- `´T =´ scala.Tuple´_n[T_1, ..., T_n]´` with ´1 \leq n \leq 22´, and `´S <: T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
 
 We define `isSubPrefix(´p´, ´q´)` where ´p´ and ´q´ are prefixes as:
 
