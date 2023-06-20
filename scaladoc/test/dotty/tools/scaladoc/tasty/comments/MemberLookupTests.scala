@@ -1,7 +1,7 @@
 package dotty.tools.scaladoc
 package tasty.comments
 
-import scala.quoted.Quotes
+import scala.quoted.*
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue}
@@ -198,14 +198,11 @@ class MemberLookupTests {
 
   @Test
   def test(): Unit = {
-    import scala.tasty.inspector.OldTastyInspector
-    class Inspector extends OldTastyInspector:
-      var alreadyRan: Boolean = false
+    import scala.tasty.inspector.*
+    class MyInspector extends Inspector:
 
-      override def processCompilationUnit(using ctx: quoted.Quotes)(root: ctx.reflect.Tree): Unit =
-        if !alreadyRan then
-          this.test()
-          alreadyRan = true
+      def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
+        this.test()
 
       def test()(using q: Quotes): Unit = {
         import dotty.tools.scaladoc.tasty.comments.MemberLookup
@@ -215,6 +212,6 @@ class MemberLookupTests {
         cases.testAll()
       }
 
-    Inspector().inspectTastyFiles(TestUtils.listOurClasses())
+    TastyInspector.inspectTastyFiles(TestUtils.listOurClasses())(new MyInspector)
   }
 }

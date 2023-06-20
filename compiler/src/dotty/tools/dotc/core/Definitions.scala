@@ -976,6 +976,8 @@ class Definitions {
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
     @tu lazy val Caps_SealedAnnot: ClassSymbol = requiredClass("scala.caps.Sealed")
 
+  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
+
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
   @tu lazy val StaticAnnotationClass: ClassSymbol = requiredClass("scala.annotation.StaticAnnotation")
@@ -1044,6 +1046,11 @@ class Definitions {
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
+
+  // Initialization annotations
+  @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
+    @tu lazy val InitWidenAnnot: ClassSymbol = InitModule.requiredClass("widen")
+    @tu lazy val InitRegionMethod: Symbol = InitModule.requiredMethod("region")
 
   // A list of meta-annotations that are relevant for fields and accessors
   @tu lazy val NonBeanMetaAnnots: Set[Symbol] =
@@ -1944,6 +1951,14 @@ class Definitions {
       case Some(pkgs) => pkgs.contains(sym.owner)
       case none => false
 
+  /** Experimental definitions that can nevertheless be accessed from a stable
+   *  compiler if capture checking is enabled.
+   */
+  @tu lazy val ccExperimental: Set[Symbol] = Set(
+    CapsModule, CapsModule.moduleClass, PureClass,
+    CapabilityAnnot, RequiresCapabilityAnnot,
+    RetainsAnnot, RetainsByNameAnnot, WithPureFunsAnnot)
+
   // ----- primitive value class machinery ------------------------------------------
 
   class PerRun[T](generate: Context ?=> T) {
@@ -2041,15 +2056,17 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
-    SimpleIdentityMap.empty[Symbol]
-      .updated(AnyClass, ObjectClass)
-      .updated(MatchableClass, ObjectClass)
-      .updated(AnyValClass, ObjectClass)
-      .updated(SingletonClass, ObjectClass)
-      .updated(TupleClass, ProductClass)
-      .updated(NonEmptyTupleClass, ProductClass)
-      .updated(PairClass, ObjectClass)
+  @tu lazy val specialErasure: collection.Map[Symbol, ClassSymbol] =
+    val m = mutable.Map[Symbol, ClassSymbol]()
+    m(AnyClass) = ObjectClass
+    m(MatchableClass) = ObjectClass
+    m(PureClass) = ObjectClass
+    m(AnyValClass) = ObjectClass
+    m(SingletonClass) = ObjectClass
+    m(TupleClass) = ProductClass
+    m(NonEmptyTupleClass) = ProductClass
+    m(PairClass) = ObjectClass
+    m
 
   // ----- Initialization ---------------------------------------------------
 

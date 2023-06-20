@@ -1554,7 +1554,7 @@ object Scanners {
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
    */
-  abstract class Region(val closedBy: Token) extends caps.Pure:
+  abstract class Region(val closedBy: Token) extends Pure:
 
    /** The region enclosing this one, or `null` for the outermost region */
     def outer: Region | Null

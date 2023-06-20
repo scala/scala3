@@ -589,7 +589,7 @@ object Semantic:
               Hot
           else
             if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
+              report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", field = " + field.show + Trace.show, Trace.position)
               Hot
             else
               // This is possible due to incorrect type cast.
@@ -597,7 +597,7 @@ object Semantic:
               Hot
 
         case fun: Fun =>
-          report.error("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
+          report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.expr.show + Trace.show, fun.expr)
           Hot
 
         case RefSet(refs) =>
@@ -725,7 +725,7 @@ object Semantic:
               value.select(target, receiver, needResolve = false)
           else
             if ref.klass.isSubClass(receiver.widenSingleton.classSymbol) then
-              report.error("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
+              report.warning("[Internal error] Unexpected resolution failure: ref.klass = " + ref.klass.show + ", meth = " + meth.show + Trace.show, Trace.position)
               Hot
             else
               // This is possible due to incorrect type cast.
@@ -755,7 +755,7 @@ object Semantic:
 
       value match {
         case Hot | Cold | _: RefSet | _: Fun =>
-          report.error("[Internal error] unexpected constructor call, meth = " + ctor + ", value = " + value + Trace.show, Trace.position)
+          report.warning("[Internal error] unexpected constructor call, meth = " + ctor + ", value = " + value + Trace.show, Trace.position)
           Hot
 
         case ref: Warm if ref.isPopulatingParams =>
@@ -862,7 +862,7 @@ object Semantic:
             warm
 
         case Fun(body, thisV, klass) =>
-          report.error("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
+          report.warning("[Internal error] unexpected tree in instantiating a function, fun = " + body.show + Trace.show, Trace.position)
           Hot
 
         case RefSet(refs) =>
@@ -882,7 +882,7 @@ object Semantic:
         case Hot => Hot
         case ref: Ref => ref.objekt.field(sym)
         case _ =>
-            report.error("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
+            report.warning("[Internal error] unexpected this value accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
             Hot
       else if sym.is(Flags.Param) then
         Hot
@@ -900,7 +900,7 @@ object Semantic:
               case ref: Ref => eval(vdef.rhs, ref, enclosingClass, cacheResult = sym.is(Flags.Lazy))
 
               case _ =>
-                 report.error("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
+                 report.warning("[Internal error] unexpected this value when accessing local variable, sym = " + sym.show + ", thisValue = " + thisValue2.show + Trace.show, Trace.position)
                  Hot
             end match
 
@@ -1040,7 +1040,7 @@ object Semantic:
         //
         // This invariant holds because of the Scala/Java/JVM restriction that we cannot use `this` in super constructor calls.
         if subClassSegmentHot && !isHotSegment then
-          report.error("[Internal error] Expect current segment to be transitively initialized (Hot) in promotion, current klass = " + klass.show +
+          report.warning("[Internal error] Expect current segment to be transitively initialized (Hot) in promotion, current klass = " + klass.show +
               ", subclass = " + subClass.show + Trace.show, Trace.position)
 
         // If the outer and parameters of a class are all hot, then accessing fields and methods of the current
@@ -1300,8 +1300,8 @@ object Semantic:
       case closureDef(ddef) =>
         Fun(ddef.rhs, thisV, klass)
 
-      case PolyFun(body) =>
-        Fun(body, thisV, klass)
+      case PolyFun(ddef) =>
+        Fun(ddef.rhs, thisV, klass)
 
       case Block(stats, expr) =>
         eval(stats, thisV, klass)
@@ -1374,7 +1374,7 @@ object Semantic:
         Hot
 
       case _ =>
-        report.error("[Internal error] unexpected tree" + Trace.show, expr)
+        report.warning("[Internal error] unexpected tree" + Trace.show, expr)
         Hot
 
   /** Handle semantics of leaf nodes
@@ -1418,7 +1418,7 @@ object Semantic:
         Hot
 
       case _ =>
-        report.error("[Internal error] unexpected type " + tp + Trace.show, Trace.position)
+        report.warning("[Internal error] unexpected type " + tp + Trace.show, Trace.position)
         Hot
   }
 
@@ -1439,14 +1439,14 @@ object Semantic:
           val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.hasOuter(klass) then
             val error = "[Internal error] outer not yet initialized, target = " + target + ", klass = " + klass + ", object = " + obj + Trace.show
-            report.error(error, Trace.position)
+            report.warning(error, Trace.position)
             Hot
           else
             resolveThis(target, obj.outer(klass), outerCls)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass)).join
         case fun: Fun =>
-          report.error("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
+          report.warning("[Internal error] unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show + Trace.show, Trace.position)
           Cold
         case Cold => Cold
 

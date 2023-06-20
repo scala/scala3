@@ -596,7 +596,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     case JavaArrayType(elemTp) => defn.ArrayOf(escapeJavaArray(elemTp))
     case _                     => tp
 
-  private enum ManifestKind extends caps.Pure: // !cc! should all enums be Pure?
+  private enum ManifestKind extends Pure: // !cc! should all enums be Pure?
     case Full, Opt, Clss
 
     /** The kind that should be used for an array element, if we are `OptManifest` then this

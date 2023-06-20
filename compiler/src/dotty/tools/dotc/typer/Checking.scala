@@ -584,6 +584,8 @@ object Checking {
       report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
     if mods.is(Final, butNot = Synthetic) then
       report.warning(RedundantModifier(Final), flagSourcePos(Final))
+    if mods.is(Infix) then
+      report.error(ModifierNotAllowedForDefinition(Infix), flagSourcePos(Infix))
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
    *  to a private type or value which is invisible at a point where `M` is still
@@ -784,7 +786,9 @@ object Checking {
     for case imp @ Import(qual, selectors) <- trees do
       def isAllowedImport(sel: untpd.ImportSelector) =
         val name = Feature.experimental(sel.name)
-        name == Feature.scala2macros || name == Feature.erasedDefinitions
+        name == Feature.scala2macros
+        || name == Feature.erasedDefinitions
+        || name == Feature.captureChecking
 
       languageImport(qual) match
         case Some(nme.experimental)

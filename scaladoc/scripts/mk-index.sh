@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# NOTE that this file is used in CI
+
 MYDIR="$(dirname "$(readlink -f "$0")")"
 
 

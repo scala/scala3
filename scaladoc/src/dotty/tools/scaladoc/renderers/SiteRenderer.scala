@@ -30,9 +30,15 @@ trait SiteRenderer(using DocContext) extends Locations:
   def siteContent(pageDri: DRI, content: ResolvedTemplate): PageContent =
     import content.ctx
     def tryAsDri(str: String): Option[String] =
-      val (path, prefix) = str match
+      val newStr =
+        str.dropWhile(c => c == '.' || c == '/').replaceAll("/", ".") match
+          case str if str.endsWith("$.html") => str.stripSuffix("$.html")
+          case str if str.endsWith(".html") => str.stripSuffix(".html")
+          case _ => str
+
+      val (path, prefix) = newStr match
         case HashRegex(path, prefix) => (path, prefix)
-        case _ => (str, "")
+        case _ => (newStr, "")
 
       val res = ctx.driForLink(content.template.file, path).filter(driExists)
       res.headOption.map(pathToPage(pageDri, _) + prefix)
@@ -49,7 +55,7 @@ trait SiteRenderer(using DocContext) extends Locations:
 
       /* Link resolving checks performs multiple strategies with following priority:
         1. We check if the link is a valid URL e.g. http://dotty.epfl.ch
-        2. We check if the link leads to other static site
+        2. We check if the link leads to other static site or API pages, example: [[exemple.scala.Foo]] || [Foo](../exemple/scala/Foo.html)
         3. We check if the link leads to existing asset e.g. images/logo.svg -> <static-site-root>/_assets/images/logo.svg
       */
 

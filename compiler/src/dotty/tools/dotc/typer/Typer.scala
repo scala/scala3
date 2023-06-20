@@ -408,16 +408,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // Does reference `tp` refer only to inherited symbols?
           def isInherited(denot: Denotation) =
             def isCurrent(mbr: SingleDenotation): Boolean =
-              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner || ctx.owner.is(Package)
+              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner
             denot match
               case denot: SingleDenotation => !isCurrent(denot)
               case denot => !denot.hasAltWith(isCurrent)
 
-          /* It is an error if an identifier x is available as an inherited member in an inner scope
-           * and the same name x is defined in an outer scope in the same source file, unless
-           * the inherited member (has an overloaded alternative that) coincides with
-           * (an overloaded alternative of) the definition x.
-           */
           def checkNoOuterDefs(denot: Denotation, last: Context, prevCtx: Context): Unit =
             def sameTermOrType(d1: SingleDenotation, d2: Denotation) =
               d2.containsSym(d1.symbol) || d2.hasUniqueSym && {
@@ -434,15 +429,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val owner = outer.owner
             if (owner eq last.owner) && (outer.scope eq last.scope) then
               checkNoOuterDefs(denot, outer, prevCtx)
-            else if !owner.isRoot then
-              val found =
-                if owner.is(Package) then
-                  owner.denot.asClass.membersNamed(name)
-                    .filterWithPredicate(d => !d.symbol.is(Package) && d.symbol.source == denot.symbol.source)
-                else
-                  val scope = if owner.isClass then owner.info.decls else outer.scope
-                  scope.denotsNamed(name)
-              val competing = found.filterWithFlags(required, excluded | Synthetic)
+            else if !owner.is(Package) then
+              val scope = if owner.isClass then owner.info.decls else outer.scope
+              val competing = scope.denotsNamed(name).filterWithFlags(required, excluded)
               if competing.exists then
                 val symsMatch = competing
                   .filterWithPredicate(sd => sameTermOrType(sd, denot))
@@ -1335,7 +1324,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
-        case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
+        case pt1 @ SAMType(mt @ MethodTpe(_, formals, _)) if !SAMType.isParamDependentRec(mt) =>
+          val restpe = mt.resultType match
+            case mt: MethodType => mt.toFunctionType(isJava = pt1.classSymbol.is(JavaDefined))
+            case tp => tp
           (formals,
            if (mt.isResultDependent)
              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
@@ -4126,17 +4118,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
-        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
-          pt match {
-            case SAMType(sam)
-            if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>
-              // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
-              // but this prevents case blocks from implementing polymorphic partial functions,
-              // since we do not know the result parameter a priori. Have to wait until the
-              // body is typechecked.
-              return toSAM(tree)
-            case _ =>
-          }
+        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) && SAMType.isSamCompatible(wtp, pt) =>
+          // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
+          // but this prevents case blocks from implementing polymorphic partial functions,
+          // since we do not know the result parameter a priori. Have to wait until the
+          // body is typechecked.
+          return toSAM(tree)
         case _ =>
       }
 

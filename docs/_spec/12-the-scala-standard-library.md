@@ -349,6 +349,39 @@ All case classes automatically extend the `Product` trait (and generate syntheti
 <!-- TODO: Move somewhere else ? -->
 All enum definitions automatically extend the `reflect.Enum` trait (and generate synthetic methods to conform to it).
 
+### Tuple Classes
+
+Tuple classes are case classes whose fields can be accessed using selectors `_1`, ..., `_n`.
+Their functionality is abstracted in the corresponding `scala.Product_´n´` trait.
+The _n_-ary tuple class and product trait are defined at least as follows in the standard Scala library (they might also add other methods and implement other traits).
+
+```scala
+case class Tuple´_n´[+´T_1´, ..., +´T_n´](_1: ´T_1´, ..., _n: ´T_n´)
+extends Product´_n´[´T_1´, ..., ´T_n´]
+
+trait Product´_n´[+´T_1´, ..., +´T_n´] extends Product:
+  override def productArity = ´n´
+  def _1: ´T_1´
+  ...
+  def _n: ´T_n´
+```
+
+#### Short-hand syntax
+
+Tuple classes have dedicated syntax.
+
+```ebnf
+SimpleType    ::=   ‘(’ Types ‘)’
+```
+
+A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is an alias for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
+
+Notes:
+- `(´T´)` is just the type ´T´, and not `´T´ *: scala.EmptyTuple`.
+- `()` is not a valid type, and not `scala.EmptyTuple`.
+
+If ´n \leq 22´, the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple` is both a subtype and a supertype of tuple class `scala.Tuple´_n´[´T_1´, ..., ´T_n´]`.
+
 ### Class `Array`
 
 All operations on arrays desugar to the corresponding operations of the underlying platform.

@@ -275,6 +275,14 @@ class CompilationTests {
   }.checkRuns()
 
   // initialization tests
+  @Test def checkInitGlobal: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
+    val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
+    compileFilesInDir("tests/init-global/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init-global/pos", options).checkCompile()
+  }
+
+  // initialization tests
   @Test def checkInit: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")

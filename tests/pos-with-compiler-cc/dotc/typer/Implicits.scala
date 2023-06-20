@@ -84,7 +84,7 @@ object Implicits:
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
-  abstract class ImplicitRefs(initctx: DetachedContext) extends caps.Pure {
+  abstract class ImplicitRefs(initctx: DetachedContext) extends Pure {
     val irefCtx: DetachedContext =
       if (initctx eq NoContext) initctx else initctx.retractMode(Mode.ImplicitsEnabled).detach
     protected given Context = irefCtx
@@ -1651,7 +1651,7 @@ end Implicits
  * recursive references and emit a complete implicit dictionary when the outermost search
  * is complete.
  */
-abstract class SearchHistory extends caps.Pure:
+abstract class SearchHistory extends Pure:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
@@ -1869,7 +1869,7 @@ final class SearchRoot extends SearchHistory:
 end SearchRoot
 
 /** A set of term references where equality is =:= */
-sealed class TermRefSet(using DetachedContext) extends caps.Pure:
+sealed class TermRefSet(using DetachedContext) extends Pure:
   private val elemsMap = new util.HashMap[TermSymbol, Type | List[Type]]
   private val elemsBuf = new mutable.ListBuffer[TermSymbol]
 

@@ -15,7 +15,7 @@ import ast.untpd
 import config.Printers.cyclicErrors
 import language.experimental.pureFunctions
 
-abstract class TypeError(using creationContext: DetachedContext) extends Exception(""), caps.Pure:
+abstract class TypeError(using creationContext: DetachedContext) extends Exception(""), Pure:
 
   /** Convert to message. This takes an additional Context, so that we
    *  use the context when the message is first produced, i.e. when the TypeError

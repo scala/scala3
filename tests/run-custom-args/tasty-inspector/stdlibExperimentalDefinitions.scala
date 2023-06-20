@@ -53,6 +53,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
+  "scala.Pure",
   "scala.caps",
   "scala.caps$",
 
@@ -61,6 +62,12 @@ val experimentalDefinitionInLibrary = Set(
 
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
+
+  //// New feature: -Ysafe-init-global
+  "scala.annotation.init",
+  "scala.annotation.init$",
+  "scala.annotation.init$.widen",
+  "scala.annotation.init$.region",
 
    //// New APIs: Quotes
   // Should be stabilized in 3.4.0

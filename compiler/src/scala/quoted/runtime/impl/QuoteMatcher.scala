@@ -354,7 +354,7 @@ object QuoteMatcher {
             /* Match new */
             case New(tpt1) =>
               pattern match
-                case New(tpt2) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol => matched
+                case New(tpt2) if tpt1.tpe.dealias.typeSymbol == tpt2.tpe.dealias.typeSymbol => matched
                 case _ => notMatched
 
             /* Match this */

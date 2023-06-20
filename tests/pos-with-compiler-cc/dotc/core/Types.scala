@@ -91,7 +91,7 @@ object Types {
    *
    *  Note: please keep in sync with copy in `docs/docs/internals/type-system.md`.
    */
-  abstract class Type extends Hashable, printing.Showable, caps.Pure {
+  abstract class Type extends Hashable, printing.Showable, Pure {
 
 // ----- Tests -----------------------------------------------------
 
