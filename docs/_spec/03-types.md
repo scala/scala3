@@ -1012,7 +1012,11 @@ We define `memberType(´T´, ´id´, ´p´)` as follows:
   - If ´m´ is not defined, the result is undefined.
   - If ´m´ is a class declaration, the result is a class result with class ´m´.
   - If ´m´ is a term definition in class ´D´ with declared type ´U´, the result is a term result with underlying type [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)` and stable flag true if and only if ´m´ is stable.
-  - If ´m´ is a type member definition in class ´D´ with declared type definition ´U´, the result is a type result with underlying type definition [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)`.
+  - If ´m´ is a type member definition in class ´D´, the result is a type result with underlying type definition [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)` where ´U´ is defined as follows:
+      - If ´m´ is an opaque type alias member definition with declared definition ´>: L <: H = V´, then
+          - ´U´ is ´= V´ if `´p = D.´this` or if we are computing `memberType` in a [_transparent mode_](#type-erasure),
+          - ´U´ is ´>: L <: H´ otherwise.
+      - ´U´ is the declared type definition of ´m´ otherwise.
 - If ´T´ is another monomorphic type designator of the form ´q.X´:
   - Let ´U´ be `memberType(´q´, ´X´)`
   - Let ´H´ be the upper bound of ´U´
@@ -1228,6 +1232,7 @@ A type is called _generic_ if it contains type arguments or type variables.
 _Type erasure_ is a mapping from (possibly generic) types to non-generic types.
 We write ´|T|´ for the erasure of type ´T´.
 The erasure mapping is defined as follows.
+Internal computations are performed in a _transparent mode_, which has an effect on how [`memberType`](#member-type) behaves for opaque type aliases.
 
 - The erasure of `AnyKind` is `Object`.
 - The erasure of a non-class type designator is the erasure of its underlying upper bound.
