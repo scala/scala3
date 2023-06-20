@@ -2845,6 +2845,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             else
               invariantDisjoint(arg1, arg2, tparam)
         }
+      case (tp1: AppliedType, tp2) if tp1.tryCompiletimeConstantFold.exists =>
+        provablyDisjoint(tp1.tryCompiletimeConstantFold, tp2)
+      case (tp1, tp2: AppliedType) if tp2.tryCompiletimeConstantFold.exists =>
+        provablyDisjoint(tp1, tp2.tryCompiletimeConstantFold)
       case (tp1: HKLambda, tp2: HKLambda) =>
         provablyDisjoint(tp1.resType, tp2.resType)
       case (_: HKLambda, _) =>
