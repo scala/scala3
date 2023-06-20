@@ -2948,4 +2948,3 @@ class ToplevelDefCantBeInfix(sym: Symbol)(using Context)
       else if sym.flags.is(Mutable) then "var"
       else if sym.flags.is(Given) then "given"
       else "val"
-      
