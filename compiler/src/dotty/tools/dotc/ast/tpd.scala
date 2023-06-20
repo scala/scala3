@@ -1520,6 +1520,25 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  /** Creates the tuple containing the elemets */
+  def tupleTree(elems: List[Tree])(using Context): Tree = {
+    val arity = elems.length
+    if arity == 0 then
+      ref(defn.EmptyTupleModule)
+    else if arity <= Definitions.MaxTupleArity then
+      // TupleN[elem1Tpe, ...](elem1, ...)
+      ref(defn.TupleType(arity).nn.typeSymbol.companionModule)
+        .select(nme.apply)
+        .appliedToTypes(elems.map(_.tpe.widenIfUnstable))
+        .appliedToArgs(elems)
+    else
+      // TupleXXL.apply(elems*) // TODO add and use Tuple.apply(elems*) ?
+      ref(defn.TupleXXLModule)
+        .select(nme.apply)
+        .appliedToVarargs(elems.map(_.asInstance(defn.ObjectType)), TypeTree(defn.ObjectType))
+        .asInstance(defn.tupleType(elems.map(elem => elem.tpe.widenIfUnstable)))
+  }
+
   /** Creates the tuple type tree representation of the type trees in `ts` */
   def tupleTypeTree(elems: List[Tree])(using Context): Tree = {
     val arity = elems.length

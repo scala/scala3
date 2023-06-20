@@ -413,36 +413,67 @@ object Inlines:
             return Intrinsics.codeOf(arg, call.srcPos)
         case _ =>
 
-      // Special handling of `constValue[T]`, `constValueOpt[T], and summonInline[T]`
+      // Special handling of `constValue[T]`, `constValueOpt[T]`, `constValueTuple[T]`, and `summonInline[T]`
       if callTypeArgs.length == 1 then
-        if (inlinedMethod == defn.Compiletime_constValue) {
-          val constVal = tryConstValue
+
+        def constValueOrError(tpe: Type): Tree =
+          val constVal = tryConstValue(tpe)
           if constVal.isEmpty then
-            val msg = NotConstant("cannot take constValue", callTypeArgs.head.tpe)
-            return ref(defn.Predef_undefined).withSpan(call.span).withType(ErrorType(msg))
+            val msg = NotConstant("cannot take constValue", tpe)
+            ref(defn.Predef_undefined).withSpan(callTypeArgs.head.span).withType(ErrorType(msg))
           else
-            return constVal
+            constVal
+
+        def searchImplicitOrError(tpe: Type): Tree =
+          val evTyper = new Typer(ctx.nestingLevel + 1)
+          val evCtx = ctx.fresh.setTyper(evTyper)
+          inContext(evCtx) {
+            val evidence = evTyper.inferImplicitArg(tpe, callTypeArgs.head.span)
+            evidence.tpe match
+              case fail: Implicits.SearchFailureType =>
+                errorTree(call, evTyper.missingArgMsg(evidence, tpe, ""))
+              case _ =>
+                evidence
+          }
+
+        def unrollTupleTypes(tpe: Type): Option[List[Type]] = tpe.dealias match
+          case AppliedType(tycon, args) if defn.isTupleClass(tycon.typeSymbol) =>
+            Some(args)
+          case AppliedType(tycon, head :: tail :: Nil) if tycon.isRef(defn.PairClass) =>
+            unrollTupleTypes(tail).map(head :: _)
+          case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
+            Some(Nil)
+          case _ =>
+            None
+
+        if (inlinedMethod == defn.Compiletime_constValue) {
+          return constValueOrError(callTypeArgs.head.tpe)
         }
         else if (inlinedMethod == defn.Compiletime_constValueOpt) {
-          val constVal = tryConstValue
+          val constVal = tryConstValue(callTypeArgs.head.tpe)
           return (
             if (constVal.isEmpty) ref(defn.NoneModule.termRef)
             else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
           )
         }
+        else if (inlinedMethod == defn.Compiletime_constValueTuple) {
+          unrollTupleTypes(callTypeArgs.head.tpe) match
+            case Some(types) =>
+              val constants = types.map(constValueOrError)
+              return Typed(tpd.tupleTree(constants), TypeTree(callTypeArgs.head.tpe)).withSpan(call.span)
+            case _ =>
+              return errorTree(call, em"Tuple element types must be known at compile time")
+        }
         else if (inlinedMethod == defn.Compiletime_summonInline) {
-          def searchImplicit(tpt: Tree) =
-            val evTyper = new Typer(ctx.nestingLevel + 1)
-            val evCtx = ctx.fresh.setTyper(evTyper)
-            inContext(evCtx) {
-              val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)
-              evidence.tpe match
-                case fail: Implicits.SearchFailureType =>
-                  errorTree(call, evTyper.missingArgMsg(evidence, tpt.tpe, ""))
-                case _ =>
-                  evidence
-            }
-          return searchImplicit(callTypeArgs.head)
+          return searchImplicitOrError(callTypeArgs.head.tpe)
+        }
+        else if (inlinedMethod == defn.Compiletime_summonAll) {
+          unrollTupleTypes(callTypeArgs.head.tpe) match
+            case Some(types) =>
+              val implicits = types.map(searchImplicitOrError)
+              return Typed(tpd.tupleTree(implicits), TypeTree(callTypeArgs.head.tpe)).withSpan(call.span)
+            case _ =>
+              return errorTree(call, em"Tuple element types must be known at compile time")
         }
       end if
 
