@@ -295,9 +295,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         case UnusedSymbol(t, _, WarnTypes.PatVars) =>
           report.warning(s"unused pattern variable", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetLocals) =>
-          report.warning(s"unset local variable", t)
+          report.warning(s"unset local variable, consider using an immutable val instead", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetPrivates) =>
-          report.warning(s"unset private variable", t)
+          report.warning(s"unset private variable, consider using an immutable val instead", t)
     }
 
 end CheckUnused

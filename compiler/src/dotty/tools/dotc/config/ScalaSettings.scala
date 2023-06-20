@@ -308,7 +308,7 @@ private sealed trait XSettings:
 
   val XmacroSettings: Setting[List[String]] = MultiStringSetting("-Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
-  val Xlint: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Xlint: Setting[List[ChoiceWithHelp[String]]] = UncompleteMultiChoiceHelpSetting(
     name = "-Xlint",
     helpArg = "advanced warning",
     descr = "Enable or disable specific `lint` warnings",
