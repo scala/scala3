@@ -45,7 +45,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -91,7 +91,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -211,7 +211,7 @@ jobs:
     name: MiMa
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -252,7 +252,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -304,7 +304,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -356,7 +356,7 @@ jobs:
   community_build_c:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -408,7 +408,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -448,7 +448,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -502,7 +502,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -553,7 +553,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -604,7 +604,7 @@ jobs:
       contents: write  # for actions/create-release to create a release
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -692,7 +692,7 @@ jobs:
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2023-06-21
+      image: lampepfl/dotty:2023-06-21-2
     needs: [nightly_documentation, test_windows_full]
     # The `failure()` expression is true iff at least one of the dependencies
     # of this job (including transitive dependencies) has failed.
