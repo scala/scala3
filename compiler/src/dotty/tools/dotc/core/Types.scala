@@ -4478,7 +4478,15 @@ object Types {
           case MatchAlias(alias) =>
             trace(i"normalize $this", typr, show = true) {
               MatchTypeTrace.recurseWith(this) {
-                alias.applyIfParameterized(args.map(_.normalized)).tryNormalize
+                alias.applyIfParameterized(args.map(_.normalized)) match
+                  case mt @ MatchType(bound, scrutinee, cases) =>
+                    val scrutinee1 = scrutinee.widenSkolem
+                    if scrutinee1 ne scrutinee then
+                      mt.derivedMatchType(bound, scrutinee.widenSkolem, cases).normalized
+                    else
+                      mt.tryNormalize
+                  case mt =>
+                    mt.tryNormalize
               }
             }
           case _ =>
