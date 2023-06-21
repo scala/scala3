@@ -41,7 +41,6 @@ class SidebarParserTest:
   private val sidebarNoTitle =
     """index: index.md
       |subsection:
-      |  - title: My title
       |    page: my-page1.md
       |  - page: my-page2.md
       |  - page: my-page3/subsection
@@ -57,7 +56,7 @@ class SidebarParserTest:
       |    subsection:
       |      - page: my-page5/my-page5.md
       |  - subsection:
-      |        page: my-page7/my-page7.md
+      |      - page: my-page7/my-page7.md
       |  - index: my-page6/index.md
       |    subsection:
       |      - index: my-page6/my-page6/index.md
@@ -122,10 +121,9 @@ class SidebarParserTest:
     Console.withErr(new PrintStream(out)) {
       Sidebar.load(sidebarErrorNoPage)(using testContext)
     }
-    println(out.toString())
-    val error = out.toString().trim()
+    val errorPage = out.toString().trim()
 
-    assert(error.contains(msgNoPage) && error.contains(schemaMessage))
+    assert(errorPage.contains(msgNoPage) && errorPage.contains(schemaMessage))
 
 
   @Test
@@ -134,6 +132,6 @@ class SidebarParserTest:
     Console.withErr(new PrintStream(out)) {
       Sidebar.load(sidebarNoTitle)(using testContext)
     }
-    val error = out.toString().trim()
+    val errorTitle = out.toString().trim()
 
-    assert(error.contains(msgNoTitle) && error.contains(schemaMessage))
+    assert(errorTitle.contains(msgNoTitle) && errorTitle.contains(schemaMessage))
