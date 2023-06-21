@@ -85,6 +85,13 @@ object Test extends App {
   val v0a: String = v0
   assert(v0 == "foo")
 
+  // Used to fail with:    Found: ... => List[T]
+  //                    Expected: ... => List[x.type]
+  val md2: [T] => (x: T) => List[x.type] = [T] => (x: T) => List(x)
+  val x = 1
+  val v1 = md2(x)
+  val v1a: List[x.type] = v1
+
   // Contextual
   trait Show[T] { def show(t: T): String }
   implicit val si: Show[Int] =

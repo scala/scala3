@@ -1511,6 +1511,7 @@ object Parsers {
             TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
           else if imods.isOneOf(Given | Impure) || erasedArgs.contains(true) then
             if imods.is(Given) && params.isEmpty then
+              imods &~= Given
               syntaxError(em"context function types require at least one parameter", paramSpan)
             FunctionWithMods(params, resultType, imods, erasedArgs.toList)
           else if !ctx.settings.YkindProjector.isDefault then
