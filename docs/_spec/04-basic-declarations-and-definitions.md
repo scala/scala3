@@ -164,7 +164,7 @@ A variable definition  `var ´p´ = ´e´` where ´p´ is a pattern other than a
 
 The name of any declared or defined variable may not end in `_=`.
 
-A variable definition `var ´x´: ´T´ = _` can appear only as a member of a template.
+The right-hand-side of a mutable variable definition that is a member of a template can be the special reference `scala.compiletime.uninitialized`: `var ´x´: ´T´ = scala.compiletime.uninitialized`.
 It introduces a mutable field with type ´T´ and a default initial value.
 The default value depends on the type ´T´ as follows:
 
@@ -177,6 +177,9 @@ The default value depends on the type ´T´ as follows:
 |`false`   | `Boolean`                          |
 |`()`      | `Unit`                             |
 |`null`    | all other types                    |
+
+`scala.compiletime.uninitialized` can never appear anywhere else.
+For compatibility with Scala 2, the syntax `var ´x´: ´T´ = _` is accepted as equivalent to using `uninitialized`.
 
 When they occur as members of a template, both forms of variable definition also introduce a getter method ´x´ which returns the value currently assigned to the variable, as well as a setter method `´x´_=` which changes the value currently assigned to the variable.
 The methods have the same signatures as for a variable declaration.
@@ -572,6 +575,9 @@ The scope of a type parameter includes the whole signature, including any of the
 
 A _value parameter clause_ ´\mathit{ps}´ consists of zero or more formal parameter bindings such as `´x´: ´T´` or `´x: T = e´`, which bind value parameters and associate them with their types.
 
+A unary operator must not have explicit parameter lists even if they are empty.
+A unary operator is a method named `"unary_´op´"` where ´op´ is one of `+`, `-`, `!`, or `~`.
+
 ### Default Arguments
 
 Each value parameter declaration may optionally define a default argument.
@@ -729,52 +735,69 @@ completely.  It is an error if the types of two alternatives ´T_i´ and
 
 ## Import Clauses
 
-```ebnf
-Import          ::= ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr      ::= StableId ‘.’ (id | ‘_’ | ImportSelectors)
-ImportSelectors ::= ‘{’ {ImportSelector ‘,’}
-                    (ImportSelector | ‘_’) ‘}’
-ImportSelector  ::= id [‘=>’ id | ‘=>’ ‘_’]
+```
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::= SimpleRef {‘.’ id} ‘.’ ImportSpecifier
+                    | SimpleRef `as` id
+ImportSpecifier   ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors ‘}’
+NamedSelector     ::=  id [(‘as’ | ’=>’) (id | ‘_’)]
+WildcardSelector  ::=  ‘*’ | ’_’ | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildcardSelector}
 ```
 
-An import clause has the form `import ´p´.´I´` where ´p´ is a [stable identifier](03-types.html#paths) and ´I´ is an import expression.
-The import expression determines a set of names of importable members of ´p´ which are made available without qualification.
-A member ´m´ of ´p´ is _importable_ if it is [accessible](05-classes-and-objects.html#modifiers).
-The most general form of an import expression is a list of _import selectors_
+- In a `NamedSelector`, `=>` can only be used when inside an `ImportSelectors` and is then equivalent to `as`, to be deprecated in the future.
+- In a `WildcardSelector`, `_` is equivalent to `*`, to be deprecated in the future.
 
-```scala
-{ ´x_1´ => ´y_1, ..., x_n´ => ´y_n´, _ }
-```
-
-for ´n \geq 0´, where the final wildcard `‘_’` may be absent.
-It makes available each importable member `´p´.´x_i´` under the unqualified name ´y_i´. I.e. every import selector `´x_i´ => ´y_i´` renames `´p´.´x_i´` to
-´y_i´.
-If a final wildcard is present, all importable members ´z´ of ´p´ other than `´x_1, ..., x_n,y_1, ..., y_n´` are also made available under their own unqualified names.
-
-Import selectors work in the same way for type and term members.
-For instance, an import clause `import ´p´.{´x´ => ´y\,´}` renames the term
-name `´p´.´x´` to the term name ´y´ and the type name `´p´.´x´` to the type name ´y´.
-At least one of these two names must reference an importable member of ´p´.
-
-If the target in an import selector is a wildcard, the import selector hides access to the source member.
-For instance, the import selector `´x´ => _` “renames” ´x´ to the wildcard symbol (which is unaccessible as a name in user programs), and thereby effectively prevents unqualified access to ´x´.
-This is useful if there is a final wildcard in the same import selector list, which imports all members not mentioned in previous import selectors.
-
-The scope of a binding introduced by an import-clause starts immediately after the import clause and extends to the end of the enclosing block, template, package clause, or compilation unit, whichever comes first.
-
-Several shorthands exist. An import selector may be just a simple name ´x´.
-In this case, ´x´ is imported without renaming, so the import selector is equivalent to `´x´ => ´x´`.
-Furthermore, it is possible to replace the whole import selector list by a single identifier or wildcard.
-The import clause `import ´p´.´x´` is equivalent to `import ´p´.{´x\,´}`, i.e. it makes available without qualification the member ´x´ of ´p´. The import clause `import ´p´._` is equivalent to `import ´p´.{_}`, i.e. it makes available without qualification all members of ´p´ (this is analogous to `import ´p´.*` in Java).
+An `ImportSpecifier` that is a single `NamedSelector` or `WildcardSelector` is equivalent to an `‘{‘ ImportSelectors ‘}‘` list with that single selector.
 
 An import clause with multiple import expressions `import ´p_1´.´I_1, ..., p_n´.´I_n´` is interpreted as a sequence of import clauses `import ´p_1´.´I_1´; ...; import ´p_n´.´I_n´`.
+
+An import clause with a single import expression has the form `import ´p´.´I´` where ´p´ is a [prefix](03-types.html#designator-types) and ´I´ is an import specifier.
+The import specifier determines a set of names of importable members of ´p´ which are made available without qualification as well as a set of importable `given` members which are made available in the implicit scope.
+A member ´m´ of ´p´ is _importable_ if it is [accessible](05-classes-and-objects.html#modifiers).
+The most general form of an import specifier is a list of _import selectors_
+
+```scala
+{ ´x_1´ as ´y_1, ..., x_n´ as ´y_n´, *, given ´T_1´, ..., given ´T_m´, given }
+```
+
+for ´n \geq 0´ and ´m \geq 0´, where the wildcards `‘*’` and `’given’` may be absent.
+They are decomposed into non-given selectors and given selectors.
+
+### Non-given Imports
+
+Non-given selectors make available each importable member `´p´.´x_i´` under the unqualified name ´y_i´.
+In other words, every import selector `´x_i´ as ´y_i´` renames `´p´.´x_i´` to ´y_i´.
+When `as ´y_i´` is omitted, ´y_i´ is assumed to be ´x_i´.
+If a final wildcard `‘*’` is present, all non-`given` importable members ´z´ of ´p´ other than `´x_1, ..., x_n, y_1, ..., y_n´` are also made available under their own unqualified names.
+
+Non-given import selectors work in the same way for type and term members.
+For instance, an import clause `import ´p´.´x´ as ´y´` renames the term name `´p´.´x´` to the term name ´y´ and the type name `´p´.´x´` to the type name ´y´.
+At least one of these two names must reference an importable member of ´p´.
+
+If the target in an import selector is an underscore `as _`, the import selector hides access to the source member instead of importing it.
+For instance, the import selector `´x´ as _` “renames” ´x´ to the underscore symbol (which is not accessible as a name in user programs), and thereby effectively prevents unqualified access to ´x´.
+This is useful if there is a final wildcard in the same import selector list, which imports all members not mentioned in previous import selectors.
+
+The scope of a binding introduced by a non-given import clause starts immediately after the import clause and extends to the end of the enclosing block, template, package clause, or compilation unit, whichever comes first.
+
+### Given Imports
+
+Given selectors make available in the implicit scope all the importable `given` and `implicit` members `´p´.´x´` such that `´p.x´` is a subtype of ´T_i´.
+A bare `given` selector without type is equivalent to `given scala.Any`.
+
+The names of the given members are irrelevant for the selection, and are not made available in the normal scope of unqualified names.
 
 ###### Example
 Consider the object definition:
 
 ```scala
 object M {
-  def z = 0, one = 1
+  def z = 0
+  def one = 1
   def add(x: Int, y: Int): Int = x + y
 }
 ```
@@ -782,11 +805,16 @@ object M {
 Then the block
 
 ```scala
-{ import M.{one, z => zero, _}; add(zero, one) }
+{
+  import M.{one, z as zero, *}
+  add(zero, one)
+}
 ```
 
 is equivalent to the block
 
 ```scala
-{ M.add(M.z, M.one) }
+{
+  M.add(M.z, M.one)
+}
 ```
