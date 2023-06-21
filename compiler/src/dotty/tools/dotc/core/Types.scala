@@ -4954,7 +4954,7 @@ object Types {
           trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases)
+              try cmp.matchCases(scrutinee.normalized.widenSkolem, cases)
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
               finally

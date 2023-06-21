@@ -1007,7 +1007,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: MatchType =>
         def compareMatch = tp2 match {
           case tp2: MatchType =>
-            isSameType(tp1.scrutinee, tp2.scrutinee) &&
+            isSameType(tp1.scrutinee.widenSkolem, tp2.scrutinee.widenSkolem) &&
             tp1.cases.corresponds(tp2.cases)(isSubType)
           case _ => false
         }
