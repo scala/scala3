@@ -1373,7 +1373,7 @@ object Types {
           Atoms.Range(set, set)
         else Atoms.Unknown
 
-      dealias match
+      dealias.normalized match
         case tp: SingletonType =>
           tp.underlying.atoms match
             case as @ Atoms.Range(lo, hi) =>
@@ -1456,7 +1456,7 @@ object Types {
       deskolemizer(this)
 
     /** The result of normalization using `tryNormalize`, or the type itself if
-     *  tryNormlize yields NoType
+     *  tryNormalize yields NoType
      */
     final def normalized(using Context): Type = {
       val normed = tryNormalize
