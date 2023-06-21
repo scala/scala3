@@ -65,11 +65,8 @@ object TastyMiMaFilters {
 
     // Problem: Inferred result type of non-private member differs
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"), // before: scala.Any; after: scala.collection.AbstractIterator[scala.util.matching.Regex] & scala.util.matching.Regex.Replacement
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.util.hashing.Hashing.fromFunction"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.classTagCompanion"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.SetWrapper.iterator"),
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.concurrent.FailedNode.string"),
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.util.hashing.Hashing.fromFunction"),
 
     // Problem: implicit class
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.generic.IsIterableLowPriority.is*LikeIsIterable"),
@@ -143,6 +140,7 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.package.+:.unapply"),
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.impl.*StepperBase.semiclone"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.*StepperBase.semiclone"),
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.util.matching.Regex.MatchIterator.replacementData"), // before: scala.Any; after: scala.collection.AbstractIterator[scala.util.matching.Regex] & scala.util.matching.Regex.Replacement
 
     // TASTy-MiMa bug? Wildcards in self type
     ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.generic.DefaultSerializable._$1"),
@@ -150,6 +148,7 @@ object TastyMiMaFilters {
     // TASTy-MiMa bug? module classes
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.BitSet.bitSetFactory"), // The symbol scala.collection.immutable.BitSet.bitSetFactory has an incompatible type in current version: before: scala.collection.immutable.BitSet$; after: scala.collection.immutable.BitSet.type
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"), // The symbol scala.collection.mutable.BitSet.bitSetFactory has an incompatible type in current version: before: scala.collection.mutable.BitSet$; after: scala.collection.mutable.BitSet.type
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.classTagCompanion"), // The symbol scala.collection.mutable.UnrolledBuffer.classTagCompanion has an incompatible type in current version: before: scala.collection.mutable.UnrolledBuffer$; after: scala.collection.mutable.UnrolledBuffer.type
 
     // TASTy-MiMa bugs
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.appendedAll"),
