@@ -34,7 +34,6 @@ object TastyMiMaFilters {
 
     // Problem: Class[T] or ClassTag[T] with `T` equal to wildcard `_ >: Nothing <: AnyVal` instead of a specific primitive type `T`
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.*.getClass"),
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.*.elemTag"),
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.Unrolled.<init>$default$4"),
 
     // Problem: Case class with private constructor
