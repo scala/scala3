@@ -20,17 +20,18 @@ import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.ErrorReporting.errorTree
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
+import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
 
-
 /** Type quotes `'{ ... }` and splices `${ ... }` */
 trait QuotesAndSplices {
   self: Typer =>
 
-  import tpd._
+  import tpd.*
+  import QuotesAndSplices.*
 
   /** Translate `'{ e }` into `scala.quoted.Expr.apply(e)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
@@ -155,19 +156,30 @@ trait QuotesAndSplices {
    *  The resulting pattern is the split in `splitQuotePattern`.
    */
   def typedQuotedTypeVar(tree: untpd.Ident, pt: Type)(using Context): Tree =
-    def spliceOwner(ctx: Context): Symbol =
-      if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-    val name = tree.name.toTypeName
-    val nameOfSyntheticGiven = PatMatGivenVarName.fresh(tree.name.toTermName)
-    val expr = untpd.cpy.Ident(tree)(nameOfSyntheticGiven)
     val typeSymInfo = pt match
       case pt: TypeBounds => pt
       case _ => TypeBounds.empty
-    val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
-    typeSym.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
-    val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
-        using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-    pat.select(tpnme.Underlying)
+    getQuotedPatternTypeVariable(tree.name.asTypeName) match
+      case Some(typeSym) =>
+        checkExperimentalFeature(
+          "support for multiple references to the same type (without backticks) in quoted type patterns (SIP-53)",
+          tree.srcPos,
+          "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
+        if !(typeSymInfo =:= TypeBounds.empty) && !(typeSym.info <:< typeSymInfo) then
+          report.warning(em"Ignored bound$typeSymInfo\n\nConsider defining bounds explicitly `'{ $typeSym${typeSym.info & typeSymInfo}; ... }`", tree.srcPos)
+        ref(typeSym)
+      case None =>
+        def spliceOwner(ctx: Context): Symbol =
+          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+        val name = tree.name.toTypeName
+        val nameOfSyntheticGiven = PatMatGivenVarName.fresh(tree.name.toTermName)
+        val expr = untpd.cpy.Ident(tree)(nameOfSyntheticGiven)
+        val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
+        typeSym.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
+        addQuotedPatternTypeVariable(typeSym)
+        val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+            using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+        pat.select(tpnme.Underlying)
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.isInlineMethod))
@@ -385,11 +397,35 @@ trait QuotesAndSplices {
       case Some(argPt: ValueType) => argPt // excludes TypeBounds
       case _ => defn.AnyType
     }
-    val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
-    val quoteCtx = quoteContext.addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
-    val quoted1 =
-      if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx)
-      else typedExpr(quoted0, WildcardType)(using quoteCtx)
+    val (untpdTypeVariables, quoted0) = desugar.quotedPatternTypeVariables(desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt))))
+
+    for tdef @ untpd.TypeDef(_, rhs) <- untpdTypeVariables do rhs match
+      case _: TypeBoundsTree => // ok
+      case LambdaTypeTree(_, body: TypeBoundsTree) => // ok
+      case _ => report.error("Quote type variable definition cannot be an alias", tdef.srcPos)
+
+    if quoted.isType && untpdTypeVariables.nonEmpty then
+      checkExperimentalFeature(
+        "explicit type variable declarations quoted type patterns (SIP-53)",
+        untpdTypeVariables.head.srcPos,
+        "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
+
+    val (typeTypeVariables, patternCtx) =
+      val quoteCtx = quotePatternContext()
+      if untpdTypeVariables.isEmpty then (Nil, quoteCtx)
+      else typedBlockStats(untpdTypeVariables)(using quoteCtx)
+
+    val quoted1 = inContext(patternCtx) {
+      for typeVariable <- typeTypeVariables do
+        addQuotedPatternTypeVariable(typeVariable.symbol)
+
+      val pattern =
+        if quoted.isType then typedType(quoted0, WildcardType)(using patternCtx)
+        else typedExpr(quoted0, WildcardType)
+
+      if untpdTypeVariables.isEmpty then pattern
+      else tpd.Block(typeTypeVariables, pattern)
+    }
 
     val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
 
@@ -445,4 +481,25 @@ trait QuotesAndSplices {
       patterns = splicePat :: Nil,
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe)))
   }
+}
+
+object QuotesAndSplices {
+  import tpd._
+
+  /** Key for mapping from quoted pattern type variable names into their symbol */
+  private val TypeVariableKey = new Property.Key[collection.mutable.Map[TypeName, Symbol]]
+
+  /** Get the symbol for the quoted pattern type variable if it exists */
+  def getQuotedPatternTypeVariable(name: TypeName)(using Context): Option[Symbol] =
+    ctx.property(TypeVariableKey).get.get(name)
+
+    /** Get the symbol for the quoted pattern type variable if it exists */
+  def addQuotedPatternTypeVariable(sym: Symbol)(using Context): Unit =
+    ctx.property(TypeVariableKey).get.update(sym.name.asTypeName, sym)
+
+  /** Context used to type the contents of a quoted */
+  def quotePatternContext()(using Context): Context =
+    quoteContext.fresh.setNewScope
+      .addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
+      .setProperty(TypeVariableKey, collection.mutable.Map.empty)
 }
