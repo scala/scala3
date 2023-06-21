@@ -102,11 +102,8 @@ import dotty.tools.dotc.util.optional
  *
  *   ```
  */
-object QuoteMatcher {
+class QuoteMatcher(debug: Boolean) {
   import tpd.*
-
-  // TODO use flag from Context. Maybe -debug or add -debug-macros
-  private inline val debug = false
 
   /** Sequence of matched expressions.
    *  These expressions are part of the scrutinee and will be bound to the quote pattern term splices.
@@ -134,7 +131,6 @@ object QuoteMatcher {
         given Env = Map.empty
         scrutinee =?= pat1
       }.map { matchings =>
-        import QuoteMatcher.MatchResult.*
         lazy val spliceScope = SpliceScope.getCurrent
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found, seal them in a quoted.Type and add them to the result
@@ -234,7 +230,7 @@ object QuoteMatcher {
           case _ => None
       end TypeTreeTypeTest
 
-      val res = pattern match
+      def runMatch(): optional[MatchingExprs] = pattern match
 
         /* Term hole */
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
@@ -426,24 +422,32 @@ object QuoteMatcher {
             // No Match
             case _ =>
               notMatched
+      end runMatch
 
-      if (debug && res == notMatched)
-        val quotes = QuotesImpl()
-        println(
-          s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-              |Scrutinee
-              |  ${scrutinee.show}
-              |did not match pattern
-              |  ${pattern.show}
-              |
-              |with environment: ${summon[Env]}
-              |
-              |Scrutinee: ${quotes.reflect.Printer.TreeStructure.show(scrutinee.asInstanceOf)}
-              |Pattern: ${quotes.reflect.Printer.TreeStructure.show(pattern.asInstanceOf)}
-              |
-              |""".stripMargin)
+      if debug then
+        try {
+          runMatch()
+        } catch {
+          case e: util.boundary.Break[?] =>
+            val quotes = QuotesImpl()
+            println(
+              s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                  |Scrutinee
+                  |  ${scrutinee.show}
+                  |did not match pattern
+                  |  ${pattern.show}
+                  |
+                  |with environment: ${summon[Env]}
+                  |
+                  |Scrutinee: ${quotes.reflect.Printer.TreeStructure.show(scrutinee.asInstanceOf)}
+                  |Pattern: ${quotes.reflect.Printer.TreeStructure.show(pattern.asInstanceOf)}
+                  |
+                  |""".stripMargin)
+            throw e
+        }
+      else
+        runMatch()
 
-      res
     end =?=
 
   end extension
