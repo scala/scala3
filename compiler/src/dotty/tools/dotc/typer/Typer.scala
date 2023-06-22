@@ -2877,13 +2877,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case closure(_, _, _) =>
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
-        report.errorOrMigrationWarning(
-          OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree), tree.srcPos, from = `3.0`
-        )
+        val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
+        report.errorOrMigrationWarning(msg, tree.srcPos, from = `3.0`)
         if (migrateTo3) {
           // Under -rewrite, patch `x _` to `(() => x)`
-          patch(Span(tree.span.start), "(() => ")
-          patch(Span(qual.span.end, tree.span.end), ")")
+          msg.actions
+            .flatMap(_.patches)
+            .map(actionPatch => patch(actionPatch.srcPos.span, actionPatch.replacement))
           return typed(untpd.Function(Nil, qual), pt)
         }
     }
@@ -3880,10 +3880,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
+        lazy val msg = MissingEmptyArgumentList(sym.show, tree)
+
         sym.isConstructor
         || sym.matchNullaryLoosely
-        || Feature.warnOnMigration(MissingEmptyArgumentList(sym.show, tree), tree.srcPos, version = `3.0`)
-           && { patch(tree.span.endPos, "()"); true }
+        || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
+          && { 
+            msg.actions
+              .flatMap(_.patches)
+              .map(actionPatch => patch(actionPatch.srcPos.span, actionPatch.replacement))
+            true
+          }
 
       /** If this is a selection prototype of the form `.apply(...): R`, return the nested
        *  function prototype `(...)R`. Otherwise `pt`.
