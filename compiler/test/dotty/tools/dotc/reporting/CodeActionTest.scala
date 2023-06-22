@@ -82,27 +82,10 @@ class CodeActionTest extends DottyTest:
         p2
     else assertFailed("Expected a patch attatched to this action, but it was empty")
 
-    val delta = patches
-      .map: patch =>
-        patch.replacement.length - (patch.srcPos.end - patch.srcPos.start)
-      .sum
+    val result = patches.reverse.foldLeft(code): (newCode, patch)  =>
+      import scala.language.unsafeNulls
+      val start = newCode.substring(0, patch.srcPos.start)
+      val ending = newCode.substring(patch.srcPos.end, newCode.length)
+      start + patch.replacement + ending
 
-    val result = new Array[Char](source.length + delta)
-
-    @tailrec def loop(ps: List[ActionPatch], inIdx: Int, outIdx: Int): Unit =
-      def copy(upTo: Int): Int =
-        val untouched = upTo - inIdx
-        System.arraycopy(source, inIdx, result, outIdx, untouched)
-        outIdx + untouched
-
-      ps match
-        case patch @ ActionPatch(srcPos, replacement) :: ps1 =>
-          val outNew = copy(srcPos.start)
-          replacement.copyToArray(result, outNew)
-          loop(ps1, srcPos.end, outNew + replacement.length)
-        case Nil =>
-          val outNew = copy(source.length)
-          assert(outNew == result.length, s"$outNew != ${result.length}")
-
-    loop(patches, 0, 0)
-    assertEquals(expected, result.mkString)
+    assertEquals(expected, result)
