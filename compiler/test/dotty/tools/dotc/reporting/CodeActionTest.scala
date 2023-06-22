@@ -69,13 +69,13 @@ class CodeActionTest extends DottyTest:
     assertEquals(1, diagnostics.size)
 
     val diagnostic = diagnostics.head
-    val actions = diagnostic.msg.actions.asScala.toList
+    val actions = diagnostic.msg.actions.toList
     assertEquals(1, actions.size)
 
     // TODO account for more than 1 action
     val action = actions.head
     assertEquals(action.title, title)
-    val patches = action.patches.asScala.toList
+    val patches = action.patches.toList
     if patches.nonEmpty then
       patches.reduceLeft: (p1, p2) =>
         assert(p1.srcPos.span.end <= p2.srcPos.span.start, s"overlapping patches $p1 and $p2")

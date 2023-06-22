@@ -7,6 +7,7 @@ import java.util.List;
 
 import scala.Tuple2;
 import scala.collection.mutable.HashMap;
+import scala.jdk.javaapi.CollectionConverters;
 
 import dotty.tools.dotc.core.Contexts.Context;
 import dotty.tools.dotc.reporting.AbstractReporter;
@@ -46,7 +47,7 @@ final public class DelegatingReporter extends AbstractReporter {
     messageBuilder.append(message.message());
     String diagnosticCode = String.valueOf(message.errorId().errorNumber());
     boolean shouldExplain = Diagnostic.shouldExplain(dia, ctx);
-    List<CodeAction> actions = message.actions(ctx);
+    List<CodeAction> actions = CollectionConverters.asJava(message.actions(ctx));
     if (shouldExplain && !message.explanation().isEmpty()) {
       rendered.append(explanation(message, ctx));
       messageBuilder.append(System.lineSeparator()).append(explanation(message, ctx));

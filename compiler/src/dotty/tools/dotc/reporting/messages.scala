@@ -522,12 +522,12 @@ extends SyntaxMsg(RepeatedModifierID) {
     import scala.language.unsafeNulls
     List(
       CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
-        description =  java.util.Optional.empty(),
+        description = None,
         patches = List(
           ActionPatch(SourcePosition(source, span), "")
-        ).asJava
+        )
       )
-    ).asJava
+    )
 }
 
 class InterpolatedStringError()(implicit ctx:Context)
@@ -1874,13 +1874,13 @@ class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(us
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
     List(
       CodeAction(title = "Rewrite to function value",
-        description =  java.util.Optional.empty(),
+        description = None,
         patches = List(
           ActionPatch(SourcePosition(tree.source, Span(tree.span.start)), "(() => "),
           ActionPatch(SourcePosition(tree.source, Span(qual.span.end, tree.span.end)), ")")
-        ).asJava
+        )
       )
-    ).asJava
+    )
 }
 
 class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
@@ -1903,12 +1903,12 @@ class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
     import scala.language.unsafeNulls
     List(
       CodeAction(title = "Insert ()",
-        description =  java.util.Optional.empty(),
+        description = None,
         patches = List(
           ActionPatch(SourcePosition(tree.source, tree.span.endPos), "()"),
-        ).asJava
+        )
       )
-    ).asJava
+    )
 }
 
 class DuplicateNamedTypeParameter(name: Name)(using Context)
