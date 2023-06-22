@@ -144,9 +144,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.impl.*StepperBase.semiclone"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.*StepperBase.semiclone"),
 
-    // TASTy-MiMa bug? Wildcards in self type
-    ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.generic.DefaultSerializable._$1"),
-
     // TASTy-MiMa bug? module classes
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.immutable.BitSet.bitSetFactory"), // The symbol scala.collection.immutable.BitSet.bitSetFactory has an incompatible type in current version: before: scala.collection.immutable.BitSet$; after: scala.collection.immutable.BitSet.type
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.BitSet.bitSetFactory"), // The symbol scala.collection.mutable.BitSet.bitSetFactory has an incompatible type in current version: before: scala.collection.mutable.BitSet$; after: scala.collection.mutable.BitSet.type
