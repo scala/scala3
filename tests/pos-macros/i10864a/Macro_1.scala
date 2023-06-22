@@ -9,11 +9,11 @@ object T {
       case '[type x; x] =>
         assert(Type.show[x] == "scala.Int", Type.show[x])
       case '[type f[X]; f] =>
-        assert(Type.show[f] == "[A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[A]", Type.show[f])
+        assert(Type.show[f] == "[A >: scala.Nothing <: scala.Any] =>> scala.collection.immutable.List[A]", Type.show[f])
       case '[type f[X <: Int]; f] =>
-        assert(Type.show[f] == "[T >: scala.Nothing <: scala.Int] => C[T]", Type.show[f])
+        assert(Type.show[f] == "[T >: scala.Nothing <: scala.Int] =>> C[T]", Type.show[f])
       case '[type f <: AnyKind; f] =>
-        assert(Type.show[f] == "[K >: scala.Nothing <: scala.Any, V >: scala.Nothing <: scala.Any] => scala.collection.immutable.Map[K, V]", Type.show[f])
+        assert(Type.show[f] == "[K >: scala.Nothing <: scala.Any, V >: scala.Nothing <: scala.Any] =>> scala.collection.immutable.Map[K, V]", Type.show[f])
     '{}
   }
 
