@@ -11,6 +11,6 @@ import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
   */
 case class CodeAction(
   title: String,
-  description: java.util.Optional[String],
-  patches: java.util.List[ActionPatch]
+  description: Option[String],
+  patches: List[ActionPatch]
 )
