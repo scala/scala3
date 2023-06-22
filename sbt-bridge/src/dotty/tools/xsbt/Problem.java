@@ -8,6 +8,9 @@ import dotty.tools.dotc.reporting.CodeAction;
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch;
 import dotty.tools.dotc.util.SourcePosition;
 
+import scala.jdk.javaapi.CollectionConverters;
+import scala.jdk.javaapi.OptionConverters;
+
 import xsbti.Position;
 import xsbti.Severity;
 
@@ -75,7 +78,7 @@ final public class Problem implements xsbti.Problem {
       // never getting called.
       return _actions
               .stream()
-              .map(action -> new Action(action.title(), action.description(), toWorkspaceEdit(action.patches())))
+              .map(action -> new Action(action.title(), OptionConverters.toJava(action.description()), toWorkspaceEdit(CollectionConverters.asJava(action.patches()))))
               .collect(toList());
     }
   }

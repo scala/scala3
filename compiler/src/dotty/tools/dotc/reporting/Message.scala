@@ -383,11 +383,10 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
    */
   def showAlways = false
 
-  /** A list of actions attatched to this message to address the issue this
+  /** A list of actions attached to this message to address the issue this
     * message represents.
     */
-  def actions(using Context): java.util.List[CodeAction] =
-    java.util.Collections.emptyList
+  def actions(using Context): List[CodeAction] = List.empty
 
   override def toString = msg
 }
