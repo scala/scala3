@@ -4945,7 +4945,7 @@ object Types {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases)
@@ -4958,7 +4958,7 @@ object Types {
                   // instantiations during matchtype reduction
 
             TypeComparer.tracked(matchCases)
-          }
+          })
       myReduced.nn
     }
 
