@@ -1007,7 +1007,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: MatchType =>
         def compareMatch = tp2 match {
           case tp2: MatchType =>
-            isSameType(tp1.scrutinee, tp2.scrutinee) &&
+            def widen(tp: Type) = tp match
+              case tp: TermRef if tp.symbol.is(InlineProxy) => tp.info
+              case tp                                       => tp.widenSkolem
+            isSameType(widen(tp1.scrutinee), widen(tp2.scrutinee)) &&
             tp1.cases.corresponds(tp2.cases)(isSubType)
           case _ => false
         }
