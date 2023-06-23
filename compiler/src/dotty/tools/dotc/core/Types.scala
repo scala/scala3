@@ -1373,7 +1373,7 @@ object Types {
           Atoms.Range(set, set)
         else Atoms.Unknown
 
-      dealias match
+      dealias.normalized match
         case tp: SingletonType =>
           tp.underlying.atoms match
             case as @ Atoms.Range(lo, hi) =>
