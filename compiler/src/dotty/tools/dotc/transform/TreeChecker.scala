@@ -744,23 +744,16 @@ object TreeChecker {
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
-      def infoStr(tp: Type) = tp match {
-        case tp: TypeRef =>
-          val sym = tp.symbol
-          i"${sym.showLocated} with ${tp.designator}, flags = ${sym.flagsString}, underlying = ${tp.underlyingIterator.toList}%, %"
-        case _ =>
-          "??"
-      }
-      if (ctx.mode.isExpr &&
-          !tree.isEmpty &&
-          !isPrimaryConstructorReturn &&
-          !pt.isInstanceOf[FunOrPolyProto])
+      if ctx.mode.isExpr
+        && !tree.isEmpty
+        && !isPrimaryConstructorReturn
+        && !pt.isInstanceOf[FunOrPolyProto]
+      then
         assert(tree.tpe <:< pt, {
           val mismatch = TypeMismatch(tree.tpe, pt, Some(tree))
-          i"""|${mismatch.msg}
-              |found: ${infoStr(tree.tpe)}
-              |expected: ${infoStr(pt)}
-              |tree = $tree""".stripMargin
+          i"""|Type Mismatch:
+              |${mismatch.message}
+              |tree = $tree ${tree.className}""".stripMargin
         })
       tree
     }
