@@ -970,14 +970,16 @@ object Build {
           ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
         } (Set(scalaLibrarySourcesJar)).toSeq
       }.taskValue,
-      (Compile / sources) ~= (_.filterNot(file =>
+      (Compile / sources) ~= (_.filterNot { file =>
         // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
-        file.getPath.endsWith("scala-library-src/scala/Any.scala") ||
-        file.getPath.endsWith("scala-library-src/scala/AnyVal.scala") ||
-        file.getPath.endsWith("scala-library-src/scala/AnyRef.scala") ||
-        file.getPath.endsWith("scala-library-src/scala/Nothing.scala") ||
-        file.getPath.endsWith("scala-library-src/scala/Null.scala") ||
-        file.getPath.endsWith("scala-library-src/scala/Singleton.scala"))),
+        val path = file.getPath.replace('\\', '/')
+        path.endsWith("scala-library-src/scala/Any.scala") ||
+        path.endsWith("scala-library-src/scala/AnyVal.scala") ||
+        path.endsWith("scala-library-src/scala/AnyRef.scala") ||
+        path.endsWith("scala-library-src/scala/Nothing.scala") ||
+        path.endsWith("scala-library-src/scala/Null.scala") ||
+        path.endsWith("scala-library-src/scala/Singleton.scala")
+      }),
       (Compile / sources) := {
         val files = (Compile / sources).value
         val overwritenSourcesDir = (Compile / scalaSource).value
@@ -997,6 +999,7 @@ object Build {
         "scala.annotation.specialized",
         "scala.annotation.unspecialized",
       ),
+      tastyMiMaTastyQueryVersionOverride := Some("0.8.4"),
       tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibVersion(Bootstrapped),
       tastyMiMaCurrentClasspath := {
         val javaBootCp = tastyMiMaJavaBootClasspath.value
