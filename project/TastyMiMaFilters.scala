@@ -30,11 +30,6 @@ object TastyMiMaFilters {
     // Problem: ConstantType for `null` versus `scala.Null`
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.Unrolled.<init>$default$4"),
 
-    // Problem: Case class with private constructor
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.concurrent.duration.Deadline.apply"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.concurrent.duration.Deadline.copy"),
-    ProblemMatcher.make(ProblemKind.RestrictedVisibilityChange, "scala.concurrent.duration.Deadline.copy$default$1"),
-
     // Problem: Missing type arguments with higher-kinded types
     ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.SortedSetFactoryDefaults._$5"),
     ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.SortedMapFactoryDefaults._$6"),
