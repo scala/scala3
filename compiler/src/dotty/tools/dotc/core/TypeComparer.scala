@@ -324,7 +324,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 && !sym1.is(Private)
                 && tp2.isPrefixDependentMemberRef
                 && isSubPrefix(tp1.prefix, tp2.prefix)
-                && tp1.signature == tp2.signature
+                && (tp1.isType || (tp1.isStable && tp2.isStable))
                 && !(sym1.isClass && sym2.isClass)  // class types don't subtype each other
                 ) ||
                 thirdTryNamed(tp2)
