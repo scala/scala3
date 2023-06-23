@@ -2,9 +2,18 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
+import scala.jdk.CollectionConverters._
+import java.net.URI
+import java.net.URL
 import dotty.tools.scaladoc.site._
+import scala.util.Try
 import org.jsoup.Jsoup
+import java.nio.file.Paths
+import java.nio.file.Path
 import java.nio.file.Files
+import java.nio.file.FileVisitOption
+import java.io.File
+import dotty.tools.scaladoc.staticFileSymbolUUID
 
 class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: DocContext)
   extends Renderer(rootPackage, members, extension = "html"):
@@ -167,10 +176,10 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     args.socialLinks.map { link =>
       a(href := link.url) (
         link match
-          case SocialLinks.Custom(_, lightIcon, darkIcon) => 
+          case SocialLinks.Custom(_, lightIcon, darkIcon) =>
             Seq(
-              img(cls := s"icon-button ${icon(link)}", src := s"../../../../images/$lightIcon"),
-              img(cls := s"icon-button ${icon(link)}-dark", src := s"../../../images/$darkIcon")
+              button(cls := s"icon-button ${icon(link)}", style := s"--bgimage:url(../../../../images/$lightIcon)"),
+              button(cls := s"icon-button ${icon(link)}-dark", style := s"--bgimage-dark:url(../../../../images/$darkIcon)")
             )
           case _ =>
             button(cls := s"icon-button ${icon(link)}")
