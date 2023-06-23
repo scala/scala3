@@ -10,7 +10,7 @@ object TestStructuralVar {
     type T = {val a: Int; def a_=(x: Int): Unit}
     def upcast1(v: Foo1): T = v // error
     def upcast2(v: Foo2): T = v // error
-    def upcast3(v: Foo3): T = v
+    def upcast3(v: Foo3): T = v // error
     def verify(v: T) = ()
     def test(): Unit = {
       verify(upcast1(new Foo1 { val a = 10 }))
