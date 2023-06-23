@@ -1992,8 +1992,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val isExpr2 = info2.isInstanceOf[ExprType]
         val info1 = m.info match
           case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
-            ExprType(info1)  
+            // OK: { val x: T } <: { def x: T }
+            // OK: { var x: T } <: { def x: T }
+            // NO: { var x: T } <: { val x: T }
+            ExprType(info1)
           case info1 @ MethodType(Nil) if isExpr2 && m.symbol.is(JavaDefined) =>
+            // OK{ { def x(): T } <: { def x: T} // if x is Java defined
             ExprType(info1.resType)
           case info1 => info1
         isSubInfo(info1, info2, m.symbol.info.orElse(info1))
