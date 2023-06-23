@@ -2734,6 +2734,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          && !cls.isAllOf(PrivateLocal)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
+         && !ctx.settings.Yscala2Stdlib.value // FIXME?: class PermutationsItr cannot be defined in universal trait SeqOps
       then
         report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 
