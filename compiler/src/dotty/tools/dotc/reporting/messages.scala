@@ -2916,6 +2916,10 @@ class UnusedNonUnitValue(tp: Type)(using Context)
     def msg(using Context) = i"unused value of type $tp"
     def explain(using Context) = ""
 
+class MatchTypeNoCases(casesText: String)(using Context) extends TypeMsg(MatchTypeNoCasesID):
+  def msg(using Context) = i"Match type reduction $casesText"
+  def explain(using Context) = ""
+
 class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
   extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
