@@ -1998,7 +1998,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       def tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
 
       // A relaxed version of isSubType, which compares method types
-      // under the standard arrow rule which is contravarient in the parameter types,
+      // under the standard arrow rule which is contravariant in the parameter types,
       // but under the condition that signatures might have to match (see sigsOK)
       // This relaxed version is needed to correctly compare dependent function types.
       // See pos/i12211.scala.
@@ -2015,10 +2015,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
 
       def qualifies(m: SingleDenotation): Boolean =
-        val info1 = m.info.widenExpr
-        isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
+        val info2 = tp2.refinedInfo
+        val isExpr2 = info2.isInstanceOf[ExprType]
+        val info1 = m.info match
+          case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
+            // OK: { val x: T } <: { def x: T }
+            // OK: { var x: T } <: { def x: T }
+            // NO: { var x: T } <: { val x: T }
+            ExprType(info1)
+          case info1 @ MethodType(Nil) if isExpr2 && m.symbol.is(JavaDefined) =>
+            // OK{ { def x(): T } <: { def x: T} // if x is Java defined
+            ExprType(info1.resType)
+          case info1 => info1
+        isSubInfo(info1, info2, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
-        || (tp1.isStable && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
+        || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
 
       tp1.member(name) match // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
