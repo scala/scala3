@@ -867,7 +867,7 @@ object Erasure {
 
           app(fun1)
         case t =>
-          if ownArgs.isEmpty then fun1
+          if ownArgs.isEmpty || t.isError then fun1
           else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
     end typedApply
 
