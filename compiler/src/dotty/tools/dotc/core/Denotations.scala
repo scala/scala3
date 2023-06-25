@@ -1269,8 +1269,8 @@ object Denotations {
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation = {
-      val d1 = denot1 accessibleFrom (pre, superAccess)
-      val d2 = denot2 accessibleFrom (pre, superAccess)
+      val d1 = denot1.accessibleFrom(pre, superAccess)
+      val d2 = denot2.accessibleFrom(pre, superAccess)
       if (!d1.exists) d2
       else if (!d2.exists) d1
       else derivedUnionDenotation(d1, d2)
