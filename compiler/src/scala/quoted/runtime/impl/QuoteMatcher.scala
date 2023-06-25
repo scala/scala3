@@ -566,7 +566,7 @@ object QuoteMatcher {
                  * f has a method type `(x: Int): Int` and  `f` maps to `g`, `p` should hold
                  * `g.apply(0)` because the type of `g` is `Int => Int` due to eta expansion.
                  */
-                case Apply(fun, args) if env.contains(tree.symbol) => transform(fun).select(nme.apply).appliedToArgs(args)
+                case Apply(fun, args) if env.contains(tree.symbol) => transform(fun).select(nme.apply).appliedToArgs(args.map(transform))
                 case tree: Ident => env.get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
                 case tree => super.transform(tree)
           }.transform(tree)

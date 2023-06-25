@@ -112,12 +112,14 @@ trait QuotesAndSplices {
     if isFullyDefined(pt, ForceDegree.flipBottom) then
       def patternOuterContext(ctx: Context): Context =
         if (ctx.mode.is(Mode.QuotedPattern)) patternOuterContext(ctx.outer) else ctx
-      val typedArgs = tree.args.map {
-        case arg: untpd.Ident =>
-          typedExpr(arg)
-        case arg =>
-          report.error("Open pattern expected an identifier", arg.srcPos)
-          EmptyTree
+      val typedArgs = withMode(Mode.InQuotePatternHoasArgs) {
+        tree.args.map {
+          case arg: untpd.Ident =>
+            typedExpr(arg)
+          case arg =>
+            report.error("Open pattern expected an identifier", arg.srcPos)
+            EmptyTree
+        }
       }
       for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
         report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)

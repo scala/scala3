@@ -44,6 +44,14 @@ object Mode {
   /** Are we looking for cyclic references? */
   val CheckCyclic: Mode = newMode(5, "CheckCyclic")
 
+  /** We are in arguments of HOAS pattern in quote pattern matching
+   *  e.g. x, y, z in a quote pattern '{ ... $a(x, y, z) ... }
+   *
+   *  This mode keep typer from inserting contextual parameters to a contextual method without arguments.
+   *  (See tests/run-macros/i17905 for motivating examples)
+   */
+  val InQuotePatternHoasArgs: Mode = newMode(6, "InQuotePatternHoasArgs")
+
   /** We are in a pattern alternative */
   val InPatternAlternative: Mode = newMode(7, "InPatternAlternative")
 
