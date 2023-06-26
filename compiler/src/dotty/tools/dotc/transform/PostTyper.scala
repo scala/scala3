@@ -80,6 +80,10 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
+  private var compilingScala2StdLib = false
+  override def initContext(ctx: FreshContext): Unit =
+    compilingScala2StdLib = ctx.settings.Yscala2Stdlib.value(using ctx)
+
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
   val beanProps: BeanProperties = new BeanProperties(thisPhase)
@@ -536,7 +540,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private def scala2LibPatch(tree: TypeDef)(using Context) =
       val sym = tree.symbol
-      if ctx.settings.Yscala2Stdlib.value
+      if compilingScala2StdLib
         && sym.is(ModuleClass) && !sym.derivesFrom(defn.SerializableClass)
         && sym.companionClass.derivesFrom(defn.SerializableClass)
       then
@@ -550,7 +554,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   }
 
   protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
-    ctx.settings.Yscala2Stdlib.value && sym.isAllOf(ModuleClass, butNot = Package)
+    compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
     case info: ClassInfo =>
