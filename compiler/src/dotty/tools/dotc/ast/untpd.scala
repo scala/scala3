@@ -150,8 +150,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** {x1, ..., xN} T   (only relevant under captureChecking) */
   case class CapturesAndResult(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
-  /** Short-lived usage in typer, does not need copy/transform/fold infrastructure */
-  case class DependentTypeTree(tp: (List[TypeSymbol], List[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
+  /** A type tree appearing somewhere in the untyped DefDef of a lambda, it will be typed using `tpFun`.
+   *
+   *  @param isResult  Is this the result type of the lambda? This is handled specially in `Namer#valOrDefDefSig`.
+   *  @param tpFun     Compute the type of the type tree given the parameters of the lambda.
+   *                   A lambda has at most one type parameter list followed by exactly one term parameter list.
+   *
+   *  Note: This is only used briefly in Typer and does not need the copy/transform/fold infrastructure.
+   */
+  case class InLambdaTypeTree(isResult: Boolean, tpFun: (List[TypeSymbol], List[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(NoSource) with WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
