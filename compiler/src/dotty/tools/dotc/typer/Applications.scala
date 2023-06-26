@@ -1517,10 +1517,7 @@ trait Applications extends Compatibility {
       && isApplicableType(
             normalize(tp.select(xname, mbr), WildcardType),
             argType :: Nil, resultType)
-    tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
-      case mbr: SingleDenotation => qualifies(mbr)
-      case mbr => mbr.hasAltWith(qualifies(_))
-    }
+    tp.memberBasedOnFlags(xname, required = ExtensionMethod).hasAltWithInline(qualifies)
   }
 
   /** Drop any leading type or implicit parameter sections */

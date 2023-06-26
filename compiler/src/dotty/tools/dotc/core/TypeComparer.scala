@@ -2031,9 +2031,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         || matchAbstractTypeMember(m.info)
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
 
-      tp1.member(name) match // inlined hasAltWith for performance
-        case mbr: SingleDenotation => qualifies(mbr)
-        case mbr => mbr hasAltWith qualifies
+      tp1.member(name).hasAltWithInline(qualifies)
     }
 
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {

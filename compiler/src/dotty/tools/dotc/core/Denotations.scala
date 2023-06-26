@@ -261,6 +261,10 @@ object Denotations {
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
     def hasAltWith(p: SingleDenotation => Boolean): Boolean
 
+    inline final def hasAltWithInline(inline p: SingleDenotation => Boolean): Boolean = inline this match
+      case mbr: SingleDenotation => mbr.exists && p(mbr)
+      case mbr => mbr.hasAltWith(p)
+
     /** The denotation made up from the alternatives of this denotation that
      *  are accessible from prefix `pre`, or NoDenotation if no accessible alternative exists.
      */

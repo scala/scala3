@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i17581.scala:9:6 --------------------------------------------------------------
+9 |  foo(test) // error // was NoSuchMethodException
+  |      ^^^^
+  |      Found:    (test : Test)
+  |      Required: Object{def bar: Any}
+  |
+  | longer explanation available when compiling with `-explain`
