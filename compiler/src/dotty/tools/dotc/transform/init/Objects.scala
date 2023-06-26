@@ -336,9 +336,13 @@ object Objects:
     def emptyEnv(meth: Symbol)(using Context): Data =
       new LocalEnv(Map.empty, meth, NoEnv)(valsMap = mutable.Map.empty, varsMap = mutable.Map.empty)
 
-    def valValue(x: Symbol)(using data: Data, ctx: Context): Value = data.getVal(x).get
-
-    def varAddr(x: Symbol)(using data: Data, ctx: Context): Heap.Addr = data.getVar(x).get
+    def valValue(x: Symbol)(using data: Data, ctx: Context, trace: Trace): Value =
+      data.getVal(x) match
+      case Some(theValue) =>
+        theValue
+      case _ =>
+        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        Bottom
 
     def getVal(x: Symbol)(using data: Data, ctx: Context): Option[Value] = data.getVal(x)
 
@@ -855,38 +859,37 @@ object Objects:
       if sym.is(Flags.Mutable) then
         // Assume forward reference check is doing a good job
         given Env.Data = env
-        val addr = Env.varAddr(sym)
-        if addr.owner == State.currentObject then
-          Heap.read(addr)
-        else
-          errorReadOtherStaticObject(State.currentObject, addr.owner)
+        Env.getVar(sym) match
+        case Some(addr) =>
+          if addr.owner == State.currentObject then
+            Heap.read(addr)
+          else
+            errorReadOtherStaticObject(State.currentObject, addr.owner)
+            Bottom
+          end if
+        case _ =>
+          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
           Bottom
-        end if
       else if sym.isPatternBound then
         // TODO: handle patterns
         Cold
       else
         given Env.Data = env
-        try
-          // Assume forward reference check is doing a good job
-          val value = Env.valValue(sym)
-          if isByNameParam(sym) then
-            value match
-            case fun: Fun =>
-              given Env.Data = fun.env
-              eval(fun.code, fun.thisV, fun.klass)
-            case Cold =>
-              report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
-              Bottom
-            case _: RefSet | _: Ref =>
-              report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
-              Bottom
-          else
-            value
-
-        catch ex =>
-          report.warning("[Internal error] Not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
-          Bottom
+        // Assume forward reference check is doing a good job
+        val value = Env.valValue(sym)
+        if isByNameParam(sym) then
+          value match
+          case fun: Fun =>
+            given Env.Data = fun.env
+            eval(fun.code, fun.thisV, fun.klass)
+          case Cold =>
+            report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
+            Bottom
+          case _: RefSet | _: Ref =>
+            report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
+            Bottom
+        else
+          value
 
     case _ =>
       if isByNameParam(sym) then
@@ -908,11 +911,14 @@ object Objects:
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       given Env.Data = env
-      val addr = Env.varAddr(sym)
-      if addr.owner != State.currentObject then
-        errorMutateOtherStaticObject(State.currentObject, addr.owner)
-      else
-        Heap.write(addr, value)
+      Env.getVar(sym) match
+      case Some(addr) =>
+        if addr.owner != State.currentObject then
+          errorMutateOtherStaticObject(State.currentObject, addr.owner)
+        else
+          Heap.write(addr, value)
+      case _ =>
+        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
 
     case _ =>
       report.warning("Assigning to variables in outer scope. Calling trace:\n" + Trace.show, Trace.position)
