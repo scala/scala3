@@ -1,0 +1,4 @@
+-- Error: tests/neg/i8715.scala:2:46 -----------------------------------------------------------------------------------
+2 |def Test = List(42) match { case List(xs @ (ys*)) => xs } // error
+  |                                              ^
+  |                                              bad use of `*` - sequence pattern not allowed here
