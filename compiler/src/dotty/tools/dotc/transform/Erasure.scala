@@ -762,7 +762,9 @@ object Erasure {
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
 
         def originalQual: Type =
-          erasure(tree.qualifier.typeOpt.widen.finalResultType)
+          erasure(
+            inContext(preErasureCtx):
+              tree.qualifier.typeOpt.widen.finalResultType)
 
         if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
           recur(box(qual))
