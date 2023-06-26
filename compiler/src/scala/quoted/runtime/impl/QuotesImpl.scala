@@ -38,6 +38,7 @@ object QuotesImpl {
 }
 
 class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler, QuoteMatching:
+  import tpd.*
 
   private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
 

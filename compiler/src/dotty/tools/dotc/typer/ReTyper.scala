@@ -97,7 +97,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
     assertTyped(tree)
-    val body1 = typed(tree.body, tree.bodyType)(using quoteContext)
+    val body1 = typed(tree.body, promote(tree).bodyType)(using quoteContext)
     for tag <- tree.tags do assertTyped(tag)
     untpd.cpy.Quote(tree)(body1, tree.tags).withType(tree.typeOpt)
 
@@ -115,7 +115,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
     assertTyped(tree)
     val bindings1 = tree.bindings.map(typed(_))
     val bodyCtx = quoteContext.retractMode(Mode.Pattern).addMode(Mode.QuotedPattern)
-    val body1 = typed(tree.body, tree.bodyType)(using bodyCtx)
+    val body1 = typed(tree.body, promote(tree).bodyType)(using bodyCtx)
     val quotes1 = typed(tree.quotes, defn.QuotesClass.typeRef)
     untpd.cpy.QuotePattern(tree)(bindings1, body1, quotes1).withType(tree.typeOpt)
 

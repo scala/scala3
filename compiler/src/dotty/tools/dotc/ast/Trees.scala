@@ -704,12 +704,6 @@ object Trees {
     /** Is this a type quote `'[tpe]' */
     def isTypeQuote = body.isType
 
-    /** Type of the quoted expression as seen from outside the quote */
-    def bodyType(using Context): Type =
-      val quoteType = typeOpt // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
-      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
-      exprType.argInfos.head // T
-
     /** Set the type of the body of the quote */
     def withBodyType(tpe: Type)(using Context): Quote[Type] =
       val exprType = // `Expr[T]` or `Type[T]`
@@ -752,11 +746,6 @@ object Trees {
   case class QuotePattern[+T <: Untyped] private[ast] (bindings: List[Tree[T]], body: Tree[T], quotes: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends PatternTree[T] {
     type ThisTree[+T <: Untyped] = QuotePattern[T]
-
-    /** Type of the quoted pattern */
-    def bodyType(using Context): Type =
-      val quoteType = typeOpt // `Expr[T]` or `Type[T]`
-      quoteType.argInfos.head // T
   }
 
   /** A tree representing a pattern splice `${ pattern }`, `$ident` or `$ident(args*)` in a quote pattern.

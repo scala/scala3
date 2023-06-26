@@ -734,7 +734,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordStr("macro ") ~ toTextGlobal(call)
       case tree @ Quote(body, tags) =>
         val tagsText = (keywordStr("<") ~ toTextGlobal(tags, ", ") ~ keywordStr(">")).provided(tree.tags.nonEmpty)
-        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tree.bodyType) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tpd.bodyType(tree.asInstanceOf[tpd.Quote])) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
         val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
         keywordStr("'") ~ tagsText ~ exprTypeText ~ open ~ toTextGlobal(body) ~ close

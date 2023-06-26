@@ -1055,6 +1055,21 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       if tree.symbol.isTypeSplice then Some(tree.qualifier) else None
   }
 
+  extension (tree: tpd.Quote)
+    /** Type of the quoted expression as seen from outside the quote */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
+      exprType.argInfos.head // T
+  end extension
+
+  extension (tree: tpd.QuotePattern)
+    /** Type of the quoted pattern */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Expr[T]` or `Type[T]`
+      quoteType.argInfos.head // T
+  end extension
+
   /** Extractor for not-null assertions.
    *  A not-null assertion for reference `x` has the form `x.$asInstanceOf$[x.type & T]`.
    */
