@@ -2762,7 +2762,8 @@ object Types {
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
-      else if !NamedType.validPrefix(prefix) then UnspecifiedErrorType
+      else if !NamedType.validPrefix(prefix) then
+        throw TypeError(em"invalid new prefix $prefix cannot replace ${this.prefix} in type $this")
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
@@ -5411,6 +5412,9 @@ object Types {
     def explanation(using Context): String = msg.message
   }
 
+  /** Note: Make sure an errors is reported before construtcing this
+   *  as the type of a tree.
+   */
   object ErrorType:
     def apply(m: Message)(using Context): ErrorType =
       val et = new PreviousErrorType
