@@ -2,6 +2,7 @@ package dotty.tools
 
 import vulpix.TestConfiguration
 
+import org.junit.Assert._
 import org.junit.Test
 
 import dotc.ast.untpd
@@ -9,6 +10,7 @@ import dotc.core.Decorators._
 import dotc.core.Contexts._
 import dotc.core.Flags._
 import dotc.core.Phases._
+import dotc.core.Names._
 import dotc.core.Types._
 import dotc.core.Symbols._
 import dotc.core.StdNames._
@@ -76,3 +78,38 @@ class SignatureTest:
       assert(isFullyDefined(tvar, force = ForceDegree.all), s"Could not instantiate $tvar")
       checkSignatures(expectedIsUnderDefined = false)
 
+  /** Check that signature caching behaves correctly with respect to retracted
+   *  instantiations of type variables.
+   */
+  @Test def cachingWithRetraction: Unit =
+    inCompilerContext(TestConfiguration.basicClasspath, separateRun = false,
+      """trait Foo
+        |trait Bar
+        |class A[T]:
+        |  def and(x: T & Foo): Unit = {}
+        |""".stripMargin):
+      val cls = requiredClass("A")
+      val tvar = constrained(cls.requiredMethod(nme.CONSTRUCTOR).info.asInstanceOf[TypeLambda], untpd.EmptyTree, alwaysAddTypeVars = true)._2.head.tpe
+      val prefix = cls.typeRef.appliedTo(tvar)
+      val ref = prefix.select(cls.requiredMethod("and")).asInstanceOf[TermRef]
+
+      /** Check that the signature of the first parameter of `ref` is equal to `expectedParamSig`. */
+      def checkParamSig(ref: TermRef, expectedParamSig: TypeName)(using Context): Unit =
+        assertEquals(i"Check failed for param signature of $ref",
+          expectedParamSig, ref.signature.paramsSig.head)
+        // Both NamedType and MethodOrPoly cache signatures, so check both caches.
+        assertEquals(i"Check failed for param signature of ${ref.info} (but not for $ref itself)",
+          expectedParamSig, ref.info.signature.paramsSig.head)
+        
+
+      // Initially, the param signature is Uninstantiated since it depends on an uninstantiated type variable
+      checkParamSig(ref, tpnme.Uninstantiated)
+
+      // In this context, the signature is the erasure of `Bar & Foo`.
+      inContext(ctx.fresh.setNewTyperState()):
+        tvar =:= requiredClass("Bar").typeRef
+        assert(isFullyDefined(tvar, force = ForceDegree.all), s"Could not instantiate $tvar")
+        checkParamSig(ref, "Bar".toTypeName)
+
+      // If our caching logic is working correctly, we should get the original signature here.
+      checkParamSig(ref, tpnme.Uninstantiated)

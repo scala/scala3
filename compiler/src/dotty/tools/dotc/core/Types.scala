@@ -2260,7 +2260,7 @@ object Types {
 
       if ctx.runId != mySignatureRunId then
         mySignature = computeSignature
-        if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+        if !mySignature.isUnderDefined && !isProvisional then mySignatureRunId = ctx.runId
       mySignature
     end signature
 
@@ -3767,17 +3767,17 @@ object Types {
         case SourceLanguage.Java =>
           if ctx.runId != myJavaSignatureRunId then
             myJavaSignature = computeSignature
-            if !myJavaSignature.isUnderDefined then myJavaSignatureRunId = ctx.runId
+            if !myJavaSignature.isUnderDefined && !isProvisional then myJavaSignatureRunId = ctx.runId
           myJavaSignature
         case SourceLanguage.Scala2 =>
           if ctx.runId != myScala2SignatureRunId then
             myScala2Signature = computeSignature
-            if !myScala2Signature.isUnderDefined then myScala2SignatureRunId = ctx.runId
+            if !myScala2Signature.isUnderDefined && !isProvisional then myScala2SignatureRunId = ctx.runId
           myScala2Signature
         case SourceLanguage.Scala3 =>
           if ctx.runId != mySignatureRunId then
             mySignature = computeSignature
-            if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+            if !mySignature.isUnderDefined && !isProvisional then mySignatureRunId = ctx.runId
           mySignature
     end signature
 
