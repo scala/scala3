@@ -699,7 +699,7 @@ class TreePickler(pickler: TastyPickler) {
         case ex: AssertionError =>
           println(i"error when pickling tree $tree")
           throw ex
-       case ex: MatchError =>
+        case ex: MatchError =>
           println(i"error when pickling tree $tree")
           throw ex
       }
