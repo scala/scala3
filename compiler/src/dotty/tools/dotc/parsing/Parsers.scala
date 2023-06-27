@@ -1666,7 +1666,7 @@ object Parsers {
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
-     *             |  RefinedType `^`
+     *             |  RefinedType `^`   // under capture checking
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -2881,13 +2881,13 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
-    /**  Pattern1     ::= PatVar Ascription
-     *                  | [‘-’] integerLiteral Ascription
-     *                  | [‘-’] floatingPointLiteral Ascription
+    /**  Pattern1     ::= PatVar `:` RefinedType
+     *                  | [‘-’] integerLiteral `:` RefinedType
+     *                  | [‘-’] floatingPointLiteral `:` RefinedType
      *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
-      val p = pattern2()
+      val p = pattern2(location)
       if in.isColon then
         val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
         if !isVariableOrNumber then
@@ -2905,26 +2905,29 @@ object Parsers {
       else p
 
     /**  Pattern3    ::=  InfixPattern
-     *                 |  PatVar ‘*’
      */
-    def pattern3(): Tree =
+    def pattern3(location: Location): Tree =
       val p = infixPattern()
       if followingIsVararg() then
         val start = in.skipToken()
-        p match
-          case p @ Ident(name) if name.isVarPattern =>
-            Typed(p, atSpan(start) { Ident(tpnme.WILDCARD_STAR) })
-          case _ =>
-            syntaxError(em"`*` must follow pattern variable", start)
-            p
+        if location.inArgs then
+          p match
+            case p @ Ident(name) if name.isVarPattern =>
+              Typed(p, atSpan(start) { Ident(tpnme.WILDCARD_STAR) })
+            case _ =>
+              syntaxError(em"`*` must follow pattern variable", start)
+              p
+        else
+          syntaxError(em"bad use of `*` - sequence pattern not allowed here", start)
+          p
       else p
 
     /**  Pattern2    ::=  [id `@'] Pattern3
      */
-    val pattern2: () => Tree = () => pattern3() match
+    val pattern2: Location => Tree = location => pattern3(location) match
       case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
-        pattern3() match {
+        pattern3(location) match {
           case pt @ Bind(nme.WILDCARD, pt1: Typed) if pt.mods.is(Given) =>
             atSpan(startOffset(p), 0) { Bind(name, pt1).withMods(pt.mods) }
           case Typed(Ident(nme.WILDCARD), pt @ Ident(tpnme.WILDCARD_STAR)) =>
@@ -2954,6 +2957,7 @@ object Parsers {
      *                    |  XmlPattern
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
+     *                    |  ‘given’ RefinedType
      *  SimplePattern1   ::= SimpleRef
      *                    |  SimplePattern1 `.' id
      *  PatVar           ::= id
@@ -3597,7 +3601,7 @@ object Parsers {
      *  VarDcl  ::=  id {`,' id} `:' Type
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
-      val first = pattern2()
+      val first = pattern2(Location.InPattern)
       var lhs = first match {
         case id: Ident if in.token == COMMA =>
           in.nextToken()

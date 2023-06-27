@@ -20,6 +20,10 @@
    |                  pattern expected
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/t5702-neg-bad-and-wild.scala:16:16 -----------------------------------------------------------------
+16 |      case (1, x*) => // error: bad use of *
+   |                ^
+   |                bad use of `*` - sequence pattern not allowed here
 -- [E031] Syntax Error: tests/neg/t5702-neg-bad-and-wild.scala:17:18 ---------------------------------------------------
 17 |      case (1, x: _*) => // error: bad use of _* (sequence pattern not allowed)
    |                  ^
@@ -32,6 +36,10 @@
    |                 pattern expected
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/t5702-neg-bad-and-wild.scala:25:14 -----------------------------------------------------------------
+25 |    val (b, _ * ) = (5,6) // error: bad use of `*`
+   |              ^
+   |              bad use of `*` - sequence pattern not allowed here
 -- [E161] Naming Error: tests/neg/t5702-neg-bad-and-wild.scala:24:10 ---------------------------------------------------
 24 |    val K(x) = k // error: x is already defined as value x
    |    ^^^^^^^^^^^^
@@ -66,14 +74,6 @@
 -- Warning: tests/neg/t5702-neg-bad-and-wild.scala:22:20 ---------------------------------------------------------------
 22 |    val K(x @ _*) = k
    |                    ^
-   |        pattern's type Int* does not match the right hand side expression's type Int
-   |
-   |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,
-   |        which may result in a MatchError at runtime.
-   |        This patch can be rewritten automatically under -rewrite -source 3.2-migration.
--- Warning: tests/neg/t5702-neg-bad-and-wild.scala:25:20 ---------------------------------------------------------------
-25 |    val (b, _ * ) = (5,6) // ok
-   |                    ^^^^^
    |        pattern's type Int* does not match the right hand side expression's type Int
    |
    |        If the narrowing is intentional, this can be communicated by adding `: @unchecked` after the expression,

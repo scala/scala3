@@ -318,7 +318,7 @@ Pattern1          ::=  PatVar ‘:’ RefinedType
                     |  [‘-’] integerLiteral ‘:’ RefinedType
                     |  [‘-’] floatingPointLiteral ‘:’ RefinedType
                     |  Pattern2
-Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]
+Pattern2          ::=  [id ‘@’] InfixPattern
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }
 SimplePattern     ::=  PatVar
                     |  Literal
