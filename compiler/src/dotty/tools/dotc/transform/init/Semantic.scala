@@ -1235,7 +1235,7 @@ object Semantic:
               cases(thisTp, thisV, klass)
 
             case AndType(thisTp: ThisType, _) =>
-              // This type annotation will generate an intersection type for `this`.
+              // Self-type annotation will generate an intersection type for `this`.
               // See examples/i17997.scala
               cases(thisTp, thisV, klass)
 
