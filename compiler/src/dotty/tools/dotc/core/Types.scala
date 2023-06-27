@@ -2677,7 +2677,10 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+            val sym =
+              if (currentSymbol.isValidInCurrentRun) currentSymbol
+              else computeSymbol
+            if (sym.isAllOf(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
