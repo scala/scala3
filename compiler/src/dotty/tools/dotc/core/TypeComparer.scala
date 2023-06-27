@@ -3201,7 +3201,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
                   }
                 }
               case redux =>
-                MatchResult.Reduced(redux.simplified)
+                MatchResult.Reduced(redux)
           case _ =>
             MatchResult.Reduced(body)
 
@@ -3229,7 +3229,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             MatchTypeTrace.noInstance(scrut, cas, fails)
             NoType
           case MatchResult.Reduced(tp) =>
-            tp
+            tp.simplified
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
         ErrorType(reporting.MatchTypeNoCases(casesText))
