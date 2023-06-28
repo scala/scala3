@@ -51,6 +51,8 @@ object HTML:
 
   val div = Tag("div")
   val span = Tag("span")
+  val em = Tag("em")
+  val strong = Tag("strong")
   val a = Tag("a")
   val p = Tag("p")
   val h1 = Tag("h1")
