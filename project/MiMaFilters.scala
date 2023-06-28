@@ -66,11 +66,6 @@ object MiMaFilters {
         // Companion module class
         ProblemFilters.exclude[FinalClassProblem]("scala.*$"),
 
-        // Missing types {scala.runtime.AbstractFunction1}
-        ProblemFilters.exclude[MissingTypesProblem]("scala.ScalaReflectionException$"),
-        ProblemFilters.exclude[MissingTypesProblem]("scala.UninitializedFieldError$"),
-        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.StringView$"),
-
         // Scala 2 intrinsic macros
         ProblemFilters.exclude[FinalMethodProblem]("scala.StringContext.s"),
 
@@ -131,15 +126,12 @@ object MiMaFilters {
         "scala.collection.mutable.LinkedHashMap.newBuilder", "scala.collection.mutable.LinkedHashSet.newBuilder",
         "scala.collection.mutable.LongMap#ToBuildFrom.newBuilder",
         "scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this",
-        "scala.collection.StringView.andThen", "scala.collection.StringView.compose",
         "scala.concurrent.BatchingExecutor#AbstractBatch.this",
         "scala.concurrent.Channel#LinkedList.this",
         "scala.Enumeration#ValueOrdering.this",
         "scala.io.Source#RelaxedPosition.this",
         "scala.PartialFunction#OrElse.andThen", "scala.PartialFunction#OrElse.orElse",
         "scala.runtime.Rich*.num", "scala.runtime.Rich*.ord",
-        "scala.ScalaReflectionException.andThen", "scala.ScalaReflectionException.compose",
-        "scala.UninitializedFieldError.andThen", "scala.UninitializedFieldError.compose",
         "scala.util.Properties.<clinit>",
         "scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5",
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem])
@@ -216,6 +208,8 @@ object MiMaFilters {
         "scala.collection.mutable.RedBlackTree#Node.apply", "scala.collection.mutable.RedBlackTree#Node.leaf", "scala.collection.mutable.RedBlackTree#Node.unapply", "scala.collection.mutable.RedBlackTree#Tree.empty",
         "scala.collection.mutable.UnrolledBuffer.unrolledlength", "scala.collection.mutable.UnrolledBuffer#Unrolled.<init>$default$4",
         "scala.collection.Searching#Found.apply", "scala.collection.Searching#Found.unapply",
+        "scala.collection.Searching#Found.andThen", "scala.collection.Searching#Found.compose",
+        "scala.collection.Searching#InsertionPoint.andThen", "scala.collection.Searching#InsertionPoint.compose",
         "scala.collection.Searching#InsertionPoint.apply", "scala.collection.Searching#InsertionPoint.unapply",
         "scala.collection.SortedMapFactoryDefaults.empty", "scala.collection.SortedMapFactoryDefaults.fromSpecific",
         "scala.collection.SortedMapOps.ordMsg", "scala.collection.SortedSetOps.ordMsg",
