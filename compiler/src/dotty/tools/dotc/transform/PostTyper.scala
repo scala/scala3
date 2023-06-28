@@ -488,6 +488,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case _: Quote =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)
+        case _: QuotePattern =>
+          if !ctx.reporter.errorsReported then
+            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
+          ctx.compilationUnit.needsStaging = true
+          super.transform(tree)
+        case tree: SplicePattern =>
+          if !ctx.reporter.errorsReported then
+            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
+          super.transform(tree)
         case tree =>
           super.transform(tree)
       }

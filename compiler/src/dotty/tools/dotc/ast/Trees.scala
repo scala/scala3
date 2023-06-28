@@ -686,9 +686,9 @@ object Trees {
    *  phases. After `pickleQuotes` phase, the only quotes that exist are in `inline`
    *  methods. These are dropped when we remove the inline method implementations.
    *
-   *  Type quotes `'[body]` from the parser are desugared into quote patterns (using a `Type.of[T]]`)
-   *  when type checking. TASTy files will not contain type quotes. Type quotes are used again
-   *  in the `staging` phase to represent the reification of `Type.of[T]]`.
+   *  Type quotes `'[body]` from the parser are typed into `QuotePattern`s when type checking.
+   *  TASTy files will not contain type quotes. Type quotes are used again in the `staging`
+   *  phase to represent the reification of `Type.of[T]]`.
    *
    *  Type tags `tags` are always empty before the `staging` phase. Tags for stage inconsistent
    *  types are added in the `staging` phase to level 0 quotes. Tags for types that refer to
@@ -703,12 +703,6 @@ object Trees {
 
     /** Is this a type quote `'[tpe]' */
     def isTypeQuote = body.isType
-
-    /** Type of the quoted expression as seen from outside the quote */
-    def bodyType(using Context): Type =
-      val quoteType = typeOpt // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
-      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
-      exprType.argInfos.head // T
 
     /** Set the type of the body of the quote */
     def withBodyType(tpe: Type)(using Context): Quote[Type] =
@@ -737,13 +731,30 @@ object Trees {
     type ThisTree[+T <: Untyped] = Splice[T]
   }
 
+  /** A tree representing a quote pattern `'{ type binding1; ...; body }` or `'[ type binding1; ...; body ]`.
+   *  `QuotePattern`s are created the type checker when typing an `untpd.Quote` in a pattern context.
+   *
+   *  `QuotePattern`s are checked are encoded into `unapply`s  in the `staging` phase.
+   *
+   *   The `bindings` contain the list of quote pattern type variable definitions (`Bind`s) in the oreder in
+   *   which they are defined in the source.
+   *
+   *   @param  bindings  Type variable definitions (`Bind` tree)
+   *   @param  body      Quoted pattern (without type variable definitions)
+   *   @param  quotes    A reference to the given `Quotes` instance in scope
+   */
+  case class QuotePattern[+T <: Untyped] private[ast] (bindings: List[Tree[T]], body: Tree[T], quotes: Tree[T])(implicit @constructorOnly src: SourceFile)
+    extends PatternTree[T] {
+    type ThisTree[+T <: Untyped] = QuotePattern[T]
+  }
+
   /** A tree representing a pattern splice `${ pattern }`, `$ident` or `$ident(args*)` in a quote pattern.
    *
    *  Parser will only create `${ pattern }` and `$ident`, hence they will not have args.
    *  While typing, the `$ident(args*)` the args are identified and desugared into a `SplicePattern`
    *  containing them.
    *
-   *  SplicePattern are removed after typing the pattern and are not present in TASTy.
+   *  `SplicePattern` can only be contained within a `QuotePattern`.
    *
    *  @param body  The tree that was spliced
    *  @param args  The arguments of the splice (the HOAS arguments)
@@ -1163,6 +1174,7 @@ object Trees {
     type Inlined = Trees.Inlined[T]
     type Quote = Trees.Quote[T]
     type Splice = Trees.Splice[T]
+    type QuotePattern = Trees.QuotePattern[T]
     type SplicePattern = Trees.SplicePattern[T]
     type TypeTree = Trees.TypeTree[T]
     type InferredTypeTree = Trees.InferredTypeTree[T]
@@ -1340,6 +1352,10 @@ object Trees {
       def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Splice(expr)(sourceFile(tree)))
+      }
+      def QuotePattern(tree: Tree)(bindings: List[Tree], body: Tree, quotes: Tree)(using Context): QuotePattern = tree match {
+        case tree: QuotePattern if (bindings eq tree.bindings) && (body eq tree.body) && (quotes eq tree.quotes) => tree
+        case _ => finalize(tree, untpd.QuotePattern(bindings, body, quotes)(sourceFile(tree)))
       }
       def SplicePattern(tree: Tree)(body: Tree, args: List[Tree])(using Context): SplicePattern = tree match {
         case tree: SplicePattern if (body eq tree.body) && (args eq tree.args) => tree
@@ -1586,6 +1602,8 @@ object Trees {
               cpy.Quote(tree)(transform(body)(using quoteContext), transform(tags))
             case tree @ Splice(expr) =>
               cpy.Splice(tree)(transform(expr)(using spliceContext))
+            case tree @ QuotePattern(bindings, body, quotes) =>
+              cpy.QuotePattern(tree)(transform(bindings), transform(body)(using quoteContext), transform(quotes))
             case tree @ SplicePattern(body, args) =>
               cpy.SplicePattern(tree)(transform(body)(using spliceContext), transform(args))
             case tree @ Hole(isTerm, idx, args, content) =>
@@ -1733,6 +1751,8 @@ object Trees {
               this(this(x, body)(using quoteContext), tags)
             case Splice(expr) =>
               this(x, expr)(using spliceContext)
+            case QuotePattern(bindings, body, quotes) =>
+              this(this(this(x, bindings), body)(using quoteContext), quotes)
             case SplicePattern(body, args) =>
               this(this(x, body)(using spliceContext), args)
             case Hole(_, _, args, content) =>

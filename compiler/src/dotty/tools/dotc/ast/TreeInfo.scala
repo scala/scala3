@@ -807,11 +807,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
-    val acc = new TreeAccumulator[List[Symbol]] {
+    val acc = new TreeAccumulator[List[Symbol]] { outer =>
       def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
         case Annotated(tree, id @ Ident(tpnme.BOUNDTYPE_ANNOT)) => apply(id.symbol :: syms, tree)
+        case QuotePattern(bindings, body, _) => quotePatVars(bindings.map(_.symbol) ::: syms, body)
         case _ => foldOver(syms, tree)
+      }
+      private object quotePatVars extends TreeAccumulator[List[Symbol]] {
+        def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
+          case SplicePattern(pat, _) => outer.apply(syms, pat)
+          case _ => foldOver(syms, tree)
+        }
       }
     }
     acc(Nil, tree)
@@ -1047,6 +1054,21 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: tpd.Select)(using Context): Option[tpd.Tree] =
       if tree.symbol.isTypeSplice then Some(tree.qualifier) else None
   }
+
+  extension (tree: tpd.Quote)
+    /** Type of the quoted expression as seen from outside the quote */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
+      exprType.argInfos.head // T
+  end extension
+
+  extension (tree: tpd.QuotePattern)
+    /** Type of the quoted pattern */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Expr[T]` or `Type[T]`
+      quoteType.argInfos.head // T
+  end extension
 
   /** Extractor for not-null assertions.
    *  A not-null assertion for reference `x` has the form `x.$asInstanceOf$[x.type & T]`.
