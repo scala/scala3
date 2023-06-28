@@ -74,6 +74,32 @@ object TypeErasure {
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
     sym == defn.ArrayClass || sym == defn.PairClass || isDerivedValueClass(sym)
 
+  /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
+   *
+   *  NOTE: This method is used to determine how to erase tuples, so it can
+   *        only be changed in very limited ways without breaking
+   *        binary-compatibility. In particular, note that it returns -1 for
+   *        all tuples that end with the `EmptyTuple` type alias instead of
+   *        `EmptyTuple.type` because of a missing dealias, but this is now
+   *        impossible to fix.
+   *
+   *  @return  The arity if it can be determined or -1 otherwise.
+   */
+  def tupleArity(tp: Type)(using Context): Int = tp/*.dealias*/ match {
+    case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+      val arity = tupleArity(tl)
+      if (arity < 0) arity else arity + 1
+    case tp: SingletonType =>
+      if tp.termSymbol == defn.EmptyTupleModule then 0 else -1
+    case tp: AndOrType =>
+      val arity1 = tupleArity(tp.tp1)
+      val arity2 = tupleArity(tp.tp2)
+      if arity1 == arity2 then arity1 else -1
+    case _ =>
+      if defn.isTupleNType(tp) then tp.dealias.argInfos.length
+      else -1
+  }
+
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
       if (defn.specialErasure.contains(cls))
@@ -740,9 +766,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
   }
 
   private def erasePair(tp: Type)(using Context): Type = {
-    // NOTE: `tupleArity` does not consider TypeRef(EmptyTuple$) equivalent to EmptyTuple.type,
-    // we fix this for printers, but type erasure should be preserved.
-    val arity = tp.tupleArity
+    val arity = tupleArity(tp)
     if (arity < 0) defn.ProductClass.typeRef
     else if (arity <= Definitions.MaxTupleArity) defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef
