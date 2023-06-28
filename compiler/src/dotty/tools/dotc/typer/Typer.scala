@@ -4560,7 +4560,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot, tree.symbol.span))
         else conj
       else pt
-    gadts.println(i"insert GADT cast from $tree to $target")
-    tree.cast(target)
+    if target.existsPart(_.isInstanceOf[ProtoType]) then
+      // we want to avoid embedding a SelectionProto in a Conversion, as the result type
+      // as it might end up within a GADT cast type, e.g. tests/pos/i15867.scala
+      // so we just bail - in that example, a GADT cast will be insert on application, so it compiles.
+      // but tests/pos/i18062.scala is an example with a polymorphic method, which requires type variables to
+      // be applied to the tree and then constrained before they match the prototype.
+      // so rather than try to handle all that before calling adapt, let's just bail on this side.
+      tree
+    else
+      gadts.println(i"insert GADT cast from $tree to $target")
+      tree.cast(target)
   end insertGadtCast
 }
