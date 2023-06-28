@@ -49,24 +49,6 @@ object TypeUtils {
       case ps => ps.reduceLeft(AndType(_, _))
     }
 
-    /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
-     *  or -1 if this is not a tuple type.
-     */
-    def tupleArity(using Context): Int = self/*.dealias*/ match { // TODO: why does dealias cause a failure in tests/run-deep-subtype/Tuple-toArray.scala
-      case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-        val arity = tl.tupleArity
-        if (arity < 0) arity else arity + 1
-      case self: SingletonType =>
-        if self.termSymbol == defn.EmptyTupleModule then 0 else -1
-      case self: AndOrType =>
-        val arity1 = self.tp1.tupleArity
-        val arity2 = self.tp2.tupleArity
-        if arity1 == arity2 then arity1 else -1
-      case _ =>
-        if defn.isTupleNType(self) then self.dealias.argInfos.length
-        else -1
-    }
-
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
     def tupleElementTypes(using Context): Option[List[Type]] = self.dealias match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
