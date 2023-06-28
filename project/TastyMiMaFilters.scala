@@ -53,7 +53,9 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.MissingParent, "scala.ScalaReflectionException$"),
     ProblemMatcher.make(ProblemKind.MissingParent, "scala.UninitializedFieldError$"),
 
-    // Problem: ConstantType for `null` versus `scala.Null`
+    // Probably OK: ConstantType for `null` versus `scala.Null`
+    // Calls to the default getter seem to link correctly.
+    // Tested in stdlib-bootstrapped/test/scala/collection/UnrolledBufferTest.scala
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.Unrolled.<init>$default$4"),
 
     // Problem: Missing type arguments with higher-kinded types

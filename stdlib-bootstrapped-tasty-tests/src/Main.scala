@@ -17,6 +17,7 @@ object HelloWorld:
     testScala2ObjectParents()
     testScala2CaseClassUnderscoreMembers()
     testScalaNumberUnderlying()
+    scala.collection.mutable.UnrolledBufferTest.test()
   }
 
   def testScala2UnapplySignatures() = {
