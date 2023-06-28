@@ -109,6 +109,11 @@ object Types {
     /** Is this type still provisional? This is the case if the type contains, or depends on,
      *  uninstantiated type variables or type symbols that have the Provisional flag set.
      *  This is an antimonotonic property - once a type is not provisional, it stays so forever.
+     *
+     *  FIXME: The semantics of this flag are broken by the existence of `TypeVar#resetInst`,
+     *         a non-provisional type could go back to being provisional after
+     *         a call to `resetInst`. This means all caches that rely on `isProvisional`
+     *         can likely end up returning stale results.
      */
     def isProvisional(using Context): Boolean = mightBeProvisional && testProvisional
 
@@ -4742,6 +4747,10 @@ object Types {
    *  recorded in the type variable itself, or else, if the current type state
    *  is different from the variable's creation state (meaning unrolls are possible)
    *  in the current typer state.
+   *
+   *  FIXME: the "once" in the statement above is not true anymore now that `resetInst`
+   *         exists, this is problematic for caching (see `Type#isProvisional`),
+   *         we should try getting rid of this method.
    *
    *  @param  origin           the parameter that's tracked by the type variable.
    *  @param  creatorState     the typer state in which the variable was created.
