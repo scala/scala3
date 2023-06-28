@@ -16,6 +16,7 @@ object HelloWorld:
     testScala2UnapplySignatures()
     testScala2ObjectParents()
     testScala2CaseClassUnderscoreMembers()
+    testScalaNumberUnderlying()
   }
 
   def testScala2UnapplySignatures() = {
@@ -36,4 +37,33 @@ object HelloWorld:
   def testScala2CaseClassUnderscoreMembers() = {
     val some: Some[Int] = Some(1)
     // FIXME: assert(!typeChecks("some._1"))
+  }
+
+  def testScalaNumberUnderlying() = {
+    import scala.math.{ScalaNumericConversions, ScalaNumber}
+
+    val _: java.math.BigInteger = BigInt(1).underlying
+    val _: Object = (BigInt(1): ScalaNumericConversions).underlying
+    val _: Object = (BigInt(1): ScalaNumber).underlying
+
+    // val _: java.math.BigDecimal = BigDecimal(1).underlying // FIXME: inferred result type of non-private method
+    val _: Object = (BigDecimal(1): ScalaNumericConversions).underlying
+    val _: Object = (BigDecimal(1): ScalaNumber).underlying
+
+    class MyNumber1(override val underlying: BigInt) extends ScalaNumericConversions {
+      def doubleValue: Double = ???; def floatValue: Float = ???;
+      def intValue: Int = ???; def longValue: Long = ???
+      def isWhole: Boolean = ???
+    }
+    val _: BigInt = MyNumber1(1).underlying
+    val _: Object = (MyNumber1(1): ScalaNumericConversions).underlying
+    val _: Object = (MyNumber1(1): ScalaNumber).underlying
+
+    class MyNumber2(override val underlying: Object) extends ScalaNumber {
+      def doubleValue: Double = ???; def floatValue: Float = ???;
+      def intValue: Int = ???; def longValue: Long = ???
+      def isWhole: Boolean = ???
+    }
+    val _: Object = MyNumber2(BigInt(1)).underlying
+    val _: Object = (MyNumber2(BigInt(1)): ScalaNumber).underlying
   }
