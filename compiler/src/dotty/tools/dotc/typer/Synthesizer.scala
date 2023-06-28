@@ -166,7 +166,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
       def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
         cls2 == defn.NothingClass
-        || cls2 == defn.boxedType(cls1.typeRef).symbol
+        || cls2 == defn.boxedClass(cls1)
         || cls1.isNumericValueClass && cls2.derivesFrom(defn.BoxedNumberClass)
 
       if cls1.isPrimitiveValueClass then
