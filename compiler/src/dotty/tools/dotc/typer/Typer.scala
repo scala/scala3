@@ -4380,23 +4380,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               mapOver(tp)
         }
 
-        // Is it certain that a value of `tree.tpe` is never a subtype of `pt`?
-        // It is true if either
-        // - the class of `tree.tpe` and class of `pt` cannot have common subclass, or
-        // - `tree` is an object or enum value, which cannot possibly be a subtype of `pt`
-        val isDefiniteNotSubtype = {
-          val clsA = tree.tpe.widenDealias.classSymbol
-          val clsB = pt.dealias.classSymbol
-          clsA.exists && clsB.exists
-            && clsA != defn.NullClass
-            && (!clsA.isNumericValueClass && !clsB.isNumericValueClass) // approximation for numeric conversion and boxing
-            && !clsA.asClass.mayHaveCommonChild(clsB.asClass)
-          || tree.symbol.isOneOf(Module | Enum)
-             && !(tree.tpe frozen_<:< pt) // fast track
-             && !(tree.tpe frozen_<:< approx(pt))
-        }
+        // Is it possible that a value of `clsA` is equal to a value of `clsB`?
+        //  This ignores user-defined equals methods, but makes an exception
+        //  for numeric classes.
+        def canOverlap(clsA: ClassSymbol, clsB: ClassSymbol): Boolean =
+          clsA.mayHaveCommonChild(clsB)
+          || clsA.isNumericValueClass // this is quite coarse, but matches to what was done before
+          || clsB.isNumericValueClass
 
-        if isDefiniteNotSubtype then
+        // Can type `a` possiblly have a common instance with type `b`?
+        def canEqual(a: Type, b: Type): Boolean = trace(i"canEqual $a $b"):
+          b match
+            case _: TypeRef | _: AppliedType if b.typeSymbol.isClass =>
+              a match
+                case a: TermRef if a.symbol.isOneOf(Module | Enum) =>
+                     (a frozen_<:< b) // fast track
+                  || (a frozen_<:< approx(b))
+                case _: TypeRef | _: AppliedType if a.typeSymbol.isClass =>
+                  if a.isNullType then !b.isNotNull
+                  else canOverlap(a.typeSymbol.asClass, b.typeSymbol.asClass)
+                case a: TypeProxy =>
+                  canEqual(a.superType, b)
+                case a: AndOrType =>
+                  canEqual(a.tp1, b) || canEqual(a.tp2, b)
+            case b: TypeProxy =>
+              canEqual(a, b.superType)
+            case b: AndOrType =>
+              // we lose precision with and/or types, but it's hard to do better and
+              // still compute `canEqual(A & B, B & A) = true`.
+              canEqual(a, b.tp1) || canEqual(a, b.tp2)
+
+        if !canEqual(tree.tpe, pt) then
           // We could check whether `equals` is overridden.
           // Reasons for not doing so:
           // - it complicates the protocol
