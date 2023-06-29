@@ -4063,6 +4063,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                res
               } =>
             insertGadtCast(tree, wtp, pt)
+          case CompareResult.OKwithOpaquesUsed if !tree.tpe.frozen_<:<(pt)(using ctx.withOwner(defn.RootClass)) =>
+            // guard to avoid extra Typed trees, eg. from testSubType(O.T, O.T) which returns OKwithOpaquesUsed
+            Typed(tree, TypeTree(pt))
           case _ =>
             //typr.println(i"OK ${tree.tpe}\n${TypeComparer.explained(_.isSubType(tree.tpe, pt))}") // uncomment for unexpected successes
             tree

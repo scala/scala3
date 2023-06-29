@@ -46,6 +46,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     state = c.typerState
     monitored = false
     GADTused = false
+    opaquesUsed = false
     recCount = 0
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
@@ -60,6 +61,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Indicates whether the subtype check used GADT bounds */
   private var GADTused: Boolean = false
+
+  /** Indicates whether the subtype check used opaque types */
+  private var opaquesUsed: Boolean = false
 
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
@@ -142,8 +146,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
+    opaquesUsed = false
     if !topLevelSubType(tp1, tp2) then CompareResult.Fail
     else if GADTused then CompareResult.OKwithGADTUsed
+    else if opaquesUsed then CompareResult.OKwithOpaquesUsed // we cast on GADTused, so handles if both are used
     else CompareResult.OK
 
   /** The current approximation state. See `ApproxState`. */
@@ -1483,12 +1489,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def tryLiftedToThis1: Boolean = {
       val tp1a = liftToThis(tp1)
-      (tp1a ne tp1) && recur(tp1a, tp2)
+      (tp1a ne tp1) && recur(tp1a, tp2) && { opaquesUsed = true; true }
     }
 
     def tryLiftedToThis2: Boolean = {
       val tp2a = liftToThis(tp2)
-      (tp2a ne tp2) && recur(tp1, tp2a)
+      (tp2a ne tp2) && recur(tp1, tp2a) && { opaquesUsed = true; true }
     }
 
     // begin recur
@@ -2935,7 +2941,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 object TypeComparer {
 
   enum CompareResult:
-    case OK, Fail, OKwithGADTUsed
+    case OK, Fail, OKwithGADTUsed, OKwithOpaquesUsed
 
   /** Class for unification variables used in `natValue`. */
   private class AnyConstantType extends UncachedGroundType with ValueType {
