@@ -110,7 +110,7 @@ object InlinedSourceMaps:
     if cunit.source.file.isVirtual then InlinedSourceMap(cunit, Nil, Map.empty[SourceFile, String])
     else
       var lastLine = cunit.tpdTree.sourcePos.endLine
-      // returns the first fake line (starting from 0) 
+      // returns the first fake line (starting from 0)
       def allocate(origPos: SourcePosition): Int =
         val line = lastLine + 1
         lastLine += origPos.lines.length
@@ -128,7 +128,35 @@ object InlinedSourceMaps:
     requests: List[Request],
     internalNames: Map[SourceFile, String])(using Context):
 
-    def debugExtension: Option[String] = Some("TODO")
+    def debugExtension: Option[String] = Option.when(requests.nonEmpty) {
+      val scalaStratum =
+        val files = cunit.source :: requests.map(_.inline.expansion.source).distinct.filter(_ != cunit.source)
+        val mappings = requests.map { case Request(inline, firstFakeLine) =>
+          Mapping(inline.expansion.sourcePos.startLine,
+            files.indexOf(inline.expansion.source) + 1,
+            inline.expansion.sourcePos.lines.length,
+            firstFakeLine, 1)
+        }
+        Stratum("Scala",
+          files.zipWithIndex.map { case (f, n) => File(n + 1, f.name, internalNames.get(f)) },
+          Mapping(0, 1, cunit.tpdTree.sourcePos.lines.length, 0, 1) +: mappings
+        )
+
+      val debugStratum =
+        val mappings = requests.map { case Request(inline, firstFakeLine) =>
+          Mapping(inline.sourcePos.startLine, 1, 1, firstFakeLine, inline.expansion.sourcePos.lines.length)
+        }
+        Stratum("ScalaDebug", File(1, cunit.source.name, None) :: Nil, mappings)
+
+      val b = new StringBuilder
+      b ++= "SMAP\n"
+      b ++= cunit.source.name
+      b += '\n'
+      b ++= "Scala\n"
+      scalaStratum.write(b)
+      debugStratum.write(b)
+      b.toString
+    }
 
     def lineFor(tree: Tree): Option[Int] =
 
