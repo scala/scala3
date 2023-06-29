@@ -1962,7 +1962,7 @@ object ScaladocConfigs {
     SourceLinks(
       List(
         scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
-        dottySrcLink(refVersion, srcManaged(version, "dotty") + "=", "#library/src"),
+        dottySrcLink(refVersion, "library/src=", "#library/src"),
         dottySrcLink(refVersion),
         "docs=github://lampepfl/dotty/main#docs"
       )
@@ -2047,6 +2047,7 @@ object ScaladocConfigs {
   lazy val Scala3 = Def.task {
     val dottyJars: Seq[java.io.File] = Seq(
       (`stdlib-bootstrapped`/Compile/products).value,
+      (`scala3-library-bootstrapped`/Compile/products).value,
       (`scala3-interfaces`/Compile/products).value,
       (`tasty-core-bootstrapped`/Compile/products).value,
     ).flatten
@@ -2060,7 +2061,7 @@ object ScaladocConfigs {
     val docRootFile = stdLibRoot.resolve("rootdoc.txt")
 
     val dottyManagesSources =
-      (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
+      (`scala3-library-bootstrapped`/Compile/sourceDirectory).value
 
     val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
 
@@ -2088,24 +2089,27 @@ object ScaladocConfigs {
   }
 
   def stableScala3(version: String) = Def.task {
+    val scalaLibrarySrc = s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed"
+    val dottyLibrarySrc = "library/src"
     Scala3.value
       .add(defaultSourceLinks(version + "-bin-SNAPSHOT-nonbootstrapped", version).value)
       .add(ProjectVersion(version))
       .add(SnippetCompiler(
         List(
-          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/quoted=compile",
-          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/compiletime=compile"
+          s"$dottyLibrarySrc/scala/quoted=compile",
+          s"$dottyLibrarySrc/scala/compiletime=compile"
         )
       ))
       .add(CommentSyntax(List(
-        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=markdown",
-        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=wiki",
+        s"$dottyLibrarySrc=markdown",
+        s"$scalaLibrarySrc=wiki",
         "wiki"
       )))
-      .add(DocRootContent(s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src/rootdoc.txt"))
+      .add(DocRootContent(s"$scalaLibrarySrc/rootdoc.txt"))
       .withTargets(
         Seq(
           s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"out/bootstrap/scala3-library-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"tmp/interfaces/target/classes",
           s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
         )
