@@ -539,9 +539,15 @@
   display: none;
 }
 
-.icon-button.custom::after{
-  content: var(--bgimage);
-  max-width: fit-content;
+.icon-button.custom::after {
+  content: "";
+  background-image: var(--bgimage);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .theme-dark .icon-button.custom-dark{
@@ -549,8 +555,14 @@
 }
 
 .theme-dark .icon-button.custom-dark::after{
-  content: var(--bgimage-dark);
-  max-width: fit-content;
+  content: "";
+  background-image: var(--bgimage-dark);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .theme-dark .icon-button.custom{
