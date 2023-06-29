@@ -135,7 +135,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case JavaSymbolIsNotAValueID // errorNumber: 119
   case DoubleDefinitionID // errorNumber: 120
   case MatchCaseOnlyNullWarningID // errorNumber: 121
-  case ImportRenamedTwiceID // errorNumber: 122
+  case ImportedTwiceID // errorNumber: 122
   case TypeTestAlwaysDivergesID // errorNumber: 123
   case TermMemberNeedsNeedsResultTypeForImplicitSearchID // errorNumber: 124
   case ClassCannotExtendEnumID // errorNumber: 125
@@ -198,6 +198,7 @@ enum ErrorMessageID(val isActive: Boolean = true) extends java.lang.Enum[ErrorMe
   case NotConstantID // errorNumber: 182
   case ClosureCannotHaveInternalParameterDependenciesID // errorNumber: 183
   case MatchTypeNoCasesID // errorNumber: 184
+  case UnimportedAndImportedID // errorNumber: 185
 
   def errorNumber = ordinal - 1
 

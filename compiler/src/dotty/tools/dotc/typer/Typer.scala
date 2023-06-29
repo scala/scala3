@@ -325,7 +325,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 fail(em"reference to `$name` is ambiguous; it is imported twice")
               found
 
-            if selector.rename == termName && selector.rename != nme.WILDCARD then
+            if selector.rename == termName && !selector.isUnimport then
               val memberName =
                 if selector.name == termName then name
                 else if name.isTypeName then selector.name.toTypeName
