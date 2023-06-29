@@ -926,59 +926,6 @@ object Build {
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
 
-  /** Version of stdlib-bootstrapped that compiles both Scala 2 and Scala 3 libraries
-   *  This is only used as a temporary solution until the docs can be generated using
-   *  stdlib-bootstrapped and scala3-library-bootstrapped.
-   */
-  lazy val `stdlib-bootstrapped-legacy` = project.in(file("stdlib-bootstrapped-legacy")).
-    withCommonSettings(Bootstrapped).
-    dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
-    settings(stdlibBootstrappedCommonSettings).
-    settings(
-      scalacOptions -= "-Yscala2-stdlib",
-      Compile/scalacOptions ++= {
-        Seq(
-          "-sourcepath",
-          Seq(
-            (Compile/sourceManaged).value / "scala-library-src",
-            (Compile/sourceManaged).value / "dotty-library-src",
-          ).mkString(File.pathSeparator),
-        )
-      },
-      (Compile / sourceGenerators) += Def.task {
-        val s = streams.value
-        val cacheDir = s.cacheDirectory
-        val trgDir = (Compile / sourceManaged).value / "dotty-library-src"
-
-        // NOTE `sourceDirectory` is used for actual copying,
-        // but `sources` are used as cache keys
-        val dottyLibSourceDirs = (`scala3-library-bootstrapped`/Compile/unmanagedSourceDirectories).value
-        def dottyLibSources = dottyLibSourceDirs.foldLeft(PathFinder.empty) { (pf, dir) =>
-          if (!dir.exists) pf else pf +++ (dir ** "*.scala") +++ (dir ** "*.java")
-        }
-
-        val cachedFun = FileFunction.cached(
-          cacheDir / s"copyDottyLibrarySrc",
-          FilesInfo.lastModified,
-          FilesInfo.exists,
-        ) { _ =>
-          if (trgDir.exists) IO.delete(trgDir)
-          dottyLibSourceDirs.foreach { dir =>
-            if (dir.exists) {
-              s.log.info(s"Copying scala3-library sources from $dir to $trgDir...")
-              IO.copyDirectory(dir, trgDir)
-            }
-          }
-
-          ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
-        }
-
-        cachedFun(dottyLibSources.get.toSet).toSeq
-      }.taskValue,
-      mimaCheckDirection := "none",
-    )
-
   /** Scala 2 library compiled by dotty using the latest published sources of the library.
    *
    *  This version of the library is not (yet) TASTy/binary compatible with the Scala 2 compiled library.
@@ -987,15 +934,7 @@ object Build {
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
     settings(commonBootstrappedSettings).
-    settings(stdlibBootstrappedCommonSettings).
     settings(
-      Compile / scalacOptions ++= {
-        Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
-      },
-    )
-
-  lazy val stdlibBootstrappedCommonSettings =
-    Seq(
       moduleName := "scala-library",
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
       Compile / scalacOptions ++= {
@@ -2019,7 +1958,7 @@ object ScaladocConfigs {
 
   def defaultSourceLinks(version: String = dottyNonBootstrappedVersion, refVersion: String = dottyVersion) = Def.task {
     def stdLibVersion = stdlibVersion(NonBootstrapped)
-    def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$v/src_managed/main/$s-library-src"
+    def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
     SourceLinks(
       List(
         scalaSrcLink(stdLibVersion, srcManaged(version, "scala") + "="),
@@ -2107,7 +2046,7 @@ object ScaladocConfigs {
 
   lazy val Scala3 = Def.task {
     val dottyJars: Seq[java.io.File] = Seq(
-      (`stdlib-bootstrapped-legacy`/Compile/products).value,
+      (`stdlib-bootstrapped`/Compile/products).value,
       (`scala3-interfaces`/Compile/products).value,
       (`tasty-core-bootstrapped`/Compile/products).value,
     ).flatten
@@ -2115,13 +2054,13 @@ object ScaladocConfigs {
     val roots = dottyJars.map(_.getAbsolutePath)
 
     val managedSources =
-      (`stdlib-bootstrapped-legacy`/Compile/sourceManaged).value / "scala-library-src"
+      (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
     val projectRoot = (ThisBuild/baseDirectory).value.toPath
     val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
     val docRootFile = stdLibRoot.resolve("rootdoc.txt")
 
     val dottyManagesSources =
-      (`stdlib-bootstrapped-legacy`/Compile/sourceManaged).value / "dotty-library-src"
+      (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
 
     val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
 
@@ -2154,19 +2093,19 @@ object ScaladocConfigs {
       .add(ProjectVersion(version))
       .add(SnippetCompiler(
         List(
-          s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/quoted=compile",
-          s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/compiletime=compile"
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/quoted=compile",
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src/scala/compiletime=compile"
         )
       ))
       .add(CommentSyntax(List(
-        s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=markdown",
-        s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=wiki",
+        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/dotty-library-src=markdown",
+        s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src=wiki",
         "wiki"
       )))
-      .add(DocRootContent(s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src/rootdoc.txt"))
+      .add(DocRootContent(s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/src_managed/main/scala-library-src/rootdoc.txt"))
       .withTargets(
         Seq(
-          s"out/bootstrap/stdlib-bootstrapped-legacy/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
+          s"out/bootstrap/stdlib-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes",
           s"tmp/interfaces/target/classes",
           s"out/bootstrap/tasty-core-bootstrapped/scala-$version-bin-SNAPSHOT-nonbootstrapped/classes"
         )
