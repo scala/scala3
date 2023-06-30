@@ -26,6 +26,7 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
+import scala.collection.SeqMap
 
 /** Type quotes `'{ ... }` and splices `${ ... }` */
 trait QuotesAndSplices {
@@ -206,7 +207,7 @@ trait QuotesAndSplices {
    *  will return
    *  ```
    *  (
-   *    Map(<t$giveni>: Symbol -> <t @ _>: Bind),
+   *    Map(<t$giveni>: Symbol -> <t>: Symbol),
    *    <'{
    *       @scala.internal.Quoted.patternType type t
    *       scala.internal.Quoted.patternHole[List[t]]
@@ -215,10 +216,10 @@ trait QuotesAndSplices {
    *  )
    *  ```
    */
-  private def splitQuotePattern(quoted: Tree)(using Context): (collection.Map[Symbol, Bind], Tree, List[Tree]) = {
+  private def splitQuotePattern(quoted: Tree)(using Context): (SeqMap[Symbol, Symbol], Tree, List[Tree]) = {
     val ctx0 = ctx
 
-    val bindSymMapping: collection.Map[Symbol, Bind] = unapplyBindingsMapping(quoted)
+    val bindSymMapping: SeqMap[Symbol, Symbol] = unapplyBindingsMapping(quoted)
 
     object splitter extends tpd.TreeMap {
       private var variance: Int = 1
@@ -298,7 +299,7 @@ trait QuotesAndSplices {
           report.error(IllegalVariableInPatternAlternative(tdef.symbol.name), tdef.srcPos)
         if variance == -1 then
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
-        val bindingType = bindSymMapping(tdef.symbol).symbol.typeRef
+        val bindingType = bindSymMapping(tdef.symbol).typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitVal)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
@@ -343,11 +344,12 @@ trait QuotesAndSplices {
    *  binding that will be as type variable in the encoded `unapply` of the quote pattern.
    *
    *  @return Mapping from type variable symbols defined in the quote pattern into
-   *          type variable `Bind` definitions for the `unapply` of the quote pattern.
+   *          type variable definitions for the `unapply` of the quote pattern.
    *          This mapping retains the original type variable definition order.
    */
-  private def unapplyBindingsMapping(quoted: Tree)(using Context): collection.Map[Symbol, Bind] = {
+  private def unapplyBindingsMapping(quoted: Tree)(using Context): SeqMap[Symbol, Symbol] = {
     val mapping = mutable.LinkedHashMap.empty[Symbol, Symbol]
+
     // Collect all existing type variable bindings and create new symbols for them.
     // The old info is used, it may contain references to the old symbols.
     new tpd.TreeTraverser {
@@ -376,11 +378,7 @@ trait QuotesAndSplices {
       newBindings.info = newBindings.info.subst(oldBindings, newBindingsRefs)
       ctx.gadtState.addToConstraint(newBindings) // This must be preformed after the info has been updated
 
-    // Map into Bind nodes retaining the original order
-    val mapping2: mutable.Map[Symbol, Bind] = mutable.LinkedHashMap.empty
-    for (oldSym, newSym)  <- mapping do
-      mapping2(oldSym) = Bind(newSym, untpd.Ident(nme.WILDCARD).withType(newSym.info)).withSpan(quoted.span)
-    mapping2
+    mapping
   }
 
   /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
@@ -470,20 +468,23 @@ trait QuotesAndSplices {
       else tpd.Block(typeTypeVariables, pattern)
     }
 
-    val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
+    val (bindSymMapping, shape, splices) = splitQuotePattern(quoted1)
 
     class ReplaceBindings extends TypeMap() {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
           val tp1 = if (tp.symbol.isTypeSplice) tp.dealias else tp
-          mapOver(typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef))
+          mapOver(bindSymMapping.get(tp1.typeSymbol).fold(tp)(_.typeRef))
         case tp => mapOver(tp)
       }
     }
     val replaceBindings = new ReplaceBindings
     val patType = defn.tupleType(splices.tpes.map(tpe => replaceBindings(tpe.widen)))
 
-    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(typeBindings.values.toList)
+    val typeBinds = bindSymMapping.values.map(sym =>
+      Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.info)).withSpan(quoted.span)
+    ).toList
+    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(typeBinds)
 
     val replaceBindingsInTree = new TreeMap {
       private var bindMap = Map.empty[Symbol, Symbol]
