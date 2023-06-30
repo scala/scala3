@@ -2677,9 +2677,7 @@ object Types {
       else {
         if (isType) {
           val res =
-            val sym =
-              if (currentSymbol.isValidInCurrentRun) currentSymbol
-              else computeSymbol
+            val sym = stableInRunSymbol
             if (sym.isAllOf(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
@@ -2754,9 +2752,7 @@ object Types {
     /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
-        val sym =
-          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn 
-          else computeSymbol
+        val sym = stableInRunSymbol
         val allowPrivate = !sym.exists || sym.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
         if (d.isOverloaded && sym.exists)
