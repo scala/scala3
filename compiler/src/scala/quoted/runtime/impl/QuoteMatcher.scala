@@ -93,7 +93,11 @@ import dotty.tools.dotc.util.optional
  *   '{ val x: T = e1; e2 } =?= '{ val y: P = p1; p2 }   ===>   withEnv(x -> y)('[T] =?= '[P] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
  *
  *   /* Match def */
- *   '{ def x0(x1: T1, ..., xn: Tn): T0 = e1; e2 } =?= '{ def y0(y1: P1, ..., yn: Pn): P0 = p1; p2 }   ===>   withEnv(x0 -> y0, ..., xn -> yn)('[T0] =?= '[P0] &&& ... &&& '[Tn] =?= '[Pn] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
+ *   '{ def x0(x1: T1, ..., xn: Tn)...(y1: U1, ..., ym: Um): T0 = e1; e2 } =?= '{ def y0(z1: P1, ..., zn: Pn)...(w1: Q1, ..., wn: Qn): P0 = p1; p2 }   ===>
+ *           /* Note that types of parameters can depend on earlier parameters */
+ *           withEnv(x1 -> y1, ..., zn -> zn)(...withEnv(y1 -> w1, ..., ym -> wm)(
+ *             ('[T1] =?= '[P1] &&& ... &&&'[T1] =?= '[P1]) &&& ... &&& ('[U1] =?= '[Q1] &&& ... &&&'[Um] =?= '[Qm])
+ *             &&& '[T0] =?= '[P0] &&& '{e1} =?= '{p1} && '{e2} =?= '{p2})...)
  *
  *   // Types
  *
