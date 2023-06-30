@@ -19,6 +19,7 @@ import printing.Formatting.hl
 import config.Printers
 
 import scala.annotation.internal.sharable
+import scala.annotation.threadUnsafe
 
 object desugar {
   import untpd._
@@ -487,6 +488,7 @@ object desugar {
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
+    val caseClassInScala2StdLib = isCaseClass && ctx.settings.Yscala2Stdlib.value
 
     val originalTparams = constr1.leadingTypeParams
     val originalVparamss = asTermOnly(constr1.trailingParamss)
@@ -662,9 +664,7 @@ object desugar {
     //       new C[...](p1, ..., pN)(moreParams)
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
-        val mods =
-          if ctx.settings.Yscala2Stdlib.value then synthetic | Inline
-          else synthetic
+        val mods = if caseClassInScala2StdLib then synthetic | Inline else synthetic
         DefDef(name, Nil, tpt, rhs).withMods(mods)
 
       def productElemMeths =
@@ -782,7 +782,7 @@ object desugar {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS =
             if (arity == 0) Literal(Constant(true))
-            else if ctx.settings.Yscala2Stdlib.value then scala2LibCompatUnapplyRhs(unapplyParam.name)
+            else if caseClassInScala2StdLib then scala2LibCompatUnapplyRhs(unapplyParam.name)
             else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
 
