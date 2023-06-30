@@ -2677,7 +2677,10 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+            val sym =
+              if (currentSymbol.isValidInCurrentRun) currentSymbol
+              else computeSymbol
+            if (sym.isAllOf(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -2751,14 +2754,16 @@ object Types {
     /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
-        val lastSym = lastSymbol.nn
-        val allowPrivate = !lastSym.exists || lastSym.is(Private)
+        val sym =
+          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn 
+          else computeSymbol
+        val allowPrivate = !sym.exists || sym.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
-        if (d.isOverloaded && lastSym.exists)
+        if (d.isOverloaded && sym.exists)
           d = disambiguate(d,
-                if (lastSym.signature == Signature.NotAMethod) Signature.NotAMethod
-                else lastSym.asSeenFrom(prefix).signature,
-                lastSym.targetName)
+                if (sym.signature == Signature.NotAMethod) Signature.NotAMethod
+                else sym.asSeenFrom(prefix).signature,
+                sym.targetName)
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
