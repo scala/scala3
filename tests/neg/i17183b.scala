@@ -6,4 +6,4 @@ trait MyFunc {
 
 case class Context(f: MyFunc)
 
-def test = Context(f = (_, _) => ???)
+def test = Context(f = (_, _) => ???) // error // error
