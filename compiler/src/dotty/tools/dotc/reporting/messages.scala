@@ -2234,8 +2234,15 @@ extends NamingMsg(DoubleDefinitionID) {
   def explain(using Context) = ""
 }
 
-class ImportRenamedTwice(ident: untpd.Ident)(using Context) extends SyntaxMsg(ImportRenamedTwiceID) {
-  def msg(using Context) = s"${ident.show} is renamed twice on the same import line."
+class ImportedTwice(sel: Name)(using Context) extends SyntaxMsg(ImportedTwiceID) {
+  def msg(using Context) = s"${sel.show} is imported twice on the same import line."
+  def explain(using Context) = ""
+}
+
+class UnimportedAndImported(sel: Name, isImport: Boolean)(using Context) extends SyntaxMsg(UnimportedAndImportedID) {
+  def msg(using Context) =
+    val otherStr = if isImport then "and imported" else "twice"
+    s"${sel.show} is unimported $otherStr on the same import line."
   def explain(using Context) = ""
 }
 

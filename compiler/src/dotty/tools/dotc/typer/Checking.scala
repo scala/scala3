@@ -1511,7 +1511,8 @@ trait Checking {
    *  (2) Check that no import selector is renamed more than once.
    */
   def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit =
-    val seen = mutable.Set.empty[Name]
+    val originals = mutable.Set.empty[Name]
+    val targets = mutable.Set.empty[Name]
 
     def checkIdent(sel: untpd.ImportSelector): Unit =
       if sel.name != nme.ERROR
@@ -1519,9 +1520,14 @@ trait Checking {
           && !qualType.member(sel.name.toTypeName).exists
       then
         report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
-      if seen.contains(sel.name) then
-        report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
-      seen += sel.name
+      if sel.isUnimport then
+        if originals.contains(sel.name) then
+          report.error(UnimportedAndImported(sel.name, targets.contains(sel.name)), sel.imported.srcPos)
+      else
+        if targets.contains(sel.rename) then
+          report.error(ImportedTwice(sel.rename), sel.renamed.orElse(sel.imported).srcPos)
+        targets += sel.rename
+      originals += sel.name
 
     if !ctx.compilationUnit.isJava then
       for sel <- selectors do
