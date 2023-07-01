@@ -3136,15 +3136,15 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case param @ TypeParamRef(b, n) if b eq caseLambda =>
           insts(n) =
             if canApprox then
-              approximation(param, fromBelow = variance >= 0, Int.MaxValue).simplified
+              approximation(param, fromBelow = variance >= 0, Int.MaxValue).normalized
             else constraint.entry(param) match
               case entry: TypeBounds =>
                 val lo = fullLowerBound(param)
                 val hi = fullUpperBound(param)
-                if !poisoned(param) && isSubType(hi, lo) then lo.simplified else Range(lo, hi)
+                if !poisoned(param) && isSubType(hi, lo) then lo.normalized else Range(lo, hi)
               case inst =>
                 assert(inst.exists, i"param = $param\nconstraint = $constraint")
-                if !poisoned(param) then inst.simplified else Range(inst, inst)
+                if !poisoned(param) then inst.normalized else Range(inst, inst)
           insts
         case _ =>
           foldOver(insts, t)
@@ -3165,6 +3165,11 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case _ => mapOver(t)
       }
     }
+
+    def normalizeHard(tp: Type): Type = tp.tryNormalize.orElse(tp match {
+      case tp: AppliedType => tp.map(normalizeHard)
+      case _               => tp
+    })
 
     /** Match a single case. */
     def matchCase(cas: Type): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
@@ -3229,7 +3234,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             MatchTypeTrace.noInstance(scrut, cas, fails)
             NoType
           case MatchResult.Reduced(tp) =>
-            tp.simplified
+            normalizeHard(tp)
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
         ErrorType(reporting.MatchTypeNoCases(casesText))
