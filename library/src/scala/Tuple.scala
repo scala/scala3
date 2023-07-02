@@ -78,6 +78,13 @@ sealed trait Tuple extends Product {
    */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
+
+  /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
+   *  consisting all its elements.
+   */
+  @experimental
+  inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
+    runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
 object Tuple {
@@ -310,13 +317,6 @@ sealed trait NonEmptyTuple extends Tuple {
    */
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
-
-  /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
-   * consisting all its elements.
-   */
-  @experimental
-  inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
-    runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
 @showAsInfix

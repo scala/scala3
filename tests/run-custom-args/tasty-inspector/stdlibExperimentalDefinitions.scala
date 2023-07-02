@@ -102,7 +102,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass",
 
   // New feature: reverse method on Tuple
-  "scala.NonEmptyTuple.reverse",
+  "scala.Tuple.reverse",
   "scala.Tuple$.Helpers",
   "scala.Tuple$.Helpers$",
   "scala.Tuple$.Helpers$.ReverseImpl",

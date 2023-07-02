@@ -11,6 +11,7 @@ object Test {
     for (i <- 0 to 25)
       testArray(i, j => j)
 
+    println(EmptyTuple.reverse)
     println(Tuple1(1).reverse)
     println((1, 2).reverse)
     println((1, 2, 3).reverse)
@@ -37,6 +38,7 @@ object Test {
     println((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24).reverse)
     println((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25).reverse)
 
+    println(Tuple().reverse)
     println((1 *: Tuple()).reverse)
     println((1 *: 2 *: Tuple()).reverse)
     println((1 *: 2 *: 3 *: Tuple()).reverse)
