@@ -84,7 +84,7 @@ object Recheck:
      *  type stored in the tree itself
      */
     def rememberTypeAlways(tpe: Type)(using Context): Unit =
-      if tpe ne tree.tpe then tree.putAttachment(RecheckedType, tpe)
+      if tpe ne tree.knownType then tree.putAttachment(RecheckedType, tpe)
 
     /** The remembered type of the tree, or if none was installed, the original type */
     def knownType: Type =

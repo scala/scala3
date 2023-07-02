@@ -301,9 +301,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** A specialized implementation of the selection rule.
      *
-     *  E |- f: Cf f { m: Cr R }
-     *  ------------------------
-     *  E |- f.m: C R
+     *  E |- f: f{ m: Cr R }^Cf
+     *  -----------------------
+     *  E |- f.m: R^C
      *
      *  The implementation picks as `C` one of `{f}` or `Cr`, depending on the
      *  outcome of a `mightSubcapture` test. It picks `{f}` if this might subcapture Cr
@@ -343,10 +343,10 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** A specialized implementation of the apply rule.
      *
-     *  E |- f: Cf (Ra -> Cr Rr)
-     *  E |- a: Ca Ra
-     *  ------------------------
-     *  E |- f a: C Rr
+     *  E |- f: Ra ->Cf Rr^Cr
+     *  E |- a: Ra^Ca
+     *  ---------------------
+     *  E |- f a: Rr^C
      *
      *  The implementation picks as `C` one of `{f, a}` or `Cr`, depending on the
      *  outcome of a `mightSubcapture` test. It picks `{f, a}` if this might subcapture Cr
@@ -368,8 +368,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing:
-          case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual) =>
-            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual)
+          case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
+            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
 
       else
         super.recheckApply(tree, pt) match
@@ -474,14 +474,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                 .installAfter(preRecheckPhase)
 
               // Next, update all parameter symbols to match expected formals
-              meth.paramSymss.head.lazyZip(ptformals).foreach { (psym, pformal) =>
+              meth.paramSymss.head.lazyZip(ptformals).foreach: (psym, pformal) =>
                 psym.updateInfoBetween(preRecheckPhase, thisPhase, pformal.mapExprType)
-              }
+
               // Next, update types of parameter ValDefs
-              mdef.paramss.head.lazyZip(ptformals).foreach { (param, pformal) =>
+              mdef.paramss.head.lazyZip(ptformals).foreach: (param, pformal) =>
                 val ValDef(_, tpt, _) = param: @unchecked
                 tpt.rememberTypeAlways(pformal)
-              }
+
               // Next, install a new completer reflecting the new parameters for the anonymous method
               val mt = meth.info.asInstanceOf[MethodType]
               val completer = new LazyType:
@@ -521,6 +521,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   2. The capture set of the self type of a class includes the capture set of the class.
      *   3. The capture set of the self type of a class includes the capture set of every class parameter,
      *      unless the parameter is marked @constructorOnly.
+     *   4. If the class extends a pure base class, the capture set of the self type must be empty.
      */
     override def recheckClassDef(tree: TypeDef, impl: Template, cls: ClassSymbol)(using Context): Type =
       val saved = curEnv
@@ -534,7 +535,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for param <- cls.paramGetters do
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot) then
             checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
-        for pureBase <- cls.pureBaseClass do
+        for pureBase <- cls.pureBaseClass do // (4)
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
             tree.srcPos)
@@ -620,9 +621,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
         case wtp @ CapturingType(parent, refs) =>
           refs.disallowRootCapability { () =>
-            val kind = if tree.isInstanceOf[ValDef] then "mutable variable" else "expression"
             report.error(
-              em"""The $kind's type $wtp is not allowed to capture the root capability `cap`.
+              em"""The expression's type $wtp is not allowed to capture the root capability `cap`.
                   |This usually means that a capability persists longer than its allowed lifetime.""",
               tree.srcPos)
           }
@@ -630,6 +630,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       if !allowUniversalInBoxed then checkNotUniversal(typeToCheck)
       super.recheckFinish(tpe, tree, pt)
+
+  // ------------------ Adaptation -------------------------------------
+  //
+  // Adaptations before checking conformance of actual vs expected:
+  //
+  //   - Convert function to dependent function if expected type is a dependent function type
+  //     (c.f. alignDependentFunction).
+  //   - Relax expected capture set containing `this.type`s by adding references only
+  //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
+  //   - Adapt box status and environment capture sets by simulating box/unbox operations.
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
@@ -656,9 +666,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       recur(expected)
 
     /** For the expected type, implement the rule outlined in #14390:
-     *   - when checking an expression `a: Ca Ta` against an expected type `Ce Te`,
+     *   - when checking an expression `a: Ta^Ca` against an expected type `Te^Ce`,
      *   - where the capture set `Ce` contains Cls.this,
-     *   - and where and all method definitions enclosing `a` inside class `Cls`
+     *   - and where all method definitions enclosing `a` inside class `Cls`
      *     have only pure parameters,
      *   - add to `Ce` all references to variables or this-references in `Ca`
      *     that are outside `Cls`. These are all accessed through `Cls.this`,
@@ -666,16 +676,21 @@ class CheckCaptures extends Recheck, SymTransformer:
      *     them explicitly to `Ce` changes nothing.
      */
     private def addOuterRefs(expected: Type, actual: Type)(using Context): Type =
+
       def isPure(info: Type): Boolean = info match
         case info: PolyType => isPure(info.resType)
         case info: MethodType => info.paramInfos.forall(_.captureSet.isAlwaysEmpty) && isPure(info.resType)
         case _ => true
+
       def isPureContext(owner: Symbol, limit: Symbol): Boolean =
         if owner == limit then true
         else if !owner.exists then false
         else isPure(owner.info) && isPureContext(owner.owner, limit)
+
+      // Augment expeced capture set `erefs` by all references in actual capture
+      // set `arefs` that are outside some `this.type` reference in `erefs`
       def augment(erefs: CaptureSet, arefs: CaptureSet): CaptureSet =
-        (erefs /: erefs.elems) { (erefs, eref) =>
+        (erefs /: erefs.elems): (erefs, eref) =>
           eref match
             case eref: ThisType if isPureContext(ctx.owner, eref.cls) =>
               erefs ++ arefs.filter {
@@ -685,7 +700,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               }
             case _ =>
               erefs
-        }
+
       expected match
         case CapturingType(ecore, erefs) =>
           val erefs1 = augment(erefs, actual.captureSet)
@@ -694,6 +709,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           expected.derivedCapturingType(ecore, erefs1)
         case _ =>
           expected
+    end addOuterRefs
 
     /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
      *
@@ -703,8 +719,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** Adapt function type `actual`, which is `aargs -> ares` (possibly with dependencies)
        *  to `expected` type.
-       *  It returns the adapted type along with the additionally captured variable
-       *  during adaptation.
+       *  It returns the adapted type along with a capture set consisting of the references
+       *  that were additionally captured during adaptation.
        *   @param reconstruct  how to rebuild the adapted function type
        */
       def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
