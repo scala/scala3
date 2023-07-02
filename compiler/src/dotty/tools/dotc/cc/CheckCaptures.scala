@@ -414,15 +414,19 @@ class CheckCaptures extends Recheck, SymTransformer:
          *  Second half: union of all capture sets of arguments to tracked parameters.
          */
         def addParamArgRefinements(core: Type, initCs: CaptureSet): (Type, CaptureSet) =
-          mt.paramNames.lazyZip(argTypes).foldLeft((core, initCs)) { (acc, refine) =>
-            val (core, allCaptures) = acc
-            val (getterName, argType) = refine
+          var refined: Type = core
+          var allCaptures: CaptureSet = initCs
+          for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
             val getter = cls.info.member(getterName).suchThat(_.is(ParamAccessor)).symbol
-            if getter.termRef.isTracked && !getter.is(Private)
-            then (RefinedType(core, getterName, argType), allCaptures ++ argType.captureSet)
-            else (core, allCaptures)
-          }
+            if getter.termRef.isTracked && !getter.is(Private) then
+              refined = RefinedType(refined, getterName, argType)
+              allCaptures ++= argType.captureSet
+          (refined, allCaptures)
 
+        /** Augment result type of constructor with refinements and captures.
+         *  @param  core   The result type of the constructor
+         *  @param  initCs The initial capture set to add, not yet counting capture sets from arguments
+         */
         def augmentConstructorType(core: Type, initCs: CaptureSet): Type = core match
           case core: MethodType =>
             // more parameters to follow; augment result type
@@ -435,13 +439,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             val (refined, cs) = addParamArgRefinements(core, initCs)
             refined.capturing(cs)
 
-        augmentConstructorType(ownType, CaptureSet.empty) match
-          case augmented: MethodType =>
-            augmented
-          case augmented =>
-            // add capture sets of class and constructor to final result of constructor call
-            augmented.capturing(capturedVars(cls) ++ capturedVars(sym))
-              .showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
+        augmentConstructorType(ownType, capturedVars(cls) ++ capturedVars(sym))
+          .showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
       else ownType
     end instantiate
 
