@@ -15,6 +15,7 @@ import util.SourcePosition
 import config.Printers.init as printer
 import reporting.StoreReporter
 import reporting.trace as log
+import typer.Applications.*
 
 import Errors.*
 import Trace.*
@@ -834,11 +835,10 @@ object Objects:
 
   /** Handle local variable definition, `val x = e` or `var x = e`.
    *
-   * @param ref          The value for `this` where the variable is defined.
    * @param sym          The symbol of the variable.
    * @param value        The value of the initializer.
    */
-  def initLocal(ref: Ref, sym: Symbol, value: Value): Contextual[Unit] = log("initialize local " + sym.show + " with " + value.show, printer) {
+  def initLocal(sym: Symbol, value: Value): Contextual[Unit] = log("initialize local " + sym.show + " with " + value.show, printer) {
     if sym.is(Flags.Mutable) then
       val addr = Heap.localVarAddr(summon[Regions.Data], sym, State.currentObject)
       Env.setLocalVar(sym, addr)
@@ -870,9 +870,6 @@ object Objects:
         case _ =>
           report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
           Bottom
-      else if sym.isPatternBound then
-        // TODO: handle patterns
-        Cold
       else
         given Env.Data = env
         // Assume forward reference check is doing a good job
@@ -1113,11 +1110,9 @@ object Objects:
         else
           eval(arg, thisV, klass)
 
-      case Match(selector, cases) =>
-        eval(selector, thisV, klass)
-        // TODO: handle pattern match properly
-        report.warning("[initChecker] Pattern match is skipped. Trace:\n" + Trace.show, expr)
-        Bottom
+      case Match(scrutinee, cases) =>
+        val scrutineeValue = eval(scrutinee, thisV, klass)
+        patternMatch(scrutineeValue, cases, thisV, klass)
 
       case Return(expr, from) =>
         Returns.handle(from.symbol, eval(expr, thisV, klass))
@@ -1151,7 +1146,7 @@ object Objects:
         // local val definition
         val rhs = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
-        initLocal(thisV.asInstanceOf[Ref], vdef.symbol, rhs)
+        initLocal(vdef.symbol, rhs)
         Bottom
 
       case ddef : DefDef =>
@@ -1172,6 +1167,95 @@ object Objects:
         report.warning("[Internal error] unexpected tree: " + expr + "\n" + Trace.show, expr)
         Bottom
   }
+
+  /** Evaluate the cases against the scrutinee value.
+   *
+   *  @param scrutinee   The abstract value of the scrutinee.
+   *  @param cases       The cases to match.
+   *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
+   *  @param klass       The enclosing class where the type `tp` is located.
+   */
+  def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: Value, klass: ClassSymbol): Contextual[Value] =
+    def evalCase(caseDef: CaseDef): Value =
+      evalPattern(scrutinee, caseDef.pat)
+      eval(caseDef.guard, thisV, klass)
+      eval(caseDef.body, thisV, klass)
+
+    /** Abstract evaluation of patterns.
+     *
+     *  It augments the local environment for bound pattern variables. As symbols are globally
+     *  unique, we can put them in a single environment.
+     *
+     *  Currently, we assume all cases are reachable, thus all patterns are assumed to match.
+     */
+    def evalPattern(scrutinee: Value, pat: Tree): Value = log("match " + scrutinee.show + " against " + pat.show, printer, (_: Value).show):
+      pat match
+      case Alternative(pats) =>
+        for pat <- pats do evalPattern(scrutinee, pat)
+        scrutinee
+
+      case bind @ Bind(_, pat) =>
+        val value = evalPattern(scrutinee, pat)
+        initLocal(bind.symbol, value)
+        scrutinee
+
+      case SeqLiteral(pats, _) =>
+        // TODO: handle unapplySeq
+        Bottom
+
+      case UnApply(fun, _, pats) =>
+        val fun1 = funPart(fun)
+        val funRef = fun1.tpe.asInstanceOf[TermRef]
+        if fun.symbol.name == nme.unapplySeq then
+          // TODO: handle unapplySeq
+          ()
+        else
+          val receiver = evalType(funRef.prefix, thisV, klass)
+          // TODO: apply implicits
+          val unapplyRes = call(receiver, funRef.symbol, TraceValue(scrutinee, summon[Trace]) :: Nil, funRef.prefix, superType = NoType, needResolve = true)
+          // distribute unapply to patterns
+          val unapplyResTp = funRef.widen.finalResultType
+          if isProductMatch(unapplyResTp, pats.length) then
+            // product match
+            val selectors = productSelectors(unapplyResTp).take(pats.length)
+            selectors.zip(pats).map { (sel, pat) =>
+              val selectRes = call(unapplyRes, sel, Nil, unapplyResTp, superType = NoType, needResolve = true)
+              evalPattern(selectRes, pat)
+            }
+          else if unapplyResTp <:< defn.BooleanType then
+            // Boolean extractor, do nothing
+            ()
+          else
+            // Get match
+            val getMember = unapplyResTp.member(nme.get).suchThat(_.info.isParameterless)
+            // TODO: call isEmpty as well
+            val getRes = call(unapplyRes, getMember.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+            if pats.length == 1 then
+              // single match
+              evalPattern(getRes, pats.head)
+            else
+              val getResTp = getMember.info.widen.finalResultType
+              val selectors = productSelectors(getResTp).take(pats.length)
+              selectors.zip(pats).map { (sel, pat) =>
+                val selectRes = call(unapplyRes, sel, Nil, unapplyResTp, superType = NoType, needResolve = true)
+                evalPattern(selectRes, pat)
+              }
+            end if
+          end if
+        end if
+        scrutinee
+
+      case Typed(pat, _) =>
+        evalPattern(scrutinee, pat)
+
+      case tree =>
+        // For all other trees, the semantics is normal.
+        eval(tree, thisV, klass)
+
+    end evalPattern
+
+    cases.map(evalCase).join
+
 
   /** Handle semantics of leaf nodes
    *
