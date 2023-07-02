@@ -11,6 +11,11 @@ object Test {
     for (i <- 0 to 25)
       testArray(i, j => j)
 
+    val tuple: Tuple3[Int, Boolean, String] = (1, true, "hello")
+    val reversedTuple: Tuple3[String, Boolean, Int] = tuple.reverse
+
+    assert(reversedTuple == ("hello", true, 1))
+
     println(EmptyTuple.reverse)
     println(Tuple1(1).reverse)
     println((1, 2).reverse)
