@@ -30,9 +30,9 @@ object CheckCaptures:
 
     override def isEnabled(using Context) = true
 
-  	/** Reset `private` flags of parameter accessors so that we can refine them
-     *  in Setup if they have non-empty capture sets. Special handling of some
-     *  symbols defined for case classes.
+  	/**  - Reset `private` flags of parameter accessors so that we can refine them
+     *     in Setup if they have non-empty capture sets.
+     *   - Special handling of some symbols defined for case classes.
      */
     def transformSym(sym: SymDenotation)(using Context): SymDenotation =
       if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
@@ -89,6 +89,7 @@ object CheckCaptures:
           tp
         case _ =>
           mapOver(tp)
+  end SubstParamsMap
 
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
@@ -115,37 +116,32 @@ object CheckCaptures:
           report.warning(em"redundant capture: $parent already accounts for $ref", pos)
     case _ =>
 
-  /** Warn if `ann`, which is a tree of a @retains annotation, defines some elements that
+  /** Warn if `ann`, which is the tree of a @retains annotation, defines some elements that
    *  are already accounted for by other elements of the same annotation.
    *  Note: We need to perform the check on the original annotation rather than its
    *  capture set since the conversion to a capture set already eliminates redundant elements.
    */
   def warnIfRedundantCaptureSet(ann: Tree)(using Context): Unit =
-    // The lists `elems(i) :: prev.reverse :: elems(0),...,elems(i-1),elems(i+1),elems(n)`
-    // where `n == elems.length-1`, i <- 0..n`.
-    // I.e.
-    // choices(Nil, elems) = [[elems(i), elems(0), ..., elems(i-1), elems(i+1), .... elems(n)] | i <- 0..n]
-    def choices(prev: List[Tree], elems: List[Tree]): List[List[Tree]] = elems match
-      case Nil => Nil
-      case elem :: elems =>
-        List(elem :: (prev reverse_::: elems)) ++ choices(elem :: prev, elems)
-    for case first :: others <- choices(Nil, retainedElems(ann)) do
-      val firstRef = first.toCaptureRef
-      val remaining = CaptureSet(others.map(_.toCaptureRef)*)
-      if remaining.accountsFor(firstRef) then
-        report.warning(em"redundant capture: $remaining already accounts for $firstRef", ann.srcPos)
+    var retained = retainedElems(ann).toArray
+    for i <- 0 until retained.length do
+      val ref = retained(i).toCaptureRef
+      val others = for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
+      val remaining = CaptureSet(others*)
+      if remaining.accountsFor(ref) then
+        report.warning(em"redundant capture: $remaining already accounts for $ref", ann.srcPos)
 
+  /** Report an error if some part of `tp` contains the root capability in its capture set */
   def disallowRootCapabilitiesIn(tp: Type, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
       def traverse(t: Type) =
         if variance >= 0 then
-        t.captureSet.disallowRootCapability: () =>
-          def part = if t eq tp then "" else i"the part $t of "
-          report.error(
-            em"""$what cannot $have $tp since
-                |${part}that type captures the root capability `cap`.
-                |$addendum""",
-            pos)
+          t.captureSet.disallowRootCapability: () =>
+            def part = if t eq tp then "" else i"the part $t of "
+            report.error(
+              em"""$what cannot $have $tp since
+                  |${part}that type captures the root capability `cap`.
+                  |$addendum""",
+              pos)
         traverseChildren(t)
     check.traverse(tp)
 
@@ -235,17 +231,31 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
         else CaptureSet.empty)
 
+    /**
+    class anon1 extends Function1:
+      def apply: Function1 =
+        use(x)
+        class anon2 extends Function1:
+          use(y)
+          def apply: Function1 = ...
+        anon2()
+    anon1()
+    */
     /** For all nested environments up to `limit` perform `op` */
     def forallOuterEnvsUpTo(limit: Symbol)(op: Env => Unit)(using Context): Unit =
+      def stopsPropagation(env: Env) =
+        val sym = env.owner
+        env.isOutermost
+        || false && sym.is(Method) && sym.owner.isTerm && !sym.isConstructor
       def recur(env: Env): Unit =
         if env.isOpen && env.owner != limit then
           op(env)
-          if !env.isOutermost then
+          if !stopsPropagation(env) then
             var nextEnv = env.outer
             if env.owner.isConstructor then
-              if nextEnv.owner != limit && !nextEnv.isOutermost then
-                recur(nextEnv.outer)
-            else recur(nextEnv)
+              if nextEnv.owner != limit && !stopsPropagation(nextEnv) then
+                nextEnv = nextEnv.outer
+            recur(nextEnv)
       recur(curEnv)
 
     /** Include `sym` in the capture sets of all enclosing environments nested in the
@@ -255,10 +265,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       if sym.exists then
         val ref = sym.termRef
         if ref.isTracked then
-          forallOuterEnvsUpTo(sym.enclosure) { env =>
+          forallOuterEnvsUpTo(sym.enclosure): env =>
             capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
             checkElem(ref, env.captured, pos)
-          }
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
@@ -266,19 +275,16 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def markFree(cs: CaptureSet, pos: SrcPos)(using Context): Unit =
       if !cs.isAlwaysEmpty then
-        forallOuterEnvsUpTo(ctx.owner.topLevelClass) { env =>
-          val included = cs.filter {
-            case ref: TermRef =>
-              (env.nestedInOwner || env.owner != ref.symbol.owner)
-                && env.owner.isContainedIn(ref.symbol.owner)
-            case ref: ThisType =>
-              (env.nestedInOwner || env.owner != ref.cls)
-                && env.owner.isContainedIn(ref.cls)
+        forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
+          def isVisibleFromEnv(sym: Symbol) =
+            (env.nestedInOwner || env.owner != sym)
+            && env.owner.isContainedIn(sym)
+          val included = cs.filter:
+            case ref: TermRef => isVisibleFromEnv(ref.symbol.owner)
+            case ref: ThisType => isVisibleFromEnv(ref.cls)
             case _ => false
-          }
           capt.println(i"Include call capture $included in ${env.owner}")
           checkSubset(included, env.captured, pos)
-        }
 
     /** Include references captured by the called method in the current environment stack */
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
@@ -305,7 +311,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           // This case can arise when we try to merge multiple types that have different
           // capture sets on some part. For instance an asSeenFrom might produce
           // a bi-mapped capture set arising from a substition. Applying the same substitution
-          // to the same type twice will nevertheless produce different capture setsw which can
+          // to the same type twice will nevertheless produce different capture sets which can
           // lead to a failure in disambiguation since neither alternative is better than the
           // other in a frozen constraint. An example test case is disambiguate-select.scala.
           // We address the problem by disambiguating while ignoring all capture sets as a fallback.
@@ -320,7 +326,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         selType
       else
         val qualCs = qualType.captureSet
-        capt.println(i"intersect $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
+        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
         if qualCs.mightSubcapture(selCs)
             && !selCs.mightSubcapture(qualCs)
             && !pt.stripCapturing.isInstanceOf[SingletonType]
@@ -345,21 +351,22 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val meth = tree.fun.symbol
       includeCallCaptures(meth, tree.srcPos)
+
+      // Unsafe box/unbox handlng, only for versions < 3.3
       def mapArgUsing(f: Type => Type) =
         val arg :: Nil = tree.args: @unchecked
         val argType0 = f(recheckStart(arg, pt))
         val argType = super.recheckFinish(argType0, arg, pt)
         super.recheckFinish(argType, tree, pt)
-
       if meth == defn.Caps_unsafeBox then
         mapArgUsing(_.forceBoxStatus(true))
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
-        mapArgUsing {
+        mapArgUsing:
           case defn.FunctionOf(paramtpe :: Nil, restpe, isContectual) =>
             defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContectual)
-        }
+
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>
@@ -371,8 +378,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                   && qual.tpe.captureSet.mightSubcapture(refs)
                   && tree.args.forall(_.tpe.captureSet.mightSubcapture(refs))
               =>
-                val callCaptures = tree.args.foldLeft(qual.tpe.captureSet)((cs, arg) =>
-                  cs ++ arg.tpe.captureSet)
+                val callCaptures = tree.args.foldLeft(qual.tpe.captureSet): (cs, arg) =>
+                  cs ++ arg.tpe.captureSet
                 appType.derivedCapturingType(appType1, callCaptures)
                   .showing(i"narrow $tree: $appType, refs = $refs, qual = ${qual.tpe.captureSet} --> $result", capt)
               case _ => appType
