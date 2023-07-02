@@ -210,10 +210,11 @@ sealed abstract class CaptureSet extends Showable:
    *  any of the elements in the constant capture set `that`
    */
   def -- (that: CaptureSet.Const)(using Context): CaptureSet =
-    val elems1 = elems.filter(!that.accountsFor(_))
-    if elems1.size == elems.size then this
-    else if this.isConst then Const(elems1)
-    else Diff(asVar, that)
+    if this.isConst then
+      val elems1 = elems.filter(!that.accountsFor(_))
+      if elems1.size == elems.size then this else Const(elems1)
+    else
+      if that.isAlwaysEmpty then this else Diff(asVar, that)
 
   /** The largest subset (via <:<) of this capture set that does not account for `ref` */
   def - (ref: CaptureRef)(using Context): CaptureSet =
