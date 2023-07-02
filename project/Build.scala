@@ -11,6 +11,7 @@ import complete.DefaultParsers._
 import pl.project13.scala.sbt.JmhPlugin
 import pl.project13.scala.sbt.JmhPlugin.JmhKeys.Jmh
 import sbt.Package.ManifestAttributes
+import sbt.PublishBinPlugin.autoImport._
 import sbt.plugins.SbtPlugin
 import sbt.ScriptedPlugin.autoImport._
 import xerial.sbt.pack.PackPlugin
@@ -1594,16 +1595,16 @@ object Build {
       },
       scriptedBufferLog := true,
       scripted := scripted.dependsOn(
-        (`scala3-sbt-bridge` / publishLocal),
-        (`scala3-interfaces` / publishLocal),
-        (`scala3-compiler-bootstrapped` / publishLocal),
-        (`scala3-library-bootstrapped` / publishLocal),
-        (`scala3-library-bootstrappedJS` / publishLocal),
-        (`tasty-core-bootstrapped` / publishLocal),
-        (`scala3-staging` / publishLocal),
-        (`scala3-tasty-inspector` / publishLocal),
-        (`scaladoc` / publishLocal),
-        (`scala3-bootstrapped` / publishLocal) // Needed because sbt currently hardcodes the dotty artifact
+        (`scala3-sbt-bridge` / publishLocalBin),
+        (`scala3-interfaces` / publishLocalBin),
+        (`scala3-compiler-bootstrapped` / publishLocalBin),
+        (`scala3-library-bootstrapped` / publishLocalBin),
+        (`scala3-library-bootstrappedJS` / publishLocalBin),
+        (`tasty-core-bootstrapped` / publishLocalBin),
+        (`scala3-staging` / publishLocalBin),
+        (`scala3-tasty-inspector` / publishLocalBin),
+        (`scaladoc` / publishLocalBin),
+        (`scala3-bootstrapped` / publishLocalBin) // Needed because sbt currently hardcodes the dotty artifact
       ).evaluated
     )
 
