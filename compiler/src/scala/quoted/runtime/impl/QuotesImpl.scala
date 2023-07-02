@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
 import dotty.tools.dotc.quoted.MacroExpansion
 import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.quoted.reflect._
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
@@ -37,6 +38,7 @@ object QuotesImpl {
 }
 
 class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler, QuoteMatching:
+  import tpd.*
 
   private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
 
@@ -45,7 +47,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       reflect.Printer.TreeCode.show(reflect.asTerm(self))
 
     def matches(that: scala.quoted.Expr[Any]): Boolean =
-      treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
+      QuoteMatcher.treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
     def valueOrAbort(using fromExpr: FromExpr[T]): T =
       def reportError =
@@ -1515,11 +1517,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end BindMethods
 
-    type Unapply = tpd.UnApply
+    type Unapply = tpd.UnApply | tpd.QuotePattern // TODO expose QuotePattern AST in Quotes
 
     object UnapplyTypeTest extends TypeTest[Tree, Unapply]:
       def unapply(x: Tree): Option[Unapply & x.type] = x match
         case x: (tpd.UnApply & x.type) => Some(x)
+        case x: (tpd.QuotePattern & x.type) => Some(x) // TODO expose QuotePattern AST in Quotes
         case _ => None
     end UnapplyTypeTest
 
@@ -1534,9 +1537,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given UnapplyMethods: UnapplyMethods with
       extension (self: Unapply)
-        def fun: Term = self.fun
-        def implicits: List[Term] = self.implicits
-        def patterns: List[Tree] = effectivePatterns(self.patterns)
+        def fun: Term = self match
+          case self: tpd.UnApply => self.fun
+          case self: tpd.QuotePattern => QuotePatterns.encode(self).fun // TODO expose QuotePattern AST in Quotes
+        def implicits: List[Term] = self match
+          case self: tpd.UnApply => self.implicits
+          case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits // TODO expose QuotePattern AST in Quotes
+        def patterns: List[Tree] = self match
+          case self: tpd.UnApply => effectivePatterns(self.patterns)
+          case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns) // TODO expose QuotePattern AST in Quotes
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
@@ -1884,7 +1893,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SuperTypeMethods: SuperTypeMethods with
       extension (self: SuperType)
         def thistpe: TypeRepr = self.thistpe
-        def supertpe: TypeRepr = self.thistpe
+        def supertpe: TypeRepr = self.supertpe
       end extension
     end SuperTypeMethods
 
@@ -3159,65 +3168,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     def unapply[TypeBindings, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
       val scrutineeTree = reflect.asTerm(scrutinee)
       val patternTree = reflect.asTerm(pattern)
-      treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
+      QuoteMatcher.treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 
   object TypeMatch extends TypeMatchModule:
     def unapply[TypeBindings, Tup <: Tuple](scrutinee: scala.quoted.Type[?])(using pattern: scala.quoted.Type[?]): Option[Tup] =
       val scrutineeTree = reflect.TypeTree.of(using scrutinee)
       val patternTree = reflect.TypeTree.of(using pattern)
-      treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
+      QuoteMatcher.treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end TypeMatch
-
-  private def treeMatch(scrutinee: reflect.Tree, pattern: reflect.Tree): Option[Tuple] = {
-    import reflect._
-    def isTypeHoleDef(tree: Tree): Boolean =
-      tree match
-        case tree: TypeDef =>
-          tree.symbol.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternTypeAnnot)
-        case _ => false
-
-    def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
-      pat match
-        case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
-        case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
-          val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
-          val otherStats = stats.dropWhile(isTypeHoleDef)
-          (tpd.cpy.Block(pat)(otherStats, expr), holes)
-        case _ =>
-          (pat, Nil)
-
-    val (pat1, typeHoles) = extractTypeHoles(pattern)
-
-    val ctx1 =
-      if typeHoles.isEmpty then ctx
-      else
-        val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
-        ctx1.gadtState.addToConstraint(typeHoles)
-        ctx1
-
-    // After matching and doing all subtype checks, we have to approximate all the type bindings
-    // that we have found, seal them in a quoted.Type and add them to the result
-    def typeHoleApproximation(sym: Symbol) =
-      val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
-      val fullBounds = ctx1.gadt.fullBounds(sym)
-      if fromAboveAnnot then fullBounds.hi else fullBounds.lo
-
-    QuoteMatcher.treeMatch(scrutinee, pat1)(using ctx1).map { matchings =>
-      import QuoteMatcher.MatchResult.*
-      lazy val spliceScope = SpliceScope.getCurrent
-      val typeHoleApproximations = typeHoles.map(typeHoleApproximation)
-      val typeHoleMapping = Map(typeHoles.zip(typeHoleApproximations)*)
-      val typeHoleMap = new Types.TypeMap {
-          def apply(tp: Types.Type): Types.Type = tp match
-            case Types.TypeRef(Types.NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
-            case _ => mapOver(tp)
-      }
-      val matchedExprs = matchings.map(_.toExpr(typeHoleMap, spliceScope))
-      val matchedTypes = typeHoleApproximations.map(reflect.TypeReprMethods.asType)
-      val results = matchedTypes ++ matchedExprs
-      Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
-    }
-  }
 
 end QuotesImpl

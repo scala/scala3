@@ -60,7 +60,7 @@ object PostTyper {
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
+class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   import tpd._
 
   override def phaseName: String = PostTyper.name
@@ -79,6 +79,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
+
+  private var compilingScala2StdLib = false
+  override def initContext(ctx: FreshContext): Unit =
+    compilingScala2StdLib = ctx.settings.Yscala2Stdlib.value(using ctx)
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -261,9 +265,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       def check(qual: Tree) =
         if !qual.tpe.isStable then
           report.error(em"Parameter untupling cannot be used for call-by-name parameters", tree.srcPos)
-      tree match
-        case Select(qual, _) => check(qual)    // simple select _n
-        case Apply(TypeApply(Select(qual, _), _), _) => check(qual) // generic select .apply[T](n)
+      appliedCore(closureBody(tree)) match
+        case Select(qual, _) => check(qual)
+        // simple select _n                    Select(qual, _n)
+        // generic select .apply[T](n)         Apply(TypeApply(Select(qual, _), _), _)
+        // context closure x ?=> f(using x)    Block(List(DefDef($anonfun, _, _, Apply(Select(Select(qual, _n), _), _)))
 
     def checkNotPackage(tree: Tree)(using Context): Tree =
       if !tree.symbol.is(Package) then tree
@@ -283,16 +289,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol.is(Inline) && !Inlines.inInlineMethod then
-              ctx.compilationUnit.needsInlining = true
             checkNoConstructorProxy(tree)
+            registerNeedsInlining(tree)
             tree.tpe match {
               case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
               case _ => tree
             }
         case tree @ Select(qual, name) =>
-          if tree.symbol.is(Inline) then
-            ctx.compilationUnit.needsInlining = true
+          registerNeedsInlining(tree)
           if name.isTypeName then
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
@@ -344,8 +348,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
-          if tree.symbol.is(Inline) then
-            ctx.compilationUnit.needsInlining = true
+          registerNeedsInlining(tree)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
             checkInferredWellFormed(arg)
@@ -363,6 +366,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
+          withMode(Mode.InlinedCall)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
@@ -425,7 +429,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 if sym.isOpaqueAlias then
                   VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
               case _ =>
-          processMemberDef(super.transform(tree))
+          processMemberDef(super.transform(scala2LibPatch(tree)))
         case tree: Bind =>
           if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
             Checking.checkGoodBounds(tree.symbol)
@@ -488,6 +492,15 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case _: Quote =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)
+        case _: QuotePattern =>
+          if !ctx.reporter.errorsReported then
+            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
+          ctx.compilationUnit.needsStaging = true
+          super.transform(tree)
+        case tree: SplicePattern =>
+          if !ctx.reporter.errorsReported then
+            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
+          super.transform(tree)
         case tree =>
           super.transform(tree)
       }
@@ -506,6 +519,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def registerNeedsInlining(tree: Tree)(using Context): Unit =
+      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.InlinedCall) then
+        ctx.compilationUnit.needsInlining = true
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
     private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =
@@ -530,5 +547,30 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
         sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
+    private def scala2LibPatch(tree: TypeDef)(using Context) =
+      val sym = tree.symbol
+      if compilingScala2StdLib
+        && sym.is(ModuleClass) && !sym.derivesFrom(defn.SerializableClass)
+        && sym.companionClass.derivesFrom(defn.SerializableClass)
+      then
+        // Add Serializable to companion objects of serializable classes
+        tree.rhs match
+          case impl: Template =>
+            val parents1 = impl.parents :+ TypeTree(defn.SerializableType)
+            val impl1 = cpy.Template(impl)(parents = parents1)
+            cpy.TypeDef(tree)(rhs = impl1)
+      else tree
   }
+
+  protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
+    compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
+
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
+    case info: ClassInfo =>
+      if !sym.derivesFrom(defn.SerializableClass)
+        && sym.companionClass.derivesFrom(defn.SerializableClass)
+      then
+        info.derivedClassInfo(declaredParents = info.parents :+ defn.SerializableType)
+      else tp
+    case _ => tp
 }

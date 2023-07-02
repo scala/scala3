@@ -376,6 +376,15 @@ object Types {
       case _ => false
     }
 
+    /** Returns the annotation that is an instance of `cls` carried by the type. */
+    @tailrec final def getAnnotation(cls: ClassSymbol)(using Context): Option[Annotation] = stripTypeVar match {
+      case AnnotatedType(tp, annot) =>
+        if annot.matches(cls) then Some(annot)
+        else tp.getAnnotation(cls)
+      case _ =>
+        None
+    }
+
     /** Does this type have a supertype with an annotation satisfying given predicate `p`? */
     def derivesAnnotWith(p: Annotation => Boolean)(using Context): Boolean = this match {
       case tp: AnnotatedType => p(tp.annot) || tp.parent.derivesAnnotWith(p)
@@ -439,7 +448,28 @@ object Types {
       case _ => NoType
     }
 
-    /** Is this a higher-kinded type lambda with given parameter variances? */
+    /** Is this a higher-kinded type lambda with given parameter variances?
+     *  These lambdas are used as the RHS of higher-kinded abstract types or
+     *  type aliases. The variance info is strictly needed only for abstract types.
+     *  For type aliases we allow the user to write the variance, and we use it
+     *  to check that the structural variance of the type lambda is compatible
+     *  with the declared variance, and that the declared variance is compatible
+     *  with any abstract types that are overridden.
+     *
+     *  But it's important to note that the variance of a type parameter in
+     *  a type lambda is strictly determined by how it occurs in the body of
+     *  the lambda. Declared variances have no influence here. For instance
+     *  the following two lambdas are variant, even though no parameter variance
+     *  is indicated:
+     *
+     *      [X] =>> List[X]      // covariant
+     *      [X] =>> X => Unit    // contravariant
+     *
+     *  Why store declared variances in lambdas at all? It's because type symbols are just
+     *  normal symbols, and there is no field in a Symbol that keeps a list of variances.
+     *  Generally we have the design that we store all info that applies to some symbols
+     *  but not others in the symbol's types.
+     */
     def isDeclaredVarianceLambda: Boolean = false
 
     /** Does this type contain wildcard types? */
@@ -1842,6 +1872,8 @@ object Types {
         if alwaysDependent || mt.isResultDependent then
           RefinedType(funType, nme.apply, mt)
         else funType
+      case poly @ PolyType(_, mt: MethodType) if !mt.isParamDependent =>
+        RefinedType(defn.PolyFunctionType, nme.apply, poly)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -2645,7 +2677,10 @@ object Types {
       else {
         if (isType) {
           val res =
-            if (currentSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
+            val sym =
+              if (currentSymbol.isValidInCurrentRun) currentSymbol
+              else computeSymbol
+            if (sym.isAllOf(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -2719,18 +2754,21 @@ object Types {
     /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
-        val lastSym = lastSymbol.nn
-        val allowPrivate = !lastSym.exists || lastSym.is(Private)
+        val sym =
+          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn 
+          else computeSymbol
+        val allowPrivate = !sym.exists || sym.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
-        if (d.isOverloaded && lastSym.exists)
+        if (d.isOverloaded && sym.exists)
           d = disambiguate(d,
-                if (lastSym.signature == Signature.NotAMethod) Signature.NotAMethod
-                else lastSym.asSeenFrom(prefix).signature,
-                lastSym.targetName)
+                if (sym.signature == Signature.NotAMethod) Signature.NotAMethod
+                else sym.asSeenFrom(prefix).signature,
+                sym.targetName)
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this
-      else if !NamedType.validPrefix(prefix) then UnspecifiedErrorType
+      else if !NamedType.validPrefix(prefix) then
+        throw TypeError(em"invalid new prefix $prefix cannot replace ${this.prefix} in type $this")
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
         case sym: Symbol =>
@@ -3005,7 +3043,8 @@ object Types {
   abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
     override def underlying(using Context): Type = supertpe
     override def superType(using Context): Type =
-      thistpe.baseType(supertpe.typeSymbol)
+      if supertpe.typeSymbol.exists then thistpe.baseType(supertpe.typeSymbol)
+      else super.superType
     def derivedSuperType(thistpe: Type, supertpe: Type)(using Context): Type =
       if ((thistpe eq this.thistpe) && (supertpe eq this.supertpe)) this
       else SuperType(thistpe, supertpe)
@@ -3880,7 +3919,8 @@ object Types {
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
      */
-    def isParamDependent(using Context): Boolean = paramDependencyStatus == TrueDeps
+    def isParamDependent(using Context): Boolean =
+      paramDependencyStatus == TrueDeps || paramDependencyStatus == CaptureDeps
 
     /** Is there a dependency involving a reference in a capture set, but
      *  otherwise no true result dependency?
@@ -4911,7 +4951,7 @@ object Types {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases)
@@ -4924,7 +4964,7 @@ object Types {
                   // instantiations during matchtype reduction
 
             TypeComparer.tracked(matchCases)
-          }
+          })
       myReduced.nn
     }
 
@@ -5377,6 +5417,9 @@ object Types {
     def explanation(using Context): String = msg.message
   }
 
+  /** Note: Make sure an errors is reported before construtcing this
+   *  as the type of a tree.
+   */
   object ErrorType:
     def apply(m: Message)(using Context): ErrorType =
       val et = new PreviousErrorType
@@ -5545,6 +5588,16 @@ object Types {
         else None
       }
       else None
+
+    def isSamCompatible(lhs: Type, rhs: Type)(using Context): Boolean = rhs match
+      case SAMType(mt) if !isParamDependentRec(mt) =>
+        lhs <:< mt.toFunctionType(isJava = rhs.classSymbol.is(JavaDefined))
+      case _ => false
+
+    def isParamDependentRec(mt: MethodType)(using Context): Boolean =
+      mt.isParamDependent || mt.resultType.match
+        case mt: MethodType => isParamDependentRec(mt)
+        case _              => false
   }
 
   // ----- TypeMaps --------------------------------------------------------------------

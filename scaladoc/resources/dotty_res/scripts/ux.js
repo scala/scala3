@@ -285,7 +285,7 @@ document
         getTocListElement(id).parentElement.classList.toggle("active");
       }
       if (lastEntry.isIntersecting) {
-        window.location.hash = "";
+        history.replaceState(history.state, "", window.location.pathname + window.location.search);
         removeAllHighlights();
         const id = getIdOfElement(lastEntry);
 

@@ -636,7 +636,7 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t: MatchType =>
               traverseChildren(t)
-              traverse(try t.normalized catch case _: MatchTypeReductionError => t)
+              traverse(t.normalized)
             case MatchType.InDisguise(mt)
                 if !t.isInstanceOf[LazyRef] // skip recursive applications (eg. Tuple.Map)
             =>

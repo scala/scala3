@@ -33,6 +33,7 @@ import Trees._
 import Decorators._
 import transform.SymUtils._
 import cc.{adaptFunctionTypeUnderPureFuns, adaptByNameArgUnderPureFuns}
+import dotty.tools.dotc.quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer._
@@ -1419,7 +1420,11 @@ class TreeUnpickler(reader: TastyReader,
                 }
               val patType = readType()
               val argPats = until(end)(readTree())
-              UnApply(fn, implicitArgs, argPats, patType)
+              val unapply = UnApply(fn, implicitArgs, argPats, patType)
+              if fn.symbol == defn.QuoteMatching_ExprMatch_unapply
+                 || fn.symbol == defn.QuoteMatching_TypeMatch_unapply
+              then QuotePatterns.decode(unapply)
+              else unapply
             case REFINEDtpt =>
               val refineCls = symAtAddr.getOrElse(start,
                 newRefinedClassSymbol(coordAt(start))).asClass

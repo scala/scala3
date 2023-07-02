@@ -79,9 +79,9 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
     case UnorderedList(items) => ul(listItems(items))
     case OrderedList(items, style) => ol(listItems(items)) // TODO use style
     case Chain(items: Seq[Inline]) => span(items.map(renderElement))
-    case Italic(text) => span(cls:="italic")(renderElement(text))
+    case Italic(text) => em(renderElement(text))
     case Underline(text) => span(cls:="underline")(renderElement(text))
-    case Bold(text) => span(cls:="bold")(renderElement(text))
+    case Bold(text) => strong(renderElement(text))
     case Monospace(text) => code(renderElement(text))
     case Superscript(text) => span(cls:="superscript")(renderElement(text))  // TODO implement style
     case Subscript(text) => span(cls:="subscript")(renderElement(text))  // TODO implement style

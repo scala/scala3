@@ -72,16 +72,23 @@ object CheckCaptures:
    */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
-    def apply(tp: Type): Type = tp match
-      case tp: ParamRef =>
-        if tp.binder == from then to(tp.paramNum) else tp
-      case tp: NamedType =>
-        if tp.prefix `eq` NoPrefix then tp
-        else tp.derivedSelect(apply(tp.prefix))
-      case _: ThisType =>
-        tp
-      case _ =>
-        mapOver(tp)
+    /** This SubstParamsMap is exact if `to` only contains `CaptureRef`s. */
+    private val isExactSubstitution: Boolean = to.forall(_.isInstanceOf[CaptureRef])
+
+    /** As long as this substitution is exact, there is no need to create `Range`s when mapping invariant positions. */
+    override protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = !isExactSubstitution
+
+    def apply(tp: Type): Type =
+      tp match
+        case tp: ParamRef =>
+          if tp.binder == from then to(tp.paramNum) else tp
+        case tp: NamedType =>
+          if tp.prefix `eq` NoPrefix then tp
+          else tp.derivedSelect(apply(tp.prefix))
+        case _: ThisType =>
+          tp
+        case _ =>
+          mapOver(tp)
 
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
@@ -976,8 +983,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           recur(refs, Nil)
 
         private def healCaptureSet(cs: CaptureSet): Unit =
-          val toInclude = widenParamRefs(cs.elems.toList.filter(!isAllowed(_)).asInstanceOf)
-          toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+          def avoidance(elems: List[CaptureRef])(using Context): Unit =
+            val toInclude = widenParamRefs(elems.filter(!isAllowed(_)).asInstanceOf)
+            //println(i"HEAL $cs by widening to $toInclude")
+            toInclude.foreach(checkSubset(_, cs, tree.srcPos))
+          cs.ensureWellformed(avoidance)
 
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 

@@ -17,7 +17,7 @@ import dotty.tools.dotc.report
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic extends caps.Pure {
+trait BCodeIdiomatic extends Pure {
   val int: DottyBackendInterface
   final lazy val bTypes = new BTypesFromSymbols[int.type](int)
 

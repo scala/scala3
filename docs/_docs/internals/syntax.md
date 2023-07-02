@@ -201,7 +201,6 @@ SimpleType1       ::=  id                                                       
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
-Singletons        ::=  Singleton { ‘,’ Singleton }
 FunArgType        ::=  [`erased`] Type
                     |  [`erased`] ‘=>’ Type                                     PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
@@ -318,7 +317,7 @@ Pattern1          ::=  PatVar ‘:’ RefinedType                               
                     |  [‘-’] integerLiteral ‘:’ RefinedType                     Typed(pat, tpe)
                     |  [‘-’] floatingPointLiteral ‘:’ RefinedType               Typed(pat, tpe)
                     |  Pattern2
-Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]                              Bind(name, pat)
+Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
@@ -357,8 +356,8 @@ ClsParam          ::=  {Annotation}                                             
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 
 DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
-DefParamClause    ::=  DefTypeParamClause 
-                    |  DefTermParamClause 
+DefParamClause    ::=  DefTypeParamClause
+                    |  DefTermParamClause
                     |  UsingParamClause
 TypelessClauses   ::=  TypelessClause {TypelessClause}
 TypelessClause    ::=  DefTermParamClause

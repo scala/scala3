@@ -22,6 +22,7 @@ i15922.scala
 t5031_2.scala
 i16997.scala
 i7414.scala
+i17588.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -49,6 +50,7 @@ i6505.scala
 i15158.scala
 i15155.scala
 i15827.scala
+i17149.scala
 
 # Opaque type
 i5720.scala
@@ -93,5 +95,9 @@ i4176-gadt.scala
 
 # GADT difference
 i13974a.scala
+i15867.scala
 
 java-inherited-type1
+
+# recursion limit exceeded
+i7445b.scala

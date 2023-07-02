@@ -862,7 +862,6 @@ class Namer { typer: Typer =>
      *  with a user-defined method in the same scope with a matching type.
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
-
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
@@ -879,10 +878,19 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic, butNot = ConstructorProxy)
-        && desugar.isRetractableCaseClassMethodName(denot.name)
-        && isCaseClassOrCompanion(denot.owner)
-        && (definesMember || inheritsConcreteMember)
+        denot.is(Synthetic, butNot = ConstructorProxy) &&
+        (
+          (desugar.isRetractableCaseClassMethodName(denot.name)
+            && isCaseClassOrCompanion(denot.owner)
+            && (definesMember || inheritsConcreteMember)
+          )
+          ||
+          // remove synthetic constructor of a java Record if it clashes with a non-synthetic constructor
+          (denot.isConstructor
+            && denot.owner.is(JavaDefined) && denot.owner.derivesFrom(defn.JavaRecordClass)
+            && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
+          )
+        )
 
       if isClashingSynthetic then
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
@@ -1114,7 +1122,10 @@ class Namer { typer: Typer =>
           No("is already an extension method, cannot be exported into another one")
         else if targets.contains(alias) then
           No(i"clashes with another export in the same export clause")
-        else if sym.is(Override) then
+        else if sym.is(Override) || sym.is(JavaDefined) then
+          // The tests above are used to avoid futile searches of `allOverriddenSymbols`.
+          // Scala defined symbols can override concrete symbols only if declared override.
+          // For Java defined symbols, this does not hold, so we have to search anyway.
           sym.allOverriddenSymbols.find(
             other => cls.derivesFrom(other.owner) && !other.is(Deferred)
           ) match
@@ -1298,7 +1309,7 @@ class Namer { typer: Typer =>
           if sel.isWildcard then
             addWildcardForwarders(seen, sel.span)
           else
-            if sel.rename != nme.WILDCARD then
+            if !sel.isUnimport then
               addForwardersNamed(sel.name, sel.rename, sel.span)
             addForwarders(sels1, sel.name :: seen)
         case _ =>
@@ -1681,17 +1692,22 @@ class Namer { typer: Typer =>
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
-    lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
         checkMembersOK(inferredType, mdef.srcPos)
-      case DependentTypeTree(tpFun) =>
-        val tpe = tpFun(termParamss.head)
+
+      // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
+      case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
+        // A lambda has at most one type parameter list followed by exactly one term parameter list.
+        val tpe = (paramss: @unchecked) match
+          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+          case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
+
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
@@ -1713,7 +1729,8 @@ class Namer { typer: Typer =>
             // So fixing levels at instantiation avoids the soundness problem but apparently leads
             // to type inference problems since it comes too late.
             if !Config.checkLevelsOnConstraints then
-              val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
+              val termParams = paramss.collect { case TermSymbols(vparams) => vparams }.flatten
+              val hygienicType = TypeOps.avoid(rhsType, termParams)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
                 report.error(
                   em"""return type ${tpt.tpe} of lambda cannot be made hygienic

@@ -9,6 +9,7 @@
     "**/*.class": true,
     "**/*.tasty": true,
     "**/target/": true,
-    "community-build/community-projects": true
+    "community-build/community-projects": true,
+    "tests/pos-with-compiler-cc/dotc/**/*.scala": true
   }
 }

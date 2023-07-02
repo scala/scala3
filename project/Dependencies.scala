@@ -4,7 +4,7 @@ import sbt._
  *  to ensure the same version of the dependency is used in all projects
  */
 object Dependencies {
-  private val jacksonVersion = "2.13.3"
+  private val jacksonVersion = "2.15.1"
   val `jackson-databind` =
     "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
   val `jackson-dataformat-yaml` =

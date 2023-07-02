@@ -758,10 +758,12 @@ class ClassfileParser(
         case tpnme.MethodParametersATTR =>
           val paramCount = in.nextByte
           for i <- 0 until paramCount do
-            val name = pool.getName(in.nextChar)
+            val index = in.nextChar
             val flags = in.nextChar
-            if (flags & JAVA_ACC_SYNTHETIC) == 0 then
-              res.namedParams += (i -> name.name)
+            if index != 0 then
+              val name = pool.getName(index)
+              if (flags & JAVA_ACC_SYNTHETIC) == 0 then
+                res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
@@ -989,7 +991,9 @@ class ClassfileParser(
             return unpickleTASTY(tastyBytes)
           }
         }
-        else return unpickleTASTY(bytes)
+        else
+          // Before 3.0.0 we had a mode where we could embed the TASTY bytes in the classfile. This has not been supported in any stable release.
+          report.error(s"Found a TASTY attribute with a length different from 16 in $classfile. This is likely a bug in the compiler. Please report.", NoSourcePosition)
       }
 
       if scan(tpnme.ScalaATTR) && !scalaUnpickleWhitelist.contains(classRoot.name)

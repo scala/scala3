@@ -21,5 +21,5 @@ def typecheckArrayLiter(
     a: ArrayLiter
 ): Liter[SemanticArray[SemanticType]] = {
   val x: List[Expr2[SemanticInt.type]] = List()
-  Liter(SemanticArray[SemanticInt.type], x) // error // error
+  Liter(SemanticArray[SemanticInt.type], x) // error
 }

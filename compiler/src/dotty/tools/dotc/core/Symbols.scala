@@ -83,7 +83,8 @@ object Symbols {
       ctx.settings.YretainTrees.value ||
       denot.owner.isTerm ||                // no risk of leaking memory after a run for these
       denot.isOneOf(InlineOrProxy) ||      // need to keep inline info
-      ctx.settings.YcheckInit.value        // initialization check
+      ctx.settings.YcheckInit.value ||     // initialization check
+      ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
     private var lastDenot: SymDenotation = _

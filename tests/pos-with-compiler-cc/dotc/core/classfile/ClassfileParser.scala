@@ -28,7 +28,7 @@ import annotation.retains
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
-  trait Embedded extends caps.Pure
+  trait Embedded extends Pure
 
   /** Indicate that there is nothing to unpickle and the corresponding symbols can
     * be invalidated. */

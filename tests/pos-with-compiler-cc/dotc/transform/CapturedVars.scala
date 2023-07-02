@@ -34,7 +34,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   override def initContext(ctx: FreshContext): Unit =
     Captured = ctx.addLocation(util.ReadOnlySet.empty)
 
-  private class RefInfo(using DetachedContext) extends caps.Pure {
+  private class RefInfo(using DetachedContext) extends Pure {
     /** The classes for which a Ref type exists. */
     val refClassKeys: collection.Set[Symbol] =
       defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)

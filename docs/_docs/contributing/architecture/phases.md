@@ -105,4 +105,4 @@ These map the transformed trees to Java classfiles or SJSIR files.
 [patternMatcher]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/PatternMatcher.scala
 [erasure]: https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/transform/Erasure.scala
 [Mirror]: https://github.com/lampepfl/dotty/blob/master/library/src/scala/deriving/Mirror.scala
-[PCP]: {{ site.scala3ref }}/metaprogramming/macros.html#the-phase-consistency-principle
+[PCP]: ../../reference/metaprogramming/macros.md#the-phase-consistency-principle

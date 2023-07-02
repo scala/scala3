@@ -63,11 +63,16 @@ def yamlParser(using ctx: StaticSiteContext): Parser = Parser.builder(defaultMar
 def loadTemplateFile(file: File, defaultTitle: Option[TemplateName] = None)(using ctx: StaticSiteContext): TemplateFile = {
   val lines = Files.readAllLines(file.toPath).asScala.toList
 
-  val (config, content) = if (lines.head == ConfigSeparator) {
+  val (config, content) = if (!lines.isEmpty && lines.head == ConfigSeparator) {
     // Taking the second occurrence of ConfigSeparator.
     // The rest may appear within the content.
-    val index = lines.drop(1).indexOf(ConfigSeparator) + 2
-    (lines.take(index), lines.drop(index))
+    val secondSeparatorIndex = lines.drop(1).indexOf(ConfigSeparator)
+    if secondSeparatorIndex != -1 then
+      (lines.take(secondSeparatorIndex + 2), lines.drop(secondSeparatorIndex + 2))
+    else
+      // If there is no second occurrence of ConfigSeparator, we assume that the
+      // whole file is config.
+      (lines.tail, Nil)
   } else (Nil, lines)
 
   val configParsed = yamlParser.parse(config.mkString(LineSeparator))

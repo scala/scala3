@@ -2234,8 +2234,15 @@ extends NamingMsg(DoubleDefinitionID) {
   def explain(using Context) = ""
 }
 
-class ImportRenamedTwice(ident: untpd.Ident)(using Context) extends SyntaxMsg(ImportRenamedTwiceID) {
-  def msg(using Context) = s"${ident.show} is renamed twice on the same import line."
+class ImportedTwice(sel: Name)(using Context) extends SyntaxMsg(ImportedTwiceID) {
+  def msg(using Context) = s"${sel.show} is imported twice on the same import line."
+  def explain(using Context) = ""
+}
+
+class UnimportedAndImported(sel: Name, isImport: Boolean)(using Context) extends SyntaxMsg(UnimportedAndImportedID) {
+  def msg(using Context) =
+    val otherStr = if isImport then "and imported" else "twice"
+    s"${sel.show} is unimported $otherStr on the same import line."
   def explain(using Context) = ""
 }
 
@@ -2624,6 +2631,13 @@ extends TypeMsg(NotClassTypeID), ShowMatchTrace(tp):
   def msg(using Context) = i"$tp is not a class type"
   def explain(using Context) = ""
 
+class NotConstant(suffix: String, tp: Type)(using Context)
+extends TypeMsg(NotConstantID), ShowMatchTrace(tp):
+  def msg(using Context) =
+    i"$tp is not a constant type"
+    + (if suffix.isEmpty then "" else i"; $suffix")
+  def explain(using Context) = ""
+
 class MissingImplicitArgument(
     arg: tpd.Tree,
     pt: Type,
@@ -2841,10 +2855,17 @@ class MissingImplicitArgument(
             i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
             ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
           )
+        def importSuggestionAddendum: String =
+          arg.tpe match
+            // If the failure was caused by an underlying NoMatchingImplicits, compute the addendum for its expected type
+            case noMatching: NoMatchingImplicits => // FIXME also handle SynthesisFailure
+              ctx.typer.importSuggestionAddendum(noMatching.expectedType)
+            case _ =>
+              ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
-            .getOrElse(ctx.typer.importSuggestionAddendum(pt))
+            .getOrElse(importSuggestionAddendum)
 
   def explain(using Context) = userDefinedImplicitNotFoundMessage(explain = true)
     .getOrElse("")
@@ -2902,7 +2923,18 @@ class UnusedNonUnitValue(tp: Type)(using Context)
     def msg(using Context) = i"unused value of type $tp"
     def explain(using Context) = ""
 
+class MatchTypeNoCases(casesText: String)(using Context) extends TypeMsg(MatchTypeNoCasesID):
+  def msg(using Context) = i"Match type reduction $casesText"
+  def explain(using Context) = ""
+
 class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
   extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
+    def explain(using Context) = ""
+
+class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
+  extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
+    def msg(using Context) =
+      i"""cannot turn method type $mt into closure
+         |because it has internal parameter dependencies"""
     def explain(using Context) = ""

@@ -45,10 +45,3 @@
    |                that type captures the root capability `cap`.
    |                This is often caused by a local capability in the body of method usingFile
    |                leaking as part of its result.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:72:6 -------------------------------------------------------
-72 |      usingLogger(_, l => () => l.log("test"))) // error
-   |      ^^^^^^^^^^^
-   |      Sealed type variable T cannot  be instantiated to box () => Unit since
-   |      that type captures the root capability `cap`.
-   |      This is often caused by a local capability in the body of method usingLogger
-   |      leaking as part of its result.

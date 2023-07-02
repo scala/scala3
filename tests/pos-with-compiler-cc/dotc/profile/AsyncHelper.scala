@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts._
 
-sealed trait AsyncHelper extends caps.Pure {
+sealed trait AsyncHelper extends Pure {
 
   def newUnboundedQueueFixedThreadPool
   (nThreads: Int,

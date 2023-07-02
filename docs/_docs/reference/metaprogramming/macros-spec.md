@@ -134,7 +134,7 @@ Quotes define all the `Expr[T]` methods as extension methods.
 `Type[T]` does not have methods and therefore does not appear here.
 These methods are available as long as `Quotes` is implicitly given in the current scope.
 
-The `Quotes` instance is also the entry point to the [reflection API](./refelction.md) through the `reflect` object.
+The `Quotes` instance is also the entry point to the [reflection API](./reflection.md) through the `reflect` object.
 
 Finally, `Quotes` provides the internal logic used in quote un-pickling (`QuoteUnpickler`) in quote pattern matching (`QuoteMatching`).
 These interfaces are added to the self-type of the trait to make sure they are implemented on this object but not visible to users of `Quotes`.

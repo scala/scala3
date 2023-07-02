@@ -92,7 +92,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     nameString(if (ctx.property(XprintMode).isEmpty) sym.initial.name else sym.name)
 
   override def fullNameString(sym: Symbol): String =
-    if !sym.exists || isEmptyPrefix(sym.effectiveOwner) then nameString(sym)
+    if !sym.exists
+      || isEmptyPrefix(sym.effectiveOwner)
+      || !homogenizedView && !sym.is(Package) && isOmittablePrefix(sym.effectiveOwner)
+    then nameString(sym)
     else super.fullNameString(sym)
 
   override protected def fullNameOwner(sym: Symbol): Symbol = {
@@ -105,6 +108,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ThisType if !printDebug =>
         if (tp.cls.isAnonymousClass) keywordStr("this")
         if (tp.cls.is(ModuleClass)) fullNameString(tp.cls.sourceModule)
+        else super.toTextRef(tp)
+      case tp: TermRef if !printDebug =>
+        if tp.symbol.is(Package) then fullNameString(tp.symbol)
         else super.toTextRef(tp)
       case _ =>
         super.toTextRef(tp)
@@ -168,7 +174,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       ~ " " ~ argText(args.last)
     }
 
-  private def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
+  protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
     case info: MethodType =>
       val capturesRoot = refs == rootSetText
       changePrec(GlobalPrec) {
@@ -728,13 +734,27 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordStr("macro ") ~ toTextGlobal(call)
       case tree @ Quote(body, tags) =>
         val tagsText = (keywordStr("<") ~ toTextGlobal(tags, ", ") ~ keywordStr(">")).provided(tree.tags.nonEmpty)
-        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tree.bodyType) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tpd.bodyType(tree.asInstanceOf[tpd.Quote])) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
         val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
         keywordStr("'") ~ tagsText ~ exprTypeText ~ open ~ toTextGlobal(body) ~ close
       case Splice(expr) =>
         val spliceTypeText = (keywordStr("[") ~ toTextGlobal(tree.typeOpt) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         keywordStr("$") ~ spliceTypeText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
+      case tree @ QuotePattern(bindings, body, quotes) =>
+        val quotesText = (keywordStr("<") ~ toText(quotes) ~ keywordStr(">")).provided(printDebug)
+        val bindingsText = bindings.map(binding => {
+          keywordStr("type ") ~ toText(binding.symbol.name) ~ toText(binding.symbol.info) ~ "; "
+        }).reduceLeft(_ ~~ _).provided(bindings.nonEmpty)
+        val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
+        val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
+        keywordStr("'") ~ quotesText ~ open ~ bindingsText ~ toTextGlobal(body) ~ close
+      case SplicePattern(pattern, args) =>
+        val spliceTypeText = (keywordStr("[") ~ toTextGlobal(tree.typeOpt) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        keywordStr("$") ~ spliceTypeText ~ {
+          if args.isEmpty then keywordStr("{") ~ inPattern(toText(pattern)) ~ keywordStr("}")
+          else toText(pattern.symbol.name) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+        }
       case Hole(isTerm, idx, args, content) =>
         val (prefix, postfix) = if isTerm then ("{{{", "}}}") else ("[[[", "]]]")
         val argsText = toTextGlobal(args, ", ")

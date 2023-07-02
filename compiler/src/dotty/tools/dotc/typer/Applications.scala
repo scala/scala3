@@ -695,9 +695,7 @@ trait Applications extends Compatibility {
         val argtpe1 = argtpe.widen
 
         def SAMargOK =
-          defn.isFunctionType(argtpe1) && formal.match
-            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
-            case _ => false
+          defn.isFunctionType(argtpe1) && SAMType.isSamCompatible(argtpe, formal)
 
         isCompatible(argtpe, formal)
         // Only allow SAM-conversion to PartialFunction if implicit conversions
@@ -1097,7 +1095,7 @@ trait Applications extends Compatibility {
         }
       else {
         val app = tree.fun match
-          case _: untpd.Splice if ctx.mode.is(Mode.QuotedPattern) => typedAppliedSplice(tree, pt)
+          case _: untpd.SplicePattern => typedAppliedSplice(tree, pt)
           case _ => realApply
         app match {
           case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
@@ -1519,10 +1517,7 @@ trait Applications extends Compatibility {
       && isApplicableType(
             normalize(tp.select(xname, mbr), WildcardType),
             argType :: Nil, resultType)
-    tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
-      case mbr: SingleDenotation => qualifies(mbr)
-      case mbr => mbr.hasAltWith(qualifies(_))
-    }
+    tp.memberBasedOnFlags(xname, required = ExtensionMethod).hasAltWithInline(qualifies)
   }
 
   /** Drop any leading type or implicit parameter sections */

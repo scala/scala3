@@ -23,9 +23,9 @@ package <empty> {
     lazy def x(): Int =
       {
         val result: Object = A.x$lzy1
-        if result.isInstanceOf[Int] then scala.Int.unbox(result) else
-          if result.eq(scala.runtime.LazyVals.NullValue) then
-            scala.Int.unbox(null) else scala.Int.unbox(A.x$lzyINIT1())
+        if result.isInstanceOf[Int] then Int.unbox(result) else
+          if result.eq(scala.runtime.LazyVals.NullValue) then Int.unbox(null)
+             else Int.unbox(A.x$lzyINIT1())
       }
     private def x$lzyINIT1(): Object =
       while <empty> do
@@ -41,7 +41,7 @@ package <empty> {
                 var resultNullable: Object = null
                 try
                   {
-                    resultNullable = scala.Int.box(2)
+                    resultNullable = Int.box(2)
                     if resultNullable.eq(null) then
                       result = scala.runtime.LazyVals.NullValue else
                       result = resultNullable

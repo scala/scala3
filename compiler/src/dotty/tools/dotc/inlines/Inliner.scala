@@ -486,6 +486,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** Register type of leaf node */
   private def registerLeaf(tree: Tree): Unit = tree match
     case _: This | _: Ident | _: TypeTree => registerTypes.traverse(tree.typeOpt)
+    case tree: Quote => registerTypes.traverse(tree.bodyType)
     case _ =>
 
   /** Make `tree` part of inlined expansion. This means its owner has to be changed

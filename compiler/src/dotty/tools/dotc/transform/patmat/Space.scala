@@ -305,23 +305,13 @@ object SpaceEngine {
   }
 
   /** Is this an `'{..}` or `'[..]` irrefutable quoted patterns?
-   *  @param  unapp The unapply function tree
-   *  @param  implicits The implicits of the unapply
-   *  @param  pt The scrutinee type
+   *  @param  body The body of the quoted pattern
+   *  @param  bodyPt The scrutinee body type
    */
-  def isIrrefutableQuotedPattern(unapp: tpd.Tree, implicits: List[tpd.Tree], pt: Type)(using Context): Boolean = {
-    implicits.headOption match
-      // pattern '{ $x: T }
-      case Some(tpd.Apply(tpd.Select(tpd.Quote(tpd.TypeApply(fn, List(tpt)), _), nme.apply), _))
-          if unapp.symbol.owner.eq(defn.QuoteMatching_ExprMatchModule)
-          && fn.symbol.eq(defn.QuotedRuntimePatterns_patternHole) =>
-        pt <:< defn.QuotedExprClass.typeRef.appliedTo(tpt.tpe)
-
-      // pattern '[T]
-      case Some(tpd.Apply(tpd.TypeApply(fn, List(tpt)), _))
-          if unapp.symbol.owner.eq(defn.QuoteMatching_TypeMatchModule) =>
-        pt =:= defn.QuotedTypeClass.typeRef.appliedTo(tpt.tpe)
-
+  def isIrrefutableQuotePattern(pat: tpd.QuotePattern, pt: Type)(using Context): Boolean = {
+    if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
+    else pat.body match
+      case _: SplicePattern => pat.bindings.isEmpty && pt <:< pat.tpe
       case _ => false
   }
 

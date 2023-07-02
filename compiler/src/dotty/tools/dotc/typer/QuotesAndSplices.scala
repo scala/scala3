@@ -15,21 +15,25 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.inlines.PrepareInlineable
+import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.typer.ErrorReporting.errorTree
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
+import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import scala.collection.mutable
-
+import scala.collection.SeqMap
 
 /** Type quotes `'{ ... }` and splices `${ ... }` */
 trait QuotesAndSplices {
   self: Typer =>
 
-  import tpd._
+  import tpd.*
+  import QuotesAndSplices.*
 
   /** Translate `'{ e }` into `scala.quoted.Expr.apply(e)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
@@ -74,45 +78,58 @@ trait QuotesAndSplices {
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
     checkSpliceOutsideQuote(tree)
+    assert(!ctx.mode.is(Mode.QuotedPattern))
     tree.expr match {
       case untpd.Quote(innerExpr, Nil) if innerExpr.isTerm =>
         report.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.srcPos)
         return typed(innerExpr, pt)
       case _ =>
     }
-    if (ctx.mode.is(Mode.QuotedPattern))
-      if (isFullyDefined(pt, ForceDegree.flipBottom)) {
-        def spliceOwner(ctx: Context): Symbol =
-          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-        val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
-          using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(spliceOwner(ctx)))
-        val baseType = pat.tpe.baseType(defn.QuotedExprClass)
-        val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
-        Splice(pat, argType).withSpan(tree.span)
-      }
-      else {
-        report.error(em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.expr.srcPos)
-        tree.withType(UnspecifiedErrorType)
-      }
-    else {
-      if (level == 0) {
-        // Mark the first inline method from the context as a macro
-        def markAsMacro(c: Context): Unit =
-          if (c.owner eq c.outer.owner) markAsMacro(c.outer)
-          else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
-          else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
-          else assert(ctx.reporter.hasErrors) // Did not find inline def to mark as macro
-        markAsMacro(ctx)
-      }
-
-      // TODO typecheck directly (without `exprSplice`)
-      val internalSplice =
-        untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
-      typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
-        case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
-          cpy.Splice(tree)(spliced)
-        case tree => tree
+    if (level == 0) {
+      // Mark the first inline method from the context as a macro
+      def markAsMacro(c: Context): Unit =
+        if (c.owner eq c.outer.owner) markAsMacro(c.outer)
+        else if (c.owner.isInlineMethod) c.owner.setFlag(Macro)
+        else if (!c.outer.owner.is(Package)) markAsMacro(c.outer)
+        else assert(ctx.reporter.hasErrors) // Did not find inline def to mark as macro
+      markAsMacro(ctx)
     }
+
+    // TODO typecheck directly (without `exprSplice`)
+    val internalSplice =
+      untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
+    typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
+      case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
+        cpy.Splice(tree)(spliced)
+      case tree => tree
+  }
+
+  def typedQuotePattern(tree: untpd.QuotePattern, pt: Type)(using Context): Tree =
+    throw new UnsupportedOperationException("cannot type check a Hole node")
+
+  def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree = {
+    record("typedSplicePattern")
+    if isFullyDefined(pt, ForceDegree.flipBottom) then
+      def patternOuterContext(ctx: Context): Context =
+        if (ctx.mode.is(Mode.QuotedPattern)) patternOuterContext(ctx.outer) else ctx
+      val typedArgs = tree.args.map {
+        case arg: untpd.Ident =>
+          typedExpr(arg)
+        case arg =>
+          report.error("Open pattern expected an identifier", arg.srcPos)
+          EmptyTree
+      }
+      for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
+        report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val patType = if tree.args.isEmpty then pt else defn.FunctionOf(argTypes, pt)
+      val pat = typedPattern(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patType))(
+        using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(patternOuterContext(ctx).owner))
+      val baseType = pat.tpe.baseType(defn.QuotedExprClass)
+      val argType = if baseType.exists then baseType.argTypesHi.head else defn.NothingType
+      untpd.cpy.SplicePattern(tree)(pat, typedArgs).withType(pt)
+    else
+      errorTree(tree, em"Type must be fully defined.\nConsider annotating the splice using a type ascription:\n  ($tree: XYZ).", tree.body.srcPos)
   }
 
   def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
@@ -127,48 +144,47 @@ trait QuotesAndSplices {
    */
   def typedAppliedSplice(tree: untpd.Apply, pt: Type)(using Context): Tree = {
     assert(ctx.mode.is(Mode.QuotedPattern))
-    val untpd.Apply(splice: untpd.Splice, args) = tree: @unchecked
-    def isInBraces: Boolean = splice.span.end != splice.expr.span.end
-    if !isFullyDefined(pt, ForceDegree.flipBottom) then
-      report.error(em"Type must be fully defined.", splice.srcPos)
-      tree.withType(UnspecifiedErrorType)
-    else if isInBraces then // ${x}(...) match an application
+    val untpd.Apply(splice: untpd.SplicePattern, args) = tree: @unchecked
+    def isInBraces: Boolean = splice.span.end != splice.body.span.end
+    if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-      Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
+      val splice1 = typedSplicePattern(splice, defn.FunctionOf(argTypes, pt))
+      untpd.cpy.Apply(tree)(splice1.select(nme.apply), typedArgs).withType(pt)
     else // $x(...) higher-order quasipattern
-      val typedArgs = args.map {
-        case arg: untpd.Ident =>
-          typedExpr(arg)
-        case arg =>
-          report.error("Open pattern expected an identifier", arg.srcPos)
-          EmptyTree
-      }
       if args.isEmpty then
-        report.error("Missing arguments for open pattern", tree.srcPos)
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-      ref(defn.QuotedRuntimePatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
+         report.error("Missing arguments for open pattern", tree.srcPos)
+      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, args), pt)
   }
 
   /** Type a pattern variable name `t` in quote pattern as `${given t$giveni: Type[t @ _]}`.
    *  The resulting pattern is the split in `splitQuotePattern`.
    */
   def typedQuotedTypeVar(tree: untpd.Ident, pt: Type)(using Context): Tree =
-    def spliceOwner(ctx: Context): Symbol =
-      if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-    val name = tree.name.toTypeName
-    val nameOfSyntheticGiven = PatMatGivenVarName.fresh(tree.name.toTermName)
-    val expr = untpd.cpy.Ident(tree)(nameOfSyntheticGiven)
     val typeSymInfo = pt match
       case pt: TypeBounds => pt
       case _ => TypeBounds.empty
-    val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
-    typeSym.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
-    val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
-        using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-    pat.select(tpnme.Underlying)
+    getQuotedPatternTypeVariable(tree.name.asTypeName) match
+      case Some(typeSym) =>
+        checkExperimentalFeature(
+          "support for multiple references to the same type (without backticks) in quoted type patterns (SIP-53)",
+          tree.srcPos,
+          "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
+        if !(typeSymInfo =:= TypeBounds.empty) && !(typeSym.info <:< typeSymInfo) then
+          report.warning(em"Ignored bound$typeSymInfo\n\nConsider defining bounds explicitly `'{ $typeSym${typeSym.info & typeSymInfo}; ... }`", tree.srcPos)
+        ref(typeSym)
+      case None =>
+        def spliceOwner(ctx: Context): Symbol =
+          if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+        val name = tree.name.toTypeName
+        val nameOfSyntheticGiven = PatMatGivenVarName.fresh(tree.name.toTermName)
+        val expr = untpd.cpy.Ident(tree)(nameOfSyntheticGiven)
+        val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
+        typeSym.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
+        addQuotedPatternTypeVariable(typeSym)
+        val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+            using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+        pat.select(tpnme.Underlying)
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.isInlineMethod))
@@ -191,7 +207,7 @@ trait QuotesAndSplices {
    *  will return
    *  ```
    *  (
-   *    Map(<t$giveni>: Symbol -> <t @ _>: Bind),
+   *    Map(<t$giveni>: Symbol -> <t>: Symbol),
    *    <'{
    *       @scala.internal.Quoted.patternType type t
    *       scala.internal.Quoted.patternHole[List[t]]
@@ -200,16 +216,10 @@ trait QuotesAndSplices {
    *  )
    *  ```
    */
-  private def splitQuotePattern(quoted: Tree)(using Context): (Map[Symbol, Bind], Tree, List[Tree]) = {
+  private def splitQuotePattern(quoted: Tree)(using Context): (SeqMap[Symbol, Symbol], Tree, List[Tree]) = {
     val ctx0 = ctx
 
-    val typeBindings: collection.mutable.Map[Symbol, Bind] = collection.mutable.Map.empty
-    def getBinding(sym: Symbol): Bind =
-      typeBindings.getOrElseUpdate(sym, {
-        val bindingBounds = sym.info
-        val bsym = newPatternBoundSymbol(sym.name.toString.stripPrefix("$").toTypeName, bindingBounds, quoted.span)
-        Bind(bsym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span)
-      })
+    val bindSymMapping: SeqMap[Symbol, Symbol] = unapplyBindingsMapping(quoted)
 
     object splitter extends tpd.TreeMap {
       private var variance: Int = 1
@@ -227,29 +237,16 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(splice: Splice, tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(splice @ SplicePattern(pat, Nil), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           transform(tpt) // Collect type bindings
           transform(splice)
-        case Apply(TypeApply(fn, targs), Splice(pat) :: args :: Nil) if fn.symbol == defn.QuotedRuntimePatterns_patternHigherOrderHole =>
-          args match // TODO support these patterns. Possibly using scala.quoted.util.Var
-            case SeqLiteral(args, _) =>
-              for arg <- args; if arg.symbol.is(Mutable) do
-                report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
-          try ref(defn.QuotedRuntimePatterns_higherOrderHole.termRef).appliedToTypeTrees(targs).appliedTo(args).withSpan(tree.span)
-          finally {
-            val patType = pat.tpe.widen
-            val patType1 = patType.translateFromRepeated(toArray = false)
-            val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
-            patBuf += pat1
-          }
-        case Splice(pat) =>
-          try ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
-          finally {
-            val patType = pat.tpe.widen
-            val patType1 = patType.translateFromRepeated(toArray = false)
-            val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
-            patBuf += pat1
-          }
+        case SplicePattern(pat, args) =>
+          val patType = pat.tpe.widen
+          val patType1 = patType.translateFromRepeated(toArray = false)
+          val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
+          patBuf += pat1
+          if args.isEmpty then ref(defn.QuotedRuntimePatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
+          else ref(defn.QuotedRuntimePatterns_higherOrderHole.termRef).appliedToType(tree.tpe).appliedTo(SeqLiteral(args, TypeTree(defn.AnyType))).withSpan(tree.span)
         case Select(pat: Bind, _) if tree.symbol.isTypeSplice =>
           val sym = tree.tpe.dealias.typeSymbol
           if sym.exists then
@@ -302,21 +299,28 @@ trait QuotesAndSplices {
           report.error(IllegalVariableInPatternAlternative(tdef.symbol.name), tdef.srcPos)
         if variance == -1 then
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
-        val bindingType = getBinding(tdef.symbol).symbol.typeRef
+        val bindingType = bindSymMapping(tdef.symbol).typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
         val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitVal)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
         super.transform(tdef)
       }
     }
+
     val shape0 = splitter.transform(quoted)
-    val patterns = (splitter.freshTypePatBuf.iterator ++ splitter.typePatBuf.iterator ++ splitter.patBuf.iterator).toList
+    val patterns = (splitter.typePatBuf.iterator ++ splitter.freshTypePatBuf.iterator ++ splitter.patBuf.iterator).toList
     val freshTypeBindings = splitter.freshTypeBindingsBuff.result()
 
-    val shape1 = seq(
-      freshTypeBindings,
-      shape0
-    )
+    val shape1 = shape0 match
+      case Block(stats @ ((tdef: TypeDef) :: rest), expr) if tdef.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) =>
+        val (bindings, otherStats) = stats.span {
+          case tdef: TypeDef => tdef.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
+          case _ => true
+        }
+        cpy.Block(shape0)(bindings ::: freshTypeBindings ::: otherStats, expr)
+      case _ =>
+        seq(freshTypeBindings, shape0)
+
     val shape2 =
       if (freshTypeBindings.isEmpty) shape1
       else {
@@ -333,7 +337,48 @@ trait QuotesAndSplices {
         new TreeTypeMap(typeMap = typeMap).transform(shape1)
       }
 
-    (typeBindings.toMap, shape2, patterns)
+    (bindSymMapping, shape2, patterns)
+  }
+
+  /** For each type variable defined in the quote pattern we generate an equivalent
+   *  binding that will be as type variable in the encoded `unapply` of the quote pattern.
+   *
+   *  @return Mapping from type variable symbols defined in the quote pattern into
+   *          type variable definitions for the `unapply` of the quote pattern.
+   *          This mapping retains the original type variable definition order.
+   */
+  private def unapplyBindingsMapping(quoted: Tree)(using Context): SeqMap[Symbol, Symbol] = {
+    val mapping = mutable.LinkedHashMap.empty[Symbol, Symbol]
+
+    // Collect all existing type variable bindings and create new symbols for them.
+    // The old info is used, it may contain references to the old symbols.
+    new tpd.TreeTraverser {
+      def traverse(tree: Tree)(using Context): Unit = tree match {
+        case _: SplicePattern =>
+        case Select(pat: Bind, _) if tree.symbol.isTypeSplice =>
+          val sym = tree.tpe.dealias.typeSymbol
+          if sym.exists then registerNewBindSym(sym)
+        case tdef: TypeDef  =>
+          if tdef.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) then
+            registerNewBindSym(tdef.symbol)
+          traverseChildren(tdef)
+        case _ =>
+          traverseChildren(tree)
+      }
+      private def registerNewBindSym(sym: Symbol): Unit =
+        if !mapping.contains(sym) then
+          mapping(sym) = newSymbol(ctx.owner, sym.name.toString.stripPrefix("$").toTypeName, Case | sym.flags, sym.info, coord = quoted.span)
+    }.traverse(quoted)
+
+    // Replace symbols in `mapping` in the infos of the new symbol and register GADT bounds.
+    // GADT bounds need to be added after the info is updated to avoid references to the old symbols.
+    var oldBindings: List[Symbol] = mapping.keys.toList
+    var newBindingsRefs: List[Type] = mapping.values.toList.map(_.typeRef)
+    for newBindings <- mapping.values do
+      newBindings.info = newBindings.info.subst(oldBindings, newBindingsRefs)
+      ctx.gadtState.addToConstraint(newBindings) // This must be preformed after the info has been updated
+
+    mapping
   }
 
   /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
@@ -393,26 +438,53 @@ trait QuotesAndSplices {
       case Some(argPt: ValueType) => argPt // excludes TypeBounds
       case _ => defn.AnyType
     }
-    val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
-    val quoteCtx = quoteContext.addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
-    val quoted1 =
-      if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx)
-      else typedExpr(quoted0, WildcardType)(using quoteCtx)
+    val (untpdTypeVariables, quoted0) = desugar.quotedPatternTypeVariables(desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt))))
 
-    val (typeBindings, shape, splices) = splitQuotePattern(quoted1)
+    for tdef @ untpd.TypeDef(_, rhs) <- untpdTypeVariables do rhs match
+      case _: TypeBoundsTree => // ok
+      case LambdaTypeTree(_, body: TypeBoundsTree) => // ok
+      case _ => report.error("Quote type variable definition cannot be an alias", tdef.srcPos)
+
+    if quoted.isType && untpdTypeVariables.nonEmpty then
+      checkExperimentalFeature(
+        "explicit type variable declarations quoted type patterns (SIP-53)",
+        untpdTypeVariables.head.srcPos,
+        "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
+
+    val (typeTypeVariables, patternCtx) =
+      val quoteCtx = quotePatternContext()
+      if untpdTypeVariables.isEmpty then (Nil, quoteCtx)
+      else typedBlockStats(untpdTypeVariables)(using quoteCtx)
+
+    val quoted1 = inContext(patternCtx) {
+      for typeVariable <- typeTypeVariables do
+        addQuotedPatternTypeVariable(typeVariable.symbol)
+
+      val pattern =
+        if quoted.isType then typedType(quoted0, WildcardType)(using patternCtx)
+        else typedExpr(quoted0, WildcardType)
+
+      if untpdTypeVariables.isEmpty then pattern
+      else tpd.Block(typeTypeVariables, pattern)
+    }
+
+    val (bindSymMapping, shape, splices) = splitQuotePattern(quoted1)
 
     class ReplaceBindings extends TypeMap() {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
           val tp1 = if (tp.symbol.isTypeSplice) tp.dealias else tp
-          mapOver(typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef))
+          mapOver(bindSymMapping.get(tp1.typeSymbol).fold(tp)(_.typeRef))
         case tp => mapOver(tp)
       }
     }
     val replaceBindings = new ReplaceBindings
     val patType = defn.tupleType(splices.tpes.map(tpe => replaceBindings(tpe.widen)))
 
-    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(typeBindings.values.toList)
+    val typeBinds = bindSymMapping.values.map(sym =>
+      Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.info)).withSpan(quoted.span)
+    ).toList
+    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(typeBinds)
 
     val replaceBindingsInTree = new TreeMap {
       private var bindMap = Map.empty[Symbol, Symbol]
@@ -445,12 +517,37 @@ trait QuotesAndSplices {
       else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(quotes)
 
     val matchModule = if quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
-    val unapplyFun = quotes.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)
+    val unapplySym = if quoted.isTerm then defn.QuoteMatching_ExprMatch_unapply else defn.QuoteMatching_TypeMatch_unapply
+    val unapplyFun = quotes.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(unapplySym)
 
-    UnApply(
+    val encodedPattern = UnApply(
       fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits = quotedPattern :: Nil,
       patterns = splicePat :: Nil,
-      proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
+      proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe)))
+
+    if ctx.reporter.hasErrors then encodedPattern
+    else QuotePatterns.decode(encodedPattern) // TODO type directly into the encoded version
   }
+}
+
+object QuotesAndSplices {
+  import tpd._
+
+  /** Key for mapping from quoted pattern type variable names into their symbol */
+  private val TypeVariableKey = new Property.Key[collection.mutable.Map[TypeName, Symbol]]
+
+  /** Get the symbol for the quoted pattern type variable if it exists */
+  def getQuotedPatternTypeVariable(name: TypeName)(using Context): Option[Symbol] =
+    ctx.property(TypeVariableKey).get.get(name)
+
+    /** Get the symbol for the quoted pattern type variable if it exists */
+  def addQuotedPatternTypeVariable(sym: Symbol)(using Context): Unit =
+    ctx.property(TypeVariableKey).get.update(sym.name.asTypeName, sym)
+
+  /** Context used to type the contents of a quoted */
+  def quotePatternContext()(using Context): Context =
+    quoteContext.fresh.setNewScope
+      .addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
+      .setProperty(TypeVariableKey, collection.mutable.Map.empty)
 }

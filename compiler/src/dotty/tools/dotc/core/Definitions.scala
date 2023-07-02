@@ -688,6 +688,7 @@ class Definitions {
   @tu lazy val JavaCalendarClass: ClassSymbol = requiredClass("java.util.Calendar")
   @tu lazy val JavaDateClass: ClassSymbol = requiredClass("java.util.Date")
   @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
+  @tu lazy val JavaRecordClass: Symbol = getClassIfDefined("java.lang.Record")
 
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
@@ -852,9 +853,9 @@ class Definitions {
 
   @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteMatching")
     @tu lazy val QuoteMatching_ExprMatch: Symbol = QuoteMatchingClass.requiredMethod("ExprMatch")
-    @tu lazy val QuoteMatching_ExprMatchModule: Symbol = QuoteMatchingClass.requiredClass("ExprMatchModule")
+    @tu lazy val QuoteMatching_ExprMatch_unapply: Symbol = QuoteMatchingClass.requiredClass("ExprMatchModule").requiredMethod(nme.unapply)
     @tu lazy val QuoteMatching_TypeMatch: Symbol = QuoteMatchingClass.requiredMethod("TypeMatch")
-    @tu lazy val QuoteMatching_TypeMatchModule: Symbol = QuoteMatchingClass.requiredClass("TypeMatchModule")
+    @tu lazy val QuoteMatching_TypeMatch_unapply: Symbol = QuoteMatchingClass.requiredClass("TypeMatchModule").requiredMethod(nme.unapply)
   @tu lazy val QuoteMatchingModule: Symbol = requiredModule("scala.quoted.runtime.QuoteMatching")
     @tu lazy val QuoteMatching_KNil: Symbol = QuoteMatchingModule.requiredType("KNil")
     @tu lazy val QuoteMatching_KCons: Symbol = QuoteMatchingModule.requiredType("KCons")
@@ -941,6 +942,7 @@ class Definitions {
   def TupleXXLModule(using Context): Symbol = TupleXXLClass.companionModule
 
     def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
+    def TupleXXL_unapplySeq(using Context): Symbol = TupleXXLModule.requiredMethod(nme.unapplySeq)
 
   @tu lazy val RuntimeTupleMirrorTypeRef: TypeRef = requiredClassRef("scala.runtime.TupleMirror")
 
@@ -974,6 +976,8 @@ class Definitions {
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
     @tu lazy val Caps_SealedAnnot: ClassSymbol = requiredClass("scala.caps.Sealed")
+
+  @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -1043,6 +1047,11 @@ class Definitions {
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
+
+  // Initialization annotations
+  @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
+    @tu lazy val InitWidenAnnot: ClassSymbol = InitModule.requiredClass("widen")
+    @tu lazy val InitRegionMethod: Symbol = InitModule.requiredMethod("region")
 
   // A list of meta-annotations that are relevant for fields and accessors
   @tu lazy val NonBeanMetaAnnots: Set[Symbol] =
@@ -1361,7 +1370,9 @@ class Definitions {
       denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
       patch2(denot, patchCls)
 
-    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
+    if ctx.settings.Yscala2Stdlib.value then
+      ()
+    else if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
       patchWith(ScalaPredefModuleClassPatch)
     else if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
       patchWith(LanguageModuleClassPatch)
@@ -1716,8 +1727,9 @@ class Definitions {
     isFunctionType(tp) || isRefinedFunctionType(tp)
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
-    for base <- bases; tp <- paramTypes do
-      cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
+    if !ctx.settings.Yscala2Stdlib.value then
+      for base <- bases; tp <- paramTypes do
+        cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
     cls
 
   @tu lazy val Tuple1: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple1"), List(nme._1), Tuple1SpecializedParamTypes)
@@ -1758,6 +1770,7 @@ class Definitions {
       case List(x, y) => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
       case _          => false
     && base.owner.denot.info.member(base.name.specializedName(args)).exists // when dotc compiles the stdlib there are no specialised classes
+    && !ctx.settings.Yscala2Stdlib.value // We do not add the specilized TupleN methods/classes when compiling the stdlib
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
@@ -1779,6 +1792,7 @@ class Definitions {
       case _ =>
         false
     })
+    && !ctx.settings.Yscala2Stdlib.value // We do not add the specilized FunctionN methods/classes when compiling the stdlib
 
   @tu lazy val Function0SpecializedApplyNames: collection.Set[TermName] =
     for r <- Function0SpecializedReturnTypes
@@ -1943,6 +1957,14 @@ class Definitions {
       case Some(pkgs) => pkgs.contains(sym.owner)
       case none => false
 
+  /** Experimental definitions that can nevertheless be accessed from a stable
+   *  compiler if capture checking is enabled.
+   */
+  @tu lazy val ccExperimental: Set[Symbol] = Set(
+    CapsModule, CapsModule.moduleClass, PureClass,
+    CapabilityAnnot, RequiresCapabilityAnnot,
+    RetainsAnnot, RetainsByNameAnnot, WithPureFunsAnnot)
+
   // ----- primitive value class machinery ------------------------------------------
 
   class PerRun[T](generate: Context ?=> T) {
@@ -2040,15 +2062,17 @@ class Definitions {
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
-  @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
-    SimpleIdentityMap.empty[Symbol]
-      .updated(AnyClass, ObjectClass)
-      .updated(MatchableClass, ObjectClass)
-      .updated(AnyValClass, ObjectClass)
-      .updated(SingletonClass, ObjectClass)
-      .updated(TupleClass, ProductClass)
-      .updated(NonEmptyTupleClass, ProductClass)
-      .updated(PairClass, ObjectClass)
+  @tu lazy val specialErasure: collection.Map[Symbol, ClassSymbol] =
+    val m = mutable.Map[Symbol, ClassSymbol]()
+    m(AnyClass) = ObjectClass
+    m(MatchableClass) = ObjectClass
+    m(PureClass) = ObjectClass
+    m(AnyValClass) = ObjectClass
+    m(SingletonClass) = ObjectClass
+    m(TupleClass) = ProductClass
+    m(NonEmptyTupleClass) = ProductClass
+    m(PairClass) = ObjectClass
+    m
 
   // ----- Initialization ---------------------------------------------------
 

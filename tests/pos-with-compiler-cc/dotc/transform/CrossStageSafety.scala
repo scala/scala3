@@ -48,7 +48,7 @@ import scala.annotation.constructorOnly
  *     }
  *
  */
-class CrossStageSafety(@constructorOnly ictx: DetachedContext) extends TreeMapWithStages(ictx), Checking, caps.Pure {
+class CrossStageSafety(@constructorOnly ictx: DetachedContext) extends TreeMapWithStages(ictx), Checking, Pure {
   import tpd._
 
   private val InAnnotation = Property.Key[Unit]()
@@ -278,7 +278,7 @@ class CrossStageSafety(@constructorOnly ictx: DetachedContext) extends TreeMapWi
 object CrossStageSafety {
   import tpd._
 
-  class QuoteTypeTags(span: Span)(using DetachedContext) extends caps.Pure {
+  class QuoteTypeTags(span: Span)(using DetachedContext) extends Pure {
 
     private val tags = collection.mutable.LinkedHashMap.empty[Symbol, TypeDef]
 

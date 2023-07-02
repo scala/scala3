@@ -40,9 +40,3 @@ import annotation.experimental
    */
   @deprecated("The Sealed annotation should not be directly used in source code.\nUse the `sealed` modifier on type parameters instead.")
   class Sealed extends annotation.Annotation
-
-  /** Mixing in this trait forces a trait or class to be pure, i.e.
-   *  have no capabilities retained in its self type.
-   */
-  trait Pure:
-    this: Pure =>

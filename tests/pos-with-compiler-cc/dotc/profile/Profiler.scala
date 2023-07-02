@@ -65,7 +65,7 @@ case class ProfileRange(start: ProfileSnap, end:ProfileSnap, phase:Phase, purpos
   def retainedHeapMB: Double = toMegaBytes(end.heapBytes - start.heapBytes)
 }
 
-sealed trait Profiler extends caps.Pure {
+sealed trait Profiler extends Pure {
 
   def finished(): Unit
 
