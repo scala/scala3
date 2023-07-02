@@ -291,8 +291,12 @@ class CheckCaptures extends Recheck, SymTransformer:
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     override def recheckIdent(tree: Ident)(using Context): Type =
-      if tree.symbol.is(Method) then includeCallCaptures(tree.symbol, tree.srcPos)
-      else markFree(tree.symbol, tree.srcPos)
+      if tree.symbol.is(Method) then
+        if tree.symbol.info.isParameterless then
+          // there won't be an apply; need to include call captures now
+          includeCallCaptures(tree.symbol, tree.srcPos)
+      else
+        markFree(tree.symbol, tree.srcPos)
       super.recheckIdent(tree)
 
     /** A specialized implementation of the selection rule.
