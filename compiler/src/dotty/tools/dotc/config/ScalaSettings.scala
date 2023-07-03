@@ -369,6 +369,7 @@ private sealed trait YSettings:
   val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features.")
   val YlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals.")
   val Yscala2Stdlib: Setting[Boolean] = BooleanSetting("-Yscala2-stdlib", "Used when compiling the Scala 2 standard library.")
+  val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting("-Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles")
 
   val YprofileEnabled: Setting[Boolean] = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
   val YprofileDestination: Setting[String] = StringSetting("-Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "")
