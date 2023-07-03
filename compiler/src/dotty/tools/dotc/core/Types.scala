@@ -2324,6 +2324,14 @@ object Types {
       case _ => if (denotationIsCurrent) lastDenotation.nn.symbol else NoSymbol
     }
 
+    /** Like `currentSymbol`, but force the denotation if the symbol isn't valid.
+     *  Compared to `stableInRunSymbol`, this doesn't force the denotation for non-symbolic named types,
+     *  because currentSymbol returns NoSymbol, which is `Permanent`, so always "isValidInCurrentRun".
+     *  Forcing the denotation breaks tests/run/enrich-gentraversable.scala. */
+    private def currentValidSymbol(using Context): Symbol =
+      val sym = currentSymbol
+      if sym.isValidInCurrentRun then sym else denot.symbol
+
     /** Retrieves currently valid symbol without necessarily updating denotation.
      *  Assumes that symbols do not change between periods in the same run.
      *  Used to get the class underlying a ThisType.
@@ -2677,10 +2685,7 @@ object Types {
       else {
         if (isType) {
           val res =
-            val sym =
-              if (currentSymbol.isValidInCurrentRun) currentSymbol
-              else computeSymbol
-            if (sym.isAllOf(ClassTypeParam)) argForParam(prefix)
+            if (currentValidSymbol.isAllOf(ClassTypeParam)) argForParam(prefix)
             else prefix.lookupRefined(name)
           if (res.exists) return res
           if (Config.splitProjections)
@@ -2754,9 +2759,7 @@ object Types {
     /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
-        val sym =
-          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn 
-          else computeSymbol
+        val sym = stableInRunSymbol
         val allowPrivate = !sym.exists || sym.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
         if (d.isOverloaded && sym.exists)
