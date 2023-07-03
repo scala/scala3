@@ -1,6 +1,6 @@
 package scala
 
-import annotation.showAsInfix
+import annotation.{experimental, showAsInfix}
 import compiletime._
 import compiletime.ops.int._
 
@@ -78,6 +78,13 @@ sealed trait Tuple extends Product {
    */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
+
+  /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
+   *  consisting all its elements.
+   */
+  @experimental
+  inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
+    runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
 object Tuple {
@@ -193,6 +200,19 @@ object Tuple {
    */
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
+  /** Type of the reversed tuple */
+  @experimental
+  type Reverse[X <: Tuple] = Helpers.ReverseImpl[EmptyTuple, X]
+
+  @experimental
+  object Helpers:
+
+    /** Type of the reversed tuple */
+    @experimental
+    type ReverseImpl[Acc <: Tuple, X <: Tuple] <: Tuple = X match
+      case x *: xs => ReverseImpl[x *: Acc, xs]
+      case EmptyTuple => Acc
+
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
     case 0 => EmptyTuple
@@ -297,7 +317,6 @@ sealed trait NonEmptyTuple extends Tuple {
    */
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
-
 }
 
 @showAsInfix
