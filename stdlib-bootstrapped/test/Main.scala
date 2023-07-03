@@ -15,7 +15,7 @@ object HelloWorld:
 
     testScala2UnapplySignatures()
     testScala2ObjectParents()
-    testScala2ProductMembers()
+    testScala2CaseClassUnderscoreMembers()
   }
 
   def testScala2UnapplySignatures() = {
@@ -32,11 +32,8 @@ object HelloWorld:
     assert(!typeChecks("Either: scala.deriving.Mirror.Sum"))
     assert(!typeChecks("Either: scala.deriving.Mirror"))
   }
-  def testScala2ProductMembers() = {
-    Some(1)._1
-    Right(1)._1
-    (1, 2)._1
-    (1, 2)._2
-    ::(1, Nil)._1
-    ::(1, Nil)._2
+
+  def testScala2CaseClassUnderscoreMembers() = {
+    val some: Some[Int] = Some(1)
+    // FIXME: assert(!typeChecks("some._1"))
   }

@@ -139,6 +139,12 @@ object MiMaFilters {
         // Companion module class: Missing type java.io.Serializable
         ProblemFilters.exclude[MissingTypesProblem]("scala.*$"),
 
+        // Case class product accessors
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._1"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._2"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._3"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._4"),
+
         // abstract method elemTag()scala.reflect.ClassTag in class scala.collection.mutable.ArraySeq does not have a correspondent in other version
         ProblemFilters.exclude[DirectAbstractMethodProblem]("scala.collection.immutable.ArraySeq.elemTag"),
         ProblemFilters.exclude[DirectAbstractMethodProblem]("scala.collection.mutable.ArraySeq.elemTag"),
