@@ -255,7 +255,7 @@ Therefore, while evaluating the quote, it is not possible to accidentally rebind
 If a quote is well typed, then the generated code is well typed.
 This is a simple consequence of tracking the type of each expression.
 An `Expr[T]` can only be created from a quote that contains an expression of type `T`.
-Conversely, an `Expr[T]` can only be spliced in a location that expects a type `T.
+Conversely, an `Expr[T]` can only be spliced in a location that expects a type `T`.
 As mentioned before, `Expr` is covariant in its type parameter.
 This means that an `Expr[T]` can contain an expression of a subtype of `T`.
 When spliced in a location that expects a type `T, these expressions also have a valid type.
