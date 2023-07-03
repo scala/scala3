@@ -161,7 +161,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productArity => Literal(Constant(accessors.length))
         case nme.productPrefix if isEnumValue => nameRef
         case nme.productPrefix => ownName
-        case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
+        case nme.productElement =>
+          if ctx.settings.Yscala2Stdlib.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
+          else productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }
       report.log(s"adding $synthetic to $clazz at ${ctx.phase}")
@@ -185,9 +187,36 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  ```
      */
     def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
-      // case N => _${N + 1}
+      // case N => this._${N + 1}
       val cases = 0.until(arity).map { i =>
         val sel = This(clazz).select(nme.selectorName(i), _.info.isParameterless)
+        CaseDef(Literal(Constant(i)), EmptyTree, sel)
+      }
+
+      Match(index, (cases :+ generateIOBECase(index)).toList)
+    }
+
+    /** The class
+     *
+     *  ```
+     *  case class C(x: T, y: T)
+     *  ```
+     *
+     *  gets the `productElement` method:
+     *
+     *  ```
+     *  def productElement(index: Int): Any = index match {
+     *    case 0 => this.x
+     *    case 1 => this.y
+     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *  }
+     *  ```
+     */
+    def productElementBodyForScala2Compat(arity: Int, index: Tree)(using Context): Tree = {
+      val caseParams = ctx.owner.owner.caseAccessors
+      // case N => this.${paramNames(N)}
+      val cases = caseParams.zipWithIndex.map { (caseParam, i) =>
+        val sel = This(clazz).select(caseParam)
         CaseDef(Literal(Constant(i)), EmptyTree, sel)
       }
 

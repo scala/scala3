@@ -37,7 +37,7 @@ object HelloWorld:
 
   def testScala2CaseClassUnderscoreMembers() = {
     val some: Some[Int] = Some(1)
-    // FIXME: assert(!typeChecks("some._1"))
+    assert(!typeChecks("some._1"))
   }
 
   def testScalaNumberUnderlying() = {

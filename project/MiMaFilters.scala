@@ -71,16 +71,17 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingTypesProblem]("scala.UninitializedFieldError$"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.StringView$"),
 
-        // Tuples
-        ProblemFilters.exclude[FinalClassProblem]("scala.Tuple1"),
-        ProblemFilters.exclude[FinalClassProblem]("scala.Tuple2"),
-        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple*._*"), // Tuple1._1, Tuple2._1, Tuple2._2
-
         // Scala 2 intrinsic macros
         ProblemFilters.exclude[FinalMethodProblem]("scala.StringContext.s"),
 
         // scala.math.Ordering.tryCompare
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.tryCompare"),
+
+
+        // Specialization?
+        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple1._1"), // field _1 in class scala.Tuple1 does not have a correspondent in current version
+        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple2._1"), // field _1 in class scala.Tuple2 does not have a correspondent in current version
+        ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple2._2"), // field _2 in class scala.Tuple2 does not have a correspondent in current version
 
         // Scala 2 specialization
         ProblemFilters.exclude[MissingClassProblem]("scala.*$sp"),
@@ -97,6 +98,8 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingTypesProblem]("scala.jdk.IntAccumulator"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.jdk.LongAccumulator"),
         ProblemFilters.exclude[FinalClassProblem]("scala.collection.ArrayOps$ReverseIterator"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.Tuple1"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.Tuple2"),
 
         // other
         ProblemFilters.exclude[FinalMethodProblem]("scala.Enumeration.ValueOrdering"),
@@ -167,12 +170,6 @@ object MiMaFilters {
 
         // Companion module class: Missing type java.io.Serializable
         ProblemFilters.exclude[MissingTypesProblem]("scala.*$"),
-
-        // Case class product accessors
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._1"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._2"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._3"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*._4"),
 
         // abstract method elemTag()scala.reflect.ClassTag in class scala.collection.mutable.ArraySeq does not have a correspondent in other version
         ProblemFilters.exclude[DirectAbstractMethodProblem]("scala.collection.immutable.ArraySeq.elemTag"),
