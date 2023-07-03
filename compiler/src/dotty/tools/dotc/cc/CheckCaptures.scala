@@ -12,7 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
-import util.{SimpleIdentitySet, EqHashMap, SrcPos}
+import util.{SimpleIdentitySet, EqHashMap, SrcPos, Property}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
@@ -145,6 +145,9 @@ object CheckCaptures:
         traverseChildren(t)
     check.traverse(tp)
 
+  /** Attachment key for boxed curried closures */
+  val BoxedClosure = Property.Key[Type]
+
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
 
@@ -231,29 +234,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
         else CaptureSet.empty)
 
-    /**
-    class anon1 extends Function1:
-      def apply: Function1 =
-        use(x)
-        class anon2 extends Function1:
-          use(y)
-          def apply: Function1 = ...
-        anon2()
-    anon1()
-    */
-    /** For all nested environments up to `limit` perform `op` */
+    /** For all nested environments up to `limit` or a closed environment perform `op` */
     def forallOuterEnvsUpTo(limit: Symbol)(op: Env => Unit)(using Context): Unit =
-      def stopsPropagation(env: Env) =
-        val sym = env.owner
-        env.isOutermost
-        || false && sym.is(Method) && sym.owner.isTerm && !sym.isConstructor
       def recur(env: Env): Unit =
         if env.isOpen && env.owner != limit then
           op(env)
-          if !stopsPropagation(env) then
+          if !env.isOutermost then
             var nextEnv = env.outer
             if env.owner.isConstructor then
-              if nextEnv.owner != limit && !stopsPropagation(nextEnv) then
+              if nextEnv.owner != limit && !nextEnv.isOutermost then
                 nextEnv = nextEnv.outer
             recur(nextEnv)
       recur(curEnv)
@@ -491,6 +480,15 @@ class CheckCaptures extends Recheck, SymTransformer:
                   recheckDef(mdef, meth)
               meth.updateInfoBetween(preRecheckPhase, thisPhase, completer)
             case _ =>
+          mdef.rhs match
+            case rhs @ closure(_, _, _) =>
+              // In a curried closure `x => y => e` don't leak capabilities retained by
+              // the second closure `y => e` into the first one. This is an approximation
+              // of the CC rule which says that a closure contributes captures to its 
+              // environment only if a let-bound reference to the closure is used. 
+              capt.println(i"boxing $rhs")
+              rhs.putAttachment(BoxedClosure, ())
+            case _ =>
         case _ =>
       super.recheckBlock(block, pt)
 
@@ -588,7 +586,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  adding all references in the boxed capture set to the current environment.
      */
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      if tree.isTerm && pt.isBoxedCapturing then
+      if tree.isTerm && (pt.isBoxedCapturing || tree.hasAttachment(BoxedClosure)) then
         val saved = curEnv
 
         tree match
