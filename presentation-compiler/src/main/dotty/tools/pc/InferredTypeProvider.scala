@@ -22,8 +22,8 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.pc.printer.MetalsPrinter
-import dotty.tools.pc.printer.ShortenedNames
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j.TextEdit
@@ -84,14 +84,10 @@ final class InferredTypeProvider(
       indexedCtx,
       config
     )
-    val shortenedNames = new ShortenedNames(indexedCtx)
 
     def removeType(nameEnd: Int, tptEnd: Int) =
       sourceText.substring(0, nameEnd) +
         sourceText.substring(tptEnd + 1, sourceText.length())
-
-    def imports: List[TextEdit] =
-      shortenedNames.imports(autoImportsGen)
 
     def optDealias(tpe: Type): Type =
       def isInScope(tpe: Type): Boolean =
@@ -107,13 +103,16 @@ final class InferredTypeProvider(
       then tpe
       else tpe.metalsDealias
 
+    val printer = ShortenedTypePrinter(
+      symbolSearch,
+      includeDefaultParam = IncludeDefaultParam.ResolveLater,
+      isTextEdit = true
+    )(using indexedCtx)
+
+    def imports: List[TextEdit] =
+      printer.imports(autoImportsGen)
+
     def printType(tpe: Type): String =
-      val printer = MetalsPrinter.forInferredType(
-        shortenedNames,
-        indexedCtx,
-        symbolSearch,
-        includeDefaultParam = MetalsPrinter.IncludeDefaultParam.ResolveLater
-      )
       printer.tpe(tpe)
 
     path.headOption match

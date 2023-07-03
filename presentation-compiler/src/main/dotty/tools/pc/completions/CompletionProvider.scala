@@ -19,7 +19,8 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.pc.AutoImports.AutoImportEdits
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j.Command
@@ -149,11 +150,7 @@ class CompletionProvider(
       path: List[Tree],
       indexedContext: IndexedContext
   )(using ctx: Context): CompletionItem =
-    val printer = MetalsPrinter.standard(
-      indexedContext,
-      search,
-      includeDefaultParam = MetalsPrinter.IncludeDefaultParam.ResolveLater
-    )
+    val printer = ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
     val editRange = completionPos.toEditRange
 
     // For overloaded signatures we get multiple symbols, so we need

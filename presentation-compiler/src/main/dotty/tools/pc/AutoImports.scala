@@ -14,7 +14,6 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
-import dotty.tools.pc.printer.ShortenedNames.ShortName
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j as l
@@ -152,19 +151,6 @@ object AutoImports:
 
     def forSymbol(symbol: Symbol): Option[List[l.TextEdit]] =
       editsForSymbol(symbol).map(_.edits)
-
-    /**
-     * Construct auto imports for the given ShortName,
-     * if the shortName has different name with it's symbol name,
-     * generate renamed import. For example,
-     * `ShortName("ju", <java.util>)` => `import java.{util => ju}`.
-     */
-    def forShortName(shortName: ShortName): Option[List[l.TextEdit]] =
-      if shortName.isRename then
-        renderImports(
-          List(ImportSel.Rename(shortName.symbol, shortName.name.show))
-        ).map(List(_))
-      else forSymbol(shortName.symbol)
 
     /**
      * @param symbol A missing symbol to auto-import

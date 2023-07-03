@@ -27,7 +27,8 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.AutoImports.AutoImport
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j as l
@@ -394,12 +395,11 @@ object OverrideCompletions:
       shouldAddOverrideKwd: Boolean
   )(using Context, ReportContext): CompletionValue.Override =
     val renames = AutoImport.renameConfigMap(config)
-    val printer = MetalsPrinter.standard(
-      indexedContext,
+    val printer = ShortenedTypePrinter(
       search,
-      includeDefaultParam = MetalsPrinter.IncludeDefaultParam.Never,
-      renames
-    )
+      includeDefaultParam = IncludeDefaultParam.Never,
+      renameConfigMap = renames
+    )(using indexedContext)
     val overrideKeyword: String =
       // if the overriding method is not an abstract member, add `override` keyword
       if !sym.isOneOf(Deferred) || shouldAddOverrideKwd
@@ -443,16 +443,12 @@ object OverrideCompletions:
       if config.isCompletionSnippetsEnabled && shouldMoveCursor then "${0:???}"
       else "???"
     val value = s"$signature = $stub"
-    val additionalEdits =
-      printer.shortenedNames
-        .sortBy(nme => nme.name)
-        .flatMap(name => autoImportsGen.forShortName(name))
-        .flatten
+
     CompletionValue.Override(
       label,
       value,
       sym.symbol,
-      additionalEdits,
+      printer.imports(autoImportsGen),
       Some(signature),
       Some(autoImportsGen.pos.withStart(start).toLsp)
     )

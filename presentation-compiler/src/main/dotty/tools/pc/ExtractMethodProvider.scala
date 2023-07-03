@@ -21,8 +21,8 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.printer.MetalsPrinter
-import dotty.tools.pc.printer.MetalsPrinter.IncludeDefaultParam
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j.TextEdit
@@ -51,8 +51,7 @@ final class ExtractMethodProvider(
       val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
       Interactive.contextOfPath(path)(using newctx)
     val indexedCtx = IndexedContext(locatedCtx)
-    val printer =
-      MetalsPrinter.standard(indexedCtx, search, IncludeDefaultParam.Never)
+    val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedCtx)
     def prettyPrint(tpe: Type) =
       def prettyPrintReturnType(tpe: Type): String =
         tpe match

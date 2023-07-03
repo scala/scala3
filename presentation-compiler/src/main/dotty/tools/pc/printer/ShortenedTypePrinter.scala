@@ -23,19 +23,39 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.Params
-import dotty.tools.pc.printer.ShortenedNames.ShortName
 import dotty.tools.pc.utils.MtagsEnrichments.*
+import dotty.tools.dotc.printing.PlainPrinter
+import dotty.tools.dotc.printing.Texts.Text
+import dotty.tools.dotc.core.Decorators.show
+import dotty.tools.dotc.printing.RefinedPrinter
+import dotty.tools.dotc.printing.Formatting.ShownDef.ctxShow
+import dotty.tools.dotc.typer.ImportInfo
+import dotty.tools.dotc.core.Annotations.Annotation
+import dotty.tools.pc.IndexedContext.Result
+import dotty.tools.pc.AutoImports.AutoImportsGenerator
+import org.eclipse.lsp4j.TextEdit
+import dotty.tools.dotc.core.Names
+import dotty.tools.pc.AutoImports.ImportSel
+import dotty.tools.pc.AutoImports.ImportSel.Direct
+import dotty.tools.pc.AutoImports.ImportSel.Rename
+import dotty.tools.dotc.core.Names.NameOrdering
 
-class MetalsPrinter(
-    names: ShortenedNames,
-    dotcPrinter: DotcPrinter,
+/**
+ * A type printer that shortens types by replacing fully qualified names with shortened versions.
+ *
+ * The printer supports symbol renames found in scope and will use the rename if it is available.
+ * It also handlse custom renames as specified in the `renameConfigMap` parameter.
+ *
+ */
+class ShortenedTypePrinter(
     symbolSearch: SymbolSearch,
-    includeDefaultParam: MetalsPrinter.IncludeDefaultParam =
-      IncludeDefaultParam.ResolveLater,
-)(using
-    Context,
-    ReportContext
-):
+    includeDefaultParam: ShortenedTypePrinter.IncludeDefaultParam = IncludeDefaultParam.ResolveLater,
+    isTextEdit: Boolean = false,
+    renameConfigMap: Map[Symbol, String] = Map.empty,
+)(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
+  var missingImports: mutable.ListBuffer[ImportSel] = mutable.ListBuffer.empty
+
+  private val defaultWidth = 1000
 
   private val methodFlags =
     Flags.commonFlags(
@@ -52,8 +72,6 @@ class MetalsPrinter(
       Lazy
     )
 
-  def shortenedNames: List[ShortName] = names.namesToImport
-
   def expressionType(tpw: Type)(using Context): Option[String] =
     tpw match
       case t: PolyType =>
@@ -68,27 +86,119 @@ class MetalsPrinter(
         Some(tpe(tpw))
       case _ => None
 
-  def tpe(tpe: Type): String =
-    val short = Try(names.shortType(tpe)) match
-      case Success(short) => short
-      case Failure(e) =>
-        val reportContext = summon[ReportContext]
-        val report = Report(
-          "short-name-error",
-          s"""|Error while printing type, could not create short name for type:
-              |
-              |$tpe
-              |
-              |Exception:
-              |${e.getMessage}
-              |${e.getStackTrace.mkString("\n")}
-              |""".stripMargin,
-          tpe.typeSymbol.name.show
-        )
-        reportContext.unsanitized.create(report, ifVerbose = false)
-        tpe
-    dotcPrinter.tpe(short)
-  end tpe
+  /**
+   * Returns a list of TextEdits (auto-imports) of the symbols
+   * that are shortend by "tryShortenName" method, and cached.
+   */
+  def imports(autoImportsGen: AutoImportsGenerator): List[TextEdit] =
+    missingImports
+      .toList
+      .filterNot(selector => selector.sym.isRoot)
+      .sortBy(_.sym.effectiveName)
+      .flatMap(selector => autoImportsGen.renderImports(List(selector)))
+
+  sealed trait SymbolRenameSearchResult:
+    val owner: Symbol
+    val rename: String
+    val prefixAfterRename: List[Symbol]
+
+    def toPrefixText: Text =
+      Str(rename) ~ prefixAfterRename.foldLeft(Text())((acc, sym) => acc ~ "." ~ toText(sym.name)) ~ "."
+
+  case class Found(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
+  case class Missing(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
+
+
+  /**
+   *  In shortened type printer, we don't want to omit the prefix unless it is empty package
+   *  All the logic for prefix omitting is implemented in `trimPrefixToScope`
+   */
+  override protected def isOmittablePrefix(sym: Symbol): Boolean = isEmptyPrefix(sym)
+
+  private def findPrefixRename(prefix: Symbol): Option[SymbolRenameSearchResult] =
+    def ownersAfterRename(owner: Symbol): List[Symbol] =
+      prefix.ownersIterator.takeWhile(_ != owner).toList
+
+    prefix.ownersIterator.flatMap { owner =>
+      val prefixAfterRename = ownersAfterRename(owner)
+      val currentRenamesSearchResult = indexedCtx.rename(owner).map(Found(owner, _, prefixAfterRename))
+      lazy val configRenamesSearchResult = renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
+      currentRenamesSearchResult orElse configRenamesSearchResult
+    }.nextOption
+
+  private def isAccessibleStatically(sym: Symbol): Boolean =
+    sym.isStatic || // Java static
+      sym.maybeOwner.ownersIterator.forall { s => s.is(Package) || s.is(Module) }
+
+  private def optionalRootPrefix(sym: Symbol): Text =
+    // If the symbol has toplevel clash we need to prepend `_root_.` to the symbol to disambiguate
+    // it from the local symbol. It is only required when we are computing text for text edit.
+    if isTextEdit && indexedCtx.toplevelClashes(sym) then
+      Str("_root_.")
+    else
+      Text()
+
+  override protected def trimPrefixToScope(tp: NamedType): Text =
+
+    def handleRenames(prefix: Symbol): Option[Text] =
+      val maybePrefixRename = findPrefixRename(prefix)
+
+      // check if there is a conflict with a renamed import
+      if maybePrefixRename.flatMap { importRename => indexedCtx.findSymbol(importRename.rename) }.isDefined then
+        Some(super.trimPrefixToScope(tp))
+      else
+      maybePrefixRename.map {
+        case res: Found => res.toPrefixText
+        // there is no import for any prefix owner present, but there is one set in the configuration
+        case res: Missing =>
+          val importSel = if res.owner.name.show == res.rename then
+            ImportSel.Direct(res.owner)
+          else
+            ImportSel.Rename(res.owner, res.rename)
+
+          missingImports += importSel
+          res.toPrefixText
+      }
+
+    val maybeRenamedPrefix: Option[Text] = handleRenames(tp.symbol.maybeOwner)
+    val trimmedPrefix: Text =
+      if !tp.designator.isInstanceOf[Symbol] && tp.typeSymbol == NoSymbol then
+        maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
+      else
+        indexedCtx.lookupSym(tp.symbol) match
+
+          // symbol is missing and is accessible statically, we can import it and add proper prefix
+          case Result.Missing if isAccessibleStatically(tp.symbol) =>
+            maybeRenamedPrefix.getOrElse:
+              missingImports += ImportSel.Direct(tp.symbol)
+              Text()
+          // the symbol is in scope, we can omit the prefix
+          case Result.InScope => Text()
+          // the sybmol is in conflict, we have to include prefix to avoid ambiguity
+          case Result.Conflict => maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
+          case _ => super.trimPrefixToScope(tp)
+
+    optionalRootPrefix(tp.symbol) ~ trimmedPrefix
+
+
+  override protected def selectionString(tp: NamedType): String =
+    indexedCtx.rename(tp.symbol) match
+      case Some(value) => value
+      case None => super.selectionString(tp)
+
+  override def toText(tp: Type): Text =
+    tp match
+      case c: ConstantType => toText(c.value)
+      case tp if tp.isError => super.toText(indexedCtx.ctx.definitions.AnyType)
+      case _ => super.toText(tp)
+
+  override def toTextSingleton(tp: SingletonType): Text =
+    tp match {
+      case ConstantType(const) => toText(const)
+      case _                   => toTextRef(tp) ~ ".type"
+    }
+
+  def tpe(tpe: Type): String = toText(tpe).mkString(defaultWidth, false)
 
   def hoverSymbol(sym: Symbol, info: Type)(using Context): String =
     val typeSymbol = info.typeSymbol
@@ -98,7 +208,7 @@ class MetalsPrinter(
     def ownerTypeString: String =
       typeSymbol.owner.fullNameBackticked
 
-    def name: String = dotcPrinter.name(sym)
+    def name: String = nameString(sym)
 
     sym match
       case p if p.is(Flags.Package) =>
@@ -112,14 +222,14 @@ class MetalsPrinter(
        * let's instead use that space to show the full path.
        */
       case o if typeSymbol.is(Flags.Module) => // enum
-        s"${dotcPrinter.keywords(o)} $name: $ownerTypeString"
+        s"${keyString(o)} $name: $ownerTypeString"
       case m if m.is(Flags.Method) =>
         defaultMethodSignature(m, info)
       case _ =>
         val implicitKeyword =
           if sym.is(Flags.Implicit) then List("implicit") else Nil
         val finalKeyword = if sym.is(Flags.Final) then List("final") else Nil
-        val keyOrEmpty = dotcPrinter.keywords(sym)
+        val keyOrEmpty = keyString(sym)
         val keyword =
           if keyOrEmpty.iterator.nonEmpty then List(keyOrEmpty) else Nil
         (implicitKeyword ::: finalKeyword ::: keyword ::: (s"$name:" :: shortTypeString :: Nil))
@@ -132,11 +242,11 @@ class MetalsPrinter(
     val typeSymbol = info.typeSymbol
 
     if sym.is(Flags.Package) || sym.isClass then
-      " " + dotcPrinter.fullName(sym.owner)
+      " " + fullNameString(sym.owner)
     else if sym.is(Flags.Module) || typeSymbol.is(Flags.Module) then
       if typeSymbol != NoSymbol then
-        " " + dotcPrinter.fullName(typeSymbol.owner)
-      else " " + dotcPrinter.fullName(sym.owner)
+        " " + fullNameString(typeSymbol.owner)
+      else " " + fullNameString(sym.owner)
     else if sym.is(Flags.Method) then
       defaultMethodSignature(sym, info, onlyMethodParams = true)
     else tpe(info)
@@ -348,7 +458,7 @@ class MetalsPrinter(
       nameToInfo: Map[Name, Type]
   )(using ReportContext): String =
     val docInfo = defaultValues.lift(index)
-    val rawKeywordName = dotcPrinter.name(param)
+    val rawKeywordName = nameString(param)
     val keywordName = docInfo match
       case Some(info) if rawKeywordName.startsWith("x$") =>
         info.displayName()
@@ -384,7 +494,7 @@ class MetalsPrinter(
     else
       val isDefaultParam = param.isAllOf(DefaultParameter)
       val default =
-        if includeDefaultParam == MetalsPrinter.IncludeDefaultParam.Include && isDefaultParam
+        if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.Include && isDefaultParam
         then
           val defaultValue = docInfo match
             case Some(value) if !value.defaultValue().isEmpty =>
@@ -392,7 +502,7 @@ class MetalsPrinter(
             case _ => "..."
           s" = $defaultValue"
         // to be populated later, otherwise we would spend too much time in completions
-        else if includeDefaultParam == MetalsPrinter.IncludeDefaultParam.ResolveLater && isDefaultParam
+        else if includeDefaultParam == ShortenedTypePrinter.IncludeDefaultParam.ResolveLater && isDefaultParam
         then " = ..."
         else "" // includeDefaultParam == Never or !isDefaultParam
       s"$keywordName: ${paramTypeString}$default"
@@ -424,37 +534,9 @@ class MetalsPrinter(
       }
     result.map(kv => (kv._1, kv._2.toList)).toMap
   end constructImplicitEvidencesByTypeParam
-end MetalsPrinter
+end ShortenedTypePrinter
 
-object MetalsPrinter:
-
-  def standard(
-      indexed: IndexedContext,
-      symbolSearch: SymbolSearch,
-      includeDefaultParam: IncludeDefaultParam,
-      renames: Map[Symbol, String] = Map.empty
-  )(using ReportContext): MetalsPrinter =
-    import indexed.ctx
-    MetalsPrinter(
-      new ShortenedNames(indexed, renames),
-      DotcPrinter.Std(),
-      symbolSearch,
-      includeDefaultParam
-    )
-
-  def forInferredType(
-      shortenedNames: ShortenedNames,
-      indexed: IndexedContext,
-      symbolSearch: SymbolSearch,
-      includeDefaultParam: IncludeDefaultParam
-  )(using ReportContext): MetalsPrinter =
-    import shortenedNames.indexedContext.ctx
-    MetalsPrinter(
-      shortenedNames,
-      DotcPrinter.ForInferredType(indexed),
-      symbolSearch,
-      includeDefaultParam
-    )
+object ShortenedTypePrinter:
 
   enum IncludeDefaultParam:
     /** Include default param at `textDocument/completion` */
@@ -469,4 +551,4 @@ object MetalsPrinter:
     /** Do not add default parameter */
     case Never
 
-end MetalsPrinter
+end ShortenedTypePrinter

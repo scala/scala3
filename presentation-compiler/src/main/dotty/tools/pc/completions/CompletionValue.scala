@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.transform.SymUtils.*
-import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter
 
 import org.eclipse.lsp4j.CompletionItemKind
 import org.eclipse.lsp4j.CompletionItemTag
@@ -24,7 +24,7 @@ sealed trait CompletionValue:
   def range: Option[Range] = None
   def filterText: Option[String] = None
   def completionItemKind(using Context): CompletionItemKind
-  def description(printer: MetalsPrinter)(using Context): String = ""
+  def description(printer: ShortenedTypePrinter)(using Context): String = ""
   def insertMode: Option[InsertTextMode] = None
   def completionData(buildTargetIdentifier: String)(using
       Context
@@ -34,7 +34,7 @@ sealed trait CompletionValue:
   /**
    * Label with potentially attached description.
    */
-  def labelWithDescription(printer: MetalsPrinter)(using Context): String =
+  def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
     label
   def lspTags(using Context): List[CompletionItemTag] = Nil
 end CompletionValue
@@ -73,7 +73,7 @@ object CompletionValue:
       if symbol.isDeprecated then List(CompletionItemTag.Deprecated) else Nil
 
     override def labelWithDescription(
-        printer: MetalsPrinter
+        printer: ShortenedTypePrinter
     )(using Context): String =
       if symbol.is(Method) then s"${label}${description(printer)}"
       else if symbol.isConstructor then label
@@ -83,7 +83,7 @@ object CompletionValue:
         else s"${label}${description(printer)}"
       else s"${label}: ${description(printer)}"
 
-    override def description(printer: MetalsPrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       printer.completionSymbol(symbol)
   end Symbolic
 
@@ -111,7 +111,7 @@ object CompletionValue:
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
-    override def description(printer: MetalsPrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(symbol)} (extension)"
 
   /**
@@ -135,7 +135,7 @@ object CompletionValue:
       CompletionItemData.OverrideKind
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
-    override def labelWithDescription(printer: MetalsPrinter)(using
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using
         Context
     ): String = label
   end Override
@@ -148,10 +148,10 @@ object CompletionValue:
     override def insertText: Option[String] = Some(label.replace("$", "$$"))
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Field
-    override def description(printer: MetalsPrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       ": " + printer.tpe(tpe)
 
-    override def labelWithDescription(printer: MetalsPrinter)(using
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using
         Context
     ): String = label
   end NamedArg
@@ -199,7 +199,7 @@ object CompletionValue:
       isWorkspace: Boolean = false,
       isExtension: Boolean = false
   ) extends Symbolic:
-    override def description(printer: MetalsPrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       if isExtension then s"${printer.completionSymbol(symbol)} (extension)"
       else super.description(printer)
   end Interpolator
@@ -212,7 +212,7 @@ object CompletionValue:
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
-    override def description(printer: MetalsPrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       desc
 
   case class CaseKeyword(
@@ -226,7 +226,7 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
 
-    override def labelWithDescription(printer: MetalsPrinter)(using
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using
         Context
     ): String = label
   end CaseKeyword
@@ -239,7 +239,7 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Snippet
 
-    override def description(printer: MetalsPrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       description
     override def insertMode: Option[InsertTextMode] = Some(InsertTextMode.AsIs)
 

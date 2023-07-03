@@ -179,7 +179,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (printWithoutPrefix.contains(tp.symbol))
           toText(tp.name)
         else
-          toTextPrefix(tp.prefix) ~ selectionString(tp)
+          trimPrefixToScope(tp) ~ selectionString(tp)
       case tp: TermParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
@@ -353,7 +353,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        toTextPrefix(tp.prefix) ~ selectionString(tp)
+        trimPrefixToScope(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
@@ -392,6 +392,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
+
+  protected def trimPrefixToScope(tp: NamedType) =
+    toTextPrefix(tp.prefix)
 
   protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName

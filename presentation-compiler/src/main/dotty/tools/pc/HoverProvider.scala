@@ -21,7 +21,8 @@ import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.pc.printer.MetalsPrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter
+import dotty.tools.pc.printer.ShortenedTypePrinter.IncludeDefaultParam
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 object HoverProvider:
@@ -88,11 +89,7 @@ object HoverProvider:
               ctx.fresh.setCompilationUnit(unit)
             Interactive.contextOfPath(enclosing)(using newctx)
           case None => ctx
-      val printer = MetalsPrinter.standard(
-        IndexedContext(printerContext),
-        search,
-        includeDefaultParam = MetalsPrinter.IncludeDefaultParam.Include
-      )
+      val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(using IndexedContext(printerContext))
       MetalsInteractive.enclosingSymbolsWithExpressionType(
         enclosing,
         pos,
@@ -157,7 +154,7 @@ object HoverProvider:
 
   private def fallbackToDynamics(
       path: List[Tree],
-      printer: MetalsPrinter
+      printer: ShortenedTypePrinter
   )(using Context): ju.Optional[HoverSignature] = path match
     case SelectDynamicExtractor(sel, n, name) =>
       def findRefinement(tp: Type): ju.Optional[HoverSignature] =

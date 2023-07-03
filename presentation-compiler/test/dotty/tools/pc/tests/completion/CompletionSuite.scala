@@ -501,7 +501,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |  incrementThisType@@
         |}
       """.stripMargin,
-      "incrementThisType(): (A.this : test.A)"
+      "incrementThisType(): A.this.type"
     )
 
   @Test def deprecated =
@@ -846,11 +846,11 @@ class CompletionSuite extends BaseCompletionSuite:
           |  languageFeature.@@
           |}
           |""".stripMargin,
-      """|dynamics languageFeature
-         |existentials languageFeature
-         |experimental languageFeature
-         |higherKinds languageFeature
-         |implicitConversions languageFeature
+      """|dynamics scala.languageFeature
+         |existentials scala.languageFeature
+         |experimental scala.languageFeature
+         |higherKinds scala.languageFeature
+         |implicitConversions scala.languageFeature
          |""".stripMargin,
       topLines = Some(5)
     )

@@ -1134,7 +1134,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
-  @Test def `path-dependent-type-arg` =
+  @Test def `testtest` =
     checkEdit(
       """|package a
          |import scala.deriving.Mirror

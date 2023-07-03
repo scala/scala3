@@ -243,8 +243,6 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|package a.b
-         |
-         |import a.b
          |abstract class Conflict {
          |  def self: Conflict
          |}
@@ -317,7 +315,7 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       "    def foo@@",
-      """    def foo: collection.mutable.Set[Int] = ${0:???}"""
+      """    def foo: scala.collection.mutable.Set[Int] = ${0:???}"""
     )
 
   @Test def `jutil` =
@@ -389,12 +387,11 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |  def foo@@
          |}
          |""".stripMargin,
-      """|import java.lang
-         |abstract class Mutable {
+      """|abstract class Mutable {
          |  def foo: java.lang.StringBuilder
          |}
          |class Main extends Mutable {
-         |  def foo: lang.StringBuilder = ${0:???}
+         |  def foo: java.lang.StringBuilder = ${0:???}
          |}
          |""".stripMargin
     )
@@ -893,7 +890,7 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
       topLines = Some(3)
     )
 
-  @Test def `path-dependent` =
+  @Test def `pathdependent` =
     checkEdit(
       """|trait Over {
          |  object Outer {

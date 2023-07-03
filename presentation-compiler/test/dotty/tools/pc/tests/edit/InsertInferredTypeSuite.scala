@@ -634,7 +634,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    type G
          |  }
          |
-         |  val c: Foo{type T >: Int <: Int; type G >: Long <: Long} = new Foo { type T = Int; type G = Long}
+         |  val c: Foo{type T = Int; type G = Long} = new Foo { type T = Int; type G = Long}
          |}
          |""".stripMargin
     )
@@ -654,7 +654,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    type T
          |  }
          |  val c = new Foo { type T = Int }
-         |  val d: Foo{type T >: Int <: Int} = c
+         |  val d: Foo{type T = Int} = c
          |}
          |""".stripMargin
     )
@@ -674,7 +674,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |    type T
          |  }
          |
-         |  val c: Foo{type T >: Int <: Int} = new Foo { type T = Int }
+         |  val c: Foo{type T = Int} = new Foo { type T = Int }
          |}
          |""".stripMargin
     )
@@ -696,7 +696,7 @@ class InsertInferredTypeSuite extends BaseCodeActionSuite:
          |  type T
          |}
          |
-         |val c: Foo{type T >: Int <: Int; val x: Int; def y: Int; val z: Int; def z_=(x$1: Int): Unit} = new Foo {
+         |val c: Foo{type T = Int; val x: Int; def y: Int; val z: Int; def z_=(x$1: Int): Unit} = new Foo {
          |  type T = Int
          |  val x = 0
          |  def y = 0

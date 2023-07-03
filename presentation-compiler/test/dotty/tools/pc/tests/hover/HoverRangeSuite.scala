@@ -235,7 +235,7 @@ class HoverRangeSuite extends BaseHoverSuite:
          |inline transparent def foo(i: Int): Foo""".stripMargin.hoverRange
     )
 
-  @Test def `dep-types` =
+  @Test def `deptypes` =
     check(
       """|trait A
          |object A1 extends A

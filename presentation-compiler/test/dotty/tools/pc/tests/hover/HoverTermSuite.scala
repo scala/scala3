@@ -77,7 +77,7 @@ class HoverTermSuite extends BaseHoverSuite:
         |  <<@@f"$name%s is $height%2.2f meters tall">>
         |}
         |""".stripMargin,
-      f"def f[A >: Any](args: A*): String".hover
+      "def f[A >: Any](args: A*): String".hover
     )
 
   @Test def `interpolator-apply` =
@@ -400,10 +400,10 @@ class HoverTermSuite extends BaseHoverSuite:
 
   @Test def `annot` =
     check(
-      """|import scala.annotation.tailrec
+      """|
          |
          |object O {
-         |  @<<tail@@rec>>
+         |  @<<scala.annotation.tail@@rec>>
          |  def hello(n: Int): Int = {
          |    if (i == 0) 0
          |    else hello( n - 1)
