@@ -89,7 +89,9 @@ object HoverProvider:
               ctx.fresh.setCompilationUnit(unit)
             Interactive.contextOfPath(enclosing)(using newctx)
           case None => ctx
-      val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(using IndexedContext(printerContext))
+      val printer = ShortenedTypePrinter(search, IncludeDefaultParam.Include)(
+        using IndexedContext(printerContext)
+      )
       MetalsInteractive.enclosingSymbolsWithExpressionType(
         enclosing,
         pos,

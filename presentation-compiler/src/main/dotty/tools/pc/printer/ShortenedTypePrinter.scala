@@ -2,59 +2,52 @@ package dotty.tools.pc.printer
 
 import scala.collection.mutable
 import scala.meta.internal.jdk.CollectionConverters.*
-import scala.meta.internal.metals.Report
 import scala.meta.internal.metals.ReportContext
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
-import scala.util.Failure
-import scala.util.Success
-import scala.util.Try
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.EvidenceParamName
 import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Names.Name
+import dotty.tools.dotc.core.Names.NameOrdering
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.pc.IndexedContext
-import dotty.tools.pc.Params
-import dotty.tools.pc.utils.MtagsEnrichments.*
-import dotty.tools.dotc.printing.PlainPrinter
-import dotty.tools.dotc.printing.Texts.Text
-import dotty.tools.dotc.core.Decorators.show
 import dotty.tools.dotc.printing.RefinedPrinter
-import dotty.tools.dotc.printing.Formatting.ShownDef.ctxShow
-import dotty.tools.dotc.typer.ImportInfo
-import dotty.tools.dotc.core.Annotations.Annotation
-import dotty.tools.pc.IndexedContext.Result
+import dotty.tools.dotc.printing.Texts.Text
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
-import org.eclipse.lsp4j.TextEdit
-import dotty.tools.dotc.core.Names
 import dotty.tools.pc.AutoImports.ImportSel
 import dotty.tools.pc.AutoImports.ImportSel.Direct
 import dotty.tools.pc.AutoImports.ImportSel.Rename
-import dotty.tools.dotc.core.Names.NameOrdering
+import dotty.tools.pc.IndexedContext
+import dotty.tools.pc.IndexedContext.Result
+import dotty.tools.pc.Params
+import dotty.tools.pc.utils.MtagsEnrichments.*
+
+import org.eclipse.lsp4j.TextEdit
 
 /**
  * A type printer that shortens types by replacing fully qualified names with shortened versions.
  *
  * The printer supports symbol renames found in scope and will use the rename if it is available.
  * It also handlse custom renames as specified in the `renameConfigMap` parameter.
- *
  */
 class ShortenedTypePrinter(
     symbolSearch: SymbolSearch,
-    includeDefaultParam: ShortenedTypePrinter.IncludeDefaultParam = IncludeDefaultParam.ResolveLater,
+    includeDefaultParam: ShortenedTypePrinter.IncludeDefaultParam =
+      IncludeDefaultParam.ResolveLater,
     isTextEdit: Boolean = false,
-    renameConfigMap: Map[Symbol, String] = Map.empty,
-)(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
-  var missingImports: mutable.ListBuffer[ImportSel] = mutable.ListBuffer.empty
-
+    renameConfigMap: Map[Symbol, String] = Map.empty
+)(using indexedCtx: IndexedContext, reportCtx: ReportContext)
+    extends RefinedPrinter(indexedCtx.ctx):
+  private val missingImports: mutable.ListBuffer[ImportSel] =
+    mutable.ListBuffer.empty
   private val defaultWidth = 1000
 
   private val methodFlags =
@@ -91,8 +84,7 @@ class ShortenedTypePrinter(
    * that are shortend by "tryShortenName" method, and cached.
    */
   def imports(autoImportsGen: AutoImportsGenerator): List[TextEdit] =
-    missingImports
-      .toList
+    missingImports.toList
       .filterNot(selector => selector.sym.isRoot)
       .sortBy(_.sym.effectiveName)
       .flatMap(selector => autoImportsGen.renderImports(List(selector)))
@@ -103,62 +95,74 @@ class ShortenedTypePrinter(
     val prefixAfterRename: List[Symbol]
 
     def toPrefixText: Text =
-      Str(rename) ~ prefixAfterRename.foldLeft(Text())((acc, sym) => acc ~ "." ~ toText(sym.name)) ~ "."
+      Str(rename) ~ prefixAfterRename.foldLeft(Text())((acc, sym) =>
+        acc ~ "." ~ toText(sym.name)
+      ) ~ "."
 
-  case class Found(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
-  case class Missing(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
-
+  case class Found(
+      owner: Symbol,
+      rename: String,
+      prefixAfterRename: List[Symbol]
+  ) extends SymbolRenameSearchResult
+  case class Missing(
+      owner: Symbol,
+      rename: String,
+      prefixAfterRename: List[Symbol]
+  ) extends SymbolRenameSearchResult
 
   /**
    *  In shortened type printer, we don't want to omit the prefix unless it is empty package
    *  All the logic for prefix omitting is implemented in `trimPrefixToScope`
    */
-  override protected def isOmittablePrefix(sym: Symbol): Boolean = isEmptyPrefix(sym)
+  override protected def isOmittablePrefix(sym: Symbol): Boolean =
+    isEmptyPrefix(sym)
 
-  private def findPrefixRename(prefix: Symbol): Option[SymbolRenameSearchResult] =
+  private def findPrefixRename(
+      prefix: Symbol
+  ): Option[SymbolRenameSearchResult] =
     def ownersAfterRename(owner: Symbol): List[Symbol] =
       prefix.ownersIterator.takeWhile(_ != owner).toList
 
     prefix.ownersIterator.flatMap { owner =>
       val prefixAfterRename = ownersAfterRename(owner)
-      val currentRenamesSearchResult = indexedCtx.rename(owner).map(Found(owner, _, prefixAfterRename))
-      lazy val configRenamesSearchResult = renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
+      val currentRenamesSearchResult =
+        indexedCtx.rename(owner).map(Found(owner, _, prefixAfterRename))
+      lazy val configRenamesSearchResult =
+        renameConfigMap.get(owner).map(Missing(owner, _, prefixAfterRename))
       currentRenamesSearchResult orElse configRenamesSearchResult
     }.nextOption
 
   private def isAccessibleStatically(sym: Symbol): Boolean =
     sym.isStatic || // Java static
-      sym.maybeOwner.ownersIterator.forall { s => s.is(Package) || s.is(Module) }
+      sym.maybeOwner.ownersIterator.forall { s =>
+        s.is(Package) || s.is(Module)
+      }
 
   private def optionalRootPrefix(sym: Symbol): Text =
     // If the symbol has toplevel clash we need to prepend `_root_.` to the symbol to disambiguate
     // it from the local symbol. It is only required when we are computing text for text edit.
-    if isTextEdit && indexedCtx.toplevelClashes(sym) then
-      Str("_root_.")
-    else
-      Text()
+    if isTextEdit && indexedCtx.toplevelClashes(sym) then Str("_root_.")
+    else Text()
 
   override protected def trimPrefixToScope(tp: NamedType): Text =
 
     def handleRenames(prefix: Symbol): Option[Text] =
       val maybePrefixRename = findPrefixRename(prefix)
 
-      // check if there is a conflict with a renamed import
-      if maybePrefixRename.flatMap { importRename => indexedCtx.findSymbol(importRename.rename) }.isDefined then
+      if maybePrefixRename.exists(importRename => indexedCtx.findSymbol(importRename.rename).isDefined) then
         Some(super.trimPrefixToScope(tp))
       else
-      maybePrefixRename.map {
-        case res: Found => res.toPrefixText
-        // there is no import for any prefix owner present, but there is one set in the configuration
-        case res: Missing =>
-          val importSel = if res.owner.name.show == res.rename then
-            ImportSel.Direct(res.owner)
-          else
-            ImportSel.Rename(res.owner, res.rename)
+        maybePrefixRename.map {
+          case res: Found => res.toPrefixText
+          case res: Missing =>
+            val importSel =
+              if res.owner.name.show == res.rename then
+                ImportSel.Direct(res.owner)
+              else ImportSel.Rename(res.owner, res.rename)
 
-          missingImports += importSel
-          res.toPrefixText
-      }
+            missingImports += importSel
+            res.toPrefixText
+        }
 
     val maybeRenamedPrefix: Option[Text] = handleRenames(tp.symbol.maybeOwner)
     val trimmedPrefix: Text =
@@ -166,7 +170,6 @@ class ShortenedTypePrinter(
         maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
       else
         indexedCtx.lookupSym(tp.symbol) match
-
           // symbol is missing and is accessible statically, we can import it and add proper prefix
           case Result.Missing if isAccessibleStatically(tp.symbol) =>
             maybeRenamedPrefix.getOrElse:
@@ -174,12 +177,12 @@ class ShortenedTypePrinter(
               Text()
           // the symbol is in scope, we can omit the prefix
           case Result.InScope => Text()
-          // the sybmol is in conflict, we have to include prefix to avoid ambiguity
-          case Result.Conflict => maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
+          // the symbol is in conflict, we have to include prefix to avoid ambiguity
+          case Result.Conflict =>
+            maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
           case _ => super.trimPrefixToScope(tp)
 
     optionalRootPrefix(tp.symbol) ~ trimmedPrefix
-
 
   override protected def selectionString(tp: NamedType): String =
     indexedCtx.rename(tp.symbol) match
@@ -193,10 +196,9 @@ class ShortenedTypePrinter(
       case _ => super.toText(tp)
 
   override def toTextSingleton(tp: SingletonType): Text =
-    tp match {
+    tp match
       case ConstantType(const) => toText(const)
-      case _                   => toTextRef(tp) ~ ".type"
-    }
+      case _ => toTextRef(tp) ~ ".type"
 
   def tpe(tpe: Type): String = toText(tpe).mkString(defaultWidth, false)
 
@@ -241,11 +243,9 @@ class ShortenedTypePrinter(
     val info = sym.info.widenTermRefExpr
     val typeSymbol = info.typeSymbol
 
-    if sym.is(Flags.Package) || sym.isClass then
-      " " + fullNameString(sym.owner)
+    if sym.is(Flags.Package) || sym.isClass then " " + fullNameString(sym.owner)
     else if sym.is(Flags.Module) || typeSymbol.is(Flags.Module) then
-      if typeSymbol != NoSymbol then
-        " " + fullNameString(typeSymbol.owner)
+      if typeSymbol != NoSymbol then " " + fullNameString(typeSymbol.owner)
       else " " + fullNameString(sym.owner)
     else if sym.is(Flags.Method) then
       defaultMethodSignature(sym, info, onlyMethodParams = true)

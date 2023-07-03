@@ -20,7 +20,7 @@ object KeywordsCompletions:
       comments: List[Comment]
   )(using ctx: Context): List[CompletionValue] =
     lazy val notInComment =
-      checkIfNotInComment(completionPos.cursorPos, path, comments)
+      checkIfNotInComment(completionPos.cursorPos, comments)
 
     path match
       case Nil if completionPos.query.isEmpty =>
@@ -69,9 +69,8 @@ object KeywordsCompletions:
 
   private def checkIfNotInComment(
       pos: SourcePosition,
-      path: List[Tree],
       comments: List[Comment]
-  )(using ctx: Context): Boolean =
+  ): Boolean =
     !comments.exists(_.span.contains(pos.span))
 
   private def isPackage(enclosing: List[Tree]): Boolean =

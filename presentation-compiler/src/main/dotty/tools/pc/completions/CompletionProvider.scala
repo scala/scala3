@@ -150,7 +150,10 @@ class CompletionProvider(
       path: List[Tree],
       indexedContext: IndexedContext
   )(using ctx: Context): CompletionItem =
-    val printer = ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
+    val printer =
+      ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using
+        indexedContext
+      )
     val editRange = completionPos.toEditRange
 
     // For overloaded signatures we get multiple symbols, so we need

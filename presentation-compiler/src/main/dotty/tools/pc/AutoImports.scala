@@ -2,7 +2,6 @@ package dotty.tools.pc
 
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
-import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.internal.pc.AutoImportPosition
 import scala.meta.pc.PresentationCompilerConfig
 

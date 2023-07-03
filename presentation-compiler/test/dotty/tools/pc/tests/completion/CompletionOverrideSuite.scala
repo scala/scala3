@@ -11,7 +11,12 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      MockDocumentation("java/nio/file/SimpleFileVisitor#visitFile().", "visitFile", Seq(), Seq("file", "attrs"))
+      MockDocumentation(
+        "java/nio/file/SimpleFileVisitor#visitFile().",
+        "visitFile",
+        Seq(),
+        Seq("file", "attrs")
+      )
     )
 
   @Test def `basic` =
@@ -890,7 +895,7 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
       topLines = Some(3)
     )
 
-  @Test def `pathdependent` =
+  @Test def `path-dependent` =
     checkEdit(
       """|trait Over {
          |  object Outer {

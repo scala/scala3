@@ -400,10 +400,10 @@ class HoverTermSuite extends BaseHoverSuite:
 
   @Test def `annot` =
     check(
-      """|
+      """|import scala.annotation.tailrec
          |
          |object O {
-         |  @<<scala.annotation.tail@@rec>>
+         |  @<<tail@@rec>>
          |  def hello(n: Int): Int = {
          |    if (i == 0) 0
          |    else hello( n - 1)

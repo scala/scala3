@@ -16,7 +16,6 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.semanticdb.SemanticSymbolBuilder
 import dotty.tools.pc.CompilerSearchVisitor
-import java.nio.file.Files
 
 object TestingWorkspaceSearch:
   def empty: TestingWorkspaceSearch = new TestingWorkspaceSearch(Nil)

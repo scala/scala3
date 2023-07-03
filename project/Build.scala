@@ -1156,6 +1156,7 @@ object Build {
     val mtagsVersion = "0.11.12+45-45df705d-SNAPSHOT" // Will be set to stable release after 0.11.13 is published
 
     Seq(
+      scalacOptions += "-Wunused:all",
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.13",

@@ -34,7 +34,9 @@ sealed trait CompletionValue:
   /**
    * Label with potentially attached description.
    */
-  def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+  def labelWithDescription(printer: ShortenedTypePrinter)(using
+      Context
+  ): String =
     label
   def lspTags(using Context): List[CompletionItemTag] = Nil
 end CompletionValue
@@ -83,7 +85,9 @@ object CompletionValue:
         else s"${label}${description(printer)}"
       else s"${label}: ${description(printer)}"
 
-    override def description(printer: ShortenedTypePrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using
+        Context
+    ): String =
       printer.completionSymbol(symbol)
   end Symbolic
 
@@ -111,7 +115,9 @@ object CompletionValue:
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
-    override def description(printer: ShortenedTypePrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using
+        Context
+    ): String =
       s"${printer.completionSymbol(symbol)} (extension)"
 
   /**
@@ -148,7 +154,9 @@ object CompletionValue:
     override def insertText: Option[String] = Some(label.replace("$", "$$"))
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Field
-    override def description(printer: ShortenedTypePrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using
+        Context
+    ): String =
       ": " + printer.tpe(tpe)
 
     override def labelWithDescription(printer: ShortenedTypePrinter)(using
@@ -199,7 +207,9 @@ object CompletionValue:
       isWorkspace: Boolean = false,
       isExtension: Boolean = false
   ) extends Symbolic:
-    override def description(printer: ShortenedTypePrinter)(using Context): String =
+    override def description(
+        printer: ShortenedTypePrinter
+    )(using Context): String =
       if isExtension then s"${printer.completionSymbol(symbol)} (extension)"
       else super.description(printer)
   end Interpolator
@@ -212,7 +222,9 @@ object CompletionValue:
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
-    override def description(printer: ShortenedTypePrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using
+        Context
+    ): String =
       desc
 
   case class CaseKeyword(
@@ -239,7 +251,9 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Snippet
 
-    override def description(printer: ShortenedTypePrinter)(using Context): String =
+    override def description(printer: ShortenedTypePrinter)(using
+        Context
+    ): String =
       description
     override def insertMode: Option[InsertTextMode] = Some(InsertTextMode.AsIs)
 

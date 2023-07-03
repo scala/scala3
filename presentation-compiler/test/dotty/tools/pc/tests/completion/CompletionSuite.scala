@@ -11,10 +11,30 @@ class CompletionSuite extends BaseCompletionSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
-      MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
-      MockDocumentation("java/nio/file/Files#readAttributes().", "readAttributes", Seq("A"), Seq("path", "type", "options")),
-      MockDocumentation("java/nio/file/Files#readAttributes(+1).", "readAttributes", Seq(), Seq("path", "attributes", "options"))
+      MockDocumentation(
+        "java/lang/String#substring().",
+        "substring",
+        Seq(),
+        Seq("beginIndex")
+      ),
+      MockDocumentation(
+        "java/lang/String#substring(+1).",
+        "substring",
+        Seq(),
+        Seq("beginIndex", "endIndex")
+      ),
+      MockDocumentation(
+        "java/nio/file/Files#readAttributes().",
+        "readAttributes",
+        Seq("A"),
+        Seq("path", "type", "options")
+      ),
+      MockDocumentation(
+        "java/nio/file/Files#readAttributes(+1).",
+        "readAttributes",
+        Seq(),
+        Seq("path", "attributes", "options")
+      )
     )
 
   @Test def scope =
@@ -252,7 +272,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |Paths - java.nio.file
          |PathMatcher - java.nio.file
          |""".stripMargin,
-         filter = _.contains("java.nio.file")
+      filter = _.contains("java.nio.file")
     )
 
   @Test def import4 =

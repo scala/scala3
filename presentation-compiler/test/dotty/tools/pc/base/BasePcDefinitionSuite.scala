@@ -1,6 +1,5 @@
 package dotty.tools.pc.base
 
-import java.net.URI
 import java.nio.file.Paths
 
 import scala.meta.internal.metals.CompilerOffsetParams

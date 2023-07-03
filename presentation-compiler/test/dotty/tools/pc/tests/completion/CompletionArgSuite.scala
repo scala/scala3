@@ -3,9 +3,9 @@ package dotty.tools.pc.tests.completion
 import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.FixMethodOrder
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runners.MethodSorters
-import org.junit.Ignore
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class CompletionArgSuite extends BaseCompletionSuite:
@@ -575,7 +575,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|foo = : Int
          |fooBar = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `case-class-apply1` =
@@ -589,7 +589,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|foo = : Int
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `case-class-apply2` =
@@ -603,7 +603,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|fooBar = : Int
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Ignore
@@ -623,7 +623,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|foo = : Int
          |foo = a : Int
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Ignore
@@ -643,7 +643,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|fooBar = : Int
          |fooBar = a : Int
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `case-class-for-comp` =
@@ -661,6 +661,5 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |fooBar = : Int
          |fooBar = a : Int
          |""".stripMargin,
-      topLines = Some(4),
+      topLines = Some(4)
     )
-
