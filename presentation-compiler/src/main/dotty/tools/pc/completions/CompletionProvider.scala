@@ -56,8 +56,8 @@ class CompletionProvider(
 
         val newctx = ctx.fresh.setCompilationUnit(unit)
         val tpdPath =
-          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using
-            newctx
+          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(
+            using newctx
           )
         val locatedCtx =
           Interactive.contextOfPath(tpdPath)(using newctx)

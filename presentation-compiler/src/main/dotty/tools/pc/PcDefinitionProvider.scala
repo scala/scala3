@@ -69,8 +69,8 @@ class PcDefinitionProvider(
    * @param pos cursor position
    * @return definition result
    */
-  private def fallbackToUntyped(pos: SourcePosition)(using
-      ctx: Context
+  private def fallbackToUntyped(pos: SourcePosition)(
+    using ctx: Context
   ) =
     lazy val untpdPath = NavigateAST
       .untypedPath(pos.span)

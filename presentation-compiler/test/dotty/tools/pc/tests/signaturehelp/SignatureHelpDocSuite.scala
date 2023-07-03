@@ -11,118 +11,25 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
 
   override protected def mockEntries: MockEntries = new MockEntries:
     override def documentations: Set[SymbolDocumentation] = Set(
-      MockDocumentation(
-        "java/lang/String#substring().",
-        "substring",
-        Seq(),
-        Seq("beginIndex")
-      ),
-      MockDocumentation(
-        "java/lang/String#substring(+1).",
-        "substring",
-        Seq(),
-        Seq("beginIndex", "endIndex")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf().",
-        "valueOf",
-        Seq(),
-        Seq("obj")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+1).",
-        "valueOf",
-        Seq(),
-        Seq("data")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+2).",
-        "valueOf",
-        Seq(),
-        Seq("data", "offset", "count")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+3).",
-        "valueOf",
-        Seq(),
-        Seq("b")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+4).",
-        "valueOf",
-        Seq(),
-        Seq("c")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+5).",
-        "valueOf",
-        Seq(),
-        Seq("i")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+6).",
-        "valueOf",
-        Seq(),
-        Seq("l")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+7).",
-        "valueOf",
-        Seq(),
-        Seq("f")
-      ),
-      MockDocumentation(
-        "java/lang/String#valueOf(+8).",
-        "valueOf",
-        Seq(),
-        Seq("d")
-      ),
-      MockDocumentation(
-        "java/io/File#`<init>`().",
-        "<init>",
-        Seq(),
-        Seq("pathname")
-      ),
-      MockDocumentation(
-        "java/io/File#`<init>`(+1).",
-        "<init>",
-        Seq(),
-        Seq("parent", "child")
-      ),
-      MockDocumentation(
-        "java/io/File#`<init>`(+2).",
-        "<init>",
-        Seq(),
-        Seq("parent", "child")
-      ),
-      MockDocumentation(
-        "java/io/File#`<init>`(+3).",
-        "<init>",
-        Seq(),
-        Seq("uri")
-      ),
-      ScalaMockDocumentation("scala/Some#", "Some"),
-      ScalaMockDocumentation(
-        "scala/Option#fold().",
-        "fold",
-        List("ifEmpty", "f")
-      ),
-      ScalaMockDocumentation("scala/Option.apply().", "apply", List("x")),
-      ScalaMockDocumentation(
-        "scala/collection/immutable/List#map().",
-        "map",
-        List("f")
-      ),
-      ScalaMockDocumentation(
-        "scala/collection/LinearSeqOps#foldLeft().",
-        "foldLeft",
-        List("z", "op")
-      ),
-      ScalaMockDocumentation(
-        "scala/util/control/Exception.Catch#",
-        "Catch",
-        List("pf", "fin", "rethrow")
-      )
+      MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
+      MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
+      MockDocumentation("java/lang/String#valueOf().", "valueOf", Seq(), Seq("obj")),
+      MockDocumentation("java/lang/String#valueOf(+1).", "valueOf", Seq(), Seq("data")),
+      MockDocumentation("java/lang/String#valueOf(+2).", "valueOf", Seq(), Seq("data", "offset", "count")),
+      MockDocumentation("java/lang/String#valueOf(+3).", "valueOf", Seq(), Seq("b")),
+      MockDocumentation("java/lang/String#valueOf(+4).", "valueOf", Seq(), Seq("c")),
+      MockDocumentation("java/lang/String#valueOf(+5).", "valueOf", Seq(), Seq("i")),
+      MockDocumentation("java/lang/String#valueOf(+6).", "valueOf", Seq(), Seq("l")),
+      MockDocumentation("java/lang/String#valueOf(+7).", "valueOf", Seq(), Seq("f")),
+      MockDocumentation("java/lang/String#valueOf(+8).", "valueOf", Seq(), Seq("d")),
+      MockDocumentation("java/io/File#`<init>`().", "<init>", Seq(), Seq("pathname")),
+      MockDocumentation("java/io/File#`<init>`(+1).", "<init>", Seq(), Seq("parent", "child")),
+      MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("parent", "child")),
+      MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("uri")),
+      ScalaMockDocumentation("scala/Some#", "Some"), ScalaMockDocumentation( "scala/Option#fold().", "fold", List("ifEmpty", "f")),
+      ScalaMockDocumentation("scala/Option.apply().", "apply", List("x")), ScalaMockDocumentation( "scala/collection/immutable/List#map().", "map", List("f")),
+      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List("z", "op")),
+      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List("pf", "fin", "rethrow"))
     )
 
   @Test def `curry` =

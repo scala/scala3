@@ -44,10 +44,8 @@ class ShortenedTypePrinter(
       IncludeDefaultParam.ResolveLater,
     isTextEdit: Boolean = false,
     renameConfigMap: Map[Symbol, String] = Map.empty
-)(using indexedCtx: IndexedContext, reportCtx: ReportContext)
-    extends RefinedPrinter(indexedCtx.ctx):
-  private val missingImports: mutable.ListBuffer[ImportSel] =
-    mutable.ListBuffer.empty
+)(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
+  private val missingImports: mutable.ListBuffer[ImportSel] = mutable.ListBuffer.empty
   private val defaultWidth = 1000
 
   private val methodFlags =
@@ -99,16 +97,8 @@ class ShortenedTypePrinter(
         acc ~ "." ~ toText(sym.name)
       ) ~ "."
 
-  case class Found(
-      owner: Symbol,
-      rename: String,
-      prefixAfterRename: List[Symbol]
-  ) extends SymbolRenameSearchResult
-  case class Missing(
-      owner: Symbol,
-      rename: String,
-      prefixAfterRename: List[Symbol]
-  ) extends SymbolRenameSearchResult
+  case class Found(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
+  case class Missing(owner: Symbol, rename: String, prefixAfterRename: List[Symbol]) extends SymbolRenameSearchResult
 
   /**
    *  In shortened type printer, we don't want to omit the prefix unless it is empty package
@@ -141,8 +131,10 @@ class ShortenedTypePrinter(
   private def optionalRootPrefix(sym: Symbol): Text =
     // If the symbol has toplevel clash we need to prepend `_root_.` to the symbol to disambiguate
     // it from the local symbol. It is only required when we are computing text for text edit.
-    if isTextEdit && indexedCtx.toplevelClashes(sym) then Str("_root_.")
-    else Text()
+    if isTextEdit && indexedCtx.toplevelClashes(sym) then
+      Str("_root_.")
+    else
+      Text()
 
   override protected def trimPrefixToScope(tp: NamedType): Text =
 

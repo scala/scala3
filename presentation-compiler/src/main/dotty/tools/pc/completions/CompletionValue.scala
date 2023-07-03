@@ -26,16 +26,16 @@ sealed trait CompletionValue:
   def completionItemKind(using Context): CompletionItemKind
   def description(printer: ShortenedTypePrinter)(using Context): String = ""
   def insertMode: Option[InsertTextMode] = None
-  def completionData(buildTargetIdentifier: String)(using
-      Context
+  def completionData(buildTargetIdentifier: String)(
+    using Context
   ): Option[CompletionItemData] = None
   def command: Option[String] = None
 
   /**
    * Label with potentially attached description.
    */
-  def labelWithDescription(printer: ShortenedTypePrinter)(using
-      Context
+  def labelWithDescription(printer: ShortenedTypePrinter)(
+    using Context
   ): String =
     label
   def lspTags(using Context): List[CompletionItemTag] = Nil
@@ -85,8 +85,8 @@ object CompletionValue:
         else s"${label}${description(printer)}"
       else s"${label}: ${description(printer)}"
 
-    override def description(printer: ShortenedTypePrinter)(using
-        Context
+    override def description(printer: ShortenedTypePrinter)(
+      using Context
     ): String =
       printer.completionSymbol(symbol)
   end Symbolic
@@ -115,9 +115,7 @@ object CompletionValue:
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
-    override def description(printer: ShortenedTypePrinter)(using
-        Context
-    ): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(symbol)} (extension)"
 
   /**
@@ -141,9 +139,8 @@ object CompletionValue:
       CompletionItemData.OverrideKind
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
-    override def labelWithDescription(printer: ShortenedTypePrinter)(using
-        Context
-    ): String = label
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      label
   end Override
 
   case class NamedArg(
@@ -154,14 +151,11 @@ object CompletionValue:
     override def insertText: Option[String] = Some(label.replace("$", "$$"))
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Field
-    override def description(printer: ShortenedTypePrinter)(using
-        Context
-    ): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       ": " + printer.tpe(tpe)
 
-    override def labelWithDescription(printer: ShortenedTypePrinter)(using
-        Context
-    ): String = label
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      label
   end NamedArg
 
   case class Autofill(
@@ -222,9 +216,7 @@ object CompletionValue:
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
-    override def description(printer: ShortenedTypePrinter)(using
-        Context
-    ): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       desc
 
   case class CaseKeyword(
@@ -238,9 +230,8 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
 
-    override def labelWithDescription(printer: ShortenedTypePrinter)(using
-        Context
-    ): String = label
+    override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+      label
   end CaseKeyword
 
   case class Document(label: String, doc: String, description: String)
@@ -251,9 +242,7 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Snippet
 
-    override def description(printer: ShortenedTypePrinter)(using
-        Context
-    ): String =
+    override def description(printer: ShortenedTypePrinter)(using Context): String =
       description
     override def insertMode: Option[InsertTextMode] = Some(InsertTextMode.AsIs)
 
