@@ -1007,7 +1007,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: MatchType =>
         def compareMatch = tp2 match {
           case tp2: MatchType =>
-            isSameType(tp1.scrutinee, tp2.scrutinee) &&
+            // we allow a small number of scrutinee types to be widened:
+            // * skolems, which may appear from type avoidance, but are widened in the inferred result type
+            // * inline proxies, which is inlining's solution to the same problem
+            def widenScrutinee(scrutinee1: Type) = scrutinee1 match
+                case tp: TermRef if tp.symbol.is(InlineProxy) => tp.info
+                case tp                                       => tp.widenSkolem
+            def checkScrutinee(scrutinee1: Type): Boolean =
+              isSameType(scrutinee1, tp2.scrutinee) || {
+                val widenScrutinee1 = widenScrutinee(scrutinee1)
+                (widenScrutinee1 ne scrutinee1) && checkScrutinee(widenScrutinee1)
+              }
+            checkScrutinee(tp1.scrutinee) &&
             tp1.cases.corresponds(tp2.cases)(isSubType)
           case _ => false
         }
