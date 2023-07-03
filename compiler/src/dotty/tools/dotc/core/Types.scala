@@ -1576,7 +1576,7 @@ object Types {
     }
 
     /** The capture set of this type. Overridden and cached in CaptureRef */
-    def captureSet(using Context): CaptureSet = CaptureSet.ofType(this)
+    def captureSet(using Context): CaptureSet = CaptureSet.ofType(this, followResult = false)
 
     // ----- Normalizing typerefs over refined types ----------------------------
 

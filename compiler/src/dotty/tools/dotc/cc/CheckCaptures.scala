@@ -854,8 +854,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       actual match
         case ref: CaptureRef if ref.isTracked =>
           actualw match
-            case CapturingType(p, refs) =>
+            case CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
               actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
+                .showing(i"improve $actualw to $result", capt)
                 // given `a: C T`, improve `C T` to `{a} T`
             case _ =>
         case _ =>
