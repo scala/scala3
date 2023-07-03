@@ -13,9 +13,9 @@ val x = foo {
   type Rec[A] = A match
     case String => Opt[Rec[String]]
 
-  val arr = new Buf[Rec[String]](8)
-  val arr2 = Buf[Rec[String]](8)
-  val arr3 = Buf.apply[Rec[String]](8)
+  val arr = new Buf[Rec[String]](8)    // error
+  val arr2 = Buf[Rec[String]](8)       // error
+  val arr3 = Buf.apply[Rec[String]](8) // error
 }
 
 import scala.collection.mutable
@@ -38,6 +38,6 @@ class Spec {
       JsonPrimitive
     ]
 
-    val arr = new mutable.ArrayBuffer[Json](8)
+    val arr = new mutable.ArrayBuffer[Json](8) // error
   }
 }

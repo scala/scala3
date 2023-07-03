@@ -359,7 +359,7 @@ object Types {
      *  (since these are relevant for inference or resolution) but never consider prefixes
      *  (since these often do not constrain the search space anyway).
      */
-    def unusableForInference(using Context): Boolean = widenDealias match
+    def unusableForInference(using Context): Boolean = try widenDealias match
       case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
       case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
       case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
@@ -369,6 +369,7 @@ object Types {
       case CapturingType(parent, refs) => parent.unusableForInference || refs.elems.exists(_.unusableForInference)
       case _: ErrorType => true
       case _ => false
+    catch case ex: Throwable => handleRecursive("unusableForInference", show, ex)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match {
@@ -3490,9 +3491,11 @@ object Types {
     private var myWidened: Type = _
 
     private def computeAtoms()(using Context): Atoms =
-      if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
-      else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
-      else tp1.atoms | tp2.atoms
+      val tp1n = tp1.normalized
+      val tp2n = tp2.normalized
+      if tp1n.hasClassSymbol(defn.NothingClass) then tp2.atoms
+      else if tp2n.hasClassSymbol(defn.NothingClass) then tp1.atoms
+      else tp1n.atoms | tp2n.atoms
 
     private def computeWidenSingletons()(using Context): Type =
       val tp1w = tp1.widenSingletons
