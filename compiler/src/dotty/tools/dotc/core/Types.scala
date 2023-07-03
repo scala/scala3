@@ -3483,9 +3483,11 @@ object Types {
     private var myWidened: Type = _
 
     private def computeAtoms()(using Context): Atoms =
-      if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
-      else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
-      else tp1.atoms | tp2.atoms
+      val tp1n = tp1.normalized
+      val tp2n = tp2.normalized
+      if tp1n.hasClassSymbol(defn.NothingClass) then tp2.atoms
+      else if tp2n.hasClassSymbol(defn.NothingClass) then tp1.atoms
+      else tp1n.atoms | tp2n.atoms
 
     private def computeWidenSingletons()(using Context): Type =
       val tp1w = tp1.widenSingletons
