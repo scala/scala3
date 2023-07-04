@@ -3,35 +3,28 @@ package inlinetrait
 
 import scala.reflect.ClassTag
 
-// FIXME uncomment the following code when inline traits work
-// inline trait MatrixLib[T: ClassTag]:
-//   opaque type Matrix = Array[Array[T]]
+inline trait MatrixLib[T: ClassTag]:
+  // FIXME make Matrix opaque once inlinedTypeRef works properly
+  /*opaque*/ type Matrix = Array[Array[T]]
 
-//   object Matrix:
-//     def apply(rows: Seq[T]*): Matrix =
-//       rows.map(_.toArray).toArray
-
-//   extension (m: Matrix)
-//     def apply(x: Int)(y: Int): T = m(x)(y)
-//     def rows: Int = m.length
-//     def cols: Int = m(0).length
-
-object IntMatrixLib /*extends MatrixLib[Int]*/:
-  // FIXME remove manually "generated" code below and replace `IntMatrix` with `Matrix` when inline traits work properly
+  // FIXME uncomment object and remove following code when inner objects work
+  /*
+   *  object Matrix:
+   *    def apply(rows: Seq[T]*): Matrix =
+   *      rows.map(_.toArray).toArray
+   */
   // ----------------------------------
-  opaque type Matrix = Array[Array[Int]]
-
-  object Matrix:
-    def apply(rows: Seq[Int]*): Matrix =
-      rows.map(_.toArray).toArray
-
-  extension (m: Matrix)
-    /*override*/ def apply(x: Int)(y: Int): Int = m(x)(y)
-    /*override*/ def rows: Int = m.length
-    /*override*/ def cols: Int = m(0).length
+  def Matrix(rows: Seq[T]*): Matrix =
+    rows.map(_.toArray).toArray
   // ----------------------------------
   // end of code to remove
 
+  extension (m: Matrix)
+    def apply(x: Int)(y: Int): T = m(x)(y)
+    def rows: Int = m.length
+    def cols: Int = m(0).length
+
+object IntMatrixLib extends MatrixLib[Int]:
   extension (m: Matrix)
     def +(n: Matrix): Matrix =
       val sum =

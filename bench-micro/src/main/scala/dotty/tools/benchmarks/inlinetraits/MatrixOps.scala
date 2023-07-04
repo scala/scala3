@@ -17,6 +17,7 @@ object BenchmarkMatrix:
     }
 
 private class StdBenchmarkMatrix(val m: StdIntMatrix) extends BenchmarkMatrix:
+  import standard.IntMatrixLib.{+, `*`}
   override def +(n: BenchmarkMatrix): StdBenchmarkMatrix = n match {
     case stdN: StdBenchmarkMatrix => StdBenchmarkMatrix(this.m + stdN.m)
   }
@@ -25,16 +26,16 @@ private class StdBenchmarkMatrix(val m: StdIntMatrix) extends BenchmarkMatrix:
   }
 
 private class SpeBenchmarkMatrix(val m: SpeIntMatrix) extends BenchmarkMatrix:
-  import specialized.IntMatrixLib
-
+  import specialized.IntMatrixLib.{+ => plus, `*` => times}
   override def +(n: BenchmarkMatrix): SpeBenchmarkMatrix = n match {
-    case speN: SpeBenchmarkMatrix => SpeBenchmarkMatrix(IntMatrixLib.+(this.m)(speN.m))
+    case speN: SpeBenchmarkMatrix => SpeBenchmarkMatrix(plus(this.m)(speN.m))
   }
   override def *(n: BenchmarkMatrix): SpeBenchmarkMatrix = n match {
-    case speN: SpeBenchmarkMatrix => SpeBenchmarkMatrix(IntMatrixLib.*(this.m)(speN.m))
+    case speN: SpeBenchmarkMatrix => SpeBenchmarkMatrix(times(this.m)(speN.m))
   }
 
 private class InlBenchmarkMatrix(val m: InlIntMatrix) extends BenchmarkMatrix:
+  import inlinetrait.IntMatrixLib.{+, `*`}
   override def +(n: BenchmarkMatrix): InlBenchmarkMatrix = n match {
     case inlN: InlBenchmarkMatrix => InlBenchmarkMatrix(this.m + inlN.m)
   }
