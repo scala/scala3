@@ -57,13 +57,9 @@ class SpecializeInlineTraits extends MacroTransform, SymTransformer {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
-      // TODO
+      // TODO check that things are inlined properly
       case _ =>
     }
-
-  extension (tree: Tree)
-    private def hasSpecializedVersion: Boolean =
-      false
 
   private def transformInlineTrait(inlineTrait: TypeDef)(using Context): TypeDef =
     val tpd.TypeDef(_, tmpl: Template) = inlineTrait: @unchecked

@@ -2681,7 +2681,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tdef: TypeDef if tdef.symbol.isClass =>
             def rec(paramss: List[List[Symbol]]): Unit = paramss match {
               case (param :: _) :: _ if param.isTerm =>
-                report.error(em"Implementation restriction: inline traits cannot have term parameters", param.srcPos)
+                report.error(em"Implementation restriction: inner classes inside inline traits cannot have term parameters", param.srcPos)
               case _ :: paramss =>
                 rec(paramss)
               case _ =>
