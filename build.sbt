@@ -15,6 +15,7 @@ val `scala3-bench` = Build.`scala3-bench`
 val `scala3-bench-bootstrapped` = Build.`scala3-bench-bootstrapped`
 val `scala3-bench-micro` = Build.`scala3-bench-micro`
 val `stdlib-bootstrapped` = Build.`stdlib-bootstrapped`
+val `stdlib-bootstrapped-tasty` = Build.`stdlib-bootstrapped-tasty`
 val `stdlib-bootstrapped-tasty-tests` = Build.`stdlib-bootstrapped-tasty-tests`
 val `tasty-core` = Build.`tasty-core`
 val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
