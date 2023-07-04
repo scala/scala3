@@ -289,6 +289,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val pre = expr.tpe
             val denot0 = pre.memberBasedOnFlags(name, required, excluded)
               .accessibleFrom(pre)(using refctx)
+              .orElse(pre.memberBasedOnFlags(name, required, excluded | Private)
+                .accessibleFrom(pre)(using refctx))
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
             if denot0.exists then
