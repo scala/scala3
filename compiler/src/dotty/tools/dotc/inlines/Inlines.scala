@@ -629,7 +629,6 @@ object Inlines:
             sym.privateWithin,
             spanCoord(parent.span)
           )
-          inlinedSym.setTargetName(sym.name ++ str.NAME_JOIN ++ ctx.owner.name)
           innerClassNewSyms.put(sym, inlinedSym)
           inlinedSym.entered
         case _ =>
