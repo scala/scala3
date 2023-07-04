@@ -23,7 +23,7 @@ object MiMaFilters {
   )
 
   val StdlibBootstrappedBackwards: Map[String, Seq[ProblemFilter]] = Map(
-    "2.13.10" -> {
+    Build.stdlibBootstrappedVersion -> {
       Seq(
         // Files that are not compiled in the bootstrapped library
         ProblemFilters.exclude[MissingClassProblem]("scala.AnyVal"),
@@ -134,12 +134,13 @@ object MiMaFilters {
         "scala.runtime.Rich*.num", "scala.runtime.Rich*.ord",
         "scala.util.Properties.<clinit>",
         "scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5",
+        "scala.collection.IterableOnceOps#Maximized.this" // New in 2.13.11: private inner class
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem])
     }
   )
 
   val StdlibBootstrappedForward: Map[String, Seq[ProblemFilter]] = Map(
-    "2.13.10" -> {
+    Build.stdlibBootstrappedVersion -> {
       Seq(
         // Scala language features
         ProblemFilters.exclude[FinalClassProblem]("scala.languageFeature$*$"),
@@ -236,6 +237,13 @@ object MiMaFilters {
         "scala.util.Properties.coloredOutputEnabled",
         "scala.util.Properties.isAvian",
         "scala.util.Properties.versionFor",
+        // New problem in 2.13.11
+        "scala.collection.IterableOnceOps#Maximized.this", // private inner class
+        "scala.collection.mutable.LinkedHashMap.defaultLoadFactor", // private[collection] final def
+        "scala.collection.mutable.LinkedHashMap.defaultinitialSize", // private[collection] final def
+        "scala.collection.mutable.LinkedHashSet.defaultLoadFactor", // private[collection] final def
+        "scala.collection.mutable.LinkedHashSet.defaultinitialSize", // private[collection] final def
+        "scala.collection.mutable.OpenHashMap.nextPositivePowerOfTwo", // private[mutable] def
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem]) ++
       Seq( // MissingFieldProblem: static field ... in object ... does not have a correspondent in other version
         "scala.Array.UnapplySeqWrapper",
