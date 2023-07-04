@@ -1203,7 +1203,7 @@ object Objects:
         // TODO: handle unapplySeq
         Bottom
 
-      case UnApply(fun, _, pats) =>
+      case UnApply(fun, implicits, pats) =>
         val fun1 = funPart(fun)
         val funRef = fun1.tpe.asInstanceOf[TermRef]
         if fun.symbol.name == nme.unapplySeq then
@@ -1211,8 +1211,8 @@ object Objects:
           ()
         else
           val receiver = evalType(funRef.prefix, thisV, klass)
-          // TODO: apply implicits
-          val unapplyRes = call(receiver, funRef.symbol, TraceValue(scrutinee, summon[Trace]) :: Nil, funRef.prefix, superType = NoType, needResolve = true)
+          val implicitValues = evalArgs(implicits.map(Arg.apply), thisV, klass)
+          val unapplyRes = call(receiver, funRef.symbol, TraceValue(scrutinee, summon[Trace]) :: implicitValues, funRef.prefix, superType = NoType, needResolve = true)
           // distribute unapply to patterns
           val unapplyResTp = funRef.widen.finalResultType
           if isProductMatch(unapplyResTp, pats.length) then
@@ -1227,14 +1227,16 @@ object Objects:
             ()
           else
             // Get match
-            val getMember = unapplyResTp.member(nme.get).suchThat(_.info.isParameterless)
-            // TODO: call isEmpty as well
-            val getRes = call(unapplyRes, getMember.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+            val isEmptyDenot = unapplyResTp.member(nme.isEmpty).suchThat(_.info.isParameterless)
+            call(unapplyRes, isEmptyDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+
+            val getDenot = unapplyResTp.member(nme.get).suchThat(_.info.isParameterless)
+            val getRes = call(unapplyRes, getDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
             if pats.length == 1 then
               // single match
               evalPattern(getRes, pats.head)
             else
-              val getResTp = getMember.info.widen.finalResultType
+              val getResTp = getDenot.info.finalResultType
               val selectors = productSelectors(getResTp).take(pats.length)
               selectors.zip(pats).map { (sel, pat) =>
                 val selectRes = call(unapplyRes, sel, Nil, unapplyResTp, superType = NoType, needResolve = true)
@@ -1243,6 +1245,9 @@ object Objects:
             end if
           end if
         end if
+        scrutinee
+
+      case Ident(nme.WILDCARD) =>
         scrutinee
 
       case Typed(pat, _) =>

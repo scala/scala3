@@ -26,6 +26,9 @@ object Util:
   opaque type Arg  = Tree | ByNameArg
   case class ByNameArg(tree: Tree)
 
+  object Arg:
+    def apply(tree: Tree): Arg = tree
+
   extension (arg: Arg)
     def isByName = arg.isInstanceOf[ByNameArg]
     def tree: Tree = arg match
