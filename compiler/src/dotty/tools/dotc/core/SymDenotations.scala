@@ -907,10 +907,13 @@ object SymDenotations {
           false
         val cls = owner.enclosingSubClass
         if !cls.exists then
-          val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
-          fail(i"""
-               | Access to protected $this not permitted because enclosing ${encl.showLocated}
-               | is not a subclass of ${owner.showLocated} where target is defined""")
+          if pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner) then
+            true
+          else
+            val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
+            fail(i"""
+                 | Access to protected $this not permitted because enclosing ${encl.showLocated}
+                 | is not a subclass of ${owner.showLocated} where target is defined""")
         else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
