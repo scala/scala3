@@ -381,7 +381,7 @@ object desugar {
     tree match
       case untpd.Block(stats, expr) =>
         val (untpdTypeVariables, otherStats) = stats.span {
-          case tdef @ untpd.TypeDef(name, _) => name.isVarPattern
+          case tdef @ untpd.TypeDef(name, _) => !tdef.isBackquoted && name.isVarPattern
           case _ => false
         }
         val pattern = if otherStats.isEmpty then expr else untpd.cpy.Block(tree)(otherStats, expr)
