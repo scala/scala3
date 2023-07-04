@@ -64,6 +64,7 @@ object Inlines:
   def isInlineableFromInlineTrait(inlinedTraitSym: ClassSymbol, member: tpd.Tree)(using Context): Boolean =
     !(member.isInstanceOf[tpd.TypeDef] && inlinedTraitSym.typeParams.contains(member.symbol))
     && !member.symbol.isAllOf(Inline)
+    && !member.symbol.is(Deferred)
 
   /** Should call be inlined in this context? */
   def needsInlining(tree: Tree)(using Context): Boolean =
