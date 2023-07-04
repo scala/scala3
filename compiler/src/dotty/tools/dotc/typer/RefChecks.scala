@@ -340,7 +340,6 @@ object RefChecks {
      * of class `clazz` are met.
      */
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
-      def overridesInlineTraitMember = other.owner.ownersIterator.exists(_.isInlineTrait) && member.is(Synthetic)
       def isInlinedFromInlineTrait = other.owner.isAllOf(InlineTrait) && member.is(Synthetic)
 
       def memberTp(self: Type) =
@@ -418,7 +417,7 @@ object RefChecks {
 
       def overrideTargetNameError() =
         val otherTargetName = i"@targetName(${other.targetName})"
-        if !overridesInlineTraitMember then
+        if !isInlinedFromInlineTrait then
           if member.hasTargetName(member.name) then
             overrideError(i"misses a target name annotation $otherTargetName")
           else if other.hasTargetName(other.name) then
@@ -463,13 +462,13 @@ object RefChecks {
         // direct overrides were already checked on completion (see Checking.chckWellFormed)
         // the test here catches indirect overriddes between two inherited base types.
         overrideError("cannot be used here - class definitions cannot be overridden")
-      else if (other.isOpaqueAlias)
+      else if (other.isOpaqueAlias && !isInlinedFromInlineTrait)
         // direct overrides were already checked on completion (see Checking.chckWellFormed)
         // the test here catches indirect overriddes between two inherited base types.
         overrideError("cannot be used here - opaque type aliases cannot be overridden")
       else if (!other.is(Deferred) && member.isClass)
         overrideError("cannot be used here - classes can only override abstract types")
-      else if (other.isEffectivelyFinal && !overridesInlineTraitMember) then // (1.2)
+      else if (other.isEffectivelyFinal && !isInlinedFromInlineTrait) then // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
       else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
