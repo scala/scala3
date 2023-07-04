@@ -207,7 +207,7 @@ class ReplCompilerTests extends ReplTest:
         |        else Succ(fromInt(prevOf[i.type](i)))
       """.stripMargin)
     }.andThen {
-      assertEquals(
+      assertMultiLineEquals(
         """// defined trait Nat
           |// defined object Nat
           |""".stripMargin, storedOutput())
