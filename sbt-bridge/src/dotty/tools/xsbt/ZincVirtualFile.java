@@ -20,20 +20,20 @@ public class ZincVirtualFile extends dotty.tools.io.VirtualFile {
     this._underlying = underlying;
 
     // fill in the content
-    OutputStream output = output();
-    try {
-      Streamable.Bytes bytes = new Streamable.Bytes() {
-        @Override
-        public InputStream inputStream() {
-          return underlying.input();
-        }
-      };
-      output.write(bytes.toByteArray());
-    } finally {
-      output.close();
+    try (OutputStream output = output()) {
+      try (InputStream input = underlying.input()) {
+        Streamable.Bytes bytes = new Streamable.Bytes() {
+          @Override
+          public InputStream inputStream() {
+            return input;
+          }
+        };
+        output.write(bytes.toByteArray());
+      }
     }
   }
 
+  @Override
   public VirtualFile underlying() {
     return _underlying;
   }

@@ -19,6 +19,7 @@ import xsbti.compile.Output;
 
 import java.io.IOException;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Arrays;
 
 public class CompilerBridgeDriver extends Driver {
@@ -51,14 +52,40 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
-    DelegatingReporter reporter = new DelegatingReporter(delegate);
+    // convert sources to a HashMap from this.id to itself
+    HashMap<String, VirtualFile> sourcesMap = new HashMap<>();
+
+    VirtualFile[] sortedSources = new VirtualFile[sources.length];
+    System.arraycopy(sources, 0, sortedSources, 0, sources.length);
+    Arrays.sort(sortedSources, (x0, x1) -> x0.id().compareTo(x1.id()));
+
+    ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
+
+    for (int i = 0; i < sources.length; i++) {
+      VirtualFile source = sortedSources[i];
+      AbstractFile abstractFile = asDottyFile(source);
+      sourcesBuffer.append(abstractFile);
+      sourcesMap.put(abstractFile.absolutePath(), source);
+    }
+
+    DelegatingReporter reporter = new DelegatingReporter(delegate, sourceFile -> {
+      String pathId = sourceFile.file().absolutePath();
+      VirtualFile source = sourcesMap.get(pathId);
+
+      if (source != null)
+        return source.id();
+      else
+        return pathId;
+    });
+
     try {
       log.debug(this::infoOnCachedCompiler);
 
       Contexts.Context initialCtx = initCtx()
         .fresh()
         .setReporter(reporter)
-        .setSbtCallback(callback);
+        .setSbtCallback(callback)
+        .setZincVirtualFiles(sourcesMap);
 
       Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
 
@@ -70,28 +97,13 @@ public class CompilerBridgeDriver extends Driver {
         log.debug(this::prettyPrintCompilationArguments);
         Compiler compiler = newCompiler(context);
 
-        VirtualFile[] sortedSources = new VirtualFile[sources.length];
-        System.arraycopy(sources, 0, sortedSources, 0, sources.length);
-        Arrays.sort(
-          sortedSources,
-          new Comparator<VirtualFile>() {
-            @Override
-            public int compare(VirtualFile x0, VirtualFile x1) {
-              return x0.id().compareTo(x1.id());
-            }
-          }
-        );
-
-        ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
-        for (VirtualFile file: sortedSources)
-          sourcesBuffer.append(asDottyFile(file));
         doCompile(compiler, sourcesBuffer.toList(), context);
 
         for (xsbti.Problem problem: delegate.problems()) {
           callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),
             true);
         }
-      } else {  
+      } else {
         delegate.printSummary();
       }
 

@@ -2,17 +2,21 @@ package dotty.tools.xsbt;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+
 import static java.util.stream.Collectors.toList;
 
 import dotty.tools.dotc.reporting.CodeAction;
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch;
 import dotty.tools.dotc.util.SourcePosition;
+import dotty.tools.dotc.util.SourceFile;
 
 import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
 import xsbti.Position;
 import xsbti.Severity;
+
 
 final public class Problem implements xsbti.Problem {
   private final Position _position;
@@ -21,8 +25,10 @@ final public class Problem implements xsbti.Problem {
   private final Optional<String> _rendered;
   private final String _diagnosticCode;
   private final List<CodeAction> _actions;
+  private final Function<SourceFile, String> _lookup;
 
-  public Problem(Position position, String message, Severity severity, String rendered, String diagnosticCode, List<CodeAction> actions) {
+  public Problem(Position position, String message, Severity severity, String rendered, String diagnosticCode, List<CodeAction> actions,
+      Function<SourceFile, String> lookup) {
     super();
     this._position = position;
     this._message = message;
@@ -30,6 +36,7 @@ final public class Problem implements xsbti.Problem {
     this._rendered = Optional.of(rendered);
     this._diagnosticCode = diagnosticCode;
     this._actions = actions;
+    this._lookup = lookup;
   }
 
   public String category() {
@@ -78,23 +85,23 @@ final public class Problem implements xsbti.Problem {
       // never getting called.
       return _actions
               .stream()
-              .map(action -> new Action(action.title(), OptionConverters.toJava(action.description()), toWorkspaceEdit(CollectionConverters.asJava(action.patches()))))
+              .map(action -> new Action(action.title(), OptionConverters.toJava(action.description()), toWorkspaceEdit(CollectionConverters.asJava(action.patches()), _lookup)))
               .collect(toList());
     }
   }
 
-  private static WorkspaceEdit toWorkspaceEdit(List<ActionPatch> patches) {
+  private static WorkspaceEdit toWorkspaceEdit(List<ActionPatch> patches, Function<SourceFile, String> lookup) {
     return new WorkspaceEdit(
       patches
         .stream()
-        .map(patch -> new TextEdit(positionOf(patch.srcPos()), patch.replacement()))
+        .map(patch -> new TextEdit(positionOf(patch.srcPos(), lookup), patch.replacement()))
         .collect(toList())
     );
   }
 
-  private static Position positionOf(SourcePosition pos) {
+  private static Position positionOf(SourcePosition pos, Function<SourceFile, String> lookup) {
     if (pos.exists()){
-      return new PositionBridge(pos, pos.source());
+      return new PositionBridge(pos, lookup.apply(pos.source()));
     } else {
       return PositionBridge.noPosition;
     }

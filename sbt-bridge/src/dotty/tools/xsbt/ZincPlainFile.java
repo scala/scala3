@@ -15,6 +15,7 @@ public class ZincPlainFile extends dotty.tools.io.PlainFile {
     this._underlying = underlying;
   }
 
+  @Override
   public PathBasedFile underlying() {
     return _underlying;
   }

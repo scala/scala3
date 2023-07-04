@@ -39,22 +39,25 @@ import util.Store
 import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.Map as JMap
 import java.nio.file.InvalidPathException
+
 
 object Contexts {
 
-  private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
-  private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
-  private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
-  private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
-  private val (runLoc,              store6) = store5.newLocation[Run | Null]()
-  private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
-  private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
-  private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo | Null]()
-  private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (sbtCallbackLoc,       store2) = store1.newLocation[AnalysisCallback]()
+  private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
+  private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
+  private val (compilationUnitLoc,   store5) = store4.newLocation[CompilationUnit]()
+  private val (runLoc,               store6) = store5.newLocation[Run | Null]()
+  private val (profilerLoc,          store7) = store6.newLocation[Profiler]()
+  private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
+  private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
+  private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (zincVirtualFilesLoc, store11) = store10.newLocation[JMap[String, xsbti.VirtualFile] | Null]()
 
-  private val initialStore = store10
+  private val initialStore = store11
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -164,8 +167,11 @@ object Contexts {
     /** The compiler callback implementation, or null if no callback will be called. */
     def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
 
-    /** The sbt callback implementation if we are run from sbt, null otherwise */
+    /** The Zinc callback implementation if we are run from Zinc, null otherwise */
     def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
+
+    /** A map from absolute path to VirtualFile if we are run from Zinc, null otherwise */
+    def zincVirtualFiles: JMap[String, xsbti.VirtualFile] | Null = store(zincVirtualFilesLoc)
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -665,6 +671,8 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
+    def setZincVirtualFiles(map: JMap[String, xsbti.VirtualFile]): this.type =
+      updateStore(zincVirtualFilesLoc, map)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)
