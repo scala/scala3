@@ -155,6 +155,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       tree match
         case tree: ValOrDefDef if !sym.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
+          if tree.symbol.owner.isInlineTrait then checkInlTraitPrivateMemberIsLocal(tree)
           if sym.is(Method) then
             if sym.isSetter then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
@@ -192,6 +193,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
+    private def checkInlTraitPrivateMemberIsLocal(tree: Tree)(using Context): Unit =
+      if tree.symbol.owner.isInlineTrait && tree.symbol.isAllOf(Private, butNot = Local) then
+        report.error(em"implementation restriction: inline traits cannot have non-local private members", tree.srcPos)
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier

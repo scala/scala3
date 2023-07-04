@@ -639,11 +639,11 @@ object Inlines:
     private def inlinedMemberSym(sym: Symbol, withoutFlags: FlagSet = EmptyFlags)(using Context): Symbol =
       var name = sym.name
       var flags = sym.flags | Synthetic
-      if sym.isType || !sym.is(Private) then flags |= Override
-      if sym.isTermParamAccessor then
-        flags &~= ParamAccessor
-        if sym.is(Local) && sym.owner.isInlineTrait then
-          name = paramAccessorsMapper.registerNewName(sym)
+      if sym.isTermParamAccessor then flags &~= ParamAccessor
+      if sym.is(Local) then
+        name = paramAccessorsMapper.registerNewName(sym)
+      else
+        flags |= Override
       sym.copy(
         owner = ctx.owner,
         name = name,
