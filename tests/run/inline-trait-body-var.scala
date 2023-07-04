@@ -6,3 +6,10 @@ class B extends A:
     val old = x
     x += 1
     old
+
+@main def Test =
+  val b = B()
+  println(b.f)
+  println(b.f)
+  println(b.f)
+  println(b.f)

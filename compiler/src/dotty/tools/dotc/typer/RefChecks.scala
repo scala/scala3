@@ -341,6 +341,7 @@ object RefChecks {
      */
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
       def overridesInlineTraitMember = other.owner.ownersIterator.exists(_.isInlineTrait) && member.is(Synthetic)
+      def isInlinedFromInlineTrait = other.owner.isAllOf(InlineTrait) && member.is(Synthetic)
 
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
@@ -505,7 +506,7 @@ object RefChecks {
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
-      else if member.is(Override) && other.is(Mutable) && !other.owner.isAllOf(InlineTrait) then
+      else if member.is(Override) && other.is(Mutable) && !isInlinedFromInlineTrait then
         overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
