@@ -54,6 +54,7 @@ import cc.CheckCaptures
 import config.Config
 
 import scala.annotation.constructorOnly
+import dotty.tools.dotc.rewrites.Rewrites
 
 object Typer {
 
@@ -2882,8 +2883,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if (migrateTo3) {
           // Under -rewrite, patch `x _` to `(() => x)`
           msg.actions
-            .flatMap(_.patches)
-            .map(actionPatch => patch(actionPatch.srcPos.span, actionPatch.replacement))
+            .headOption
+            .foreach(Rewrites.applyAction)
           return typed(untpd.Function(Nil, qual), pt)
         }
     }
@@ -3887,8 +3888,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
           && { 
             msg.actions
-              .flatMap(_.patches)
-              .map(actionPatch => patch(actionPatch.srcPos.span, actionPatch.replacement))
+              .headOption
+              .foreach(Rewrites.applyAction)
             true
           }
 
