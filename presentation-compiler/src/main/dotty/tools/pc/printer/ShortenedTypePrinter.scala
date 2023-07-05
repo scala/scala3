@@ -79,7 +79,6 @@ class ShortenedTypePrinter(
 
   /**
    * Returns a list of TextEdits (auto-imports) of the symbols
-   * that are shortend by "tryShortenName" method, and cached.
    */
   def imports(autoImportsGen: AutoImportsGenerator): List[TextEdit] =
     missingImports.toList
@@ -102,7 +101,7 @@ class ShortenedTypePrinter(
 
   /**
    *  In shortened type printer, we don't want to omit the prefix unless it is empty package
-   *  All the logic for prefix omitting is implemented in `trimPrefixToScope`
+   *  All the logic for prefix omitting is implemented in `toTextPrefixOf`
    */
   override protected def isOmittablePrefix(sym: Symbol): Boolean =
     isEmptyPrefix(sym)
@@ -136,30 +135,30 @@ class ShortenedTypePrinter(
     else
       Text()
 
-  override protected def trimPrefixToScope(tp: NamedType): Text =
+  private def findRename(tp: NamedType): Option[Text] =
+    val maybePrefixRename = findPrefixRename(tp.symbol.maybeOwner)
 
-    def handleRenames(prefix: Symbol): Option[Text] =
-      val maybePrefixRename = findPrefixRename(prefix)
+    if maybePrefixRename.exists(importRename => indexedCtx.findSymbol(importRename.rename).isDefined) then
+      Some(super.toTextPrefixOf(tp))
+    else
+      maybePrefixRename.map {
+        case res: Found => res.toPrefixText
+        case res: Missing =>
+          val importSel =
+            if res.owner.name.toString == res.rename then
+              ImportSel.Direct(res.owner)
+            else ImportSel.Rename(res.owner, res.rename)
 
-      if maybePrefixRename.exists(importRename => indexedCtx.findSymbol(importRename.rename).isDefined) then
-        Some(super.trimPrefixToScope(tp))
-      else
-        maybePrefixRename.map {
-          case res: Found => res.toPrefixText
-          case res: Missing =>
-            val importSel =
-              if res.owner.name.show == res.rename then
-                ImportSel.Direct(res.owner)
-              else ImportSel.Rename(res.owner, res.rename)
+          missingImports += importSel
+          res.toPrefixText
+      }
 
-            missingImports += importSel
-            res.toPrefixText
-        }
 
-    val maybeRenamedPrefix: Option[Text] = handleRenames(tp.symbol.maybeOwner)
+  override def toTextPrefixOf(tp: NamedType): Text = controlled {
+    val maybeRenamedPrefix: Option[Text] = findRename(tp)
     val trimmedPrefix: Text =
       if !tp.designator.isInstanceOf[Symbol] && tp.typeSymbol == NoSymbol then
-        maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
+        maybeRenamedPrefix.getOrElse(super.toTextPrefixOf(tp))
       else
         indexedCtx.lookupSym(tp.symbol) match
           // symbol is missing and is accessible statically, we can import it and add proper prefix
@@ -171,10 +170,11 @@ class ShortenedTypePrinter(
           case Result.InScope => Text()
           // the symbol is in conflict, we have to include prefix to avoid ambiguity
           case Result.Conflict =>
-            maybeRenamedPrefix.getOrElse(super.trimPrefixToScope(tp))
-          case _ => super.trimPrefixToScope(tp)
+            maybeRenamedPrefix.getOrElse(super.toTextPrefixOf(tp))
+          case _ => super.toTextPrefixOf(tp)
 
     optionalRootPrefix(tp.symbol) ~ trimmedPrefix
+  }
 
   override protected def selectionString(tp: NamedType): String =
     indexedCtx.rename(tp.symbol) match
@@ -246,7 +246,7 @@ class ShortenedTypePrinter(
   /**
    * Compute method signature for the given (method) symbol.
    *
-   * @return shortend name for types or the type for terms
+   * @return shortened name for types or the type for terms
    *         e.g. "[A: Ordering](a: A, b: B): collection.mutable.Map[A, B]"
    *              ": collection.mutable.Map[A, B]" for no-arg method
    */
@@ -258,10 +258,7 @@ class ShortenedTypePrinter(
   ): String =
     val namess = gtpe.paramNamess
     val infoss = gtpe.paramInfoss
-    val nameToInfo: Map[Name, Type] = (for
-      pairs <- namess.zip(infoss).map { (names, infos) => names.zip(infos) }
-      pair <- pairs
-    yield pair).toMap
+    val nameToInfo: Map[Name, Type] = namess.flatten.lazyZip(infoss.flatten).toMap
 
     val (methodParams, extParams) = splitExtensionParamss(gsym)
     val paramss = methodParams ++ extParams

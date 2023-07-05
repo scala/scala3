@@ -12,6 +12,7 @@ import util.SourcePosition
 import typer.ImportInfo
 
 import scala.annotation.internal.sharable
+import dotty.tools.dotc.core.Types.NamedType
 
 /** The base class of all printers
  */
@@ -101,7 +102,7 @@ abstract class Printer {
   def toTextRef(tp: SingletonType): Text
 
   /** Textual representation of a prefix of some reference, ending in `.` or `#` */
-  def toTextPrefix(tp: Type): Text
+  def toTextPrefixOf(tp: NamedType): Text
 
   /** Textual representation of a reference in a capture set */
   def toTextCaptureRef(tp: Type): Text

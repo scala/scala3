@@ -297,8 +297,7 @@ object AutoImports:
           stats.flatMap {
             case s: PackageDef => firstObjectBody(s)
             case TypeDef(_, t @ Template(defDef, _, _, _))
-                if defDef.symbol.showName == "<init>" =>
-              Some(t)
+                if defDef.symbol.isConstructor => Some(t)
             case _ => None
           }.headOption
         case _ => None
