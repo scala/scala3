@@ -7,7 +7,7 @@ class Ex3 extends Exception("Ex3")
 def foo0(i: Int): (CanThrow[Ex1], CanThrow[Ex2]) ?-> Unit =
   if i > 0 then throw new Ex1 else throw new Ex2
 
-/* Does not work yet since annotated CFTs are not recognized properly in typer
+/* Does not work yet curried dependent CFTs are not yet handled in typer
 
 def foo01(i: Int): (ct: CanThrow[Ex1]) ?-> CanThrow[Ex2] ?->{ct} Unit =
   if i > 0 then throw new Ex1 else throw new Ex2
