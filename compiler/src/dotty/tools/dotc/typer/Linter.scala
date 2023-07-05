@@ -7,13 +7,14 @@ import Types.*, Contexts.*, Symbols.*, Flags.*, Constants.*
 import reporting.*
 import Decorators.i
 
+/** A module for linter checks done at typer */
 object Linter:
   import ast.tpd.*
 
   /** If -Wnonunit-statement is set, warn about statements in blocks that are non-unit expressions.
    *  @return  true if a warning was issued, false otherwise
    */
-  private[typer] def warnOnInterestingResultInStatement(t: Tree)(using Context): Boolean =
+  def warnOnInterestingResultInStatement(t: Tree)(using Context): Boolean =
 
     def isUninterestingSymbol(sym: Symbol): Boolean =
       sym == NoSymbol ||
@@ -68,6 +69,10 @@ object Linter:
     else false
   end warnOnInterestingResultInStatement
 
+  /** If -Wimplausible-patterns is set, warn about pattern values that can match the scrutinee
+   *  type only if there would be some user-defined equality method that equates values of the
+   *  two types.
+   */
   def warnOnImplausiblePattern(pat: Tree, selType: Type)(using Context): Unit =
       // approximate type params with bounds
     def approx = new ApproximatingTypeMap {
