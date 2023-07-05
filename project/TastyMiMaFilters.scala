@@ -63,7 +63,9 @@ object TastyMiMaFilters {
     // Problem? Very complicated signature
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.generic.IsMap.mapOpsIsMap"),
 
-    // Problem: Overriding java method (`public abstract Object underlying();` with `def underlying: Object`)
+    // Probably OK: Overriding java method (`public abstract Object underlying();` with `def underlying: Object`)
+    // Calls to the underlying seem to link correctly.
+    // Tested in stdlib-bootstrapped/test/Main.scala
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.math.ScalaNumericConversions.underlying"),
 
