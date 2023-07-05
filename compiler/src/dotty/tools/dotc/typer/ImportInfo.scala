@@ -148,7 +148,7 @@ class ImportInfo(symf: Context ?=> Symbol,
     else
       for
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed).nn).altsWith(_.isOneOf(GivenOrImplicitVal))
+        denot <- pre.implicitMembersNamed(reverseMapping(renamed).nn)
       yield
         val original = reverseMapping(renamed).nn
         val ref = TermRef(pre, original, denot)

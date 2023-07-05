@@ -703,6 +703,16 @@ object Types {
       }
       findMember(name, pre, required, excluded)
     }
+    
+    /** The implicit members with given name. If there are none and the denotation
+     *  contains private members, also look for shadowed non-private implicits.
+     */
+    def implicitMembersNamed(name: Name)(using Context): List[SingleDenotation] =
+      val d = member(name)
+      val alts = d.altsWith(_.isOneOf(GivenOrImplicitVal))
+      if alts.isEmpty && d.hasAltWith(_.symbol.is(Private)) then
+        nonPrivateMember(name).altsWith(_.isOneOf(GivenOrImplicitVal))
+      else alts
 
     /** Find member of this type with given `name`, all `required`
      *  flags and no `excluded` flag and produce a denotation that contains
@@ -1006,7 +1016,7 @@ object Types {
     final def implicitMembers(using Context): List[TermRef] = {
       record("implicitMembers")
       memberDenots(implicitFilter,
-          (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal)))
+          (name, buf) => buf ++= implicitMembersNamed(name))
         .toList.map(d => TermRef(this, d.symbol.asTerm))
     }
 
