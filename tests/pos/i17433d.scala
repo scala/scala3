@@ -10,4 +10,4 @@ package p:
   package q:
 
     class C extends T:
-      def c = t(42) // error
+      def c = t(42) // OK
