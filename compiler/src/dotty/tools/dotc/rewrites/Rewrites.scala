@@ -11,6 +11,7 @@ import dotty.tools.dotc.util.SourcePosition;
 
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets.UTF_8
+import dotty.tools.dotc.reporting.CodeAction
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
@@ -99,6 +100,14 @@ object Rewrites {
       report.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()
     }
+
+  /** Given a CodeAction take the patches and apply them.
+   *
+   * @param action The CodeAction containing the patches
+   */
+  def applyAction(action: CodeAction)(using Context): Unit =
+    action.patches.foreach: actionPatch =>
+      patch(actionPatch.srcPos.span, actionPatch.replacement)
 }
 
 /** A completely encapsulated class representing rewrite state, used
