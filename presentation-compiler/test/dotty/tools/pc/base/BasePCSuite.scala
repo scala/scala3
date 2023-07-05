@@ -27,7 +27,7 @@ object TestResources:
 
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:
-  val tmp = Files.createTempDirectory("metals")
+  val tmp = Files.createTempDirectory("stable-pc-tests")
   val executorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor()
   val testingWorkspaceSearch = TestingWorkspaceSearch(

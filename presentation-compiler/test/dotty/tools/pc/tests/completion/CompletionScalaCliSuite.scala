@@ -30,6 +30,18 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def `version-sort` =
+    check(
+      """|//> using dep "com.lihaoyi::pprint:0.7@@"
+         |package A
+         |""".stripMargin,
+      """|0.7.3
+         |0.7.2
+         |0.7.1
+         |0.7.0
+         |""".stripMargin,
+    )
+
   @Test def `single-colon` =
     check(
       """|//> using lib "io.circe:circe-core_na@@

@@ -116,7 +116,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  name: scala.concurrent.Future[$0]
          |)
          |""".stripMargin,
-      filter = _ == "Future - scala.concurrent"
+      filter = _ == "Future[T] - scala.concurrent"
     )
 
   @Test def `import-conflict4` =
@@ -133,7 +133,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  name: scala.concurrent.Future[$0]
          |)
          |""".stripMargin,
-      filter = _ == "Future - scala.concurrent"
+      filter = _ == "Future[T] - scala.concurrent"
     )
 
   @Test def `import-no-conflict` =
@@ -151,7 +151,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  name: Future[$0]
          |)
          |""".stripMargin,
-      filter = _ == "Future - scala.concurrent"
+      filter = _ == "Future[T] - scala.concurrent"
     )
 
   @Test def `imported-names-check1` =
@@ -181,7 +181,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
         |
         |import java.util.concurrent.CompletableFuture
         |object Main extends CompletableFuture[$0]
-        |""".stripMargin
+        |""".stripMargin,
+        assertSingleItem = false,
     )
 
   @Test def `replace` =
@@ -193,7 +194,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
         |
         |import java.util.concurrent.CompletableFuture
         |object Main extends CompletableFuture[$0]
-        |""".stripMargin
+        |""".stripMargin,
+        assertSingleItem = false,
     )
 
   @Test def `block1` =
@@ -325,7 +327,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  }
          |}
          |""".stripMargin,
-      filter = _.contains("scala.util")
+      filter = _.contains("scala.util"),
+      assertSingleItem = false,
     )
 
   @Test def `partial-function` =
@@ -666,8 +669,8 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  ): String = ???
          |}
          |""".stripMargin,
-      """|Future scala.concurrent
-         |Future - java.util.concurrent
+      """|Future[T] scala.concurrent
+         |Future scala.concurrent
          |""".stripMargin,
       topLines = Some(2)
     )
@@ -681,10 +684,11 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  ): String = ???
          |}
          |""".stripMargin,
-      """|Future java.util.concurrent
-         |Future - scala.concurrent
+      """|Future[T] java.util.concurrent
+         |Future java.util.concurrent
+         |Future[T] - scala.concurrent
          |""".stripMargin,
-      topLines = Some(2)
+      topLines = Some(3)
     )
 
   @Test def `apply-method` =
@@ -768,3 +772,56 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |increment2: Int
          |""".stripMargin
     )
+
+  @Test def `case_class_param` =
+    check(
+      """|case class Foo(fooBar: Int, gooBar: Int)
+         |class Bar(val fooBaz: Int, val fooBal: Int) {
+         |  val fooBar: Option[Int] = Some(1)
+         |}
+         |object A {
+         |  val fooBar: List[Int] = List(1)
+         |}
+         |
+         |object Main {
+         |  val fooBar = "Abc"
+         |  val x = fooBa@@
+         |}
+         |""".stripMargin,
+      """|fooBar: String
+         |fooBar: List[Int]
+         |""".stripMargin,
+    )
+
+  @Test def `type-apply` =
+    check(
+      """|package demo
+         |
+         |package other:
+         |  type MyType = Long
+         |
+         |  object MyType:
+         |    def apply(m: Long): MyType = m
+         |
+         |val j = MyTy@@
+         |""".stripMargin,
+      """|MyType(m: Long): MyType
+         |MyType - demo.other""".stripMargin,
+    )
+
+  @Test def `type-apply2` =
+    check(
+      """|package demo
+         |
+         |package other:
+         |  object MyType:
+         |    def apply(m: Long): MyType = m
+         |
+         |  type MyType = Long
+         |
+         |val j = MyTy@@
+         |""".stripMargin,
+      """|MyType(m: Long): MyType
+         |MyType - demo.other""".stripMargin,
+    )
+

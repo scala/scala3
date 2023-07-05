@@ -1,48 +1,47 @@
 package dotty.tools.pc.completions
 
 /**
- * @param brace should we add "()" suffix?
- * @param bracket should we add "[]" suffix?
- * @param template should we add "{}" suffix?
+ * @param suffixes which we should insert
  * @param snippet which suffix should we insert the snippet $0
  */
 case class CompletionSuffix(
-    brace: Boolean,
-    bracket: Boolean,
-    template: Boolean,
-    snippet: SuffixKind
+    suffixes: Set[SuffixKind],
+    snippet: SuffixKind,
 ):
+  def labelSnippet =
+    suffixes.collectFirst {
+      case SuffixKind.Bracket(1) => "[T]"
+      case SuffixKind.Bracket(n) =>
+        (for (i <- 1 to n) yield s"T$i").mkString("[", ", ", "]")
+    }
   def hasSnippet = snippet != SuffixKind.NoSuffix
   def chain(copyFn: CompletionSuffix => CompletionSuffix) = copyFn(this)
+  def withNewSuffix(kind: SuffixKind) =
+    CompletionSuffix(suffixes + kind, snippet)
+  def withNewSuffixSnippet(kind: SuffixKind) =
+    CompletionSuffix(suffixes + kind, kind)
   def toEdit: String =
-    if !hasSuffix then ""
-    else
-      val braceSuffix =
-        if brace && snippet == SuffixKind.Brace then "($0)"
-        else if brace then "()"
-        else ""
-      val bracketSuffix =
-        if bracket && snippet == SuffixKind.Bracket then "[$0]"
-        else if bracket then "[]"
-        else ""
-      val templateSuffix =
-        if template && snippet == SuffixKind.Template then " {$0}"
-        else if template then " {}"
-        else ""
-      s"$bracketSuffix$braceSuffix$templateSuffix"
+    def loop(suffixes: List[SuffixKind]): String =
+      def cursor = if suffixes.head == snippet then "$0" else ""
+      suffixes match
+        case SuffixKind.Brace :: tail => s"($cursor)" + loop(tail)
+        case SuffixKind.Bracket(_) :: tail => s"[$cursor]" + loop(tail)
+        case SuffixKind.Template :: tail => s" {$cursor}" + loop(tail)
+        case _ => ""
+    loop(suffixes.toList)
   def toEditOpt: Option[String] =
     val edit = toEdit
     if edit.nonEmpty then Some(edit) else None
-  private def hasSuffix = brace || bracket || template
 end CompletionSuffix
 
 object CompletionSuffix:
   val empty = CompletionSuffix(
-    brace = false,
-    bracket = false,
-    template = false,
-    snippet = SuffixKind.NoSuffix
+    suffixes = Set.empty,
+    snippet = SuffixKind.NoSuffix,
   )
 
 enum SuffixKind:
-  case Brace, Bracket, Template, NoSuffix
+  case Brace extends SuffixKind
+  case Bracket(typeParamsCount: Int) extends SuffixKind
+  case Template extends SuffixKind
+  case NoSuffix extends SuffixKind

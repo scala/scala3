@@ -235,10 +235,10 @@ class ShortenedTypePrinter(
     val info = sym.info.widenTermRefExpr
     val typeSymbol = info.typeSymbol
 
-    if sym.is(Flags.Package) || sym.isClass then " " + fullNameString(sym.owner)
+    if sym.is(Flags.Package) || sym.isClass then " " + fullNameString(sym.effectiveOwner)
     else if sym.is(Flags.Module) || typeSymbol.is(Flags.Module) then
-      if typeSymbol != NoSymbol then " " + fullNameString(typeSymbol.owner)
-      else " " + fullNameString(sym.owner)
+      if typeSymbol != NoSymbol then " " + fullNameString(typeSymbol.effectiveOwner)
+      else " " + fullNameString(sym.effectiveOwner)
     else if sym.is(Flags.Method) then
       defaultMethodSignature(sym, info, onlyMethodParams = true)
     else tpe(info)

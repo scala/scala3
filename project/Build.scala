@@ -1153,7 +1153,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "0.11.12+45-45df705d-SNAPSHOT" // Will be set to stable release after 0.11.13 is published
+    val mtagsVersion = "0.11.12+165-7d0397b3-SNAPSHOT" // Will be set to stable release after 0.11.13 is published
 
     Seq(
       libraryDependencies ++= Seq(
@@ -1165,8 +1165,7 @@ object Build {
       transitiveClassifiers := Seq("sources"),
       resolvers += Resolver.defaultLocal,
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"), // To be removed after 0.11.13 is published
-      libraryDependencies += ("org.scalameta" %% "mtags-shared" % mtagsVersion % "sourcedeps")
-        .cross(CrossVersion.for3Use2_13),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % "sourcedeps"),
       (Compile / sourceGenerators) += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory

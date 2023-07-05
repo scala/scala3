@@ -4,7 +4,7 @@ package printing
 
 import core._
 import Texts._, ast.Trees._
-import Types.{Type, SingletonType, LambdaParam},
+import Types.{Type, SingletonType, LambdaParam, NamedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
 import typer.Implicits.SearchResult
@@ -12,7 +12,6 @@ import util.SourcePosition
 import typer.ImportInfo
 
 import scala.annotation.internal.sharable
-import dotty.tools.dotc.core.Types.NamedType
 
 /** The base class of all printers
  */

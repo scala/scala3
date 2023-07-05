@@ -6,6 +6,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import scala.meta.internal.mtags.MD5
+import scala.util.Properties
 
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.semanticdb.ExtractSemanticDB
@@ -39,7 +40,8 @@ class SemanticdbTextDocumentProvider(
         scala.util.Try(workspacePath.relativize(filePath)).toOption
       }
       .map { relativeUri =>
-        relativeUri.toString()
+        if Properties.isWin then relativeUri.toString().replace("\\", "/")
+        else relativeUri.toString()
       }
       .getOrElse(filePath.toString)
 

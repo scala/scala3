@@ -34,10 +34,10 @@ sealed trait CompletionValue:
   /**
    * Label with potentially attached description.
    */
-  def labelWithDescription(printer: ShortenedTypePrinter)(
-    using Context
-  ): String =
-    label
+  def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
+    labelWithSuffix
+  def labelWithSuffix: String =
+    s"$label${snippetSuffix.labelSnippet.getOrElse("")}"
   def lspTags(using Context): List[CompletionItemTag] = Nil
 end CompletionValue
 
@@ -77,13 +77,14 @@ object CompletionValue:
     override def labelWithDescription(
         printer: ShortenedTypePrinter
     )(using Context): String =
-      if symbol.is(Method) then s"${label}${description(printer)}"
-      else if symbol.isConstructor then label
-      else if symbol.is(Mutable) then s"${label}: ${description(printer)}"
+      if symbol.is(Method) then s"${labelWithSuffix}${description(printer)}"
+      else if symbol.isConstructor then labelWithSuffix
+      else if symbol.is(Mutable) then
+        s"${labelWithSuffix}: ${description(printer)}"
       else if symbol.is(Package) || symbol.is(Module) || symbol.isClass then
-        if isFromWorkspace then s"${label} -${description(printer)}"
-        else s"${label}${description(printer)}"
-      else s"${label}: ${description(printer)}"
+        if isFromWorkspace then s"${labelWithSuffix} -${description(printer)}"
+        else s"${labelWithSuffix}${description(printer)}"
+      else s"${labelWithSuffix}: ${description(printer)}"
 
     override def description(printer: ShortenedTypePrinter)(
       using Context

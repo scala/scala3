@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.semanticdb.*
+import dotty.tools.pc.utils.MtagsEnrichments.*
 
 object SemanticdbSymbols:
 
@@ -20,7 +21,9 @@ object SemanticdbSymbols:
       if !s.isSymbol || s.isRootPackage then RootPackage :: Nil
       else if s.isEmptyPackage then EmptyPackageVal :: Nil
       else if s.isPackage then
-        try requiredPackage(s.stripSuffix("/").replace("/", ".")) :: Nil
+        try
+          val pkg = s.split('/').map(_.stripBackticks).mkString(".")
+          requiredPackage(pkg) :: Nil
         catch
           case NonFatal(_) =>
             Nil
@@ -48,7 +51,29 @@ object SemanticdbSymbols:
                     typeSym :: owner.info.decl(termName(value)).symbol :: Nil
                   else typeSym :: Nil
                 case Descriptor.Term(value) =>
-                  owner.info.decl(termName(value)).symbol :: Nil
+                  val outSymbol = owner.info.decl(termName(value)).symbol
+                  if outSymbol.exists
+                  then outSymbol :: Nil
+                  else if owner.is(Package)
+                  then
+                    // Fallback for type companion objects,
+                    // e.g.
+                    // ```File.scala
+                    // package a
+                    // type Cow = Int
+                    // object Cow
+                    // ```
+                    // `ScalaTopLevelMtags` emits `a/Cow.`
+                    // but the symbol we look for is `a/File$package/Cow.`
+                    // (look: tests.pc.CompletionWorkspaceSuite.type-apply)
+                    owner.info.decls
+                      .filter { s =>
+                        s.isPackageObject && s.name.decoded.endsWith("$package")
+                      }
+                      .flatMap(tryMember)
+                      .toList
+                  else Nil
+                  end if
                 case Descriptor.Package(value) =>
                   owner.info.decl(termName(value)).symbol :: Nil
                 case Descriptor.Parameter(value) =>
@@ -69,7 +94,9 @@ object SemanticdbSymbols:
                     .toList
 
         parentSymbol.flatMap(tryMember)
-    try loop(sym).filterNot(_ == NoSymbol)
+    try
+      val res = loop(sym)
+      res.filterNot(_ == NoSymbol)
     catch case NonFatal(e) => Nil
   end inverseSemanticdbSymbol
 

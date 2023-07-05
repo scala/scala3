@@ -5,7 +5,7 @@ import scala.meta.pc.SymbolDocumentation
 import dotty.tools.pc.base.BaseSignatureHelpSuite
 import dotty.tools.pc.utils.MockEntries
 
-import org.junit.{Ignore, Test}
+import org.junit.Test
 
 class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
 
@@ -26,10 +26,13 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
       MockDocumentation("java/io/File#`<init>`(+1).", "<init>", Seq(), Seq("parent", "child")),
       MockDocumentation("java/io/File#`<init>`(+2).", "<init>", Seq(), Seq("parent", "child")),
       MockDocumentation("java/io/File#`<init>`(+3).", "<init>", Seq(), Seq("uri")),
-      ScalaMockDocumentation("scala/Some#", "Some"), ScalaMockDocumentation( "scala/Option#fold().", "fold", List("ifEmpty", "f")),
-      ScalaMockDocumentation("scala/Option.apply().", "apply", List("x")), ScalaMockDocumentation( "scala/collection/immutable/List#map().", "map", List("f")),
-      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List("z", "op")),
-      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List("pf", "fin", "rethrow"))
+      ScalaMockDocumentation("java/util/Collections#singleton().", "singleton", List(MockParam("o"))),
+      ScalaMockDocumentation("scala/Some#", "Some"),
+      ScalaMockDocumentation("scala/Option#fold().", "fold", List(MockParam("ifEmpty"), MockParam("f"))),
+      ScalaMockDocumentation("scala/Option.apply().", "apply", List(MockParam("x"))),
+      ScalaMockDocumentation("scala/collection/immutable/List#map().", "map", List(MockParam("f"))),
+      ScalaMockDocumentation("scala/collection/LinearSeqOps#foldLeft().", "foldLeft", List(MockParam("z"), MockParam("op"))),
+      ScalaMockDocumentation("scala/util/control/Exception.Catch#", "Catch", List(MockParam("pf"), MockParam("fin"), MockParam("rethrow")))
     )
 
   @Test def `curry` =
@@ -121,7 +124,6 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Ignore
   @Test def `java5` =
     checkDoc(
       """
@@ -129,11 +131,10 @@ class SignatureHelpDocSuite extends BaseSignatureHelpSuite:
         |  java.util.Collections.singleton(@@)
         |}
       """.stripMargin,
-      """|Returns an immutable set containing only the specified object.
-         |The returned set is serializable.
+      """|Found documentation for java/util/Collections#singleton().
          |singleton[T](o: T): java.util.Set[T]
          |             ^^^^
-         |  @param o o the sole object to be stored in the returned set.
+         |  @param o Found documentation for param o
          |""".stripMargin
     )
 

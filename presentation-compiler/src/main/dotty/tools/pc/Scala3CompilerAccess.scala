@@ -3,6 +3,7 @@ package dotty.tools.pc
 import java.util.concurrent.ScheduledExecutorService
 
 import scala.concurrent.ExecutionContextExecutor
+import scala.meta.internal.metals.ReportContext
 import scala.meta.internal.pc.CompilerAccess
 import scala.meta.pc.PresentationCompilerConfig
 
@@ -12,7 +13,7 @@ class Scala3CompilerAccess(
     config: PresentationCompilerConfig,
     sh: Option[ScheduledExecutorService],
     newCompiler: () => Scala3CompilerWrapper
-)(using ec: ExecutionContextExecutor)
+)(using ec: ExecutionContextExecutor, rc: ReportContext)
     extends CompilerAccess[StoreReporter, MetalsDriver](
       config,
       sh,

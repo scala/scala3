@@ -22,11 +22,13 @@ abstract class MockEntries:
         Location(s"$symbol $path", Range(Position(0, 0), Position(0, 0)))
       )
 
+  case class MockParam(name: String, defaultValue: String = "")
+
   object ScalaMockDocumentation:
     def apply(
         symbol: String,
         displayName: String,
-        params: List[String] = Nil
+        params: List[MockParam] = Nil
     ): SymbolDocumentation =
       ScalaSymbolDocumentation(
         symbol,
@@ -37,10 +39,10 @@ abstract class MockEntries:
         params
           .map(param =>
             ScalaSymbolDocumentation(
-              param,
-              param,
-              s"Found documentation for param $param\n",
-              "",
+              param.name,
+              param.name,
+              s"Found documentation for param ${param.name}\n",
+              param.defaultValue,
               Nil.asJava,
               Nil.asJava
             )

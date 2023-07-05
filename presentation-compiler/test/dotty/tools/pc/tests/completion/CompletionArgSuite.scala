@@ -3,7 +3,6 @@ package dotty.tools.pc.tests.completion
 import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.FixMethodOrder
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runners.MethodSorters
 
@@ -543,8 +542,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       topLines = Some(1)
     )
 
-  @Ignore
-  @Test def `second-arg-first` =
+  @Test def `1-second-arg-first` =
     check(
       """|case class Test(
          |    testA: String,
@@ -606,7 +604,6 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Ignore
   @Test def `case-class-apply3` =
     check(
       """|case class A(val foo: Int, val fooBar: Int)
@@ -626,7 +623,6 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Ignore
   @Test def `case-class-apply4` =
     check(
       """|case class A(val foo: Int, val fooBar: Int)

@@ -112,6 +112,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
       // It's expected to have two separate results, one for `object IndexedSeq` (which should not
       // expand snipppet) and one for `type IndexedSeq[T]`.
       """|IndexedSeq[$0]
+         |IndexedSeq
          |""".stripMargin
     )
 
@@ -135,6 +136,9 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
       """|ArrayDeque[$0]
          |ArrayDeque[$0]
          |ArrayDequeOps[$0]
+         |ArrayDeque
+         |ArrayDeque
+         |ArrayDequeOps
          |""".stripMargin
     )
 
@@ -145,6 +149,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|SimpleFileVisitor[$0]
+         |SimpleFileVisitor
          |""".stripMargin
     )
 
@@ -156,6 +161,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Iterable[$0] {}
          |IterableOnce[$0] {}
+         |Iterable
          |""".stripMargin
     )
 
@@ -167,6 +173,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Iterable[$0]
          |IterableOnce[$0]
+         |Iterable
          |""".stripMargin
     )
 
@@ -178,6 +185,7 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Iterable[$0]
          |IterableOnce[$0]
+         |Iterable
          |""".stripMargin
     )
 
@@ -282,7 +290,6 @@ class CompletionSnippetSuite extends BaseCompletionSuite:
       // they are filtered out.
       """|Try
          |Try($0)
-         |TryMethods
          |""".stripMargin
     )
 

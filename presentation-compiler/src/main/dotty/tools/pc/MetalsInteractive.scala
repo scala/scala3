@@ -196,7 +196,7 @@ object MetalsInteractive:
        * compiler automatically adds unapply if possible, we need to find the type symbol
        */
       case (head @ CaseDef(pat, _, _)) :: _
-          if defn.TypeTestClass == pat.symbol.owner =>
+          if pat.symbol.exists && defn.TypeTestClass == pat.symbol.owner =>
         pat match
           case UnApply(fun, _, pats) =>
             val tpeSym = pats.head.typeOpt.typeSymbol

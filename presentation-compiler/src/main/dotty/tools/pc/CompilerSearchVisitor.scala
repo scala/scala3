@@ -20,7 +20,7 @@ class CompilerSearchVisitor(
   val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName)
 
   private def isAccessible(sym: Symbol): Boolean = try
-    sym != NoSymbol && sym.isPublic
+    sym != NoSymbol && sym.isPublic && sym.isStatic
   catch
     case NonFatal(e) =>
       reports.incognito.create(

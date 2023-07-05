@@ -543,17 +543,19 @@ object OverrideCompletions:
           )
 
         // class Main extends Val:
-        //    def @@
+        //    def@@
         case (id: Ident) :: (t: Template) :: (td: TypeDef) :: _
-            if t.parents.nonEmpty && id.name.decoded.replace(
-              Cursor.value,
-              ""
-            ) == "def" =>
+            if t.parents.nonEmpty && "def".startsWith(
+              id.name.decoded.replace(
+                Cursor.value,
+                "",
+              )
+            ) =>
           Some(
             (
               td,
               None,
-              t.sourcePos.start,
+              id.sourcePos.start,
               true,
               None,
             )

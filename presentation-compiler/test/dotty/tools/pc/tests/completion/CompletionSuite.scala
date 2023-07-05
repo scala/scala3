@@ -164,6 +164,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |}""".stripMargin,
       """|ProcessBuilder java.lang
          |ProcessBuilder - scala.sys.process
+         |ProcessBuilderImpl - scala.sys.process
          |""".stripMargin,
       filter = _.contains("ProcessBuilder")
     )
@@ -590,7 +591,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val foo: ListBuffe@@
           |}
           |""".stripMargin,
-      """|ListBuffer - scala.collection.mutable
+      """|ListBuffer[T] - scala.collection.mutable
+         |ListBuffer - scala.collection.mutable
          |""".stripMargin
     )
 
@@ -600,7 +602,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val foo: Map[Int, ListBuffe@@]
           |}
           |""".stripMargin,
-      """|ListBuffer - scala.collection.mutable
+      """|ListBuffer[T] - scala.collection.mutable
+         |ListBuffer - scala.collection.mutable
          |""".stripMargin
     )
 
@@ -1231,3 +1234,21 @@ class CompletionSuite extends BaseCompletionSuite:
       "invalid: Any",
       topLines = Some(1)
     )
+
+  @Test def `trait-member` =
+    checkEdit(
+      """|trait Foo:
+         |  def foo: String
+         |
+         |object Bar extends Foo:
+         |  def@@
+         |""".stripMargin,
+      """|trait Foo:
+         |  def foo: String
+         |
+         |object Bar extends Foo:
+         |  def foo: String = ${0:???}
+         |""".stripMargin,
+      assertSingleItem = false,
+    )
+

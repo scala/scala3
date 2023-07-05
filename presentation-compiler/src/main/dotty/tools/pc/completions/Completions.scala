@@ -91,23 +91,7 @@ class Completions(
       if generalExclude then false
       else
         this match
-          case Type(_, _) if sym.isType => true
-          case Type(_, _) if sym.isTerm =>
-            /* Type might be referenced by a path over an object:
-             * ```
-             * object sample:
-             *    class X
-             * val a: samp@@le.X = ???
-             * ```
-             * ignore objects that has companion class
-             *
-             * Also ignore objects that doesn't have any members.
-             * By some reason traits might have a fake companion object(example: scala.sys.process.ProcessBuilderImpl)
-             */
-            val allowModule =
-              sym.is(Module) &&
-                (sym.companionClass == NoSymbol && sym.info.allMembers.nonEmpty)
-            allowModule
+          case Type(_, _) => true
           case Term if isWildcardParam(sym) => false
           case Term if sym.isTerm || sym.is(Package) => true
           case Import => true
@@ -123,6 +107,11 @@ class Completions(
     def allowTemplateSuffix: Boolean =
       this match
         case Type(_, hasNewKw) => hasNewKw
+        case _ => false
+
+    def allowApplicationSuffix: Boolean =
+      this match
+        case Term => true
         case _ => false
 
   end CursorPos
@@ -209,7 +198,7 @@ class Completions(
         end match
 
     val application = CompletionApplication.fromPath(path)
-    val ordering = completionOrdering(application)
+    val ordering = completionOrdering(application, cursorPos)
     val values = application.postProcess(all.sorted(ordering))
     (values, result)
   end completions
@@ -261,7 +250,9 @@ class Completions(
       .chain { suffix => // for [] suffix
         if shouldAddSnippet &&
           cursorPos.allowBracketSuffix && symbol.info.typeParams.nonEmpty
-        then suffix.copy(bracket = true, snippet = SuffixKind.Bracket)
+        then
+          val typeParamsCount = symbol.info.typeParams.length
+          suffix.withNewSuffixSnippet(SuffixKind.Bracket(typeParamsCount))
         else suffix
       }
       .chain { suffix => // for () suffix
@@ -270,7 +261,7 @@ class Completions(
           val paramss = getParams(symbol)
           paramss match
             case Nil => suffix
-            case List(Nil) => suffix.copy(brace = true)
+            case List(Nil) => suffix.withNewSuffix(SuffixKind.Brace)
             case _ if config.isCompletionSnippetsEnabled =>
               val onlyParameterless = paramss.forall(_.isEmpty)
               lazy val onlyImplicitOrTypeParams = paramss.forall(
@@ -278,10 +269,11 @@ class Completions(
                   sym.isType || sym.is(Implicit) || sym.is(Given)
                 }
               )
-              if onlyParameterless then suffix.copy(brace = true)
+              if onlyParameterless then suffix.withNewSuffix(SuffixKind.Brace)
               else if onlyImplicitOrTypeParams then suffix
-              else if suffix.hasSnippet then suffix.copy(brace = true)
-              else suffix.copy(brace = true, snippet = SuffixKind.Brace)
+              else if suffix.hasSnippet then
+                suffix.withNewSuffix(SuffixKind.Brace)
+              else suffix.withNewSuffixSnippet(SuffixKind.Brace)
             case _ => suffix
           end match
         else suffix
@@ -290,8 +282,8 @@ class Completions(
         if shouldAddSnippet && cursorPos.allowTemplateSuffix
           && isAbstractType(symbol)
         then
-          if suffix.hasSnippet then suffix.copy(template = true)
-          else suffix.copy(template = true, snippet = SuffixKind.Template)
+          if suffix.hasSnippet then suffix.withNewSuffix(SuffixKind.Template)
+          else suffix.withNewSuffixSnippet(SuffixKind.Template)
         else suffix
       }
 
@@ -308,8 +300,8 @@ class Completions(
     // find the apply completion that would need a snippet
     val methodSymbols =
       if shouldAddSnippet &&
-        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) && !sym
-          .is(Flags.JavaDefined)
+        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) &&
+          !sym.is(Flags.JavaDefined) && cursorPos.allowApplicationSuffix
       then
         val info =
           /* Companion will be added even for normal classes now,
@@ -629,11 +621,12 @@ class Completions(
             case symOnly: CompletionValue.Symbolic =>
               val sym = symOnly.symbol
               val name = SemanticdbSymbols.symbolName(sym)
-              val id =
+              val nameId =
                 if sym.isClass || sym.is(Module) then
                   // drop #|. at the end to avoid duplication
                   name.substring(0, name.length - 1)
                 else name
+              val id = nameId + symOnly.snippetSuffix.labelSnippet.getOrElse("")
               val include = cursorPos.include(sym)
               (id, include)
             case kw: CompletionValue.Keyword => (kw.label, true)
@@ -693,7 +686,8 @@ class Completions(
 
   private def computeRelevancePenalty(
       completion: CompletionValue,
-      application: CompletionApplication
+      application: CompletionApplication,
+      cursorPos: CursorPos,
   ): Int =
     import scala.meta.internal.pc.MemberOrdering.*
 
@@ -739,7 +733,10 @@ class Completions(
         relevance |= IsSynthetic
       if sym.isDeprecated then relevance |= IsDeprecated
       if isEvilMethod(sym.name) then relevance |= IsEvilMethod
-
+      cursorPos match
+        case CursorPos.Type(_, _) if !sym.isType =>
+          relevance |= IsNotTypeInTypePos
+        case _ =>
       relevance
     end symbolRelevance
 
@@ -817,7 +814,8 @@ class Completions(
   end CompletionApplication
 
   private def completionOrdering(
-      application: CompletionApplication
+      application: CompletionApplication,
+      cursorPos: CursorPos,
   ): Ordering[CompletionValue] =
     new Ordering[CompletionValue]:
       val queryLower = completionPos.query.toLowerCase()
@@ -832,8 +830,8 @@ class Completions(
 
       def compareByRelevance(o1: CompletionValue, o2: CompletionValue): Int =
         Integer.compare(
-          computeRelevancePenalty(o1, application),
-          computeRelevancePenalty(o2, application)
+          computeRelevancePenalty(o1, application, cursorPos),
+          computeRelevancePenalty(o2, application, cursorPos),
         )
 
       def fuzzyScore(o: CompletionValue.Symbolic): Int =
