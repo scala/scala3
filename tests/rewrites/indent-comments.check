@@ -2,9 +2,9 @@
 class A: /* 1 */ /* 2 */
   def m1(b: Boolean) = /* 3 */ /* 4 */
     val x = if (b)
-    /* 5 */
+    /* 5 */ {
       "true"
-    /* 6 */
+    } /* 6 */
     else
     /* 7 */
       "false"
