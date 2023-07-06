@@ -8,7 +8,7 @@ import java.io.{File => JFile, IOException, PrintStream, ByteArrayOutputStream}
 import java.lang.System.{lineSeparator => EOL}
 import java.net.URL
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.nio.file.{AccessDeniedException, Files, NoSuchFileException, Path, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
@@ -1193,6 +1193,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       try Files.delete(file.toPath)
       catch {
         case _: NoSuchFileException => // already deleted, everything's fine
+        case _: AccessDeniedException => // windows can throw these, ignore
       }
     }
   }
