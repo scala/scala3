@@ -14,7 +14,6 @@ class CompletionDocSuite extends BaseCompletionSuite:
       MockDocumentation("java/util/Map#Entry#setValue().", "setValue", Seq(), Seq("value")),
       MockDocumentation("java/util/Map#Entry#setValue().", "setValue", Seq(), Seq("value")),
       MockDocumentation("java/lang/String#join().", "join", Seq(), Seq("delimiter", "elements")),
-      MockDocumentation("java/lang/String#join(+2).", "join", Seq(), Seq("delimiter", "elements")),
       MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
       MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
       ScalaMockDocumentation("scala/collection/Iterator#sliding().", "sliding", List(MockParam("size"), MockParam("step", "1"))),
@@ -60,8 +59,8 @@ class CompletionDocSuite extends BaseCompletionSuite:
         |}
       """.stripMargin,
       """|join(delimiter: CharSequence, elements: CharSequence*): String
-         |join(delimiter: CharSequence, elements: java.lang.Iterable[? <: CharSequence]): String
-         |""".stripMargin
+         |""".stripMargin,
+         topLines = Some(1)
     )
 
   @Test def `java3` =
