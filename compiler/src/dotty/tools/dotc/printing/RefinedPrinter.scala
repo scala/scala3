@@ -124,14 +124,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if sym.isPackageObject then isOmittablePrefix(sym.owner)
       else isOmittablePrefix(sym)
 
-    val prefixType = if (tp.symbol.is(JavaStatic)) tp.prefix.widen else tp.prefix
-    prefixType match {
+    tp.prefix match {
       case thisType: ThisType if isOmittable(thisType.cls) =>
         ""
       case termRef @ TermRef(pre, _) =>
         val sym = termRef.symbol
-        if sym.isPackageObject && !homogenizedView && !printDebug then
-          toTextPrefixOf(termRef)
+        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefixOf(termRef)
         else if (isOmittable(sym)) ""
         else super.toTextPrefixOf(tp)
       case _ => super.toTextPrefixOf(tp)
