@@ -3306,7 +3306,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         traverse(xtree :: rest)
       case stat :: rest =>
         val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
-        if !checkInterestingResultInStatement(stat1) then checkStatementPurity(stat1)(stat, exprOwner)
+        if !Linter.warnOnInterestingResultInStatement(stat1) then checkStatementPurity(stat1)(stat, exprOwner)
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
       case nil =>
@@ -4372,108 +4372,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree match
       case _: RefTree | _: Literal
       if !isVarPattern(tree) && !(pt <:< tree.tpe) =>
-        withMode(Mode.GadtConstraintInference) {
+        withMode(Mode.GadtConstraintInference):
           TypeComparer.constrainPatternType(tree.tpe, pt)
-        }
 
-        // approximate type params with bounds
-        def approx = new ApproximatingTypeMap {
-          var alreadyExpanding: List[TypeRef] = Nil
-          def apply(tp: Type) = tp.dealias match
-            case tp: TypeRef if !tp.symbol.isClass =>
-              if alreadyExpanding contains tp then tp else
-                val saved = alreadyExpanding
-                alreadyExpanding ::= tp
-                val res = expandBounds(tp.info.bounds)
-                alreadyExpanding = saved
-                res
-            case _ =>
-              mapOver(tp)
-        }
+        Linter.warnOnImplausiblePattern(tree, pt)
 
-        // Is it certain that a value of `tree.tpe` is never a subtype of `pt`?
-        // It is true if either
-        // - the class of `tree.tpe` and class of `pt` cannot have common subclass, or
-        // - `tree` is an object or enum value, which cannot possibly be a subtype of `pt`
-        val isDefiniteNotSubtype = {
-          val clsA = tree.tpe.widenDealias.classSymbol
-          val clsB = pt.dealias.classSymbol
-          clsA.exists && clsB.exists
-            && clsA != defn.NullClass
-            && (!clsA.isNumericValueClass && !clsB.isNumericValueClass) // approximation for numeric conversion and boxing
-            && !clsA.asClass.mayHaveCommonChild(clsB.asClass)
-          || tree.symbol.isOneOf(Module | Enum)
-             && !(tree.tpe frozen_<:< pt) // fast track
-             && !(tree.tpe frozen_<:< approx(pt))
-        }
-
-        if isDefiniteNotSubtype then
-          // We could check whether `equals` is overridden.
-          // Reasons for not doing so:
-          // - it complicates the protocol
-          // - such code patterns usually implies hidden errors in the code
-          // - it's safe/sound to reject the code
-          report.error(TypeMismatch(tree.tpe, pt, Some(tree), "\npattern type is incompatible with expected type"), tree.srcPos)
-        else
-          val cmp =
-            untpd.Apply(
-              untpd.Select(untpd.TypedSplice(tree), nme.EQ),
-              untpd.TypedSplice(dummyTreeOfType(pt)))
-          typedExpr(cmp, defn.BooleanType)
+        val cmp =
+          untpd.Apply(
+            untpd.Select(untpd.TypedSplice(tree), nme.EQ),
+            untpd.TypedSplice(dummyTreeOfType(pt)))
+        typedExpr(cmp, defn.BooleanType)
       case _ =>
-
-  private def checkInterestingResultInStatement(t: Tree)(using Context): Boolean = {
-    def isUninterestingSymbol(sym: Symbol): Boolean =
-      sym == NoSymbol ||
-      sym.isConstructor ||
-      sym.is(Package) ||
-      sym.isPackageObject ||
-      sym == defn.BoxedUnitClass ||
-      sym == defn.AnyClass ||
-      sym == defn.AnyRefAlias ||
-      sym == defn.AnyValClass
-    def isUninterestingType(tpe: Type): Boolean =
-      tpe == NoType ||
-      tpe.typeSymbol == defn.UnitClass ||
-      defn.isBottomClass(tpe.typeSymbol) ||
-      tpe =:= defn.UnitType ||
-      tpe.typeSymbol == defn.BoxedUnitClass ||
-      tpe =:= defn.AnyValType ||
-      tpe =:= defn.AnyType ||
-      tpe =:= defn.AnyRefType
-    def isJavaApplication(t: Tree): Boolean = t match {
-      case Apply(f, _) => f.symbol.is(JavaDefined) && !defn.ObjectClass.isSubClass(f.symbol.owner)
-      case _ => false
-    }
-    def checkInterestingShapes(t: Tree): Boolean = t match {
-      case If(_, thenpart, elsepart) => checkInterestingShapes(thenpart) || checkInterestingShapes(elsepart)
-      case Block(_, res) => checkInterestingShapes(res)
-      case Match(_, cases) => cases.exists(k => checkInterestingShapes(k.body))
-      case _ => checksForInterestingResult(t)
-    }
-    def checksForInterestingResult(t: Tree): Boolean = (
-         !t.isDef                               // ignore defs
-      && !isUninterestingSymbol(t.symbol)       // ctors, package, Unit, Any
-      && !isUninterestingType(t.tpe)            // bottom types, Unit, Any
-      && !isThisTypeResult(t)                   // buf += x
-      && !isSuperConstrCall(t)                  // just a thing
-      && !isJavaApplication(t)                  // Java methods are inherently side-effecting
-      // && !treeInfo.hasExplicitUnit(t)           // suppressed by explicit expr: Unit // TODO Should explicit `: Unit` be added as warning suppression?
-    )
-    if ctx.settings.WNonUnitStatement.value && !ctx.isAfterTyper && checkInterestingShapes(t) then
-      val where = t match {
-        case Block(_, res) => res
-        case If(_, thenpart, Literal(Constant(()))) =>
-          thenpart match {
-            case Block(_, res) => res
-            case _ => thenpart
-          }
-        case _ => t
-      }
-      report.warning(UnusedNonUnitValue(where.tpe), t.srcPos)
-      true
-    else false
-  }
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =
     if !tree.tpe.isErroneous

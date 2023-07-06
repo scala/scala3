@@ -1,3 +1,4 @@
+// scalac: -Wimplausible-patterns
 enum Recovery:
   case RecoveryCompleted
 

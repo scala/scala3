@@ -2938,3 +2938,11 @@ class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
       i"""cannot turn method type $mt into closure
          |because it has internal parameter dependencies"""
     def explain(using Context) = ""
+
+class ImplausiblePatternWarning(pat: tpd.Tree, selType: Type)(using Context)
+  extends TypeMsg(ImplausiblePatternWarningID):
+    def msg(using Context) =
+      i"""|Implausible pattern:
+          |$pat  could match selector of type  $selType
+          |only if there is an `equals` method identifying elements of the two types."""
+    def explain(using Context) = ""

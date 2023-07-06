@@ -2009,20 +2009,21 @@ class Definitions {
     vcls
   }
 
+  def boxedClass(cls: Symbol): ClassSymbol =
+    if cls eq ByteClass then         BoxedByteClass
+    else if cls eq ShortClass then   BoxedShortClass
+    else if cls eq CharClass then    BoxedCharClass
+    else if cls eq IntClass then     BoxedIntClass
+    else if cls eq LongClass then    BoxedLongClass
+    else if cls eq FloatClass then   BoxedFloatClass
+    else if cls eq DoubleClass then  BoxedDoubleClass
+    else if cls eq UnitClass then    BoxedUnitClass
+    else if cls eq BooleanClass then BoxedBooleanClass
+    else sys.error(s"Not a primitive value type: $cls")
+
   /** The type of the boxed class corresponding to primitive value type `tp`. */
-  def boxedType(tp: Type)(using Context): TypeRef = {
-    val cls = tp.classSymbol
-    if (cls eq ByteClass)         BoxedByteClass
-    else if (cls eq ShortClass)   BoxedShortClass
-    else if (cls eq CharClass)    BoxedCharClass
-    else if (cls eq IntClass)     BoxedIntClass
-    else if (cls eq LongClass)    BoxedLongClass
-    else if (cls eq FloatClass)   BoxedFloatClass
-    else if (cls eq DoubleClass)  BoxedDoubleClass
-    else if (cls eq UnitClass)    BoxedUnitClass
-    else if (cls eq BooleanClass) BoxedBooleanClass
-    else sys.error(s"Not a primitive value type: $tp")
-  }.typeRef
+  def boxedType(tp: Type)(using Context): TypeRef =
+    boxedClass(tp.classSymbol).typeRef
 
   def unboxedType(tp: Type)(using Context): TypeRef = {
     val cls = tp.classSymbol

@@ -1,3 +1,4 @@
+// scalac: -Wimplausible-patterns
 abstract class RecoveryCompleted
 object RecoveryCompleted extends RecoveryCompleted
 
