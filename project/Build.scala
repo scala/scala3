@@ -1068,6 +1068,82 @@ object Build {
       libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
     )
 
+  lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
+    .asScala3PresentationCompiler(NonBootstrapped)
+  lazy val `scala3-presentation-compiler-bootstrapped` = project.in(file("presentation-compiler"))
+    .asScala3PresentationCompiler(Bootstrapped)
+
+  def scala3PresentationCompiler(implicit mode: Mode): Project = mode match {
+    case NonBootstrapped => `scala3-presentation-compiler`
+    case Bootstrapped => `scala3-presentation-compiler-bootstrapped`
+  }
+
+  def scala3PresentationCompilerBuildInfo(implicit mode: Mode) =
+    Seq(
+      ideTestsDependencyClasspath := {
+        val dottyLib = (dottyLibrary / Compile / classDirectory).value
+        val scalaLib =
+          (dottyLibrary / Compile / dependencyClasspath)
+            .value
+            .map(_.data)
+            .filter(_.getName.matches("scala-library.*\\.jar"))
+            .toList
+        dottyLib :: scalaLib
+        // Nil
+      },
+      Compile / buildInfoPackage := "dotty.tools.pc.util",
+      Compile / buildInfoKeys := Seq(scalaVersion),
+      Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath)
+    ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
+      BuildInfoPlugin.buildInfoScopedSettings(Test) ++
+      BuildInfoPlugin.buildInfoDefaultSettings
+
+  lazy val presentationCompilerSettings = {
+    val mtagsVersion = "0.11.12+165-7d0397b3-SNAPSHOT" // Will be set to stable release after 0.11.13 is published
+
+    Seq(
+      libraryDependencies ++= Seq(
+        "org.lz4" % "lz4-java" % "1.8.0",
+        "io.get-coursier" % "interface" % "1.0.13",
+        "org.scalameta" % "mtags-interfaces" % mtagsVersion,
+      ),
+      ivyConfigurations += SourceDeps.hide,
+      transitiveClassifiers := Seq("sources"),
+      resolvers += Resolver.defaultLocal,
+      resolvers ++= Resolver.sonatypeOssRepos("snapshots"), // To be removed after 0.11.13 is published
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % "sourcedeps"),
+      (Compile / sourceGenerators) += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val targetDir = (Compile/sourceManaged).value / "mtags-shared"
+
+        val report = updateClassifiers.value
+        val mtagsSharedSourceJar = report.select(
+          configuration = configurationFilter("sourcedeps"),
+          module = (_: ModuleID).name.startsWith("mtags-shared_"),
+          artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+            sys.error(s"Could not fetch mtags-shared sources")
+
+          }
+        FileFunction.cached(cacheDir / s"fetchMtagsSharedSource",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info(s"Unpacking mtags-shared sources to $targetDir...")
+          if (targetDir.exists)
+            IO.delete(targetDir)
+          IO.createDirectory(targetDir)
+          IO.unzip(mtagsSharedSourceJar, targetDir)
+
+          val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
+          mtagsSharedSources.foreach(f => {
+            val lines = IO.readLines(f)
+            IO.writeLines(f, insertUnsafeNullsImport(lines))
+          })
+          mtagsSharedSources
+        } (Set(mtagsSharedSourceJar)).toSeq
+      }.taskValue,
+    )
+  }
+
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
     settings(commonBootstrappedSettings).
@@ -1790,9 +1866,9 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`).
-      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`,
-        `scala3-library-bootstrappedJS`, scaladoc).
+      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scala3-sbt-bridge`, scala3PresentationCompiler).
+      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`,
+        `scala3-tasty-inspector`, `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -1865,6 +1941,11 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
+
+    def asScala3PresentationCompiler(implicit mode: Mode): Project = project.withCommonSettings.
+      dependsOn(dottyCompiler, dottyLibrary).
+      settings(presentationCompilerSettings).
+      settings(scala3PresentationCompilerBuildInfo)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).

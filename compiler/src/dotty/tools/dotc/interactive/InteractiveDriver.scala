@@ -145,7 +145,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     (fromSource ++ fromClassPath).distinct
   }
 
-  def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
+  def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
     import typer.ImportInfo._
@@ -297,9 +297,6 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     cleanupTree(tree)
   }
 
-  private def toSource(uri: URI, sourceCode: String): SourceFile =
-    SourceFile.virtual(Paths.get(uri).toString, sourceCode)
-
   /**
    * Initialize this driver and compiler.
    *
@@ -323,7 +320,7 @@ object InteractiveDriver {
     else
       try
         // We don't use file.file here since it'll be null
-        // for the VirtualFiles created by InteractiveDriver#toSource
+        // for the VirtualFiles created by SourceFile#virtual
         // TODO: To avoid these round trip conversions, we could add an
         // AbstractFile#toUri method and implement it by returning a constant
         // passed as a parameter to a constructor of VirtualFile

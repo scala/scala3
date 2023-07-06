@@ -330,7 +330,7 @@ trait ImportSuggestions:
     def importString(ref: TermRef): String =
       val imported =
         if ref.symbol.is(ExtensionMethod) then
-          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name}"
+          s"${ctx.printer.toTextPrefixOf(ref).show}${ref.symbol.name}"
         else
           ctx.printer.toTextRef(ref).show
       s"  import $imported"

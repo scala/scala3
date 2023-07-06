@@ -89,15 +89,19 @@ major authors were omitted by oversight.
     details.
 
   * dotty.tools.dotc.coverage: Coverage instrumentation utilities have been
-    adapted from the scoverage plugin for scala 2 [5], which is under the
+    adapted from the scoverage plugin for scala 2 [4], which is under the
     Apache 2.0 license.
 
+  * dooty.tools.pc: Presentation compiler implementation adapted from
+    scalameta/metals [5] mtags module, which is under the Apache 2.0 license.
+
   * The Dotty codebase contains parts which are derived from
-    the ScalaPB protobuf library [4], which is under the Apache 2.0 license.
+    the ScalaPB protobuf library [6], which is under the Apache 2.0 license.
 
 
 [1] https://github.com/scala/scala
 [2] https://github.com/adriaanm/scala/tree/sbt-api-consolidate/src/compiler/scala/tools/sbt
 [3] https://github.com/sbt/sbt/tree/0.13/compile/interface/src/main/scala/xsbt
-[4] https://github.com/lampepfl/dotty/pull/5783/files
-[5] https://github.com/scoverage/scalac-scoverage-plugin
+[4] https://github.com/scoverage/scalac-scoverage-plugin
+[5] https://github.com/scalameta/metals
+[6] https://github.com/lampepfl/dotty/pull/5783/files

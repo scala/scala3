@@ -117,21 +117,22 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  override def toTextPrefix(tp: Type): Text = controlled {
+  override def toTextPrefixOf(tp: NamedType): Text = controlled {
     def isOmittable(sym: Symbol) =
       if printDebug then false
       else if homogenizedView then isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
       else if sym.isPackageObject then isOmittablePrefix(sym.owner)
       else isOmittablePrefix(sym)
-    tp match {
-      case tp: ThisType if isOmittable(tp.cls) =>
+
+    tp.prefix match {
+      case thisType: ThisType if isOmittable(thisType.cls) =>
         ""
-      case tp @ TermRef(pre, _) =>
-        val sym = tp.symbol
-        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefix(pre)
+      case termRef @ TermRef(pre, _) =>
+        val sym = termRef.symbol
+        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefixOf(termRef)
         else if (isOmittable(sym)) ""
-        else super.toTextPrefix(tp)
-      case _ => super.toTextPrefix(tp)
+        else super.toTextPrefixOf(tp)
+      case _ => super.toTextPrefixOf(tp)
     }
   }
 
@@ -427,8 +428,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id @ Ident(name) =>
         val txt = tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
-            val pre = if (tp.symbol.is(JavaStatic)) tp.prefix.widen else tp.prefix
-            toTextPrefix(pre) ~ withPos(selectionString(tp), tree.sourcePos)
+            toTextPrefixOf(tp) ~ withPos(selectionString(tp), tree.sourcePos)
           case _ =>
             toText(name)
         }
