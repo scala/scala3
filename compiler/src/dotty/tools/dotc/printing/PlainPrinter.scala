@@ -179,7 +179,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (printWithoutPrefix.contains(tp.symbol))
           toText(tp.name)
         else
-          toTextPrefix(tp.prefix) ~ selectionString(tp)
+          toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: TermParamRef =>
         ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ ".type"
       case tp: TypeParamRef =>
@@ -353,7 +353,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        toTextPrefix(tp.prefix) ~ selectionString(tp)
+        toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
@@ -375,15 +375,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  /** The string representation of this type used as a prefix, including separator */
-  def toTextPrefix(tp: Type): Text = controlled {
-    homogenize(tp) match {
-      case NoPrefix => ""
-      case tp: SingletonType => toTextRef(tp) ~ "."
-      case tp => trimPrefix(toTextLocal(tp)) ~ "#"
-    }
-  }
-
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
@@ -392,6 +383,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
     defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
+
+  /** The string representation of type prefix, including separator */
+  def toTextPrefixOf(tp: NamedType): Text = controlled {
+      homogenize(tp.prefix) match {
+        case NoPrefix => ""
+        case tp: SingletonType => toTextRef(tp) ~ "."
+        case tp => trimPrefix(toTextLocal(tp)) ~ "#"
+      }
+  }
 
   protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
