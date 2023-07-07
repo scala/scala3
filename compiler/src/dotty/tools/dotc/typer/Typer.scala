@@ -4344,6 +4344,29 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           if isApplyProxy(tree) then newExpr
           else if pt.isInstanceOf[PolyProto] then tree
           else
+            if Feature.enabled(Feature.typeClauseInference) then
+              // If `tree` is a polymorphic method reference and the expected
+              // type is a polymorphic function, perform a monomorphic
+              // eta-expansion of the method reference.
+              // For example, this means that
+              //
+              //     (1, 2.0).map(Option.apply)
+              //
+              // will expand to:
+              //
+              //     (1, 2.0).map(x => Option.apply(x))
+              //
+              // A type parameter clause for the lambda will subsequently be
+              // inferred (from its expected type) in typedFunctionValue.
+              pt match
+                case defn.PolyFunctionOf(_: PolyType) =>
+                  poly.resultType match
+                    case mt: MethodType =>
+                      val expanded = etaExpand(tree, mt, mt.paramInfos.length)
+                      return simplify(typed(expanded, pt), pt, locked)
+                    case _ =>
+                case _ =>
+            end if
             var typeArgs = tree match
               case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
               case _ => Nil
