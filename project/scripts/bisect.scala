@@ -238,7 +238,7 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
     val bisectRunScript = s"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -r out
-      |sbt "clean; ${scala3Project}/publishLocal"
+      |sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal"
       |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin
     "git bisect start".!
