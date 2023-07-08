@@ -1,20 +1,45 @@
--- [E186] Syntax Error: tests/neg/i17738-toplevel-infix.scala:13:10 ----------------------------------------------------
-13 |infix val toplevelVal = ??? // error
+-- [E156] Syntax Error: tests/neg/i17738-toplevel-infix.scala:14:10 ----------------------------------------------------
+14 |infix val toplevelVal = ??? // error
    |          ^
-   |          a toplevel val cannot be infix
--- [E186] Syntax Error: tests/neg/i17738-toplevel-infix.scala:14:10 ----------------------------------------------------
-14 |infix var toplevelVar = ??? // error
+   |          Modifier infix is not allowed for this definition
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | a toplevel val cannot be infix
+    --------------------------------------------------------------------------------------------------------------------
+-- [E156] Syntax Error: tests/neg/i17738-toplevel-infix.scala:15:10 ----------------------------------------------------
+15 |infix var toplevelVar = ??? // error
    |          ^
-   |          a toplevel var cannot be infix
--- [E186] Syntax Error: tests/neg/i17738-toplevel-infix.scala:15:10 ----------------------------------------------------
-15 |infix def toplevelDef = ??? // error
+   |          Modifier infix is not allowed for this definition
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | a toplevel var cannot be infix
+    --------------------------------------------------------------------------------------------------------------------
+-- [E156] Syntax Error: tests/neg/i17738-toplevel-infix.scala:16:10 ----------------------------------------------------
+16 |infix def toplevelDef = ??? // error
    |          ^
-   |          a toplevel def cannot be infix
--- [E186] Syntax Error: tests/neg/i17738-toplevel-infix.scala:16:12 ----------------------------------------------------
-16 |infix given toplevelGiven: Int = ??? // error
+   |          Modifier infix is not allowed for this definition
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | a toplevel def cannot be infix
+    --------------------------------------------------------------------------------------------------------------------
+-- [E156] Syntax Error: tests/neg/i17738-toplevel-infix.scala:17:12 ----------------------------------------------------
+17 |infix given toplevelGiven: Int = ??? // error
    |            ^
-   |            a toplevel given cannot be infix
--- [E186] Syntax Error: tests/neg/i17738-toplevel-infix.scala:17:19 ----------------------------------------------------
-17 |infix implicit val topevelImplicit: Int = ??? // error
+   |            Modifier infix is not allowed for this definition
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | a toplevel given cannot be infix
+    --------------------------------------------------------------------------------------------------------------------
+-- [E156] Syntax Error: tests/neg/i17738-toplevel-infix.scala:18:19 ----------------------------------------------------
+18 |infix implicit val topevelImplicit: Int = ??? // error
    |                   ^
-   |                   a toplevel val cannot be infix
+   |                   Modifier infix is not allowed for this definition
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | a toplevel val cannot be infix
+    --------------------------------------------------------------------------------------------------------------------
