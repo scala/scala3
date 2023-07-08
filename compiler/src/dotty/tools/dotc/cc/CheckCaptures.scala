@@ -94,7 +94,11 @@ object CheckCaptures:
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
    */
-  def checkWellformed(ann: Tree)(using Context): Unit =
+  def checkWellformed(parent: Tree, ann: Tree)(using Context): Unit =
+    parent.tpe match
+      case _: SingletonType =>
+        report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
+      case _ =>
     for elem <- retainedElems(ann) do
       elem.tpe match
         case ref: CaptureRef =>
@@ -848,21 +852,25 @@ class CheckCaptures extends Recheck, SymTransformer:
             adaptedType(boxed)
       }
 
-      var actualw = actual.widenDealias
-      actual match
-        case ref: CaptureRef if ref.isTracked =>
-          actualw match
-            case CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
-              actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
-                .showing(i"improve $actualw to $result", capt)
-                // given `a: C T`, improve `C T` to `{a} T`
-            case _ =>
-        case _ =>
-      val adapted = adapt(actualw, expected, covariant = true)
-      if adapted ne actualw then
-        capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
-        adapted
-      else actual
+      if expected.isSingleton && actual.isSingleton then
+        println(i"shot $actual $expected")
+        actual
+      else
+        var actualw = actual.widenDealias
+        actual match
+          case ref: CaptureRef if ref.isTracked =>
+            actualw match
+              case CapturingType(p, refs) if ref.singletonCaptureSet.mightSubcapture(refs) =>
+                actualw = actualw.derivedCapturingType(p, ref.singletonCaptureSet)
+                  .showing(i"improve $actualw to $result", capt)
+                  // given `a: T^C`, improve `T^C` to `T^{a}`
+              case _ =>
+          case _ =>
+        val adapted = adapt(actualw, expected, covariant = true)
+        if adapted ne actualw then
+          capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
+          adapted
+        else actual
     end adaptBoxed
 
     /** Check overrides again, taking capture sets into account.
