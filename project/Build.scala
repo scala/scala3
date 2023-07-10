@@ -525,6 +525,33 @@ object Build {
     recur(lines, false)
   }
 
+  /** replace imports of `com.google.protobuf.*` with compiler implemented version */
+  def replaceProtobuf(lines: List[String]): List[String] = {
+    def recur(ls: List[String]): List[String] = ls match {
+      case l :: rest =>
+        val lt = l.trim()
+        if (lt.isEmpty || lt.startsWith("package ") || lt.startsWith("import ")) {
+          val newLine =
+            if (lt.startsWith("import com.google.protobuf.")) {
+              if (lt == "import com.google.protobuf.CodedInputStream") {
+                "import dotty.tools.dotc.semanticdb.internal.SemanticdbInputStream as CodedInputStream"
+              } else if (lt == "import com.google.protobuf.CodedOutputStream") {
+                "import dotty.tools.dotc.semanticdb.internal.SemanticdbOutputStream as CodedOutputStream"
+              } else {
+                l
+              }
+            } else {
+              l
+            }
+          newLine :: recur(rest)
+        } else {
+          ls // don't check rest of file
+        }
+      case _ => ls
+    }
+    recur(lines)
+  }
+
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Generate compiler.properties, used by sbt
@@ -1135,7 +1162,8 @@ object Build {
           val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
           mtagsSharedSources.foreach(f => {
             val lines = IO.readLines(f)
-            IO.writeLines(f, insertUnsafeNullsImport(lines))
+            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))
+            IO.writeLines(f, substitutions(lines))
           })
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
