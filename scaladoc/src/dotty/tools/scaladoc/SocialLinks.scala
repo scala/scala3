@@ -8,9 +8,12 @@ enum SocialLinks(val url: String, val className: String):
   case Custom(cUrl: String, lightIcon: String, darkIcon: String) extends SocialLinks(cUrl, "custom")
 
 object SocialLinks:
+  val LowercaseNamePattern = "^[a-z]+$".r
+
   def parse(s: String): Either[String, SocialLinks] =
     val errorPrefix = s"Social links arg $s is invalid: "
     val splitted = s.split("::")
+
     splitted.head match {
       case "github" if splitted.size == 2 => Right(Github(splitted(1)))
       case "github" => Left(errorPrefix + "For 'github' arg expected one argument: url")
@@ -20,8 +23,8 @@ object SocialLinks:
       case "gitter" => Left(errorPrefix + "For 'gitter' arg expected one argument: url")
       case "discord" if splitted.size == 2 => Right(Discord(splitted(1)))
       case "discord" => Left(errorPrefix + "For 'discord' arg expected one argument: url")
-      case "custom" if splitted.size == 4 => Right(Custom(splitted(1), splitted(2), splitted(3)))
-      case "custom" if splitted.size == 3 => Right(Custom(splitted(1), splitted(2), splitted(2)))
-      case "custom" => Left(errorPrefix + "For 'custom' arg expected three arguments: url, white icon name, black icon name")
+      case LowercaseNamePattern() if splitted.size == 4 => Right(Custom(splitted(1), splitted(2), splitted(3)))
+      case LowercaseNamePattern() if splitted.size == 3 => Right(Custom(splitted(1), splitted(2), splitted(2)))
+      case LowercaseNamePattern() => Left(errorPrefix + "For 'custom' two minimum arguments are expected: url, white icon name, [dark icon name]")
       case _ => Left(errorPrefix)
     }
