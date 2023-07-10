@@ -1201,6 +1201,7 @@ object Objects:
      *  Currently, we assume all cases are reachable, thus all patterns are assumed to match.
      */
     def evalPattern(scrutinee: Value, pat: Tree): Value = log("match " + scrutinee.show + " against " + pat.show, printer, (_: Value).show):
+      val trace2 = Trace.trace.add(pat)
       pat match
       case Alternative(pats) =>
         for pat <- pats do evalPattern(scrutinee, pat)
@@ -1211,11 +1212,9 @@ object Objects:
         initLocal(bind.symbol, value)
         scrutinee
 
-      case SeqLiteral(pats, _) =>
-        // TODO: handle unapplySeq
-        Bottom
-
       case UnApply(fun, implicits, pats) =>
+        given Trace = trace2
+
         val fun1 = funPart(fun)
         val funRef = fun1.tpe.asInstanceOf[TermRef]
         val unapplyResTp = funRef.widen.finalResultType
@@ -1300,7 +1299,7 @@ object Objects:
         end if
         scrutinee
 
-      case Ident(nme.WILDCARD) =>
+      case Ident(nme.WILDCARD) | Ident(nme.WILDCARD_STAR) =>
         scrutinee
 
       case Typed(pat, _) =>
@@ -1315,7 +1314,7 @@ object Objects:
     /**
      * Evaluate a sequence value against sequence patterns.
      */
-    def evalSeqPatterns(scrutinee: Value, scrutineeType: Type, elemType: Type, pats: List[Tree]): Unit =
+    def evalSeqPatterns(scrutinee: Value, scrutineeType: Type, elemType: Type, pats: List[Tree])(using Trace): Unit =
       // call .lengthCompare or .length
       val lengthCompareDenot = getMemberMethod(scrutineeType, nme.lengthCompare, lengthCompareType)
       if lengthCompareDenot.exists then
