@@ -135,7 +135,9 @@ class QuoteMatcher(debug: Boolean) {
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found, seal them in a quoted.Type and add them to the result
         val typeHoleApproximations = typeHoles.map(typeHoleApproximation)
-        val matchedTypes = typeHoleApproximations.map(tpe => new TypeImpl(TypeTree(tpe), spliceScope))
+        val matchedTypes = typeHoleApproximations.map { tpe =>
+          new TypeImpl(TypeTree(tpe).withSpan(scrutinee.span), spliceScope)
+        }
         val matchedExprs =
           val typeHoleMap: Type => Type =
             if typeHoles.isEmpty then identity
