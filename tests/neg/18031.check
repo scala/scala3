@@ -1,0 +1,28 @@
+-- Error: tests/neg/18031.scala:8:15 -----------------------------------------------------------------------------------
+8 |  export A.{*, x as _} // error
+  |               ^
+  |               named exports cannot follow wildcard exports
+-- Error: tests/neg/18031.scala:11:15 ----------------------------------------------------------------------------------
+11 |  import A.{*, x as _} // error
+   |               ^
+   |               named imports cannot follow wildcard imports
+-- Error: tests/neg/18031.scala:15:14 ----------------------------------------------------------------------------------
+15 |  export A.{x => blah} // error
+   |              ^
+   |              The export renaming `a => b` is no longer supported ; use `a as b` instead
+   |              This construct can be rewritten automatically under -rewrite -source future-migration.
+-- Error: tests/neg/18031.scala:18:14 ----------------------------------------------------------------------------------
+18 |  import A.{x => blah} // error
+   |              ^
+   |              The import renaming `a => b` is no longer supported ; use `a as b` instead
+   |              This construct can be rewritten automatically under -rewrite -source future-migration.
+-- Error: tests/neg/18031.scala:22:11 ----------------------------------------------------------------------------------
+22 |  export A._ // error
+   |           ^
+   |           `_` is no longer supported for a wildcard export; use `*` instead
+   |           This construct can be rewritten automatically under -rewrite -source future-migration.
+-- Error: tests/neg/18031.scala:25:11 ----------------------------------------------------------------------------------
+25 |  import A._ // error
+   |           ^
+   |           `_` is no longer supported for a wildcard import; use `*` instead
+   |           This construct can be rewritten automatically under -rewrite -source future-migration.
