@@ -569,7 +569,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // optimization, it also avoids forcing imports thus potentially avoiding
     // cyclic references.
     if (name == nme.ROOTPKG)
-      return tree.withType(defn.RootPackage.termRef)
+      val tree2 = tree.withType(defn.RootPackage.termRef)
+      checkLegalValue(tree2, pt)
+      return tree2
 
     val rawType =
       val saved1 = unimported
@@ -581,13 +583,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             em"""Name resolution will change.
-              | currently selected                          : $foundUnderScala2
-              | in the future, without -source 3.0-migration: $found""", tree.srcPos)
+                | currently selected                          : $foundUnderScala2
+                | in the future, without -source 3.0-migration: $found""", tree.srcPos)
           foundUnderScala2
         else found
       finally
-      	unimported = saved1
-      	foundUnderScala2 = saved2
+        unimported = saved1
+        foundUnderScala2 = saved2
 
     /** Normally, returns `ownType` except if `ownType` is a constructor proxy,
      *  and there is another shadowed type accessible with the same name that is not:
