@@ -5567,8 +5567,7 @@ object Types {
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isParamDependent &&
-                mt.resultType.isValueTypeOrWildcard &&
-                !defn.isContextFunctionType(mt.resultType) =>
+                mt.resultType.isValueTypeOrWildcard =>
               val cls = tp.classSymbol
 
               // Given a SAM type such as:
