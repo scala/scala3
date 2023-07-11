@@ -1,14 +1,18 @@
 -- [E081] Type Error: tests/neg/i17183.scala:11:24 ---------------------------------------------------------------------
 11 |def test = Context(f = (_, _) => ???) // error // error
    |                        ^
-   |                        Missing parameter type
+   |                        Could not infer type for parameter _$1 of anonymous function
    |
-   |                        I could not infer the type of the parameter _$1 of expanded function:
-   |                        (_$1, _$2) => ???.
+   |                        In expanded function:
+   |                        (_$1, _$2) => ???
+   |
+   |                        Expected type for the whole anonymous function: MyFunc
 -- [E081] Type Error: tests/neg/i17183.scala:11:27 ---------------------------------------------------------------------
 11 |def test = Context(f = (_, _) => ???) // error // error
    |                           ^
-   |                           Missing parameter type
+   |                           Could not infer type for parameter _$2 of anonymous function
    |
-   |                           I could not infer the type of the parameter _$2 of expanded function:
-   |                           (_$1, _$2) => ???.
+   |                           In expanded function:
+   |                           (_$1, _$2) => ???
+   |
+   |                           Expected type for the whole anonymous function: MyFunc

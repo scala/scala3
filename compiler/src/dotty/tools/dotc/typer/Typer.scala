@@ -1620,7 +1620,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 else
                   inferredFromTarget(param, formal, calleeType, isErased, paramIndex).orElse(
                     if knownFormal then formal0
-                    else errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos)
+                    else errorType(AnonymousFunctionMissingParamType(param, tree, inferredType = formal, expectedType = pt), param.srcPos)
                   )
               val paramTpt = untpd.TypedSplice(
                   (if knownFormal then InferredTypeTree() else untpd.TypeTree())
@@ -3957,7 +3957,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         sym.isConstructor
         || sym.matchNullaryLoosely
         || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
-          && { 
+          && {
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)
