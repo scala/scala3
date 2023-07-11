@@ -1,0 +1,8 @@
+### How to use this project
+
+Use the SBT command `stdlib-bootstrapped-cc/run` to show the help message.
+With this command we can clone sources from the Scala 2 library into `stdlib-bootstrapped-cc`.
+Cloned sources should be committed before they are modified, this will simplify any migration to later versions of the Scala 2 library.
+
+This version of the stdlib can be tested using the command `stdlib-bootstrapped-cc-tests/test`.
+Tests are located in the directory `stdlib-bootstrapped-cc-tests/test`.

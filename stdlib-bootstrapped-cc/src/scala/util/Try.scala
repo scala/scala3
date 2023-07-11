@@ -83,7 +83,7 @@ sealed abstract class Try[+T] extends Product with Serializable {
 
   /** Returns the value from this `Success` or throws the exception if this is a `Failure`.
    */
-  def get: T
+  def get(using CanThrow[Exception]): T
 
   /**
    * Applies the given function `f` if this is a `Success`, otherwise returns `Unit` if this is a `Failure`.
@@ -215,7 +215,7 @@ object Try {
 final case class Failure[+T](exception: Throwable) extends Try[T] {
   override def isFailure: Boolean = true
   override def isSuccess: Boolean = false
-  override def get: T = throw exception
+  override def get(using CanThrow[Exception]): T = throw exception
   override def getOrElse[U >: T](default: => U): U = default
   override def orElse[U >: T](default: => Try[U]): Try[U] =
     try default catch { case NonFatal(e) => Failure(e) }
@@ -251,8 +251,8 @@ final case class Failure[+T](exception: Throwable) extends Try[T] {
 final case class Success[+T](value: T) extends Try[T] {
   override def isFailure: Boolean = false
   override def isSuccess: Boolean = true
-  override def get = value
-  override def getOrElse[U >: T](default: => U): U = get
+  override def get(using CanThrow[Exception]) = value
+  override def getOrElse[U >: T](default: => U): U = value
   override def orElse[U >: T](default: => Try[U]): Try[U] = this
   override def flatMap[U](f: T => Try[U]): Try[U] =
     try f(value) catch { case NonFatal(e) => Failure(e) }

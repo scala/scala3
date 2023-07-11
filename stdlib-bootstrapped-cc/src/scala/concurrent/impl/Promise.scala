@@ -135,7 +135,7 @@ private[concurrent] object Promise {
       if (state.isInstanceOf[Try[_]]) {
         if (state.asInstanceOf[Try[T]].isFailure) this.asInstanceOf[Future[R]]
         else {
-          val l = state.asInstanceOf[Success[T]].get
+          val l = state.asInstanceOf[Success[T]].value
           that.map(r => f(l, r))
         }
       } else {
@@ -146,7 +146,7 @@ private[concurrent] object Promise {
           case left: Success[_] =>
             val right = buffer.getAndSet(left).asInstanceOf[Success[U]]
             if (right ne null)
-              zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
+              zipped.tryComplete(try Success(f(left.value, right.value)) catch { case e if NonFatal(e) => Failure(e) })
           case f => // Can only be Failure
             zipped.tryComplete(f.asInstanceOf[Failure[R]])
         }
@@ -155,7 +155,7 @@ private[concurrent] object Promise {
           case right: Success[_] =>
             val left = buffer.getAndSet(right).asInstanceOf[Success[T]]
             if (left ne null)
-              zipped.tryComplete(try Success(f(left.get, right.get)) catch { case e if NonFatal(e) => Failure(e) })
+              zipped.tryComplete(try Success(f(left.value, right.value)) catch { case e if NonFatal(e) => Failure(e) })
           case f => // Can only be Failure
             zipped.tryComplete(f.asInstanceOf[Failure[R]])
         }
@@ -258,6 +258,7 @@ private[concurrent] object Promise {
 
     @throws(classOf[Exception])
     final def result(atMost: Duration)(implicit permit: CanAwait): T =
+      import unsafeExceptions.canThrowAny // FIXME add to result signature
       tryAwait0(atMost).get // returns the value, or throws the contained exception
 
     override final def isCompleted: Boolean = value0 ne null
@@ -464,10 +465,10 @@ private[concurrent] object Promise {
             case Xform_noop          =>
               null
             case Xform_map           =>
-              if (v.isInstanceOf[Success[F]]) Success(fun(v.get)) else v // Faster than `resolve(v map fun)`
+              if (v.isInstanceOf[Success[F]]) Success(fun(v.asInstanceOf[Success[F]].value)) else v // Faster than `resolve(v map fun)`
             case Xform_flatMap       =>
               if (v.isInstanceOf[Success[F]]) {
-                val f = fun(v.get)
+                val f = fun(v.asInstanceOf[Success[F]].value)
                 if (f.isInstanceOf[DefaultPromise[_]]) f.asInstanceOf[DefaultPromise[T]].linkRootOf(this, null) else completeWith(f.asInstanceOf[Future[T]])
                 null
               } else v
@@ -494,9 +495,9 @@ private[concurrent] object Promise {
                 } else v
               } else v
             case Xform_filter        =>
-              if (v.isInstanceOf[Failure[F]] || fun.asInstanceOf[F => Boolean](v.get)) v else Future.filterFailure
+              if (v.isInstanceOf[Failure[F]] || fun.asInstanceOf[F => Boolean](v.asInstanceOf[Success[F]].value)) v else Future.filterFailure
             case Xform_collect       =>
-              if (v.isInstanceOf[Success[F]]) Success(fun.asInstanceOf[PartialFunction[F, T]].applyOrElse(v.get, Future.collectFailed)) else v
+              if (v.isInstanceOf[Success[F]]) Success(fun.asInstanceOf[PartialFunction[F, T]].applyOrElse(v.asInstanceOf[Success[F]].value, Future.collectFailed)) else v
             case _                   =>
               Failure(new IllegalStateException("BUG: encountered transformation promise with illegal type: " + _xform)) // Safe not to `resolve`
           }
