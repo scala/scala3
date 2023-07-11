@@ -408,16 +408,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // Does reference `tp` refer only to inherited symbols?
           def isInherited(denot: Denotation) =
             def isCurrent(mbr: SingleDenotation): Boolean =
-              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner || ctx.owner.is(Package)
+              !mbr.symbol.exists || mbr.symbol.owner == ctx.owner
             denot match
               case denot: SingleDenotation => !isCurrent(denot)
               case denot => !denot.hasAltWith(isCurrent)
 
-          /* It is an error if an identifier x is available as an inherited member in an inner scope
-           * and the same name x is defined in an outer scope in the same source file, unless
-           * the inherited member (has an overloaded alternative that) coincides with
-           * (an overloaded alternative of) the definition x.
-           */
           def checkNoOuterDefs(denot: Denotation, last: Context, prevCtx: Context): Unit =
             def sameTermOrType(d1: SingleDenotation, d2: Denotation) =
               d2.containsSym(d1.symbol) || d2.hasUniqueSym && {
@@ -434,15 +429,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val owner = outer.owner
             if (owner eq last.owner) && (outer.scope eq last.scope) then
               checkNoOuterDefs(denot, outer, prevCtx)
-            else if !owner.isRoot then
-              val found =
-                if owner.is(Package) then
-                  owner.denot.asClass.membersNamed(name)
-                    .filterWithPredicate(d => !d.symbol.is(Package) && d.symbol.source == denot.symbol.source)
-                else
-                  val scope = if owner.isClass then owner.info.decls else outer.scope
-                  scope.denotsNamed(name)
-              val competing = found.filterWithFlags(required, excluded | Synthetic)
+            else if !owner.is(Package) then
+              val scope = if owner.isClass then owner.info.decls else outer.scope
+              val competing = scope.denotsNamed(name).filterWithFlags(required, excluded)
               if competing.exists then
                 val symsMatch = competing
                   .filterWithPredicate(sd => sameTermOrType(sd, denot))
