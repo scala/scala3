@@ -33,7 +33,7 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
       val Section(header, body) = node
       val idSuffix = repeatedIds.getOrElseUpdate((c, header.getText), 0)
       val ifSuffixStr = if(idSuffix == 0) then "" else idSuffix.toString
-      repeatedIds.update((c, header.getText), repeatedIds((c, header.getText)) + 1)
+      repeatedIds.update((c, header.getText), idSuffix + 1)
       val id = idGenerator.getId(header.getText.append(ifSuffixStr))
       val anchor = AnchorLink(s"#$id")
       val headerClass: String = header.getLevel match
