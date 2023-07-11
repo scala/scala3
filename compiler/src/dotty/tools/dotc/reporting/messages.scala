@@ -1319,6 +1319,14 @@ extends SyntaxMsg(VarArgsParamMustComeLastID) {
         |"""
 }
 
+class VarArgsParamCannotBeGiven(isGiven: Boolean)(using Context)
+extends SyntaxMsg(VarArgsParamCannotBeGivenID) {
+  def msg(using Context) = i"repeated parameters are not allowed in a ${if isGiven then "using" else "implicit"} clause"
+  def explain(using Context) =
+    "It is not possible to define a given with a repeated parameter type. This hypothetical given parameter could always be satisfied by providing 0 arguments, which defeats the purpose of a given argument."
+}
+
+
 import typer.Typer.BindingPrec
 
 class ConstrProxyShadows(proxy: TermRef, shadowed: Type, shadowedIsApply: Boolean)(using Context)
