@@ -27,14 +27,15 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
 
   case class AnchorLink(link: String) extends BlankLine(BasedSequence.EmptyBasedSequence())
   object SectionHandler extends CustomNodeRenderer[Section]:
-    val repeatedIds: mutable.Map[(NodeRendererContext, BasedSequence), Int] = mutable.Map()
+    val repeatedIds: mutable.Map[(NodeRendererContext, String), Int] = mutable.Map()
     val idGenerator = new HeaderIdGenerator.Factory().create()
     override def render(node: Section, c: NodeRendererContext, html: HtmlWriter): Unit =
       val Section(header, body) = node
-      val idSuffix = repeatedIds.getOrElseUpdate((c, header.getText), 0)
+      val headerText = header.getText.toString
+      val idSuffix = repeatedIds.getOrElseUpdate((c, headerText), 0)
       val ifSuffixStr = if(idSuffix == 0) then "" else idSuffix.toString
-      repeatedIds.update((c, header.getText), idSuffix + 1)
-      val id = idGenerator.getId(header.getText.append(ifSuffixStr))
+      repeatedIds.update((c, headerText), idSuffix + 1)
+      val id = idGenerator.getId(headerText + ifSuffixStr)
       val anchor = AnchorLink(s"#$id")
       val headerClass: String = header.getLevel match
         case 1 => "h500"
