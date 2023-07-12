@@ -1726,7 +1726,7 @@ class Definitions {
    *  - ErasedFunction
    *  - PolyFunction
    */
-  def isFunctionOrPolyType(tp: Type)(using Context): Boolean =
+  def isFunctionType(tp: Type)(using Context): Boolean =
     isFunctionNType(tp) || isRefinedFunctionType(tp)
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
