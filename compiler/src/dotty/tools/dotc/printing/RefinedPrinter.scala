@@ -266,7 +266,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially
         toText(tycon)
-      case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
+      case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
           isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction)
       case tp: TypeRef =>
@@ -763,7 +763,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def toTextCapturing(tp: Type, refsText: Text, boxText: Text): Text = tp match
     case tp: AppliedType if defn.isFunctionSymbol(tp.typeSymbol) && !printDebug =>
       boxText ~ toTextFunction(tp, refsText)
-    case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
+    case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
       boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refsText)
     case _ =>
       super.toTextCapturing(tp, refsText, boxText)

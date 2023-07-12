@@ -187,7 +187,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               capt.println(i"solving $t")
               refs.solve()
             traverse(parent)
-          case t @ RefinedType(_, nme.apply, rinfo) if defn.isFunctionOrPolyType(t) =>
+          case t @ RefinedType(_, nme.apply, rinfo) if defn.isFunctionType(t) =>
             traverse(rinfo)
           case tp: TypeVar =>
           case tp: TypeRef =>
@@ -769,7 +769,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
               adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-            case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionOrPolyType(actual) =>
+            case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
               // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
               adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
@@ -779,7 +779,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptFun(actual, actual.paramInfos, actual.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   actual.derivedLambdaType(paramInfos = aargs1, resType = ares1))
-            case actual @ RefinedType(p, nme, rinfo: PolyType) if defn.isFunctionOrPolyType(actual) =>
+            case actual @ RefinedType(p, nme, rinfo: PolyType) if defn.isFunctionType(actual) =>
               adaptTypeFun(actual, rinfo.resType, expected, covariant, insertBox,
                 ares1 =>
                   val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
@@ -996,7 +996,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case CapturingType(parent, refs) =>
               healCaptureSet(refs)
               traverse(parent)
-            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
+            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
               traverse(rinfo)
             case tp: TermLambda =>
               val saved = allowed
