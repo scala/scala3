@@ -19,7 +19,6 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
-import dotty.tools.uncheckedNN
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
@@ -57,7 +56,7 @@ class ExtractDependencies extends Phase {
 
   override def isRunnable(using Context): Boolean = {
     def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.sbtCallback != null && ctx.sbtCallback.enabled() || forceRun)
+    super.isRunnable && (ctx.incrementalEnabled || forceRun)
   }
 
   // Check no needed. Does not transform trees
@@ -92,15 +91,16 @@ class ExtractDependencies extends Phase {
       } finally pw.close()
     }
 
-    if (ctx.sbtCallback != null && ctx.sbtCallback.enabled()) {
-      collector.usedNames.foreach {
-        case (clazz, usedNames) =>
-          val className = classNameAsString(clazz)
-          usedNames.names.foreach {
-            case (usedName, scopes) =>
-              ctx.sbtCallback.usedName(className, usedName.toString, scopes)
-          }
-      }
+    if (ctx.incrementalEnabled) {
+      ctx.withIncCallback: cb =>
+        collector.usedNames.foreach {
+          case (clazz, usedNames) =>
+            val className = classNameAsString(clazz)
+            usedNames.names.foreach {
+              case (usedName, scopes) =>
+                cb.usedName(className, usedName.toString, scopes)
+            }
+        }
 
       collector.dependencies.foreach(recordDependency)
     }
@@ -113,10 +113,10 @@ class ExtractDependencies extends Phase {
    */
   def recordDependency(dep: ClassDependency)(using Context): Unit = {
     val fromClassName = classNameAsString(dep.from)
-    val zincSourceFile = ctx.compilationUnit.source.underlyingZincFile
+    val sourceFile = ctx.compilationUnit.source
 
     def binaryDependency(file: Path, binaryClassName: String) =
-      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, zincSourceFile, dep.context)
+      ctx.withIncCallback(_.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context))
 
     def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
       depFile match {
@@ -142,8 +142,7 @@ class ExtractDependencies extends Phase {
     val depFile = dep.to.associatedFile
     if (depFile != null) {
       def depIsSameSource =
-        val depVF: xsbti.VirtualFile | Null = ctx.zincVirtualFiles.uncheckedNN.get(depFile.absolutePath)
-        depVF != null && depVF.id() == zincSourceFile.id()
+        depFile.absolutePath == sourceFile.file.absolutePath
 
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
@@ -154,7 +153,7 @@ class ExtractDependencies extends Phase {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(dep.to)
-        ctx.sbtCallback.classDependency(toClassName, fromClassName, dep.context)
+        ctx.withIncCallback(_.classDependency(toClassName, fromClassName, dep.context))
       }
     }
   }

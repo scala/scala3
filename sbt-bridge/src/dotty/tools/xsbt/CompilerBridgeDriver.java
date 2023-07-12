@@ -10,8 +10,10 @@ import dotty.tools.dotc.Driver;
 import dotty.tools.dotc.ScalacCommand;
 import dotty.tools.dotc.config.Properties;
 import dotty.tools.dotc.core.Contexts;
+import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.io.AbstractFile;
 import scala.collection.mutable.ListBuffer;
+import scala.jdk.javaapi.CollectionConverters;
 import scala.io.Codec;
 import xsbti.Problem;
 import xsbti.*;
@@ -20,6 +22,7 @@ import xsbti.compile.Output;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Arrays;
 
 public class CompilerBridgeDriver extends Driver {
@@ -51,31 +54,50 @@ public class CompilerBridgeDriver extends Driver {
     return false;
   }
 
-  synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
-    // convert sources to a HashMap from this.id to itself
-    HashMap<String, VirtualFile> sourcesMap = new HashMap<>();
+  private static VirtualFile asVirtualFileOrNull(SourceFile sourceFile) {
+    if (sourceFile.file() instanceof AbstractZincFile) {
+      return ((AbstractZincFile) sourceFile.file()).underlying();
+    } else {
+      return null;
+    }
+  }
 
+  synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
     VirtualFile[] sortedSources = new VirtualFile[sources.length];
     System.arraycopy(sources, 0, sortedSources, 0, sources.length);
     Arrays.sort(sortedSources, (x0, x1) -> x0.id().compareTo(x1.id()));
 
     ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
+    dotty.tools.dotc.util.HashSet<AbstractFile> sourcesSet = new dotty.tools.dotc.util.HashSet<>(8, 2);
 
     for (int i = 0; i < sources.length; i++) {
       VirtualFile source = sortedSources[i];
       AbstractFile abstractFile = asDottyFile(source);
       sourcesBuffer.append(abstractFile);
-      sourcesMap.put(abstractFile.absolutePath(), source);
+      sourcesSet.put(abstractFile);
     }
 
     DelegatingReporter reporter = new DelegatingReporter(delegate, sourceFile -> {
-      String pathId = sourceFile.file().absolutePath();
-      VirtualFile source = sourcesMap.get(pathId);
+      VirtualFile vf = asVirtualFileOrNull(sourceFile);
+      if (vf != null) {
+        return vf.id();
+      } else {
+        return sourceFile.path(); // same as in Zinc for 2.13
+      }
+    });
 
-      if (source != null)
-        return source.id();
-      else
-        return pathId;
+    IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile -> {
+      if (sourceFile instanceof SourceFile) {
+        SourceFile sf = (SourceFile) sourceFile;
+        VirtualFile vf = asVirtualFileOrNull(sf);
+        if (vf != null) {
+          return vf;
+        } else {
+          throw new IllegalStateException("Unknown source file: " + sourceFile.path());
+        }
+      } else {
+        throw new IllegalStateException("Unknown source file: " + sourceFile.path());
+      }
     });
 
     try {
@@ -84,8 +106,8 @@ public class CompilerBridgeDriver extends Driver {
       Contexts.Context initialCtx = initCtx()
         .fresh()
         .setReporter(reporter)
-        .setSbtCallback(callback)
-        .setZincVirtualFiles(sourcesMap);
+        .setZincInitialFiles(sourcesSet)
+        .setIncCallback(incCallback);
 
       Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
 

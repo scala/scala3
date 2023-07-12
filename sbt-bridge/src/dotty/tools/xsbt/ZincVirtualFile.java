@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class ZincVirtualFile extends dotty.tools.io.VirtualFile {
+public class ZincVirtualFile extends dotty.tools.io.VirtualFile implements AbstractZincFile {
   private final VirtualFile _underlying;
 
   public ZincVirtualFile(VirtualFile underlying) throws IOException {
