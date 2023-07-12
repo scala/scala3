@@ -46,7 +46,7 @@ package p {
   }
 }
 
-// i12508
+// scala/bug#12508
 package _root_ { // error
   class C {
     val _root_ = 42 // error
@@ -55,3 +55,8 @@ package _root_ { // error
 package _root_.p { // error
   class C
 }
+
+// from ScalaPB
+def fromScalaPb(x: Option[String]) = x match
+  case _root_.scala.Some(s) => s
+  case _                    => ""

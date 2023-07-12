@@ -583,8 +583,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             em"""Name resolution will change.
-                | currently selected                          : $foundUnderScala2
-                | in the future, without -source 3.0-migration: $found""", tree.srcPos)
+              | currently selected                          : $foundUnderScala2
+              | in the future, without -source 3.0-migration: $found""", tree.srcPos)
           foundUnderScala2
         else found
       finally

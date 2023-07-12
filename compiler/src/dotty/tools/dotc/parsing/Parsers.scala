@@ -1072,15 +1072,11 @@ object Parsers {
       }
 
     /** Accept identifier and return Ident with its name as a term name. */
-    def rawTermIdent(): Ident =
-      makeIdent(in.token, in.offset, ident())
-
-    /** Call `rawTermIdent`, and check it isn't a root package name. */
     def termIdent(): Ident =
-      val ident = rawTermIdent()
-      if ident.name == nme.ROOTPKG then
+      val t = makeIdent(in.token, in.offset, ident())
+      if t.name == nme.ROOTPKG then
         syntaxError(em"Illegal use of root package name.")
-      ident
+      t
 
     /** Accept identifier and return Ident with its name as a type name. */
     def typeIdent(): Ident =
@@ -1119,7 +1115,7 @@ object Parsers {
      *              |  [id ‘.’] ‘this’
      *              |  [id ‘.’] ‘super’ [ClassQualifier] ‘.’ id
      */
-    def simpleRef(allowRoot: Boolean = true): Tree =
+    def simpleRef(): Tree =
       val start = in.offset
 
       def handleThis(qual: Ident) =
@@ -1135,19 +1131,21 @@ object Parsers {
 
       if in.token == THIS then handleThis(EmptyTypeIdent)
       else if in.token == SUPER then handleSuper(EmptyTypeIdent)
-      else
-        val t = if allowRoot then rawTermIdent() else termIdent()
-        if in.token == DOT then
-          def qual = cpy.Ident(t)(t.name.toTypeName)
-          in.lookahead.token match
-            case THIS =>
-              in.nextToken()
-              handleThis(qual)
-            case SUPER =>
-              in.nextToken()
-              handleSuper(qual)
-            case _ => t
-        else t
+      else if in.lookahead.token == DOT then
+        val tok    = in.token
+        val offset = in.offset
+        val name   = ident()
+        def qual   = makeIdent(tok, offset, name.toTypeName)
+        in.lookahead.token match
+          case THIS =>
+            in.nextToken()
+            handleThis(qual)
+          case SUPER =>
+            in.nextToken()
+            handleSuper(qual)
+          case _ =>
+            makeIdent(tok, offset, name)
+      else termIdent()
     end simpleRef
 
     /** MixinQualifier ::= `[' id `]'
@@ -2972,7 +2970,7 @@ object Parsers {
      */
     def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
-        simpleRef(allowRoot = false) match
+        simpleRef() match
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
           case t => simplePatternRest(t)
       case USCORE =>
