@@ -562,12 +562,7 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
-      val defKind = 
-        if sym.flags.is(Method) then "def"
-        else if sym.flags.is(Mutable) then "var"
-        else if sym.flags.is(Given) then "given"
-        else "val"
-      fail(ModifierNotAllowedForDefinition(Flags.Infix, s"a toplevel $defKind cannot be infix"))
+      fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     checkApplicable(Erased,
       !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
     checkCombination(Final, Open)
