@@ -362,7 +362,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         val argType0 = f(recheckStart(arg, pt))
         val argType = super.recheckFinish(argType0, arg, pt)
         super.recheckFinish(argType, tree, pt)
-      if meth == defn.Caps_unsafeBox then
+
+      if meth == defn.Caps_unsafeAssumePure then
+        val arg :: Nil = tree.args: @unchecked
+        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
+        val argType = if argType0.captureSet.isAlwaysEmpty then argType0
+        else argType0.widen.stripCapturing
+        capt.println(i"rechecking $arg with ${pt.capturing(CaptureSet.universal)}: $argType")
+        super.recheckFinish(argType, tree, pt)
+      else if meth == defn.Caps_unsafeBox then
         mapArgUsing(_.forceBoxStatus(true))
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
