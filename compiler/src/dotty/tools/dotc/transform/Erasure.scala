@@ -677,10 +677,8 @@ object Erasure {
           // Instead, we manually lookup the type of `apply` in the qualifier.
           inContext(preErasureCtx) {
             val qualTp = tree.qualifier.typeOpt.widen
-            if qualTp.derivesFrom(defn.PolyFunctionClass) then
-              erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
-            else if defn.isErasedFunctionType(qualTp) then
-              eraseErasedFunctionApply(qualTp.select(nme.apply).widen.asInstanceOf[MethodType]).classSymbol
+            if defn.isRefinedFunctionType(qualTp) then
+              eraseRefinedFunctionApply(qualTp.select(nme.apply).widen).classSymbol
             else
               NoSymbol
           }
