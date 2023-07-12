@@ -658,16 +658,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case _ =>
                 isSubType(info1, info2)
 
-            if defn.isFunctionNType(tp2) then
-              tp1w.widenDealias match
-                case tp1: RefinedType =>
-                  return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
-                case _ =>
-            else if tp2.parent.typeSymbol == defn.PolyFunctionClass then
-              tp1.member(nme.apply).info match
-                case info1: PolyType =>
-                  return isSubInfo(info1, tp2.refinedInfo)
-                case _ =>
+            if defn.isFunctionType(tp2) then
+              if defn.isPolyFunctionType(tp2) then
+                // TODO should we handle ErasedFunction is this same way?
+                tp1.member(nme.apply).info match
+                  case info1: PolyType =>
+                    return isSubInfo(info1, tp2.refinedInfo)
+                  case _ =>
+              else
+                tp1w.widenDealias match
+                  case tp1: RefinedType =>
+                    return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
+                  case _ =>
 
           val skipped2 = skipMatching(tp1w, tp2)
           if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
