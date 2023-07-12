@@ -560,21 +560,19 @@ object TypeErasure {
     case _ => false
   }
 
-  /** The erasure of `PolyFunction { def apply: $applyInfo }` */
-  def erasePolyFunctionApply(applyInfo: Type)(using Context): Type =
-    assert(applyInfo.isInstanceOf[PolyType])
-    val res = applyInfo.resultType
-    val paramss = res.paramNamess
-    assert(paramss.length == 1)
-    erasure(defn.FunctionType(paramss.head.length,
-      isContextual = res.isImplicitMethod))
-
-  def eraseErasedFunctionApply(erasedFn: MethodType)(using Context): Type =
-    val fnType = defn.FunctionType(
-      n = erasedFn.erasedParams.count(_ == false),
-      isContextual = erasedFn.isContextualMethod,
-    )
-    erasure(fnType)
+  /** The erasure of `(PolyFunction | ErasedFunction) { def apply: $applyInfo }` */
+  def eraseRefinedFunctionApply(applyInfo: Type)(using Context): Type =
+    def functionType(info: Type): Type = info match {
+      case info: PolyType =>
+        functionType(info.resultType)
+      case info: MethodType =>
+        assert(!info.resultType.isInstanceOf[MethodicType])
+        defn.FunctionType(
+          n = info.erasedParams.count(_ == false),
+          isContextual = info.isImplicitMethod,
+        )
+    }
+    erasure(functionType(applyInfo))
 }
 
 import TypeErasure._
@@ -659,10 +657,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else SuperType(eThis, eSuper)
       case ExprType(rt) =>
         defn.FunctionType(0)
-      case RefinedType(parent, nme.apply, refinedInfo) if defn.isPolyFunctionType(parent) =>
-        erasePolyFunctionApply(refinedInfo)
-      case RefinedType(parent, nme.apply, refinedInfo: MethodType) if defn.isErasedFunctionType(parent) =>
-        eraseErasedFunctionApply(refinedInfo)
+      case RefinedType(parent, nme.apply, refinedInfo) if defn.isRefinedFunctionType(parent) =>
+        eraseRefinedFunctionApply(refinedInfo)
       case tp: TypeVar if !tp.isInstantiated =>
         assert(inSigName, i"Cannot erase uninstantiated type variable $tp")
         WildcardType
