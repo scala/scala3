@@ -1705,9 +1705,13 @@ class Definitions {
 
   /** Is `tp` a specialized, refined function type? Either an `ErasedFunction` or a `PolyFunction`. */
   def isRefinedFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.PolyFunctionClass) || isErasedFunctionType(tp)
+    isPolyFunctionType(tp) || isErasedFunctionType(tp)
 
-  /** Is `tp` a specialized, refined function type? Either an `ErasedFunction`. */
+  /** Is `tp` a specialized, refined `PolyFunction` type? */
+  def isPolyFunctionType(tp: Type)(using Context): Boolean =
+    tp.derivesFrom(defn.PolyFunctionClass)
+
+  /** Is `tp` a specialized, refined `ErasedFunction` type? */
   def isErasedFunctionType(tp: Type)(using Context): Boolean =
     tp.derivesFrom(defn.ErasedFunctionClass)
 

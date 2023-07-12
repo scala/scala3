@@ -509,8 +509,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Handles `ErasedFunction`s and poly functions gracefully.
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
-    case RefinedType(parent, nme.apply, mt: MethodType) if defn.isErasedFunctionType(parent) => (mt.paramInfos :+ mt.resultType)
-    case RefinedType(parent, nme.apply, mt: MethodType) if parent.typeSymbol eq defn.PolyFunctionClass => (mt.paramInfos :+ mt.resultType)
+    case RefinedType(parent, nme.apply, mt: MethodType) if defn.isRefinedFunctionType(parent) => (mt.paramInfos :+ mt.resultType)
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */

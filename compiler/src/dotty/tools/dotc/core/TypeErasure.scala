@@ -592,7 +592,7 @@ import TypeErasure._
  */
 class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConstructor: Boolean, isSymbol: Boolean, inSigName: Boolean) {
 
-  /**  The erasure |T| of a type T. 
+  /**  The erasure |T| of a type T.
    *
    *   If computing the erasure of T requires erasing a WildcardType or an
    *   uninstantiated type variable, then an exception signaling an internal
@@ -659,7 +659,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else SuperType(eThis, eSuper)
       case ExprType(rt) =>
         defn.FunctionType(0)
-      case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
+      case RefinedType(parent, nme.apply, refinedInfo) if defn.isPolyFunctionType(parent) =>
         erasePolyFunctionApply(refinedInfo)
       case RefinedType(parent, nme.apply, refinedInfo: MethodType) if defn.isErasedFunctionType(parent) =>
         eraseErasedFunctionApply(refinedInfo)
@@ -943,12 +943,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
-      case tp @ RefinedType(parent, nme.apply, _) if parent.typeSymbol eq defn.PolyFunctionClass =>
+      case tp @ RefinedType(parent, nme.apply, _) if defn.isRefinedFunctionType(parent) =>
         // we need this case rather than falling through to the default
         // because RefinedTypes <: TypeProxy and it would be caught by
         // the case immediately below
-        sigName(this(tp))
-      case tp @ RefinedType(parent, nme.apply, refinedInfo) if defn.isErasedFunctionType(parent) =>
         sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)
