@@ -34,19 +34,17 @@ import scala.annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import util.Property.Key
 import util.Store
-import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.Map as JMap
 import java.nio.file.InvalidPathException
-
 
 object Contexts {
 
   private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
-  private val (sbtCallbackLoc,       store2) = store1.newLocation[AnalysisCallback]()
+  private val (incCallbackLoc,       store2) = store1.newLocation[IncrementalCallback | Null]()
   private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
   private val (compilationUnitLoc,   store5) = store4.newLocation[CompilationUnit]()
@@ -55,7 +53,7 @@ object Contexts {
   private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
-  private val (zincVirtualFilesLoc, store11) = store10.newLocation[JMap[String, xsbti.VirtualFile] | Null]()
+  private val (zincInitialFilesLoc, store11) = store10.newLocation[util.ReadOnlySet[AbstractFile] | Null]()
 
   private val initialStore = store11
 
@@ -168,10 +166,18 @@ object Contexts {
     def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
 
     /** The Zinc callback implementation if we are run from Zinc, null otherwise */
-    def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
+    def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
+    def zincInitialFiles: util.ReadOnlySet[AbstractFile] | Null = store(zincInitialFilesLoc)
 
-    /** A map from absolute path to VirtualFile if we are run from Zinc, null otherwise */
-    def zincVirtualFiles: JMap[String, xsbti.VirtualFile] | Null = store(zincVirtualFilesLoc)
+    /** Run `op` if there exists an incremental callback */
+    inline def withIncCallback(inline op: IncrementalCallback => Unit): Unit =
+      val local = incCallback
+      if local != null then op(local)
+
+    def incrementalEnabled: Boolean =
+      val local = incCallback
+      if local != null then local.enabled
+      else false
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -240,7 +246,16 @@ object Contexts {
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
-      base.sources.getOrElseUpdate(file, SourceFile(file, codec))
+      base.sources.getOrElseUpdate(file, {
+        val zincSources = zincInitialFiles
+        val cachedFile =
+          if zincSources != null then zincSources.lookup(file) match
+            case null => file
+            case cached => cached
+          else
+            file
+        SourceFile(cachedFile, codec)
+      })
     }
 
     /** SourceFile with given path name, memoized */
@@ -670,9 +685,8 @@ object Contexts {
     }
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
-    def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
-    def setZincVirtualFiles(map: JMap[String, xsbti.VirtualFile]): this.type =
-      updateStore(zincVirtualFilesLoc, map)
+    def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
+    def setZincInitialFiles(zincInitialFiles: util.ReadOnlySet[AbstractFile]): this.type = updateStore(zincInitialFilesLoc, zincInitialFiles)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)

@@ -64,33 +64,6 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   import SourceFile._
 
   private var myContent: Array[Char] | Null = null
-  private var myUnderlyingZincFile: xsbti.VirtualFile | Null = null
-
-  def underlyingZincFile(using Context): xsbti.VirtualFile =
-    val local = myUnderlyingZincFile
-    if local == null then
-      // usually without -sourcepath then the `underlying` will be set by Zinc.
-      val maybeUnderlying = file.underlying
-      val underlying0 =
-        if maybeUnderlying == null then
-          // When we have `-sourcepath` set then the file could come from the filesystem,
-          // rather than a zinc managed file, so then we need to check if we have a virtual file for it.
-          // TODO: we should consider in the future if there is a use case for sourcepath to possibly be
-          //       made of virtual files.
-          val fromLookup = ctx.zincVirtualFiles.uncheckedNN.get(file.absolutePath)
-          if fromLookup != null then
-            fromLookup
-          else
-            sys.error(s"no underlying file for ${file.absolutePath}, possible paths = ${ctx.zincVirtualFiles.keySet}")
-        else maybeUnderlying
-      if ctx.settings.YdebugVirtualFiles.value then
-        val isVirtual = !underlying0.isInstanceOf[xsbti.PathBasedFile]
-        println(s"found underlying zinc file ${underlying0.id} for ${file.absolutePath} [virtual = $isVirtual]")
-
-      myUnderlyingZincFile = underlying0
-      underlying0
-    else
-      local
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */

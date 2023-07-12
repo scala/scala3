@@ -7,7 +7,7 @@ package dotty.tools.xsbt;
 
 import xsbti.PathBasedFile;
 
-public class ZincPlainFile extends dotty.tools.io.PlainFile {
+public class ZincPlainFile extends dotty.tools.io.PlainFile implements AbstractZincFile {
   private final PathBasedFile _underlying;
 
   public ZincPlainFile(PathBasedFile underlying) {
