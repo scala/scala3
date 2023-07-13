@@ -19,6 +19,7 @@ import dotty.tools.dotc.util.SourcePosition;
 import xsbti.Position;
 import xsbti.Severity;
 
+import java.util.Collections;
 import java.util.function.*;
 
 final public class DelegatingReporter extends AbstractReporter {
@@ -58,6 +59,14 @@ final public class DelegatingReporter extends AbstractReporter {
     }
 
     delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode, actions, lookup));
+  }
+
+  public void reportBasicWarning(String message) {
+    Position position = PositionBridge.noPosition;
+    Severity severity = Severity.Warn;
+    String diagnosticCode = "-1"; // no error code
+    List<CodeAction> actions = Collections.emptyList();
+    delegate.log(new Problem(position, message, severity, message, diagnosticCode, actions, lookup));
   }
 
   private static Severity severityOf(int level) {
