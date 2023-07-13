@@ -1224,7 +1224,12 @@ object Objects:
         val funRef = fun1.tpe.asInstanceOf[TermRef]
         val unapplyResTp = funRef.widen.finalResultType
 
-        val receiver = evalType(funRef.prefix, thisV, klass)
+        val receiver = fun1 match
+          case ident: Ident =>
+            evalType(funRef.prefix, thisV, klass)
+          case select: Select =>
+            eval(select.qualifier, thisV, klass)
+
         val implicitValues = evalArgs(implicits.map(Arg.apply), thisV, klass)
         // TODO: implicit values may appear before and/or after the scrutinee parameter.
         val unapplyRes = call(receiver, funRef.symbol, TraceValue(scrutinee, summon[Trace]) :: implicitValues, funRef.prefix, superType = NoType, needResolve = true)
@@ -1413,7 +1418,7 @@ object Objects:
           resolveThis(tref.classSymbol.asClass, thisV, klass)
 
       case _ =>
-        throw new Exception("unexpected type: " + tp)
+        throw new Exception("unexpected type: " + tp + ", Trace:\n" + Trace.show)
   }
 
   /** Evaluate arguments of methods and constructors */
