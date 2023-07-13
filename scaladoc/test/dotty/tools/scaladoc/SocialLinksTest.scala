@@ -36,12 +36,17 @@ class SocialLinksTest:
     val expected = SocialLinks.Custom("https://custom.com/test", "custom", "custom-dark")
     assertEquals(expected, SocialLinks.parse(customLink).getOrElse(null))
 
+  @Test def customLinkUpper(): Unit =
+    val customLink = "Namecustom::https://custom.com/test::custom"
+    val expected = SocialLinks.Custom("https://custom.com/test", "custom", "custom")
+    assertEquals(expected, SocialLinks.parse(customLink).getOrElse(null))
+
   @Test def parseRegexError(): Unit =
-    val regexErrorLink = "nameCustom::https://custom.com/test::custom::custom-dark::custom"
+    val regexErrorLink = "nameCustom3::https://custom.com/test::custom::custom-dark::custom"
     val expected = s"Social links arg $regexErrorLink is invalid: "
     assertEquals(expected, SocialLinks.parse(regexErrorLink).left.getOrElse(null))
 
   @Test def parseLinkWithError(): Unit =
     val errorLink = "namecustom::https://custom.com/test::custom::custom-dark::custom"
-    val expected = s"Social links arg $errorLink is invalid: For 'custom' two minimum arguments are expected: url, white icon name, [dark icon name]"
+    val expected = s"Social links arg $errorLink is invalid: For the 'custom' link, a minimum of two arguments is expected: URL, light icon file name, [dark icon file name]"
     assertEquals(expected, SocialLinks.parse(errorLink).left.getOrElse(null))
