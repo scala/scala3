@@ -85,7 +85,7 @@ class SpecializeFunctions extends MiniPhase {
             case Select(qual, _) =>
               val qual1 = qual.tpe.widen match
                 case defn.ByNameFunction(res) =>
-                  // Need to cast to regular function, since specialied apply methods
+                  // Need to cast to regular function, since specialized apply methods
                   // are not members of ContextFunction0. The cast will be eliminated in
                   // erasure.
                   qual.cast(defn.FunctionOf(Nil, res))

@@ -371,7 +371,7 @@ object Checking {
 
   /** Check that `info` of symbol `sym` is not cyclic.
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
-   *  @return  `info` where every legal F-bounded reference is proctected
+   *  @return  `info` where every legal F-bounded reference is protected
    *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(using Context): Type = {

@@ -47,7 +47,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
   /** Returns the result of interpreting the code in the tree.
    *  Return Some of the result or None if the result type is not consistent with the expected type.
-   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
+   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception occurred.
    */
   final def interpret[T](tree: Tree)(using ct: ClassTag[T]): Option[T] =
     interpretTree(tree)(using emptyEnv) match {
@@ -59,7 +59,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
 
   /** Returns the result of interpreting the code in the tree.
-   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
+   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception occurred.
    */
   protected def interpretTree(tree: Tree)(using Env): Object = tree match {
     case Literal(Constant(value)) =>

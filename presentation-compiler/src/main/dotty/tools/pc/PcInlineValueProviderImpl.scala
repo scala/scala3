@@ -158,9 +158,9 @@ final class PcInlineValueProviderImpl(
       symbols: List[Symbol]
   ): Either[String, List[Reference]] =
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-    def buildRef(occurence: Occurence): Either[String, Reference] =
+    def buildRef(occurrence: Occurence): Either[String, Reference] =
       val path =
-        Interactive.pathTo(unit.tpdTree, occurence.pos.span)(using newctx)
+        Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx)
       val indexedContext = IndexedContext(
         Interactive.contextOfPath(path)(using newctx)
       )
@@ -175,11 +175,11 @@ final class PcInlineValueProviderImpl(
       if conflictingSymbols.isEmpty then
         Right(
           Reference(
-            occurence.pos.toLsp,
-            occurence.parent.map(p =>
+            occurrence.pos.toLsp,
+            occurrence.parent.map(p =>
               RangeOffset(p.sourcePos.start, p.sourcePos.end)
             ),
-            occurence.parent
+            occurrence.parent
               .map(p => referenceRequiresBrackets(p)(using newctx))
               .getOrElse(false)
           )

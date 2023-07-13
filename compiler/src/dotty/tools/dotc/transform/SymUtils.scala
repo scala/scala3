@@ -101,7 +101,7 @@ object SymUtils:
       else if (self.is(Abstract)) "it is an abstract class"
       else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
       else if (isDerivedValueClass(self)) "it is a value class"
-      else if (!(companionMirror || canAccessCtor)) s"the constructor of $self is innaccessible from the calling scope."
+      else if (!(companionMirror || canAccessCtor)) s"the constructor of $self is inaccessible from the calling scope."
       else ""
     end whyNotGenericProduct
 

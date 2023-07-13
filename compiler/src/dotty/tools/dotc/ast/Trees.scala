@@ -763,7 +763,7 @@ object Trees {
   }
 
   /** Tree that replaces a level 1 splices in pickled (level 0) quotes.
-   *  It is only used when picking quotes (will never be in a TASTy file).
+   *  It is only used when pickling quotes (will never be in a TASTy file).
    *
    *  @param isTerm If this hole is a term, otherwise it is a type hole.
    *  @param idx The index of the hole in it's enclosing level 0 quote.

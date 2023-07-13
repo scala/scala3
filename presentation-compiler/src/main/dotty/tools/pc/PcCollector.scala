@@ -273,10 +273,10 @@ abstract class PcCollector[T](
 
     for
       extensionMethodScope <- extensionMethods
-      occurence <- collectParams(extensionMethodScope)
+      occurrence <- collectParams(extensionMethodScope)
       symbols <- collectAllExtensionParamSymbols(
         path.headOption.getOrElse(unit.tpdTree),
-        occurence
+        occurrence
       )
     yield symbols
   end seekInExtensionParameters
@@ -374,7 +374,7 @@ abstract class PcCollector[T](
       soughtFilter: (Symbol => Boolean) => Boolean
   ): Set[T] =
     def collectNamesWithParent(
-        occurences: Set[T],
+        occurrences: Set[T],
         tree: Tree,
         parent: Option[Tree]
     ): Set[T] =
@@ -393,17 +393,17 @@ abstract class PcCollector[T](
           // symbols will differ for params in different ext methods, but source pos will be the same
           if soughtFilter(_.sourcePos == ident.symbol.sourcePos)
           then
-            occurences + collect(
+            occurrences + collect(
               ident,
               ident.sourcePos
             )
-          else occurences
+          else occurrences
         /**
          * All select statements such as:
          * val a = hello.<<b>>
          */
         case sel: Select if sel.span.isCorrect && filter(sel) =>
-          occurences + collect(
+          occurrences + collect(
             sel,
             pos.withSpan(selectNameSpan(sel))
           )
@@ -421,7 +421,7 @@ abstract class PcCollector[T](
               collectNamesWithParent
             )
           annots.foldLeft(
-            occurences + collect(
+            occurrences + collect(
               df,
               pos.withSpan(df.nameSpan)
             )
@@ -462,7 +462,7 @@ abstract class PcCollector[T](
               sym
             )
           }
-          occurences ++ named
+          occurrences ++ named
 
         /**
          * For traversing annotations:
@@ -475,7 +475,7 @@ abstract class PcCollector[T](
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
             )
-          trees.foldLeft(occurences) { case (set, tree) =>
+          trees.foldLeft(occurrences) { case (set, tree) =>
             traverser(set, tree)
           }
         /**
@@ -512,18 +512,18 @@ abstract class PcCollector[T](
                 }
             }
             .flatten
-            .toSet ++ occurences
+            .toSet ++ occurrences
         case inl: Inlined =>
           val traverser =
             new PcCollector.DeepFolderWithParent[Set[T]](
               collectNamesWithParent
             )
           val trees = inl.call :: inl.bindings
-          trees.foldLeft(occurences) { case (set, tree) =>
+          trees.foldLeft(occurrences) { case (set, tree) =>
             traverser(set, tree)
           }
         case o =>
-          occurences
+          occurrences
       end match
     end collectNamesWithParent
 
