@@ -139,11 +139,11 @@ Request](https://help.github.com/articles/using-pull-requests) on GitHub.
 If you're not actually finished yet and are just looking for some initial input
 on your approach, feel free to open a [Draft PR][draft]. This lets reviewers
 know that you're not finished yet. It's also a good idea to put a [wip] in front
-of your pr title to make this extra clear.
+of your PR title to make this extra clear.
 
 Shortly after creating your pull request a maintainer should assign someone to
 review it. If this doesn't happen after a few days, feel free to ping someone on
-the [Scala Contributors Discor][discord] or tag someone on the PR. Depending on
+the [Scala Contributors Discord][discord] or tag someone on the PR. Depending on
 the type of pull request there might be multiple people that take a look at your
 changes. There might also be community input as we try to keep the review
 process as open as possible.

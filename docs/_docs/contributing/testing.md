@@ -200,6 +200,10 @@ sbt:scala3> scala3-compiler/Test/runMain
 
 then compare the changes via version control.
 
+### Scaladoc tests
+
+See the [Scaladoc contributors guide](./scaladoc.md).
+
 ## Troubleshooting
 
 Some of the tests depend on temporary state stored in the `out` directory. In rare cases, that directory
