@@ -239,6 +239,11 @@ object RefChecks {
     // compatibility checking.
     def checkSubType(tp1: Type, tp2: Type)(using Context): Boolean = tp1 frozen_<:< tp2
 
+    /** A hook that allows to adjust the type of `other` before checking conformance.
+     *  Overridden in capture checking to handle non-capture checked superclasses leniently.
+     */
+    def adjustOtherType(tp: Type, other: Symbol)(using Context): Type = tp
+
     private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
 
     def checkAll(checkOverride: ((Type, Type) => Context ?=> Boolean, Symbol, Symbol) => Unit) =
@@ -352,6 +357,10 @@ object RefChecks {
       && atPhase(typerPhase):
         loop(member.info.paramInfoss, other.info.paramInfoss)
 
+    val checker =
+      if makeOverridingPairsChecker == null then OverridingPairsChecker(clazz, self)
+      else makeOverridingPairsChecker(clazz, self)
+
     /* Check that all conditions for overriding `other` by `member`
      * of class `clazz` are met.
      */
@@ -359,7 +368,7 @@ object RefChecks {
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
         else self.memberInfo(member)
-      def otherTp(self: Type) = self.memberInfo(other)
+      def otherTp(self: Type) = checker.adjustOtherType(self.memberInfo(other), other)
 
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 
@@ -564,7 +573,6 @@ object RefChecks {
         overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride
 
-    val checker = if makeOverridingPairsChecker == null then OverridingPairsChecker(clazz, self) else makeOverridingPairsChecker(clazz, self)
     checker.checkAll(checkOverride)
     printMixinOverrideErrors()
 

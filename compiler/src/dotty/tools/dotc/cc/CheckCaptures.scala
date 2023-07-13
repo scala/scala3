@@ -922,7 +922,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
     */
     def checkOverrides = new TreeTraverser:
-      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self) {
+      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self):
         /** Check subtype with box adaptation.
         *  This function is passed to RefChecks to check the compatibility of overriding pairs.
         *  @param sym  symbol of the field definition that is being checked
@@ -944,7 +944,11 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case _ => adapted
             finally curEnv = saved
           actual1 frozen_<:< expected1
-      }
+
+        override def adjustOtherType(tp: Type, other: Symbol)(using Context): Type =
+          handleBackwardsCompat(tp, other, initialVariance = 0)
+            //.showing(i"adjust $other: $tp --> $result")
+      end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
         t match
