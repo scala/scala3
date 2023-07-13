@@ -173,7 +173,6 @@ class Pickler extends Phase {
         cls -> (unit, unpickler)
       }
     pickling.println("************* entered toplevel ***********")
-    val rootCtx = ctx
     for ((cls, (unit, unpickler)) <- unpicklers) do
       ctx.compilationUnit.needsCaptureChecking = unit.needsCaptureChecking
       val unpickled = unpickler.rootTrees
