@@ -246,17 +246,26 @@ object Contexts {
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
+      computeCachedSource(file)(SourceFile(_, codec))
+    }
+
+    /** empty Sourcefile associated to given abstract file, memoized */
+    def getEmptySource(file: AbstractFile) = {
+      util.Stats.record("Context.getEmptySource")
+      computeCachedSource(file)(SourceFile(_, Array.empty[Char]))
+    }
+
+    private inline def computeCachedSource(file: AbstractFile)(inline mkSource: AbstractFile => SourceFile): SourceFile =
       base.sources.getOrElseUpdate(file, {
         val zincSources = zincInitialFiles
         val cachedFile =
           if zincSources != null then zincSources.lookup(file) match
             case null => file
-            case cached => cached
+            case cached: AbstractFile => cached
           else
             file
-        SourceFile(cachedFile, codec)
+        mkSource(cachedFile)
       })
-    }
 
     /** SourceFile with given path name, memoized */
     def getSource(path: TermName): SourceFile = getFile(path) match
