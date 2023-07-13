@@ -3173,6 +3173,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
+              && !xtree.isInstanceOf[SplicePattern]
               && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
@@ -3957,7 +3958,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         sym.isConstructor
         || sym.matchNullaryLoosely
         || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
-          && { 
+          && {
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)
@@ -4021,6 +4022,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           && pt != SingletonTypeProto
           && pt != AssignProto
           && !ctx.mode.is(Mode.Pattern)
+          && !tree.isInstanceOf[SplicePattern]
           && !ctx.isAfterTyper
           && !ctx.isInlineContext
       then
