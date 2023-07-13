@@ -14,7 +14,7 @@ object SocialLinks:
     val errorPrefix = s"Social links arg $s is invalid: "
     val splitted = s.split("::")
 
-    splitted.head match {
+    splitted.head.toLowerCase match {
       case "github" if splitted.size == 2 => Right(Github(splitted(1)))
       case "github" => Left(errorPrefix + "For 'github' arg expected one argument: url")
       case "twitter" if splitted.size == 2 => Right(Twitter(splitted(1)))
@@ -25,6 +25,6 @@ object SocialLinks:
       case "discord" => Left(errorPrefix + "For 'discord' arg expected one argument: url")
       case LowercaseNamePattern() if splitted.size == 4 => Right(Custom(splitted(1), splitted(2), splitted(3)))
       case LowercaseNamePattern() if splitted.size == 3 => Right(Custom(splitted(1), splitted(2), splitted(2)))
-      case LowercaseNamePattern() => Left(errorPrefix + "For 'custom' two minimum arguments are expected: url, white icon name, [dark icon name]")
+      case LowercaseNamePattern() => Left(errorPrefix + "For the 'custom' link, a minimum of two arguments is expected: URL, light icon file name, [dark icon file name]")
       case _ => Left(errorPrefix)
     }
