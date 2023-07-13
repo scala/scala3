@@ -21,6 +21,7 @@ import xsbti.compile.Output;
 
 import java.io.IOException;
 import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Arrays;
@@ -62,6 +63,25 @@ public class CompilerBridgeDriver extends Driver {
     }
   }
 
+  private static void reportMissingFile(DelegatingReporter reporter, dotty.tools.dotc.interfaces.SourceFile sourceFile) {
+    String underline = String.join("", Collections.nCopies(sourceFile.path().length(), "^"));
+    String message =
+      sourceFile.path() + ": Missing virtual file\n" +
+      underline + "\n" +
+      "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
+      "    This is likely a bug in incremental compilation for the Scala 3 compiler. Please report it to the Scala 3 maintainers.";
+    reporter.reportBasicWarning(message);
+  }
+
+  private static VirtualFile fallbackVirtualFile(DelegatingReporter reporter,
+      dotty.tools.dotc.interfaces.SourceFile sourceFile,
+      Map<String, VirtualFile> placeholders) {
+    return placeholders.computeIfAbsent(sourceFile.path(), path -> {
+      reportMissingFile(reporter, sourceFile);
+      return new PlaceholderVirtualFile(sourceFile);
+    });
+  }
+
   synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
     VirtualFile[] sortedSources = new VirtualFile[sources.length];
     System.arraycopy(sources, 0, sortedSources, 0, sources.length);
@@ -86,6 +106,8 @@ public class CompilerBridgeDriver extends Driver {
       }
     });
 
+    HashMap<String, VirtualFile> placeholders = new HashMap<>();
+
     IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile -> {
       if (sourceFile instanceof SourceFile) {
         SourceFile sf = (SourceFile) sourceFile;
@@ -93,10 +115,10 @@ public class CompilerBridgeDriver extends Driver {
         if (vf != null) {
           return vf;
         } else {
-          throw new IllegalStateException("Unknown source file: " + sourceFile.path());
+          return fallbackVirtualFile(reporter, sourceFile, placeholders);
         }
       } else {
-        throw new IllegalStateException("Unknown source file: " + sourceFile.path());
+        return fallbackVirtualFile(reporter, sourceFile, placeholders);
       }
     });
 
