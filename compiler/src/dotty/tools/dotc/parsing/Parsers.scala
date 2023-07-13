@@ -3334,11 +3334,13 @@ object Parsers {
 
       def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
         case Nil =>
-        case _ :: Nil if !prefix =>
         case vparam :: rest =>
           vparam.tpt match {
             case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
-              syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
+              if vparam.mods.isOneOf(GivenOrImplicit) then
+                syntaxError(VarArgsParamCannotBeGiven(vparam.mods.is(Given)), vparam.tpt.span)
+              if rest.nonEmpty then
+                syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
             case _ =>
           }
           checkVarArgsRules(rest)
