@@ -290,6 +290,35 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
+    private def handleBackwardsCompat(tp: Type, sym: Symbol, initialVariance: Int = 1)(using Context): Type =
+      val fluidify = new TypeMap:
+        variance = initialVariance
+        def apply(t: Type): Type = t match
+          case tp: MethodType =>
+            mapOver(tp)
+          case tp: TypeLambda =>
+            tp.derivedLambdaType(resType = this(tp.resType))
+          case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
+            tp.derivedRefinedType(parent, rname, this(rinfo))
+          case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
+            mapOver(tp)
+          case _ =>
+            if variance > 0 then t
+            else Setup.decorate(t, Function.const(CaptureSet.Fluid))
+
+      def isPreCC(sym: Symbol): Boolean =
+        sym.isTerm && sym.maybeOwner.isClass
+        && !defn.isFunctionSymbol(sym.owner)
+        && !sym.owner.is(CaptureChecked)
+
+      if isPreCC(sym) then
+        val tpw = tp.widen
+        val fluidTp = fluidify(tpw)
+        if fluidTp eq tpw then tp
+        else fluidTp.showing(i"fluid for ${sym.showLocated}, ${sym.is(JavaDefined)}: $tp --> $result", capt)
+      else tp
+    end handleBackwardsCompat
+
     override def recheckIdent(tree: Ident)(using Context): Type =
       if tree.symbol.is(Method) then
         if tree.symbol.info.isParameterless then
@@ -297,7 +326,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         markFree(tree.symbol, tree.srcPos)
-      super.recheckIdent(tree)
+      handleBackwardsCompat(super.recheckIdent(tree), tree.symbol)
 
     /** A specialized implementation of the selection rule.
      *
@@ -327,7 +356,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
       if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
-        selType
+        handleBackwardsCompat(selType, tree.symbol)
       else
         val qualCs = qualType.captureSet
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
