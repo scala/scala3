@@ -708,7 +708,7 @@ object Types {
       }
       findMember(name, pre, required, excluded)
     }
-    
+
     /** The implicit members with given name. If there are none and the denotation
      *  contains private members, also look for shadowed non-private implicits.
      */
@@ -1875,20 +1875,25 @@ object Types {
      *  @param alwaysDependent if true, always create a dependent function type.
      */
     def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
-      case mt: MethodType if !mt.isParamDependent =>
-        val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
-        val isContextual = mt.isContextualMethod && !ctx.erasedTypes
-        val result1 = mt.nonDependentResultApprox match {
-          case res: MethodType => res.toFunctionType(isJava)
-          case res => res
-        }
-        val funType = defn.FunctionOf(
-          formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
-          result1, isContextual)
-        if alwaysDependent || mt.isResultDependent then
-          RefinedType(funType, nme.apply, mt)
-        else funType
-      case poly @ PolyType(_, mt: MethodType) if !mt.isParamDependent =>
+      case mt: MethodType =>
+        assert(!mt.isParamDependent)
+        def nonDependentFunType =
+          val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
+          val isContextual = mt.isContextualMethod && !ctx.erasedTypes
+          val result1 = mt.nonDependentResultApprox match {
+            case res: MethodType => res.toFunctionType(isJava)
+            case res => res
+          }
+          defn.FunctionOf(
+            formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
+            result1, isContextual)
+        if mt.hasErasedParams then
+          RefinedType(defn.ErasedFunctionType, nme.apply, mt)
+        else if alwaysDependent || mt.isResultDependent then
+          RefinedType(nonDependentFunType, nme.apply, mt)
+        else nonDependentFunType
+      case poly @ PolyType(_, mt: MethodType) =>
+        assert(!mt.isParamDependent)
         RefinedType(defn.PolyFunctionType, nme.apply, poly)
     }
 
@@ -4071,9 +4076,9 @@ object Types {
       def addInto(tp: Type): Type = tp match
         case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
           tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
-        case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+        case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
           wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionOrPolyType(tp) =>
+        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionType(tp) =>
           wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = addInto(tp.resType))
