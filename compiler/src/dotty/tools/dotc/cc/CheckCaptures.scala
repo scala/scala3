@@ -298,7 +298,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             mapOver(tp)
           case tp: TypeLambda =>
             tp.derivedLambdaType(resType = this(tp.resType))
-          case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
+          case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
             tp.derivedRefinedType(parent, rname, this(rinfo))
           case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
             mapOver(tp)
