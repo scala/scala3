@@ -1714,7 +1714,7 @@ class Definitions {
     isNonRefinedFunction(tp.dropDependentRefinement)
 
   /** Is `tp` a specialized, refined function type? Either an `ErasedFunction` or a `PolyFunction`. */
-  def isRefinedFunctionType(tp: Type)(using Context): Boolean =
+  def isPolyOrErasedFunctionType(tp: Type)(using Context): Boolean =
     isPolyFunctionType(tp) || isErasedFunctionType(tp)
 
   /** Is `tp` a specialized, refined `PolyFunction` type? */
@@ -1732,7 +1732,7 @@ class Definitions {
    *  - PolyFunction
    */
   def isFunctionType(tp: Type)(using Context): Boolean =
-    isFunctionNType(tp) || isRefinedFunctionType(tp)
+    isFunctionNType(tp) || isPolyOrErasedFunctionType(tp)
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     if !ctx.settings.Yscala2Stdlib.value then
