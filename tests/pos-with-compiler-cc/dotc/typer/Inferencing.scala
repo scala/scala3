@@ -241,16 +241,16 @@ object Inferencing {
       * relationship _necessarily_ must hold.
       *
       * We accomplish that by:
-      *   - replacing covariant occurences with upper GADT bound
-      *   - replacing contravariant occurences with lower GADT bound
-      *   - leaving invariant occurences alone
+      *   - replacing covariant occurrences with upper GADT bound
+      *   - replacing contravariant occurrences with lower GADT bound
+      *   - leaving invariant occurrences alone
       *
       * Examples:
       *   - If we have GADT cstr A <: Int, then for all A <: Int, Option[A] <: Option[Int].
       *     Therefore, we can approximate Option[A] ~~ Option[Int].
       *   - If we have A >: S <: T, then for all such A, A => A <: S => T. This
       *     illustrates that it's fine to differently approximate different
-      *     occurences of same type.
+      *     occurrences of same type.
       *   - If we have A <: Int and F <: [A] => Option[A] (note the invariance),
       *     then we should approximate F[A] ~~ Option[A]. That is, we should
       *     respect the invariance of the type constructor.
@@ -449,7 +449,7 @@ object Inferencing {
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
    *
-   *  We need to take the occurences in `pt` into account because a type
+   *  We need to take the occurrences in `pt` into account because a type
    *  variable created when typing the current tree might only appear in the
    *  bounds of a type variable in the expected type, for example when
    *  `ConstraintHandling#legalBound` creates type variables when approximating

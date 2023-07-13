@@ -177,7 +177,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   /** A map from the classes of (direct and outer) this references in `rhsToInline`
    *  to references of their proxies.
    *  Note that we can't index by the ThisType itself since there are several
-   *  possible forms to express what is logicaly the same ThisType. E.g.
+   *  possible forms to express what is logically the same ThisType. E.g.
    *
    *     ThisType(TypeRef(ThisType(p), cls))
    *
@@ -338,7 +338,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
   protected def hasOpaqueProxies = opaqueProxies.nonEmpty
 
-  /** Map first halfs of opaqueProxies pairs to second halfs, using =:= as equality */
+  /** Map first halves of opaqueProxies pairs to second halves, using =:= as equality */
   private def mapRef(ref: TermRef): Option[TermRef] =
     opaqueProxies.collectFirst {
       case (from, to) if from.symbol == ref.symbol && from =:= ref => to
@@ -1047,13 +1047,13 @@ class Inliner(val call: tpd.Tree)(using Context):
     val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
       Splicer.splice(body, splicePos, inlinedFrom.srcPos, MacroClassLoader.fromContext)
     }
-    val inlinedNormailizer = new TreeMap {
+    val inlinedNormalizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
         case _ => super.transform(tree)
       }
     }
-    val normalizedSplice = inlinedNormailizer.transform(evaluatedSplice)
+    val normalizedSplice = inlinedNormalizer.transform(evaluatedSplice)
     if (normalizedSplice.isEmpty) normalizedSplice
     else normalizedSplice.withSpan(splicePos.span)
   }

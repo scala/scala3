@@ -13,7 +13,7 @@ if defined JAVACMD (
         set __JAVA_BIN_DIR=
         for /f "delims=" %%i in ('where /f java.exe') do (
             set "__PATH=%%~dpi"
-            @rem we take first occurence and ignore Oracle path for java executable
+            @rem we take first occurrence and ignore Oracle path for java executable
             if not defined __JAVA_BIN_DIR if "!__PATH!"=="!__PATH:javapath=!" set "__JAVA_BIN_DIR=!__PATH!"
         )
         if defined __JAVA_BIN_DIR set "_JAVACMD=!__JAVA_BIN_DIR!\java.exe"
