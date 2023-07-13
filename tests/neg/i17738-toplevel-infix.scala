@@ -15,4 +15,4 @@ infix val toplevelVal = ??? // error
 infix var toplevelVar = ??? // error
 infix def toplevelDef = ??? // error
 infix given toplevelGiven: Int = ??? // error
-infix implicit val topevelImplicit: Int = ??? // error
+infix implicit val toplevelImplicit: Int = ??? // error
