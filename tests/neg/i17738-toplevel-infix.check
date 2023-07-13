@@ -35,7 +35,7 @@
    | A top-level given instance cannot be infix.
     --------------------------------------------------------------------------------------------------------------------
 -- [E156] Syntax Error: tests/neg/i17738-toplevel-infix.scala:18:19 ----------------------------------------------------
-18 |infix implicit val topevelImplicit: Int = ??? // error
+18 |infix implicit val toplevelImplicit: Int = ??? // error
    |                   ^
    |                   Modifier infix is not allowed for this definition
    |--------------------------------------------------------------------------------------------------------------------
