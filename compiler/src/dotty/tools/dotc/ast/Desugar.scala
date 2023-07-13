@@ -667,18 +667,20 @@ object desugar {
         DefDef(name, Nil, tpt, rhs).withMods(synthetic)
 
       def productElemMeths =
-        val caseParams = derivedVparamss.head.toArray
-        val selectorNamesInBody = normalizedBody.collect {
-          case vdef: ValDef if vdef.name.isSelectorName =>
-            vdef.name
-          case ddef: DefDef if ddef.name.isSelectorName && ddef.paramss.isEmpty =>
-            ddef.name
-        }
-        for i <- List.range(0, arity)
-            selName = nme.selectorName(i)
-            if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
-        yield syntheticProperty(selName, caseParams(i).tpt,
-          Select(This(EmptyTypeIdent), caseParams(i).name))
+        if caseClassInScala2StdLib then Nil
+        else
+          val caseParams = derivedVparamss.head.toArray
+          val selectorNamesInBody = normalizedBody.collect {
+            case vdef: ValDef if vdef.name.isSelectorName =>
+              vdef.name
+            case ddef: DefDef if ddef.name.isSelectorName && ddef.paramss.isEmpty =>
+              ddef.name
+          }
+          for i <- List.range(0, arity)
+              selName = nme.selectorName(i)
+              if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
+          yield syntheticProperty(selName, caseParams(i).tpt,
+            Select(This(EmptyTypeIdent), caseParams(i).name))
 
       def enumCaseMeths =
         if isEnumCase then
@@ -768,11 +770,13 @@ object desugar {
         val unapplyMeth = {
           def scala2LibCompatUnapplyRhs(unapplyParamName: Name) =
             assert(arity <= Definitions.MaxTupleArity, "Unexpected case class with tuple larger than 22: "+ cdef.show)
-            if arity == 1 then Apply(scalaDot(nme.Option), Select(Ident(unapplyParamName), nme._1))
-            else
-              val tupleApply = Select(Ident(nme.scala), s"Tuple$arity".toTermName)
-              val members = List.tabulate(arity) { n => Select(Ident(unapplyParamName), s"_${n+1}".toTermName) }
-              Apply(scalaDot(nme.Option), Apply(tupleApply, members))
+            derivedVparamss.head match
+              case vparam :: Nil =>
+                Apply(scalaDot(nme.Option), Select(Ident(unapplyParamName), vparam.name))
+              case vparams =>
+                val tupleApply = Select(Ident(nme.scala), s"Tuple$arity".toTermName)
+                val members = vparams.map(vparam => Select(Ident(unapplyParamName), vparam.name))
+                Apply(scalaDot(nme.Option), Apply(tupleApply, members))
 
           val hasRepeatedParam = constrVparamss.head.exists {
             case ValDef(_, tpt, _) => isRepeated(tpt)
