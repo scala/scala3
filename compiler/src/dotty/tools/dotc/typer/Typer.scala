@@ -3957,7 +3957,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         sym.isConstructor
         || sym.matchNullaryLoosely
         || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
-          && { 
+          && {
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)

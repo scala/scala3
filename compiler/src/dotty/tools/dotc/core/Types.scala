@@ -703,7 +703,7 @@ object Types {
       }
       findMember(name, pre, required, excluded)
     }
-    
+
     /** The implicit members with given name. If there are none and the denotation
      *  contains private members, also look for shadowed non-private implicits.
      */
@@ -2583,6 +2583,7 @@ object Types {
           (symd.isAbstractType
             || symd.isTerm
                 && !symd.flagsUNSAFE.isOneOf(Module | Final | Param)
+                && !symd.isConstructor
                 && !symd.maybeOwner.isEffectivelyFinal)
           && prefix.sameThis(symd.maybeOwner.thisType)
           && refines(givenSelfTypeOrCompleter(prefix.cls), symd.name)
