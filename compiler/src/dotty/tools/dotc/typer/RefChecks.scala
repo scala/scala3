@@ -1706,7 +1706,7 @@ class RefChecks extends MiniPhase { thisPhase =>
             // if (settings.warnNullaryUnit)
             //  checkNullaryMethodReturnType(sym)
             // if (settings.warnInaccessible) {
-            //  if (!sym.isConstructor && !sym.isEffectivelyFinal && !sym.isSynthetic)
+            //  if (!sym.isEffectivelyFinal && !sym.isSynthetic)
             //    checkAccessibilityOfReferencedTypes(tree)
             // }
             // tree match {
