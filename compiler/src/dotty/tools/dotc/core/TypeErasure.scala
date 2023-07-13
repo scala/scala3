@@ -654,7 +654,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else SuperType(eThis, eSuper)
       case ExprType(rt) =>
         defn.FunctionType(0)
-      case RefinedType(parent, nme.apply, refinedInfo) if defn.isRefinedFunctionType(parent) =>
+      case RefinedType(parent, nme.apply, refinedInfo) if defn.isPolyOrErasedFunctionType(parent) =>
         eraseRefinedFunctionApply(refinedInfo)
       case tp: TypeVar if !tp.isInstantiated =>
         assert(inSigName, i"Cannot erase uninstantiated type variable $tp")
@@ -936,7 +936,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
-      case tp @ RefinedType(parent, nme.apply, _) if defn.isRefinedFunctionType(parent) =>
+      case tp @ RefinedType(parent, nme.apply, _) if defn.isPolyOrErasedFunctionType(parent) =>
         // we need this case rather than falling through to the default
         // because RefinedTypes <: TypeProxy and it would be caught by
         // the case immediately below

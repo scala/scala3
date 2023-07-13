@@ -446,7 +446,7 @@ object TreeChecker {
       val tpe = tree.typeOpt
 
       // PolyFunction and ErasedFunction apply methods stay structural until Erasure
-      val isRefinedFunctionApply = (tree.name eq nme.apply) && defn.isRefinedFunctionType(tree.qualifier.typeOpt)
+      val isRefinedFunctionApply = (tree.name eq nme.apply) && defn.isPolyOrErasedFunctionType(tree.qualifier.typeOpt)
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)
       val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
