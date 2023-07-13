@@ -1172,6 +1172,11 @@ object Objects:
 
   /** Evaluate the cases against the scrutinee value.
    *
+   *  It returns the scrutinee in most cases. The main effect of the function is for its side effects of adding bindings
+   *  to the environment.
+   *
+   *  See https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html
+   *
    *  @param scrutinee   The abstract value of the scrutinee.
    *  @param cases       The cases to match.
    *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
@@ -1348,7 +1353,7 @@ object Objects:
 
 
     cases.map(evalCase).join
-
+  end patternMatch
 
   /** Handle semantics of leaf nodes
    *
