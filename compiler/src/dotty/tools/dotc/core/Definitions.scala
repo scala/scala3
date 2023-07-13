@@ -1704,15 +1704,15 @@ class Definitions {
   def isFunctionNType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
-  /** Is `tp` a specialized, refined function type? Either an `ErasedFunction` or a `PolyFunction`. */
+  /** Does `tp` derive from `PolyFunction` or `ErasedFunction`? */
   def isPolyOrErasedFunctionType(tp: Type)(using Context): Boolean =
     isPolyFunctionType(tp) || isErasedFunctionType(tp)
 
-  /** Is `tp` a specialized, refined `PolyFunction` type? */
+  /** Does `tp` derive from `PolyFunction`? */
   def isPolyFunctionType(tp: Type)(using Context): Boolean =
     tp.derivesFrom(defn.PolyFunctionClass)
 
-  /** Is `tp` a specialized, refined `ErasedFunction` type? */
+  /** Does `tp` derive from `ErasedFunction`? */
   def isErasedFunctionType(tp: Type)(using Context): Boolean =
     tp.derivesFrom(defn.ErasedFunctionClass)
 
