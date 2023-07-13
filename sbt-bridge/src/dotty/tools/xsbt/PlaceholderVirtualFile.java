@@ -4,9 +4,9 @@ import dotty.tools.dotc.interfaces.SourceFile;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
-public final class PlaceholderVirtualFile extends xsbti.BasicVirtualFileRef implements xsbti.VirtualFile {
+public class PlaceholderVirtualFile extends xsbti.BasicVirtualFileRef implements xsbti.VirtualFile {
 
-  private final SourceFile sourceFile;
+  protected final SourceFile sourceFile;
 
   public PlaceholderVirtualFile(SourceFile sourceFile) {
     super(sourceFile.path());

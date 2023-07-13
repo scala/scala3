@@ -55,11 +55,12 @@ public class CompilerBridgeDriver extends Driver {
     return false;
   }
 
-  private static VirtualFile asVirtualFileOrNull(SourceFile sourceFile) {
+  private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
+      Map<String, VirtualFile> placeholders) {
     if (sourceFile.file() instanceof AbstractZincFile) {
       return ((AbstractZincFile) sourceFile.file()).underlying();
     } else {
-      return null;
+      return fallbackVirtualFile(reporter, sourceFile, placeholders);
     }
   }
 
@@ -78,7 +79,10 @@ public class CompilerBridgeDriver extends Driver {
       Map<String, VirtualFile> placeholders) {
     return placeholders.computeIfAbsent(sourceFile.path(), path -> {
       reportMissingFile(reporter, sourceFile);
-      return new PlaceholderVirtualFile(sourceFile);
+      if (sourceFile.jfile().isPresent())
+        return new BasicPathBasedFile(sourceFile);
+      else
+        return new PlaceholderVirtualFile(sourceFile);
     });
   }
 
@@ -97,26 +101,14 @@ public class CompilerBridgeDriver extends Driver {
       sourcesSet.put(abstractFile);
     }
 
-    DelegatingReporter reporter = new DelegatingReporter(delegate, sourceFile -> {
-      VirtualFile vf = asVirtualFileOrNull(sourceFile);
-      if (vf != null) {
-        return vf.id();
-      } else {
-        return sourceFile.path(); // same as in Zinc for 2.13
-      }
-    });
-
     HashMap<String, VirtualFile> placeholders = new HashMap<>();
+
+    DelegatingReporter reporter = new DelegatingReporter(delegate, (self, sourceFile) ->
+      asVirtualFile(sourceFile, self, placeholders).id());
 
     IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile -> {
       if (sourceFile instanceof SourceFile) {
-        SourceFile sf = (SourceFile) sourceFile;
-        VirtualFile vf = asVirtualFileOrNull(sf);
-        if (vf != null) {
-          return vf;
-        } else {
-          return fallbackVirtualFile(reporter, sourceFile, placeholders);
-        }
+        return asVirtualFile(((SourceFile) sourceFile), reporter, placeholders);
       } else {
         return fallbackVirtualFile(reporter, sourceFile, placeholders);
       }

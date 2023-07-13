@@ -24,12 +24,14 @@ import java.util.function.*;
 
 final public class DelegatingReporter extends AbstractReporter {
   private xsbti.Reporter delegate;
+  private final BiFunction<DelegatingReporter, SourceFile, String> baseLookup;
   private final Function<SourceFile, String> lookup;
 
-  public DelegatingReporter(xsbti.Reporter delegate, Function<SourceFile, String> lookup) {
+  public DelegatingReporter(xsbti.Reporter delegate, BiFunction<DelegatingReporter, SourceFile, String> baseLookup) {
     super();
     this.delegate = delegate;
-    this.lookup = lookup;
+    this.baseLookup = baseLookup;
+    this.lookup = sourceFile -> baseLookup.apply(this, sourceFile);
   }
 
   public void dropDelegate() {

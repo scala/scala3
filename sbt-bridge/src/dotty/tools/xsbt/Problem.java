@@ -16,6 +16,7 @@ import scala.jdk.javaapi.OptionConverters;
 
 import xsbti.Position;
 import xsbti.Severity;
+import xsbti.VirtualFile;
 
 
 final public class Problem implements xsbti.Problem {
