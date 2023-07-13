@@ -49,8 +49,6 @@ val experimentalDefinitionInLibrary = Set(
 
   //// New feature: capture checking
   "scala.annotation.capability",
-  "scala.annotation.internal.WithPureFuns",
-  "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
   "scala.Pure",
