@@ -567,10 +567,7 @@ object TypeErasure {
         functionType(info.resultType)
       case info: MethodType =>
         assert(!info.resultType.isInstanceOf[MethodicType])
-        defn.FunctionType(
-          n = info.erasedParams.count(_ == false),
-          isContextual = info.isImplicitMethod,
-        )
+        defn.FunctionType(n = info.erasedParams.count(_ == false))
     }
     erasure(functionType(applyInfo))
 }
