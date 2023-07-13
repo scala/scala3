@@ -10,6 +10,9 @@ case class Mode(val bits: Int) extends AnyVal {
 
   def isExpr: Boolean = (this & PatternOrTypeBits) == None
 
+  /** Are we in the body of quoted pattern? */
+  def isQuotedPattern: Boolean = (this & QuotedPatternBits) != None
+
   override def toString: String =
     (0 until 31).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
 
@@ -68,6 +71,9 @@ object Mode {
    *  the printing.
    */
   val Printing: Mode = newMode(10, "Printing")
+
+  /** Are we in a quote the body of quoted type pattern? */
+  val QuotedTypePattern: Mode = newMode(11, "QuotedTypePattern")
 
   /** We are currently in a `viewExists` check. In that case, ambiguous
    *  implicits checks are disabled and we succeed with the first implicit
@@ -128,8 +134,10 @@ object Mode {
   /** Are we trying to find a hidden implicit? */
   val FindHiddenImplicits: Mode = newMode(24, "FindHiddenImplicits")
 
-  /** Are we in a quote in a pattern? */
-  val QuotedPattern: Mode = newMode(25, "QuotedPattern")
+  /** Are we in a quote the body of quoted expression pattern? */
+  val QuotedExprPattern: Mode = newMode(25, "QuotedExprPattern")
+
+  val QuotedPatternBits: Mode = QuotedExprPattern | QuotedTypePattern
 
   /** Are we typechecking the rhs of an extension method? */
   val InExtensionMethod: Mode = newMode(26, "InExtensionMethod")

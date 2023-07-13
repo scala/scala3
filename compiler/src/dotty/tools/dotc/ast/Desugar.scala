@@ -1010,7 +1010,7 @@ object desugar {
    *  if the type has a pattern variable name
    */
   def quotedPatternTypeDef(tree: TypeDef)(using Context): TypeDef = {
-    assert(ctx.mode.is(Mode.QuotedPattern))
+    assert(ctx.mode.isQuotedPattern)
     if tree.name.isVarPattern && !tree.isBackquoted then
       val patternTypeAnnot = New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)
       val mods = tree.mods.withAddedAnnotation(patternTypeAnnot)
@@ -1359,7 +1359,7 @@ object desugar {
       case tree: ValDef => valDef(tree)
       case tree: TypeDef =>
         if (tree.isClassDef) classDef(tree)
-        else if (ctx.mode.is(Mode.QuotedPattern)) quotedPatternTypeDef(tree)
+        else if (ctx.mode.isQuotedPattern) quotedPatternTypeDef(tree)
         else tree
       case tree: DefDef =>
         if (tree.name.isConstructorName) tree // was already handled by enclosing classDef
