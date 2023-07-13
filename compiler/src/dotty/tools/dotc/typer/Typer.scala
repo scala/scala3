@@ -4116,8 +4116,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       wtp match {
         case wtp: ExprType =>
           readaptSimplified(tree.withType(wtp.resultType))
-        case wtp: MethodType if wtp.isImplicitMethod &&
-          ({ resMatch = constrainResult(tree.symbol, wtp, sharpenedPt); resMatch } || !functionExpected) =>
+        case wtp: MethodType
+          if wtp.isImplicitMethod
+          && ({ resMatch = constrainResult(tree.symbol, wtp, sharpenedPt); resMatch} || !functionExpected)
+          && !ctx.mode.is(Mode.InQuotePatternHoasArgs) =>
           if (resMatch || ctx.mode.is(Mode.ImplicitsEnabled))
             adaptNoArgsImplicitMethod(wtp)
           else

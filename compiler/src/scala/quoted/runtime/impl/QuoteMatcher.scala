@@ -93,7 +93,11 @@ import dotty.tools.dotc.util.optional
  *   '{ val x: T = e1; e2 } =?= '{ val y: P = p1; p2 }   ===>   withEnv(x -> y)('[T] =?= '[P] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
  *
  *   /* Match def */
- *   '{ def x0(x1: T1, ..., xn: Tn): T0 = e1; e2 } =?= '{ def y0(y1: P1, ..., yn: Pn): P0 = p1; p2 }   ===>   withEnv(x0 -> y0, ..., xn -> yn)('[T0] =?= '[P0] &&& ... &&& '[Tn] =?= '[Pn] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
+ *   '{ def x0(x1: T1, ..., xn: Tn)...(y1: U1, ..., ym: Um): T0 = e1; e2 } =?= '{ def y0(z1: P1, ..., zn: Pn)...(w1: Q1, ..., wn: Qn): P0 = p1; p2 }   ===>
+ *           /* Note that types of parameters can depend on earlier parameters */
+ *           withEnv(x1 -> y1, ..., zn -> zn)(...withEnv(y1 -> w1, ..., ym -> wm)(
+ *             ('[T1] =?= '[P1] &&& ... &&&'[T1] =?= '[P1]) &&& ... &&& ('[U1] =?= '[Q1] &&& ... &&&'[Um] =?= '[Qm])
+ *             &&& '[T0] =?= '[P0] &&& '{e1} =?= '{p1} && '{e2} =?= '{p2})...)
  *
  *   // Types
  *
@@ -570,7 +574,7 @@ class QuoteMatcher(debug: Boolean) {
                  * f has a method type `(x: Int): Int` and  `f` maps to `g`, `p` should hold
                  * `g.apply(0)` because the type of `g` is `Int => Int` due to eta expansion.
                  */
-                case Apply(fun, args) if env.contains(tree.symbol) => transform(fun).select(nme.apply).appliedToArgs(args)
+                case Apply(fun, args) if env.contains(tree.symbol) => transform(fun).select(nme.apply).appliedToArgs(args.map(transform))
                 case tree: Ident => env.get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
                 case tree => super.transform(tree)
           }.transform(tree)
