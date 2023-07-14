@@ -2593,6 +2593,7 @@ object Types {
           (symd.isAbstractType
             || symd.isTerm
                 && !symd.flagsUNSAFE.isOneOf(Module | Final | Param)
+                && !symd.isConstructor
                 && !symd.maybeOwner.isEffectivelyFinal)
           && prefix.sameThis(symd.maybeOwner.thisType)
           && refines(givenSelfTypeOrCompleter(prefix.cls), symd.name)

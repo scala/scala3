@@ -555,7 +555,7 @@ object TreeChecker {
       val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
-      assert(constr.symbol.owner == cls)
+      assert(constr.symbol.owner == cls, i"constr ${constr.symbol} in $cdef has wrong owner; should be $cls but is ${constr.symbol.owner}")
       assert(cls.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${cls.primaryConstructor}, in tree = ${constr.symbol}")
       checkOwner(impl)
       checkOwner(impl.constr)
