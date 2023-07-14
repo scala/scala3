@@ -161,8 +161,8 @@ object Machine:
   //                    State must be Off
 ```
 
-Note that in [Inline](../metaprogramming/inline.md) we discussed `erasedValue` and inline
-matches. `erasedValue` is implemented with `erased`, so the state machine above
+Note that in [Compile-time operations](../metaprogramming/compiletime-ops.md#erasedvalue) we discussed `erasedValue` and inline
+matches. `erasedValue` is internally implemented with `erased` (and is not experimental), so the state machine above
 can be encoded as follows:
 
 ```scala
