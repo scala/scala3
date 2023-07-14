@@ -1073,7 +1073,10 @@ object Parsers {
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
-      makeIdent(in.token, in.offset, ident())
+      val t = makeIdent(in.token, in.offset, ident())
+      if t.name == nme.ROOTPKG then
+        syntaxError(em"Illegal use of root package name.")
+      t
 
     /** Accept identifier and return Ident with its name as a type name. */
     def typeIdent(): Ident =
@@ -1128,19 +1131,21 @@ object Parsers {
 
       if in.token == THIS then handleThis(EmptyTypeIdent)
       else if in.token == SUPER then handleSuper(EmptyTypeIdent)
-      else
-        val t = termIdent()
-        if in.token == DOT then
-          def qual = cpy.Ident(t)(t.name.toTypeName)
-          in.lookahead.token match
-            case THIS =>
-              in.nextToken()
-              handleThis(qual)
-            case SUPER =>
-              in.nextToken()
-              handleSuper(qual)
-            case _ => t
-        else t
+      else if in.token != INTERPOLATIONID && in.lookahead.token == DOT then
+        val tok    = in.token
+        val offset = in.offset
+        val name   = ident()
+        def qual   = makeIdent(tok, offset, name.toTypeName)
+        in.lookahead.token match
+          case THIS =>
+            in.nextToken()
+            handleThis(qual)
+          case SUPER =>
+            in.nextToken()
+            handleSuper(qual)
+          case _ =>
+            makeIdent(tok, offset, name)
+      else termIdent()
     end simpleRef
 
     /** MixinQualifier ::= `[' id `]'
