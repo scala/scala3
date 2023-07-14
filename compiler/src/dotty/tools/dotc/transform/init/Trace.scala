@@ -49,7 +49,12 @@ object Trace:
           val code = SyntaxHighlighting.highlight(pos.lineContent.trim.nn)
           i"$code\t$loc"
         else
-          tree.show
+          tree match
+            case defDef: DefTree =>
+              // The definition can be huge, avoid printing the whole definition.
+              defDef.symbol.show
+            case _ =>
+              tree.show
       val positionMarkerLine =
         if pos.exists && pos.source.exists then
           positionMarker(pos)
