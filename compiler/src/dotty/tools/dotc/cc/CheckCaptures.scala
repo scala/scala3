@@ -43,19 +43,24 @@ object CheckCaptures:
         sym
   end Pre
 
+  enum EnvKind:
+    case Regular        // normal case
+    case NestedInOwner  // environment is  a temporary one nested in the owner's environment,
+                        // and does not have a different actual owner symbol
+                        // (this happens when doing box adaptation).
+    case ClosureResult  // environment is for the result of a closure
+    case Boxed          // envrionment is inside a box (in which case references are not counted)
+
   /** A class describing environments.
-   *  @param owner         the current owner
-   *  @param nestedInOwner true if the environment is a temporary one nested in the owner's environment,
-   *                       and does not have a different actual owner symbol (this happens when doing box adaptation).
-   *  @param captured      the caputure set containing all references to tracked free variables outside of boxes
-   *  @param isBoxed       true if the environment is inside a box (in which case references are not counted)
-   *  @param outer0        the next enclosing environment
+   *  @param owner     the current owner
+   *  @param kind      the environment's kind
+   *  @param captured  the caputure set containing all references to tracked free variables outside of boxes
+   *  @param outer0    the next enclosing environment
    */
   case class Env(
       owner: Symbol,
-      nestedInOwner: Boolean,
+      kind: EnvKind,
       captured: CaptureSet,
-      isBoxed: Boolean,
       outer0: Env | Null):
 
     def outer = outer0.nn
@@ -63,7 +68,7 @@ object CheckCaptures:
     def isOutermost = outer0 == null
 
     /** If an environment is open it tracks free references */
-    def isOpen = !captured.isAlwaysEmpty && !isBoxed
+    def isOpen = !captured.isAlwaysEmpty && kind != EnvKind.Boxed
   end Env
 
   /** Similar normal substParams, but this is an approximating type map that
@@ -226,7 +231,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.error(em"$header included in allowed capture set ${res.blocking}", pos)
 
     /** The current environment */
-    private var curEnv: Env = Env(NoSymbol, nestedInOwner = false, CaptureSet.empty, isBoxed = false, null)
+    private var curEnv: Env = Env(NoSymbol, EnvKind.Regular, CaptureSet.empty, null)
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
@@ -270,7 +275,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !cs.isAlwaysEmpty then
         forallOuterEnvsUpTo(ctx.owner.topLevelClass): env =>
           def isVisibleFromEnv(sym: Symbol) =
-            (env.nestedInOwner || env.owner != sym)
+            (env.kind == EnvKind.NestedInOwner || env.owner != sym)
             && env.owner.isContainedIn(sym)
           val included = cs.filter:
             case ref: TermRef => isVisibleFromEnv(ref.symbol.owner)
@@ -512,7 +517,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !Synthetics.isExcluded(sym) then
         val saved = curEnv
         val localSet = capturedVars(sym)
-        if !localSet.isAlwaysEmpty then curEnv = Env(sym, nestedInOwner = false, localSet, isBoxed = false, curEnv)
+        if !localSet.isAlwaysEmpty then curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
         try super.recheckDefDef(tree, sym)
         finally
           interpolateVarsIn(tree.tpt)
@@ -530,7 +535,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val localSet = capturedVars(cls)
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos)
-      if !localSet.isAlwaysEmpty then curEnv = Env(cls, nestedInOwner = false, localSet, isBoxed = false, curEnv)
+      if !localSet.isAlwaysEmpty then curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
@@ -595,7 +600,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         tree match
           case _: RefTree | closureDef(_) =>
-            curEnv = Env(curEnv.owner, nestedInOwner = false, CaptureSet.Var(), isBoxed = true, curEnv)
+            curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(), curEnv)
           case _ =>
 
         try super.recheck(tree, pt)
@@ -729,7 +734,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           covariant: Boolean, boxed: Boolean,
           reconstruct: (List[Type], Type) => Type): (Type, CaptureSet) =
         val saved = curEnv
-        curEnv = Env(curEnv.owner, nestedInOwner = true, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
+        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
 
         try
           val (eargs, eres) = expected.dealias.stripCapturing match
@@ -756,7 +761,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           covariant: Boolean, boxed: Boolean,
           reconstruct: Type => Type): (Type, CaptureSet) =
         val saved = curEnv
-        curEnv = Env(curEnv.owner, nestedInOwner = true, CaptureSet.Var(), isBoxed = false, if boxed then null else curEnv)
+        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
 
         try
           val eres = expected.dealias.stripCapturing match
@@ -888,7 +893,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val actual1 =
             val saved = curEnv
             try
-              curEnv = Env(clazz, nestedInOwner = true, capturedVars(clazz), isBoxed = false, outer0 = curEnv)
+              curEnv = Env(clazz, EnvKind.NestedInOwner, capturedVars(clazz), outer0 = curEnv)
               val adapted = adaptBoxed(actual, expected1, srcPos, alwaysConst = true)
               actual match
                 case _: MethodType =>
