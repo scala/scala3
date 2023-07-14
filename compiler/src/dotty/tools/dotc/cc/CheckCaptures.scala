@@ -488,8 +488,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             case rhs @ closure(_, _, _) =>
               // In a curried closure `x => y => e` don't leak capabilities retained by
               // the second closure `y => e` into the first one. This is an approximation
-              // of the CC rule which says that a closure contributes captures to its 
-              // environment only if a let-bound reference to the closure is used. 
+              // of the CC rule which says that a closure contributes captures to its
+              // environment only if a let-bound reference to the closure is used.
               capt.println(i"boxing $rhs")
               rhs.putAttachment(BoxedClosure, ())
             case _ =>
@@ -853,7 +853,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       }
 
       if expected.isSingleton && actual.isSingleton then
-        println(i"shot $actual $expected")
         actual
       else
         var actualw = actual.widenDealias
