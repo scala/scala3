@@ -14,28 +14,36 @@ class InMethod:
     implicit val foo: Foo = new Foo(2)
     assert(foo eq implicitly[Foo])
 
-  def namedWild(bar: Bar): Unit =
-    val bar2 = new Bar(2)
+  def namedWild(bar: Bar, bar2: Bar): Unit =
     import bar.foo
     import bar2._
     assert(bar.foo eq implicitly[Foo])
 
-  def wildNamed(bar: Bar): Unit =
-    val bar2 = new Bar(2)
+  def wildNamed(bar: Bar, bar2: Bar): Unit =
     import bar2._
     import bar.foo
     assert(bar.foo eq implicitly[Foo])
 
-class InClass(bar: Bar):
+class InClassWild(bar: Bar):
   import bar._
+  implicit val foo: Foo = new Foo(2)
+  assert(foo eq implicitly[Foo])
+
+class InClassNamed(bar: Bar):
+  import bar.foo
   implicit val foo: Foo = new Foo(2)
   assert(foo eq implicitly[Foo])
 
 object Test:
   def main(args: Array[String]): Unit =
     val bar = new Bar(1)
-    new InMethod().wild(bar)
-    new InMethod().named(bar)
-    new InMethod().namedWild(bar)
-    new InMethod().wildNamed(bar)
-    new InClass(bar)
+    val bar2 = new Bar(2)
+
+    new InMethod().wild(bar)            // was: error
+    new InMethod().named(bar)           // was: error
+
+    new InMethod().namedWild(bar, bar2) // was: error
+    new InMethod().wildNamed(bar, bar2)
+
+    new InClassWild(bar)                // was: error
+    new InClassNamed(bar)               // was: error
