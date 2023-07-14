@@ -1326,7 +1326,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
           (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
-        if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
+        if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
+          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
+        case defn.ErasedFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
           (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case pt1 @ SAMType(mt @ MethodTpe(_, formals, _)) =>
           val restpe = mt.resultType match
@@ -1648,11 +1650,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // If the expected type is a polymorphic function with the same number of
     // type and value parameters, then infer the types of value parameters from the expected type.
     val inferredVParams = pt match
-      case RefinedType(parent, nme.apply, poly @ PolyType(_, mt: MethodType))
-      if (parent.typeSymbol eq defn.PolyFunctionClass)
-      && tparams.lengthCompare(poly.paramNames) == 0
-      && vparams.lengthCompare(mt.paramNames) == 0
-      =>
+      case defn.PolyFunctionOf(poly @ PolyType(_, mt: MethodType))
+      if tparams.lengthCompare(poly.paramNames) == 0 && vparams.lengthCompare(mt.paramNames) == 0 =>
         vparams.zipWithConserve(mt.paramInfos): (vparam, formal) =>
           // Unlike in typedFunctionValue, `formal` cannot be a TypeBounds since
           // it must be a valid method parameter type.
@@ -1667,7 +1666,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         vparams
 
     val resultTpt = pt.dealias match
-      case RefinedType(parent, nme.apply, poly @ PolyType(_, mt: MethodType)) if parent.classSymbol eq defn.PolyFunctionClass =>
+      case defn.PolyFunctionOf(poly @ PolyType(_, mt: MethodType)) =>
         untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
           mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
       case _ => untpd.TypeTree()
@@ -3234,8 +3233,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else formals.map(untpd.TypeTree)
     }
 
-    val erasedParams = pt.dealias match {
-      case RefinedType(parent, nme.apply, mt: MethodType) => mt.erasedParams
+    val erasedParams = pt match {
+      case defn.ErasedFunctionOf(mt: MethodType) => mt.erasedParams
       case _ => paramTypes.map(_ => false)
     }
 
