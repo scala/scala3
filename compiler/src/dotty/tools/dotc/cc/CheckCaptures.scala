@@ -154,8 +154,8 @@ object CheckCaptures:
         traverseChildren(t)
     check.traverse(tp)
 
-  /** Attachment key for boxed curried closures */
-  val BoxedClosure = Property.Key[Type]
+  /** Attachment key for bodies of closures, provided they are values */
+  val ClosureBodyValue = Property.Key[Unit]
 
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
@@ -243,18 +243,20 @@ class CheckCaptures extends Recheck, SymTransformer:
         if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
         else CaptureSet.empty)
 
-    /** For all nested environments up to `limit` or a closed environment perform `op` */
+    /** For all nested environments up to `limit` or a closed environment perform `op`,
+     *  but skip environmenrts directly enclosing environments of kind ClosureResult.
+     */
     def forallOuterEnvsUpTo(limit: Symbol)(op: Env => Unit)(using Context): Unit =
-      def recur(env: Env): Unit =
+      def recur(env: Env, skip: Boolean): Unit =
         if env.isOpen && env.owner != limit then
-          op(env)
+          if !skip then op(env)
           if !env.isOutermost then
             var nextEnv = env.outer
             if env.owner.isConstructor then
               if nextEnv.owner != limit && !nextEnv.isOutermost then
                 nextEnv = nextEnv.outer
-            recur(nextEnv)
-      recur(curEnv)
+            recur(nextEnv, skip = env.kind == EnvKind.ClosureResult)
+      recur(curEnv, skip = false)
 
     /** Include `sym` in the capture sets of all enclosing environments nested in the
      *  the environment in which `sym` is defined.
@@ -495,8 +497,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               // the second closure `y => e` into the first one. This is an approximation
               // of the CC rule which says that a closure contributes captures to its
               // environment only if a let-bound reference to the closure is used.
-              capt.println(i"boxing $rhs")
-              rhs.putAttachment(BoxedClosure, ())
+              mdef.rhs.putAttachment(ClosureBodyValue, ())
             case _ =>
         case _ =>
       super.recheckBlock(block, pt)
@@ -595,20 +596,19 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  adding all references in the boxed capture set to the current environment.
      */
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      if tree.isTerm && (pt.isBoxedCapturing || tree.hasAttachment(BoxedClosure)) then
-        val saved = curEnv
-
-        tree match
-          case _: RefTree | closureDef(_) =>
-            curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(), curEnv)
-          case _ =>
-
+      val saved = curEnv
+      tree match
+        case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
+          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(), curEnv)
+        case _ if tree.hasAttachment(ClosureBodyValue) =>
+          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(), curEnv)
+        case _ =>
+      val res =
         try super.recheck(tree, pt)
         finally curEnv = saved
-      else
-        val res = super.recheck(tree, pt)
-        if tree.isTerm then markFree(res.boxedCaptureSet, tree.srcPos)
-        res
+      if tree.isTerm && !pt.isBoxedCapturing then
+        markFree(res.boxedCaptureSet, tree.srcPos)
+      res
 
     /** If `tree` is a reference or an application where the result type refers
      *  to an enclosing class or method parameter of the reference, check that the result type
