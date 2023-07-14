@@ -1479,9 +1479,39 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that
      *  the case was covered previously during subtyping.
+     *
+     *  A type has been covered previously in subtype checking if it
+     *  is some combination of TypeRefs that point to classes, where the
+     *  combiners are AppliedTypes, RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
+     *
+     *  The exception is that if both sides contain OrTypes, the check hasn't been covered.
+     *  See #17465.
      */
     def isNewSubType(tp1: Type): Boolean =
-      if (isCovered(tp1) && isCovered(tp2))
+
+      def isCovered(tp: Type): (Boolean, Boolean) =
+        var containsOr: Boolean = false
+        @annotation.tailrec def recur(todos: List[Type]): Boolean = todos match
+          case tp :: todos =>
+            tp.dealiasKeepRefiningAnnots.stripTypeVar match
+              case tp: TypeRef =>
+                if tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass then recur(todos)
+                else false
+              case tp: AppliedType => recur(tp.tycon :: todos)
+              case tp: RefinedOrRecType => recur(tp.parent :: todos)
+              case tp: AndType => recur(tp.tp1 :: tp.tp2 :: todos)
+              case tp: OrType  =>
+                containsOr = true
+                recur(tp.tp1 :: tp.tp2 :: todos)
+              case _ => false
+          case Nil => true
+        val result = recur(tp :: Nil)
+        (result, containsOr)
+
+      val (covered1, hasOr1) = isCovered(tp1)
+      val (covered2, hasOr2) = isCovered(tp2)
+
+      if covered1 && covered2 && !(hasOr1 && hasOr2) then
         //println(s"useless subtype: $tp1 <:< $tp2")
         false
       else isSubType(tp1, tp2, approx.addLow)
@@ -2090,19 +2120,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        || isSubRefinements(
             tp1.parent.asInstanceOf[RefinedType],
             tp2.parent.asInstanceOf[RefinedType], limit))
-
-  /** A type has been covered previously in subtype checking if it
-   *  is some combination of TypeRefs that point to classes, where the
-   *  combiners are AppliedTypes, RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
-   */
-  private def isCovered(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots.stripTypeVar match {
-    case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
-    case tp: AppliedType => isCovered(tp.tycon)
-    case tp: RefinedOrRecType => isCovered(tp.parent)
-    case tp: AndType => isCovered(tp.tp1) && isCovered(tp.tp2)
-    case tp: OrType  => isCovered(tp.tp1) && isCovered(tp.tp2)
-    case _ => false
-  }
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type): Boolean = tp.stripTypeVar match {
