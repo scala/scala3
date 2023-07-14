@@ -1749,7 +1749,7 @@ object Types {
         else NoType
       case t if defn.isNonRefinedFunction(t) =>
         t
-      case t @ defn.PolyOrErasedFunctionOf(_: MethodType) =>
+      case t @ defn.PolyOrErasedFunctionOf(_) =>
         t
       case t @ SAMType(_) =>
         t
