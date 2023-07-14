@@ -1131,7 +1131,7 @@ object Parsers {
 
       if in.token == THIS then handleThis(EmptyTypeIdent)
       else if in.token == SUPER then handleSuper(EmptyTypeIdent)
-      else if in.lookahead.token == DOT then
+      else if in.token != INTERPOLATIONID && in.lookahead.token == DOT then
         val tok    = in.token
         val offset = in.offset
         val name   = ident()
