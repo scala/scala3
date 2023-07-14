@@ -10,7 +10,7 @@ import TypeOps.refineUsingParent
 import collection.mutable
 import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config
-import config.Feature.migrateTo3
+import config.Feature.{ccEnabled, migrateTo3}
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
@@ -640,36 +640,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def compareRefined: Boolean =
           val tp1w = tp1.widen
-
-          if ctx.phase == Phases.checkCapturesPhase then
-
-            // A relaxed version of subtyping for dependent functions where method types
-            // are treated as contravariant.
-            // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
-            // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
-            // (---> orphan params during pickling)
-            def isSubInfo(info1: Type, info2: Type): Boolean = (info1, info2) match
-              case (info1: PolyType, info2: PolyType) =>
-                info1.paramNames.hasSameLengthAs(info2.paramNames)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1: MethodType, info2: MethodType) =>
-                matchingMethodParams(info1, info2, precise = false)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1 @ CapturingType(parent1, refs1), info2: Type) =>
-                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
-                  && isSubInfo(parent1, info2)
-              case (info1: Type, CapturingType(parent2, refs2)) =>
-                val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
-                  && isSubInfo(info1, parent2)
-              case _ =>
-                isSubType(info1, info2)
-
-            if defn.isFunctionType(tp2) then
-              tp1w.widenDealias match
-                case tp1: RefinedType =>
-                  return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
-                case _ =>
 
           val skipped2 = skipMatching(tp1w, tp2)
           if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
@@ -2001,8 +1971,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // conceivably dispatch without knowing precise parameter signatures. One can signal
       // this by inheriting from the `scala.reflect.SignatureCanBeImprecise` marker trait,
       // in which case the signature test is elided.
+      //
+      // Additionally, for refined function types we do not need to check
+      // signatures since they're erased in a special way, so we skip the
+      // signature check but only under `ccEnabled` for now.
+      // TODO: add a new relaxedSubtyping feature for this (and make a SIP)
+      // since this is useful in general, but is a language change.
       def sigsOK(symInfo: Type, info2: Type) =
-        tp2.underlyingClassRef(refinementOK = true).member(name).exists
+        (ccEnabled && defn.isFunctionType(tp2))
+        || tp2.underlyingClassRef(refinementOK = true).member(name).exists
         || tp2.derivesFrom(defn.WithoutPreciseParameterTypesClass)
         || symInfo.isInstanceOf[MethodType]
             && symInfo.signature.consistentParams(info2.signature)
@@ -2014,17 +1991,36 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // but under the condition that signatures might have to match (see sigsOK)
       // This relaxed version is needed to correctly compare dependent function types.
       // See pos/i12211.scala.
-      def isSubInfo(info1: Type, info2: Type, symInfo: Type): Boolean =
+      def isSubInfo(info1: Type, info2: Type, symInfo1: Type): Boolean =
+        def fallback = inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
         info2 match
+          case info2: PolyType if ccEnabled => // See TODO about `ccEnabled` in `sigsOK`, this should also go under `relaxedSubtyping`.
+            info1 match
+              case info1: PolyType =>
+                comparingTypeLambdas(info1, info2):
+                  info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
+                  // Signature checks are never necessary because polymorphic
+                  // refinements are only allowed for the `apply` method of a
+                  // PolyFunction.
+              case _  => fallback
           case info2: MethodType =>
             info1 match
               case info1: MethodType =>
-                val symInfo1 = symInfo.stripPoly
                 matchingMethodParams(info1, info2, precise = false)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
                 && sigsOK(symInfo1, info2)
-              case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
-          case _ => inFrozenGadtIf(tp1IsSingleton) { isSubType(info1, info2) }
+              case _ => fallback
+          case info2 @ CapturingType(parent2, refs2) if ctx.phase == Phases.checkCapturesPhase =>
+            val refs1 = info1.captureSet
+            (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
+              && isSubInfo(info1, parent2, symInfo1)
+          case _ =>
+            info1 match
+              case info1 @ CapturingType(parent1, refs1) if ctx.phase == Phases.checkCapturesPhase =>
+                subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+                  && isSubInfo(parent1, info2, symInfo1)
+              case _ => fallback
 
       def qualifies(m: SingleDenotation): Boolean =
         val info2 = tp2.refinedInfo
