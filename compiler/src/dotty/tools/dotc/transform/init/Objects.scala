@@ -252,7 +252,7 @@ object Objects:
           val joinedTrace = data.pendingTraces.slice(index + 1, data.checkingObjects.size).foldLeft(pendingTrace) { (a, acc) => acc ++ a }
           val callTrace = Trace.buildStacktrace(joinedTrace, "Calling trace:\n")
           val cycle = data.checkingObjects.slice(index, data.checkingObjects.size)
-          val pos = clazz.defTree
+          val pos = clazz.defTree.sourcePos.focus
           report.warning("Cyclic initialization: " + cycle.map(_.klass.show).mkString(" -> ") + " -> " + clazz.show + ". " + callTrace, pos)
         end if
         data.checkingObjects(index)
