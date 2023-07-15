@@ -333,11 +333,13 @@ object Implicits:
         def filter(xs: List[Candidate], remove: List[Candidate]) =
           val shadowed = remove.map(_.ref.implicitName).toSet
           xs.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+
+        val outer = outerImplicits.uncheckedNN
         def isWildcardImport(using Context) = ctx.importInfo.nn.isWildcardImport
-        if (irefCtx.scope eq irefCtx.outer.scope) && (
-          isImport && !outerImplicits.nn.isImport
-          || isWildcardImport && !isWildcardImport(using outerImplicits.nn.irefCtx)
-        ) then
+        def preferDefinitions = isImport && !outer.isImport
+        def preferNamedImport = isWildcardImport && !isWildcardImport(using outer.irefCtx)
+
+        if level == outer.level && (preferDefinitions || preferNamedImport) then
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
           filter(ownEligible, outerEligible) ::: outerEligible
