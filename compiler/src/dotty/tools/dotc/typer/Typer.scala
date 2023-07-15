@@ -1873,10 +1873,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     var alreadyStripped = false
     cases.mapconserve { cas =>
       val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
+      caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       if !alreadyStripped && Nullables.matchesNull(case1) then
         wideSelType = wideSelType.stripNull
         alreadyStripped = true
-      caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       case1
     }
 
