@@ -50,10 +50,10 @@ class ExpandSAMs extends MiniPhase:
           tree // it's a plain function
         case tpe if defn.isContextFunctionType(tpe) =>
           tree
-        case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
+        case SAMType(_, tpe) if tpe.isRef(defn.PartialFunctionClass) =>
           val tpe1 = checkRefinements(tpe, fn)
           toPartialFunction(tree, tpe1)
-        case tpe @ SAMType(_) if ExpandSAMs.isPlatformSam(tpe.classSymbol.asClass) =>
+        case SAMType(_, tpe) if ExpandSAMs.isPlatformSam(tpe.classSymbol.asClass) =>
           checkRefinements(tpe, fn)
           tree
         case tpe =>
@@ -65,13 +65,6 @@ class ExpandSAMs extends MiniPhase:
     case _ =>
       tree
   }
-
-  private def checkNoContextFunction(tpt: Tree)(using Context): Unit =
-    if defn.isContextFunctionType(tpt.tpe) then
-      report.error(
-        em"""Implementation restriction: cannot convert this expression to
-            |partial function with context function result type $tpt""",
-        tpt.srcPos)
 
   /** A partial function literal:
    *
@@ -114,8 +107,6 @@ class ExpandSAMs extends MiniPhase:
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree = {
     val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
-
-    checkNoContextFunction(anon.tpt)
 
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
