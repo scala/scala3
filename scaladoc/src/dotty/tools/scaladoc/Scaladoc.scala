@@ -142,7 +142,7 @@ object Scaladoc:
       )
 
       if other.nonEmpty then report.warning(
-        s"scaladoc suports only .tasty and .jar files, following files will be ignored: ${other.mkString(", ")}"
+        s"scaladoc supports only .tasty and .jar files, following files will be ignored: ${other.mkString(", ")}"
       )
 
       def defaultDest(): File =
