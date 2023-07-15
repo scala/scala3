@@ -1576,7 +1576,7 @@ object Types {
     }
 
     /** The capture set of this type. Overridden and cached in CaptureRef */
-    def captureSet(using Context): CaptureSet = CaptureSet.ofType(this)
+    def captureSet(using Context): CaptureSet = CaptureSet.ofType(this, followResult = false)
 
     // ----- Normalizing typerefs over refined types ----------------------------
 
@@ -6192,7 +6192,7 @@ object Types {
             tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
 
-    /** Overridden in TypeOps.avoid */
+    /** Overridden in TypeOps.avoid and in CheckCaptures.substParamsMap */
     protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = true
 
     override def mapCapturingType(tp: Type, parent: Type, refs: CaptureSet, v: Int): Type =

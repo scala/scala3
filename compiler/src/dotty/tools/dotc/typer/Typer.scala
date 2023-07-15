@@ -2899,7 +2899,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if Feature.ccEnabled
           && (cls == defn.RetainsAnnot || cls == defn.RetainsByNameAnnot)
       then
-        CheckCaptures.checkWellformed(annot1)
+        CheckCaptures.checkWellformed(arg1, annot1)
       if arg1.isType then
         assignType(cpy.Annotated(tree)(arg1, annot1), arg1, annot1)
       else
