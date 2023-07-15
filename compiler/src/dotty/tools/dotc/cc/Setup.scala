@@ -418,15 +418,17 @@ object Setup:
   def needsVariable(tp: Type)(using Context): Boolean = {
     tp.typeParams.isEmpty && tp.match
       case tp: (TypeRef | AppliedType) =>
-        val tp1 = tp.dealias
-        if tp1 ne tp then needsVariable(tp1)
+        val sym = tp.typeSymbol
+        if sym.isClass then
+          !sym.isPureClass && sym != defn.AnyClass
         else
-          val sym = tp1.typeSymbol
-          if sym.isClass then
-            !sym.isPureClass
-            && sym != defn.AnyClass
-            && sym != defn.FromJavaObjectSymbol
-          else superTypeIsImpure(tp1)
+          sym != defn.FromJavaObjectSymbol
+            // For capture checking, we assume Object from Java is the same as Any
+          && {
+            val tp1 = tp.dealias
+            if tp1 ne tp then needsVariable(tp1)
+            else superTypeIsImpure(tp1)
+          }
       case tp: (RefinedOrRecType | MatchType) =>
         needsVariable(tp.underlying)
       case tp: AndType =>

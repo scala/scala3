@@ -291,20 +291,23 @@ class CheckCaptures extends Recheck, SymTransformer:
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
     private def handleBackwardsCompat(tp: Type, sym: Symbol, initialVariance: Int = 1)(using Context): Type =
-      val fluidify = new TypeMap:
+      val fluidify = new TypeMap with IdempotentCaptRefMap:
         variance = initialVariance
         def apply(t: Type): Type = t match
-          case tp: MethodType =>
-            mapOver(tp)
-          case tp: TypeLambda =>
-            tp.derivedLambdaType(resType = this(tp.resType))
-          case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
-            tp.derivedRefinedType(parent, rname, this(rinfo))
-          case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
-            mapOver(tp)
+          case t: MethodType =>
+            mapOver(t)
+          case t: TypeLambda =>
+            t.derivedLambdaType(resType = this(t.resType))
+          case CapturingType(_, _) =>
+            t
           case _ =>
-            if variance > 0 then t
-            else Setup.decorate(t, Function.const(CaptureSet.Fluid))
+            val t1  = t match
+              case t @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(t) =>
+                t.derivedRefinedType(parent, rname, this(rinfo))
+              case _ =>
+                mapOver(t)
+            if variance > 0 then t1
+            else Setup.decorate(t1, Function.const(CaptureSet.Fluid))
 
       def isPreCC(sym: Symbol): Boolean =
         sym.isTerm && sym.maybeOwner.isClass
