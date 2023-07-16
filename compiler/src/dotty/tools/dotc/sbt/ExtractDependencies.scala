@@ -447,7 +447,7 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     // Avoid cycles by remembering both the types (testcase:
     // tests/run/enum-values.scala) and the symbols of named types (testcase:
     // tests/pos-java-interop/i13575) we've seen before.
-    val seen = new mutable.HashSet[Symbol | Type]
+    val seen = new mutable.HashSet[Symbol | Type](initialCapacity = 128, loadFactor = mutable.HashSet.defaultLoadFactor)
     def traverse(tp: Type): Unit = if (!seen.contains(tp)) {
       seen += tp
       tp match {
