@@ -841,7 +841,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *
    *    @inheritdoc
    */
-  def sameElements[B >: A](that: IterableOnce[B]): Boolean = {
+  def sameElements[B >: A](that: IterableOnce[B]^): Boolean = {
     val those = that.iterator
     while (hasNext && those.hasNext)
       if (next() != those.next())
