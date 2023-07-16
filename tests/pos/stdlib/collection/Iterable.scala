@@ -685,7 +685,7 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
 
   def map[B](f: A => B): CC[B]^{this, f} = iterableFactory.from(new View.Map(this, f))
 
-  def flatMap[B](f: A => IterableOnce[B]): CC[B]^{this, f} = iterableFactory.from(new View.FlatMap(this, f))
+  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} = iterableFactory.from(new View.FlatMap(this, f))
 
   def flatten[B](implicit asIterable: A -> IterableOnce[B]): CC[B]^{this} = flatMap(asIterable)
 
@@ -714,8 +714,8 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
     *              and the second one made of those wrapped in [[scala.util.Right]].
     */
   def partitionMap[A1, A2](f: A => Either[A1, A2]): (CC[A1]^{this, f}, CC[A2]^{this, f}) = {
-    val left: View[A1]^{f} = new LeftPartitionMapped(this, f)
-    val right: View[A2]^{f} = new RightPartitionMapped(this, f)
+    val left: View[A1]^{f, this} = new LeftPartitionMapped(this, f)
+    val right: View[A2]^{f, this} = new RightPartitionMapped(this, f)
     (iterableFactory.from(left), iterableFactory.from(right))
   }
 
@@ -788,8 +788,8 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
     *                half of each element pair of this $coll.
     */
   def unzip[A1, A2](implicit asPair: A -> (A1, A2)): (CC[A1]^{this}, CC[A2]^{this}) = {
-    val first: View[A1] = new View.Map[A, A1](this, asPair(_)._1)
-    val second: View[A2] = new View.Map[A, A2](this, asPair(_)._2)
+    val first: View[A1]^{this} = new View.Map[A, A1](this, asPair(_)._1)
+    val second: View[A2]^{this} = new View.Map[A, A2](this, asPair(_)._2)
     (iterableFactory.from(first), iterableFactory.from(second))
   }
 
@@ -815,9 +815,9 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
     *                   third member of each element triple of this $coll.
     */
   def unzip3[A1, A2, A3](implicit asTriple: A -> (A1, A2, A3)): (CC[A1]^{this}, CC[A2]^{this}, CC[A3]^{this}) = {
-    val first: View[A1] = new View.Map[A, A1](this, asTriple(_)._1)
-    val second: View[A2] = new View.Map[A, A2](this, asTriple(_)._2)
-    val third: View[A3] = new View.Map[A, A3](this, asTriple(_)._3)
+    val first: View[A1]^{this} = new View.Map[A, A1](this, asTriple(_)._1)
+    val second: View[A2]^{this} = new View.Map[A, A2](this, asTriple(_)._2)
+    val third: View[A3]^{this} = new View.Map[A, A3](this, asTriple(_)._3)
     (iterableFactory.from(first), iterableFactory.from(second), iterableFactory.from(third))
   }
 

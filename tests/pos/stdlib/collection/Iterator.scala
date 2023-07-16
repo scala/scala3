@@ -588,8 +588,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def next() = f(self.next())
   }
 
-  def flatMap[B](f: A => IterableOnce[B]): Iterator[B]^{this, f} = new AbstractIterator[B] {
-    private[this] var cur: Iterator[B] = Iterator.empty
+  def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new AbstractIterator[B] {
+    private[this] var cur: Iterator[B]^{f} = Iterator.empty
     /** Trillium logic boolean: -1 = unknown, 0 = false, 1 = true */
     private[this] var _hasNext: Int = -1
 
