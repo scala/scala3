@@ -173,10 +173,14 @@ class Pickler extends Phase {
         cls -> (unit, unpickler)
       }
     pickling.println("************* entered toplevel ***********")
+    val rootCtx = ctx
     for ((cls, (unit, unpickler)) <- unpicklers) do
-      ctx.compilationUnit.needsCaptureChecking = unit.needsCaptureChecking
       val unpickled = unpickler.rootTrees
-      testSame(i"$unpickled%\n%", beforePickling(cls), cls)
+      val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)
+      freshUnit.needsCaptureChecking = unit.needsCaptureChecking
+      freshUnit.knowsPureFuns = unit.knowsPureFuns
+      inContext(rootCtx.fresh.setCompilationUnit(freshUnit)):
+        testSame(i"$unpickled%\n%", beforePickling(cls), cls)
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
     import java.nio.charset.StandardCharsets.UTF_8
