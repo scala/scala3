@@ -12,7 +12,3 @@ def Test(using ctx: Context) =
   info.paramRefs.filter(_.isTracked)
   val p = atPhase()((_: ParamRef).isTracked)
   val _: ParamRef ->{ctx} Boolean = p
-
-  //val f: String => ParamRef = ???
-  //val q = f.andThen(p)
-
