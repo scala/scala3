@@ -626,9 +626,9 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   def flatten[B](implicit ev: A -> IterableOnce[B]): Iterator[B]^{this} =
     flatMap[B](ev)
 
-  def concat[B >: A](xs: => IterableOnce[B]): Iterator[B]^{this, xs} = new Iterator.ConcatIterator[B](self).concat(xs)
+  def concat[B >: A](xs: => IterableOnce[B]^): Iterator[B]^{this, xs} = new Iterator.ConcatIterator[B](self).concat(xs)
 
-  @`inline` final def ++ [B >: A](xs: => IterableOnce[B]): Iterator[B]^{this, xs} = concat(xs)
+  @`inline` final def ++ [B >: A](xs: => IterableOnce[B]^): Iterator[B]^{this, xs} = concat(xs)
 
   def take(n: Int): Iterator[A]^{this} = sliceIterator(0, n max 0)
 
@@ -1201,7 +1201,7 @@ object Iterator extends IterableFactory[Iterator] {
         current.next()
       } else Iterator.empty.next()
 
-    override def concat[B >: A](that: => IterableOnce[B]): Iterator[B]^{this, that} = {
+    override def concat[B >: A](that: => IterableOnce[B]^): Iterator[B]^{this, that} = {
       val c = new ConcatIteratorCell[B](that, null).asInstanceOf[ConcatIteratorCell[A]]
       if (tail == null) {
         tail = c

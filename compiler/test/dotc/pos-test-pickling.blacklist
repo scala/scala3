@@ -27,6 +27,9 @@ i17588.scala
 # Tree is huge and blows stack for printing Text
 i7034.scala
 
+# Causes cyclic reference by interacting with compiler stdlib types
+stdlib
+
 # Stale symbol: package object scala
 seqtype-cycle
 
