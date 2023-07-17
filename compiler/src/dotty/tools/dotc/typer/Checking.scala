@@ -758,13 +758,16 @@ object Checking {
     if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
+  /** Check that `tree` refers to a value, unless `tree` is selected or applied
+   *  (singleton types x.type don't count as selections).
+   */
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
     tree match
-      case tree: RefTree
-      if tree.name.isTermName
-         && !proto.isInstanceOf[SelectionProto]
-         && !proto.isInstanceOf[FunOrPolyProto] =>
-        checkValue(tree)
+      case tree: RefTree if tree.name.isTermName =>
+        proto match
+          case _: SelectionProto if proto ne SingletonTypeProto => // no value check
+          case _: FunOrPolyProto => // no value check
+          case _ => checkValue(tree)
       case _ =>
     tree
 
