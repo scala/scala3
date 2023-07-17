@@ -233,6 +233,10 @@ object Scanners {
     /** Return a list of all the comment positions */
     def commentSpans: List[Span] = commentPosBuf.toList
 
+    /** Return a list of all the comment positions */
+    @deprecated("Use `comments` to get rich information source comments", since = "3.3.1")
+    def commentSpans: List[Span] = comments.map(_.span)
+
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
