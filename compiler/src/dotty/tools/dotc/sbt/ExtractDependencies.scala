@@ -139,9 +139,6 @@ class ExtractDependencies extends Phase {
 
     val depFile = dep.to.associatedFile
     if (depFile != null) {
-      def depIsSameSource =
-        depFile.absolutePath == sourceFile.file.absolutePath
-
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       val depClassFile =
@@ -150,7 +147,7 @@ class ExtractDependencies extends Phase {
       if (depClassFile != null) {
         // Dependency is external -- source is undefined
         processExternalDependency(depClassFile, dep.to.binaryClassName)
-      } else if (allowLocal || !depIsSameSource /* old: depFile.file != sourceFile.file */) {
+      } else if (allowLocal || depFile != sourceFile.file) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(dep.to)
