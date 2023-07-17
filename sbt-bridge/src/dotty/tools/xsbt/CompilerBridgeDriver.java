@@ -56,13 +56,14 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
-      HashMap<AbstractFile, VirtualFile> lookup, Map<AbstractFile, VirtualFile> placeholders) {
-    VirtualFile maybeCached = lookup.get(sourceFile.file());
-    if (maybeCached != null) {
-      return maybeCached;
-    } else {
-      return fallbackVirtualFile(reporter, sourceFile, placeholders);
-    }
+      HashMap<AbstractFile, VirtualFile> lookup) {
+    return lookup.computeIfAbsent(sourceFile.file(), path -> {
+      reportMissingFile(reporter, sourceFile);
+      if (sourceFile.file().jpath() != null)
+        return new BasicPathBasedFile(sourceFile);
+      else
+        return new PlaceholderVirtualFile(sourceFile);
+    });
   }
 
   private static void reportMissingFile(DelegatingReporter reporter, SourceFile sourceFile) {
@@ -73,17 +74,6 @@ public class CompilerBridgeDriver extends Driver {
       "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
       "    This is likely a bug in incremental compilation for the Scala 3 compiler. Please report it to the Scala 3 maintainers.";
     reporter.reportBasicWarning(message);
-  }
-
-  private static VirtualFile fallbackVirtualFile(DelegatingReporter reporter, SourceFile sourceFile,
-      Map<AbstractFile, VirtualFile> placeholders) {
-    return placeholders.computeIfAbsent(sourceFile.file(), path -> {
-      reportMissingFile(reporter, sourceFile);
-      if (sourceFile.file().jpath() != null)
-        return new BasicPathBasedFile(sourceFile);
-      else
-        return new PlaceholderVirtualFile(sourceFile);
-    });
   }
 
   synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
@@ -101,13 +91,12 @@ public class CompilerBridgeDriver extends Driver {
       lookup.put(abstractFile, source);
     }
 
-    HashMap<AbstractFile, VirtualFile> placeholders = new HashMap<>();
-
     DelegatingReporter reporter = new DelegatingReporter(delegate, (self, sourceFile) ->
-      asVirtualFile(sourceFile, self, lookup, placeholders).id());
+      asVirtualFile(sourceFile, self, lookup).id()
+    );
 
     IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile ->
-      asVirtualFile(sourceFile, reporter, lookup, placeholders)
+      asVirtualFile(sourceFile, reporter, lookup)
     );
 
     try {
