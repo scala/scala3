@@ -1,6 +1,6 @@
 package dotty.tools.xsbt;
 
-import dotty.tools.dotc.interfaces.SourceFile;
+import dotty.tools.dotc.util.SourceFile;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 

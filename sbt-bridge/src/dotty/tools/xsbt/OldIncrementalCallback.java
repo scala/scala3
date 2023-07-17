@@ -1,6 +1,6 @@
 package dotty.tools.xsbt;
 
-import dotty.tools.dotc.interfaces.SourceFile;
+import dotty.tools.dotc.util.SourceFile;
 import java.util.function.Function;
 import java.util.Optional;
 
@@ -16,7 +16,7 @@ public final class OldIncrementalCallback implements dotty.tools.dotc.sbt.interf
   }
 
   private static File asJavaFile(SourceFile sourceFile) {
-    File jfileOrNull = sourceFile.jfile().orElse(null);
+    File jfileOrNull = sourceFile.file().file();
     if (jfileOrNull != null) return jfileOrNull;
     throw new IllegalArgumentException("SourceFile " + sourceFile + " is not backed by a java.io.File");
   }

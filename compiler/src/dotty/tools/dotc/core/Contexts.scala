@@ -53,9 +53,8 @@ object Contexts {
   private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
-  private val (zincInitialFilesLoc, store11) = store10.newLocation[util.ReadOnlySet[AbstractFile] | Null]()
 
-  private val initialStore = store11
+  private val initialStore = store10
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -167,7 +166,6 @@ object Contexts {
 
     /** The Zinc callback implementation if we are run from Zinc, null otherwise */
     def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
-    def zincInitialFiles: util.ReadOnlySet[AbstractFile] | Null = store(zincInitialFilesLoc)
 
     /** Run `op` if there exists an incremental callback */
     inline def withIncCallback(inline op: IncrementalCallback => Unit): Unit =
@@ -246,26 +244,8 @@ object Contexts {
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
-      computeCachedSource(file)(SourceFile(_, codec))
+      base.sources.getOrElseUpdate(file, SourceFile(file, codec))
     }
-
-    /** empty Sourcefile associated to given abstract file, memoized */
-    def getEmptySource(file: AbstractFile) = {
-      util.Stats.record("Context.getEmptySource")
-      computeCachedSource(file)(SourceFile(_, Array.empty[Char]))
-    }
-
-    private inline def computeCachedSource(file: AbstractFile)(inline mkSource: AbstractFile => SourceFile): SourceFile =
-      base.sources.getOrElseUpdate(file, {
-        val zincSources = zincInitialFiles
-        val cachedFile =
-          if zincSources != null then zincSources.lookup(file) match
-            case null => file
-            case cached: AbstractFile => cached
-          else
-            file
-        mkSource(cachedFile)
-      })
 
     /** SourceFile with given path name, memoized */
     def getSource(path: TermName): SourceFile = getFile(path) match
@@ -695,7 +675,6 @@ object Contexts {
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
     def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
-    def setZincInitialFiles(zincInitialFiles: util.ReadOnlySet[AbstractFile]): this.type = updateStore(zincInitialFilesLoc, zincInitialFiles)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)

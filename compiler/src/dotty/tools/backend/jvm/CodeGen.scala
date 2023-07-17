@@ -30,6 +30,7 @@ import scala.tools.asm
 import scala.tools.asm.tree._
 import tpd._
 import dotty.tools.io.AbstractFile
+import dotty.tools.dotc.util
 import dotty.tools.dotc.util.NoSourcePosition
 
 
@@ -106,7 +107,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
   }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: interfaces.SourceFile): AbstractFile => Unit = clsFile => {
+  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile): AbstractFile => Unit = clsFile => {
     val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
       (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
     }

@@ -1,6 +1,6 @@
 package dotty.tools.dotc.sbt.interfaces;
 
-import dotty.tools.dotc.interfaces.SourceFile;
+import dotty.tools.dotc.util.SourceFile;
 
 import java.util.EnumSet;
 import java.nio.file.Path;

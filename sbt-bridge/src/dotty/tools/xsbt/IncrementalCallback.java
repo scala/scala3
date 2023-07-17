@@ -1,6 +1,6 @@
 package dotty.tools.xsbt;
 
-import dotty.tools.dotc.interfaces.SourceFile;
+import dotty.tools.dotc.util.SourceFile;
 import java.util.function.Function;
 
 public final class IncrementalCallback implements dotty.tools.dotc.sbt.interfaces.IncrementalCallback {

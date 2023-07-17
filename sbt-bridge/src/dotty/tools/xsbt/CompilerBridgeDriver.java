@@ -56,15 +56,16 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
-      Map<String, VirtualFile> placeholders) {
-    if (sourceFile.file() instanceof AbstractZincFile) {
-      return ((AbstractZincFile) sourceFile.file()).underlying();
+      HashMap<AbstractFile, VirtualFile> lookup, Map<AbstractFile, VirtualFile> placeholders) {
+    VirtualFile maybeCached = lookup.get(sourceFile.file());
+    if (maybeCached != null) {
+      return maybeCached;
     } else {
       return fallbackVirtualFile(reporter, sourceFile, placeholders);
     }
   }
 
-  private static void reportMissingFile(DelegatingReporter reporter, dotty.tools.dotc.interfaces.SourceFile sourceFile) {
+  private static void reportMissingFile(DelegatingReporter reporter, SourceFile sourceFile) {
     String underline = String.join("", Collections.nCopies(sourceFile.path().length(), "^"));
     String message =
       sourceFile.path() + ": Missing virtual file\n" +
@@ -74,12 +75,11 @@ public class CompilerBridgeDriver extends Driver {
     reporter.reportBasicWarning(message);
   }
 
-  private static VirtualFile fallbackVirtualFile(DelegatingReporter reporter,
-      dotty.tools.dotc.interfaces.SourceFile sourceFile,
-      Map<String, VirtualFile> placeholders) {
-    return placeholders.computeIfAbsent(sourceFile.path(), path -> {
+  private static VirtualFile fallbackVirtualFile(DelegatingReporter reporter, SourceFile sourceFile,
+      Map<AbstractFile, VirtualFile> placeholders) {
+    return placeholders.computeIfAbsent(sourceFile.file(), path -> {
       reportMissingFile(reporter, sourceFile);
-      if (sourceFile.jfile().isPresent())
+      if (sourceFile.file().jpath() != null)
         return new BasicPathBasedFile(sourceFile);
       else
         return new PlaceholderVirtualFile(sourceFile);
@@ -92,27 +92,23 @@ public class CompilerBridgeDriver extends Driver {
     Arrays.sort(sortedSources, (x0, x1) -> x0.id().compareTo(x1.id()));
 
     ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
-    dotty.tools.dotc.util.HashSet<AbstractFile> sourcesSet = new dotty.tools.dotc.util.HashSet<>(8, 2);
+    HashMap<AbstractFile, VirtualFile> lookup = new HashMap<>(sources.length, 0.25f);
 
     for (int i = 0; i < sources.length; i++) {
       VirtualFile source = sortedSources[i];
       AbstractFile abstractFile = asDottyFile(source);
       sourcesBuffer.append(abstractFile);
-      sourcesSet.put(abstractFile);
+      lookup.put(abstractFile, source);
     }
 
-    HashMap<String, VirtualFile> placeholders = new HashMap<>();
+    HashMap<AbstractFile, VirtualFile> placeholders = new HashMap<>();
 
     DelegatingReporter reporter = new DelegatingReporter(delegate, (self, sourceFile) ->
-      asVirtualFile(sourceFile, self, placeholders).id());
+      asVirtualFile(sourceFile, self, lookup, placeholders).id());
 
-    IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile -> {
-      if (sourceFile instanceof SourceFile) {
-        return asVirtualFile(((SourceFile) sourceFile), reporter, placeholders);
-      } else {
-        return fallbackVirtualFile(reporter, sourceFile, placeholders);
-      }
-    });
+    IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile ->
+      asVirtualFile(sourceFile, reporter, lookup, placeholders)
+    );
 
     try {
       log.debug(this::infoOnCachedCompiler);
@@ -120,7 +116,6 @@ public class CompilerBridgeDriver extends Driver {
       Contexts.Context initialCtx = initCtx()
         .fresh()
         .setReporter(reporter)
-        .setZincInitialFiles(sourcesSet)
         .setIncCallback(incCallback);
 
       Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
