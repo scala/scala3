@@ -3261,7 +3261,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             // then TypeComparer will eventually start returning `false` for `isSubType`.
             // Or, under -Yno-deep-subtypes, start throwing AssertionErrors.
             // So, we eagerly strip that lazy ref here to avoid the stacking.
-            tp.stripLazyRef.simplified
+            tp.simplified
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
         ErrorType(reporting.MatchTypeNoCases(casesText))

@@ -1984,7 +1984,11 @@ object Types {
      *  this method handles this by never simplifying inside a `MethodicType`,
      *  except for replacing type parameters with associated type variables.
      */
-    def simplified(using Context): Type = TypeOps.simplify(this, null)
+    def simplified(using Context): Type =
+      // stripping LazyRef is important for the reduction of applied match types
+      // see the comment in matchCases/recur for more details
+      val tp = stripLazyRef
+      TypeOps.simplify(tp, null)
 
     /** Compare `this == that`, assuming corresponding binders in `bs` are equal.
      *  The normal `equals` should be equivalent to `equals(that, null`)`.
