@@ -311,8 +311,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       def isPreCC(sym: Symbol): Boolean =
         sym.isTerm && sym.maybeOwner.isClass
-        && !defn.isFunctionSymbol(sym.owner)
         && !sym.owner.is(CaptureChecked)
+        && !defn.isFunctionSymbol(sym.owner)
 
       if isPreCC(sym) then
         val tpw = tp.widen
@@ -948,8 +948,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             finally curEnv = saved
           actual1 frozen_<:< expected1
 
-        override def adjustOtherType(tp: Type, other: Symbol)(using Context): Type =
-          handleBackwardsCompat(tp, other, initialVariance = 0)
+        override def adjustInfo(tp: Type, member: Symbol)(using Context): Type =
+          handleBackwardsCompat(tp, member, initialVariance = 0)
             //.showing(i"adjust $other: $tp --> $result")
       end OverridingPairsCheckerCC
 

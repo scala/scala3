@@ -239,10 +239,10 @@ object RefChecks {
     // compatibility checking.
     def checkSubType(tp1: Type, tp2: Type)(using Context): Boolean = tp1 frozen_<:< tp2
 
-    /** A hook that allows to adjust the type of `other` before checking conformance.
-     *  Overridden in capture checking to handle non-capture checked superclasses leniently.
+    /** A hook that allows to adjust the type of `member` and `other` before checking conformance.
+     *  Overridden in capture checking to handle non-capture checked classes leniently.
      */
-    def adjustOtherType(tp: Type, other: Symbol)(using Context): Type = tp
+    def adjustInfo(tp: Type, member: Symbol)(using Context): Type = tp
 
     private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
 
@@ -367,8 +367,8 @@ object RefChecks {
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
-        else self.memberInfo(member)
-      def otherTp(self: Type) = checker.adjustOtherType(self.memberInfo(other), other)
+        else checker.adjustInfo(self.memberInfo(member), member)
+      def otherTp(self: Type) = checker.adjustInfo(self.memberInfo(other), other)
 
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 
