@@ -3016,7 +3016,7 @@ object TypeComparer {
       extension (s: Repr)
         inline def combinedWith(that: Repr): Repr = s min that
 
-    inline def bothHaveOr(s1: Repr, s2: Repr): Boolean = ~(s1 | s2 & NotHasOr) != 0
+    inline def bothHaveOr(s1: Repr, s2: Repr): Boolean = ~((s1 | s2) & NotHasOr) != 0
     inline def bothCovered(s1: Repr, s2: Repr): Boolean = (s1 & s2 & IsCovered) != 0
   end CoveredStatus
   type CoveredStatus = CoveredStatus.Repr
