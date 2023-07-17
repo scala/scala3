@@ -91,19 +91,16 @@ class ExtractDependencies extends Phase {
       } finally pw.close()
     }
 
-    if (ctx.incrementalEnabled) {
-      ctx.withIncCallback: cb =>
-        collector.usedNames.foreach {
-          case (clazz, usedNames) =>
-            val className = classNameAsString(clazz)
-            usedNames.names.foreach {
-              case (usedName, scopes) =>
-                cb.usedName(className, usedName.toString, scopes)
-            }
-        }
-
+    ctx.withIncCallback: cb =>
+      collector.usedNames.foreach {
+        case (clazz, usedNames) =>
+          val className = classNameAsString(clazz)
+          usedNames.names.foreach {
+            case (usedName, scopes) =>
+              cb.usedName(className, usedName.toString, scopes)
+          }
+      }
       collector.dependencies.foreach(recordDependency)
-    }
   }
 
   /*

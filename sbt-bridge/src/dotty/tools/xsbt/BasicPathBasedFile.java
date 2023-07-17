@@ -1,6 +1,6 @@
 package dotty.tools.xsbt;
 
-import dotty.tools.dotc.interfaces.SourceFile;
+import dotty.tools.dotc.util.SourceFile;
 
 public class BasicPathBasedFile extends PlaceholderVirtualFile implements xsbti.PathBasedFile {
 
@@ -9,7 +9,7 @@ public class BasicPathBasedFile extends PlaceholderVirtualFile implements xsbti.
   }
 
   public java.nio.file.Path toPath() {
-    return sourceFile.jfile().get().toPath();
+    return sourceFile.file().jpath();
   }
 
 }

@@ -12,12 +12,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-public class ZincVirtualFile extends dotty.tools.io.VirtualFile implements AbstractZincFile {
-  private final VirtualFile _underlying;
+public class ZincVirtualFile extends dotty.tools.io.VirtualFile {
 
   public ZincVirtualFile(VirtualFile underlying) throws IOException {
     super(underlying.name(), underlying.id());
-    this._underlying = underlying;
 
     // fill in the content
     try (OutputStream output = output()) {
@@ -31,10 +29,5 @@ public class ZincVirtualFile extends dotty.tools.io.VirtualFile implements Abstr
         output.write(bytes.toByteArray());
       }
     }
-  }
-
-  @Override
-  public VirtualFile underlying() {
-    return _underlying;
   }
 }
