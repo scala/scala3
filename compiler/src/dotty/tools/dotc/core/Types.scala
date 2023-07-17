@@ -1985,8 +1985,19 @@ object Types {
      *  except for replacing type parameters with associated type variables.
      */
     def simplified(using Context): Type =
-      // stripping LazyRef is important for the reduction of applied match types
-      // see the comment in matchCases/recur for more details
+      // A recursive match type will have the recursive call
+      // wrapped in a LazyRef.  For example in i18175, the recursive calls
+      // to IsPiped within the definition of IsPiped are all wrapped in LazyRefs.
+      // In addition to that, TypeMaps, such as the one that backs TypeOps.simplify,
+      // by default will rewrap a LazyRef when applying its function.
+      // The result of those two things means that given a big enough input
+      // that recursive enough times through one or multiple match types,
+      // reducing and simplifying the result of the case bodies,
+      // can end up with a large stack of directly-nested lazy refs.
+      // And if that nesting level breaches `Config.LogPendingSubTypesThreshold`,
+      // then TypeComparer will eventually start returning `false` for `isSubType`.
+      // Or, under -Yno-deep-subtypes, start throwing AssertionErrors.
+      // So, we eagerly strip that lazy ref here to avoid the stacking.
       val tp = stripLazyRef
       TypeOps.simplify(tp, null)
 
