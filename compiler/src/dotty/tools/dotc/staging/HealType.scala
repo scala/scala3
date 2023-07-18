@@ -46,7 +46,7 @@ class HealType(pos: SrcPos)(using Context) extends TypeMap {
       case prefix: TermRef if tp.symbol.isTypeSplice =>
         checkNotWildcardSplice(tp)
         if level == 0 then tp else getTagRef(prefix)
-      case _: NamedType | _: ThisType | NoPrefix =>
+      case _: TermRef | _: ThisType | NoPrefix =>
         if levelInconsistentRootOfPath(tp).exists then
           tryHeal(tp)
         else
