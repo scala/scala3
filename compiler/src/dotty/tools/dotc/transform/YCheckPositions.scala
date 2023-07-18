@@ -38,17 +38,17 @@ class YCheckPositions extends Phase {
             // Recursivlely check children while keeping track of current source
             reporting.trace(i"check pos ${tree.getClass} ${tree.source} ${sources.head} $tree") {
               tree match {
-                case Inlined(EmptyTree, bindings, expansion) =>
+                case tree @ Inlined(_, bindings, expansion) if tree.inlinedFromOuterScope =>
                   assert(bindings.isEmpty)
                   val old = sources
                   sources = old.tail
-                  traverse(expansion)(using inlineContext(EmptyTree).withSource(sources.head))
+                  traverse(expansion)(using inlineContext(tree).withSource(sources.head))
                   sources = old
-                case Inlined(call, bindings, expansion) =>
+                case tree @ Inlined(call, bindings, expansion) =>
                   // bindings.foreach(traverse(_)) // TODO check inline proxies (see tests/tun/lst)
                   sources = call.symbol.topLevelClass.source :: sources
                   if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
-                    traverse(expansion)(using inlineContext(call).withSource(sources.head))
+                    traverse(expansion)(using inlineContext(tree).withSource(sources.head))
                   sources = sources.tail
                 case _ => traverseChildren(tree)
               }

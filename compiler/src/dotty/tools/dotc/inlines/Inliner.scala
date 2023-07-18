@@ -129,7 +129,7 @@ object Inliner:
       new InlinerMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
     override def transformInlined(tree: Inlined)(using Context) =
-      if tree.call.isEmpty then
+      if tree.inlinedFromOuterScope then
         tree.expansion match
           case expansion: TypeTree => expansion
           case _ => tree
@@ -549,7 +549,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     val inlineTyper = new InlineTyper(ctx.reporter.errorCount)
 
-    val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
+    val inlineCtx = inlineContext(Inlined(call, Nil, ref(defn.Predef_undefined))).fresh.setTyper(inlineTyper).setNewScope
 
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
       Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
@@ -1049,7 +1049,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     }
     val inlinedNormalizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
-        case Inlined(EmptyTree, Nil, expr) if enclosingInlineds.isEmpty => transform(expr)
+        case tree @ Inlined(_, Nil, expr) if tree.inlinedFromOuterScope && enclosingInlineds.isEmpty => transform(expr)
         case _ => super.transform(tree)
       }
     }
