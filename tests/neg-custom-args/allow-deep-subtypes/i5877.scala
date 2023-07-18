@@ -20,12 +20,12 @@ object Main {
 
     def testHasThisType(): Unit = {
       def testSelf[PThis <: HasThisType[_ <: PThis]](that: HasThisType[PThis]): Unit = {
-        val thatSelf = that.self()
+        val thatSelf = that.self() // error: recursion limit exceeded
         // that.self().type <: that.This
         assert(implicitly[thatSelf.type <:< that.This] != null)
       }
       val that: HasThisType[_] = Foo() // null.asInstanceOf
-      testSelf(that) // error
+      testSelf(that) // error: recursion limit exceeded
     }
 
 
@@ -36,7 +36,7 @@ object Main {
       }
       val that: HasThisType[_] = Foo() // null.asInstanceOf
       // this line of code makes Dotty compiler infinite recursion (stopped only by overflow) - comment it to make it compilable again
-      testSelf(that) // error
+      testSelf(that) // error: recursion limit exceeded
     }
 
     // ---- ---- ---- ----

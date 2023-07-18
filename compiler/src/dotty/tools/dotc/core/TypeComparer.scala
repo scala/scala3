@@ -478,7 +478,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp2.isRef(AnyClass, skipRefined = false)
         || !tp1.evaluating && recur(tp1.ref, tp2)
       case AndType(tp11, tp12) =>
-        if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
+        if tp11.stripTypeVar eq tp12.stripTypeVar then recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
         compareAtoms(tp1, tp2) match
@@ -898,8 +898,27 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       canWidenAbstract && acc(true, tp)
 
-    def tryBaseType(cls2: Symbol) = {
-      val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
+    def tryBaseType(cls2: Symbol) =
+
+      def computeBase(tp: Type): Type = tp.widenDealias match
+        case tp @ AndType(tp1, tp2) =>
+          // We have to treat AndTypes specially, since the normal treatment
+          // of `(T1 & T2).baseType(C)` combines the base types of T1 and T2 via glb
+          // which drops any types that don't exist. That forgets possible solutions.
+          // For instance, in i18266.scala, we get to a subgoal `R & Row[Int] <: Row[String]`
+          // where R is an uninstantiated type variable. The base type computation
+          // of the LHS drops the non-existing base type of R and results in
+          // `Row[Int]`, which leads to a subtype failure since `Row[Int] <: Row[String]`
+          // does not hold. The new strategy is to declare that the base type computation
+          // failed since R does not have a base type, and to proceed to fourthTry instead,
+          // where we try both sides of an AndType individually.
+          val b1 = computeBase(tp1)
+          val b2 = computeBase(tp2)
+          if b1.exists && b2.exists then tp.derivedAndType(b1, b2) else NoType
+        case _ =>
+          nonExprBaseType(tp, cls2).boxedIfTypeParam(tp.typeSymbol)
+
+      val base = computeBase(tp1)
       if base.exists && (base ne tp1)
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
@@ -912,7 +931,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
       else fourthTry
-    }
+    end tryBaseType
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
@@ -989,7 +1008,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           }
         }
         compareHKLambda
-      case AndType(tp11, tp12) =>
+      case tp1 @ AndType(tp11, tp12) =>
         val tp2a = tp2.dealiasKeepRefiningAnnots
         if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
@@ -1009,8 +1028,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             return recur(AndType(tp11, tp121), tp2) && recur(AndType(tp11, tp122), tp2)
           case _ =>
         }
-        val tp1norm = simplifyAndTypeWithFallback(tp11, tp12, tp1)
-        if (tp1 ne tp1norm) recur(tp1norm, tp2)
+        val tp1norm = trySimplify(tp1)
+        if tp1 ne tp1norm then recur(tp1norm, tp2)
         else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
         def compareMatch = tp2 match {
@@ -2506,8 +2525,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
     andTypeGen(tp1, tp2, AndType.balanced(_, _), isErased = isErased)
 
-  final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
-    andTypeGen(tp1, tp2, (_, _) => fallback)
+  /** Try to simplify AndType, or return the type itself if no simplifiying opportunities exist. */
+  private def trySimplify(tp: AndType): Type =
+    andTypeGen(tp.tp1, tp.tp2, (_, _) => tp)
 
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `|` is distributed inside the type. This holds for
