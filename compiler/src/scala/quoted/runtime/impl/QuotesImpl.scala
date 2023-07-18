@@ -623,9 +623,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
         tpd.cpy.Apply(original)(fun, args)
       def unapply(x: Apply): (Term, List[Term]) =
@@ -664,8 +666,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeApply extends TypeApplyModule:
       def apply(fun: Term, args: List[TypeTree]): TypeApply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
         withDefaultPos(tpd.TypeApply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
         tpd.cpy.TypeApply(original)(fun, args)
       def unapply(x: TypeApply): (Term, List[TypeTree]) =
         (x.fun, x.args)
@@ -789,7 +793,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
-        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats, expr)))
+        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats, xCheckMacroValidExpr(expr))))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
         xCheckMacroBlockOwners(tpd.cpy.Block(original)(stats, expr))
       def unapply(x: Block): (List[Statement], Term) =
@@ -3082,13 +3086,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       if xCheckMacro then termOpt.foreach(xCheckMacroValidExpr)
       termOpt
     private def xCheckMacroValidExpr(term: Term): term.type =
-      if xCheckMacro then
-        assert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
+      xCheckMacroAssert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
           "Reference to a method must be eta-expanded before it is used as an expression: " + term.show)
       term
 
     private inline def xCheckMacroAssert(inline cond: Boolean, inline msg: String): Unit =
-      assert(!xCheckMacro || cond, msg)
+      if xCheckMacro && !cond then
+        xCheckMacroAssertFail(msg)
+
+    private def xCheckMacroAssertFail(msg: String): Unit =
+      val error = new AssertionError(msg)
+      if !yDebugMacro then
+        // start stack trace at the place where the user called the reflection method
+        error.setStackTrace(
+          error.getStackTrace
+            .dropWhile(_.getClassName().startsWith("scala.quoted.runtime.impl")))
+      throw error
 
     object Printer extends PrinterModule:
 

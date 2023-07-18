@@ -1,0 +1,15 @@
+
+-- Error: tests/neg-macros/i18113b/Test_2.scala:7:8 --------------------------------------------------------------------
+ 7 |  X.test(ref) // error
+   |  ^^^^^^^^^^^
+   |  Exception occurred while executing macro expansion.
+   |  java.lang.AssertionError: Expected `fun.tpe` to widen into a `MethodType`
+   |  	at x.X$.testImpl(Macro_1.scala:27)
+   |
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macro_1.scala:12
+12 |   inline def test(ref:IntRef):Int = ${ testImpl('ref) }
+   |                                     ^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
