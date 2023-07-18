@@ -900,8 +900,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def tryBaseType(cls2: Symbol) =
 
-      def computeBase(tp: Type): Type = tp.widenDealias match
-        case tp @ AndType(tp1, tp2) =>
+      def computeBase(tp1: Type): Type = tp1.widenDealias match
+        case tp @ AndType(tp11, tp12) =>
           // We have to treat AndTypes specially, since the normal treatment
           // of `(T1 & T2).baseType(C)` combines the base types of T1 and T2 via glb
           // which drops any types that don't exist. That forgets possible solutions.
@@ -912,11 +912,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // does not hold. The new strategy is to declare that the base type computation
           // failed since R does not have a base type, and to proceed to fourthTry instead,
           // where we try both sides of an AndType individually.
-          val b1 = computeBase(tp1)
-          val b2 = computeBase(tp2)
+          val b1 = computeBase(tp11)
+          val b2 = computeBase(tp12)
           if b1.exists && b2.exists then tp.derivedAndType(b1, b2) else NoType
         case _ =>
-          nonExprBaseType(tp, cls2).boxedIfTypeParam(tp.typeSymbol)
+          nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
 
       val base = computeBase(tp1)
       if base.exists && (base ne tp1)
