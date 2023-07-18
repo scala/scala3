@@ -339,7 +339,7 @@ object Implicits:
         def preferDefinitions = isImport && !outer.isImport
         def preferNamedImport = isWildcardImport && !isWildcardImport(using outer.irefCtx)
 
-        if level == outer.level && (preferDefinitions || preferNamedImport) then
+        if !migrateTo3(using irefCtx) && level == outer.level && (preferDefinitions || preferNamedImport) then
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
           filter(ownEligible, outerEligible) ::: outerEligible
