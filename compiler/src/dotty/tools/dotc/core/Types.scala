@@ -1991,7 +1991,7 @@ object Types {
       // In addition to that, TypeMaps, such as the one that backs TypeOps.simplify,
       // by default will rewrap a LazyRef when applying its function.
       // The result of those two things means that given a big enough input
-      // that recursive enough times through one or multiple match types,
+      // that recurses enough times through one or multiple match types,
       // reducing and simplifying the result of the case bodies,
       // can end up with a large stack of directly-nested lazy refs.
       // And if that nesting level breaches `Config.LogPendingSubTypesThreshold`,
