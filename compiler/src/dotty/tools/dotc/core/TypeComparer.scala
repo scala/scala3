@@ -1030,7 +1030,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             tp1.cases.corresponds(tp2.cases)(isSubType)
           case _ => false
         }
-        (!caseLambda.exists || canWidenAbstract) && recur(tp1.underlying, tp2) || compareMatch
+        recur(tp1.underlying, tp2) || compareMatch
       case tp1: AnnotatedType if tp1.isRefining =>
         isNewSubType(tp1.parent)
       case JavaArrayType(elem1) =>
