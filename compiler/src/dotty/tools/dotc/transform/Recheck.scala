@@ -316,7 +316,7 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckBlock(tree.stats, tree.expr, pt)
 
     def recheckInlined(tree: Inlined, pt: Type)(using Context): Type =
-      recheckBlock(tree.bindings, tree.expansion, pt)(using inlineContext(tree.call))
+      recheckBlock(tree.bindings, tree.expansion, pt)(using inlineContext(tree))
 
     def recheckIf(tree: If, pt: Type)(using Context): Type =
       recheck(tree.cond, defn.BooleanType)

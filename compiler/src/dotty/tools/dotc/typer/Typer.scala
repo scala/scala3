@@ -2044,12 +2044,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
   }
 
-  def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree = {
-    val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
-    val expansion1 = typed(tree.expansion, pt)(using inlineContext(tree.call)(using exprCtx))
-    assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
-        bindings1, expansion1)
-  }
+  def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
+    throw new UnsupportedOperationException("cannot type check a Inlined node")
 
   def completeTypeTree(tree: untpd.TypeTree, pt: Type, original: untpd.Tree)(using Context): TypeTree =
     tree.withSpan(original.span).withAttachmentsFrom(original)
