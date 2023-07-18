@@ -926,10 +926,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       then
         isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
         && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
-        || base.isInstanceOf[OrType] && fourthTry
-          // if base is a disjunction, this might have come from a tp1 type that
+        || base.isInstanceOf[AndOrType] && fourthTry
+          // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
+          // If base is a conjunction, it could be that one of the original
+          // branches of the AndType tp1 conforms to tp2, but its base type does
+          // not. So we need to also fall back to fourthTry. Test case is i18226a.scala.
       else fourthTry
     end tryBaseType
 

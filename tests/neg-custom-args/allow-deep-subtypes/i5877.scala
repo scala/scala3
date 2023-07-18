@@ -20,7 +20,7 @@ object Main {
 
     def testHasThisType(): Unit = {
       def testSelf[PThis <: HasThisType[_ <: PThis]](that: HasThisType[PThis]): Unit = {
-        val thatSelf = that.self() // error: recursion limit exceeded
+        val thatSelf = that.self()
         // that.self().type <: that.This
         assert(implicitly[thatSelf.type <:< that.This] != null)
       }
