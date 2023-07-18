@@ -1737,9 +1737,7 @@ object Types {
         if !tf1.exists then tf2
         else if !tf2.exists then tf1
         else NoType
-      case t if defn.isNonRefinedFunction(t) =>
-        t
-      case t @ defn.PolyOrErasedFunctionOf(_) =>
+      case t if defn.isFunctionType(t) =>
         t
       case t @ SAMType(_, _) =>
         t
