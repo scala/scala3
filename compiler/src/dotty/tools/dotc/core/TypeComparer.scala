@@ -899,42 +899,27 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       canWidenAbstract && acc(true, tp)
 
     def tryBaseType(cls2: Symbol) =
-
-      def computeBase(tp1: Type): Type = tp1.widenDealias match
-        case tp @ AndType(tp11, tp12) =>
-          // We have to treat AndTypes specially, since the normal treatment
-          // of `(T1 & T2).baseType(C)` combines the base types of T1 and T2 via glb
-          // which drops any types that don't exist. That forgets possible solutions.
-          // For instance, in i18266.scala, we get to a subgoal `R & Row[Int] <: Row[String]`
-          // where R is an uninstantiated type variable. The base type computation
-          // of the LHS drops the non-existing base type of R and results in
-          // `Row[Int]`, which leads to a subtype failure since `Row[Int] <: Row[String]`
-          // does not hold. The new strategy is to declare that the base type computation
-          // failed since R does not have a base type, and to proceed to fourthTry instead,
-          // where we try both sides of an AndType individually.
-          val b1 = computeBase(tp11)
-          val b2 = computeBase(tp12)
-          if b1.exists && b2.exists then tp.derivedAndType(b1, b2) else NoType
-        case _ =>
-          nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
-
-      val base = computeBase(tp1)
+      val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
       if base.exists && (base ne tp1)
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
-        && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
-        || base.isInstanceOf[AndOrType] && fourthTry
+        if isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow) then
+          recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+        else if tp1.widenDealias.isInstanceOf[AndType] || base.isInstanceOf[OrType] then
+          // If tp1 is a intersection, it could be that one of the original
+          // branches of the AndType tp1 conforms to tp2, but its base type does
+          // not, or else that its base type for cls2 does not exist, in which case
+          // it would not show up in `base`. In either case, we need to also fall back
+          // to fourthTry. Test case is i18226a.scala.
           // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
-          // If base is a conjunction, it could be that one of the original
-          // branches of the AndType tp1 conforms to tp2, but its base type does
-          // not. So we need to also fall back to fourthTry. Test case is i18226a.scala.
+          fourthTry
+        else
+          false
       else fourthTry
-    end tryBaseType
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
