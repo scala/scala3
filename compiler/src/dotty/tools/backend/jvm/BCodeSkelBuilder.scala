@@ -3,7 +3,6 @@ package backend
 package jvm
 
 import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 
 import scala.collection.{ mutable, immutable }
@@ -23,6 +22,9 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
+
+import InlinedSourceMaps._
+import dotty.tools.dotc.inlines.Inlines.InliningPosition
 
 /*
  *
@@ -90,6 +92,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var claszSymbol: Symbol        = null
     var isCZParcelable             = false
     var isCZStaticModule           = false
+
+    var sourceMap: InlinedSourceMap = null
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
@@ -276,7 +280,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
+        sourceMap = sourceMapFor(cunit)(s => classBTypeFromSymbol(s).internalName)
+        cnode.visitSource(cunit.source.file.name, sourceMap.debugExtension.orNull)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
@@ -555,26 +560,37 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case labnode: asm.tree.LabelNode => (labnode.getLabel == lbl);
         case _ => false } )
     }
-    def lineNumber(tree: Tree): Unit = {
+
+    def emitNr(nr: Int): Unit =
+
       @tailrec
       def getNonLabelNode(a: asm.tree.AbstractInsnNode): asm.tree.AbstractInsnNode = a match {
         case a: asm.tree.LabelNode => getNonLabelNode(a.getPrevious)
-        case _                     => a
+        case _ => a
       }
 
-      if (!emitLines || !tree.span.exists) return;
-      val nr = ctx.source.offsetToLine(tree.span.point) + 1
-      if (nr != lastEmittedLineNr) {
+      if nr != lastEmittedLineNr then
         lastEmittedLineNr = nr
-        getNonLabelNode(lastInsn) match {
+        getNonLabelNode(lastInsn) match
           case lnn: asm.tree.LineNumberNode =>
             // overwrite previous landmark as no instructions have been emitted for it
             lnn.line = nr
           case _ =>
             mnode.visitLineNumber(nr, currProgramPoint())
-        }
-      }
-    }
+    end emitNr
+
+    def lineNumber(tree: Tree): Unit = {
+      if (!emitLines || !tree.span.exists) return;
+      // Use JSR-45 mapping for inlined trees defined outside of the current compilation unit
+      if tree.source != cunit.source then
+        sourceMap.lineFor(tree) match
+          case Some(nr) => 
+            emitNr(nr)
+          case None => ()
+      else
+        val nr = ctx.source.offsetToLine(tree.span.point) + 1
+        emitNr(nr)
+    } 
 
     // on entering a method
     def resetMethodBookkeeping(dd: DefDef) = {

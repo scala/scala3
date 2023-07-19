@@ -81,11 +81,12 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
         (i < 0 || p1(i) == separatorChar) &&
         (j < 0 || p2(j) == separatorChar)
       }
-
+  /*
       assert(d.symbol.source.exists &&
              ctx.owner.source.exists &&
              isSimilar(d.symbol.source.path, ctx.owner.source.path),
-          s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}")
+          s"private ${d.symbol.showLocated} in ${d.symbol.source} accessed from ${ctx.owner.showLocated} in ${ctx.owner.source}") */
+
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 

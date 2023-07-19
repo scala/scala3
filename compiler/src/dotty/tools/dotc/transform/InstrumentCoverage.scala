@@ -19,6 +19,8 @@ import util.{SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.untpd
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -300,7 +302,62 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             // But PostTyper simplifies tree.call, so we can't report the actual method that was inlined.
             // In any case, the subtrees need to be repositioned right now, otherwise the
             // coverage statement will point to a potentially unreachable source file.
-            val dropped = Inlines.dropInlined(tree) // drop and reposition
+
+            /** Replace `Inlined` node by a block that contains its bindings and expansion */
+            def dropInlinedInstrumentaton(inlined: Inlined)(using Context): Tree =
+              val tree1 =
+                if inlined.bindings.isEmpty then inlined.expansion
+                else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
+              // Reposition in the outer most inlined call
+              if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
+
+            def reposition(tree: Tree, callSpan: Span)(using Context): Tree =
+              // Reference test tests/run/i4947b
+
+              val curSource = ctx.compilationUnit.source
+
+              // Tree copier that changes the source of all trees to `curSource`
+              val cpyWithNewSource = new TypedTreeCopier {
+                override protected def sourceFile(tree: tpd.Tree): SourceFile = curSource
+                override protected val untpdCpy: untpd.UntypedTreeCopier = new untpd.UntypedTreeCopier {
+                  override protected def sourceFile(tree: untpd.Tree): SourceFile = curSource
+                }
+              }
+
+              /** Removes all Inlined trees, replacing them with blocks.
+               *  Repositions all trees directly inside an inlined expansion of a non empty call to the position of the call.
+               *  Any tree directly inside an empty call (inlined in the inlined code) retains their position.
+               *
+               */
+              class Reposition extends TreeMap(cpyWithNewSource) {
+
+                override def transform(tree: Tree)(using Context): Tree = {
+                  def fixSpan[T <: untpd.Tree](copied: T): T =
+                    copied.withSpan(if tree.source == curSource then tree.span else callSpan)
+                  def finalize(copied: untpd.Tree) =
+                    fixSpan(copied).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
+
+                  inContext(ctx.withSource(curSource)) {
+                    tree match
+                      case tree: Ident => finalize(untpd.Ident(tree.name)(curSource))
+                      case tree: Literal => finalize(untpd.Literal(tree.const)(curSource))
+                      case tree: This => finalize(untpd.This(tree.qual)(curSource))
+                      case tree: JavaSeqLiteral => finalize(untpd.JavaSeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
+                      case tree: SeqLiteral => finalize(untpd.SeqLiteral(transform(tree.elems), transform(tree.elemtpt))(curSource))
+                      case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
+                      case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
+                      case tree: DefTree => super.transform(tree).setDefTree
+                      case EmptyTree => tree
+                      case _ => fixSpan(super.transform(tree))
+                  }
+                }
+              }
+
+              (new Reposition).transform(tree)
+            end reposition
+
+
+            val dropped = dropInlinedInstrumentaton(tree) // drop and reposition
             transform(dropped) // transform the content of the Inlined
 
           // For everything else just recurse and transform
