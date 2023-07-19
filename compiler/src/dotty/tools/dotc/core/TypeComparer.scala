@@ -1931,33 +1931,38 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   // This relaxed version is needed to correctly compare dependent function types.
   // See pos/i12211.scala.
   def isSubInfo(info1: Type, info2: Type, symInfo1: Type, sigsOK: ((Type, Type) => Boolean) | Null = null, fallbackFn: ((Type, Type) => Boolean) | Null = null): Boolean = trace(i"isSubInfo $info1 <:< $info2"):
-    def fallback =
-      if fallbackFn != null then fallbackFn(info1, info2)
-      else isSubType(info1, info2)
-    val isCCPhase = ctx.phase == Phases.checkCapturesPhase
+    def fallback = if fallbackFn != null then fallbackFn(info1, info2) else isSubType(info1, info2)
 
-    (info1, info2) match
-      case (info1: PolyType, info2: PolyType) if ccEnabled =>  // See TODO about `ccEnabled` in `sigsOK`, this should also go under `relaxedSubtyping`.
-        comparingTypeLambdas(info1, info2):
-          info1.paramNames.hasSameLengthAs(info2.paramNames)
-          && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType, sigsOK, fallbackFn)
-          // Signature checks are never necessary because polymorphic
-          // refinements are only allowed for the `apply` method of a
-          // PolyFunction.
-      case (info1: MethodType, info2: MethodType) =>
-        matchingMethodParams(info1, info2, precise = false)
-        && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType, sigsOK, fallbackFn)
-        && (if sigsOK != null then sigsOK(symInfo1, info2) else true)
-      case _ => (info1.widenDealias, info2) match
-        case (CapturingType(parent1, _), info2: Type) if isCCPhase =>
+    def tryCapturing = info1.widenDealias match
+      case CapturingType(parent1, _) =>
+        val refs1 = info1.captureSet
+        subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
+          && isSubInfo(parent1, info2, symInfo1, sigsOK, fallbackFn)
+      case _ => info2.widenDealias match
+        case CapturingType(parent2, _) =>
           val refs1 = info1.captureSet
-          subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
-            && isSubInfo(parent1, info2, symInfo1, sigsOK, fallbackFn)
-        case (info1: Type, CapturingType(parent2, refs2)) if isCCPhase =>
-          val refs1 = info1.captureSet
+          val refs2 = info2.captureSet
           (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
             && isSubInfo(info1, parent2, symInfo1, sigsOK, fallbackFn)
         case _ => fallback
+
+    info2 match
+      case info2: PolyType if ccEnabled => info1 match  // See TODO about `ccEnabled` in `sigsOK`, this should also go under `relaxedSubtyping`.
+        case info1: PolyType =>
+          comparingTypeLambdas(info1, info2):
+            info1.paramNames.hasSameLengthAs(info2.paramNames)
+            && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType, sigsOK, fallbackFn)
+            // Signature checks are never necessary because polymorphic
+            // refinements are only allowed for the `apply` method of a
+            // PolyFunction.
+        case _ => tryCapturing
+      case info2: MethodType => info1 match
+        case info1: MethodType =>
+          matchingMethodParams(info1, info2, precise = false)
+          && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType, sigsOK, fallbackFn)
+          && (if sigsOK != null then sigsOK(symInfo1, info2) else true)
+        case _ => tryCapturing
+      case _ => tryCapturing
 
   /** Can comparing this type on the left lead to an either? This is the case if
    *  the type is and AndType or contains embedded occurrences of AndTypes
