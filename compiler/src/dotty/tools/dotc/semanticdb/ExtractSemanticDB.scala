@@ -21,7 +21,9 @@ import transform.SymUtils._
 
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
+import scala.jdk.CollectionConverters._
 import scala.PartialFunction.condOpt
+import typer.ImportInfo.withRootImports
 
 import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.io.{AbstractFile, JarArchive}
@@ -59,18 +61,28 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode, suffix:
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  override def run(using Context): Unit =
-    val unit = ctx.compilationUnit
-    if (phaseMode == ExtractSemanticDB.PhaseMode.PostTyper)
-      val extractor = ExtractSemanticDB.Extractor()
-      extractor.extract(unit.tpdTree)
-      ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
-    else
-      val warnings = ctx.reporter.allWarnings.collect {
-        case w if w.pos.source == ctx.source => w.toSemanticDiagnostic
-      }
-      if (warnings.nonEmpty)
-        ExtractSemanticDB.appendDiagnostics(unit.source, warnings)
+  override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] = {
+    val appendWarnings = phaseMode == ExtractSemanticDB.PhaseMode.PostInlining
+    val warnings =
+      if (appendWarnings)
+        ctx.reporter.allWarnings.groupBy(w => w.pos.source)
+      else Map.empty
+
+    units.asJava.parallelStream().map { unit =>
+      val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
+      if (appendWarnings)
+        warnings.get(unit.source).foreach { ws =>
+          ExtractSemanticDB.appendDiagnostics(unit.source, ws.map(_.toSemanticDiagnostic))
+        }
+      else
+        val extractor = ExtractSemanticDB.Extractor()
+        extractor.extract(unit.tpdTree)
+        ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
+      unit
+    }.toList().asScala.toList
+  }
+
+  def run(using Context): Unit = unsupported("run")
 end ExtractSemanticDB
 
 object ExtractSemanticDB:
