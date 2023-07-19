@@ -905,20 +905,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
-        if isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow) then
-          recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
-        else if tp1.widenDealias.isInstanceOf[AndType] || base.isInstanceOf[OrType] then
+        def checkBase =
+          isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow)
+          && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+        if tp1.widenDealias.isInstanceOf[AndType] || base.isInstanceOf[OrType] then
           // If tp1 is a intersection, it could be that one of the original
           // branches of the AndType tp1 conforms to tp2, but its base type does
           // not, or else that its base type for cls2 does not exist, in which case
           // it would not show up in `base`. In either case, we need to also fall back
-          // to fourthTry. Test case is i18226a.scala.
+          // to fourthTry. Test cases are i18266.scala and i18226a.scala.
           // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
-          fourthTry
+          either(checkBase, fourthTry)
         else
-          false
+          checkBase
       else fourthTry
 
     def fourthTry: Boolean = tp1 match {
