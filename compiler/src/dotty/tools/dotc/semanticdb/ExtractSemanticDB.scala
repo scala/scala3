@@ -62,15 +62,15 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode, suffix:
   override def isCheckable: Boolean = false
 
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] = {
-    val appendWarnings = phaseMode == ExtractSemanticDB.PhaseMode.PostInlining
+    val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     val warnings =
-      if (appendWarnings)
+      if (appendDiagnostics)
         ctx.reporter.allWarnings.groupBy(w => w.pos.source)
       else Map.empty
 
-    units.asJava.parallelStream().map { unit =>
+    units.asJava.parallelStream().forEach { unit =>
       val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
-      if (appendWarnings)
+      if (appendDiagnostics)
         warnings.get(unit.source).foreach { ws =>
           ExtractSemanticDB.appendDiagnostics(unit.source, ws.map(_.toSemanticDiagnostic))
         }
@@ -78,8 +78,8 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode, suffix:
         val extractor = ExtractSemanticDB.Extractor()
         extractor.extract(unit.tpdTree)
         ExtractSemanticDB.write(unit.source, extractor.occurrences.toList, extractor.symbolInfos.toList, extractor.synthetics.toList)
-      unit
-    }.toList().asScala.toList
+    }
+    units
   }
 
   def run(using Context): Unit = unsupported("run")
@@ -94,12 +94,12 @@ object ExtractSemanticDB:
   val description: String = "extract info into .semanticdb files"
 
   enum PhaseMode:
-    case PostTyper
-    case PostInlining
+    case ExtractSemanticInfo
+    case AppendDiagnostics
 
-  class PostTyper extends ExtractSemanticDB(PhaseMode.PostTyper, "PostTyper")
+  class ExtractSemanticInfo extends ExtractSemanticDB(PhaseMode.ExtractSemanticInfo, "ExtractSemanticInfo")
 
-  class PostInlining extends ExtractSemanticDB(PhaseMode.PostInlining, "PostInlining")
+  class AppendDiagnostics extends ExtractSemanticDB(PhaseMode.AppendDiagnostics, "AppendDiagnostics")
 
   private def semanticdbTarget(using Context): Option[Path] =
     Option(ctx.settings.semanticdbTarget.value)
