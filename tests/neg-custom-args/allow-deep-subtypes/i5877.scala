@@ -25,7 +25,7 @@ object Main {
         assert(implicitly[thatSelf.type <:< that.This] != null)
       }
       val that: HasThisType[_] = Foo() // null.asInstanceOf
-      testSelf(that) // error
+      testSelf(that) // error: recursion limit exceeded
     }
 
 
@@ -36,7 +36,7 @@ object Main {
       }
       val that: HasThisType[_] = Foo() // null.asInstanceOf
       // this line of code makes Dotty compiler infinite recursion (stopped only by overflow) - comment it to make it compilable again
-      testSelf(that) // error
+      testSelf(that) // error: recursion limit exceeded
     }
 
     // ---- ---- ---- ----

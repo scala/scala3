@@ -478,7 +478,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp2.isRef(AnyClass, skipRefined = false)
         || !tp1.evaluating && recur(tp1.ref, tp2)
       case AndType(tp11, tp12) =>
-        if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
+        if tp11.stripTypeVar eq tp12.stripTypeVar then recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
         compareAtoms(tp1, tp2) match
@@ -898,21 +898,29 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       canWidenAbstract && acc(true, tp)
 
-    def tryBaseType(cls2: Symbol) = {
+    def tryBaseType(cls2: Symbol) =
       val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
       if base.exists && (base ne tp1)
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
-        && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
-        || base.isInstanceOf[OrType] && fourthTry
-          // if base is a disjunction, this might have come from a tp1 type that
+        def checkBase =
+          isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow)
+          && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+        if tp1.widenDealias.isInstanceOf[AndType] || base.isInstanceOf[OrType] then
+          // If tp1 is a intersection, it could be that one of the original
+          // branches of the AndType tp1 conforms to tp2, but its base type does
+          // not, or else that its base type for cls2 does not exist, in which case
+          // it would not show up in `base`. In either case, we need to also fall back
+          // to fourthTry. Test cases are i18266.scala and i18226a.scala.
+          // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
+          either(checkBase, fourthTry)
+        else
+          checkBase
       else fourthTry
-    }
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
@@ -989,7 +997,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           }
         }
         compareHKLambda
-      case AndType(tp11, tp12) =>
+      case tp1 @ AndType(tp11, tp12) =>
         val tp2a = tp2.dealiasKeepRefiningAnnots
         if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
@@ -1009,8 +1017,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             return recur(AndType(tp11, tp121), tp2) && recur(AndType(tp11, tp122), tp2)
           case _ =>
         }
-        val tp1norm = simplifyAndTypeWithFallback(tp11, tp12, tp1)
-        if (tp1 ne tp1norm) recur(tp1norm, tp2)
+        val tp1norm = trySimplify(tp1)
+        if tp1 ne tp1norm then recur(tp1norm, tp2)
         else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
         def compareMatch = tp2 match {
@@ -2506,8 +2514,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
     andTypeGen(tp1, tp2, AndType.balanced(_, _), isErased = isErased)
 
-  final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
-    andTypeGen(tp1, tp2, (_, _) => fallback)
+  /** Try to simplify AndType, or return the type itself if no simplifiying opportunities exist. */
+  private def trySimplify(tp: AndType): Type =
+    andTypeGen(tp.tp1, tp.tp2, (_, _) => tp)
 
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `|` is distributed inside the type. This holds for
