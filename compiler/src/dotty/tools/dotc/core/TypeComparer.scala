@@ -641,6 +641,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareRefined: Boolean =
           val tp1w = tp1.widen
 
+          // FIXME: this shortcut is currently necessary to correctly compare function types in CC phase.
+          //   Going to `hasMatchingMember` breaks tests (e.g. neg-custom-args/captures/lazyref.scala). See #18200.
           if ctx.phase == Phases.checkCapturesPhase then
             def compareInfo(info1: Type, info2: Type): Boolean =
               isSubInfo(info1, info2, NoType)
@@ -2032,7 +2034,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             && symInfo.signature.consistentParams(info2.signature)
 
       def fallback = (info1: Type, info2: Type) =>
-        def tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
+        val tp1IsSingleton: Boolean = tp1.isInstanceOf[SingletonType]
         inFrozenGadtIf(tp1IsSingleton):
           isSubType(info1, info2)
 
