@@ -8,7 +8,6 @@ Text => empty
 Language => Scala
 Symbols => 9 entries
 Occurrences => 18 entries
-Diagnostics => 2 entries
 
 Symbols:
 example/Access# => class Access extends Object { self: Access => +8 decls }
@@ -41,10 +40,6 @@ Occurrences:
 [9:6..9:8): m7 <- example/Access#m7().
 [9:11..9:14): ??? -> scala/Predef.`???`().
 
-Diagnostics:
-[3:14..3:16): [warning] unused private member
-[4:20..4:22): [warning] unused private member
-
 expect/Advanced.scala
 ---------------------
 
@@ -55,7 +50,6 @@ Text => empty
 Language => Scala
 Symbols => 61 entries
 Occurrences => 138 entries
-Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -261,9 +255,6 @@ Occurrences:
 [53:37..53:38): x -> advanced/HKClass#foo().(x)
 [53:39..53:47): toString -> scala/Tuple2#toString().
 
-Diagnostics:
-[40:12..40:15): [warning] unused local definition
-
 Synthetics:
 [27:12..27:16):s.s1 => reflectiveSelectable(*)
 [29:12..29:16):s.s2 => reflectiveSelectable(*)
@@ -279,7 +270,6 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 52 entries
-Diagnostics => 2 entries
 
 Symbols:
 annot/Alias. => final object Alias extends Object { self: Alias.type => +2 decls }
@@ -360,10 +350,6 @@ Occurrences:
 [39:11..39:26): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 [39:28..39:33): param -> scala/annotation/meta/param#
 
-Diagnostics:
-[7:67..7:68): [warning] unused explicit parameter
-[21:33..21:34): [warning] unused explicit parameter
-
 expect/Anonymous.scala
 ----------------------
 
@@ -374,7 +360,6 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 47 entries
-Diagnostics => 1 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -451,9 +436,6 @@ Occurrences:
 [23:33..23:39): String -> scala/Predef.String#
 [23:42..23:45): ??? -> scala/Predef.`???`().
 
-Diagnostics:
-[14:8..14:9): [warning] unused local definition
-
 Synthetics:
 [10:2..10:9):locally => *[Unit]
 [13:2..13:9):locally => *[Unit]
@@ -492,7 +474,6 @@ Text => empty
 Language => Scala
 Symbols => 108 entries
 Occurrences => 114 entries
-Diagnostics => 4 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -721,12 +702,6 @@ Occurrences:
 [53:4..53:9): local -> local4
 [53:10..53:11): + -> scala/Int#`+`(+4).
 
-Diagnostics:
-[18:9..18:10): [warning] unused explicit parameter
-[20:27..20:28): [warning] unused explicit parameter
-[22:27..22:28): [warning] unused explicit parameter
-[24:10..24:11): [warning] unused explicit parameter
-
 Synthetics:
 [51:16..51:27):List(1).map => *[Int]
 [51:16..51:20):List => *.apply[Int]
@@ -741,7 +716,6 @@ Text => empty
 Language => Scala
 Symbols => 3 entries
 Occurrences => 6 entries
-Diagnostics => 1 entries
 
 Symbols:
 _empty_/Deprecated. => final object Deprecated extends Object { self: Deprecated.type => +3 decls }
@@ -755,9 +729,6 @@ Occurrences:
 [1:37..1:40): ??? -> scala/Predef.`???`().
 [2:6..2:10): main <- _empty_/Deprecated.main().
 [2:13..2:29): deprecatedMethod -> _empty_/Deprecated.deprecatedMethod().
-
-Diagnostics:
-[2:13..2:29): [warning] [33mmethod[0m [35mdeprecatedMethod[0m in [33mobject[0m [35mDeprecated[0m is deprecated
 
 expect/Empty.scala
 ------------------
@@ -816,7 +787,6 @@ Text => empty
 Language => Scala
 Symbols => 30 entries
 Occurrences => 46 entries
-Diagnostics => 3 entries
 
 Symbols:
 endmarkers/Container# => class Container extends Object { self: Container => +5 decls }
@@ -898,11 +868,6 @@ Occurrences:
 [64:14..64:20): String -> scala/Predef.String#
 [67:4..67:14): endmarkers -> endmarkers/
 
-Diagnostics:
-[38:8..38:16): [warning] unused local definition
-[42:8..42:16): [warning] unused local definition
-[46:8..46:16): [warning] unused local definition
-
 expect/EndMarkers2.scala
 ------------------------
 
@@ -982,7 +947,6 @@ Text => empty
 Language => Scala
 Symbols => 181 entries
 Occurrences => 148 entries
-Diagnostics => 2 entries
 Synthetics => 6 entries
 
 Symbols:
@@ -1318,10 +1282,6 @@ Occurrences:
 [68:9..68:16): Neptune <- _empty_/Enums.Planet.Neptune.
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
 
-Diagnostics:
-[30:12..30:17): [warning] unused explicit parameter
-[48:13..48:13): [warning] `:` after symbolic operator is deprecated; use backticks around operator instead
-
 Synthetics:
 [52:9..52:13):Refl => *.unapply[Option[B]]
 [52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
@@ -1374,7 +1334,6 @@ Text => empty
 Language => Scala
 Symbols => 5 entries
 Occurrences => 23 entries
-Diagnostics => 1 entries
 
 Symbols:
 example/Example. => final object Example extends Object { self: Example.type => +3 decls }
@@ -1407,9 +1366,6 @@ Occurrences:
 [9:16..9:23): reflect -> scala/reflect/
 [9:24..9:32): classTag -> scala/reflect/package.classTag().
 [9:33..9:36): Int -> scala/Int#
-
-Diagnostics:
-[2:24..2:30): [warning] unused import
 
 expect/Extension.scala
 ----------------------
@@ -1605,7 +1561,6 @@ Text => empty
 Language => Scala
 Symbols => 29 entries
 Occurrences => 65 entries
-Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -1705,11 +1660,6 @@ Occurrences:
 [26:50..26:55): empty -> a/b/Givens.Monoid#empty().
 [26:57..26:58): A -> a/b/Givens.foo().(A)
 [26:59..26:64): empty -> a/b/Givens.Monoid#empty().
-
-Diagnostics:
-[24:53..24:63): [warning] An inline given alias with a function value as right-hand side can significantly increase
-generated code size. You should either drop the `inline` or rewrite the given with an
-explicit `apply` method.
 
 Synthetics:
 [12:17..12:25):sayHello => *[Int]
@@ -1825,7 +1775,6 @@ Text => empty
 Language => Scala
 Symbols => 2 entries
 Occurrences => 16 entries
-Diagnostics => 1 entries
 
 Symbols:
 _empty_/Imports$package. => final package object _empty_ extends Object { self: _empty_.type => +2 decls }
@@ -1848,9 +1797,6 @@ Occurrences:
 [3:22..3:24): HM -> scala/collection/immutable/HashMap.
 [3:25..3:28): Int -> scala/Int#
 [3:30..3:33): Int -> scala/Int#
-
-Diagnostics:
-[0:26..0:34): [warning] unused import
 
 expect/InstrumentTyper.scala
 ----------------------------
@@ -3576,7 +3522,6 @@ Text => empty
 Language => Scala
 Symbols => 22 entries
 Occurrences => 44 entries
-Diagnostics => 3 entries
 Synthetics => 11 entries
 
 Symbols:
@@ -3649,11 +3594,6 @@ Occurrences:
 [39:10..39:17): leftVar -> local3
 [40:10..40:18): rightVar -> local4
 
-Diagnostics:
-[30:11..30:18): [warning] unset local variable
-[30:20..30:28): [warning] unset local variable
-[31:15..31:25): [warning] unset local variable
-
 Synthetics:
 [5:6..5:10):Some => *.unapply[Int]
 [6:4..6:8):Some => *.apply[Int]
@@ -3677,7 +3617,6 @@ Text => empty
 Language => Scala
 Symbols => 42 entries
 Occurrences => 128 entries
-Diagnostics => 1 entries
 
 Symbols:
 example/ValUsages. => final object ValUsages extends Object { self: ValUsages.type => +2 decls }
@@ -3853,9 +3792,6 @@ Occurrences:
 [49:2..49:3): v -> example/ValUsages.v.
 [49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
 
-Diagnostics:
-[2:20..2:21): [warning] unused explicit parameter
-
 expect/Vararg.scala
 -------------------
 
@@ -3897,7 +3833,6 @@ Text => empty
 Language => Scala
 Symbols => 8 entries
 Occurrences => 18 entries
-Diagnostics => 1 entries
 
 Symbols:
 _empty_/Test_depmatch. => final object Test_depmatch extends Object { self: Test_depmatch.type => +4 decls }
@@ -3928,9 +3863,6 @@ Occurrences:
 [6:15..6:18): foo -> _empty_/Test_depmatch.baz().(foo)
 [6:19..6:20): U -> local0
 [6:24..6:27): ??? -> scala/Predef.`???`().
-
-Diagnostics:
-[6:8..6:9): [warning] unused local definition
 
 expect/example-dir/FileInDir.scala
 ----------------------------------
@@ -4207,7 +4139,6 @@ Text => empty
 Language => Scala
 Symbols => 7 entries
 Occurrences => 8 entries
-Diagnostics => 1 entries
 
 Symbols:
 i9727/Test# => class Test extends Object { self: Test => +2 decls }
@@ -4227,9 +4158,6 @@ Occurrences:
 [3:12..3:16): Test -> i9727/Test#
 [4:4..4:5): b <- i9727/i9727$package.b.
 [4:12..4:16): Test -> i9727/Test#
-
-Diagnostics:
-[2:11..2:12): [warning] unused explicit parameter
 
 expect/i9782.scala
 ------------------
@@ -4615,7 +4543,6 @@ Text => empty
 Language => Scala
 Symbols => 50 entries
 Occurrences => 73 entries
-Diagnostics => 4 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -4745,12 +4672,6 @@ Occurrences:
 [25:27..25:28): t <- local1
 [25:33..25:36): ??? -> scala/Predef.`???`().
 
-Diagnostics:
-[9:30..9:31): [warning] unused explicit parameter
-[9:36..9:37): [warning] unused explicit parameter
-[9:42..9:43): [warning] unused explicit parameter
-[21:11..21:12): [warning] unused explicit parameter
-
 Synthetics:
 [23:6..23:10):List => *.unapplySeq[Nothing]
 [24:19..24:23):List => *.unapplySeq[Nothing]
@@ -4765,7 +4686,6 @@ Text => empty
 Language => Scala
 Symbols => 143 entries
 Occurrences => 228 entries
-Diagnostics => 1 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -5142,9 +5062,6 @@ Occurrences:
 [119:24..119:31): classOf -> scala/Predef.classOf().
 [119:32..119:38): Option -> scala/Option#
 [119:39..119:42): Int -> scala/Int#
-
-Diagnostics:
-[5:13..5:14): [warning] unused explicit parameter
 
 Synthetics:
 [68:20..68:24):@ann => *[Int]
