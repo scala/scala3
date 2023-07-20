@@ -237,7 +237,7 @@ class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Bo
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
-      |rm -r out
+      |rm -rf out
       |sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal"
       |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin
