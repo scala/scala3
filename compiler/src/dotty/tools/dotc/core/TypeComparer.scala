@@ -2610,10 +2610,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case CapturingType(parent1, refs1) =>
-      if subCaptures(tp2.captureSet, refs1, frozen = true).isOK
+      val refs2 = tp2.captureSet
+      if subCaptures(refs2, refs1, frozen = true).isOK
         && tp1.isBoxedCapturing == tp2.isBoxedCapturing
       then
-        parent1 & tp2
+        if refs2.isAlwaysEmpty then parent1 & tp2
+        else (parent1 & tp2).capturing(refs2)
       else
         tp1.derivedCapturingType(parent1 & tp2, refs1)
     case tp1: AnnotatedType if !tp1.isRefining =>
