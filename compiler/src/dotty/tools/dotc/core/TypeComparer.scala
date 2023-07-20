@@ -1490,16 +1490,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def isNewSubType(tp1: Type): Boolean =
       def isCovered(tp: Type): CoveredStatus =
         tp.dealiasKeepRefiningAnnots.stripTypeVar match
-          case tp: TypeRef if tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass => CoveredStatus.Covered
+          case tp: TypeRef =>
+            if tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
+            then CoveredStatus.Covered
+            else CoveredStatus.Uncovered
           case tp: AppliedType => isCovered(tp.tycon)
           case tp: RefinedOrRecType => isCovered(tp.parent)
-          case tp: AndType => isCovered(tp.tp1) combinedWith isCovered(tp.tp2)
-          case tp: OrType  => isCovered(tp.tp1) combinedWith isCovered(tp.tp2)
+          case tp: AndType => isCovered(tp.tp1) min isCovered(tp.tp2)
+          case tp: OrType  => isCovered(tp.tp1) min isCovered(tp.tp2) min CoveredStatus.CoveredWithOr
           case _ => CoveredStatus.Uncovered
 
       val covered1 = isCovered(tp1)
       val covered2 = isCovered(tp2)
-      if CoveredStatus.bothCovered(covered1, covered2) && !CoveredStatus.bothHaveOr(covered1, covered2) then
+      if (covered1 min covered2) >= CoveredStatus.CoveredWithOr && (covered1 max covered2) == CoveredStatus.Covered then
         //println(s"useless subtype: $tp1 <:< $tp2")
         false
       else isSubType(tp1, tp2, approx.addLow)
@@ -2997,29 +3000,12 @@ object TypeComparer {
   type ApproxState = ApproxState.Repr
 
   /** Result of `isCovered` check. */
-  object CoveredStatus:
-    opaque type Repr = Int
+  private object CoveredStatus:
+    type Repr = Int
 
-    private inline val IsCovered = 2
-    private inline val NotHasOr = 1
-
-    /** The type is not covered. */
-    val Uncovered: Repr = 1
-
-    /** The type is covered and contains OrTypes. */
-    val CoveredWithOr: Repr = 2
-
-    /** The type is covered and free from OrTypes. */
-    val Covered: Repr = 3
-
-    object Repr:
-      extension (s: Repr)
-        def combinedWith(that: => Repr): Repr =
-          if s == Uncovered then Uncovered
-          else s min that
-
-    inline def bothHaveOr(s1: Repr, s2: Repr): Boolean = ~((s1 | s2) & NotHasOr) != 0
-    inline def bothCovered(s1: Repr, s2: Repr): Boolean = (s1 & s2 & IsCovered) != 0
+    val Uncovered:     Repr = 1   // The type is not covered
+    val CoveredWithOr: Repr = 2   // The type is covered and contains OrTypes
+    val Covered:       Repr = 3   // The type is covered and free from OrTypes
   end CoveredStatus
   type CoveredStatus = CoveredStatus.Repr
 
