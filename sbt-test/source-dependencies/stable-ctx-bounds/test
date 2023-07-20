@@ -1,0 +1,15 @@
+> compile
+> recordPreviousIterations
+
+# change only the body of a method
+$ copy-file changes/B.scala B.scala
+
+# Only B.scala should be recompiled. Previously, this lead to a subsequent
+# compilation round because context bounds were desugared into names unique to
+# the whole compilation unit, and in the first `compile` the two context bounds
+# of B.scala were desugared into `evidence$2` and `evidence$1` in this order
+# (because the definitions were visited out of order), but in the second call
+# to `compile` we traverse them in order as we typecheck B.scala and ended up
+# with `evidence$1` and `evidence$2` instead.
+> compile
+> checkIterations 1
