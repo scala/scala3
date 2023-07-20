@@ -243,19 +243,27 @@ object desugar {
     val DefDef(_, paramss, tpt, rhs) = meth
     val evidenceParamBuf = ListBuffer[ValDef]()
 
+    var seenContextBounds: Int = 0
     def desugarContextBounds(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, cxbounds) =>
         val iflag = if sourceVersion.isAtLeast(`future`) then Given else Implicit
         evidenceParamBuf ++= makeImplicitParameters(
           cxbounds, iflag,
-          mkParamName = () => ContextBoundParamName.fresh(),
+          // Just like with `makeSyntheticParameter` on nameless parameters of
+          // using clauses, we only need names that are unique among the
+          // parameters of the method since shadowing does not affect
+          // implicit resolution in Scala 3.
+          mkParamName = () =>
+            val index = seenContextBounds + 1 // Start at 1 like FreshNameCreator.
+            val ret = ContextBoundParamName(EmptyTermName, index)
+            seenContextBounds += 1
+            ret,
           forPrimaryConstructor = isPrimaryConstructor)
         tbounds
       case LambdaTypeTree(tparams, body) =>
         cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
       case _ =>
         rhs
-
     val paramssNoContextBounds =
       mapParamss(paramss) {
         tparam => cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
