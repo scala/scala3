@@ -1002,7 +1002,6 @@ object Build {
         "scala.annotation.specialized",
         "scala.annotation.unspecialized",
       ),
-      tastyMiMaTastyQueryVersionOverride := Some("0.8.4"),
       tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibVersion(Bootstrapped),
       tastyMiMaCurrentClasspath := {
         val javaBootCp = tastyMiMaJavaBootClasspath.value
