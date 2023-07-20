@@ -147,7 +147,7 @@ object TypeOps:
             isFullyDefined(tp, ForceDegree.all)
           case _ =>
         val normed = tp.tryNormalize
-        if normed.exists then normed else tp.map(simplify(_, theMap))
+        if normed.exists then simplify(normed, theMap) else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
         val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
         if tvar.exists then tvar else tp
@@ -184,7 +184,7 @@ object TypeOps:
         else tp.derivedAnnotatedType(parent1, annot)
       case _: MatchType =>
         val normed = tp.tryNormalize
-        if (normed.exists) normed else mapOver
+        if (normed.exists) simplify(normed, theMap) else mapOver
       case tp: MethodicType =>
         // See documentation of `Types#simplified`
         val addTypeVars = new TypeMap with IdempotentCaptRefMap:

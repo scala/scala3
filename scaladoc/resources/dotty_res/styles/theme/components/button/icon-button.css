@@ -533,6 +533,50 @@
   content: url("../../../../images/icon-buttons/gitter/dark/selected.svg");
 }
 
+/* custom button */
+
+.icon-button.custom-dark{
+  display: none;
+}
+
+.icon-button.custom::after {
+  content: "";
+  background-image: var(--bgimage);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.theme-dark .icon-button.custom-dark{
+  display: unset;
+}
+
+.theme-dark .icon-button.custom-dark::after{
+  content: "";
+  background-image: var(--bgimage-dark);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.theme-dark .icon-button.custom{
+  display: none;
+}
+
+.icon-button.custom:hover{
+  opacity: 0.8;
+}
+
+.icon-button.custom-dark:hover{
+  opacity: 0.8;
+}
+
 /* copy button */
 
 .icon-button.copy-button::after {

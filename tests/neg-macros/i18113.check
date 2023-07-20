@@ -1,0 +1,15 @@
+
+-- Error: tests/neg-macros/i18113/Test_2.scala:7:8 ---------------------------------------------------------------------
+ 7 |  X.test(ref) // error
+   |  ^^^^^^^^^^^
+   |Exception occurred while executing macro expansion.
+   |java.lang.AssertionError: Reference to a method must be eta-expanded before it is used as an expression: x.Main.ref.plus
+   |	at x.X$.testImpl(Macro_1.scala:16)
+   |
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macro_1.scala:11
+11 |   inline def test(ref:IntRef):Int = ${ testImpl('ref) }
+   |                                     ^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------

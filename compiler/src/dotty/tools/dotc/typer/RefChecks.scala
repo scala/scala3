@@ -336,6 +336,22 @@ object RefChecks {
         next == other || isInheritedAccessor(next, other)
       }
 
+    /** Detect any param section where params in last position do not agree isRepeatedParam.
+     */
+    def incompatibleRepeatedParam(member: Symbol, other: Symbol): Boolean =
+      def loop(mParamInfoss: List[List[Type]], oParamInfoss: List[List[Type]]): Boolean =
+        mParamInfoss match
+          case Nil => false
+          case h :: t =>
+            oParamInfoss match
+              case Nil => false
+              case h2 :: t2 => h.nonEmpty && h2.nonEmpty && h.last.isRepeatedParam != h2.last.isRepeatedParam
+                            || loop(t, t2)
+      member.is(Method, butNot = JavaDefined)
+      && other.is(Method, butNot = JavaDefined)
+      && atPhase(typerPhase):
+        loop(member.info.paramInfoss, other.info.paramInfoss)
+
     /* Check that all conditions for overriding `other` by `member`
      * of class `clazz` are met.
      */
@@ -425,10 +441,8 @@ object RefChecks {
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
       /* Is the intersection between given two lists of overridden symbols empty? */
-      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) = {
-        val set2 = syms2.toSet
-        !(syms1 exists (set2 contains _))
-      }
+      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) =
+        !syms1.exists(syms2.toSet.contains)
 
       // o: public | protected        | package-protected  (aka java's default access)
       // ^-may be overridden by member with access privileges-v
@@ -498,6 +512,8 @@ object RefChecks {
               + "\n(Note: this can be resolved by declaring an override in " + clazz + ".)")
         else if member.is(Exported) then
           overrideError("cannot override since it comes from an export")
+        else if incompatibleRepeatedParam(member, other) then
+          report.error(DoubleDefinition(member, other, clazz), member.srcPos)
         else
           overrideError("needs `override` modifier")
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
@@ -878,6 +894,7 @@ object RefChecks {
       def isSignatureMatch(sym: Symbol) = sym.isType || {
         val self = clazz.thisType
         sym.asSeenFrom(self).matches(member.asSeenFrom(self))
+        && !incompatibleRepeatedParam(sym, member)
       }
 
       /* The rules for accessing members which have an access boundary are more
@@ -910,8 +927,8 @@ object RefChecks {
     }
 
     // 4. Check that every defined member with an `override` modifier overrides some other member.
-    for (member <- clazz.info.decls)
-      if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
+    for member <- clazz.info.decls do
+      if member.isAnyOverride && !clazz.thisType.baseClasses.exists(hasMatchingSym(_, member)) then
         if (checks != noPrinter)
           for (bc <- clazz.info.baseClasses.tail) {
             val sym = bc.info.decl(member.name).symbol
@@ -935,7 +952,7 @@ object RefChecks {
         }
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
-      }
+      end if
   }
 
   /** Check that we do not "override" anything with a private method
@@ -1179,6 +1196,10 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkAnyRefMethodCall(tree)
     tree
 
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
+    if defn.ScalaBoxedClasses().contains(tree.qualifier.tpe.typeSymbol) && tree.name == nme.synchronized_ then
+      report.warning(SynchronizedCallOnBoxedClass(tree), tree.srcPos)
+    tree
 }
 
 /* todo: rewrite and re-enable
@@ -1689,7 +1710,7 @@ class RefChecks extends MiniPhase { thisPhase =>
             // if (settings.warnNullaryUnit)
             //  checkNullaryMethodReturnType(sym)
             // if (settings.warnInaccessible) {
-            //  if (!sym.isConstructor && !sym.isEffectivelyFinal && !sym.isSynthetic)
+            //  if (!sym.isEffectivelyFinal && !sym.isSynthetic)
             //    checkAccessibilityOfReferencedTypes(tree)
             // }
             // tree match {

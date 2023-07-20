@@ -70,7 +70,9 @@ object DiffUtil {
    *         differences are highlighted.
    */
   def mkColoredLineDiff(expected: Seq[String], actual: Seq[String]): String = {
-    val expectedSize = EOF.length max expected.maxBy(_.length).length
+    val longestExpected = expected.map(_.length).maxOption.getOrElse(0)
+    val longestActual = actual.map(_.length).maxOption.getOrElse(0)
+    val expectedSize = EOF.length max longestActual max longestExpected
     actual.padTo(expected.length, "").zip(expected.padTo(actual.length, "")).map { case (act, exp) =>
       mkColoredLineDiff(exp, act, expectedSize)
     }.mkString(System.lineSeparator)
@@ -101,9 +103,73 @@ object DiffUtil {
         case Deleted(str) => deleted(str)
       }.mkString
 
+    (expectedDiff, actualDiff)
     val pad = " " * 0.max(expectedSize - expected.length)
 
     expectedDiff + pad + "  |  " + actualDiff
+  }
+
+  private def ensureLineSeparator(str: String): String =
+    if str.endsWith(System.lineSeparator) then
+      str
+    else
+      str + System.lineSeparator
+
+  /**
+   * Returns a colored diffs by comparison of lines instead of tokens.
+   * It will automatically group subsequential pairs of `Insert` and `Delete`
+   * in order to improve the readability
+   *
+   * @param expected The expected lines
+   * @param actual   The actual lines
+   * @return A string with colored diffs between `expected` and `actual` grouped whenever possible
+   */
+  def mkColoredHorizontalLineDiff(expected: String, actual: String): String = {
+    val indent = 2
+    val tab = " " * indent
+    val insertIndent = "+" ++ (" " * (indent - 1))
+    val deleteIndent = "-" ++ (" " * (indent - 1))
+
+    if actual.isEmpty then
+      (expected.linesIterator.map(line => added(insertIndent + line)).toList :+ deleted("--- EMPTY OUTPUT ---"))
+        .map(ensureLineSeparator).mkString
+    else if expected.isEmpty then
+      (added("--- NO VALUE EXPECTED ---") +: actual.linesIterator.map(line => deleted(deleteIndent + line)).toList)
+        .map(ensureLineSeparator).mkString
+    else
+      lazy val diff = {
+        val expectedTokens = expected.linesWithSeparators.toArray
+        val actualTokens = actual.linesWithSeparators.toArray
+        hirschberg(actualTokens, expectedTokens)
+      }.toList
+
+      val transformedDiff = diff.flatMap {
+        case Modified(original, str) => Seq(
+          Inserted(ensureLineSeparator(original)), Deleted(ensureLineSeparator(str))
+        )
+        case other => Seq(other)
+      }
+
+      val zipped = transformedDiff zip transformedDiff.drop(1)
+
+      val (acc, inserts, deletions) = zipped.foldLeft((Seq[Patch](), Seq[Inserted](), Seq[Deleted]())): (acc, patches) =>
+        val (currAcc, inserts, deletions) = acc
+        patches match
+          case (currentPatch: Inserted, nextPatch: Deleted) =>
+            (currAcc, inserts :+ currentPatch, deletions)
+          case (currentPatch: Deleted, nextPatch: Inserted) =>
+            (currAcc, inserts, deletions :+ currentPatch)
+          case (currentPatch, nextPatch) =>
+            (currAcc :++ inserts :++ deletions :+ currentPatch, Seq.empty, Seq.empty)
+
+      val stackedDiff = acc :++ inserts :++ deletions :+ diff.last
+
+      stackedDiff.collect {
+        case Unmodified(str) => tab + str
+        case Inserted(str) => added(insertIndent + str)
+        case Deleted(str) => deleted(deleteIndent + str)
+      }.map(ensureLineSeparator).mkString
+
   }
 
   def mkColoredCodeDiff(code: String, lastCode: String, printDiffDel: Boolean): String = {

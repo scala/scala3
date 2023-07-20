@@ -695,8 +695,8 @@ trait Applications extends Compatibility {
         val argtpe1 = argtpe.widen
 
         def SAMargOK =
-          defn.isFunctionType(argtpe1) && formal.match
-            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+          defn.isFunctionNType(argtpe1) && formal.match
+            case SAMType(samMeth, samParent) => argtpe <:< samMeth.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
             case _ => false
 
         isCompatible(argtpe, formal)
@@ -1519,10 +1519,7 @@ trait Applications extends Compatibility {
       && isApplicableType(
             normalize(tp.select(xname, mbr), WildcardType),
             argType :: Nil, resultType)
-    tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
-      case mbr: SingleDenotation => qualifies(mbr)
-      case mbr => mbr.hasAltWith(qualifies(_))
-    }
+    tp.memberBasedOnFlags(xname, required = ExtensionMethod).hasAltWithInline(qualifies)
   }
 
   /** Drop any leading type or implicit parameter sections */
@@ -2077,7 +2074,7 @@ trait Applications extends Compatibility {
            *   new java.io.ObjectOutputStream(f)
            */
           pt match {
-            case SAMType(mtp) =>
+            case SAMType(mtp, _) =>
               narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
             case _ =>
               // pick any alternatives that are not methods since these might be convertible

@@ -3,7 +3,7 @@ layout: doc-page
 title: Scaladoc
 ---
 
-Scaladoc  is the documentation tool for [Scala
+Scaladoc is the documentation tool for [Scala
 3](https://github.com/lampepfl/dotty). It uses the TastyInspector to access
 definitions, which is an officially supported way to access Scala 3's
 perspective of a codebase.
@@ -62,11 +62,20 @@ You can also find the result of building the same sites for latest `master` at:
 - <https://scala3doc.virtuslab.com/master/scala3/main/index.html>
 - <https://scala3doc.virtuslab.com/master/testcases/main/index.html>
 
+You can run the Scaladoc tool from the sbt prompt as a user would run it
+with `scaladoc/run`, passing `-d <directory>` and some `.tasty` files as
+input on the command line.
+
 ### Testing
 
+From the sbt prompt, `scaladoc/test` runs the tests.
+
+You can also run specific signature tests with `testOnly`,
+for example `scaladoc/test *scaladoc.signatures.MarkdownCode`.
+
 Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
-to signatures found in source files. Such tests are defined using [SignatureTest](test/dotty/tools/scaladoc/signatures/SignatureTest.scala) class
-and its subtypes (such as [TranslatableSignaturesTestCases](test/dotty/tools/scaladoc/signatures/TranslatableSignaturesTestCases.scala))
+to signatures found in source files (extracted using Scalameta). Such tests are defined using [SignatureTest](test/dotty/tools/scaladoc/signatures/SignatureTest.scala) class
+and its subtypes (such as [TranslatableSignaturesTestCases](test/dotty/tools/scaladoc/signatures/TranslatableSignaturesTestCases.scala)). In this style of test, it's not necessary for expected output to be included, because the test is its own specification.
 
 WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
 In case of any discrepancies rely on the source files instead.
@@ -121,24 +130,7 @@ class Bar
 
 Otherwise the implementation would be treated as a part of the signature.
 
-## Contributing
-
-We're happy that you'd like to help us!
-
-We have two issue labels you should take a look at: `good first issue` and
-`self-contained`. First is easy pickings: you'll be able to contribute without
-needing to dive too deep into the project. Second is reverse: it's an issue
-that's you may find interesting, complex and self-contained enough that you can
-continue chipping away at it without needing to worry too much about merge
-conflicts.
-
-To contribute to the project with your code, fork this repo and create a pull request from a fresh branch from there.
-To keep the history of commits clean, make sure your commits are squashed into one
-and all your changes are applied on top of the latest master branch (if not - rebase on it instead of merging it).
-Make sure all the tests pass (simply run `sbt test` to verify that).
-
 ## FAQ
-
 
 ### Why use TASTy?
 

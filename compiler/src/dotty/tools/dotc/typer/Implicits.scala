@@ -220,7 +220,7 @@ object Implicits:
             case pt: ViewProto =>
               viewCandidateKind(ref.widen, pt.argType, pt.resType)
             case _: ValueTypeOrProto =>
-              if (defn.isFunctionType(pt)) Candidate.Value
+              if (defn.isFunctionNType(pt)) Candidate.Value
               else valueTypeCandidateKind(ref.widen)
             case _ =>
               Candidate.Value
@@ -604,7 +604,7 @@ trait ImplicitRunInfo:
       private var parts: mutable.LinkedHashSet[Type] = _
       private val partSeen = util.HashSet[Type]()
 
-      def traverse(t: Type) =
+      def traverse(t: Type) = try
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
@@ -636,13 +636,14 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t: MatchType =>
               traverseChildren(t)
-              traverse(try t.normalized catch case _: MatchTypeReductionError => t)
+              traverse(t.normalized)
             case MatchType.InDisguise(mt)
                 if !t.isInstanceOf[LazyRef] // skip recursive applications (eg. Tuple.Map)
             =>
               traverse(mt)
             case t =>
               traverseChildren(t)
+      catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()
@@ -973,7 +974,7 @@ trait Implicits:
   /** A string indicating the formal parameter corresponding to a  missing argument */
   def implicitParamString(paramName: TermName, methodStr: String, tree: Tree)(using Context): String =
     tree match {
-      case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
+      case Select(qual, nme.apply) if defn.isFunctionNType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
         def addendum = if (qt1 eq qt) "" else (i"\nWhere $qt is an alias of: $qt1")

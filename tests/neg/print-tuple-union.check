@@ -1,0 +1,18 @@
+-- [E007] Type Mismatch Error: tests/neg/print-tuple-union.scala:3:23 --------------------------------------------------
+3 |  def bar[B]: Int = foo[B] // error
+  |                    ^^^^^^
+  |                    Found:    Tuple.Union[B]
+  |                    Required: Int
+  |
+  |                    Note: a match type could not be fully reduced:
+  |
+  |                      trying to reduce  Tuple.Union[B]
+  |                      trying to reduce  Tuple.Fold[B, Nothing, [x, y] =>> x | y]
+  |                      failed since selector B
+  |                      does not match  case EmptyTuple => Nothing
+  |                      and cannot be shown to be disjoint from it either.
+  |                      Therefore, reduction cannot advance to the remaining case
+  |
+  |                        case h *: t => h | Tuple.Fold[t, Nothing, [x, y] =>> x | y]
+  |
+  | longer explanation available when compiling with `-explain`

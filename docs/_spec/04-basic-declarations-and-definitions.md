@@ -16,11 +16,12 @@ PatVarDef   ::=  ‘val’ PatDef
 Def         ::=  PatVarDef
               |  ‘def’ FunDef
               |  ‘type’ {nl} TypeDef
+              |  ‘opaque‘ ‘type‘ {nl} OpaqueTypeDef
               |  TmplDef
 ```
 
-A _declaration_ introduces names and assigns them types.
-It can form part of a [class definition](05-classes-and-objects.html#templates) or of a refinement in a [compound type](03-types.html#compound-types).
+A _declaration_ introduces names and assigns them types or type definitions.
+It can form part of a [class definition](05-classes-and-objects.html#templates) or of a refinement in a [refined type](03-types.html#concrete-refined-types).
 
 A _definition_ introduces names that denote terms or types.
 It can form part of an object or class definition or it can be local to a block.
@@ -61,11 +62,11 @@ PatDef       ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr
 ids          ::=  id {‘,’ id}
 ```
 
-A value declaration `val ´x´: ´T´` introduces ´x´ as a name of a value of type ´T´.
+A value declaration `val ´x´: ´T´` introduces ´x´ as a name of a value of _declared type_ ´T´.
 
 A value definition `val ´x´: ´T´ = ´e´` defines ´x´ as a name of the value that results from the evaluation of ´e´.
-If the value definition is not recursive, the type ´T´ may be omitted, in which case the [packed type](06-expressions.html#expression-typing) of expression ´e´ is assumed.
-If a type ´T´ is given, then ´e´ is expected to conform to it.
+If the value definition is not recursive, the declared type ´T´ may be omitted, in which case the [packed type](06-expressions.html#expression-typing) of expression ´e´ is assumed.
+If a type ´T´ is given, then it must be a [proper type](03-types.html#proper-types) and ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
 
 Evaluation of the value definition implies evaluation of its right-hand side ´e´, unless it has the modifier `lazy`.
 The effect of the value definition is to bind ´x´ to the value of ´e´
@@ -156,14 +157,14 @@ An implementation of a class may _define_ a declared variable using a variable d
 
 A variable definition `var ´x´: ´T´ = ´e´` introduces a mutable variable with type ´T´ and initial value as given by the expression ´e´.
 The type ´T´ can be omitted, in which case the type of ´e´ is assumed.
-If ´T´ is given, then ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
+If ´T´ is given, then it must be a [proper type](03-types.html#proper-types) and ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
 
 Variable definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
 A variable definition  `var ´p´ = ´e´` where ´p´ is a pattern other than a simple name or a name followed by a colon and a type is expanded in the same way as a [value definition](#value-declarations-and-definitions) `val ´p´ = ´e´`, except that the free names in ´p´ are introduced as mutable variables, not values.
 
 The name of any declared or defined variable may not end in `_=`.
 
-A variable definition `var ´x´: ´T´ = _` can appear only as a member of a template.
+The right-hand-side of a mutable variable definition that is a member of a template can be the special reference `scala.compiletime.uninitialized`: `var ´x´: ´T´ = scala.compiletime.uninitialized`.
 It introduces a mutable field with type ´T´ and a default initial value.
 The default value depends on the type ´T´ as follows:
 
@@ -176,6 +177,9 @@ The default value depends on the type ´T´ as follows:
 |`false`   | `Boolean`                          |
 |`()`      | `Unit`                             |
 |`null`    | all other types                    |
+
+`scala.compiletime.uninitialized` can never appear anywhere else.
+For compatibility with Scala 2, the syntax `var ´x´: ´T´ = _` is accepted as equivalent to using `uninitialized`.
 
 When they occur as members of a template, both forms of variable definition also introduce a getter method ´x´ which returns the value currently assigned to the variable, as well as a setter method `´x´_=` which changes the value currently assigned to the variable.
 The methods have the same signatures as for a variable declaration.
@@ -217,41 +221,59 @@ A variable definition `var ´x_1, ..., x_n: T´ = ´e´` is a shorthand for the 
 
 ## Type Declarations and Type Aliases
 
-<!-- TODO: Higher-kinded tdecls should have a separate section -->
-
 ```ebnf
-Dcl        ::=  ‘type’ {nl} TypeDcl
-TypeDcl    ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
-Def        ::=  ‘type’ {nl} TypeDef
-TypeDef    ::=  id [TypeParamClause] ‘=’ Type
+Dcl             ::=  ‘type’ {nl} TypeDcl
+TypeDcl         ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
+Def             ::=  ‘type’ {nl} TypeDef
+                  |  ‘opaque‘ ‘type‘ {nl} OpaqueTypeDef
+TypeDef         ::=  id [TypeParamClause] ‘=’ Type
+OpaqueTypeDef   ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type] ‘=’ Type
 ```
+
+A possibly parameterized _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´` declares ´t´ to be an abstract type.
+If omitted, ´L´ and ´H´ are implied to be `Nothing` and `scala.Any`, respectively.
+
+A possibly parameterized _type alias_ `type ´t´[´\mathit{tps}\,´] = ´T´` defines ´t´ to be a concrete type member.
+
+A possibly parameterized _opaque type alias_ `opaque type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
+
+If a type parameter clause `[´\mathit{tps}\,´]` is present, it is desugared away according to the rules in the following section.
 
 ### Desugaring of parameterized type declarations
-A parameterized type declaration is desugared into an unparameterized type declaration
-whose bounds are type lambdas with explicit variance annotations.
+
+A parameterized type declaration is desugared into an unparameterized type declaration whose bounds are [type lambdas](03-types.html#type-lambdas) with explicit variance annotations.
+
+The scope of a type parameter extends over the bounds `>: ´L´ <: ´U´` or the alias `= ´T´` and the type parameter clause ´\mathit{tps}´ itself.
+A higher-order type parameter clause (of an abstract type constructor ´tc´) has the same kind of scope, restricted to the declaration of the type parameter ´tc´.
+
+To illustrate nested scoping, these declarations are all equivalent: `type t[m[x] <: Bound[x], Bound[x]]`, `type t[m[x] <: Bound[x], Bound[y]]` and `type t[m[x] <: Bound[x], Bound[_]]`, as the scope of, e.g., the type parameter of ´m´ is limited to the declaration of ´m´.
+In all of them, ´t´ is an abstract type member that abstracts over two type constructors: ´m´ stands for a type constructor that takes one type parameter and that must be a subtype of `Bound`, ´t´'s second type constructor parameter.
+`t[MutableList, Iterable]` is a valid use of ´t´.
 
 #### Abstract Type
-An abstract type
+
+A parameterized abstract type
 ```scala
-type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´
+type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´
 ```
-is desugared into an unparameterized abstract type as follow:
+is desugared into an unparameterized abstract type as follows:
 - If `L` conforms to `Nothing`, then,
 
   ```scala
 type ´t´ >: Nothing
-       <: [´\mathit{tps'}\,´] =>> ´U´
+       <: [´\mathit{tps'}\,´] =>> ´H´
   ```
 - otherwise,
 
   ```scala
 type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´
-       <: [´\mathit{tps'}\,´] =>> ´U´
+       <: [´\mathit{tps'}\,´] =>> ´H´
   ```
-  
-If at least one of the ´\mathit{tps}´ contains an explicit variance annotation, then ´\mathit{tps'} = \mathit{tps}´, otherwise we infer the variance of each type parameter as with the user-written type lambda `[´\mathit{tps}\,´] =>> ´U´`.
 
-The same desugaring applies to type parameters. For instance,
+If at least one of the ´\mathit{tps}´ contains an explicit variance annotation, then ´\mathit{tps'} = \mathit{tps}´, otherwise we infer the variance of each type parameter as with the user-written type lambda `[´\mathit{tps}\,´] =>> ´H´`.
+
+The same desugaring applies to type parameters.
+For instance,
 ```scala
 [F[X] <: Coll[X]]
 ```
@@ -261,6 +283,7 @@ is treated as a shorthand for
 ```
 
 #### Type Alias
+
 A parameterized type alias
 ```scala
 type ´t´[´\mathit{tps}\,´] = ´T´
@@ -271,34 +294,49 @@ type ´t´ = [´\mathit{tps'}\,´] =>> ´T´
 ```
 where ´\mathit{tps'}´ is computed as in the previous case.
 
-´\color{red}{\text{TODO SCALA3: Everything else in this section (and the next one
-on type parameters) needs to be rewritten to take into account the desugaring described above.}}´
+#### Opaque Type Alias
 
-A _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´` declares ´t´ to be an abstract type with lower bound type ´L´ and upper bound type ´U´.
-If the type parameter clause `[´\mathit{tps}\,´]` is omitted, ´t´ abstracts over a proper type, otherwise ´t´ stands for a type constructor that accepts type arguments as described by the type parameter clause.
+A parameterized type alias
+```scala
+type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´
+```
+is desugared into an unparameterized opaque type alias as follows:
+- If `L` conforms to `Nothing`, then,
 
-If a type declaration appears as a member declaration of a type, implementations of the type may implement ´t´ with any type ´T´ for which ´L <: T <: U´.
-It is a compile-time error if ´L´ does not conform to ´U´.
-Either or both bounds may be omitted.
-If the lower bound ´L´ is absent, the bottom type `scala.Nothing` is assumed.
-If the upper bound ´U´ is absent, the top type `scala.Any` is assumed.
+  ```scala
+type ´t´ >: Nothing <: [´\mathit{tps'}\,´] =>> ´H´ = [´\mathit{tps'}\,´] =>> ´T´
+  ```
+- otherwise,
 
-A type constructor declaration imposes additional restrictions on the concrete types for which ´t´ may stand.
-Besides the bounds ´L´ and ´U´, the type parameter clause may impose higher-order bounds and variances, as governed by the [conformance of type constructors](03-types.html#conformance).
+  ```scala
+type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´ <: [´\mathit{tps'}\,´] =>> ´H´ = [´\mathit{tps'}\,´] =>> ´T´
+  ```
+where ´\mathit{tps'}´ is computed as in the previous cases.
 
-The scope of a type parameter extends over the bounds `>: ´L´ <: ´U´` and the type parameter clause ´\mathit{tps}´ itself.
-A higher-order type parameter clause (of an abstract type constructor ´tc´) has the same kind of scope, restricted to the declaration of the type parameter ´tc´.
+### Non-Parameterized Type Declarations and Type Aliases
 
-To illustrate nested scoping, these declarations are all equivalent: `type t[m[x] <: Bound[x], Bound[x]]`, `type t[m[x] <: Bound[x], Bound[y]]` and `type t[m[x] <: Bound[x], Bound[_]]`, as the scope of, e.g., the type parameter of ´m´ is limited to the declaration of ´m´.
-In all of them, ´t´ is an abstract type member that abstracts over two type constructors: ´m´ stands for a type constructor that takes one type parameter and that must be a subtype of ´Bound´, ´t´'s second type constructor parameter.
-`t[MutableList, Iterable]` is a valid use of ´t´.
+A _type declaration_ `type ´t´ >: ´L´ <: ´H´` declares ´t´ to be an abstract type whose [type definition](03-types.html#type-definitions) has the lower bound type ´L´ and upper bound type ´H´.
+
+If a type declaration appears as a member declaration of a type, implementations of the type may implement ´t´ with any type ´T´ for which ´L <: T <: H´.
+It is a compile-time error if ´L´ does not conform to ´H´.
 
 A _type alias_ `type ´t´ = ´T´` defines ´t´ to be an alias name for the type ´T´.
-The left hand side of a type alias may have a type parameter clause, e.g. `type ´t´[´\mathit{tps}\,´] = ´T´`.
-The scope of a type parameter extends over the right hand side ´T´ and the type parameter clause ´\mathit{tps}´ itself.
 
-The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bound or in its right-hand side.
-However, it is a static error if a type alias refers recursively to the defined type constructor itself.
+An _opaque type alias_ `opaque type ´t´ >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
+An opaque type alias can only be declared within a [template](./05-classes-and-objects.html#templates).
+It cannot be `private` and cannot be overridden in subclasses.
+In order for the definition to be valid, ´T´ must satisfy some constraints:
+
+- ´L <: T´ and ´T <: H´ must be true,
+- ´T´ must not be a context function type, and
+- If ´T´ is a type lambda, its result must be a proper type (i.e., it cannot be a curried type lambda).
+
+When viewed from within its enclosing template, an opaque type alias behaves as a type alias with type definition `= ´T´`.
+When viewed from anywhere else, it behaves as a type declaration with type definition `>: ´L´ <: ´H´`.
+See [`memberType`](./03-types.html#member-type) for the precise mechanism that governs this dual view.
+
+The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bounds or in its right-hand side.
+However, it is a static error if a type alias refers recursively to the defined type itself.
 That is, the type ´T´ in a type alias `type ´t´[´\mathit{tps}\,´] = ´T´` may not refer directly or indirectly to the name ´t´.
 It is also an error if an abstract type is directly or indirectly its own upper or lower bound.
 
@@ -309,8 +347,8 @@ The following are legal type declarations and definitions:
 ```scala
 type IntList = List[Integer]
 type T <: Comparable[T]
-type Two[A] = Tuple2[A, A]
-type MyCollection[+X] <: Iterable[X]
+type Two[A] = Tuple2[A, A] // desugars to Two = [A] =>> Tuple2[A, A]
+type MyCollection[+X] <: Iterable[X] // desugars to MyCollection <: [+X] =>> Iterable[X]
 ```
 
 The following are illegal:
@@ -323,11 +361,11 @@ type T <: S
 
 type T >: Comparable[T.That]    // Cannot select from T.
                                 // T is a type, not a value
-type MyCollection <: Iterable   // Type constructor members must explicitly
-                                // state their type parameters.
+type MyCollection <: Iterable   // The reference to the type constructor
+                                // Iterable must explicitly state its type arguments.
 ```
 
-If a type alias `type ´t´[´\mathit{tps}\,´] = ´S´` refers to a class type ´S´, the name ´t´ can also be used as a constructor for objects of type ´S´.
+If a type alias `type ´t´ = ´S´` refers to a class type ´S´ (or to a type lambda that is the eta-expansion of class type ´S´), the name ´t´ can also be used as a constructor for objects of type ´S´.
 
 ###### Example
 
@@ -432,14 +470,12 @@ The variance position changes at the following constructs.
 - The variance position of the lower bound of a type declaration or type parameter is the opposite of the variance position of the type declaration or parameter.
 - The type of a mutable variable is always in invariant position.
 - The right-hand side of a type alias is always in invariant position.
-- The prefix ´S´ of a type selection `´S´#´T´` is always in invariant position.
-- For a type argument ´T´ of a type `´S´[´... T ...´ ]`:
-If the corresponding type parameter is invariant, then ´T´ is in invariant position.
-If the corresponding type parameter is contravariant, the variance position of ´T´ is the opposite of the variance position of the enclosing type `´S´[´... T ...´ ]`.
+- The prefix ´p´ of a type selection `´p.T´` is always in invariant position.
+- For a type argument ´T´ of a type `´S´[´..., T, ...´]`:
+  - If the corresponding type parameter of ´S´ is invariant, then ´T´ is in invariant position.
+  - If the corresponding type parameter of ´S´ is contravariant, the variance position of ´T´ is the opposite of the variance position of the enclosing type `´S´[´..., T, ...´]`.
 
-<!-- TODO: handle type aliases -->
-
-References to the type parameters in [object-private or object-protected values, types, variables, or methods](05-classes-and-objects.html#modifiers) of the class are not checked for their variance position.
+References to the type parameters in [object-private values, types, variables, or methods](05-classes-and-objects.html#modifiers) of the class are not checked for their variance position.
 In these members the type parameter may appear anywhere without restricting its legal variance annotations.
 
 ###### Example
@@ -447,7 +483,8 @@ The following variance annotation is legal.
 
 ```scala
 abstract class P[+A, +B] {
-  def fst: A; def snd: B
+  def fst: A
+  def snd: B
 }
 ```
 
@@ -471,14 +508,14 @@ If the mutable variables are object-private, the class definition becomes legal 
 
 ```scala
 abstract class R[+A, +B](x: A, y: B) {
-  private[this] var fst: A = x        // OK
-  private[this] var snd: B = y        // OK
+  private var fst: A = x        // OK
+  private var snd: B = y        // OK
 }
 ```
 
 ###### Example
 
-The following variance annotation is illegal, since ´a´ appears in contravariant position in the parameter of `append`:
+The following variance annotation is illegal, since ´A´ appears in contravariant position in the parameter of `append`:
 
 ```scala
 abstract class Sequence[+A] {
@@ -538,6 +575,9 @@ The scope of a type parameter includes the whole signature, including any of the
 
 A _value parameter clause_ ´\mathit{ps}´ consists of zero or more formal parameter bindings such as `´x´: ´T´` or `´x: T = e´`, which bind value parameters and associate them with their types.
 
+A unary operator must not have explicit parameter lists even if they are empty.
+A unary operator is a method named `"unary_´op´"` where ´op´ is one of `+`, `-`, `!`, or `~`.
+
 ### Default Arguments
 
 Each value parameter declaration may optionally define a default argument.
@@ -591,7 +631,7 @@ ParamType          ::=  ‘=>’ Type
 ```
 
 The type of a value parameter may be prefixed by `=>`, e.g. `´x´: => ´T´`.
-The type of such a parameter is then the parameterless method type `=> ´T´`.
+The type of such a parameter is then the [by-name type](./03-types.html#by-name-types) `=> ´T´`.
 This indicates that the corresponding argument is not evaluated at the point of method application, but instead is evaluated at each use within the method.
 That is, the argument is evaluated using _call-by-name_.
 
@@ -695,52 +735,69 @@ completely.  It is an error if the types of two alternatives ´T_i´ and
 
 ## Import Clauses
 
-```ebnf
-Import          ::= ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr      ::= StableId ‘.’ (id | ‘_’ | ImportSelectors)
-ImportSelectors ::= ‘{’ {ImportSelector ‘,’}
-                    (ImportSelector | ‘_’) ‘}’
-ImportSelector  ::= id [‘=>’ id | ‘=>’ ‘_’]
+```
+Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::= SimpleRef {‘.’ id} ‘.’ ImportSpecifier
+                    | SimpleRef `as` id
+ImportSpecifier   ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors ‘}’
+NamedSelector     ::=  id [(‘as’ | ’=>’) (id | ‘_’)]
+WildcardSelector  ::=  ‘*’ | ’_’ | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildcardSelector}
 ```
 
-An import clause has the form `import ´p´.´I´` where ´p´ is a [stable identifier](03-types.html#paths) and ´I´ is an import expression.
-The import expression determines a set of names of importable members of ´p´ which are made available without qualification.
-A member ´m´ of ´p´ is _importable_ if it is [accessible](05-classes-and-objects.html#modifiers).
-The most general form of an import expression is a list of _import selectors_
+- In a `NamedSelector`, `=>` can only be used when inside an `ImportSelectors` and is then equivalent to `as`, to be deprecated in the future.
+- In a `WildcardSelector`, `_` is equivalent to `*`, to be deprecated in the future.
 
-```scala
-{ ´x_1´ => ´y_1, ..., x_n´ => ´y_n´, _ }
-```
-
-for ´n \geq 0´, where the final wildcard `‘_’` may be absent.
-It makes available each importable member `´p´.´x_i´` under the unqualified name ´y_i´. I.e. every import selector `´x_i´ => ´y_i´` renames `´p´.´x_i´` to
-´y_i´.
-If a final wildcard is present, all importable members ´z´ of ´p´ other than `´x_1, ..., x_n,y_1, ..., y_n´` are also made available under their own unqualified names.
-
-Import selectors work in the same way for type and term members.
-For instance, an import clause `import ´p´.{´x´ => ´y\,´}` renames the term
-name `´p´.´x´` to the term name ´y´ and the type name `´p´.´x´` to the type name ´y´.
-At least one of these two names must reference an importable member of ´p´.
-
-If the target in an import selector is a wildcard, the import selector hides access to the source member.
-For instance, the import selector `´x´ => _` “renames” ´x´ to the wildcard symbol (which is unaccessible as a name in user programs), and thereby effectively prevents unqualified access to ´x´.
-This is useful if there is a final wildcard in the same import selector list, which imports all members not mentioned in previous import selectors.
-
-The scope of a binding introduced by an import-clause starts immediately after the import clause and extends to the end of the enclosing block, template, package clause, or compilation unit, whichever comes first.
-
-Several shorthands exist. An import selector may be just a simple name ´x´.
-In this case, ´x´ is imported without renaming, so the import selector is equivalent to `´x´ => ´x´`.
-Furthermore, it is possible to replace the whole import selector list by a single identifier or wildcard.
-The import clause `import ´p´.´x´` is equivalent to `import ´p´.{´x\,´}`, i.e. it makes available without qualification the member ´x´ of ´p´. The import clause `import ´p´._` is equivalent to `import ´p´.{_}`, i.e. it makes available without qualification all members of ´p´ (this is analogous to `import ´p´.*` in Java).
+An `ImportSpecifier` that is a single `NamedSelector` or `WildcardSelector` is equivalent to an `‘{‘ ImportSelectors ‘}‘` list with that single selector.
 
 An import clause with multiple import expressions `import ´p_1´.´I_1, ..., p_n´.´I_n´` is interpreted as a sequence of import clauses `import ´p_1´.´I_1´; ...; import ´p_n´.´I_n´`.
+
+An import clause with a single import expression has the form `import ´p´.´I´` where ´p´ is a [prefix](03-types.html#designator-types) and ´I´ is an import specifier.
+The import specifier determines a set of names of importable members of ´p´ which are made available without qualification as well as a set of importable `given` members which are made available in the implicit scope.
+A member ´m´ of ´p´ is _importable_ if it is [accessible](05-classes-and-objects.html#modifiers).
+The most general form of an import specifier is a list of _import selectors_
+
+```scala
+{ ´x_1´ as ´y_1, ..., x_n´ as ´y_n´, *, given ´T_1´, ..., given ´T_m´, given }
+```
+
+for ´n \geq 0´ and ´m \geq 0´, where the wildcards `‘*’` and `’given’` may be absent.
+They are decomposed into non-given selectors and given selectors.
+
+### Non-given Imports
+
+Non-given selectors make available each importable member `´p´.´x_i´` under the unqualified name ´y_i´.
+In other words, every import selector `´x_i´ as ´y_i´` renames `´p´.´x_i´` to ´y_i´.
+When `as ´y_i´` is omitted, ´y_i´ is assumed to be ´x_i´.
+If a final wildcard `‘*’` is present, all non-`given` importable members ´z´ of ´p´ other than `´x_1, ..., x_n, y_1, ..., y_n´` are also made available under their own unqualified names.
+
+Non-given import selectors work in the same way for type and term members.
+For instance, an import clause `import ´p´.´x´ as ´y´` renames the term name `´p´.´x´` to the term name ´y´ and the type name `´p´.´x´` to the type name ´y´.
+At least one of these two names must reference an importable member of ´p´.
+
+If the target in an import selector is an underscore `as _`, the import selector hides access to the source member instead of importing it.
+For instance, the import selector `´x´ as _` “renames” ´x´ to the underscore symbol (which is not accessible as a name in user programs), and thereby effectively prevents unqualified access to ´x´.
+This is useful if there is a final wildcard in the same import selector list, which imports all members not mentioned in previous import selectors.
+
+The scope of a binding introduced by a non-given import clause starts immediately after the import clause and extends to the end of the enclosing block, template, package clause, or compilation unit, whichever comes first.
+
+### Given Imports
+
+Given selectors make available in the implicit scope all the importable `given` and `implicit` members `´p´.´x´` such that `´p.x´` is a subtype of ´T_i´.
+A bare `given` selector without type is equivalent to `given scala.Any`.
+
+The names of the given members are irrelevant for the selection, and are not made available in the normal scope of unqualified names.
 
 ###### Example
 Consider the object definition:
 
 ```scala
 object M {
-  def z = 0, one = 1
+  def z = 0
+  def one = 1
   def add(x: Int, y: Int): Int = x + y
 }
 ```
@@ -748,11 +805,16 @@ object M {
 Then the block
 
 ```scala
-{ import M.{one, z => zero, _}; add(zero, one) }
+{
+  import M.{one, z as zero, *}
+  add(zero, one)
+}
 ```
 
 is equivalent to the block
 
 ```scala
-{ M.add(M.z, M.one) }
+{
+  M.add(M.z, M.one)
+}
 ```

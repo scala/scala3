@@ -305,23 +305,13 @@ object SpaceEngine {
   }
 
   /** Is this an `'{..}` or `'[..]` irrefutable quoted patterns?
-   *  @param  unapp The unapply function tree
-   *  @param  implicits The implicits of the unapply
-   *  @param  pt The scrutinee type
+   *  @param  body The body of the quoted pattern
+   *  @param  bodyPt The scrutinee body type
    */
-  def isIrrefutableQuotedPattern(unapp: tpd.Tree, implicits: List[tpd.Tree], pt: Type)(using Context): Boolean = {
-    implicits.headOption match
-      // pattern '{ $x: T }
-      case Some(tpd.Apply(tpd.Select(tpd.Quote(tpd.TypeApply(fn, List(tpt)), _), nme.apply), _))
-          if unapp.symbol.owner.eq(defn.QuoteMatching_ExprMatchModule)
-          && fn.symbol.eq(defn.QuotedRuntimePatterns_patternHole) =>
-        pt <:< defn.QuotedExprClass.typeRef.appliedTo(tpt.tpe)
-
-      // pattern '[T]
-      case Some(tpd.Apply(tpd.TypeApply(fn, List(tpt)), _))
-          if unapp.symbol.owner.eq(defn.QuoteMatching_TypeMatchModule) =>
-        pt =:= defn.QuotedTypeClass.typeRef.appliedTo(tpt.tpe)
-
+  def isIrrefutableQuotePattern(pat: tpd.QuotePattern, pt: Type)(using Context): Boolean = {
+    if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
+    else pat.body match
+      case _: SplicePattern => pat.bindings.isEmpty && pt <:< pat.tpe
       case _ => false
   }
 
@@ -444,7 +434,7 @@ object SpaceEngine {
    *
    *  We cannot use type erasure here, as it would lose the constraints
    *  involving GADTs. For example, in the following code, type
-   *  erasure would loose the constraint that `x` and `y` must be
+   *  erasure would lose the constraint that `x` and `y` must be
    *  the same type, resulting in false inexhaustive warnings:
    *
    *     sealed trait Expr[T]
@@ -588,7 +578,13 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = resTp.select(nme.get).finalResultType.widenTermRefExpr
+            val getTp = resTp.select(nme.get).finalResultType match
+              case tp: TermRef if !tp.isOverloaded =>
+                // Like widenTermRefExpr, except not recursively.
+                // For example, in i17184 widen Option[foo.type]#get
+                // to Option[foo.type] instead of Option[Int].
+                tp.underlying.widenExpr
+              case tp => tp
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }

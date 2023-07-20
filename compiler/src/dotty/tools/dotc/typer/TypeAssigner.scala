@@ -22,7 +22,11 @@ trait TypeAssigner {
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(using Context): Symbol = {
     def qualifies(sym: Symbol) =
-      sym.isClass && (
+      sym.isClass &&
+      // `this` in a polymorphic function type never refers to the desugared refinement.
+      // In other refinements, `this` does refer to the refinement but is deprecated
+      // (see `Checking#checkRefinementNonCyclic`).
+      !(sym.isRefinementClass && sym.derivesFrom(defn.PolyFunctionClass)) && (
           qual.isEmpty ||
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
@@ -77,21 +81,25 @@ trait TypeAssigner {
    *  (2) in Java compilation units, `Object` is replaced by `defn.FromJavaObjectType`
    */
   def accessibleType(tpe: Type, superAccess: Boolean)(using Context): Type =
-    tpe match
+    if ctx.isJava && tpe.isAnyRef then
+      defn.FromJavaObjectType
+    else tpe match
       case tpe: NamedType =>
-        val pre = tpe.prefix
-        val name = tpe.name
-        def postProcess(d: Denotation) =
-          if ctx.isJava && tpe.isAnyRef then defn.FromJavaObjectType
-          else TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
-        val d = tpe.denot.accessibleFrom(pre, superAccess)
-        if d.exists then postProcess(d)
+        val tpe1 = TypeOps.makePackageObjPrefixExplicit(tpe)
+        if tpe1 ne tpe then
+          accessibleType(tpe1, superAccess)
         else
-          // it could be that we found an inaccessible private member, but there is
-          // an inherited non-private member with the same name and signature.
-          val d2 = pre.nonPrivateMember(name).accessibleFrom(pre, superAccess)
-          if reallyExists(d2) then postProcess(d2)
-          else NoType
+          val pre = tpe.prefix
+          val name = tpe.name
+          val d = tpe.denot.accessibleFrom(pre, superAccess)
+          if d eq tpe.denot then tpe
+          else if d.exists then tpe.withDenot(d)
+          else
+            // it could be that we found an inaccessible private member, but there is
+            // an inherited non-private member with the same name and signature.
+            val d2 = pre.nonPrivateMember(name).accessibleFrom(pre, superAccess)
+            if reallyExists(d2) then tpe.withDenot(d2)
+            else NoType
       case tpe => tpe
 
   /** Try to make `tpe` accessible, emit error if not possible */
@@ -118,7 +126,7 @@ trait TypeAssigner {
     val qualType0 = qual1.tpe.widenIfUnstable
     val qualType =
       if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
-        // constructors are selected on typeconstructor, type arguments are passed afterwards
+        // constructors are selected on type constructor, type arguments are passed afterwards
         errorType(em"$qualType0 takes type parameters", qual1.srcPos)
       else if !qualType0.isInstanceOf[TermType] && !qualType0.isError then
         errorType(em"$qualType0 is illegal as a selection prefix", qual1.srcPos)
@@ -506,6 +514,9 @@ trait TypeAssigner {
     tree.withType(TypeComparer.lub(trees.tpes))
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
+    tree.withType(proto)
+
+  def assignType(tree: untpd.QuotePattern, proto: Type)(using Context): QuotePattern =
     tree.withType(proto)
 
   def assignType(tree: untpd.ValDef, sym: Symbol)(using Context): ValDef =

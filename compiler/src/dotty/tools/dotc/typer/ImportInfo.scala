@@ -109,7 +109,7 @@ class ImportInfo(symf: Context ?=> Symbol,
       else
         if sel.rename != sel.name then
           myExcluded = myExcluded.nn + sel.name
-        if sel.rename != nme.WILDCARD then
+        if !sel.isUnimport then
           myForwardMapping = myForwardMapping.uncheckedNN.updated(sel.name, sel.rename)
           myReverseMapping = myReverseMapping.uncheckedNN.updated(sel.rename, sel.name)
 
@@ -148,7 +148,7 @@ class ImportInfo(symf: Context ?=> Symbol,
     else
       for
         renamed <- reverseMapping.keys
-        denot <- pre.member(reverseMapping(renamed).nn).altsWith(_.isOneOf(GivenOrImplicitVal))
+        denot <- pre.implicitMembersNamed(reverseMapping(renamed).nn)
       yield
         val original = reverseMapping(renamed).nn
         val ref = TermRef(pre, original, denot)

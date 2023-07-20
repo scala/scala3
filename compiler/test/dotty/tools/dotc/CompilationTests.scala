@@ -80,6 +80,7 @@ class CompilationTests {
     aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite", "-indent")),
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Xfatal-warnings")),
       compileFile("tests/rewrites/filtering-fors.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
       compileFile("tests/rewrites/refutable-pattern-bindings.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
@@ -273,6 +274,14 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions)
   }.checkRuns()
+
+  // initialization tests
+  @Test def checkInitGlobal: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
+    val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
+    compileFilesInDir("tests/init-global/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init-global/pos", options).checkCompile()
+  }
 
   // initialization tests
   @Test def checkInit: Unit = {

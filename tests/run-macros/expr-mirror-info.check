@@ -1,0 +1,4 @@
+(Foo,List(x, y, z),Foo[scala.Long],Foo[scala.Long],List(scala.Int, scala.Double, scala.Long))
+(Foo,List(x, y, z),Foo[scala.Long],Foo[scala.Long],List(scala.Int, scala.Double, scala.Long))
+(Bar,List(A, B),Bar,Bar,List(Bar.A.type, Bar.B))
+(Bar,List(A, B),Bar,Bar,List(Bar.A.type, Bar.B))

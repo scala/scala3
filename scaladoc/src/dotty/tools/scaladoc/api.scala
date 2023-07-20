@@ -145,10 +145,10 @@ case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
 case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)], sealedNodes: Set[LinkToType] = Set.empty):
   def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
   def verteciesWithId: Map[LinkToType, Int] = vertecies.zipWithIndex.toMap
-  def +(edge: (LinkToType, LinkToType)): HierarchyGraph = HierarchyGraph((edges :+ edge).distinct)
-  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = edges.foldLeft(this) {
-    case (acc, edge) => acc + edge
-  }
+  def +(edge: (LinkToType, LinkToType)): HierarchyGraph = this ++ Seq(edge)
+  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = 
+    this.copy(edges = this.edges.view.concat(edges).distinct.toSeq)
+    
 object HierarchyGraph:
   def empty = HierarchyGraph(Seq.empty)
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges

@@ -97,6 +97,10 @@ object ScaladocGeneration {
     def key: String = "-no-link-warnings"
   }
 
+  case class NoLinkAssetWarnings(value: Boolean) extends Arg[Boolean] {
+    def key: String = "-no-link-asset-warnings"
+  }
+
   case class VersionsDictionaryUrl(value: String) extends Arg[String] {
     def key: String = "-versions-dictionary-url"
   }

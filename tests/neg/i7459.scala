@@ -2,7 +2,7 @@ object Foo {
   inline def summon[T](x: T): T =  x match {
     case t: T => t
   }
-  println(summon)  // error
+  println(summon)
 }
 
 import scala.deriving.*

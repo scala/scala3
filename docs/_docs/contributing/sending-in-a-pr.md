@@ -1,7 +1,7 @@
 ---
 layout: doc-page
 title: Sending in a pull request
-redirectFrom: /docs/contributing/issues/checklist.html
+redirectFrom: /docs/contributing/workflow/checklist.html
 ---
 
 Once you solved the issue you were working on, you'll likely want to see your
@@ -97,6 +97,39 @@ Here is the body of your pr with some more information
 Closes #2
 ```
 
+#### Skipping parts of CI
+
+Depending on what your PR is addressing, sometimes it doesn't make sense to run
+every part of CI. For example, maybe you're just updating some documentation and
+there is no need to run the community build for this. We skip parts of the CI by
+utilizing keywords inside of brackets. The most up-to-date way to see this are
+by looking in the `if` statements of jobs. For example you can see some
+[here](https://github.com/lampepfl/dotty/blob/5d2812a5937389f8a46f9e97ab9cbfbb3f298d87/.github/workflows/ci.yaml#L54-L64).
+Below are commonly used ones:
+
+
+|---------------------------|----------------------------------------|
+| `[skip ci]`               | Skip the entire CI                     |
+| `[skip community_build]`  | Skip the entire community build        |
+| `[skip community_build_a]`| Skip the "a" community build           |
+| `[skip community_build_b]`| Skip the "b" community build           |
+| `[skip community_build_c]`| Skip the "c" community build           |
+| `[skip docs]`             | Skip the scaladoc tests                |
+| `[skip test]`             | Skip the unit tests                    |
+| `[skip test_windows_fast]`| Skip the unit tests subset on Windows  |
+| `[skip mima]`             | Skip the MiMa checks                   |
+| `[skip test_sbt]`         | Skip the SBT scripted tests            |
+
+
+#### Executes parts of the CI that are skipped on PRs
+Depending on what your PR is addressing, sometimes it doesn't make sense to run
+parts of the CI that usually ony runs on nightly builds.
+
+|---------------------------|----------------------------------------------------|
+| `[test_java8]`            | Execute unit tests on Java 8                       |
+| `[test_windows_full]`     | Execute unit tests on Windows                      |
+| `[test_non_bootstrapped]` | Execute unit tests using non-bootstrapped compiler |
+
 ### 7: Create your PR!
 
 When the feature or fix is completed you should open a [Pull
@@ -105,11 +138,11 @@ Request](https://help.github.com/articles/using-pull-requests) on GitHub.
 If you're not actually finished yet and are just looking for some initial input
 on your approach, feel free to open a [Draft PR][draft]. This lets reviewers
 know that you're not finished yet. It's also a good idea to put a [wip] in front
-of your pr title to make this extra clear.
+of your PR title to make this extra clear.
 
 Shortly after creating your pull request a maintainer should assign someone to
 review it. If this doesn't happen after a few days, feel free to ping someone on
-the [Scala Contributors Discor][discord] or tag someone on the PR. Depending on
+the [Scala Contributors Discord][discord] or tag someone on the PR. Depending on
 the type of pull request there might be multiple people that take a look at your
 changes. There might also be community input as we try to keep the review
 process as open as possible.

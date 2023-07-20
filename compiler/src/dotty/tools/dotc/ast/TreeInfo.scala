@@ -330,6 +330,9 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ => p(tree)
   }
 
+  /** The tree stripped of the possibly nested applications (term and type).
+   *  The original tree if it's not an application.
+   */
   def appliedCore(tree: Tree): Tree = tree match {
     case Apply(fn, _) => appliedCore(fn)
     case TypeApply(fn, _)       => appliedCore(fn)
@@ -417,10 +420,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Closure(_, meth, _) => true
     case Block(Nil, expr) => isContextualClosure(expr)
     case Block(DefDef(nme.ANON_FUN, params :: _, _, _) :: Nil, cl: Closure) =>
-      if params.isEmpty then
-        cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
-      else
-        isUsingClause(params)
+      isUsingClause(params)
     case _ => false
   }
 
@@ -807,11 +807,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
-    val acc = new TreeAccumulator[List[Symbol]] {
+    val acc = new TreeAccumulator[List[Symbol]] { outer =>
       def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
         case Annotated(tree, id @ Ident(tpnme.BOUNDTYPE_ANNOT)) => apply(id.symbol :: syms, tree)
+        case QuotePattern(bindings, body, _) => quotePatVars(bindings.map(_.symbol) ::: syms, body)
         case _ => foldOver(syms, tree)
+      }
+      private object quotePatVars extends TreeAccumulator[List[Symbol]] {
+        def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
+          case SplicePattern(pat, _) => outer.apply(syms, pat)
+          case _ => foldOver(syms, tree)
+        }
       }
     }
     acc(Nil, tree)
@@ -947,6 +954,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
     def isStructuralTermSelect(tree: Select) =
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
+        case defn.PolyOrErasedFunctionOf(_) =>
+          false
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
@@ -959,10 +968,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           false
       !tree.symbol.exists
       && tree.isTerm
-      && {
-        val qualType = tree.qualifier.tpe
-        hasRefinement(qualType) && !defn.isRefinedFunctionType(qualType)
-      }
+      && hasRefinement(tree.qualifier.tpe)
     def loop(tree: Tree): Boolean = tree match
       case TypeApply(fun, _) =>
         loop(fun)
@@ -1047,6 +1053,21 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: tpd.Select)(using Context): Option[tpd.Tree] =
       if tree.symbol.isTypeSplice then Some(tree.qualifier) else None
   }
+
+  extension (tree: tpd.Quote)
+    /** Type of the quoted expression as seen from outside the quote */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
+      exprType.argInfos.head // T
+  end extension
+
+  extension (tree: tpd.QuotePattern)
+    /** Type of the quoted pattern */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Expr[T]` or `Type[T]`
+      quoteType.argInfos.head // T
+  end extension
 
   /** Extractor for not-null assertions.
    *  A not-null assertion for reference `x` has the form `x.$asInstanceOf$[x.type & T]`.

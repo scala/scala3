@@ -11,7 +11,7 @@ import core.Flags._
 import core.Names.Name
 import core.Symbols._
 import core.TypeApplications.{EtaExpansion, TypeParamInfo}
-import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement}
+import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
 import core.Types._
 import core.classfile.ClassfileConstants
 import SymUtils._
@@ -255,7 +255,7 @@ object GenericSignatures {
               case _ => jsig(elemtp)
 
         case RefOrAppliedType(sym, pre, args) =>
-          if (sym == defn.PairClass && tp.tupleArity > Definitions.MaxTupleArity)
+          if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
             jsig(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
             assert(!sym.isAliasType, "Unexpected alias type: " + sym)

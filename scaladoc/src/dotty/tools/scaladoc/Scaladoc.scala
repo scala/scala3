@@ -39,6 +39,7 @@ object Scaladoc:
     documentSyntheticTypes: Boolean = false,
     snippetCompiler: List[String] = Nil,
     noLinkWarnings: Boolean = false,
+    noLinkAssetWarnings: Boolean = false,
     versionsDictionaryUrl: Option[String] = None,
     generateInkuire : Boolean = false,
     apiSubdirectory : Boolean = false,
@@ -141,7 +142,7 @@ object Scaladoc:
       )
 
       if other.nonEmpty then report.warning(
-        s"scaladoc suports only .tasty and .jar files, following files will be ignored: ${other.mkString(", ")}"
+        s"scaladoc supports only .tasty and .jar files, following files will be ignored: ${other.mkString(", ")}"
       )
 
       def defaultDest(): File =
@@ -221,6 +222,7 @@ object Scaladoc:
         YdocumentSyntheticTypes.get,
         snippetCompiler.get,
         noLinkWarnings.get,
+        noLinkAssetWarnings.get,
         versionsDictionaryUrl.nonDefault,
         generateInkuire.get,
         apiSubdirectory.get,

@@ -10,7 +10,7 @@ have been dropped. The reasons for dropping them are:
 
  - Existential types violate a type soundness principle on which DOT
    and Scala 3 are constructed. That principle says that every
-   prefix (`p`, respectvely `S`) of a type selection `p.T` or `S#T`
+   prefix (`p`, respectively `S`) of a type selection `p.T` or `S#T`
    must either come from a value constructed at runtime or refer to a
    type that is known to have only good bounds.
 

@@ -1,5 +1,3 @@
-import scala.quoted._
-
 inline def isTrue: Boolean = true
 
 inline def oneOf(): String = {

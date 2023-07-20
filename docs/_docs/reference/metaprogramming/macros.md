@@ -255,7 +255,7 @@ Therefore, while evaluating the quote, it is not possible to accidentally rebind
 If a quote is well typed, then the generated code is well typed.
 This is a simple consequence of tracking the type of each expression.
 An `Expr[T]` can only be created from a quote that contains an expression of type `T`.
-Conversely, an `Expr[T]` can only be spliced in a location that expects a type `T.
+Conversely, an `Expr[T]` can only be spliced in a location that expects a type `T`.
 As mentioned before, `Expr` is covariant in its type parameter.
 This means that an `Expr[T]` can contain an expression of a subtype of `T`.
 When spliced in a location that expects a type `T, these expressions also have a valid type.
@@ -504,18 +504,22 @@ def let(x: Expr[Any])(using Quotes): Expr[Any] =
 let('{1}) // will return a `Expr[Any]` that contains an `Expr[Int]]`
 ```
 
-While we can define the type variable in the middle of the pattern, their normal form is to define them as a `type` with a lower case name at the start of the pattern.
-We use the Scala backquote `` `t` `` naming convention which interprets the string within the backquote as a literal name identifier.
-This is typically used when we have names that contain special characters that are not allowed for normal Scala identifiers.
-But we use it to explicitly state that this is a reference to that name and not the introduction of a new variable.
-```scala
-  case '{ type t; $x: `t` } =>
-```
-This is a bit more verbose but has some expressivity advantages such as allowing to define bounds on the variables and be able to refer to them several times in any scope of the pattern.
+It is also possible to refer to the same type variable multiple times in a pattern.
 
 ```scala
-  case '{ type t >: List[Int] <: Seq[Int]; $x: `t` } =>
-  case '{ type t; $x: (`t`, `t`) } =>
+  case '{ $x: (t, t) } =>
+```
+
+While we can define the type variable in the middle of the pattern, their normal form is to define them as a `type` with a lower case name at the start of the pattern.
+
+```scala
+  case '{ type t; $x: t } =>
+```
+
+This is a bit more verbose but has some expressivity advantages such as allowing to define bounds on the variables.
+
+```scala
+  case '{ type t >: List[Int] <: Seq[Int]; $x: t } =>
 ```
 
 
@@ -526,14 +530,23 @@ It works the same way as a quoted pattern but is restricted to contain a type.
 Type variables can be used in quoted type patterns to extract a type.
 
 ```scala
-def empty[T: Type]: Expr[T] =
+def empty[T: Type](using Quotes): Expr[T] =
   Type.of[T] match
     case '[String] => '{ "" }
     case '[List[t]] => '{ List.empty[t] }
+    case '[type t <: Option[Int]; List[t]] => '{ List.empty[t] }
     ...
 ```
-
 `Type.of[T]` is used to summon the given instance of `Type[T]` in scope, it is equivalent to `summon[Type[T]]`.
+
+It is possible to match against a higher-kinded type using appropriate type bounds on type variables.
+```scala
+def empty[K <: AnyKind : Type](using Quotes): Type[?] =
+  Type.of[K] match
+    case '[type f[X]; f] => Type.of[f]
+    case '[type f[X <: Int, Y]; f] => Type.of[f]
+    case '[type k <: AnyKind; k ] => Type.of[k]
+```
 
 #### Type testing and casting
 It is important to note that instance checks and casts on `Expr`, such as `isInstanceOf[Expr[T]]` and `asInstanceOf[Expr[T]]`, will only check if the instance is of the class `Expr` but will not be able to check the `T` argument.

@@ -2,7 +2,7 @@
 6 |val d: scala.concurrent.duration.Duration = (10, DAYS) // error
   |                                            ^^^^^^^^^^
   |                                            Found:    (Int, java.util.concurrent.TimeUnit)
-  |                                            Required: concurrent².duration.Duration
+  |                                            Required: scala.concurrent².duration.Duration
   |
   |                                            where:    concurrent  is a package in package java.util
   |                                                      concurrent² is a package in package scala
@@ -10,7 +10,7 @@
   |
   |                                            The following import might fix the problem:
   |
-  |                                              import concurrent.duration.pairIntToDuration
+  |                                              import scala.concurrent.duration.pairIntToDuration
   |
   |
   | longer explanation available when compiling with `-explain`
@@ -21,5 +21,5 @@
   |
   |                            The following import might fix the problem:
   |
-  |                              import concurrent.duration.DurationInt
+  |                              import scala.concurrent.duration.DurationInt
   |

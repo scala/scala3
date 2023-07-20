@@ -16,8 +16,9 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.chaining.given
 
 import java.io.File.separator
+import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, NoSuchFileException}
+import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
@@ -221,6 +222,13 @@ object SourceFile {
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
     SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
       .tap(_._maybeInComplete = maybeIncomplete)
+
+  /** A helper method to create a virtual source file for given URI.
+   *  It relies on SourceFile#virtual implementation to create the virtual file.
+   */
+  def virtual(uri: URI, content: String): SourceFile =
+    val path = Paths.get(uri).toString
+    SourceFile.virtual(path, content)
 
   /** Returns the relative path of `source` within the `reference` path
    *

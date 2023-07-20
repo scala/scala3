@@ -1073,7 +1073,10 @@ object Parsers {
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
-      makeIdent(in.token, in.offset, ident())
+      val t = makeIdent(in.token, in.offset, ident())
+      if t.name == nme.ROOTPKG then
+        syntaxError(em"Illegal use of root package name.")
+      t
 
     /** Accept identifier and return Ident with its name as a type name. */
     def typeIdent(): Ident =
@@ -1128,19 +1131,21 @@ object Parsers {
 
       if in.token == THIS then handleThis(EmptyTypeIdent)
       else if in.token == SUPER then handleSuper(EmptyTypeIdent)
-      else
-        val t = termIdent()
-        if in.token == DOT then
-          def qual = cpy.Ident(t)(t.name.toTypeName)
-          in.lookahead.token match
-            case THIS =>
-              in.nextToken()
-              handleThis(qual)
-            case SUPER =>
-              in.nextToken()
-              handleSuper(qual)
-            case _ => t
-        else t
+      else if in.token != INTERPOLATIONID && in.lookahead.token == DOT then
+        val tok    = in.token
+        val offset = in.offset
+        val name   = ident()
+        def qual   = makeIdent(tok, offset, name.toTypeName)
+        in.lookahead.token match
+          case THIS =>
+            in.nextToken()
+            handleThis(qual)
+          case SUPER =>
+            in.nextToken()
+            handleSuper(qual)
+          case _ =>
+            makeIdent(tok, offset, name)
+      else termIdent()
     end simpleRef
 
     /** MixinQualifier ::= `[' id `]'
@@ -1511,6 +1516,7 @@ object Parsers {
             TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
           else if imods.isOneOf(Given | Impure) || erasedArgs.contains(true) then
             if imods.is(Given) && params.isEmpty then
+              imods &~= Given
               syntaxError(em"context function types require at least one parameter", paramSpan)
             FunctionWithMods(params, resultType, imods, erasedArgs.toList)
           else if !ctx.settings.YkindProjector.isDefault then
@@ -1665,7 +1671,7 @@ object Parsers {
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
-     *             |  RefinedType `^`
+     *             |  RefinedType `^`   // under capture checking
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
@@ -1737,8 +1743,39 @@ object Parsers {
         })
       else t
 
-    /** The block in a quote or splice */
-    def stagedBlock() = inBraces(block(simplify = true))
+    /** TypeBlock ::= {TypeBlockStat semi} Type
+     */
+    def typeBlock(): Tree =
+      typeBlockStats() match
+        case Nil => typ()
+        case tdefs => Block(tdefs, typ())
+
+    def typeBlockStats(): List[Tree] =
+      val tdefs = new ListBuffer[Tree]
+      while in.token == TYPE do tdefs += typeBlockStat()
+      tdefs.toList
+
+    /**  TypeBlockStat ::= ‘type’ {nl} TypeDcl
+     */
+    def typeBlockStat(): Tree =
+      val mods = defAnnotsMods(BitSet())
+      val tdef = typeDefOrDcl(in.offset, in.skipToken(mods))
+      if in.token == SEMI then in.nextToken()
+      if in.isNewLine then in.nextToken()
+      tdef
+
+    /** Quoted ::=  ‘'’ ‘{’ Block ‘}’
+     *           |  ‘'’ ‘[’ TypeBlock ‘]’
+     */
+    def quote(inPattern: Boolean): Tree =
+      atSpan(in.skipToken()) {
+        withinStaged(StageKind.Quoted | (if (inPattern) StageKind.QuotedPattern else 0)) {
+          val body =
+            if (in.token == LBRACKET) inBrackets(typeBlock())
+            else inBraces(block(simplify = true))
+          Quote(body, Nil)
+        }
+      }
 
     /** ExprSplice  ::=  ‘$’ spliceId          --     if inside quoted block
      *                |  ‘$’ ‘{’ Block ‘}’     -- unless inside quoted pattern
@@ -1754,7 +1791,8 @@ object Parsers {
         val expr =
           if (in.name.length == 1) {
             in.nextToken()
-            withinStaged(StageKind.Spliced)(if (inPattern) inBraces(pattern()) else stagedBlock())
+            val inPattern = (staged & StageKind.QuotedPattern) != 0
+            withinStaged(StageKind.Spliced)(inBraces(if inPattern then pattern() else block(simplify = true)))
           }
           else atSpan(in.offset + 1) {
             val id = Ident(in.name.drop(1))
@@ -2477,14 +2515,7 @@ object Parsers {
           canApply = false
           blockExpr()
         case QUOTE =>
-          atSpan(in.skipToken()) {
-            withinStaged(StageKind.Quoted | (if (location.inPattern) StageKind.QuotedPattern else 0)) {
-              val body =
-                if (in.token == LBRACKET) inBrackets(typ())
-                else stagedBlock()
-              Quote(body, Nil)
-            }
-          }
+          quote(location.inPattern)
         case NEW =>
           canApply = false
           newExpr()
@@ -2855,13 +2886,13 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
-    /**  Pattern1     ::= PatVar Ascription
-     *                  | [‘-’] integerLiteral Ascription
-     *                  | [‘-’] floatingPointLiteral Ascription
+    /**  Pattern1     ::= PatVar `:` RefinedType
+     *                  | [‘-’] integerLiteral `:` RefinedType
+     *                  | [‘-’] floatingPointLiteral `:` RefinedType
      *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
-      val p = pattern2()
+      val p = pattern2(location)
       if in.isColon then
         val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
         if !isVariableOrNumber then
@@ -2879,26 +2910,29 @@ object Parsers {
       else p
 
     /**  Pattern3    ::=  InfixPattern
-     *                 |  PatVar ‘*’
      */
-    def pattern3(): Tree =
+    def pattern3(location: Location): Tree =
       val p = infixPattern()
       if followingIsVararg() then
         val start = in.skipToken()
-        p match
-          case p @ Ident(name) if name.isVarPattern =>
-            Typed(p, atSpan(start) { Ident(tpnme.WILDCARD_STAR) })
-          case _ =>
-            syntaxError(em"`*` must follow pattern variable", start)
-            p
+        if location.inArgs then
+          p match
+            case p @ Ident(name) if name.isVarPattern =>
+              Typed(p, atSpan(start) { Ident(tpnme.WILDCARD_STAR) })
+            case _ =>
+              syntaxError(em"`*` must follow pattern variable", start)
+              p
+        else
+          syntaxError(em"bad use of `*` - sequence pattern not allowed here", start)
+          p
       else p
 
     /**  Pattern2    ::=  [id `@'] Pattern3
      */
-    val pattern2: () => Tree = () => pattern3() match
+    val pattern2: Location => Tree = location => pattern3(location) match
       case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
-        pattern3() match {
+        pattern3(location) match {
           case pt @ Bind(nme.WILDCARD, pt1: Typed) if pt.mods.is(Given) =>
             atSpan(startOffset(p), 0) { Bind(name, pt1).withMods(pt.mods) }
           case Typed(Ident(nme.WILDCARD), pt @ Ident(tpnme.WILDCARD_STAR)) =>
@@ -2928,6 +2962,7 @@ object Parsers {
      *                    |  XmlPattern
      *                    |  `(' [Patterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
+     *                    |  ‘given’ RefinedType
      *  SimplePattern1   ::= SimpleRef
      *                    |  SimplePattern1 `.' id
      *  PatVar           ::= id
@@ -3028,7 +3063,8 @@ object Parsers {
       val name = in.name
       val mod = atSpan(in.skipToken()) { modOfToken(tok, name) }
 
-      if (mods.isOneOf(mod.flags)) syntaxError(RepeatedModifier(mod.flags.flagsString))
+      if mods.isOneOf(mod.flags) then
+        syntaxError(RepeatedModifier(mod.flags.flagsString, source, mod.span), mod.span)
       addMod(mods, mod)
     }
 
@@ -3303,11 +3339,13 @@ object Parsers {
 
       def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
         case Nil =>
-        case _ :: Nil if !prefix =>
         case vparam :: rest =>
           vparam.tpt match {
             case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
-              syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
+              if vparam.mods.isOneOf(GivenOrImplicit) then
+                syntaxError(VarArgsParamCannotBeGiven(vparam.mods.is(Given)), vparam.tpt.span)
+              if rest.nonEmpty then
+                syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
             case _ =>
           }
           checkVarArgsRules(rest)
@@ -3388,7 +3426,7 @@ object Parsers {
      */
     def importOrExportClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      commaSeparated(importExpr(mkTree)) match {
+      commaSeparated(importExpr(leading, mkTree)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -3443,13 +3481,18 @@ object Parsers {
      *  NamedSelector    ::=  id [‘as’ (id | ‘_’)]
      *  WildCardSelector ::=  ‘*' | ‘given’ [InfixType]
      */
-    def importExpr(mkTree: ImportConstr): () => Tree =
+    def importExpr(leading: Token, mkTree: ImportConstr): () => Tree =
+
+      def exprName =
+        (leading: @unchecked) match
+          case EXPORT => "export"
+          case IMPORT => "import"
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
         if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
-            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice(`future-migration`)}",
+            em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
             from = future)
           patch(source, Span(in.offset, in.offset + 1), "*")
@@ -3468,7 +3511,7 @@ object Parsers {
         if in.token == ARROW || isIdent(nme.as) then
           if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
-              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
+              em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
               from = future)
             patch(source, Span(in.offset, in.offset + 2),
@@ -3488,7 +3531,7 @@ object Parsers {
             case _ =>
               if isIdent(nme.raw.STAR) then wildcardSelector()
               else
-                if !idOK then syntaxError(em"named imports cannot follow wildcard imports")
+                if !idOK then syntaxError(em"named ${exprName}s cannot follow wildcard ${exprName}s")
                 namedSelector(termIdent())
         }
 
@@ -3569,7 +3612,7 @@ object Parsers {
      *  VarDcl  ::=  id {`,' id} `:' Type
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
-      val first = pattern2()
+      val first = pattern2(Location.InPattern)
       var lhs = first match {
         case id: Ident if in.token == COMMA =>
           in.nextToken()
@@ -3757,6 +3800,8 @@ object Parsers {
             }
             else makeTypeDef(bounds)
           case SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | OUTDENT | EOF =>
+            makeTypeDef(typeBounds())
+          case _ if (staged & StageKind.QuotedPattern) != 0 =>
             makeTypeDef(typeBounds())
           case _ =>
             syntaxErrorOrIncomplete(ExpectedTypeBoundOrEquals(in.token))

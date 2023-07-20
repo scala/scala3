@@ -173,6 +173,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Quote(body: Tree, tags: List[Tree])(using Context): Quote =
     untpd.Quote(body, tags).withBodyType(body.tpe)
 
+  def QuotePattern(bindings: List[Tree], body: Tree, quotes: Tree, proto: Type)(using Context): QuotePattern =
+    ta.assignType(untpd.QuotePattern(bindings, body, quotes), proto)
+
   def Splice(expr: Tree, tpe: Type)(using Context): Splice =
     untpd.Splice(expr).withType(tpe)
 
@@ -1389,17 +1392,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
    */
-  override def inlineContext(call: Tree)(using Context): Context = {
+  override def inlineContext(tree: Inlined)(using Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
 
     val newIC =
-      if call.isEmpty then
+      if tree.inlinedFromOuterScope then
         oldIC match
           case t1 :: ts2 => ts2
           case _ => oldIC
       else
-        call :: oldIC
+        tree.call :: oldIC
 
     val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
     if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1

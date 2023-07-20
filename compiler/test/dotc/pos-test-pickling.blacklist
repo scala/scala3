@@ -50,6 +50,9 @@ i6505.scala
 i15158.scala
 i15155.scala
 i15827.scala
+i17149.scala
+tuple-fold.scala
+mt-redux-norm.perspective.scala
 
 # Opaque type
 i5720.scala
@@ -94,6 +97,7 @@ i4176-gadt.scala
 
 # GADT difference
 i13974a.scala
+i15867.scala
 
 java-inherited-type1
 

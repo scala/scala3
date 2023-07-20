@@ -406,7 +406,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (typeParams.nonEmpty) appliedTo(args) else self
 
   /** A cycle-safe version of `appliedTo` where computing type parameters do not force
-   *  the typeconstructor. Instead, if the type constructor is completing, we make
+   *  the type constructor. Instead, if the type constructor is completing, we make
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
@@ -509,8 +509,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Handles `ErasedFunction`s and poly functions gracefully.
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
-    case RefinedType(parent, nme.apply, mt: MethodType) if defn.isErasedFunctionType(parent) => (mt.paramInfos :+ mt.resultType)
-    case RefinedType(parent, nme.apply, mt: MethodType) if parent.typeSymbol eq defn.PolyFunctionClass => (mt.paramInfos :+ mt.resultType)
+    case defn.ErasedFunctionOf(mt) => (mt.paramInfos :+ mt.resultType)
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */

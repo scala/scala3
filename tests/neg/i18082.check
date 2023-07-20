@@ -1,0 +1,20 @@
+-- [E122] Syntax Error: tests/neg/i18082.scala:5:23 --------------------------------------------------------------------
+5 |import O.{a as b, b as b} // error
+  |                       ^
+  |                       b is imported twice on the same import line.
+-- [E122] Syntax Error: tests/neg/i18082.scala:6:18 --------------------------------------------------------------------
+6 |import O.{a as b, b} // error
+  |                  ^
+  |                  b is imported twice on the same import line.
+-- [E122] Syntax Error: tests/neg/i18082.scala:7:13 --------------------------------------------------------------------
+7 |import O.{a, a} // error
+  |             ^
+  |             a is imported twice on the same import line.
+-- [E185] Syntax Error: tests/neg/i18082.scala:10:18 -------------------------------------------------------------------
+10 |import O.{a as _, a as _} // error
+   |                  ^
+   |                  a is unimported twice on the same import line.
+-- [E185] Syntax Error: tests/neg/i18082.scala:11:13 -------------------------------------------------------------------
+11 |import O.{a, a as _} // error
+   |             ^
+   |             a is unimported and imported on the same import line.

@@ -64,6 +64,14 @@ trait ConstraintHandling {
    */
   protected var canWidenAbstract: Boolean = true
 
+  /**
+   * Used for match type reduction.
+   * When an abstract type may not be widened, according to `widenAbstractOKFor`,
+   * we record it in this set, so that we can ultimately fail the reduction, but
+   * with all the information that comes out from continuing to widen the abstract type.
+   */
+  protected var poisoned: Set[TypeParamRef] = Set.empty
+
   protected var myNecessaryConstraintsOnly = false
   /** When collecting the constraints needed for a particular subtyping
    *  judgment to be true, we sometimes need to approximate the constraint
@@ -102,7 +110,7 @@ trait ConstraintHandling {
    *
    *  If we trust bounds, then the lower bound of `X` is `x.M` since `x.M >: 1`.
    *  Then even if we correct levels on instantiation to eliminate the local `x`,
-   *  it is alreay too late, we'd get `Int & String` as instance, which does not
+   *  it is already too late, we'd get `Int & String` as instance, which does not
    *  satisfy the original constraint `X >: 1`.
    *
    *  But if `trustBounds` is false, we do not conclude the `x.M >: 1` since
@@ -708,8 +716,8 @@ trait ConstraintHandling {
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
-      // If that happens, we run `instanceType` again to find a new instantation.
-      // (we do not check for non-toplevel occurences: those should never occur
+      // If that happens, we run `instanceType` again to find a new instantiation.
+      // (we do not check for non-toplevel occurrences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
         instanceType(param, fromBelow, widenUnions, maxLevel)

@@ -63,6 +63,12 @@ val experimentalDefinitionInLibrary = Set(
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 
+  //// New feature: -Ysafe-init-global
+  "scala.annotation.init",
+  "scala.annotation.init$",
+  "scala.annotation.init$.widen",
+  "scala.annotation.init$.region",
+
    //// New APIs: Quotes
   // Should be stabilized in 3.4.0
   "scala.quoted.Quotes.reflectModule.defnModule.FunctionClass",
@@ -93,7 +99,15 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
-  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass"
+  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass",
+
+  // New feature: reverse method on Tuple
+  "scala.Tuple.reverse",
+  "scala.Tuple$.Helpers",
+  "scala.Tuple$.Helpers$",
+  "scala.Tuple$.Helpers$.ReverseImpl",
+  "scala.Tuple$.Reverse",
+  "scala.runtime.Tuples$.reverse"
 )
 
 
