@@ -5003,7 +5003,7 @@ object Types {
           trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases)
+              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
               finally
@@ -5054,6 +5054,24 @@ object Types {
           case _ => None
         case _ => None
   }
+
+  enum MatchTypeCaseSpec:
+    case SubTypeTest(origMatchCase: Type, pattern: Type, body: Type)
+    case LegacyPatMat(origMatchCase: HKTypeLambda)
+
+    def origMatchCase: Type
+  end MatchTypeCaseSpec
+
+  object MatchTypeCaseSpec:
+    def analyze(cas: Type)(using Context): MatchTypeCaseSpec =
+      cas match
+        case cas: HKTypeLambda =>
+          LegacyPatMat(cas)
+        case _ =>
+          val defn.MatchCase(pat, body) = cas: @unchecked
+          SubTypeTest(cas, pat, body)
+    end analyze
+  end MatchTypeCaseSpec
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
 
