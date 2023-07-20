@@ -709,7 +709,7 @@ object TreeChecker {
       super.typedQuotePattern(tree, pt)
 
     override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
-      assert(ctx.mode.is(Mode.QuotedPattern))
+      assert(ctx.mode.isQuotedPattern)
       def isAppliedIdent(rhs: untpd.Tree): Boolean = rhs match
         case _: Ident => true
         case rhs: GenericApply => isAppliedIdent(rhs.fun)

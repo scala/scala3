@@ -560,7 +560,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return tree.withType(defn.AnyType)
       if untpd.isVarPattern(tree) && name.isTermName then
         return typed(desugar.patternVar(tree), pt)
-    else if ctx.mode.is(Mode.QuotedPattern) then
+    else if ctx.mode.isQuotedPattern then
       if untpd.isVarPattern(tree) && name.isTypeName then
         return typedQuotedTypeVar(tree, pt)
     end if
@@ -966,7 +966,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // so the expected type is the union `Seq[T] | Array[_ <: T]`.
         val ptArg =
           // FIXME(#8680): Quoted patterns do not support Array repeated arguments
-          if ctx.mode.is(Mode.QuotedPattern) then
+          if ctx.mode.isQuotedPattern then
             pt.translateFromRepeated(toArray = false, translateWildcard = true)
           else
             pt.translateFromRepeated(toArray = false, translateWildcard = true)
@@ -2221,7 +2221,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val (desugaredArg, argPt) =
             if ctx.mode.is(Mode.Pattern) then
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
-            else if ctx.mode.is(Mode.QuotedPattern) then
+            else if ctx.mode.isQuotedPattern then
               (arg, tparamBounds)
             else
               (arg, WildcardType)
@@ -4268,7 +4268,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               tree.tpe.EtaExpand(tp.typeParamSymbols)
           tree.withType(tp1)
         }
-      if (ctx.mode.is(Mode.Pattern) || ctx.mode.is(Mode.QuotedPattern) || tree1.tpe <:< pt) tree1
+      if (ctx.mode.is(Mode.Pattern) || ctx.mode.isQuotedPattern || tree1.tpe <:< pt) tree1
       else err.typeMismatch(tree1, pt)
     }
 
