@@ -44,15 +44,6 @@ object TastyMiMaFilters {
     // Probably OK: Case class with varargs
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.StringContext.parts"), // before: scala.<repeated>[Predef.String]; after: scala.collection.immutable.Seq[Predef.String] @scala.annotation.internal.Repeated
 
-    // Problem: Missing type {scala.runtime.AbstractFunction1}
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.collection.Searching.Found$"),
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.collection.Searching.InsertionPoint$"),
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.collection.StringView$"),
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.jdk.FunctionWrappers.AsJava*$"),
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.jdk.FunctionWrappers.FromJava*$"),
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.ScalaReflectionException$"),
-    ProblemMatcher.make(ProblemKind.MissingParent, "scala.UninitializedFieldError$"),
-
     // Probably OK: ConstantType for `null` versus `scala.Null`
     // Calls to the default getter seem to link correctly.
     // Tested in stdlib-bootstrapped/test/scala/collection/UnrolledBufferTest.scala
