@@ -71,7 +71,6 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
     if (appendDiagnostics)
       val warnings = ctx.reporter.allWarnings.groupBy(w => w.pos.source)
       units.asJava.parallelStream().forEach { unit =>
-        val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
         warnings.get(unit.source).foreach { ws =>
           ExtractSemanticDB.appendDiagnostics(unit.source, ws.map(_.toSemanticDiagnostic))
         }
@@ -191,7 +190,7 @@ object ExtractSemanticDB:
   private def relPath(source: SourceFile)(using ctx: Context) =
     SourceFile.relativePath(source, ctx.settings.sourceroot.value)
 
-  private def semanticdbPath(source: SourceFile)(using ctx: Context) =
+  private def semanticdbPath(source: SourceFile)(using Context) =
     absolutePath(semanticdbTarget.getOrElse(outputDirectory.jpath))
       .resolve("META-INF")
       .resolve("semanticdb")
