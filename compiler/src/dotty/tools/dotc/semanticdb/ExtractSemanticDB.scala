@@ -198,7 +198,7 @@ object ExtractSemanticDB:
       .resolveSibling(source.name + ".semanticdb")
 
   /** Extractor of symbol occurrences from trees */
-  private class Extractor extends TreeTraverser:
+  class Extractor extends TreeTraverser:
     import Scala3.{_, given}
     given s.SemanticSymbolBuilder = s.SemanticSymbolBuilder()
     val synth = SyntheticsExtractor()
