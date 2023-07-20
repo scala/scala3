@@ -578,7 +578,13 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = resTp.select(nme.get).finalResultType.widenTermRefExpr
+            val getTp = resTp.select(nme.get).finalResultType match
+              case tp: TermRef if !tp.isOverloaded =>
+                // Like widenTermRefExpr, except not recursively.
+                // For example, in i17184 widen Option[foo.type]#get
+                // to Option[foo.type] instead of Option[Int].
+                tp.underlying.widenExpr
+              case tp => tp
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
