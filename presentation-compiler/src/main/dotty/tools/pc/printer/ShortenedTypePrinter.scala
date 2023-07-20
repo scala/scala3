@@ -9,7 +9,7 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameKinds.EvidenceParamName
+import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Names.Name
@@ -270,7 +270,7 @@ class ShortenedTypePrinter(
 
     lazy val implicitEvidenceParams: Set[Symbol] =
       implicitParams
-        .filter(p => p.name.toString.startsWith(EvidenceParamName.separator))
+        .filter(p => p.name.toString.startsWith(ContextBoundParamName.separator))
         .toSet
 
     lazy val implicitEvidencesByTypeParam: Map[Symbol, List[String]] =

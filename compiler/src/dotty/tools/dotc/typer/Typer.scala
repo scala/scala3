@@ -1686,8 +1686,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           checkInInlineContext("summonFrom", tree.srcPos)
           val cases1 = tree.cases.mapconserve {
             case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
-              // case _ : T  -->  case evidence$n : T
-              cpy.CaseDef(cdef)(pat = untpd.Bind(EvidenceParamName.fresh(), pat))
+              // case _ : T  -->  case _$n : T
+              cpy.CaseDef(cdef)(pat = untpd.Bind(WildcardParamName.fresh(), pat))
             case cdef => cdef
           }
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
@@ -1962,7 +1962,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def addCanThrowCapabilities(expr: untpd.Tree, cases: List[CaseDef])(using Context): untpd.Tree =
     def makeCanThrow(tp: Type): untpd.Tree =
       untpd.ValDef(
-          EvidenceParamName.fresh(),
+          CanThrowEvidenceName.fresh(),
           untpd.TypeTree(defn.CanThrowClass.typeRef.appliedTo(tp)),
           untpd.ref(defn.Compiletime_erasedValue))
         .withFlags(Given | Final | Erased)
@@ -3686,7 +3686,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           else tree
         else if wtp.isContextualMethod then
           def isContextBoundParams = wtp.stripPoly match
-            case MethodType(EvidenceParamName(_) :: _) => true
+            case MethodType(ContextBoundParamName(_) :: _) => true
             case _ => false
           if sourceVersion == `future-migration` && isContextBoundParams && pt.args.nonEmpty
           then // Under future-migration, don't infer implicit arguments yet for parameters

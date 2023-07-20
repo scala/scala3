@@ -407,7 +407,7 @@ object Signatures {
       (params :: rest)
 
     def isSyntheticEvidence(name: String) =
-      if !name.startsWith(NameKinds.EvidenceParamName.separator) then false else
+      if !name.startsWith(NameKinds.ContextBoundParamName.separator) then false else
         symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.is(Flags.Implicit))
 
     denot.info.stripPoly match
