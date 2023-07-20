@@ -127,8 +127,14 @@ object Build {
     case Bootstrapped => "2.13.10"
   }
 
-  /** Version of the scala-library for which we will generate TASTy. */
-  val stdlibBootstrappedVersion = "2.13.11"
+  /** Version of the scala-library for which we will generate TASTy.
+   *
+   *  We should never use a nightly version here to release.
+   *
+   *  We can use nightly versions to tests the future compatibility in development.
+   *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
+   */
+  val stdlibBootstrappedVersion = "2.13.12-bin-364ee69"
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
@@ -264,6 +270,9 @@ object Build {
       // sbt will complain if we don't exclude them here.
       Keys.scalaSource, Keys.javaSource
     ),
+
+    // This is used to download nightly builds of the Scala 2 library in `stdlib-bootstrapped`
+    resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
   )
 
   lazy val disableDocSetting =

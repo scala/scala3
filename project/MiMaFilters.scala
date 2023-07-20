@@ -28,28 +28,6 @@ object MiMaFilters {
         // Files that are not compiled in the bootstrapped library
         ProblemFilters.exclude[MissingClassProblem]("scala.AnyVal"),
 
-        // Inferred result type of non-private member differs (fix in Scala 2)
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#IteratorWrapper.remove"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#JCollectionWrapper.iterableFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#JDictionaryWrapper.mapFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#JIterableWrapper.iterableFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#JListWrapper.iterableFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.convert.JavaCollectionWrappers#JPropertiesWrapper.mapFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.BitSet.bitSetFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.immutable.TreeSet.sortedIterableFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.BitSet.bitSetFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.mutable.TreeMap.sortedMapFactory"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.View#LeftPartitionMapped.iterator"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.View#RightPartitionMapped.iterator"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.concurrent.duration.FiniteDuration.unary_-"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.math.BigDecimal.underlying"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.math.Ordering.tryCompare"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JConcurrentMapWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JMapWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JPropertiesWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashMap.newBuilder"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashSet.newBuilder"),
-
         // Scala language features
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language.<clinit>"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language#experimental.<clinit>"),
@@ -61,17 +39,12 @@ object MiMaFilters {
 
         // Value class extension methods
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*$extension"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.*$extension"),
 
         // Companion module class
         ProblemFilters.exclude[FinalClassProblem]("scala.*$"),
 
         // Scala 2 intrinsic macros
         ProblemFilters.exclude[FinalMethodProblem]("scala.StringContext.s"),
-
-        // scala.math.Ordering.tryCompare
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*.tryCompare"),
-
 
         // Specialization?
         ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple1._1"), // field _1 in class scala.Tuple1 does not have a correspondent in current version
@@ -102,7 +75,6 @@ object MiMaFilters {
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.NoPositioner"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPosition"),
         ProblemFilters.exclude[FinalMethodProblem]("scala.io.Source.RelaxedPositioner"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.RedBlackTree#EqualsIterator.nextResult"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.SortedMapOps.coll"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.empty"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.TreeMap.fromSpecific"),
@@ -111,30 +83,20 @@ object MiMaFilters {
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.TreeMap.fromSpecific"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NothingManifest.newArray"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NullManifest.newArray"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.StringContext.unapplySeq"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.collection.ArrayOps#ReverseIterator.xs"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.NonLocalReturnControl.value"),
         ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.collection.immutable.SortedMapOps.coll"),
       ) ++
       Seq( // DirectMissingMethodProblem
-        "scala.collection.immutable.ArraySeq#*.elemTag",
-        "scala.collection.immutable.HashCollisionSetNode.copy",
-        "scala.collection.immutable.MapKeyValueTupleHashIterator.next",
         "scala.collection.LinearSeqIterator#LazyCell.this",
-        "scala.collection.mutable.AnyRefMap#ToBuildFrom.newBuilder",
-        "scala.collection.mutable.ArraySeq#*.elemTag",
-        "scala.collection.mutable.LinkedHashMap.newBuilder", "scala.collection.mutable.LinkedHashSet.newBuilder",
-        "scala.collection.mutable.LongMap#ToBuildFrom.newBuilder",
         "scala.collection.mutable.PriorityQueue#ResizableArrayAccess.this",
         "scala.concurrent.BatchingExecutor#AbstractBatch.this",
         "scala.concurrent.Channel#LinkedList.this",
         "scala.Enumeration#ValueOrdering.this",
         "scala.io.Source#RelaxedPosition.this",
-        "scala.PartialFunction#OrElse.andThen", "scala.PartialFunction#OrElse.orElse",
-        "scala.runtime.Rich*.num", "scala.runtime.Rich*.ord",
+        "scala.collection.IterableOnceOps#Maximized.this", // New in 2.13.11: private inner class
         "scala.util.Properties.<clinit>",
         "scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5",
-        "scala.collection.IterableOnceOps#Maximized.this" // New in 2.13.11: private inner class
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem])
     }
   )
@@ -147,38 +109,23 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.language.experimental"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.languageFeature*"),
 
-        // Inferred result type of non-private member differs (fix in Scala 2)
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JConcurrentMapWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JMapWrapper.empty"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.convert.JavaCollectionWrappers#JPropertiesWrapper.empty"),
-        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.math.Ordering.tryCompare"),
-
         // https://github.com/scala/scala/blob/v2.13.10/src/library/scala/collection/immutable/Range.scala#LL155C1-L156C1
         // Issue #17519: we do not set final on the default methods of final copy method.
         ProblemFilters.exclude[FinalMethodProblem]("scala.collection.immutable.Range.copy$default$*"),
 
         // Value class extension methods
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.*$extension"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.*$extension"),
 
         // Companion module class: Missing type java.io.Serializable
         ProblemFilters.exclude[MissingTypesProblem]("scala.*$"),
-
-        // abstract method elemTag()scala.reflect.ClassTag in class scala.collection.mutable.ArraySeq does not have a correspondent in other version
-        ProblemFilters.exclude[DirectAbstractMethodProblem]("scala.collection.immutable.ArraySeq.elemTag"),
-        ProblemFilters.exclude[DirectAbstractMethodProblem]("scala.collection.mutable.ArraySeq.elemTag"),
 
         // Non-categorized
         ProblemFilters.exclude[IncompatibleMethTypeProblem]("scala.collection.mutable.ArrayBuilder#ofUnit.addAll"),
 
         // Non-categorized
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.RedBlackTree#EqualsIterator.nextResult"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.immutable.SortedMapOps.coll"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashMap.newBuilder"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.collection.mutable.LinkedHashSet.newBuilder"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NothingManifest.newArray"),
         ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.reflect.ManifestFactory#NullManifest.newArray"),
-        ProblemFilters.exclude[IncompatibleResultTypeProblem]("scala.StringContext.unapplySeq"),
 
         // the type hierarchy of class scala.Array is different in other version. Missing types {java.io.Serializable,java.lang.Cloneable}
         ProblemFilters.exclude[MissingTypesProblem]("scala.Array"),
