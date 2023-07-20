@@ -49,10 +49,6 @@ object TastyMiMaFilters {
     // Tested in stdlib-bootstrapped/test/scala/collection/UnrolledBufferTest.scala
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.Unrolled.<init>$default$4"),
 
-    // Problem: Missing type arguments with higher-kinded types
-    ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.SortedSetFactoryDefaults._$5"),
-    ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.SortedMapFactoryDefaults._$6"),
-
     // Problem? Very complicated signature
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.generic.IsMap.mapOpsIsMap"),
 
@@ -70,9 +66,6 @@ object TastyMiMaFilters {
 
     // Problem Missing setter for `protected var`
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.*_="),
-
-    // TASTy-MiMa bug? Wildcards in self type
-    ProblemMatcher.make(ProblemKind.MissingTypeMember, "scala.collection.generic.DefaultSerializable._$1"),
 
     // TASTy-MiMa bugs
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.appendedAll"),
