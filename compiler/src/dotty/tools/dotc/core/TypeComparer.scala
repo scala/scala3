@@ -3197,7 +3197,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     super.typeVarInstance(tvar)
   }
 
-  def matchCases(scrut: Type, cases: List[Type])(using Context): Type = {
+  def matchCases(scrut: Type, cases: List[MatchTypeCaseSpec])(using Context): Type = {
     // a reference for the type parameters poisoned during matching
     // for use during the reduction step
     var poisoned: Set[TypeParamRef] = Set.empty
@@ -3238,16 +3238,26 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
     /** Match a single case. */
-    def matchCase(cas: Type): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
-      val cas1 = cas match {
-        case cas: HKTypeLambda =>
-          caseLambda = constrained(cas, ast.tpd.EmptyTree)._1
-          caseLambda.resultType
-        case _ =>
-          cas
-      }
+    def matchCase(cas: MatchTypeCaseSpec): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
+      cas match
+        case cas: MatchTypeCaseSpec.SubTypeTest  => matchSubTypeTest(cas)
+        case cas: MatchTypeCaseSpec.LegacyPatMat => matchLegacyPatMat(cas)
+    }
 
-      val defn.MatchCase(pat, body) = cas1: @unchecked
+    def matchSubTypeTest(spec: MatchTypeCaseSpec.SubTypeTest): MatchResult =
+      if necessarySubType(scrut, spec.pattern) then
+        MatchResult.Reduced(spec.body)
+      else if provablyDisjoint(scrut, spec.pattern) then
+        MatchResult.Disjoint
+      else
+        MatchResult.Stuck
+    end matchSubTypeTest
+
+    def matchLegacyPatMat(spec: MatchTypeCaseSpec.LegacyPatMat): MatchResult =
+      val caseLambda = constrained(spec.origMatchCase, ast.tpd.EmptyTree)._1.asInstanceOf[HKTypeLambda]
+      this.caseLambda = caseLambda
+
+      val defn.MatchCase(pat, body) = caseLambda.resultType: @unchecked
 
       def matches(canWidenAbstract: Boolean): Boolean =
         val saved = this.canWidenAbstract
@@ -3261,22 +3271,18 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           this.canWidenAbstract = saved
 
       def redux(canApprox: Boolean): MatchResult =
-        caseLambda match
-          case caseLambda: HKTypeLambda =>
-            val instances = paramInstances(canApprox)(Array.fill(caseLambda.paramNames.length)(NoType), pat)
-            instantiateParams(instances)(body) match
-              case Range(lo, hi) =>
-                MatchResult.NoInstance {
-                  caseLambda.paramNames.zip(instances).collect {
-                    case (name, Range(lo, hi)) => (name, TypeBounds(lo, hi))
-                  }
-                }
-              case redux =>
-                MatchResult.Reduced(redux)
-          case _ =>
-            MatchResult.Reduced(body)
+        val instances = paramInstances(canApprox)(Array.fill(caseLambda.paramNames.length)(NoType), pat)
+        instantiateParams(instances)(body) match
+          case Range(lo, hi) =>
+            MatchResult.NoInstance {
+              caseLambda.paramNames.zip(instances).collect {
+                case (name, Range(lo, hi)) => (name, TypeBounds(lo, hi))
+              }
+            }
+          case redux =>
+            MatchResult.Reduced(redux)
 
-      if caseLambda.exists && matches(canWidenAbstract = false) then
+      if matches(canWidenAbstract = false) then
         redux(canApprox = true)
       else if matches(canWidenAbstract = true) then
         redux(canApprox = false)
@@ -3286,9 +3292,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         MatchResult.Disjoint
       else
         MatchResult.Stuck
-    }
+    end matchLegacyPatMat
 
-    def recur(remaining: List[Type]): Type = remaining match
+    def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
       case cas :: remaining1 =>
         matchCase(cas) match
           case MatchResult.Disjoint =>
