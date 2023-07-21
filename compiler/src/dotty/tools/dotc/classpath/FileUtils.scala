@@ -20,6 +20,10 @@ object FileUtils {
     def isClass: Boolean = !file.isDirectory && file.hasExtension("class") && !file.name.endsWith("$class.class")
       // FIXME: drop last condition when we stop being compatible with Scala 2.11
 
+    def isClassExtension: Boolean = file.hasExtension("class")
+
+    def isTastyExtension: Boolean = file.hasExtension("tasty")
+
     def isTasty: Boolean = !file.isDirectory && file.hasExtension("tasty")
 
     def isScalaBinary: Boolean = file.isClass || file.isTasty

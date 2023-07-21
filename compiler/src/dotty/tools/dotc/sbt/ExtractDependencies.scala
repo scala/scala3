@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{isTasty, isClass}
+import dotty.tools.dotc.classpath.FileUtils.{isTasty, isClassExtension, isTastyExtension}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -458,21 +458,23 @@ class DependencyRecorder {
     }
 
     val depFile = dep.toClass.associatedFile
-    if (depFile != null) {
+    if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
-      val depClassFile =
-        if depFile.isClass then depFile
-        else depFile.resolveSibling(dep.toClass.binaryClassName + ".class")
-      if (depClassFile != null) {
-        // Dependency is external -- source is undefined
-        processExternalDependency(depClassFile, dep.toClass.binaryClassName)
-      } else if (allowLocal || depFile != sourceFile.file) {
+      if depFile.isTastyExtension then
+        val depClassFile = depFile.resolveSibling(depFile.name.stripSuffix(".tasty") + ".class")
+        if depClassFile != null then
+          // did not find associated class file, e.g. for a TASTy-only classpath.
+          // The file that Zinc recieves with binaryDependency is used to lookup any either any
+          // generated non-local classes or produced xsbti.API associated with the file.
+          processExternalDependency(depClassFile, dep.toClass.binaryClassName)
+      else if depFile.isClassExtension then
+        processExternalDependency(depFile, dep.toClass.binaryClassName)
+      else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(dep.toClass)
         cb.classDependency(toClassName, fromClassName, dep.context)
-      }
     }
   }
 

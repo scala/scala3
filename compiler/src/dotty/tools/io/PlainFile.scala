@@ -102,8 +102,15 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
    */
   def lookupName(name: String, directory: Boolean): AbstractFile = {
     val child = givenPath / name
-    if ((child.isDirectory && directory) || (child.isFile && !directory)) new PlainFile(child)
-    else null
+    if directory then
+      if child.isDirectory /* IO! */ then
+        new PlainFile(child)
+      else
+        null
+    else if child.isFile /* IO! */ then
+      new PlainFile(child)
+    else
+      null
   }
 
   /** Does this abstract file denote an existing file? */
