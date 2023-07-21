@@ -3590,7 +3590,7 @@ object Types {
 
   def expectValueTypeOrWildcard(tp: Type, where: => String)(using Context): Unit =
     if !tp.isValueTypeOrWildcard then
-      assert(!ctx.isAfterTyper, where) // we check correct kinds at PostTyper
+      assert(!ctx.isAfterTyper, s"$tp in $where") // we check correct kinds at PostTyper
       throw TypeError(em"$tp is not a value type, cannot be used $where")
 
   /** An extractor object to pattern match against a nullable union.

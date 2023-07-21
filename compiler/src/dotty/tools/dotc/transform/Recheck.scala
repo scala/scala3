@@ -224,14 +224,13 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
         recheck(body, pt)
-        val sym = tree.symbol
-        if sym.isType then sym.typeRef else sym.info
+        tree.symbol.namedType
 
     def recheckLabeled(tree: Labeled, pt: Type)(using Context): Type = tree match
       case Labeled(bind, expr) =>
-        val bindType = recheck(bind, pt)
+        val (bindType: NamedType) = recheck(bind, pt): @unchecked
         val exprType = recheck(expr, defn.UnitType)
-        bindType
+        bindType.symbol.info
 
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
       if !tree.rhs.isEmpty then recheck(tree.rhs, sym.info)
