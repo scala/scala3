@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
+import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext._
@@ -462,8 +462,8 @@ class DependencyRecorder {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if depFile.isTastyExtension then
-        val depClassFile = depFile.resolveSibling(depFile.name.stripSuffix(".tasty") + ".class")
-        if depClassFile != null then
+        val depClassFile = ctx.getSiblingClassfile(depFile)
+        if depClassFile != NoAbstractFile then
           // did not find associated class file, e.g. for a TASTy-only classpath.
           // The file that Zinc recieves with binaryDependency is used to lookup any either any
           // generated non-local classes or produced xsbti.API associated with the file.
