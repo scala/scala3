@@ -55,8 +55,7 @@ class ExtractDependencies extends Phase {
   override def description: String = ExtractDependencies.description
 
   override def isRunnable(using Context): Boolean = {
-    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.incrementalEnabled || forceRun)
+    super.isRunnable && ctx.runZincPhases
   }
 
   // Check no needed. Does not transform trees
@@ -122,15 +121,8 @@ class ExtractDependencies extends Phase {
             case Some(zip) if zip.jpath != null =>
               binaryDependency(zip.jpath, binaryClassName)
             case _ =>
-        case pf: PlainFile => // The dependency comes from a class file
-          // FIXME: pf.file is null for classfiles coming from the modulepath
-          // (handled by JrtClassPath) because they cannot be represented as
-          // java.io.File, since the `binaryDependency` callback must take a
-          // java.io.File, this means that we cannot record dependencies coming
-          // from the modulepath. For now this isn't a big deal since we only
-          // support having the standard Java library on the modulepath.
-          if pf.jpath != null then
-            binaryDependency(pf.jpath, binaryClassName)
+        case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
+          binaryDependency(pf.jpath, binaryClassName)
         case _ =>
           internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }

@@ -67,7 +67,7 @@ public class CachedCompilerImpl implements CachedCompiler {
 
     Context ctx = new ContextBase().initialCtx().fresh()
       .setIncCallback(incCallback)
-      .setReporter(new DelegatingReporter(delegate, (self, source) -> source.file().absolutePath()));
+      .setReporter(new DelegatingReporter(delegate, source -> source.file().absolutePath()));
 
     dotty.tools.dotc.reporting.Reporter reporter = Main.process(commandArguments(sources), ctx);
     if (reporter.hasErrors()) {

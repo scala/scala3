@@ -53,7 +53,7 @@ public class DottydocRunner {
     args = retained.toArray(new String[retained.size()]);
 
     Context ctx = new ContextBase().initialCtx().fresh()
-      .setReporter(new DelegatingReporter(delegate, (self, source) -> source.file().absolutePath()));
+      .setReporter(new DelegatingReporter(delegate, source -> source.file().absolutePath()));
 
     try {
       Class<?> dottydocMainClass = Class.forName("dotty.tools.dottydoc.Main");

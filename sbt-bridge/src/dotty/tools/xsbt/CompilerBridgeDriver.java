@@ -12,6 +12,9 @@ import dotty.tools.dotc.config.Properties;
 import dotty.tools.dotc.core.Contexts;
 import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.io.AbstractFile;
+import dotty.tools.io.PlainFile;
+import dotty.tools.io.Path;
+import dotty.tools.io.Streamable;
 import scala.collection.mutable.ListBuffer;
 import scala.jdk.javaapi.CollectionConverters;
 import scala.io.Codec;
@@ -20,6 +23,8 @@ import xsbti.*;
 import xsbti.compile.Output;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,19 +65,20 @@ public class CompilerBridgeDriver extends Driver {
     return lookup.computeIfAbsent(sourceFile.file(), path -> {
       reportMissingFile(reporter, sourceFile);
       if (sourceFile.file().jpath() != null)
-        return new BasicPathBasedFile(sourceFile);
+        return new FallbackPathBasedFile(sourceFile);
       else
-        return new PlaceholderVirtualFile(sourceFile);
+        return new FallbackVirtualFile(sourceFile);
     });
   }
 
   private static void reportMissingFile(DelegatingReporter reporter, SourceFile sourceFile) {
     String underline = String.join("", Collections.nCopies(sourceFile.path().length(), "^"));
     String message =
-      sourceFile.path() + ": Missing virtual file\n" +
+      sourceFile.path() + ": Missing Zinc virtual file\n" +
       underline + "\n" +
       "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
-      "    This is likely a bug in incremental compilation for the Scala 3 compiler. Please report it to the Scala 3 maintainers.";
+      "    This is likely a bug in incremental compilation for the Scala 3 compiler.\n" +
+      "    Please report it to the Scala 3 maintainers at https://github.com/lampepfl/dotty/issues.";
     reporter.reportBasicWarning(message);
   }
 
@@ -91,9 +97,19 @@ public class CompilerBridgeDriver extends Driver {
       lookup.put(abstractFile, source);
     }
 
-    DelegatingReporter reporter = new DelegatingReporter(delegate, (self, sourceFile) ->
-      asVirtualFile(sourceFile, self, lookup).id()
-    );
+    DelegatingReporter reporter = new DelegatingReporter(delegate, sourceFile -> {
+      // TODO: possible situation here where we use -from-tasty and TASTy source files but
+      // the reporter log is associated to a Scala source file?
+
+      // Zinc will use the output of this function to possibly lookup a mapped virtual file,
+      // e.g. convert `${ROOT}/Foo.scala` to `/path/to/Foo.scala` if it exists in the lookup map.
+      VirtualFile vf = lookup.get(sourceFile.file());
+      if (vf != null)
+        return vf.id();
+      else
+        // follow Zinc, which uses the path of the source file as a fallback.
+        return sourceFile.path();
+    });
 
     IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile ->
       asVirtualFile(sourceFile, reporter, lookup)
@@ -137,11 +153,28 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static AbstractFile asDottyFile(VirtualFile virtualFile) {
-    if (virtualFile instanceof PathBasedFile)
-      return new ZincPlainFile((PathBasedFile) virtualFile);
+    if (virtualFile instanceof PathBasedFile) {
+      java.nio.file.Path path = ((PathBasedFile) virtualFile).toPath();
+      return new PlainFile(new Path(path));
+    }
 
     try {
-      return new ZincVirtualFile(virtualFile);
+      return new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id()) {
+        {
+          // fill in the content
+          try (OutputStream output = output()) {
+            try (InputStream input = virtualFile.input()) {
+              Streamable.Bytes bytes = new Streamable.Bytes() {
+                @Override
+                public InputStream inputStream() {
+                  return input;
+                }
+              };
+              output.write(bytes.toByteArray());
+            }
+          }
+        }
+      };
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }

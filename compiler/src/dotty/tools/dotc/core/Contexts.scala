@@ -172,10 +172,10 @@ object Contexts {
       val local = incCallback
       if local != null then op(local)
 
-    def incrementalEnabled: Boolean =
+    def runZincPhases: Boolean =
+      def forceRun = settings.YdumpSbtInc.value || settings.YforceSbtPhases.value
       val local = incCallback
-      if local != null then local.enabled
-      else false
+      local != null && local.enabled || forceRun
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
