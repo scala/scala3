@@ -1099,19 +1099,17 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "0.11.12+165-7d0397b3-SNAPSHOT" // Will be set to stable release after 0.11.13 is published
+    val mtagsVersion = "1.0.0"
 
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
-        "io.get-coursier" % "interface" % "1.0.13",
+        "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      resolvers += Resolver.defaultLocal,
-      resolvers ++= Resolver.sonatypeOssRepos("snapshots"), // To be removed after 0.11.13 is published
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % "sourcedeps"),
       (Compile / sourceGenerators) += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
