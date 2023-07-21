@@ -24,14 +24,16 @@ import java.util.function.*;
 
 final public class DelegatingReporter extends AbstractReporter {
   private xsbti.Reporter delegate;
-  private final BiFunction<DelegatingReporter, SourceFile, String> baseLookup;
-  private final Function<SourceFile, String> lookup;
 
-  public DelegatingReporter(xsbti.Reporter delegate, BiFunction<DelegatingReporter, SourceFile, String> baseLookup) {
+  // A function that can lookup the `id` of the VirtualFile
+  // associated with a SourceFile. If there is not an associated virtual file,
+  // then it is the path of the SourceFile as a String.
+  private final Function<SourceFile, String> lookupVirtualFileId;
+
+  public DelegatingReporter(xsbti.Reporter delegate, Function<SourceFile, String> lookupVirtualFileId) {
     super();
     this.delegate = delegate;
-    this.baseLookup = baseLookup;
-    this.lookup = sourceFile -> baseLookup.apply(this, sourceFile);
+    this.lookupVirtualFileId = lookupVirtualFileId;
   }
 
   public void dropDelegate() {
@@ -60,7 +62,8 @@ final public class DelegatingReporter extends AbstractReporter {
       messageBuilder.append(System.lineSeparator()).append(explanation(message, ctx));
     }
 
-    delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode, actions, lookup));
+    delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode, actions,
+      lookupVirtualFileId));
   }
 
   public void reportBasicWarning(String message) {
@@ -68,7 +71,7 @@ final public class DelegatingReporter extends AbstractReporter {
     Severity severity = Severity.Warn;
     String diagnosticCode = "-1"; // no error code
     List<CodeAction> actions = Collections.emptyList();
-    delegate.log(new Problem(position, message, severity, message, diagnosticCode, actions, lookup));
+    delegate.log(new Problem(position, message, severity, message, diagnosticCode, actions, lookupVirtualFileId));
   }
 
   private static Severity severityOf(int level) {
@@ -85,7 +88,7 @@ final public class DelegatingReporter extends AbstractReporter {
 
   private Position positionOf(SourcePosition pos) {
     if (pos.exists()) {
-      return new PositionBridge(pos, lookup.apply(pos.source()));
+      return new PositionBridge(pos, lookupVirtualFileId.apply(pos.source()));
     } else {
       return PositionBridge.noPosition;
     }

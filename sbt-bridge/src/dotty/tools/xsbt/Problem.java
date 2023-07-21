@@ -26,10 +26,14 @@ final public class Problem implements xsbti.Problem {
   private final Optional<String> _rendered;
   private final String _diagnosticCode;
   private final List<CodeAction> _actions;
-  private final Function<SourceFile, String> _lookup;
+
+  // A function that can lookup the `id` of the VirtualFile
+  // associated with a SourceFile. If there is not an associated virtual file,
+  // then it is the path of the SourceFile as a String.
+  private final Function<SourceFile, String> _lookupVirtualFileId;
 
   public Problem(Position position, String message, Severity severity, String rendered, String diagnosticCode, List<CodeAction> actions,
-      Function<SourceFile, String> lookup) {
+      Function<SourceFile, String> lookupVirtualFileId) {
     super();
     this._position = position;
     this._message = message;
@@ -37,7 +41,7 @@ final public class Problem implements xsbti.Problem {
     this._rendered = Optional.of(rendered);
     this._diagnosticCode = diagnosticCode;
     this._actions = actions;
-    this._lookup = lookup;
+    this._lookupVirtualFileId = lookupVirtualFileId;
   }
 
   public String category() {
@@ -86,23 +90,23 @@ final public class Problem implements xsbti.Problem {
       // never getting called.
       return _actions
               .stream()
-              .map(action -> new Action(action.title(), OptionConverters.toJava(action.description()), toWorkspaceEdit(CollectionConverters.asJava(action.patches()), _lookup)))
+              .map(action -> new Action(action.title(), OptionConverters.toJava(action.description()), toWorkspaceEdit(CollectionConverters.asJava(action.patches()), _lookupVirtualFileId)))
               .collect(toList());
     }
   }
 
-  private static WorkspaceEdit toWorkspaceEdit(List<ActionPatch> patches, Function<SourceFile, String> lookup) {
+  private static WorkspaceEdit toWorkspaceEdit(List<ActionPatch> patches, Function<SourceFile, String> lookupVirtualFileId) {
     return new WorkspaceEdit(
       patches
         .stream()
-        .map(patch -> new TextEdit(positionOf(patch.srcPos(), lookup), patch.replacement()))
+        .map(patch -> new TextEdit(positionOf(patch.srcPos(), lookupVirtualFileId), patch.replacement()))
         .collect(toList())
     );
   }
 
-  private static Position positionOf(SourcePosition pos, Function<SourceFile, String> lookup) {
+  private static Position positionOf(SourcePosition pos, Function<SourceFile, String> lookupVirtualFileId) {
     if (pos.exists()){
-      return new PositionBridge(pos, lookup.apply(pos.source()));
+      return new PositionBridge(pos, lookupVirtualFileId.apply(pos.source()));
     } else {
       return PositionBridge.noPosition;
     }

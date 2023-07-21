@@ -49,8 +49,7 @@ class ExtractAPI extends Phase {
   override def description: String = ExtractAPI.description
 
   override def isRunnable(using Context): Boolean = {
-    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.incrementalEnabled || forceRun)
+    super.isRunnable && ctx.runZincPhases
   }
 
   // Check no needed. Does not transform trees
