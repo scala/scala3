@@ -303,9 +303,9 @@ extends tpd.TreeTraverser:
           val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
           for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
             if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
-              def where = if fn.symbol.exists then i" in the body of ${fn.symbol}" else ""
+              def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
               CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
-                i"Sealed type variable $pname", " be instantiated to",
+                i"Sealed type variable $pname", "be instantiated to",
                 i"This is often caused by a local capability$where\nleaking as part of its result.",
                 tree.srcPos)
       case _ =>
@@ -346,7 +346,7 @@ extends tpd.TreeTraverser:
               if prevLambdas.isEmpty then restp
               else SubstParams(prevPsymss, prevLambdas)(restp)
 
-        if tree.tpt.hasRememberedType && !sym.isConstructor then
+        if sym.exists && tree.tpt.hasRememberedType && !sym.isConstructor then
           val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} --> $result", capt)
           if newInfo ne sym.info then
