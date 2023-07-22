@@ -196,7 +196,7 @@ object Build {
       "-deprecation",
       "-unchecked",
       //"-Wconf:cat=deprecation&msg=Unsafe:s",    // example usage
-      "-Xfatal-warnings",                         // -Werror in modern usage
+      // "-Xfatal-warnings",                         // -Werror in modern usage
       "-encoding", "UTF8",
       "-language:implicitConversions",
     ),

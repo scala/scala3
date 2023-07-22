@@ -942,6 +942,7 @@ object Objects:
             Bottom
         else
           value
+
     case _ =>
       if isByNameParam(sym) then
         report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
@@ -1234,7 +1235,7 @@ object Objects:
    *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
    *  @param klass       The enclosing class where the type `tp` is located.
    */
-  def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: Value, klass: ClassSymbol): Contextual[Value] =
+  def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
     // expected member types for `unapplySeq`
     def lengthType = ExprType(defn.IntType)
     def lengthCompareType = MethodType(List(defn.IntType), defn.IntType)
