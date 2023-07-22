@@ -418,9 +418,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
-              if sym != defn.WithPureFunsAnnot && sym != defn.WithCaptureChecksAnnot then
+              if sym != defn.WithPureFunsAnnot && sym != defn.CaptureCheckedAnnot then
                 if Feature.ccEnabled then
-                  sym.addAnnotation(Annotation(defn.WithCaptureChecksAnnot, tree.span))
+                  sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot, tree.span))
                 else if Feature.pureFunsEnabled then
                   sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
           else
