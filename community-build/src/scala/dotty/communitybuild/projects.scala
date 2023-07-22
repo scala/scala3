@@ -372,7 +372,7 @@ object projects:
     sbtTestCommand = """set deriving/scalacOptions -= "-Xfatal-warnings"; set typeable/scalacOptions -= "-Xfatal-warnings"; test""",
       // selectively disable -Xfatal-warnings due to deprecations
     sbtDocCommand = forceDoc("typeable", "deriving", "data"),
-    scalacOptions = Nil // disable -Ysafe-init, due to -Xfatal-warnings
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -682,7 +682,7 @@ object projects:
     sbtTestCommand = "runCommunityBuild",
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalatest),
-    scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") :+ "-language:implicitConversions", // disabled -Xcheck-macros, due to bug in macro
   )
 
   lazy val onnxScala = SbtCommunityProject(
