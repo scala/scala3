@@ -164,7 +164,7 @@ extension (tp: Type)
    *  a by name parameter type, turning the latter into an impure by name parameter type.
    */
   def adaptByNameArgUnderPureFuns(using Context): Type =
-    if Feature.pureFunsEnabledSomewhere then
+    if adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
       AnnotatedType(tp,
         CaptureAnnotation(CaptureSet.universal, boxed = false)(defn.RetainsByNameAnnot))
     else
