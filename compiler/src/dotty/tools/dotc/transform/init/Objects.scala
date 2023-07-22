@@ -798,6 +798,10 @@ object Objects:
       report.warning("[Internal error] unexpected tree in selecting a function, fun = " + fun.code.show + Trace.show, fun.code)
       Bottom
 
+    case arr: OfArray =>
+      report.warning("[Internal error] unexpected tree in selecting an array, array = " + arr.show + Trace.show, Trace.position)
+      Bottom
+
     case Bottom =>
       if field.isStaticObject then ObjectRef(field.moduleClass.asClass)
       else Bottom
@@ -817,6 +821,9 @@ object Objects:
     lhs match
     case fun: Fun =>
       report.warning("[Internal error] unexpected tree in assignment, fun = " + fun.code.show + Trace.show, Trace.position)
+
+    case arr: OfArray =>
+      report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
 
     case Cold =>
       report.warning("Assigning to cold aliases is forbidden. Calling trace:\n" + Trace.show, Trace.position)
@@ -854,7 +861,7 @@ object Objects:
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
       Bottom
 
-    case _: Ref | _ : Cold.type | _ : Bottom.type =>
+    case outer: (Ref | Cold.type | Bottom.type) =>
       if klass == defn.ArrayClass then
         val arr = OfArray(State.currentObject, summon[Regions.Data])
         Heap.write(arr.addr, Bottom)
@@ -930,7 +937,7 @@ object Objects:
           case Cold =>
             report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
             Bottom
-          case _: ValueSet | _: Ref =>
+          case _: ValueSet | _: Ref | _: OfArray =>
             report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
             Bottom
         else
