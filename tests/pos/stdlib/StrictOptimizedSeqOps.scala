@@ -1,1 +1,0 @@
-collection/StrictOptimizedSeqOps.scala

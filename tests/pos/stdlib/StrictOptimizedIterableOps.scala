@@ -1,1 +1,0 @@
-collection/StrictOptimizedIterableOps.scala
