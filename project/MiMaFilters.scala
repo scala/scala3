@@ -15,6 +15,7 @@ object MiMaFilters {
     ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$relaxedExtensionImports$"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.Tuples.reverse"),
     ProblemFilters.exclude[MissingFieldProblem]("scala.Tuple.Helpers"),
+    ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.CaptureChecked"),
     // end of New experimental features in 3.3.X
   )
   val TastyCore: Seq[ProblemFilter] = Seq(

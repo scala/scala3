@@ -1,9 +1,9 @@
 -- Error: tests/neg-custom-args/captures/try.scala:23:16 ---------------------------------------------------------------
 23 |  val a = handle[Exception, CanThrow[Exception]] { // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |          Sealed type variable R cannot  be instantiated to box CT[Exception]^ since
+   |          Sealed type variable R cannot be instantiated to box CT[Exception]^ since
    |          that type captures the root capability `cap`.
-   |          This is often caused by a local capability in the body of method handle
+   |          This is often caused by a local capability in an argument of method handle
    |          leaking as part of its result.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
 29 |  val b = handle[Exception, () -> Nothing] {  // error
@@ -31,7 +31,7 @@
 -- Error: tests/neg-custom-args/captures/try.scala:35:11 ---------------------------------------------------------------
 35 |  val xx = handle {  // error
    |           ^^^^^^
-   |           Sealed type variable R cannot  be instantiated to box () => Int since
+   |           Sealed type variable R cannot be instantiated to box () => Int since
    |           that type captures the root capability `cap`.
-   |           This is often caused by a local capability in the body of method handle
+   |           This is often caused by a local capability in an argument of method handle
    |           leaking as part of its result.

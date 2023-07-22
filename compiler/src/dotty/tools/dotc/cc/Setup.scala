@@ -114,88 +114,6 @@ extends tpd.TreeTraverser:
           case _ => tp
       case _ => tp
 
-    private def superTypeIsImpure(tp: Type): Boolean = {
-      tp.dealias match
-        case CapturingType(_, refs) =>
-          !refs.isAlwaysEmpty
-        case tp: (TypeRef | AppliedType) =>
-          val sym = tp.typeSymbol
-          if sym.isClass then
-            sym == defn.AnyClass
-              // we assume Any is a shorthand of {cap} Any, so if Any is an upper
-              // bound, the type is taken to be impure.
-          else superTypeIsImpure(tp.superType)
-        case tp: (RefinedOrRecType | MatchType) =>
-          superTypeIsImpure(tp.underlying)
-        case tp: AndType =>
-          superTypeIsImpure(tp.tp1) || needsVariable(tp.tp2)
-        case tp: OrType =>
-          superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
-        case _ =>
-          false
-    }.showing(i"super type is impure $tp = $result", capt)
-
-    /** Should a capture set variable be added on type `tp`? */
-    def needsVariable(tp: Type): Boolean = {
-      tp.typeParams.isEmpty && tp.match
-        case tp: (TypeRef | AppliedType) =>
-          val tp1 = tp.dealias
-          if tp1 ne tp then needsVariable(tp1)
-          else
-            val sym = tp1.typeSymbol
-            if sym.isClass then
-              !sym.isPureClass && sym != defn.AnyClass
-            else superTypeIsImpure(tp1)
-        case tp: (RefinedOrRecType | MatchType) =>
-          needsVariable(tp.underlying)
-        case tp: AndType =>
-          needsVariable(tp.tp1) && needsVariable(tp.tp2)
-        case tp: OrType =>
-          needsVariable(tp.tp1) || needsVariable(tp.tp2)
-        case CapturingType(parent, refs) =>
-          needsVariable(parent)
-          && refs.isConst      // if refs is a variable, no need to add another
-          && !refs.isUniversal // if refs is {cap}, an added variable would not change anything
-        case _ =>
-          false
-    }.showing(i"can have inferred capture $tp = $result", capt)
-
-    /** Add a capture set variable to `tp` if necessary, or maybe pull out
-     *  an embedded capture set variable from a part of `tp`.
-     */
-    def addVar(tp: Type) = tp match
-      case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
-        CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
-      case tp: RecType =>
-        tp.parent match
-          case parent @ CapturingType(parent1, refs) =>
-            CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
-          case _ =>
-            tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
-                // by `mapInferred`. Hence if the underlying type admits capture variables
-                // a variable was already added, and the first case above would apply.
-      case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-        assert(refs1.asVar.elems.isEmpty)
-        assert(refs2.asVar.elems.isEmpty)
-        assert(tp1.isBoxed == tp2.isBoxed)
-        CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
-      case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-        assert(refs1.asVar.elems.isEmpty)
-        assert(refs2.asVar.elems.isEmpty)
-        assert(tp1.isBoxed == tp2.isBoxed)
-        CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
-      case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
-        CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
-      case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
-        CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
-      case _ if needsVariable(tp) =>
-        val cs = tp.dealias match
-          case CapturingType(_, refs) => CaptureSet.Var(refs.elems)
-          case _ => CaptureSet.Var()
-        CapturingType(tp, cs)
-      case _ =>
-        tp
-
     private var isTopLevel = true
 
     private def mapNested(ts: List[Type]): List[Type] =
@@ -246,7 +164,7 @@ extends tpd.TreeTraverser:
             resType = this(tp.resType))
         case _ =>
           mapOver(tp)
-      addVar(addCaptureRefinements(tp1))
+      Setup.addVar(addCaptureRefinements(tp1))
     end apply
   end mapInferred
 
@@ -385,9 +303,9 @@ extends tpd.TreeTraverser:
           val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
           for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
             if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
-              def where = if fn.symbol.exists then i" in the body of ${fn.symbol}" else ""
+              def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
               CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
-                i"Sealed type variable $pname", " be instantiated to",
+                i"Sealed type variable $pname", "be instantiated to",
                 i"This is often caused by a local capability$where\nleaking as part of its result.",
                 tree.srcPos)
       case _ =>
@@ -428,7 +346,7 @@ extends tpd.TreeTraverser:
               if prevLambdas.isEmpty then restp
               else SubstParams(prevPsymss, prevLambdas)(restp)
 
-        if tree.tpt.hasRememberedType && !sym.isConstructor then
+        if sym.exists && tree.tpt.hasRememberedType && !sym.isConstructor then
           val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} --> $result", capt)
           if newInfo ne sym.info then
@@ -474,4 +392,97 @@ object Setup:
 
   def isDuringSetup(using Context): Boolean =
     ctx.property(IsDuringSetupKey).isDefined
+
+  private def superTypeIsImpure(tp: Type)(using Context): Boolean = {
+    tp.dealias match
+      case CapturingType(_, refs) =>
+        !refs.isAlwaysEmpty
+      case tp: (TypeRef | AppliedType) =>
+        val sym = tp.typeSymbol
+        if sym.isClass then
+          sym == defn.AnyClass
+            // we assume Any is a shorthand of {cap} Any, so if Any is an upper
+            // bound, the type is taken to be impure.
+        else superTypeIsImpure(tp.superType)
+      case tp: (RefinedOrRecType | MatchType) =>
+        superTypeIsImpure(tp.underlying)
+      case tp: AndType =>
+        superTypeIsImpure(tp.tp1) || needsVariable(tp.tp2)
+      case tp: OrType =>
+        superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
+      case _ =>
+        false
+  }.showing(i"super type is impure $tp = $result", capt)
+
+  /** Should a capture set variable be added on type `tp`? */
+  def needsVariable(tp: Type)(using Context): Boolean = {
+    tp.typeParams.isEmpty && tp.match
+      case tp: (TypeRef | AppliedType) =>
+        val sym = tp.typeSymbol
+        if sym.isClass then
+          !sym.isPureClass && sym != defn.AnyClass
+        else
+          sym != defn.FromJavaObjectSymbol
+            // For capture checking, we assume Object from Java is the same as Any
+          && {
+            val tp1 = tp.dealias
+            if tp1 ne tp then needsVariable(tp1)
+            else superTypeIsImpure(tp1)
+          }
+      case tp: (RefinedOrRecType | MatchType) =>
+        needsVariable(tp.underlying)
+      case tp: AndType =>
+        needsVariable(tp.tp1) && needsVariable(tp.tp2)
+      case tp: OrType =>
+        needsVariable(tp.tp1) || needsVariable(tp.tp2)
+      case CapturingType(parent, refs) =>
+        needsVariable(parent)
+        && refs.isConst      // if refs is a variable, no need to add another
+        && !refs.isUniversal // if refs is {cap}, an added variable would not change anything
+      case _ =>
+        false
+  }.showing(i"can have inferred capture $tp = $result", capt)
+
+  /** Add a capture set variable to `tp` if necessary, or maybe pull out
+   *  an embedded capture set variable from a part of `tp`.
+   */
+  def decorate(tp: Type, addedSet: Type => CaptureSet)(using Context): Type = tp match
+    case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
+      CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
+    case tp: RecType =>
+      tp.parent match
+        case parent @ CapturingType(parent1, refs) =>
+          CapturingType(tp.derivedRecType(parent1), refs, parent.isBoxed)
+        case _ =>
+          tp // can return `tp` here since unlike RefinedTypes, RecTypes are never created
+              // by `mapInferred`. Hence if the underlying type admits capture variables
+              // a variable was already added, and the first case above would apply.
+    case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
+      assert(refs1.elems.isEmpty)
+      assert(refs2.elems.isEmpty)
+      assert(tp1.isBoxed == tp2.isBoxed)
+      CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
+    case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
+      assert(refs1.elems.isEmpty)
+      assert(refs2.elems.isEmpty)
+      assert(tp1.isBoxed == tp2.isBoxed)
+      CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
+    case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
+      CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
+    case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
+      CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
+    case _ if needsVariable(tp) =>
+      CapturingType(tp, addedSet(tp))
+    case _ =>
+      tp
+
+  /** Add a capture set variable to `tp` if necessary, or maybe pull out
+   *  an embedded capture set variable from a part of `tp`.
+   */
+  def addVar(tp: Type)(using Context): Type =
+    decorate(tp,
+      addedSet = _.dealias.match
+        case CapturingType(_, refs) => CaptureSet.Var(refs.elems)
+        case _ => CaptureSet.Var())
+
 end Setup

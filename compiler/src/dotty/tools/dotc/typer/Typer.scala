@@ -1827,7 +1827,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // TODO: move the check above to patternMatcher phase
                 val uncheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.UncheckedAnnot, tree.selector.span))
                 tpd.cpy.Match(result)(
-                  selector = tpd.Typed(sel, tpd.TypeTree(uncheckedTpe)),
+                  selector = tpd.Typed(sel, new tpd.InferredTypeTree().withType(uncheckedTpe)),
                   cases = result.cases
                 )
               case _ =>

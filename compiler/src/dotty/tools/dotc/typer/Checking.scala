@@ -146,12 +146,17 @@ object Checking {
       def traverse(tp: Type) =
         tp match
           case AppliedType(tycon, argTypes)
-          if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava) =>
+          if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
             // Don't check bounds in Java units that refer to Java type constructors.
             // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
             // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
             // Do check all bounds in Scala units and those bounds in Java units that
             // occur in applications of Scala type constructors.
+            && !(ctx.phase == Phases.checkCapturesPhase && !tycon.typeSymbol.is(CaptureChecked))
+            // Don't check bounds when capture checking type constructors that were not
+            // themselves capture checked. Since the type constructor could not foresee
+            // possible capture sets, it's better to be lenient for backwards compatibility.
+          =>
             checkAppliedType(
               untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
                 .withType(tp).withSpan(tpt.span.toSynthetic),
