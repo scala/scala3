@@ -1940,7 +1940,7 @@ object Types {
      *  the two capture sets are combined.
      */
     def capturing(cs: CaptureSet)(using Context): Type =
-      if cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
+      if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
       else this match
         case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
         case _ => CapturingType(this, cs)
