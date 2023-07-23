@@ -38,7 +38,7 @@ object CheckCaptures:
       if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
         sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
       else if Synthetics.needsTransform(sym) then
-        Synthetics.transformToCC(sym)
+        Synthetics.transform(sym, toCC = true)
       else
         sym
   end Pre
@@ -173,7 +173,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.run
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if Synthetics.needsTransform(sym) then Synthetics.transformFromCC(sym)
+    if Synthetics.needsTransform(sym) then Synthetics.transform(sym, toCC = false)
     else super.transformSym(sym)
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
