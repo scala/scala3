@@ -54,6 +54,7 @@ public final class CompilerInterface {
     }
   }
 
+  @SuppressWarnings("deprecation")
   public void run(File[] sources, DependencyChanges changes, AnalysisCallback callback, Logger log,
       Reporter delegate, CompileProgress progress, CachedCompiler cached) {
     cached.run(sources, changes, callback, log, delegate, progress);

@@ -19,7 +19,6 @@ import TestCallback.ExtractedClassDependencies
  * source code using Scala compiler.
  */
 class ScalaCompilerForUnitTesting {
-  import scala.language.reflectiveCalls
 
   /**
    * Compiles given source code using Scala compiler and returns API representation
@@ -122,7 +121,7 @@ class ScalaCompilerForUnitTesting {
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  def compileSrcs(groupedSrcs: List[List[String]]): (Seq[File], TestCallback) = {
+  def compileSrcs(groupedSrcs: List[List[String]]): (Seq[VirtualFile], TestCallback) = {
       val temp = IO.createTemporaryDirectory
       val analysisCallback = new TestCallback
       val classesDir = new File(temp, "classes")
@@ -137,13 +136,13 @@ class ScalaCompilerForUnitTesting {
             prepareSrcFile(temp, fileName, src)
         }
 
-        val virtualSrcFiles = srcFiles.map(file => TestVirtualFile(file.toPath)).toArray
+        val virtualSrcFiles = srcFiles.toArray
         val classesDirPath = classesDir.getAbsolutePath.toString
         val output = new SingleOutput:
           def getOutputDirectory() = classesDir
 
         bridge.run(
-          virtualSrcFiles.toArray,
+          virtualSrcFiles,
           new TestDependencyChanges,
           Array("-Yforce-sbt-phases", "-classpath", classesDirPath, "-usejavacp", "-d", classesDirPath),
           output,
@@ -158,14 +157,14 @@ class ScalaCompilerForUnitTesting {
       (files.flatten.toSeq, analysisCallback)
   }
 
-  def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
+  def compileSrcs(srcs: String*): (Seq[VirtualFile], TestCallback) = {
     compileSrcs(List(srcs.toList))
   }
 
-  private def prepareSrcFile(baseDir: File, fileName: String, src: String): File = {
+  private def prepareSrcFile(baseDir: File, fileName: String, src: String): VirtualFile = {
     val srcFile = new File(baseDir, fileName)
     IO.write(srcFile, src)
-    srcFile
+    new TestVirtualFile(srcFile.toPath)
   }
 }
 
