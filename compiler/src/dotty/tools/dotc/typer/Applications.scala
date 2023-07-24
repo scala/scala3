@@ -844,7 +844,7 @@ trait Applications extends Compatibility {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success) app0.withType(UnspecifiedErrorType)
+        if (!success || typedArgs.exists(_.tpe.isError)) app0.withType(UnspecifiedErrorType)
         else {
           if !sameSeq(args, orderedArgs)
              && !isJavaAnnotConstr(methRef.symbol)
