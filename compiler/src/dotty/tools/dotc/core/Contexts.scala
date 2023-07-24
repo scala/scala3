@@ -274,9 +274,10 @@ object Contexts {
 
     def getSiblingClassfile(tastyFile: AbstractFile): AbstractFile =
       base.siblingClassfiles.getOrElseUpdate(tastyFile, {
-        val classfile0 = tastyFile.resolveSibling(tastyFile.name.stripSuffix(".tasty") + ".class")
+        val className = tastyFile.name.stripSuffix(".tasty")
+        val classfile0 = tastyFile.resolveSibling(className + ".class")
         if classfile0 == null then
-          val classfile = tastyFile.resolveSibling(tastyFile.name.stripSuffix(".tasty") + "$.class")
+          val classfile = tastyFile.resolveSibling(className + "$.class")
           if classfile == null then
             NoAbstractFile
           else
