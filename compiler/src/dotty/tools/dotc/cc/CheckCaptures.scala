@@ -1032,9 +1032,9 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  that this type parameter can't see.
      *  For example, when capture checking the following expression:
      *
-     *    def usingLogFile[T](op: (f: {cap} File) => T): T = ...
+     *    def usingLogFile[T](op: File^ => T): T = ...
      *
-     *    usingLogFile[box ?1 () -> Unit] { (f: {cap} File) => () => { f.write(0) } }
+     *    usingLogFile[box ?1 () -> Unit] { (f: File^) => () => { f.write(0) } }
      *
      *  We may propagate `f` into ?1, making ?1 ill-formed.
      *  This also causes soundness issues, since `f` in ?1 should be widened to `cap`,
@@ -1046,34 +1046,26 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private def healTypeParam(tree: Tree)(using Context): Unit =
       val checker = new TypeTraverser:
+        private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
+
         private def isAllowed(ref: CaptureRef): Boolean = ref match
           case ref: TermParamRef => allowed.contains(ref)
           case _ => true
 
-        // Widen the given term parameter refs x₁ : C₁ S₁ , ⋯ , xₙ : Cₙ Sₙ to their capture sets C₁ , ⋯ , Cₙ.
-        //
-        // If in these capture sets there are any capture references that are term parameter references we should avoid,
-        // we will widen them recursively.
-        private def widenParamRefs(refs: List[TermParamRef]): List[CaptureSet] =
-          @scala.annotation.tailrec
-          def recur(todos: List[TermParamRef], acc: List[CaptureSet]): List[CaptureSet] =
-            todos match
-              case Nil => acc
-              case ref :: rem =>
-                val cs = ref.captureSetOfInfo
-                val nextAcc = cs.filter(isAllowed(_)) :: acc
-                val nextRem: List[TermParamRef] = (cs.elems.toList.filter(!isAllowed(_)) ++ rem).asInstanceOf
-                recur(nextRem, nextAcc)
-          recur(refs, Nil)
-
         private def healCaptureSet(cs: CaptureSet): Unit =
-          def avoidance(elems: List[CaptureRef])(using Context): Unit =
-            val toInclude = widenParamRefs(elems.filter(!isAllowed(_)).asInstanceOf)
-            //println(i"HEAL $cs by widening to $toInclude")
-            toInclude.foreach(checkSubset(_, cs, tree.srcPos))
-          cs.ensureWellformed(avoidance)
-
-        private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
+          cs.ensureWellformed: elems =>
+            ctx ?=>
+              var seen = new util.HashSet[CaptureRef]
+              def recur(elems: List[CaptureRef]): Unit =
+                for ref <- elems do
+                  if !isAllowed(ref) && !seen.contains(ref) then
+                    seen += ref
+                    val widened = ref.captureSetOfInfo
+                    val added = widened.filter(isAllowed(_))
+                    capt.println(i"heal $ref in $cs by widening to $added")
+                    checkSubset(added, cs, tree.srcPos)
+                    recur(widened.elems.toList)
+              recur(elems)
 
         def traverse(tp: Type) =
           tp match
