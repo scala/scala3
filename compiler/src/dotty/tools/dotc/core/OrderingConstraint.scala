@@ -344,7 +344,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if newSet.isEmpty then deps.remove(referenced)
       else deps.updated(referenced, newSet)
 
-    def traverse(t: Type) = t match
+    def traverse(t: Type) = try
+      t match
       case param: TypeParamRef =>
         if hasBounds(param) then
           if variance >= 0 then coDeps = update(coDeps, param)
@@ -356,6 +357,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           seen += tp
           traverse(tp.ref)
       case _ => traverseChildren(t)
+    catch case ex: Throwable => handleRecursive("adjust", t.show, ex)
   end Adjuster
 
   /** Adjust dependencies to account for the delta of previous entry `prevEntry`

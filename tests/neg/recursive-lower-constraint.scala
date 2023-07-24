@@ -3,5 +3,5 @@ class Bar extends Foo[Bar]
 
 class A {
   def foo[T <: Foo[T], U >: Foo[T] <: T](x: T): T = x
-  foo(new Bar) // error
+  foo(new Bar) // error // error
 }
