@@ -127,6 +127,15 @@ object Build {
     case Bootstrapped => "2.13.10"
   }
 
+  /** Version of the scala-library for which we will generate TASTy.
+   *
+   *  We should never use a nightly version here to release.
+   *
+   *  We can use nightly versions to tests the future compatibility in development.
+   *  Nightly versions: https://scala-ci.typesafe.com/ui/native/scala-integration/org/scala-lang
+   */
+  val stdlibBootstrappedVersion = "2.13.12-bin-364ee69"
+
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
   val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/lampepfl/dotty"
@@ -261,6 +270,9 @@ object Build {
       // sbt will complain if we don't exclude them here.
       Keys.scalaSource, Keys.javaSource
     ),
+
+    // This is used to download nightly builds of the Scala 2 library in `stdlib-bootstrapped`
+    resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/",
   )
 
   lazy val disableDocSetting =
@@ -977,7 +989,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-lang" % "scala-library" % stdlibVersion(Bootstrapped) % "sourcedeps"),
+        ("org.scala-lang" % "scala-library" % stdlibBootstrappedVersion % "sourcedeps"),
       (Compile / sourceGenerators) += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -1020,18 +1032,18 @@ object Build {
         files.filterNot(_.relativeTo(reference).exists(overwritenSources))
       },
       (Test / managedClasspath) ~= {
-        _.filterNot(file => file.data.getName == s"scala-library-${stdlibVersion(Bootstrapped)}.jar")
+        _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
       mimaCheckDirection := "both",
       mimaBackwardIssueFilters := MiMaFilters.StdlibBootstrappedBackwards,
       mimaForwardIssueFilters := MiMaFilters.StdlibBootstrappedForward,
-      mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibVersion(Bootstrapped),
+      mimaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       mimaExcludeAnnotations ++= Seq(
         "scala.annotation.experimental",
         "scala.annotation.specialized",
         "scala.annotation.unspecialized",
       ),
-      tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibVersion(Bootstrapped),
+      tastyMiMaPreviousArtifacts += "org.scala-lang" % "scala-library" % stdlibBootstrappedVersion,
       tastyMiMaCurrentClasspath := {
         val javaBootCp = tastyMiMaJavaBootClasspath.value
         val classDir = (Compile / classDirectory).value.toPath()
@@ -1138,7 +1150,7 @@ object Build {
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value,
       Test / javaOptions += "-Ddotty.scala.library=" + (`stdlib-bootstrapped` / Compile / packageBin).value.getAbsolutePath,
       Compile / compile / fullClasspath ~= {
-        _.filterNot(file => file.data.getName == s"scala-library-${stdlibVersion(Bootstrapped)}.jar")
+        _.filterNot(file => file.data.getName == s"scala-library-$stdlibBootstrappedVersion.jar")
       },
       Compile / compile / dependencyClasspath := {
         // make sure that the scala2-library (tasty of `stdlib-bootstrapped-tasty`) is listed before the scala-library (classfiles)
