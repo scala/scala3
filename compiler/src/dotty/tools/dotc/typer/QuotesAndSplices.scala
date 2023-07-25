@@ -326,6 +326,7 @@ object QuotesAndSplices {
       }
 
       override def transform(tree: Tree)(using Context) = tree match
+        // TODO: handle TypeBoundsTree, LambdaTypeTree as well as method parameters in DefTrees?
         case tree @ AppliedTypeTree(tpt, args) =>
           val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
             arg.tpe match {
