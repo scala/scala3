@@ -757,7 +757,7 @@ Occurrences:
 [2:13..2:29): deprecatedMethod -> _empty_/Deprecated.deprecatedMethod().
 
 Diagnostics:
-[2:13..2:29): [warning] [33mmethod[0m [35mdeprecatedMethod[0m in [33mobject[0m [35mDeprecated[0m is deprecated
+[2:13..2:29): [warning] method deprecatedMethod in object Deprecated is deprecated
 
 expect/Empty.scala
 ------------------

@@ -6,6 +6,7 @@ import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.dotc.core.Contexts.Context
 
 object DiagnosticOps:
+  private val asciiColorCodes = "\u001B\\[[;\\d]*m".r
   extension (d: Diagnostic)
     def toSemanticDiagnostic(using Context): s.Diagnostic =
       val severity = d.level match
@@ -13,8 +14,9 @@ object DiagnosticOps:
         case WARNING => s.Diagnostic.Severity.WARNING
         case INFO => s.Diagnostic.Severity.INFORMATION
         case _ => s.Diagnostic.Severity.INFORMATION
+      val msg = asciiColorCodes.replaceAllIn(d.msg.message, m => "")
       s.Diagnostic(
         range = Scala3.range(d.pos.span, d.pos.source),
         severity = severity,
-        message = d.msg.message
+        message = msg
       )
