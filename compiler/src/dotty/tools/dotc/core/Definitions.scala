@@ -1110,10 +1110,10 @@ class Definitions {
       ft.dealias match
         case ErasedFunctionOf(mt) =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
-        case _ =>
-          val tsym = ft.dealias.typeSymbol
+        case dft =>
+          val tsym = dft.typeSymbol
           if isFunctionSymbol(tsym) && ft.isRef(tsym) then
-            val targs = ft.dealias.argInfos
+            val targs = dft.argInfos
             if (targs.isEmpty) None
             else Some(targs.init, targs.last, tsym.name.isContextFunction)
           else None
