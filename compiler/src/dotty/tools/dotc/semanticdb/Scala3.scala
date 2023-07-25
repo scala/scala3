@@ -216,7 +216,8 @@ object Scala3:
 
       def isEmptyNumbered: Boolean =
         !name.is(NameKinds.WildcardParamName)
-        && !name.is(NameKinds.EvidenceParamName)
+        && !name.is(NameKinds.ContextBoundParamName)
+        && !name.is(NameKinds.ContextFunctionParamName)
         && { name match
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false

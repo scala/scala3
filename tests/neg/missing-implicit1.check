@@ -19,7 +19,7 @@
 -- [E172] Type Error: tests/neg/missing-implicit1.scala:23:42 ----------------------------------------------------------
 23 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
-   |No given instance of type testObjectInstance.Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
+   |No given instance of type testObjectInstance.Zip[Option] was found for a context parameter of method traverse in trait Traverse
    |
    |The following import might fix the problem:
    |
