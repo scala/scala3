@@ -242,7 +242,6 @@ trait QuotesAndSplices {
     val allTypeBindings = List.newBuilder[Bind]
     for tpVar <- typeTypeVariables do
       val sym = tpVar.symbol
-      sym.setFlag(Case)
       allTypeBindings += Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.info)).withSpan(tpVar.span)
 
     val body1 = inContext(patternCtx) {

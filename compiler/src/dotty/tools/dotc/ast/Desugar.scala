@@ -384,8 +384,11 @@ object desugar {
           case tdef @ untpd.TypeDef(name, _) => !tdef.isBackquoted && name.isVarPattern
           case _ => false
         }
+        val untpdCaseTypeVariables = untpdTypeVariables.asInstanceOf[List[untpd.TypeDef]].map {
+          tdef => tdef.withMods(tdef.mods | Case)
+        }
         val pattern = if otherStats.isEmpty then expr else untpd.cpy.Block(tree)(otherStats, expr)
-        (untpdTypeVariables.asInstanceOf[List[untpd.TypeDef]], pattern)
+        (untpdCaseTypeVariables, pattern)
       case _ =>
         (Nil, tree)
 
