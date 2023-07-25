@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg-macros/i16522.scala:10:45 -----------------------------------------------------
+10 |      case '{HCons($h1: hd1, HCons($h2: hd2, $_ : tl))} => '{$h1.toString ++ $h2.toString} // error
+   |                                             ^^^^^^^
+   |                                             Found:    tl
+   |                                             Required: HList
+   |
+   | longer explanation available when compiling with `-explain`
