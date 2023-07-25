@@ -39,3 +39,5 @@ class TopLevel2
 object TopLevel3
 
 class TopLevel4
+
+object TopLevelModuleSuffix$

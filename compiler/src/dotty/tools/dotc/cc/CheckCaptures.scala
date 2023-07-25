@@ -290,6 +290,38 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
+    private def handleBackwardsCompat(tp: Type, sym: Symbol, initialVariance: Int = 1)(using Context): Type =
+      val fluidify = new TypeMap with IdempotentCaptRefMap:
+        variance = initialVariance
+        def apply(t: Type): Type = t match
+          case t: MethodType =>
+            mapOver(t)
+          case t: TypeLambda =>
+            t.derivedLambdaType(resType = this(t.resType))
+          case CapturingType(_, _) =>
+            t
+          case _ =>
+            val t1  = t match
+              case t @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(t) =>
+                t.derivedRefinedType(parent, rname, this(rinfo))
+              case _ =>
+                mapOver(t)
+            if variance > 0 then t1
+            else Setup.decorate(t1, Function.const(CaptureSet.Fluid))
+
+      def isPreCC(sym: Symbol): Boolean =
+        sym.isTerm && sym.maybeOwner.isClass
+        && !sym.owner.is(CaptureChecked)
+        && !defn.isFunctionSymbol(sym.owner)
+
+      if isPreCC(sym) then
+        val tpw = tp.widen
+        val fluidTp = fluidify(tpw)
+        if fluidTp eq tpw then tp
+        else fluidTp.showing(i"fluid for ${sym.showLocated}, ${sym.is(JavaDefined)}: $tp --> $result", capt)
+      else tp
+    end handleBackwardsCompat
+
     override def recheckIdent(tree: Ident)(using Context): Type =
       if tree.symbol.is(Method) then
         if tree.symbol.info.isParameterless then
@@ -297,7 +329,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         markFree(tree.symbol, tree.srcPos)
-      super.recheckIdent(tree)
+      handleBackwardsCompat(super.recheckIdent(tree), tree.symbol)
 
     /** A specialized implementation of the selection rule.
      *
@@ -327,7 +359,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
       if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
-        selType
+        handleBackwardsCompat(selType, tree.symbol)
       else
         val qualCs = qualType.captureSet
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
@@ -362,7 +394,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         val argType0 = f(recheckStart(arg, pt))
         val argType = super.recheckFinish(argType0, arg, pt)
         super.recheckFinish(argType, tree, pt)
-      if meth == defn.Caps_unsafeBox then
+
+      if meth == defn.Caps_unsafeAssumePure then
+        val arg :: Nil = tree.args: @unchecked
+        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
+        val argType =
+          if argType0.captureSet.isAlwaysEmpty then argType0
+          else argType0.widen.stripCapturing
+        capt.println(i"rechecking $arg with ${pt.capturing(CaptureSet.universal)}: $argType")
+        super.recheckFinish(argType, tree, pt)
+      else if meth == defn.Caps_unsafeBox then
         mapArgUsing(_.forceBoxStatus(true))
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
@@ -662,8 +703,10 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
       def recur(expected: Type): Type = expected.dealias match
-        case expected @ CapturingType(eparent, refs) =>
-          CapturingType(recur(eparent), refs, boxed = expected.isBoxed)
+        case expected0 @ CapturingType(eparent, refs) =>
+          val eparent1 = recur(eparent)
+          if eparent1 eq eparent then expected
+          else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
         case expected @ defn.FunctionOf(args, resultType, isContextual)
           if defn.isNonRefinedFunction(expected) && defn.isFunctionNType(actual) && !defn.isNonRefinedFunction(actual) =>
           val expected1 = toDepFun(args, resultType, isContextual)
@@ -883,7 +926,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     *  But maybe we can then elide the check during the RefChecks phase under captureChecking?
     */
     def checkOverrides = new TreeTraverser:
-      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self) {
+      class OverridingPairsCheckerCC(clazz: ClassSymbol, self: Type, srcPos: SrcPos)(using Context) extends OverridingPairsChecker(clazz, self):
         /** Check subtype with box adaptation.
         *  This function is passed to RefChecks to check the compatibility of overriding pairs.
         *  @param sym  symbol of the field definition that is being checked
@@ -905,7 +948,11 @@ class CheckCaptures extends Recheck, SymTransformer:
                 case _ => adapted
             finally curEnv = saved
           actual1 frozen_<:< expected1
-      }
+
+        override def adjustInfo(tp: Type, member: Symbol)(using Context): Type =
+          handleBackwardsCompat(tp, member, initialVariance = 0)
+            //.showing(i"adjust $other: $tp --> $result")
+      end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
         t match

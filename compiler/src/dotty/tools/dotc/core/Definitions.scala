@@ -972,6 +972,7 @@ class Definitions {
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
+    @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
@@ -1029,6 +1030,7 @@ class Definitions {
   @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val WithPureFunsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WithPureFuns")
+  @tu lazy val CaptureCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.CaptureChecked")
   @tu lazy val BeanGetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanGetter")
   @tu lazy val BeanSetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.beanSetter")
   @tu lazy val FieldMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.field")
@@ -1115,7 +1117,7 @@ class Definitions {
         FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft.dealias match
-        case RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) =>
+        case ErasedFunctionOf(mt) =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
         case _ =>
           val tsym = ft.dealias.typeSymbol
@@ -1125,6 +1127,42 @@ class Definitions {
             else Some(targs.init, targs.last, tsym.name.isContextFunction)
           else None
     }
+  }
+
+  object PolyOrErasedFunctionOf {
+    /** Matches a refined `PolyFunction` or `ErasedFunction` type and extracts the apply info.
+     *
+     *  Pattern: `(PolyFunction | ErasedFunction) { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[MethodicType] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodicType)
+      if parent.derivesFrom(defn.PolyFunctionClass) || parent.derivesFrom(defn.ErasedFunctionClass) =>
+        Some(mt)
+      case _ => None
+  }
+
+  object PolyFunctionOf {
+    /** Matches a refined `PolyFunction` type and extracts the apply info.
+     *
+     *  Pattern: `PolyFunction { def apply: $pt }`
+     */
+    def unapply(ft: Type)(using Context): Option[PolyType] = ft.dealias match
+      case RefinedType(parent, nme.apply, pt: PolyType)
+      if parent.derivesFrom(defn.PolyFunctionClass) =>
+        Some(pt)
+      case _ => None
+  }
+
+  object ErasedFunctionOf {
+    /** Matches a refined `ErasedFunction` type and extracts the apply info.
+     *
+     *  Pattern: `ErasedFunction { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[MethodType] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodType)
+      if parent.derivesFrom(defn.ErasedFunctionClass) =>
+        Some(mt)
+      case _ => None
   }
 
   object PartialFunctionOf {
@@ -1387,11 +1425,12 @@ class Definitions {
   /** Base classes that are assumed to be pure for the purposes of capture checking.
    *  Every class inheriting from a pure baseclass is pure.
    */
-  @tu lazy val pureBaseClasses = Set(defn.AnyValClass, defn.ThrowableClass)
+  @tu lazy val pureBaseClasses = Set(defn.ThrowableClass)
 
   /** Non-inheritable lasses that are assumed to be pure for the purposes of capture checking,
    */
-  @tu lazy val pureSimpleClasses = Set(StringClass, NothingClass, NullClass)
+  @tu lazy val pureSimpleClasses =
+    Set(StringClass, NothingClass, NullClass) ++ ScalaValueClasses()
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
@@ -1714,18 +1753,6 @@ class Definitions {
   def isFunctionNType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
-  /** Does `tp` derive from `PolyFunction` or `ErasedFunction`? */
-  def isPolyOrErasedFunctionType(tp: Type)(using Context): Boolean =
-    isPolyFunctionType(tp) || isErasedFunctionType(tp)
-
-  /** Does `tp` derive from `PolyFunction`? */
-  def isPolyFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.PolyFunctionClass)
-
-  /** Does `tp` derive from `ErasedFunction`? */
-  def isErasedFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.ErasedFunctionClass)
-
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
    *  - scala.ContextFunctionN
@@ -1733,7 +1760,9 @@ class Definitions {
    *  - PolyFunction
    */
   def isFunctionType(tp: Type)(using Context): Boolean =
-    isFunctionNType(tp) || isPolyOrErasedFunctionType(tp)
+    isFunctionNType(tp)
+    || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
+    || tp.derivesFrom(defn.ErasedFunctionClass) // TODO check for refinement?
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     if !ctx.settings.Yscala2Stdlib.value then
@@ -1751,27 +1780,27 @@ class Definitions {
   @tu lazy val Tuple2SpecializedParamClasses: PerRun[Set[Symbol]] = new PerRun(Tuple2SpecializedParamTypes.map(_.symbol))
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
-  @tu lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
-    Set(IntType, LongType, FloatType, DoubleType)
-  @tu lazy val Function2SpecializedParamTypes: collection.Set[TypeRef] =
-    Set(IntType, LongType, DoubleType)
-  @tu lazy val Function0SpecializedReturnTypes: collection.Set[TypeRef] =
-    ScalaNumericValueTypeList.toSet + UnitType + BooleanType
-  @tu lazy val Function1SpecializedReturnTypes: collection.Set[TypeRef] =
-    Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-  @tu lazy val Function2SpecializedReturnTypes: collection.Set[TypeRef] =
+  @tu lazy val Function1SpecializedParamTypes: List[TypeRef] =
+    List(IntType, LongType, FloatType, DoubleType)
+  @tu lazy val Function2SpecializedParamTypes: List[TypeRef] =
+    List(IntType, LongType, DoubleType)
+  @tu lazy val Function0SpecializedReturnTypes: List[TypeRef] =
+    ScalaNumericValueTypeList :+ UnitType :+ BooleanType
+  @tu lazy val Function1SpecializedReturnTypes: List[TypeRef] =
+    List(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
+  @tu lazy val Function2SpecializedReturnTypes: List[TypeRef] =
     Function1SpecializedReturnTypes
 
   @tu lazy val Function1SpecializedParamClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function1SpecializedParamTypes.map(_.symbol))
+    new PerRun(Function1SpecializedParamTypes.toSet.map(_.symbol))
   @tu lazy val Function2SpecializedParamClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function2SpecializedParamTypes.map(_.symbol))
+    new PerRun(Function2SpecializedParamTypes.toSet.map(_.symbol))
   @tu lazy val Function0SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function0SpecializedReturnTypes.map(_.symbol))
+    new PerRun(Function0SpecializedReturnTypes.toSet.map(_.symbol))
   @tu lazy val Function1SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function1SpecializedReturnTypes.map(_.symbol))
+    new PerRun(Function1SpecializedReturnTypes.toSet.map(_.symbol))
   @tu lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function2SpecializedReturnTypes.map(_.symbol))
+    new PerRun(Function2SpecializedReturnTypes.toSet.map(_.symbol))
 
   def isSpecializableTuple(base: Symbol, args: List[Type])(using Context): Boolean =
     args.length <= 2 && base.isClass && TupleSpecializedClasses.exists(base.asClass.derivesFrom) && args.match
@@ -1803,18 +1832,18 @@ class Definitions {
     })
     && !ctx.settings.Yscala2Stdlib.value // We do not add the specilized FunctionN methods/classes when compiling the stdlib
 
-  @tu lazy val Function0SpecializedApplyNames: collection.Set[TermName] =
+  @tu lazy val Function0SpecializedApplyNames: List[TermName] =
     for r <- Function0SpecializedReturnTypes
     yield nme.apply.specializedFunction(r, Nil).asTermName
 
-  @tu lazy val Function1SpecializedApplyNames: collection.Set[TermName] =
+  @tu lazy val Function1SpecializedApplyNames: List[TermName] =
     for
       r  <- Function1SpecializedReturnTypes
       t1 <- Function1SpecializedParamTypes
     yield
       nme.apply.specializedFunction(r, List(t1)).asTermName
 
-  @tu lazy val Function2SpecializedApplyNames: collection.Set[TermName] =
+  @tu lazy val Function2SpecializedApplyNames: List[TermName] =
     for
       r  <- Function2SpecializedReturnTypes
       t1 <- Function2SpecializedParamTypes
@@ -1823,7 +1852,7 @@ class Definitions {
       nme.apply.specializedFunction(r, List(t1, t2)).asTermName
 
   @tu lazy val FunctionSpecializedApplyNames: collection.Set[Name] =
-    Function0SpecializedApplyNames ++ Function1SpecializedApplyNames ++ Function2SpecializedApplyNames
+    Set.concat(Function0SpecializedApplyNames, Function1SpecializedApplyNames, Function2SpecializedApplyNames)
 
   def functionArity(tp: Type)(using Context): Int = tp.functionArgInfos.length - 1
 
@@ -1837,7 +1866,7 @@ class Definitions {
     tp.stripTypeVar.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
-      case tp1 @ RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) && mt.isContextualMethod =>
+      case tp1 @ ErasedFunctionOf(mt) if mt.isContextualMethod =>
         tp1
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
@@ -1857,7 +1886,7 @@ class Definitions {
         atPhase(erasurePhase)(unapply(tp))
       else
         asContextFunctionType(tp) match
-          case RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) =>
+          case ErasedFunctionOf(mt) =>
             Some((mt.paramInfos, mt.resType, mt.erasedParams))
           case tp1 if tp1.exists =>
             val args = tp1.functionArgInfos
@@ -1867,7 +1896,7 @@ class Definitions {
 
   /* Returns a list of erased booleans marking whether parameters are erased, for a function type. */
   def erasedFunctionParameters(tp: Type)(using Context): List[Boolean] = tp.dealias match {
-    case RefinedType(parent, nme.apply, mt: MethodType) => mt.erasedParams
+    case ErasedFunctionOf(mt) => mt.erasedParams
     case tp if isFunctionNType(tp) => List.fill(functionArity(tp)) { false }
     case _ => Nil
   }

@@ -673,6 +673,9 @@ object Trees {
    */
   case class Inlined[+T <: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
+
+    def inlinedFromOuterScope: Boolean = call.isEmpty
+
     type ThisTree[+T <: Untyped] = Inlined[T]
     override def isTerm = expansion.isTerm
     override def isType = expansion.isType
@@ -1486,7 +1489,7 @@ object Trees {
      *  innermost enclosing call for which the inlined version is currently
      *  processed.
      */
-    protected def inlineContext(call: tpd.Tree)(using Context): Context = ctx
+    protected def inlineContext(tree: Inlined)(using Context): Context = ctx
 
     /** The context to use when mapping or accumulating over a tree */
     def localCtx(tree: Tree)(using Context): Context
@@ -1557,7 +1560,7 @@ object Trees {
             case SeqLiteral(elems, elemtpt) =>
               cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
             case tree @ Inlined(call, bindings, expansion) =>
-              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(call)))
+              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
             case TypeTree() =>
               tree
             case SingletonTypeTree(ref) =>
@@ -1700,8 +1703,8 @@ object Trees {
               this(this(this(x, block), handler), finalizer)
             case SeqLiteral(elems, elemtpt) =>
               this(this(x, elems), elemtpt)
-            case Inlined(call, bindings, expansion) =>
-              this(this(x, bindings), expansion)(using inlineContext(call))
+            case tree @ Inlined(call, bindings, expansion) =>
+              this(this(x, bindings), expansion)(using inlineContext(tree))
             case TypeTree() =>
               x
             case SingletonTypeTree(ref) =>

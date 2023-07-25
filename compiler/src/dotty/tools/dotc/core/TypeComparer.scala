@@ -478,7 +478,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp2.isRef(AnyClass, skipRefined = false)
         || !tp1.evaluating && recur(tp1.ref, tp2)
       case AndType(tp11, tp12) =>
-        if (tp11.stripTypeVar eq tp12.stripTypeVar) recur(tp11, tp2)
+        if tp11.stripTypeVar eq tp12.stripTypeVar then recur(tp11, tp2)
         else thirdTry
       case tp1 @ OrType(tp11, tp12) =>
         compareAtoms(tp1, tp2) match
@@ -666,7 +666,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 isSubType(info1, info2)
 
             if defn.isFunctionType(tp2) then
-              if defn.isPolyFunctionType(tp2) then
+              if tp2.derivesFrom(defn.PolyFunctionClass) then
                 // TODO should we handle ErasedFunction is this same way?
                 tp1.member(nme.apply).info match
                   case info1: PolyType =>
@@ -898,21 +898,29 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       canWidenAbstract && acc(true, tp)
 
-    def tryBaseType(cls2: Symbol) = {
+    def tryBaseType(cls2: Symbol) =
       val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
       if base.exists && (base ne tp1)
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
               || tp1.widen.underlyingClassRef(refinementOK = true).exists)
       then
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow)
-        && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
-        || base.isInstanceOf[OrType] && fourthTry
-          // if base is a disjunction, this might have come from a tp1 type that
+        def checkBase =
+          isSubType(base, tp2, if tp1.isRef(cls2) then approx else approx.addLow)
+          && recordGadtUsageIf { MatchType.thatReducesUsingGadt(tp1) }
+        if tp1.widenDealias.isInstanceOf[AndType] || base.isInstanceOf[OrType] then
+          // If tp1 is a intersection, it could be that one of the original
+          // branches of the AndType tp1 conforms to tp2, but its base type does
+          // not, or else that its base type for cls2 does not exist, in which case
+          // it would not show up in `base`. In either case, we need to also fall back
+          // to fourthTry. Test cases are i18266.scala and i18226a.scala.
+          // If base is a disjunction, this might have come from a tp1 type that
           // expands to a match type. In this case, we should try to reduce the type
           // and compare the redux. This is done in fourthTry
+          either(checkBase, fourthTry)
+        else
+          checkBase
       else fourthTry
-    }
 
     def fourthTry: Boolean = tp1 match {
       case tp1: TypeRef =>
@@ -989,7 +997,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           }
         }
         compareHKLambda
-      case AndType(tp11, tp12) =>
+      case tp1 @ AndType(tp11, tp12) =>
         val tp2a = tp2.dealiasKeepRefiningAnnots
         if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
@@ -1009,8 +1017,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             return recur(AndType(tp11, tp121), tp2) && recur(AndType(tp11, tp122), tp2)
           case _ =>
         }
-        val tp1norm = simplifyAndTypeWithFallback(tp11, tp12, tp1)
-        if (tp1 ne tp1norm) recur(tp1norm, tp2)
+        val tp1norm = trySimplify(tp1)
+        if tp1 ne tp1norm then recur(tp1norm, tp2)
         else either(recur(tp11, tp2), recur(tp12, tp2))
       case tp1: MatchType =>
         def compareMatch = tp2 match {
@@ -1479,9 +1487,30 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     /** Like tp1 <:< tp2, but returns false immediately if we know that
      *  the case was covered previously during subtyping.
+     *
+     *  A type has been covered previously in subtype checking if it
+     *  is some combination of TypeRefs that point to classes, where the
+     *  combiners are AppliedTypes, RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
+     *
+     *  The exception is that if both sides contain OrTypes, the check hasn't been covered.
+     *  See #17465.
      */
     def isNewSubType(tp1: Type): Boolean =
-      if (isCovered(tp1) && isCovered(tp2))
+      def isCovered(tp: Type): CoveredStatus =
+        tp.dealiasKeepRefiningAnnots.stripTypeVar match
+          case tp: TypeRef =>
+            if tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
+            then CoveredStatus.Covered
+            else CoveredStatus.Uncovered
+          case tp: AppliedType => isCovered(tp.tycon)
+          case tp: RefinedOrRecType => isCovered(tp.parent)
+          case tp: AndType => isCovered(tp.tp1) min isCovered(tp.tp2)
+          case tp: OrType  => isCovered(tp.tp1) min isCovered(tp.tp2) min CoveredStatus.CoveredWithOr
+          case _ => CoveredStatus.Uncovered
+
+      val covered1 = isCovered(tp1)
+      val covered2 = isCovered(tp2)
+      if (covered1 min covered2) >= CoveredStatus.CoveredWithOr && (covered1 max covered2) == CoveredStatus.Covered then
         //println(s"useless subtype: $tp1 <:< $tp2")
         false
       else isSubType(tp1, tp2, approx.addLow)
@@ -2091,19 +2120,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             tp1.parent.asInstanceOf[RefinedType],
             tp2.parent.asInstanceOf[RefinedType], limit))
 
-  /** A type has been covered previously in subtype checking if it
-   *  is some combination of TypeRefs that point to classes, where the
-   *  combiners are AppliedTypes, RefinedTypes, RecTypes, And/Or-Types or AnnotatedTypes.
-   */
-  private def isCovered(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots.stripTypeVar match {
-    case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
-    case tp: AppliedType => isCovered(tp.tycon)
-    case tp: RefinedOrRecType => isCovered(tp.parent)
-    case tp: AndType => isCovered(tp.tp1) && isCovered(tp.tp2)
-    case tp: OrType  => isCovered(tp.tp1) && isCovered(tp.tp2)
-    case _ => false
-  }
-
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type): Boolean = tp.stripTypeVar match {
     case tp: TypeParamRef if constraint contains tp => true
@@ -2506,8 +2522,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   final def andType(tp1: Type, tp2: Type, isErased: Boolean = ctx.erasedTypes): Type =
     andTypeGen(tp1, tp2, AndType.balanced(_, _), isErased = isErased)
 
-  final def simplifyAndTypeWithFallback(tp1: Type, tp2: Type, fallback: Type): Type =
-    andTypeGen(tp1, tp2, (_, _) => fallback)
+  /** Try to simplify AndType, or return the type itself if no simplifiying opportunities exist. */
+  private def trySimplify(tp: AndType): Type =
+    andTypeGen(tp.tp1, tp.tp2, (_, _) => tp)
 
   /** Form a normalized conjunction of two types.
    *  Note: For certain types, `|` is distributed inside the type. This holds for
@@ -2601,12 +2618,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case CapturingType(parent1, refs1) =>
-      if subCaptures(tp2.captureSet, refs1, frozen = true).isOK
+      val refs2 = tp2.captureSet
+      if subCaptures(refs2, refs1, frozen = true).isOK
         && tp1.isBoxedCapturing == tp2.isBoxedCapturing
-      then
-        parent1 & tp2
-      else
-        tp1.derivedCapturingType(parent1 & tp2, refs1)
+      then (parent1 & tp2).capturing(refs2)
+      else tp1.derivedCapturingType(parent1 & tp2, refs1)
     case tp1: AnnotatedType if !tp1.isRefining =>
       tp1.underlying & tp2
     case _ =>
@@ -2990,6 +3006,16 @@ object TypeComparer {
           lo ++ hi
   end ApproxState
   type ApproxState = ApproxState.Repr
+
+  /** Result of `isCovered` check. */
+  private object CoveredStatus:
+    type Repr = Int
+
+    val Uncovered:     Repr = 1   // The type is not covered
+    val CoveredWithOr: Repr = 2   // The type is covered and contains OrTypes
+    val Covered:       Repr = 3   // The type is covered and free from OrTypes
+  end CoveredStatus
+  type CoveredStatus = CoveredStatus.Repr
 
   def topLevelSubType(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.topLevelSubType(tp1, tp2))

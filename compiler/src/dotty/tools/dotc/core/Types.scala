@@ -1747,9 +1747,7 @@ object Types {
         if !tf1.exists then tf2
         else if !tf2.exists then tf1
         else NoType
-      case t if defn.isNonRefinedFunction(t) =>
-        t
-      case t if defn.isErasedFunctionType(t) =>
+      case t if defn.isFunctionType(t) =>
         t
       case t @ SAMType(_, _) =>
         t
@@ -1942,7 +1940,7 @@ object Types {
      *  the two capture sets are combined.
      */
     def capturing(cs: CaptureSet)(using Context): Type =
-      if cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
+      if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
       else this match
         case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
         case _ => CapturingType(this, cs)
@@ -1984,7 +1982,22 @@ object Types {
      *  this method handles this by never simplifying inside a `MethodicType`,
      *  except for replacing type parameters with associated type variables.
      */
-    def simplified(using Context): Type = TypeOps.simplify(this, null)
+    def simplified(using Context): Type =
+      // A recursive match type will have the recursive call
+      // wrapped in a LazyRef.  For example in i18175, the recursive calls
+      // to IsPiped within the definition of IsPiped are all wrapped in LazyRefs.
+      // In addition to that, TypeMaps, such as the one that backs TypeOps.simplify,
+      // by default will rewrap a LazyRef when applying its function.
+      // The result of those two things means that given a big enough input
+      // that recurses enough times through one or multiple match types,
+      // reducing and simplifying the result of the case bodies,
+      // can end up with a large stack of directly-nested lazy refs.
+      // And if that nesting level breaches `Config.LogPendingSubTypesThreshold`,
+      // then TypeComparer will eventually start returning `false` for `isSubType`.
+      // Or, under -Yno-deep-subtypes, start throwing AssertionErrors.
+      // So, we eagerly strip that lazy ref here to avoid the stacking.
+      val tp = stripLazyRef
+      TypeOps.simplify(tp, null)
 
     /** Compare `this == that`, assuming corresponding binders in `bs` are equal.
      *  The normal `equals` should be equivalent to `equals(that, null`)`.
@@ -3590,7 +3603,7 @@ object Types {
 
   def expectValueTypeOrWildcard(tp: Type, where: => String)(using Context): Unit =
     if !tp.isValueTypeOrWildcard then
-      assert(!ctx.isAfterTyper, where) // we check correct kinds at PostTyper
+      assert(!ctx.isAfterTyper, s"$tp in $where") // we check correct kinds at PostTyper
       throw TypeError(em"$tp is not a value type, cannot be used $where")
 
   /** An extractor object to pattern match against a nullable union.

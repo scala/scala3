@@ -10,8 +10,8 @@ import NameKinds.DefaultGetterName
 import Phases.checkCapturesPhase
 import config.Printers.capt
 
-/** Classification and transformation methods for synthetic
- *  case class methods that need to be treated specially.
+/** Classification and transformation methods for function methods and
+ *  synthetic case class methods that need to be treated specially.
  *  In particular, compute capturing types for some of these methods which
  *  have inferred (result-)types that need to be established under separate
  *  compilation.
@@ -27,6 +27,9 @@ object Synthetics:
     case DefaultGetterName(nme.copy, _) => sym.is(Synthetic) && sym.owner.isClass && sym.owner.is(Case)
     case _ => false
 
+  private val functionCombinatorNames = Set[Name](
+    nme.andThen, nme.compose, nme.curried, nme.tupled)
+
   /** Is `sym` a synthetic apply, copy, or copy default getter method?
    *  The types of these symbols are transformed in a special way without
    *  looking at the definitions's RHS
@@ -37,6 +40,7 @@ object Synthetics:
     || isSyntheticCopyDefaultGetterMethod(symd)
     || (symd.symbol eq defn.Object_eq)
     || (symd.symbol eq defn.Object_ne)
+    || defn.isFunctionClass(symd.owner) && functionCombinatorNames.contains(symd.name)
 
   /** Method is excluded from regular capture checking.
    *  Excluded are synthetic class members
@@ -156,6 +160,37 @@ object Synthetics:
     case info: PolyType =>
       info.derivedLambdaType(resType = dropUnapplyCaptures(info.resType))
 
+  private def transformComposeCaptures(symd: SymDenotation, toCC: Boolean)(using Context): Type =
+    val (pt: PolyType) = symd.info: @unchecked
+    val (mt: MethodType) = pt.resType: @unchecked
+    val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+    val mt1 =
+      if toCC then
+        MethodType(mt.paramNames)(
+          mt1 => mt.paramInfos.map(_.capturing(CaptureSet.universal)),
+          mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head)))
+      else
+        MethodType(mt.paramNames)(
+          mt1 => mt.paramInfos.map(_.stripCapturing),
+          mt1 => mt.resType.stripCapturing)
+    pt.derivedLambdaType(resType = mt1)
+
+  def transformCurriedTupledCaptures(symd: SymDenotation, toCC: Boolean)(using Context): Type =
+    val (et: ExprType) = symd.info: @unchecked
+    val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+    def mapFinalResult(tp: Type, f: Type => Type): Type =
+      val defn.FunctionOf(args, res, isContextual) = tp: @unchecked
+      if defn.isFunctionNType(res) then
+        defn.FunctionOf(args, mapFinalResult(res, f), isContextual)
+      else
+        f(tp)
+    val resType1 =
+      if toCC then
+        mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis)))
+      else
+        et.resType.stripCapturing
+    ExprType(resType1)
+
   /** If `sym` refers to a synthetic apply, unapply, copy, or copy default getter method
    *  of a case class, transform it to account for capture information.
    *  The method is run in phase CheckCaptures.Pre
@@ -168,6 +203,10 @@ object Synthetics:
       sym.copySymDenotation(info = addUnapplyCaptures(sym.info))
     case nme.apply | nme.copy =>
       sym.copySymDenotation(info = addCaptureDeps(sym.info))
+    case nme.andThen | nme.compose =>
+      sym.copySymDenotation(info = transformComposeCaptures(sym, toCC = true))
+    case nme.curried | nme.tupled =>
+      sym.copySymDenotation(info = transformCurriedTupledCaptures(sym, toCC = true))
     case n if n == nme.eq || n == nme.ne =>
       sym.copySymDenotation(info =
         MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType))
@@ -183,6 +222,10 @@ object Synthetics:
       sym.copySymDenotation(info = dropUnapplyCaptures(sym.info))
     case nme.apply | nme.copy =>
       sym.copySymDenotation(info = dropCaptureDeps(sym.info))
+    case nme.andThen | nme.compose =>
+      sym.copySymDenotation(info = transformComposeCaptures(sym, toCC = false))
+    case nme.curried | nme.tupled =>
+      sym.copySymDenotation(info = transformCurriedTupledCaptures(sym, toCC = false))
     case n if n == nme.eq || n == nme.ne =>
       sym.copySymDenotation(info = defn.methOfAnyRef(defn.BooleanType))
 

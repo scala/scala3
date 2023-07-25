@@ -92,7 +92,10 @@ class TreeUnpickler(reader: TastyReader,
   private var ownerTree: OwnerTree = _
 
   /** Was unpickled class compiled with pureFunctions? */
-  private var knowsPureFuns: Boolean = false
+  private var withPureFuns: Boolean = false
+
+  /** Was unpickled class compiled with capture checks? */
+  private var withCaptureChecks: Boolean = false
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -458,7 +461,7 @@ class TreeUnpickler(reader: TastyReader,
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case BYNAMEtype =>
           val arg = readType()
-          ExprType(if knowsPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
+          ExprType(if withPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case _ =>
           ConstantType(readConstant(tag))
       }
@@ -496,7 +499,7 @@ class TreeUnpickler(reader: TastyReader,
      *  unless the unpickled class was also compiled with pureFunctions.
      */
     private def postProcessFunction(tp: Type)(using Context): Type =
-      if knowsPureFuns then tp else tp.adaptFunctionTypeUnderPureFuns
+      if withPureFuns then tp else tp.adaptFunctionTypeUnderPureFuns
 
 // ------ Reading definitions -----------------------------------------------------
 
@@ -518,6 +521,8 @@ class TreeUnpickler(reader: TastyReader,
         flags |= (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
       if flags.is(Enum, butNot = Method) && name.isTermName then
         flags |= StableRealizable
+      if name.isTypeName && withCaptureChecks then
+        flags |= CaptureChecked
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) {
@@ -647,8 +652,12 @@ class TreeUnpickler(reader: TastyReader,
       }
       registerSym(start, sym)
       if (isClass) {
-        if sym.owner.is(Package) && annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
-          knowsPureFuns = true
+        if sym.owner.is(Package) then
+          if annots.exists(_.hasSymbol(defn.CaptureCheckedAnnot)) then
+            withCaptureChecks = true
+            withPureFuns = true
+          else if annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
+            withPureFuns = true
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
@@ -1231,7 +1240,7 @@ class TreeUnpickler(reader: TastyReader,
           SingletonTypeTree(readTree())
         case BYNAMEtpt =>
           val arg = readTpt()
-          ByNameTypeTree(if knowsPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
+          ByNameTypeTree(if withPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case NAMEDARG =>
           NamedArg(readName(), readTree())
         case _ =>

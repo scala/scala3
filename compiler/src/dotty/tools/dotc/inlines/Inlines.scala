@@ -101,7 +101,7 @@ object Inlines:
       override def transform(t: Tree)(using Context) =
         if call.span.exists then
           t match
-            case Inlined(t, Nil, expr) if t.isEmpty => expr
+            case t @ Inlined(_, Nil, expr) if t.inlinedFromOuterScope => expr
             case _ if t.isEmpty => t
             case _ => super.transform(t.withSpan(call.span))
         else t
