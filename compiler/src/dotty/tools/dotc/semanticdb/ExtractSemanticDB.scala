@@ -30,9 +30,6 @@ import dotty.tools.io.{AbstractFile, JarArchive}
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
-import com.google.protobuf.Empty
-import com.google.protobuf.UnknownFieldSet
-import com.google.protobuf.UnknownFieldSet.Field
 import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
 
@@ -147,43 +144,15 @@ object ExtractSemanticDB:
     val path = semanticdbPath(source)
     Using.Manager { use =>
       val in = use(Files.newInputStream(path))
-      // val sin = internal.SemanticdbInputStream.newInstance(in)
-      val textDocuments = Empty.parseFrom(in)
-      val docsBytes = textDocuments.getUnknownFields().getField(TextDocuments.DOCUMENTS_FIELD_NUMBER).getLengthDelimitedList()
-      val docFields = Empty.parseFrom(docsBytes.get(0)).getUnknownFields()
-      if (source.file.name == "ValPattern.scala")
-        println(docFields)
-      //docMap.put(7, )
-
-      // val docs = TextDocuments.parseFrom(sin)
-
-      val bos = use(new ByteArrayOutputStream())
-      val sbos = internal.SemanticdbOutputStream.newInstance(bos)
-      val doc = TextDocument(diagnostics = diagnostics)
-      doc.writeTo(sbos)
-      sbos.flush()
-      val diagnosticsOnly = Empty.parseFrom(bos.toByteArray()).getUnknownFields()
-
-      val merged = docFields.toBuilder().mergeFrom(diagnosticsOnly).build()
-      // println(merged)
-      val field = Field.newBuilder().addLengthDelimited(merged.toByteString()).build()
-
-      val fields = textDocuments.getUnknownFields().toBuilder().mergeField(TextDocuments.DOCUMENTS_FIELD_NUMBER, field).build()
-      // println(fields)
-      val updated = textDocuments.toBuilder().setUnknownFields(fields).build()
-      if (source.file.name == "ValPattern.scala")
-        println(updated)
+      val sin = internal.SemanticdbInputStream.newInstance(in)
+      val docs = TextDocuments.parseFrom(sin)
 
       val out = use(Files.newOutputStream(path))
-      val bout = new BufferedOutputStream(out)
-      updated.writeTo(bout)
-      bout.flush()
-      // val sout = internal.SemanticdbOutputStream.newInstance(out)
-      // TextDocuments(docs.documents.map(_.withDiagnostics(diagnostics))).writeTo(sout)
+      val sout = internal.SemanticdbOutputStream.newInstance(out)
+      TextDocuments(docs.documents.map(_.withDiagnostics(diagnostics))).writeTo(sout)
+      sout.flush()
     } match
-      case Failure(ex) =>
-        println(ex.getMessage())
-        // failed somehow, should we say something?
+      case Failure(ex) => // failed somehow, should we say something?
       case Success(_) => // success to update semanticdb, say nothing
   end appendDiagnostics
 
