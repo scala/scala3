@@ -153,13 +153,15 @@ class Pickler extends Phase {
       else
         super.runOn(units)
     if ctx.settings.YtestPickler.value then
-      val ctx2 = ctx.fresh.setSetting(ctx.settings.YreadComments, true)
+      val ctx2 = ctx.fresh
+        .setSetting(ctx.settings.YreadComments, true)
+        .setSetting(ctx.settings.YshowPrintErrors, true)
       testUnpickler(
         using ctx2
-            .setPeriod(Period(ctx.runId + 1, ctx.base.typerPhase.id))
-            .setReporter(new ThrowingReporter(ctx.reporter))
-            .addMode(Mode.ReadPositions)
-            .addMode(Mode.PrintShowExceptions))
+          .setPeriod(Period(ctx.runId + 1, ctx.base.typerPhase.id))
+          .setReporter(new ThrowingReporter(ctx.reporter))
+          .addMode(Mode.ReadPositions)
+      )
     result
   }
 
