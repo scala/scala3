@@ -279,7 +279,7 @@ object Decorators {
         catch
           case ex: CyclicReference => "... (caught cyclic reference) ..."
           case NonFatal(ex)
-          if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
+          if !ctx.settings.YshowPrintErrors.value =>
             s"... (cannot display due to ${ex.className} ${ex.getMessage}) ..."
       case _ => String.valueOf(x).nn
 

@@ -1,6 +1,14 @@
 package dotty.tools.dotc.core
 
-/** A collection of mode bits that are part of a context */
+/** A collection of mode bits that are part of a context.
+ *
+ * What's the difference between a boolean setting and a Mode?
+ * A setting is usually valid for the entire compilation run, whereas a mode is context specific.
+ * Changing a setting in a context creates a new SettingsState in that context, which is a relatively big object.
+ * By comparison, a mode is just an Int.
+ * But, Mode bits are a scarce resource, so for low priority situations, just reset the state with a setting.
+ * Also, a setting is externally settable, while a mode isn't.
+ */
 case class Mode(val bits: Int) extends AnyVal {
   import Mode._
   def | (that: Mode): Mode = Mode(bits | that.bits)
@@ -97,9 +105,6 @@ object Mode {
 
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
-
-  /** Don't suppress exceptions thrown during show */
-  val PrintShowExceptions: Mode = newMode(18, "PrintShowExceptions")
 
   val PatternOrTypeBits: Mode = Pattern | Type
 
