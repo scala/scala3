@@ -4,7 +4,7 @@ package inlines
 
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
-import StdNames.tpnme
+import StdNames.{tpnme, nme}
 import transform.SymUtils._
 import typer.*
 import NameKinds.BodyRetainerName
@@ -189,28 +189,33 @@ object Inlines:
     // transforms the patterns into terms, the `inlinePatterns` phase removes this anonymous class by β-reducing
     // the call to the `unapply`.
 
-    val UnApply(fun, trailingImplicits, patterns) = unapp
-
-    val sym = unapp.symbol
-
-    var unapplySym1: Symbol = NoSymbol // created from within AnonClass() and used afterwards
+    val fun = unapp.fun
+    val sym = fun.symbol
 
     val newUnapply = AnonClass(ctx.owner, List(defn.ObjectType), sym.coord) { cls =>
       // `fun` is a partially applied method that contains all type applications of the method.
       // The methodic type `fun.tpe.widen` is the type of the function starting from the scrutinee argument
       // and its type parameters are instantiated.
-      val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, fun.tpe.widen, coord = sym.coord).entered
-      val unapply = DefDef(unapplySym.asTerm, argss =>
-        val body = fun.appliedToArgss(argss).withSpan(unapp.span)
-        if body.symbol.is(Transparent) then inlineCall(body)(using ctx.withOwner(unapplySym))
-        else body
-      )
-      unapplySym1 = unapplySym
-      List(unapply)
+      val unapplyInfo = fun.tpe.widen
+      val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
+
+      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss).withSpan(unapp.span))
+
+      if sym.is(Transparent) then
+        // Inline the body and refine the type of the unapply method
+        val inlinedBody = inlineCall(unapply.rhs)(using ctx.withOwner(unapplySym))
+        val refinedResultType = inlinedBody.tpe.widen
+        def refinedResult(info: Type): Type = info match
+          case info: LambdaType => info.newLikeThis(info.paramNames, info.paramInfos, refinedResult(info.resultType))
+          case _ => refinedResultType
+        unapplySym.info = refinedResult(unapplyInfo)
+        List(cpy.DefDef(unapply)(tpt = TypeTree(refinedResultType), rhs = inlinedBody))
+      else
+        List(unapply)
     }
 
-    val newFun = newUnapply.select(unapplySym1).withSpan(unapp.span)
-    cpy.UnApply(unapp)(newFun, trailingImplicits, patterns)
+    val newFun = newUnapply.select(sym.name).withSpan(unapp.span)
+    cpy.UnApply(unapp)(fun = newFun)
   end inlinedUnapply
 
   /** For a retained inline method, another method that keeps track of
