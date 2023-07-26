@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Contexts.Context
 object DiagnosticOps:
   private val asciiColorCodes = "\u001B\\[[;\\d]*m".r
   extension (d: Diagnostic)
-    def toSemanticDiagnostic(using Context): s.Diagnostic =
+    def toSemanticDiagnostic: s.Diagnostic =
       val severity = d.level match
         case ERROR => s.Diagnostic.Severity.ERROR
         case WARNING => s.Diagnostic.Severity.WARNING
