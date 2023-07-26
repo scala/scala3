@@ -180,9 +180,9 @@ sealed trait GadtState {
         def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
           def loop(tp: Type) = substDependentSyms(tp, isUpper)
           tp match
-            case tp @ AndType(tp1, tp2) if !isUpper =>
+            case tp @ AndType(tp1, tp2) =>
               tp.derivedAndType(loop(tp1), loop(tp2))
-            case tp @ OrType(tp1, tp2) if isUpper =>
+            case tp @ OrType(tp1, tp2) =>
               tp.derivedOrType(loop(tp1), loop(tp2))
             case tp: NamedType =>
               params.indexOf(tp.symbol) match

@@ -323,13 +323,19 @@ trait ConstraintHandling {
           finally
             homogenizeArgs = saved
         //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
-        val c1 = constraint.updateEntry(param, narrowedBounds)
-        (c1 eq constraint)
-        || {
-          constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
-          isSub(lo, hi)
-        }
+        val lo2 = narrowedBounds.loBound
+        val hi2 = narrowedBounds.hiBound
+        if lo2 == hi2 && !narrowedBounds.existsPart(_ eq param, StopAt.Static) then
+          constraint = constraint.replace(param, if isUpper then lo2 else hi2)
+          true
+        else
+          val c1 = constraint.updateEntry(param, narrowedBounds)
+          (c1 eq constraint)
+          || {
+            constraint = c1
+            val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
+            isSub(lo, hi)
+          }
   end addOneBound
 
   protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =

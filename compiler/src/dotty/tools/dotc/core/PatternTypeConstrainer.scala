@@ -277,8 +277,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
                   val TypeBounds(loS, hiS) = argS.bounds
                   val TypeBounds(loP, hiP) = argP.bounds
                   var res = true
-                  if variance <  1 then res &&= isSubType(loS, hiP)
                   if variance > -1 then res &&= isSubType(loP, hiS)
+                  if variance <  1 then res &&= isSubType(loS, hiP)
                   res
                 else true
               }
