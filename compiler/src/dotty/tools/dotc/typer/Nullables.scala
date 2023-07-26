@@ -115,12 +115,23 @@ object Nullables:
         testSym(tree.symbol, l)
       case Apply(Select(Literal(Constant(null)), _), r :: Nil) =>
         testSym(tree.symbol, r)
+      case Apply(Apply(op, l :: Nil), Literal(Constant(null)) :: Nil) =>
+        testPredefSym(op.symbol, l)
+      case Apply(Apply(op, Literal(Constant(null)) :: Nil), r :: Nil) =>
+        testPredefSym(op.symbol, r)
       case _ =>
         None
 
     private def testSym(sym: Symbol, operand: Tree)(using Context) =
       if sym == defn.Any_== || sym == defn.Object_eq then Some((operand, true))
       else if sym == defn.Any_!= || sym == defn.Object_ne then Some((operand, false))
+      else None
+
+    private def testPredefSym(opSym: Symbol, operand: Tree)(using Context) =
+      if opSym.owner == defn.ScalaPredefModuleClass then
+        if opSym.name == nme.eq then Some((operand, true))
+        else if opSym.name == nme.ne then Some((operand, false))
+        else None
       else None
 
   end CompareNull
