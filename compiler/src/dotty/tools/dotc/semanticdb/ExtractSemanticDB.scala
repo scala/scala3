@@ -88,14 +88,15 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
       }
     else
       units.foreach { unit =>
+        val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
         val outputDir =
           ExtractSemanticDB.semanticdbPath(
             unit.source,
-            ExtractSemanticDB.outputDirectory(using ctx.fresh.setCompilationUnit(unit).withRootImports),
+            ExtractSemanticDB.outputDirectory(using unitCtx),
             sourceRoot
           )
         val extractor = ExtractSemanticDB.Extractor()
-        extractor.extract(unit.tpdTree)
+        extractor.extract(unit.tpdTree)(using unitCtx)
         ExtractSemanticDB.write(
           unit.source,
           extractor.occurrences.toList,
