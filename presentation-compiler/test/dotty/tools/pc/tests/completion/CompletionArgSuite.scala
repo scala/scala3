@@ -659,3 +659,20 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       topLines = Some(4)
     )
+
+  @Test def `recursive` =
+    check(
+      """|
+         |object Main {
+         |   def foo(value: Int): Int = {
+         |     foo(valu@@)
+         |   }
+         |}
+         |""".stripMargin,
+      """|value = : Int
+         |value = value : Int
+         |value: Int
+         |""".stripMargin,
+      topLines = Some(4),
+    )
+
