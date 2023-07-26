@@ -446,11 +446,8 @@ object TreeChecker {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       val tpe = tree.typeOpt
 
-      // PolyFunction and ErasedFunction apply methods stay structural until Erasure
-      val isRefinedFunctionApply = (tree.name eq nme.apply) && {
-        val qualTpe = tree.qualifier.typeOpt
-        qualTpe.derivesFrom(defn.PolyFunctionClass) || qualTpe.derivesFrom(defn.ErasedFunctionClass)
-      }
+      // PolyFunction apply method stay structural until Erasure
+      val isRefinedFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
 
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)

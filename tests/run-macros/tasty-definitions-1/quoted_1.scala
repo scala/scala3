@@ -66,7 +66,7 @@ object Macros {
     // should fail
     printout(defn.FunctionClass(1, isErased = true).name)
 
-    printout(defn.ErasedFunctionClass.name)
+    printout(defn.PolyFunctionClass.name)
 
     for (i <- 2 to 22)
       printout(defn.TupleClass(i).name)

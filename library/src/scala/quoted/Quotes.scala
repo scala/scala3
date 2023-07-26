@@ -4316,9 +4316,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       @experimental
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol
 
-      /** The `scala.runtime.ErasedFunction` built-in trait. */
+      /** The `scala.PolyFunction` built-in trait. */
       @experimental
-      def ErasedFunctionClass: Symbol
+      def PolyFunctionClass: Symbol
 
       /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
       *   -  0th element is `NoSymbol`

@@ -1792,7 +1792,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isContextFunctionType: Boolean =
           dotc.core.Symbols.defn.isContextFunctionType(self)
         def isErasedFunctionType: Boolean =
-          self.derivesFrom(dotc.core.Symbols.defn.ErasedFunctionClass)
+          self match
+            case dotc.core.Symbols.defn.PolyFunctionOf(mt) =>
+              mt match
+                case mt: MethodType => mt.hasErasedParams
+                case PolyType(_, _, mt1) => mt1.hasErasedParams
+            case _ => false
         def isDependentFunctionType: Boolean =
           val tpNoRefinement = self.dropDependentRefinement
           tpNoRefinement != self
@@ -2823,13 +2828,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
         if arity < 0 then throw IllegalArgumentException(s"arity: $arity")
         if isErased then
-          throw new Exception("Erased function classes are not supported. Use a refined `scala.runtime.ErasedFunction`")
+          throw new Exception("Erased function classes are not supported. Use a refined `scala.PolyFunction`")
         else dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit)
       def FunctionClass(arity: Int): Symbol =
         FunctionClass(arity, false, false)
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol =
         FunctionClass(arity, isContextual, false)
-      def ErasedFunctionClass = dotc.core.Symbols.defn.ErasedFunctionClass
+      def PolyFunctionClass = dotc.core.Symbols.defn.PolyFunctionClass
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
       def isTupleClass(sym: Symbol): Boolean =

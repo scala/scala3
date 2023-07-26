@@ -34,7 +34,6 @@ object StdNames {
     inline val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     inline val Function                   = "Function"
-    inline val ErasedFunction             = "ErasedFunction"
     inline val ContextFunction            = "ContextFunction"
     inline val ErasedContextFunction      = "ErasedContextFunction"
     inline val AbstractFunction           = "AbstractFunction"
@@ -214,7 +213,6 @@ object StdNames {
     final val Throwable: N           = "Throwable"
     final val IOOBException: N       = "IndexOutOfBoundsException"
     final val FunctionXXL: N         = "FunctionXXL"
-    final val ErasedFunction: N      = "ErasedFunction"
 
     final val Abs: N                  = "Abs"
     final val And: N                  = "&&"

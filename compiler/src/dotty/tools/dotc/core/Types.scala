@@ -1886,7 +1886,7 @@ object Types {
             formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
-          RefinedType(defn.ErasedFunctionType, nme.apply, mt)
+          RefinedType(defn.PolyFunctionType, nme.apply, mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
