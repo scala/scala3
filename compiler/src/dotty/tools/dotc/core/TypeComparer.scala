@@ -244,14 +244,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
 
     def monitoredIsSubType = {
+      //if ctx.settings.YnoDeepSubtypes.value then throw new StackOverflowError("deep subtype")
+      assert(!ctx.settings.YnoDeepSubtypes.value)
       if (pendingSubTypes == null) {
         pendingSubTypes = util.HashSet[(Type, Type)]()
         report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
         report.log(s"!!! constraint = ${constraint.show}")
-        //if (ctx.settings.YnoDeepSubtypes.value) {
-        //  new Error("deep subtype").printStackTrace()
-        //}
-        assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
           report.log(explained(_.isSubType(tp1, tp2, approx)))
       }
