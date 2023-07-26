@@ -15,7 +15,7 @@ import dotty.tools.dotc.ast.tpd
  *
  *  Transforms `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
  */
-class ArrayApply extends MiniPhase {
+class ArrayApply extends MiniPhase:
   import tpd._
 
   override def phaseName: String = ArrayApply.name
@@ -25,13 +25,17 @@ class ArrayApply extends MiniPhase {
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if isArrayModuleApply(tree.symbol) then
       tree.args match {
-        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
-            if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
+        case AppliedLiterals(seqLit) :: ct :: Nil if elideClassTag(ct) =>
           seqLit
 
-        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: Nil
-            if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
+        case InlinedSplice(inlined, seqLit) :: ct :: Nil if elideClassTag(ct) =>
+          tpd.cpy.Inlined(inlined)(inlined.call, inlined.bindings, seqLit)
+
+        case elem0 :: AppliedLiterals(seqLit) :: Nil =>
           tpd.JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
+
+        case elem0 :: InlinedSplice(inlined, seqLit) :: Nil =>
+          tpd.cpy.Inlined(inlined)(inlined.call, inlined.bindings, tpd.JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt))
 
         case _ =>
           tree
@@ -49,6 +53,7 @@ class ArrayApply extends MiniPhase {
    *  - `ClassTag.XYZ` for primitive types
    */
   private def elideClassTag(ct: Tree)(using Context): Boolean = ct match {
+    case Inlined(_, _, expansion) => elideClassTag(expansion)
     case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
@@ -63,13 +68,27 @@ class ArrayApply extends MiniPhase {
     case _ => false
   }
 
-  object StripAscription {
-    def unapply(tree: Tree)(using Context): Some[Tree] = tree match {
-      case Typed(expr, _) => unapply(expr)
-      case _ => Some(tree)
-    }
-  }
-}
+  // Match a sequence of literal arguments passed to an Array constructor
+  private object AppliedLiterals:
+
+    def unapply(tree: Tree)(using Context): Option[tpd.JavaSeqLiteral] = tree match
+      case Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)
+          if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
+        Some(seqLit)
+      case _ => None
+
+  end AppliedLiterals
+
+  // Match an inlined sequence splice
+  private object InlinedSplice:
+    def unapply(tree: Tree)(using Context): Option[(Inlined, tpd.JavaSeqLiteral)] = tree match
+      case inlined @ Inlined(_, _, Typed(AppliedLiterals(seqLit), _)) =>
+        Some((inlined, seqLit))
+      case _ => None
+
+  end InlinedSplice
+
+end ArrayApply
 
 object ArrayApply:
   val name: String = "arrayApply"
