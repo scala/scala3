@@ -48,7 +48,7 @@ class Pickler extends Phase {
 
   // Maps that keep a record if -Ytest-pickler is set.
   private val beforePickling = new mutable.HashMap[ClassSymbol, String]
-  private val pickledBytes = new mutable.HashMap[ClassSymbol, Array[Byte]]
+  private val pickledBytes = new mutable.HashMap[ClassSymbol, (CompilationUnit, Array[Byte])]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
@@ -137,7 +137,7 @@ class Pickler extends Phase {
         else
           val pickled = computePickled()
           reportPositionWarnings()
-          if ctx.settings.YtestPickler.value then pickledBytes(cls) = pickled
+          if ctx.settings.YtestPickler.value then pickledBytes(cls) = (unit, pickled)
           () => pickled
 
       unit.pickled += (cls -> demandPickled)
@@ -163,21 +163,24 @@ class Pickler extends Phase {
     result
   }
 
-  private def testUnpickler(using Context): Unit = {
+  private def testUnpickler(using Context): Unit =
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
-      for ((cls, bytes) <- pickledBytes) yield {
+      for ((cls, (unit, bytes)) <- pickledBytes) yield {
         val unpickler = new DottyUnpickler(bytes)
         unpickler.enter(roots = Set.empty)
-        cls -> unpickler
+        cls -> (unit, unpickler)
       }
     pickling.println("************* entered toplevel ***********")
-    for ((cls, unpickler) <- unpicklers) {
+    val rootCtx = ctx
+    for ((cls, (unit, unpickler)) <- unpicklers) do
       val unpickled = unpickler.rootTrees
-      testSame(i"$unpickled%\n%", beforePickling(cls), cls)
-    }
-  }
+      val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)
+      freshUnit.needsCaptureChecking = unit.needsCaptureChecking
+      freshUnit.knowsPureFuns = unit.knowsPureFuns
+      inContext(rootCtx.fresh.setCompilationUnit(freshUnit)):
+        testSame(i"$unpickled%\n%", beforePickling(cls), cls)
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
     import java.nio.charset.StandardCharsets.UTF_8

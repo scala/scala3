@@ -50,6 +50,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileFilesInDir("tests/pos-custom-args/strict", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
+      compileDir("tests/pos-special/stdlib", defaultOptions),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
         "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",

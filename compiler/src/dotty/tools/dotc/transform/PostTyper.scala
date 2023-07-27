@@ -418,8 +418,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
-              if Feature.pureFunsEnabled && sym != defn.WithPureFunsAnnot then
-                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
+              if sym != defn.WithPureFunsAnnot && sym != defn.CaptureCheckedAnnot then
+                if Feature.ccEnabled then
+                  sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot, tree.span))
+                else if Feature.pureFunsEnabled then
+                  sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
@@ -549,14 +552,19 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private def scala2LibPatch(tree: TypeDef)(using Context) =
       val sym = tree.symbol
-      if compilingScala2StdLib
-        && sym.is(ModuleClass) && !sym.derivesFrom(defn.SerializableClass)
-        && sym.companionClass.derivesFrom(defn.SerializableClass)
-      then
-        // Add Serializable to companion objects of serializable classes
+      if compilingScala2StdLib && sym.is(ModuleClass) then
+        // Add Serializable to companion objects of serializable classes,
+        // and add AbstractFunction1 to companion objects of case classes with 1 parameter.
         tree.rhs match
           case impl: Template =>
-            val parents1 = impl.parents :+ TypeTree(defn.SerializableType)
+            var parents1 = impl.parents
+            val companionClass = sym.companionClass
+            if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
+              parents1 = parents1 :+ TypeTree(defn.SerializableType)
+            argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
+              case Some(args) if parents1.head.symbol.owner == defn.ObjectClass =>
+                parents1 = New(defn.AbstractFunctionClass(1).typeRef).select(nme.CONSTRUCTOR).appliedToTypes(args).ensureApplied :: parents1.tail
+              case _ =>
             val impl1 = cpy.Template(impl)(parents = parents1)
             cpy.TypeDef(tree)(rhs = impl1)
       else tree
@@ -567,10 +575,31 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
     case info: ClassInfo =>
-      if !sym.derivesFrom(defn.SerializableClass)
-        && sym.companionClass.derivesFrom(defn.SerializableClass)
-      then
-        info.derivedClassInfo(declaredParents = info.parents :+ defn.SerializableType)
+      var parents1 = info.parents
+      val companionClass = sym.companionClass
+      if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
+        parents1 = parents1 :+ defn.SerializableType
+      argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
+        case Some(args) if parents1.head.typeSymbol == defn.ObjectClass =>
+          parents1 = defn.AbstractFunctionClass(1).typeRef.appliedTo(args) :: parents1.tail
+        case _ =>
+      if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
       else tp
     case _ => tp
+
+  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
+    val companionClass = sym.companionClass
+    if companionClass.is(CaseClass)
+      && !companionClass.primaryConstructor.is(Private)
+      && !companionClass.primaryConstructor.info.isVarArgsMethod
+    then
+      sym.info.decl(nme.apply).info match
+        case info: MethodType =>
+          info.paramInfos match
+            case arg :: Nil =>
+              Some(arg :: info.resultType :: Nil)
+            case args => None
+        case _ => None
+    else
+      None
 }

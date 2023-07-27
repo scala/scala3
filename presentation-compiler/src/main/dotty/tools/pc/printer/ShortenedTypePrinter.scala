@@ -9,7 +9,7 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameKinds.EvidenceParamName
+import dotty.tools.dotc.core.NameKinds.ContextBoundParamName
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Names.Name
@@ -45,7 +45,7 @@ class ShortenedTypePrinter(
     isTextEdit: Boolean = false,
     renameConfigMap: Map[Symbol, String] = Map.empty
 )(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
-  private val missingImports: mutable.ListBuffer[ImportSel] = mutable.ListBuffer.empty
+  private val missingImports: mutable.Set[ImportSel] = mutable.Set.empty
   private val defaultWidth = 1000
 
   private val methodFlags =
@@ -81,7 +81,8 @@ class ShortenedTypePrinter(
    * Returns a list of TextEdits (auto-imports) of the symbols
    */
   def imports(autoImportsGen: AutoImportsGenerator): List[TextEdit] =
-    missingImports.toList
+    missingImports
+      .toList
       .filterNot(selector => selector.sym.isRoot)
       .sortBy(_.sym.effectiveName)
       .flatMap(selector => autoImportsGen.renderImports(List(selector)))
@@ -112,7 +113,9 @@ class ShortenedTypePrinter(
     def ownersAfterRename(owner: Symbol): List[Symbol] =
       prefix.ownersIterator.takeWhile(_ != owner).toList
 
-    prefix.ownersIterator.flatMap { owner =>
+    val prefixIterator = if isTextEdit then prefix.ownersIterator else Iterator(prefix)
+
+    prefixIterator.flatMap { owner =>
       val prefixAfterRename = ownersAfterRename(owner)
       val currentRenamesSearchResult =
         indexedCtx.rename(owner).map(Found(owner, _, prefixAfterRename))
@@ -267,7 +270,7 @@ class ShortenedTypePrinter(
 
     lazy val implicitEvidenceParams: Set[Symbol] =
       implicitParams
-        .filter(p => p.name.toString.startsWith(EvidenceParamName.separator))
+        .filter(p => p.name.toString.startsWith(ContextBoundParamName.separator))
         .toSet
 
     lazy val implicitEvidencesByTypeParam: Map[Symbol, List[String]] =

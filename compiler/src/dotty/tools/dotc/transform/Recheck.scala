@@ -224,14 +224,13 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckBind(tree: Bind, pt: Type)(using Context): Type = tree match
       case Bind(name, body) =>
         recheck(body, pt)
-        val sym = tree.symbol
-        if sym.isType then sym.typeRef else sym.info
+        tree.symbol.namedType
 
     def recheckLabeled(tree: Labeled, pt: Type)(using Context): Type = tree match
       case Labeled(bind, expr) =>
-        val bindType = recheck(bind, pt)
+        val (bindType: NamedType) = recheck(bind, pt): @unchecked
         val exprType = recheck(expr, defn.UnitType)
-        bindType
+        bindType.symbol.info
 
     def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
       if !tree.rhs.isEmpty then recheck(tree.rhs, sym.info)
@@ -253,13 +252,16 @@ abstract class Recheck extends Phase, SymTransformer:
       sym.typeRef
 
     /** Assuming `formals` are parameters of a Java-defined method, remap Object
-     *  to FromJavaObject since it got lost in ElimRepeated
+     *  to FromJavaObject since it got lost in ElimRepeated.
+     *  NOTE: It seems this is no longer true, and `mapJavaArgs` is not needed.
+     *  The invocation is currently disabled in recheckApply.
      */
     private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
       val tm = new TypeMap with IdempotentCaptRefMap:
-        def apply(t: Type) = t match
-          case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
-          case _ => mapOver(t)
+        def apply(t: Type) =
+          t match
+            case t: TypeRef if t.symbol == defn.ObjectClass => defn.FromJavaObjectType
+            case _ => mapOver(t)
       formals.mapConserve(tm)
 
     /** Hook for method type instantiation */
@@ -274,7 +276,8 @@ abstract class Recheck extends Phase, SymTransformer:
         case fntpe: MethodType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =
-            if tree.symbol.is(JavaDefined) then mapJavaArgs(fntpe.paramInfos)
+            if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs
+            then mapJavaArgs(fntpe.paramInfos)
             else fntpe.paramInfos
           def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
             case arg :: args1 =>

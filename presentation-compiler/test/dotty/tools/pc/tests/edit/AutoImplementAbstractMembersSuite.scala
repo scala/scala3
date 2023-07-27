@@ -373,6 +373,26 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |""".stripMargin
     )
 
+  @Test def `jutil-multiple-symbols` =
+    checkEdit(
+      """|abstract class JUtil {
+         |  def foo(x: java.util.List[Int]): java.util.List[Int]
+         |}
+         |class <<Main>> extends JUtil {
+         |}
+         |""".stripMargin,
+      """|import java.{util => ju}
+         |abstract class JUtil {
+         |  def foo(x: java.util.List[Int]): java.util.List[Int]
+         |}
+         |class Main extends JUtil {
+         |
+         |  override def foo(x: ju.List[Int]): ju.List[Int] = ???
+         |
+         |}
+         |""".stripMargin
+    )
+
   @Test def `jutil-conflict` =
     checkEdit(
       """|package jutil

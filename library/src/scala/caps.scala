@@ -14,6 +14,12 @@ import annotation.experimental
   object unsafe:
 
     extension [T](x: T)
+      /** A specific cast operation to remove a capture set.
+       *  If argument is of type `T^C`, assume it is of type `T` instead.
+       *  Calls to this method are treated specially by the capture checker.
+       */
+      def unsafeAssumePure: T = x
+
       /** If argument is of type `cs T`, converts to type `box cs T`. This
       *  avoids the error that would be raised when boxing `*`.
       */

@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.NameKinds.PatMatGivenVarName
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.TypeOps.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
 import dotty.tools.dotc.transform.SymUtils._
@@ -23,6 +24,33 @@ import scala.collection.mutable
 
 object QuotePatterns:
   import tpd._
+
+  /** Check for restricted patterns */
+  def checkPattern(quotePattern: QuotePattern)(using Context): Unit = new tpd.TreeTraverser {
+    def traverse(tree: Tree)(using Context): Unit = tree match {
+      case _: SplicePattern =>
+      case tdef: TypeDef if tdef.symbol.isClass =>
+        val kind = if tdef.symbol.is(Module) then "objects" else "classes"
+        report.error(em"Implementation restriction: cannot match $kind", tree.srcPos)
+      case tree: NamedDefTree =>
+        if tree.name.is(NameKinds.WildcardParamName) then
+          report.warning(
+            "Use of `_` for lambda in quoted pattern. Use explicit lambda instead or use `$_` to match any term.",
+            tree.srcPos)
+        if tree.name.isTermName && !tree.nameSpan.isSynthetic && tree.name != nme.ANON_FUN && tree.name.startsWith("$") then
+          report.error("Names cannot start with $ quote pattern", tree.namePos)
+        traverseChildren(tree)
+      case _: Match =>
+        report.error("Implementation restriction: cannot match `match` expressions", tree.srcPos)
+      case _: Try =>
+        report.error("Implementation restriction: cannot match `try` expressions", tree.srcPos)
+      case _: Return =>
+        report.error("Implementation restriction: cannot match `return` statements", tree.srcPos)
+      case _ =>
+        traverseChildren(tree)
+    }
+
+  }.traverse(quotePattern.body)
 
   /** Encode the quote pattern into an `unapply` that the pattern matcher can handle.
    *

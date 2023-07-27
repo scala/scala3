@@ -13,7 +13,7 @@ import Contexts._
 import Types._
 import Flags._
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, EvidenceParamName}
+import NameKinds.{LazyImplicitName, ContextBoundParamName}
 import Symbols._
 import Types._
 import Decorators._
@@ -299,7 +299,7 @@ object Implicits:
   class ContextualImplicits(
       val refs: List[ImplicitRef],
       val outerImplicits: ContextualImplicits | Null,
-      isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
+      val isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -330,8 +330,21 @@ object Implicits:
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
-        val shadowed = ownEligible.map(_.ref.implicitName).toSet
-        ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+        def filter(xs: List[Candidate], remove: List[Candidate]) =
+          val shadowed = remove.map(_.ref.implicitName).toSet
+          xs.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+
+        val outer = outerImplicits.uncheckedNN
+        def isWildcardImport(using Context) = ctx.importInfo.nn.isWildcardImport
+        def preferDefinitions = isImport && !outer.isImport
+        def preferNamedImport = isWildcardImport && !isWildcardImport(using outer.irefCtx)
+
+        if !migrateTo3(using irefCtx) && level == outer.level && (preferDefinitions || preferNamedImport) then
+          // special cases: definitions beat imports, and named imports beat
+          // wildcard imports, provided both are in contexts with same scope
+          filter(ownEligible, outerEligible) ::: outerEligible
+        else
+          ownEligible ::: filter(outerEligible, ownEligible)
 
     def uncachedEligible(tp: Type)(using Context): List[Candidate] =
       Stats.record("uncached eligible")
@@ -980,7 +993,7 @@ trait Implicits:
         def addendum = if (qt1 eq qt) "" else (i"\nWhere $qt is an alias of: $qt1")
         i"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        i"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+        i"${ if paramName.is(ContextBoundParamName) then "a context parameter"
              else s"parameter $paramName" } of $methodStr"
     }
 

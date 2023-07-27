@@ -49,8 +49,7 @@ class ExtractAPI extends Phase {
   override def description: String = ExtractAPI.description
 
   override def isRunnable(using Context): Boolean = {
-    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+    super.isRunnable && ctx.runZincPhases
   }
 
   // Check no needed. Does not transform trees
@@ -65,9 +64,9 @@ class ExtractAPI extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    val sourceFile = unit.source.file
-    if (ctx.sbtCallback != null)
-      ctx.sbtCallback.startSource(sourceFile.file)
+    val sourceFile = unit.source
+    ctx.withIncCallback: cb =>
+      cb.startSource(sourceFile)
 
     val apiTraverser = new ExtractAPICollector
     val classes = apiTraverser.apiSource(unit.tpdTree)
@@ -75,18 +74,17 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
+      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension("inc").toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
       } finally pw.close()
     }
 
-    if ctx.sbtCallback != null &&
-      !ctx.compilationUnit.suspendedAtInliningPhase // already registered before this unit was suspended
-    then
-      classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
-      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
+    ctx.withIncCallback: cb =>
+      if !ctx.compilationUnit.suspendedAtInliningPhase then // already registered before this unit was suspended
+        classes.foreach(cb.api(sourceFile, _))
+        mainClasses.foreach(cb.mainClass(sourceFile, _))
   }
 }
 
