@@ -876,8 +876,11 @@ object Objects:
               (Bottom, Env.NoEnv)
             case thisV : (Ref | Cold.type) =>
               if klass.owner.isClass then
-                assert(!klass.owner.is(Flags.Package), "top-level class should have `Bottom` as outer")
-                (thisV.widenRefOrCold(1), Env.NoEnv)
+                if klass.owner.is(Flags.Package) then
+                  report.warning("top-level class should have `Bottom` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
+                  (Bottom, Env.NoEnv)
+                else
+                  (thisV.widenRefOrCold(1), Env.NoEnv)
               else
                 // klass.enclosingMethod returns its primary constructor
                 Env.resolveEnv(klass.owner.enclosingMethod, thisV, summon[Env.Data]).getOrElse(Cold -> Env.NoEnv)
