@@ -27,11 +27,8 @@ import typer.ImportInfo.withRootImports
 
 import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.io.{AbstractFile, JarArchive}
-import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
-import java.io.ByteArrayOutputStream
-import java.io.BufferedOutputStream
 
 
 /** Extract symbol references and uses to semanticdb files.
@@ -83,7 +80,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
         (outputDir, source)
       }.asJava.parallelStream().forEach { case (out, source) =>
         warnings.get(source).foreach { ws =>
-          ExtractSemanticDB.appendDiagnostics(source, ws, out)
+          ExtractSemanticDB.appendDiagnostics(ws, out)
         }
       }
     else
@@ -168,7 +165,6 @@ object ExtractSemanticDB:
   end write
 
   private def appendDiagnostics(
-    source: SourceFile,
     diagnostics: Seq[Diagnostic],
     outpath: Path
   ): Unit =
