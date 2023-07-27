@@ -20,6 +20,9 @@ class ScalaCliCompletions(
       // generated script file will end with .sc.scala
       case (_: TypeDef) :: Nil if pos.source.file.path.endsWith(".sc.scala") =>
         scalaCliDep
+      case (_: Template) :: (_: TypeDef) :: Nil
+          if pos.source.file.path.endsWith(".sc.scala") =>
+        scalaCliDep
       case head :: next => None
 
   def contribute(dependency: String) =
