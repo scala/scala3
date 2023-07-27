@@ -158,7 +158,7 @@ object SourceCode {
           for paramClause <- paramss do
             paramClause match
               case TermParamClause(params) =>
-                printArgsDefs(params)
+                printMethdArgsDefs(params)
               case TypeParamClause(params) =>
                 printTargsDefs(stats.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam).zip(params))
         }
@@ -313,7 +313,7 @@ object SourceCode {
         this += highlightKeyword("def ") += highlightValDef(name1)
         for clause <-  paramss do
           clause match
-            case TermParamClause(params) => printArgsDefs(params)
+            case TermParamClause(params) => printMethdArgsDefs(params)
             case TypeParamClause(params) => printTargsDefs(params.zip(params))
         if (!isConstructor) {
           this += ": "
@@ -460,7 +460,7 @@ object SourceCode {
 
       case tree @ Lambda(params, body) =>  // must come before `Block`
         inParens {
-          printArgsDefs(params)
+          printLambdaArgsDefs(params)
           this += (if tree.tpe.isContextFunctionType then " ?=> " else  " => ")
           printTree(body)
         }
@@ -804,29 +804,37 @@ object SourceCode {
       }
     }
 
-    private def printArgsDefs(args: List[ValDef])(using elideThis: Option[Symbol]): Unit = {
+    private def printSeparatedParamDefs(list: List[ValDef])(using elideThis: Option[Symbol]): Unit = list match {
+      case Nil =>
+      case x :: Nil => printParamDef(x)
+      case x :: xs =>
+        printParamDef(x)
+        this += ", "
+        printSeparatedParamDefs(xs)
+    }
+
+    private def printMethdArgsDefs(args: List[ValDef])(using elideThis: Option[Symbol]): Unit = {
       val argFlags = args match {
         case Nil => Flags.EmptyFlags
         case arg :: _ => arg.symbol.flags
       }
-      if (argFlags.is(Flags.Erased | Flags.Given)) {
-        if (argFlags.is(Flags.Given)) this += " given"
-        if (argFlags.is(Flags.Erased)) this += " erased"
-        this += " "
+      inParens {
+        if (argFlags.is(Flags.Implicit) && !argFlags.is(Flags.Given)) this += "implicit "
+        if (argFlags.is(Flags.Given)) this += "using "
+
+        printSeparatedParamDefs(args)
+      }
+    }
+
+    private def printLambdaArgsDefs(args: List[ValDef])(using elideThis: Option[Symbol]): Unit = {
+      val argFlags = args match {
+        case Nil => Flags.EmptyFlags
+        case arg :: _ => arg.symbol.flags
       }
       inParens {
         if (argFlags.is(Flags.Implicit) && !argFlags.is(Flags.Given)) this += "implicit "
 
-        def printSeparated(list: List[ValDef]): Unit = list match {
-          case Nil =>
-          case x :: Nil => printParamDef(x)
-          case x :: xs =>
-            printParamDef(x)
-            this += ", "
-            printSeparated(xs)
-        }
-
-        printSeparated(args)
+        printSeparatedParamDefs(args)
       }
     }
 
@@ -846,6 +854,9 @@ object SourceCode {
     private def printParamDef(arg: ValDef)(using elideThis: Option[Symbol]): Unit = {
       val name = splicedName(arg.symbol).getOrElse(arg.symbol.name)
       val sym = arg.symbol.owner
+
+      if (arg.symbol.flags.is(Flags.Erased)) this += "erased "
+
       if sym.isDefDef && sym.name == "<init>" then
         val ClassDef(_, _, _, _, body) = sym.owner.tree: @unchecked
         body.collectFirst {
