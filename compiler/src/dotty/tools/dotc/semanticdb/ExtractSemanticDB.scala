@@ -64,10 +64,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
     val sourceRoot = ctx.settings.sourceroot.value
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     if (appendDiagnostics)
-      val warnings = ctx.reporter.allWarnings
-        .groupBy(w => w.pos.source)
-        .map((k, ws) => (k, ws.map(_.toSemanticDiagnostic)))
-        .toMap
+      val warnings = ctx.reporter.allWarnings.groupBy(w => w.pos.source)
       units.map { unit =>
         val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
         val outputDir =
@@ -80,7 +77,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
         (outputDir, source)
       }.asJava.parallelStream().forEach { case (out, source) =>
         warnings.get(source).foreach { ws =>
-          ExtractSemanticDB.appendDiagnostics(ws, out)
+          ExtractSemanticDB.appendDiagnostics(ws.map(_.toSemanticDiagnostic), out)
         }
       }
     else
