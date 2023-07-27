@@ -2059,31 +2059,35 @@ trait Applications extends Compatibility {
           if isDetermined(alts2) then alts2
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
-      case defn.FunctionOf(args, resultType, _) =>
-        narrowByTypes(alts, args, resultType)
-
       case pt =>
-        val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
-        if (compat.isEmpty)
-          /*
-           * the case should not be moved to the enclosing match
-           * since SAM type must be considered only if there are no candidates
-           * For example, the second f should be chosen for the following code:
-           *   def f(x: String): Unit = ???
-           *   def f: java.io.OutputStream = ???
-           *   new java.io.ObjectOutputStream(f)
-           */
-          pt match {
-            case SAMType(mtp, _) =>
-              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-            case _ =>
-              // pick any alternatives that are not methods since these might be convertible
-              // to the expected type, or be used as extension method arguments.
-              val convertible = alts.filterNot(alt =>
-                  normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
-              if convertible.length == 1 then convertible else compat
-          }
-        else compat
+        val compat0 = pt match
+          case defn.FunctionOf(args, resType, _) =>
+            narrowByTypes(alts, args, resType)
+          case _ =>
+            Nil
+        if (compat0.isEmpty) then
+          val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
+          if (compat.isEmpty)
+            /*
+            * the case should not be moved to the enclosing match
+            * since SAM type must be considered only if there are no candidates
+            * For example, the second f should be chosen for the following code:
+            *   def f(x: String): Unit = ???
+            *   def f: java.io.OutputStream = ???
+            *   new java.io.ObjectOutputStream(f)
+            */
+            pt match {
+              case SAMType(mtp, _) =>
+                narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+              case _ =>
+                // pick any alternatives that are not methods since these might be convertible
+                // to the expected type, or be used as extension method arguments.
+                val convertible = alts.filterNot(alt =>
+                    normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
+                if convertible.length == 1 then convertible else compat
+            }
+          else compat
+        else compat0
     }
 
     /** The type of alternative `alt` after instantiating its first parameter
