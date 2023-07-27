@@ -71,14 +71,14 @@ object Objects:
 
   /** Syntax for the data structure abstraction used in abstract domain:
    *
-   * ve ::= ObjectRef(class)
-   *      | OfClass(class, vs[outer], ctor, args, env)
+   * ve ::= ObjectRef(class)                              // global object
+   *      | OfClass(class, vs[outer], ctor, args, env)                                    // instance of a class
    *      | OfArray(object[owner], regions)
    *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
    * vs ::= ValueSet(ve)                                                 // set of abstract values
    * Bottom ::= ValueSet(Empty)
    * val ::= ve | Cold | vs                                              // all possible abstract values in domain
-   * Ref ::= ObjectRef | OfClass                                         // values that represents a reference
+   * Ref ::= ObjectRef | OfClass                                         // values that represent a reference to some (global or instance) object
    * ThisValue ::= Ref | Cold                                            // possible values for 'this'
    *
    * refMap = Ref -> ( valsMap, varsMap, outersMap )                     // refMap stores field informations of an object or instance
@@ -877,7 +877,7 @@ object Objects:
             case thisV : (Ref | Cold.type) =>
               if klass.owner.isClass then
                 if klass.owner.is(Flags.Package) then
-                  report.warning("top-level class should have `Bottom` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
+                  report.warning("[Internal error] top-level class should have `Bottom` as outer, class = " + klass.show + ", outer = " + outer.show + ", " + Trace.show, Trace.position)
                   (Bottom, Env.NoEnv)
                 else
                   (thisV.widenRefOrCold(1), Env.NoEnv)
