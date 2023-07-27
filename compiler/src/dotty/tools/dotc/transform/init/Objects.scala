@@ -74,19 +74,21 @@ object Objects:
    * ve ::= ObjectRef(class)
    *      | OfClass(class, vs[outer], ctor, args, env)
    *      | OfArray(object[owner], regions)
-   *      | Fun(..., env)
-   *      | Cold                                                         // abstract values in domain
+   *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
    * vs ::= ValueSet(ve)                                                 // set of abstract values
    * Bottom ::= ValueSet(Empty)
+   * val ::= ve | Cold | vs                                              // all possible abstract values in domain
+   * Ref ::= ObjectRef | OfClass                                         // values that represents a reference
+   * ThisValue ::= Ref | Cold                                            // possible values for 'this'
    *
-   * refMap = ( ObjectRef | OfClass ) -> ( valsMap, varsMap, outersMap ) // refMap stores field informations of an object or instance
-   * valsMap = valsym -> vs                                              // maps immutable fields to their values
+   * refMap = Ref -> ( valsMap, varsMap, outersMap )                     // refMap stores field informations of an object or instance
+   * valsMap = valsym -> val                                             // maps immutable fields to their values
    * varsMap = valsym -> addr                                            // each mutable field has an abstract address
-   * outersMap = class -> ObjectRef | OfClass | Bottom                   // maps outer objects to their values
+   * outersMap = class -> val                                            // maps outer objects to their values
    *
    * arrayMap = OfArray -> addr                                          // an array has one address that stores the join value of every element
    *
-   * heap = addr -> vs                                                   // heap is mutable
+   * heap = addr -> val                                                  // heap is mutable
    *
    * env = (valsMap, Option[env])                                        // stores local variables in the residing method, and possibly outer environments
    *
