@@ -250,7 +250,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(using Context): Tree = tree match {
-        case Inlined(call, _, expansion) =>
+        case tree @ Inlined(call, _, expansion) =>
           val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
           cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
