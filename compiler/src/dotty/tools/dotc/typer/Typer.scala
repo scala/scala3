@@ -2604,17 +2604,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
     if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
-    if
-      sym.info.isInstanceOf[PolyType] &&
-      ((sym.name eq nme.ANON_FUN) ||
-       (sym.name eq nme.apply) && sym.owner.derivesFrom(defn.PolyFunctionClass))
-    then
-      mdef match
-        case DefDef(_, _ :: vparams :: Nil, _, _) =>
-          vparams.foreach: vparam =>
-            if vparam.symbol.is(Erased) then
-              report.error(em"Implementation restriction: erased classes are not allowed in a poly function definition", vparam.srcPos)
-        case _ =>
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
     val TypeDef(name, rhs) = tdef

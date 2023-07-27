@@ -1100,19 +1100,21 @@ object desugar {
    */
   def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree =
     val PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) = tree: @unchecked
-    val funFlags = fun match
+    val paramFlags = fun match
       case fun: FunctionWithMods =>
-        fun.mods.flags
-      case _ => EmptyFlags
+        // TODO: make use of this in the desugaring when pureFuns is enabled.
+        // val isImpure = funFlags.is(Impure)
 
-    // TODO: make use of this in the desugaring when pureFuns is enabled.
-    // val isImpure = funFlags.is(Impure)
+        // Function flags to be propagated to each parameter in the desugared method type.
+        val givenFlag = fun.mods.flags.toTermFlags & Given
+        fun.erasedParams.map(isErased => if isErased then givenFlag | Erased else givenFlag)
+      case _ =>
+        vparamTypes.map(_ => EmptyFlags)
 
-    // Function flags to be propagated to each parameter in the desugared method type.
-    val paramFlags = funFlags.toTermFlags & Given
-    val vparams = vparamTypes.zipWithIndex.map:
-      case (p: ValDef, _) => p.withAddedFlags(paramFlags)
-      case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
+    val vparams = vparamTypes.lazyZip(paramFlags).zipWithIndex.map {
+      case ((p: ValDef, paramFlags), n) => p.withAddedFlags(paramFlags)
+      case ((p, paramFlags), n) => makeSyntheticParameter(n + 1, p).withAddedFlags(paramFlags)
+    }.toList
 
     RefinedTypeTree(ref(defn.PolyFunctionType), List(
        DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree).withFlags(Synthetic)

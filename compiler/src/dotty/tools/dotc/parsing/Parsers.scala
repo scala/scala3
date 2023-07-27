@@ -1426,23 +1426,6 @@ object Parsers {
       case _ => None
     }
 
-    private def checkFunctionNotErased(f: Function, context: String) =
-      def fail(span: Span) =
-        syntaxError(em"Implementation restriction: erased parameters are not supported in $context", span)
-      // erased parameter in type
-      val hasErasedParam = f match
-        case f: FunctionWithMods => f.hasErasedParams
-        case _ => false
-      if hasErasedParam then
-        fail(f.span)
-      // erased parameter in term
-      val hasErasedMods = f.args.collectFirst {
-        case v: ValDef if v.mods.is(Flags.Erased) => v
-      }
-      hasErasedMods match
-        case Some(param) => fail(param.span)
-        case _ =>
-
     /** CaptureRef  ::=  ident | `this`
      */
     def captureRef(): Tree =
@@ -1592,7 +1575,6 @@ object Parsers {
             atSpan(start, arrowOffset) {
               getFunction(body) match {
                 case Some(f) =>
-                  checkFunctionNotErased(f, "poly function")
                   PolyFunction(tparams, body)
                 case None =>
                   syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
@@ -2159,7 +2141,6 @@ object Parsers {
           atSpan(start, arrowOffset) {
             getFunction(body) match
               case Some(f) =>
-                checkFunctionNotErased(f, "poly function")
                 PolyFunction(tparams, f)
               case None =>
                 syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
