@@ -1886,13 +1886,13 @@ object Types {
             formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
-          RefinedType(defn.PolyFunctionType, nme.apply, mt)
+          defn.PolyFunctionOf(mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
       case poly @ PolyType(_, mt: MethodType) =>
         assert(!mt.isParamDependent)
-        RefinedType(defn.PolyFunctionType, nme.apply, poly)
+        defn.PolyFunctionOf(poly)
     }
 
     /** The signature of this type. This is by default NotAMethod,

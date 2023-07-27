@@ -1130,6 +1130,12 @@ class Definitions {
   }
 
   object PolyFunctionOf {
+
+    /** Creates a refined `PolyFunction` with an `apply` method with the given info. */
+    def apply(mt: MethodOrPoly)(using Context): Type =
+      assert(isValidPolyFunctionInfo(mt), s"Not a valid PolyFunction refinement: $mt")
+      RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
+
     /** Matches a refined `PolyFunction` type and extracts the apply info.
      *
      *  Pattern: `PolyFunction { def apply: $mt }`
@@ -1139,6 +1145,15 @@ class Definitions {
       if parent.derivesFrom(defn.PolyFunctionClass) =>
         Some(mt)
       case _ => None
+
+    private def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
+      def isValidMethodType(info: Type) = info match
+        case info: MethodType =>
+          !info.resType.isInstanceOf[MethodOrPoly] // Has only one parameter list
+        case _ => false
+      info match
+        case info: PolyType => isValidMethodType(info.resType)
+        case _ => isValidMethodType(info)
   }
 
   object PartialFunctionOf {

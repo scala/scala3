@@ -197,7 +197,7 @@ extends tpd.TreeTraverser:
       val mt = ContextualMethodType(paramName :: Nil)(
         _ => paramType :: Nil,
         mt => if isLast then res else expandThrowsAlias(res, mt :: encl))
-      val fntpe = RefinedType(defn.PolyFunctionClass.typeRef, nme.apply, mt)
+      val fntpe = defn.PolyFunctionOf(mt)
       if !encl.isEmpty && isLast then
         val cs = CaptureSet(encl.map(_.paramRefs.head)*)
         CapturingType(fntpe, cs, boxed = false)
