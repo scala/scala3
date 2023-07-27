@@ -1020,7 +1020,16 @@ object Objects:
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe: @unchecked
-          val thisValue2 = extendTrace(ref) { resolveThis(thisTp.classSymbol.asClass, thisV, klass) }
+          val thisValue2 = extendTrace(ref) {
+            thisTp match
+              case thisTp: ThisType =>
+                evalType(thisTp, thisV, klass)
+              case AndType(thisTp: ThisType, _) =>
+                evalType(thisTp, thisV, klass)
+              case _ =>
+                report.warning("[Internal error] Unexpected type " + thisTp.show + ", trace:\n" + Trace.show, ref)
+                Bottom
+          }
           withTrace(trace2) { call(thisValue2, ref.symbol, args, thisTp, superTp) }
 
         case Select(qual, _) =>
