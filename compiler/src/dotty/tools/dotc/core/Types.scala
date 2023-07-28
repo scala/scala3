@@ -1509,7 +1509,7 @@ object Types {
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
     final def dropDependentRefinement(using Context): Type = dealias match {
-      case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
+      case RefinedType(parent, nme.apply, mt) if defn.isFunctionNType(parent) => parent
       case tp => tp
     }
 
