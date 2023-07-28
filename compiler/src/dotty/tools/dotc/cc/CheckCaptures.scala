@@ -707,10 +707,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           val eparent1 = recur(eparent)
           if eparent1 eq eparent then expected
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
-        case expected @ defn.FunctionOf(args, resultType, isContextual)
-          if defn.isNonRefinedFunction(expected) && defn.isFunctionNType(actual) && !defn.isNonRefinedFunction(actual) =>
-          val expected1 = toDepFun(args, resultType, isContextual)
-          expected1
+        case defn.DependentFunctionRefinementOf(_, _) =>
+          expected
+        case defn.FunctionOf(args, resultType, isContextual) =>
+          actual match
+            case defn.DependentFunctionRefinementOf(_, _) =>
+              toDepFun(args, resultType, isContextual)
+            case _ =>
+              expected
         case _ =>
           expected
       recur(expected)
