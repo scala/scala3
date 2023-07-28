@@ -1175,12 +1175,23 @@ class Definitions {
   }
 
   object DependentFunctionRefinementOf {
-    /** Matches a refined function FT type and extracts FT and apply info.
+    /** Matches a refined function type and extracts the function type and apply info.
      *
      *  Pattern: `$ft { def apply: $mt }`
      */
     def unapply(ft: Type)(using Context): Option[(Type, MethodType)] = ft.dealias match
       case RefinedType(parent, nme.apply, mt: MethodType) if isNonRefinedFunction(parent) =>
+        Some((parent, mt))
+      case _ => None
+  }
+
+  object FunctionRefinementOf {
+    /** Matches a refined function type or PolyFunction and extracts the function type and apply info.
+     *
+     *  Pattern: `$ft { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[(Type, MethodType)] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodType) if isFunctionType(parent) =>
         Some((parent, mt))
       case _ => None
   }

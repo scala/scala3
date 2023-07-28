@@ -1316,20 +1316,20 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         em"""Implementation restriction: Expected result type $pt1
             |is a curried dependent context function type. Such types are not yet supported.""",
         pos)
+    def fallbackProto = (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
     pt1 match {
       case tp: TypeParamRef =>
         decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, pos)
       case _ => pt1.findFunctionType match {
-        case ft if defn.isNonRefinedFunction(ft) =>
+        case ft @ defn.FunctionRefinementOf(_, mt @ MethodTpe(_, formals, restpe)) =>
+          if formals.length != defaultArity then fallbackProto
+          else (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
+        case ft @ defn.FunctionOf(_, _, _) =>
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
 
           (ft.argInfos.init, typeTree(interpolateWildcards(ft.argInfos.last.hiBound)))
-        case ft @ RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
-        if defn.isFunctionType(ft) && formals.length == defaultArity =>
-          // PolyFunction or dependent refinement
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>
           val restpe = mt.resultType match
             case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
@@ -1340,7 +1340,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
            else
              typeTree(restpe))
         case _ =>
-          (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+          fallbackProto
       }
     }
   }
