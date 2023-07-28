@@ -1892,10 +1892,12 @@ class Namer { typer: Typer =>
     def expectedDefaultArgType =
       val originalTp = defaultParamType
       val approxTp = wildApprox(originalTp)
-      approxTp.stripPoly match
-        case atp @ defn.ContextFunctionType(_, resType, _)
-        if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
-            || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
+      approxTp.dealias.stripPoly match
+        case defn.FunctionOf(mt)
+        if mt.isContextualMethod && (
+           mt.isResultDependent || // in this case `resType` is lying, gives us only the non-dependent upper bound
+           mt.resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
+        ) =>
           originalTp
         case _ =>
           approxTp

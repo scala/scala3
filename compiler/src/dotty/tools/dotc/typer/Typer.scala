@@ -1321,21 +1321,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         em"""Implementation restriction: Expected result type $pt1
             |is a curried dependent context function type. Such types are not yet supported.""",
         pos)
+    def fallbackProto = (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
     pt1 match {
       case tp: TypeParamRef =>
         decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, pos)
       case _ => pt1.findFunctionType match {
-        case pt1 if defn.isNonRefinedFunction(pt1) =>
-          // if expected parameter type(s) are wildcards, approximate from below.
-          // if expected result type is a wildcard, approximate from above.
-          // this can type the greatest set of admissible closures.
-
-          (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
-        case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
-        if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
-        case defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
+        case ft @ defn.FunctionOf(mt: MethodType) =>
+          if !mt.isResultDependent then
+            // if expected parameter type(s) are wildcards, approximate from below.
+            // if expected result type is a wildcard, approximate from above.
+            // this can type the greatest set of admissible closures.
+            (mt.paramInfos, typeTree(interpolateWildcards(mt.resType.hiBound)))
+          else if mt.paramInfos.length == defaultArity then
+            (mt.paramInfos, untpd.InLambdaTypeTree(isResult = true, (_, syms) => mt.resType.substParams(mt, syms.map(_.termRef))))
+          else
+            fallbackProto
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>
           val restpe = mt.resultType match
             case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
@@ -1346,7 +1346,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
            else
              typeTree(restpe))
         case _ =>
-          (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+          fallbackProto
       }
     }
   }
@@ -3203,7 +3203,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
-    val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement: @unchecked
+    val defn.FunctionOf(mt: MethodType) = pt.dropDependentRefinement: @unchecked
+    val formals = mt.paramInfos
 
     // The getter of default parameters may reach here.
     // Given the code below
@@ -3231,12 +3232,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else formals.map(untpd.TypeTree)
     }
 
-    val erasedParams = pt match {
-      case defn.PolyFunctionOf(mt: MethodType) => mt.erasedParams
-      case _ => paramTypes.map(_ => false)
-    }
-
-    val ifun = desugar.makeContextualFunction(paramTypes, tree, erasedParams)
+    val ifun = desugar.makeContextualFunction(paramTypes, tree, mt.erasedParams)
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typedFunctionValue(ifun, pt)
   }

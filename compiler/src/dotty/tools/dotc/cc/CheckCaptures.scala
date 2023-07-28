@@ -195,7 +195,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               capt.println(i"solving $t")
               refs.solve()
             traverse(parent)
-          case t @ defn.RefinedFunctionOf(rinfo) =>
+          case defn.RefinedFunctionOf(rinfo) =>
             traverse(rinfo)
           case tp: TypeVar =>
           case tp: TypeRef =>
@@ -408,10 +408,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
-        mapArgUsing:
-          case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
-            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
-
+        mapArgUsing: tp =>
+          val defn.FunctionOf(mt: MethodType) = tp.dealias: @unchecked
+          mt.derivedLambdaType(resType = mt.resType.forceBoxStatus(true))
+            .toFunctionType()
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>
@@ -502,8 +502,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       block match
         case closureDef(mdef) =>
           pt.dealias match
-            case defn.FunctionOf(ptformals, _, _)
-            if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
+            case defn.FunctionOf(mt0: MethodType)
+            if mt0.paramInfos.nonEmpty && mt0.paramInfos.forall(_.captureSet.isAlwaysEmpty) =>
+              val ptformals = mt0.paramInfos
               // Redo setup of the anonymous function so that formal parameters don't
               // get capture sets. This is important to avoid false widenings to `cap`
               // when taking the base type of the actual closures's dependent function
@@ -707,10 +708,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           val eparent1 = recur(eparent)
           if eparent1 eq eparent then expected
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
-        case expected @ defn.FunctionOf(args, resultType, isContextual)
-          if defn.isNonRefinedFunction(expected) && defn.isFunctionNType(actual) && !defn.isNonRefinedFunction(actual) =>
-          val expected1 = toDepFun(args, resultType, isContextual)
-          expected1
+        case defn.FunctionOf(mt: MethodType) =>
+          actual.dealias match
+            case defn.FunctionOf(mt2: MethodType) if mt2.isResultDependent =>
+              mt.toFunctionType(alwaysDependent = true)
+            case _ =>
+              expected
         case _ =>
           expected
       recur(expected)
@@ -781,9 +784,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         try
           val (eargs, eres) = expected.dealias.stripCapturing match
-            case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
             case expected: MethodType => (expected.paramInfos, expected.resType)
-            case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionNType(expected) => (rinfo.paramInfos, rinfo.resType)
+            case defn.FunctionOf(mt: MethodType) => (mt.paramInfos, mt.resType)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
           val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
           val ares1 = adapt(ares, eres, covariant)
@@ -842,7 +844,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
           // Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
           val (styp1, leaked) = styp match {
-            case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
+            case actual @ AppliedType(tycon, args) if defn.isFunctionNType(actual) =>
               adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
             case actual @ defn.RefinedFunctionOf(rinfo: MethodType) =>

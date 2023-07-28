@@ -49,7 +49,7 @@ extends tpd.TreeTraverser:
     def recur(tp: Type): Type = tp.dealias match
       case tp @ CapturingType(parent, refs) if !tp.isBoxed =>
         tp.boxed
-      case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
+      case tp1 @ AppliedType(tycon, args) if defn.isFunctionNType(tp1) =>
         val res = args.last
         val boxedRes = recur(res)
         if boxedRes eq res then tp
@@ -129,7 +129,7 @@ extends tpd.TreeTraverser:
           apply(parent)
         case tp @ AppliedType(tycon, args) =>
           val tycon1 = this(tycon)
-          if defn.isNonRefinedFunction(tp) then
+          if defn.isFunctionNType(tp) then
             // Convert toplevel generic function types to dependent functions
             if !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) then
               // This type is a function after dealiasing, so we dealias and recurse.
@@ -197,7 +197,7 @@ extends tpd.TreeTraverser:
       val mt = ContextualMethodType(paramName :: Nil)(
         _ => paramType :: Nil,
         mt => if isLast then res else expandThrowsAlias(res, mt :: encl))
-      val fntpe = defn.PolyFunctionOf(mt)
+      val fntpe = mt.toFunctionType()
       if !encl.isEmpty && isLast then
         val cs = CaptureSet(encl.map(_.paramRefs.head)*)
         CapturingType(fntpe, cs, boxed = false)

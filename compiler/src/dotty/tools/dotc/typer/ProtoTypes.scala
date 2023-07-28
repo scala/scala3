@@ -383,9 +383,9 @@ object ProtoTypes {
     def allArgTypesAreCurrent()(using Context): Boolean =
       state.typedArg.size == args.length
 
-    private def isUndefined(tp: Type): Boolean = tp match {
+    private def isUndefined(tp: Type): Boolean = tp.dealias match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionNOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
 
@@ -424,7 +424,7 @@ object ProtoTypes {
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
             }
-            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+            targ = arg.withType(defn.FunctionNOf(paramTypes, WildcardType))
           case Some(_) if !force =>
             targ = arg.withType(WildcardType)
           case _ =>
@@ -845,9 +845,9 @@ object ProtoTypes {
               tp
             case pt: ApplyingProto =>
               if (rt eq mt.resultType) tp
-              else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
+              else mt.derivedLambdaType(resType = rt)
             case _ =>
-              val ft = defn.FunctionOf(mt.paramInfos, rt)
+              val ft = mt.derivedLambdaType(resType = rt).toFunctionType()
               if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }

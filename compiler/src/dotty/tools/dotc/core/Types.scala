@@ -1519,7 +1519,7 @@ object Types {
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
     final def dropDependentRefinement(using Context): Type = dealias match {
-      case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
+      case RefinedType(parent, nme.apply, mt) if defn.isFunctionNType(parent) => parent
       case tp => tp
     }
 
@@ -1890,18 +1890,29 @@ object Types {
             case res: MethodType => res.toFunctionType(isJava)
             case res => res
           }
-          defn.FunctionOf(
+          defn.FunctionNOf(
             mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
-          defn.PolyFunctionOf(mt)
+          assert(isValidPolyFunctionInfo(mt), s"Not a valid PolyFunction refinement: $mt")
+          RefinedType(defn.PolyFunctionType, nme.apply, mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
-      case poly @ PolyType(_, mt: MethodType) =>
-        assert(!mt.isParamDependent)
-        defn.PolyFunctionOf(poly)
+      case poly: PolyType =>
+        assert(isValidPolyFunctionInfo(poly), s"Not a valid PolyFunction refinement: $poly")
+        RefinedType(defn.PolyFunctionType, nme.apply, poly)
     }
+
+    private def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
+      def isValidMethodType(info: Type) = info match
+        case info: MethodType =>
+          !info.resType.isInstanceOf[MethodOrPoly] // Has only one parameter list
+          && !info.isParamDependent
+        case _ => false
+      info match
+        case info: PolyType => isValidMethodType(info.resType)
+        case _ => isValidMethodType(info)
 
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
@@ -3724,8 +3735,6 @@ object Types {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
-    def erasedParams(using Context) = List.fill(paramInfos.size)(false)
-
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
      *
@@ -4017,12 +4026,17 @@ object Types {
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) || isContextualMethod
     final override def hasErasedParams(using Context): Boolean =
-      erasedParams.contains(true)
+      paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
+
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
 
-    override def erasedParams(using Context): List[Boolean] =
+    def erasedParams(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
+
+    def nonErasedParamCount(using Context): Int =
+      paramInfos.count(p => !p.hasAnnotation(defn.ErasedParamAnnot))
+
 
     protected def prefixString: String = companion.prefixString
   }

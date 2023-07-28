@@ -1152,13 +1152,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
-        case defn.ContextFunctionType(argTypes, resType, _) =>
-          val anonFun = newAnonFun(
-            ctx.owner,
-            MethodType.companion(isContextual = true)(argTypes, resType),
-            coord = ctx.owner.coord)
+        case defn.FunctionOf(mt: MethodType) if mt.isContextualMethod && !mt.isResultDependent => // TODO handle result-dependent functions?
+          val anonFun = newAnonFun(ctx.owner, mt, coord = ctx.owner.coord)
           def lambdaBody(refss: List[List[Tree]]) =
-            expand(target.select(nme.apply).appliedToArgss(refss), resType)(
+            expand(target.select(nme.apply).appliedToArgss(refss), mt.resType)(
               using ctx.withOwner(anonFun))
           Closure(anonFun, lambdaBody)
         case _ =>

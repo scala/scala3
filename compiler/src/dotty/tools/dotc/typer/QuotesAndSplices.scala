@@ -122,7 +122,7 @@ trait QuotesAndSplices {
       for arg <- typedArgs if arg.symbol.is(Mutable) do // TODO support these patterns. Possibly using scala.quoted.util.Var
         report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val patType = if tree.args.isEmpty then pt else defn.FunctionOf(argTypes, pt)
+      val patType = if tree.args.isEmpty then pt else defn.FunctionNOf(argTypes, pt)
       val pat = typedPattern(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patType))(using quotePatternSpliceContext)
       val baseType = pat.tpe.baseType(defn.QuotedExprClass)
       val argType = if baseType.exists then baseType.argTypesHi.head else defn.NothingType
@@ -148,7 +148,7 @@ trait QuotesAndSplices {
     if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
-      val splice1 = typedSplicePattern(splice, defn.FunctionOf(argTypes, pt))
+      val splice1 = typedSplicePattern(splice, defn.FunctionNOf(argTypes, pt))
       untpd.cpy.Apply(tree)(splice1.select(nme.apply), typedArgs).withType(pt)
     else // $x(...) higher-order quasipattern
       if args.isEmpty then

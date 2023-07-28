@@ -954,7 +954,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
     def isStructuralTermSelect(tree: Select) =
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
-        case defn.PolyFunctionOf(_) =>
+        case defn.FunctionOf(_) =>
           false
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)

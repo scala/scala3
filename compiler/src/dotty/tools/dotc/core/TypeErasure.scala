@@ -567,7 +567,7 @@ object TypeErasure {
         functionType(info.resultType)
       case info: MethodType =>
         assert(!info.resultType.isInstanceOf[MethodicType])
-        defn.FunctionType(n = info.erasedParams.count(_ == false))
+        defn.FunctionType(n = info.nonErasedParamCount)
     }
     erasure(functionType(applyInfo))
 }
@@ -933,7 +933,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp: TermRef =>
         sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
-        sigName(defn.FunctionOf(Nil, rt))
+        sigName(defn.FunctionNOf(Nil, rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
       case tp @ defn.PolyFunctionOf(_) =>

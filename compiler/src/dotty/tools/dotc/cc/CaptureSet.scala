@@ -881,7 +881,7 @@ object CaptureSet:
           ++ (recur(rinfo.resType)                             // add capture set of result
           -- CaptureSet(rinfo.paramRefs.filter(_.isTracked)*)) // but disregard bound parameters
         case tpd @ AppliedType(tycon, args) =>
-          if followResult && defn.isNonRefinedFunction(tpd) then
+          if followResult && defn.isFunctionNType(tpd) then
             recur(args.last)
               // must be (pure) FunctionN type since ImpureFunctions have already
               // been eliminated in selector's dealias. Use capture set of result.

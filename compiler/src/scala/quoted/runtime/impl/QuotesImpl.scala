@@ -1814,9 +1814,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 case PolyType(_, _, mt1) => mt1.hasErasedParams
             case _ => false
         def isDependentFunctionType: Boolean =
-          val tpNoRefinement = self.dropDependentRefinement
-          tpNoRefinement != self
-          && dotc.core.Symbols.defn.isNonRefinedFunction(tpNoRefinement)
+          self match
+            case dotc.core.Symbols.defn.FunctionOf(mt) => mt.isResultDependent
+            case _ => false
         def isTupleN: Boolean =
           dotc.core.Symbols.defn.isTupleNType(self)
         def select(sym: Symbol): TypeRepr = self.select(sym)

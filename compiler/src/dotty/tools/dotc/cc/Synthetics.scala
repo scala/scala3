@@ -174,9 +174,9 @@ object Synthetics:
       val (et: ExprType) = symd.info: @unchecked
       val (enclThis: ThisType) = symd.owner.thisType: @unchecked
       def mapFinalResult(tp: Type, f: Type => Type): Type =
-        val defn.FunctionOf(args, res, isContextual) = tp: @unchecked
+        val defn.FunctionNOf(args, res, isContextual) = tp: @unchecked
         if defn.isFunctionNType(res) then
-          defn.FunctionOf(args, mapFinalResult(res, f), isContextual)
+          defn.FunctionNOf(args, mapFinalResult(res, f), isContextual)
         else
           f(tp)
       val resType1 =

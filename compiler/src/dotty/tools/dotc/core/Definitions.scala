@@ -1109,23 +1109,34 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
+    /** Matches a `FunctionN[...]`/`ContextFunctionN[...]` or refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
+      ft match
+        case RefinedFunctionOf(mt) => Some(mt)
+        case FunctionNOf(argTypes, resultType, isContextual) =>
+          val methodType = if isContextual then ContextualMethodType else MethodType
+          Some(methodType(argTypes, resultType))
+        case _ => None
+    }
+  }
+
+  object FunctionNOf {
+    /** Create a `FunctionN` or `ContextFunctionN` type applied to the arguments and result type */
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
-      val mt = MethodType.companion(isContextual, false)(args, resultType)
-      if mt.hasErasedParams then
-        RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
-      else
-        FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
-      ft.dealias match
-        case PolyFunctionOf(mt: MethodType) =>
-          Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
-        case dft =>
-          val tsym = dft.typeSymbol
-          if isFunctionSymbol(tsym) && ft.isRef(tsym) then
-            val targs = dft.argInfos
-            if (targs.isEmpty) None
-            else Some(targs.init, targs.last, tsym.name.isContextFunction)
-          else None
+      FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+
+    /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
+     *  Extracts the list of function argument types, the result type and whether function is contextual.
+     */
+    def unapply(tpe: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
+      val tsym = tpe.typeSymbol
+      if isFunctionSymbol(tsym) && tpe.isRef(tsym) then
+        val targs = tpe.argInfos
+        if (targs.isEmpty) None
+        else Some(targs.init, targs.last, tsym.name.isContextFunction)
+      else None
     }
   }
 
@@ -1165,6 +1176,7 @@ class Definitions {
       def isValidMethodType(info: Type) = info match
         case info: MethodType =>
           !info.resType.isInstanceOf[MethodOrPoly] // Has only one parameter list
+          && !info.isParamDependent
         case _ => false
       info match
         case info: PolyType => isValidMethodType(info.resType)
@@ -1731,26 +1743,20 @@ class Definitions {
 
   def isProductSubType(tp: Type)(using Context): Boolean = tp.derivesFrom(ProductClass)
 
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
-   *  instance?
-   */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
-    val arity = functionArity(tp)
-    val sym = tp.dealias.typeSymbol
-
-    arity >= 0
-    && isFunctionClass(sym)
-    && tp.isRef(
-        FunctionType(arity, sym.name.isContextFunction).typeSymbol,
-        skipRefined = false)
-  end isNonRefinedFunction
-
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
    *  - scala.ContextFunctionN
    */
   def isFunctionNType(tp: Type)(using Context): Boolean =
-    isNonRefinedFunction(tp.dropDependentRefinement)
+    val tp1 = tp.dropDependentRefinement
+    val arity = functionArity(tp1)
+    val sym = tp1.dealias.typeSymbol
+
+    arity >= 0
+    && isFunctionClass(sym)
+    && tp1.isRef(
+        FunctionType(arity, sym.name.isContextFunction).typeSymbol,
+        skipRefined = false)
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
@@ -1872,24 +1878,6 @@ class Definitions {
   /** Is `tp` an context function type? */
   def isContextFunctionType(tp: Type)(using Context): Boolean =
     asContextFunctionType(tp).exists
-
-  /** An extractor for context function types `As ?=> B`, possibly with
-   *  dependent refinements. Optionally returns a triple consisting of the argument
-   *  types `As`, the result type `B` and a whether the type is an erased context function.
-   */
-  object ContextFunctionType:
-    def unapply(tp: Type)(using Context): Option[(List[Type], Type, List[Boolean])] =
-      if ctx.erasedTypes then
-        atPhase(erasurePhase)(unapply(tp))
-      else
-        asContextFunctionType(tp) match
-          case PolyFunctionOf(mt: MethodType) =>
-            Some((mt.paramInfos, mt.resType, mt.erasedParams))
-          case tp1 if tp1.exists =>
-            val args = tp1.functionArgInfos
-            val erasedParams = List.fill(functionArity(tp1)) { false }
-            Some((args.init, args.last, erasedParams))
-          case _ => None
 
   /** A whitelist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
