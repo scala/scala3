@@ -1180,7 +1180,7 @@ class Definitions {
      *  Pattern: `$ft { def apply: $mt }`
      */
     def unapply(ft: Type)(using Context): Option[(Type, MethodType)] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodType) if isNonRefinedFunction(parent) =>
+      case FunctionRefinementOf(parent, mt: MethodType) if !parent.derivesFrom(PolyFunctionClass) =>
         Some((parent, mt))
       case _ => None
   }
@@ -1756,26 +1756,20 @@ class Definitions {
 
   def isProductSubType(tp: Type)(using Context): Boolean = tp.derivesFrom(ProductClass)
 
-  /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
-   *  instance?
-   */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
-    val arity = functionArity(tp)
-    val sym = tp.dealias.typeSymbol
-
-    arity >= 0
-    && isFunctionClass(sym)
-    && tp.isRef(
-        FunctionType(arity, sym.name.isContextFunction).typeSymbol,
-        skipRefined = false)
-  end isNonRefinedFunction
-
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
    *  - scala.ContextFunctionN
    */
   def isFunctionNType(tp: Type)(using Context): Boolean =
-    isNonRefinedFunction(tp.dropDependentRefinement)
+    val tp1 = tp.dropDependentRefinement
+    val arity = functionArity(tp1)
+    val sym = tp1.dealias.typeSymbol
+
+    arity >= 0
+    && isFunctionClass(sym)
+    && tp1.isRef(
+        FunctionType(arity, sym.name.isContextFunction).typeSymbol,
+        skipRefined = false)
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
