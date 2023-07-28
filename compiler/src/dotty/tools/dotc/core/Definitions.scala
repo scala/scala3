@@ -1746,6 +1746,15 @@ class Definitions {
     isFunctionNType(tp)
     || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
 
+  def erasedFunctionParams(tp: Type)(using Context): List[Boolean] =
+    tp match
+      case PolyFunctionOf(mt: MethodType) =>
+        mt.erasedParams
+      case tp =>
+        val arity = functionArity(tp)
+        if arity < 0 then Nil
+        else List.fill(arity) { false }
+
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     if !ctx.settings.Yscala2Stdlib.value then
       for base <- bases; tp <- paramTypes do
@@ -1863,17 +1872,17 @@ class Definitions {
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
   object ContextFunctionType:
-    def unapply(tp: Type)(using Context): Option[(List[Type], Type, List[Boolean])] =
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
       if ctx.erasedTypes then
         atPhase(erasurePhase)(unapply(tp))
       else
         asContextFunctionType(tp) match
           case PolyFunctionOf(mt: MethodType) =>
-            Some((mt.paramInfos, mt.resType, mt.erasedParams))
+            Some((mt.paramInfos, mt.resType))
           case tp1 if tp1.exists =>
             val args = tp1.functionArgInfos
             val erasedParams = List.fill(functionArity(tp1)) { false }
-            Some((args.init, args.last, erasedParams))
+            Some((args.init, args.last))
           case _ => None
 
   /** A whitelist of Scala-2 classes that are known to be pure */
