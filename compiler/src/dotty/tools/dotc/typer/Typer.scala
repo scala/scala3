@@ -1320,16 +1320,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case tp: TypeParamRef =>
         decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, pos)
       case _ => pt1.findFunctionType match {
-        case pt1 if defn.isNonRefinedFunction(pt1) =>
+        case ft if defn.isNonRefinedFunction(ft) =>
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
 
-          (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
-        case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
-        if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
-        case defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
+          (ft.argInfos.init, typeTree(interpolateWildcards(ft.argInfos.last.hiBound)))
+        case ft @ RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
+        if defn.isFunctionType(ft) && formals.length == defaultArity =>
+          // PolyFunction or dependent refinement
           (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>
           val restpe = mt.resultType match
