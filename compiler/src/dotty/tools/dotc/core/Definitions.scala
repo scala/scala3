@@ -1174,6 +1174,17 @@ class Definitions {
         case _ => isValidMethodType(info)
   }
 
+  object DependentFunctionRefinementOf {
+    /** Matches a refined function FT type and extracts FT and apply info.
+     *
+     *  Pattern: `$ft { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[(Type, MethodType)] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodType) if isNonRefinedFunction(parent) =>
+        Some((parent, mt))
+      case _ => None
+  }
+
   object PartialFunctionOf {
     def apply(arg: Type, result: Type)(using Context): Type =
       PartialFunctionClass.typeRef.appliedTo(arg :: result :: Nil)

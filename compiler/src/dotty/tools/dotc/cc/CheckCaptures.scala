@@ -842,7 +842,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
           // Adapt the inner shape type: get the adapted shape type, and the capture set leaked during adaptation
           val (styp1, leaked) = styp match {
-            case actual @ AppliedType(tycon, args) if defn.isNonRefinedFunction(actual) =>
+            case actual @ AppliedType(tycon, args) if defn.isFunctionNType(actual) =>
               adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
             case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
