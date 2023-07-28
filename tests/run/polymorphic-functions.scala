@@ -27,7 +27,7 @@ object Test extends App {
   val t2a: F2 = t2
   assert(t2(23, "foo") == Left(23))
 
-  // Polymorphic idenity
+  // Polymorphic identity
   val pid = [T] => (t: T) => t
 
   // Method with poly function argument
@@ -50,7 +50,7 @@ object Test extends App {
   val pf2 = [T] => (f: [U] => U => U, t: Int) => f(t)
   val pf20 = pf2(pid, 23)
 
-  // Implment/override
+  // Implement/override
   val phd = [T] => (ts: List[T]) => ts.headOption
 
   trait A {

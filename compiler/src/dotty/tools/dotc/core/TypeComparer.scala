@@ -667,7 +667,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
-                // TODO should we handle ErasedFunction is this same way?
                 tp1.member(nme.apply).info match
                   case info1: PolyType =>
                     return isSubInfo(info1, tp2.refinedInfo)

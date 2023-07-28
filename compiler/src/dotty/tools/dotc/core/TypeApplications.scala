@@ -506,10 +506,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => Nil
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
-   *  Handles `ErasedFunction`s and poly functions gracefully.
+   *  Handles poly functions gracefully.
    */
   final def functionArgInfos(using Context): List[Type] = self.dealias match
-    case defn.ErasedFunctionOf(mt) => (mt.paramInfos :+ mt.resultType)
+    case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
