@@ -20,7 +20,7 @@ object ContextFunctionResults:
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
-      case defn.ContextFunctionType(_, resTpe) =>
+      case defn.ContextFunctionOf(_, resTpe) =>
         rhs match
           case closureDef(meth) => 1 + contextResultCount(meth.rhs, resTpe)
           case _ => 0
@@ -58,7 +58,7 @@ object ContextFunctionResults:
    */
   def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
     def allErased(tp: Type): Boolean = tp.dealias match
-      case ft @ defn.ContextFunctionType(_, resTpe) =>
+      case ft @ defn.ContextFunctionOf(_, resTpe) =>
         !defn.erasedFunctionParams(ft).contains(false) && allErased(resTpe)
       case _ => true
     contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
@@ -73,7 +73,7 @@ object ContextFunctionResults:
         integrateContextResults(rt, crCount)
       case tp: MethodOrPoly =>
         tp.derivedLambdaType(resType = integrateContextResults(tp.resType, crCount))
-      case defn.ContextFunctionType(argTypes, resType) =>
+      case defn.ContextFunctionOf(argTypes, resType) =>
         MethodType(argTypes, integrateContextResults(resType, crCount - 1))
 
   /** The total number of parameters of method `sym`, not counting
@@ -84,7 +84,7 @@ object ContextFunctionResults:
     def contextParamCount(tp: Type, crCount: Int): Int =
       if crCount == 0 then 0
       else
-        val defn.ContextFunctionType(params, resTpe) = tp: @unchecked
+        val defn.ContextFunctionOf(params, resTpe) = tp: @unchecked
         val erasedParams = defn.erasedFunctionParams(tp)
         val rest = contextParamCount(resTpe, crCount - 1)
         if erasedParams.contains(true) then erasedParams.count(_ == false) + rest else params.length + rest
@@ -105,7 +105,7 @@ object ContextFunctionResults:
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
       else tp match
-        case defn.ContextFunctionType(_, resTpe) => recur(resTpe, n - 1)
+        case defn.ContextFunctionOf(_, resTpe) => recur(resTpe, n - 1)
     recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
@@ -120,7 +120,7 @@ object ContextFunctionResults:
       case Select(qual, name) =>
         if name == nme.apply then
           qual.tpe match
-            case defn.ContextFunctionType(_, _) =>
+            case defn.ContextFunctionOf(_, _) =>
               integrateSelect(qual, n + 1)
             case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
               integrateSelect(qual, n + 1)

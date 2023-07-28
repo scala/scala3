@@ -129,7 +129,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
         else
-          val defn.ContextFunctionType(argTypes, resType) = tp: @unchecked
+          val defn.ContextFunctionOf(argTypes, resType) = tp: @unchecked
           val erasedParams = defn.erasedFunctionParams(tp)
           val anonFun = newAnonFun(ctx.owner,
             MethodType(

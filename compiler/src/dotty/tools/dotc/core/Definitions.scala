@@ -1129,6 +1129,24 @@ class Definitions {
     }
   }
 
+  /** An extractor for context function types `As ?=> B`, possibly with
+   *  dependent refinements. Optionally returns a triple consisting of the argument
+   *  types `As`, the result type `B` and a whether the type is an erased context function.
+   */
+  object ContextFunctionOf:
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
+      if ctx.erasedTypes then
+        atPhase(erasurePhase)(unapply(tp))
+      else
+        asContextFunctionType(tp) match
+          case PolyFunctionOf(mt: MethodType) =>
+            Some((mt.paramInfos, mt.resType))
+          case tp1 if tp1.exists =>
+            val args = tp1.functionArgInfos
+            val erasedParams = List.fill(functionArity(tp1)) { false }
+            Some((args.init, args.last))
+          case _ => None
+
   object PolyFunctionOf {
 
     /** Creates a refined `PolyFunction` with an `apply` method with the given info. */
@@ -1866,24 +1884,6 @@ class Definitions {
   /** Is `tp` an context function type? */
   def isContextFunctionType(tp: Type)(using Context): Boolean =
     asContextFunctionType(tp).exists
-
-  /** An extractor for context function types `As ?=> B`, possibly with
-   *  dependent refinements. Optionally returns a triple consisting of the argument
-   *  types `As`, the result type `B` and a whether the type is an erased context function.
-   */
-  object ContextFunctionType:
-    def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
-      if ctx.erasedTypes then
-        atPhase(erasurePhase)(unapply(tp))
-      else
-        asContextFunctionType(tp) match
-          case PolyFunctionOf(mt: MethodType) =>
-            Some((mt.paramInfos, mt.resType))
-          case tp1 if tp1.exists =>
-            val args = tp1.functionArgInfos
-            val erasedParams = List.fill(functionArity(tp1)) { false }
-            Some((args.init, args.last))
-          case _ => None
 
   /** A whitelist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
