@@ -71,8 +71,8 @@ object Objects:
 
   /** Syntax for the data structure abstraction used in abstract domain:
    *
-   * ve ::= ObjectRef(class)                              // global object
-   *      | OfClass(class, vs[outer], ctor, args, env)                                    // instance of a class
+   * ve ::= ObjectRef(class)                                             // global object
+   *      | OfClass(class, vs[outer], ctor, args, env)                   // instance of a class
    *      | OfArray(object[owner], regions)
    *      | Fun(..., env)                                                // value elements that can be contained in ValueSet
    * vs ::= ValueSet(ve)                                                 // set of abstract values
@@ -437,7 +437,8 @@ object Objects:
           ref.outer match
           case outer : ThisValue =>
             resolveEnv(meth, outer, ref.env)
-          case _ => // This is the case for top-level classes
+          case _ =>
+            // TODO: properly handle the case where ref.outer is ValueSet
             None
         case _ =>
           None
