@@ -75,7 +75,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
 
     // Here we add extra information that we should know about the error message
     val extra = dia.msg match {
-      case pm: PatternMatchExhaustivity => s": ${pm.uncovered}"
+      case pm: PatternMatchExhaustivity => s": ${pm.uncovered.mkString("\n")}"
       case _ => ""
     }
 
