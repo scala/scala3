@@ -771,7 +771,7 @@ object SpaceEngine {
     checkConstraint(genConstraint(sp))(using ctx.fresh.setNewTyperState())
   }
 
-  def showSpaces(ss: Seq[Space])(using Context): String = ss.map(show).mkString(", ")
+  def showSpaces(ss: Seq[Space])(using Context): Seq[String] = ss.map(show)
 
   /** Display spaces */
   def show(s: Space)(using Context): String = {
@@ -896,9 +896,8 @@ object SpaceEngine {
 
 
     if uncovered.nonEmpty then
-      val hasMore = uncovered.lengthCompare(6) > 0
-      val deduped = dedup(uncovered.take(6))
-      report.warning(PatternMatchExhaustivity(showSpaces(deduped), hasMore), m.selector)
+      val deduped = dedup(uncovered)
+      report.warning(PatternMatchExhaustivity(showSpaces(deduped), m), m.selector)
   }
 
   private def redundancyCheckable(sel: Tree)(using Context): Boolean =

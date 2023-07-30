@@ -52,7 +52,31 @@ class CodeActionTest extends DottyTest:
       // TODO look into trying to remove the extra space that is left behind
       """|final  class Test
          |""".stripMargin
+      )
 
+  @Test def insertMissingCases =
+    checkCodeAction(
+      code = """|enum Tree:
+         |  case Node(l: Tree, r: Tree)
+         |  case Leaf(v: String)
+         |
+         |object Test:
+         |  def foo(tree: Tree) = tree match {
+         |    case Tree.Node(_, _) => ???
+         |  }
+         |""".stripMargin,
+         title = "Insert missing cases (1)",
+      expected = """|enum Tree:
+         |  case Node(l: Tree, r: Tree)
+         |  case Leaf(v: String)
+         |
+         |object Test:
+         |  def foo(tree: Tree) = tree match {
+         |    case Tree.Node(_, _) => ???
+         |    case Tree.Leaf(_) => ???
+         |  }
+         |""".stripMargin,
+         afterPhase = "patternMatcher"
       )
 
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
@@ -61,16 +85,16 @@ class CodeActionTest extends DottyTest:
     val rep = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
     initialCtx.setReporter(rep).withoutColors
 
-  private def checkCodeAction(code: String, title: String, expected: String) =
+  private def checkCodeAction(code: String, title: String, expected: String, afterPhase: String = "typer") =
     ctx = newContext
     val source = SourceFile.virtual("test", code).content
-    val runCtx = checkCompile("typer", code) { (_, _) => () }
+    val runCtx = checkCompile(afterPhase, code) { (_, _) => () }
     val diagnostics = runCtx.reporter.removeBufferedMessages
-    assertEquals(1, diagnostics.size)
+    assertEquals("Expected exactly one diagnostic", 1, diagnostics.size)
 
     val diagnostic = diagnostics.head
     val actions = diagnostic.msg.actions.toList
-    assertEquals(1, actions.size)
+    assertEquals("Expected exactly one action", 1, actions.size)
 
     // TODO account for more than 1 action
     val action = actions.head
