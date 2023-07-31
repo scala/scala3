@@ -844,11 +844,12 @@ extends Message(LossyWideningConstantConversionID):
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(val uncovered: Seq[String], tree: untpd.Match)(using Context)
+class PatternMatchExhaustivity(uncoveredCases: Seq[String], tree: untpd.Match)(using Context)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
 
-  private val hasMore = uncovered.lengthCompare(6) > 0
+  private val hasMore = uncoveredCases.lengthCompare(6) > 0
+  val uncovered = uncoveredCases.take(6).mkString(", ")
 
   def msg(using Context) =
     val addendum = if hasMore then "(More unmatched cases are elided)" else ""
@@ -870,10 +871,10 @@ extends Message(PatternMatchExhaustivityID) {
     val endPos = tree.cases.lastOption.map(_.endPos).getOrElse(tree.selector.endPos)
     val startColumn = tree.cases.lastOption.map(_.startPos.startColumn).getOrElse(tree.selector.startPos.startColumn + 2)
     val pathes = List(
-          ActionPatch(endPos, uncovered.map(c=> indent(s"case $c => ???", startColumn)).mkString("\n", "\n", "")),
+          ActionPatch(endPos, uncoveredCases.map(c=> indent(s"case $c => ???", startColumn)).mkString("\n", "\n", "")),
         )
     List(
-      CodeAction(title = s"Insert missing cases (${uncovered.size})",
+      CodeAction(title = s"Insert missing cases (${uncoveredCases.size})",
         description = None,
         patches = pathes
       )
