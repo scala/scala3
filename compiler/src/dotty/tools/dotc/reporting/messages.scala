@@ -868,11 +868,19 @@ extends Message(PatternMatchExhaustivityID) {
 
   override def actions(using Context) =
     import scala.language.unsafeNulls
-    val endPos = tree.cases.lastOption.map(_.endPos).getOrElse(tree.selector.endPos)
-    val startColumn = tree.cases.lastOption.map(_.startPos.startColumn).getOrElse(tree.selector.startPos.startColumn + 2)
+    val endPos = tree.cases.lastOption.map(_.endPos)
+      .getOrElse(tree.selector.endPos)
+    val startColumn = tree.cases.lastOption
+      .map(_.startPos.startColumn)
+      .getOrElse(tree.selector.startPos.startColumn + 2)
+
     val pathes = List(
-          ActionPatch(endPos, uncoveredCases.map(c=> indent(s"case $c => ???", startColumn)).mkString("\n", "\n", "")),
-        )
+      ActionPatch(
+        srcPos = endPos, 
+        replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
+          .mkString("\n", "\n", "")
+      ),
+    )
     List(
       CodeAction(title = s"Insert missing cases (${uncoveredCases.size})",
         description = None,
