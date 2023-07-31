@@ -786,7 +786,8 @@ object SpaceEngine {
 
     def doShow(s: Space, flattenList: Boolean = false): String = s match {
       case Empty => "empty"
-      case Typ(c: ConstantType, _) => "" + c.value.value
+      case Typ(ConstantType(const : Constant), _) if const.tag == StringTag => "\"" + const.value + "\""
+      case Typ(ConstantType(const : Constant), _) => "" + const.value 
       case Typ(tp: TermRef, _) =>
         if (flattenList && tp <:< defn.NilType) ""
         else tp.symbol.showName
