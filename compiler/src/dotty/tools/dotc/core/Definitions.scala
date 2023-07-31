@@ -1138,6 +1138,8 @@ class Definitions {
       asContextFunctionType(tp) match
         case PolyFunctionOf(mt: MethodType) =>
           Some((mt.paramInfos, mt.resType))
+        case DependentFunctionRefinementOf(_, mt) =>
+          None
         case tp1 if tp1.exists =>
           val args = tp1.functionArgInfos
           val erasedParams = List.fill(functionArity(tp1)) { false }
