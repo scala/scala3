@@ -1135,15 +1135,8 @@ class Definitions {
    */
   object ContextFunctionOf:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
-      asContextFunctionType(tp) match
-        case PolyFunctionOf(mt: MethodType) =>
-          Some((mt.paramInfos, mt.resType))
-        case DependentFunctionRefinementOf(_, mt) =>
-          None
-        case tp1 if tp1.exists =>
-          val args = tp1.functionArgInfos
-          val erasedParams = List.fill(functionArity(tp1)) { false }
-          Some((args.init, args.last))
+      tp match
+        case FunctionOf(argTypes, resultType, true) => Some((argTypes, resultType))
         case _ => None
 
   object PolyFunctionOf {
