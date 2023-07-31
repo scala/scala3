@@ -432,9 +432,10 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
 
 
   private def checkTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
-    import dotty.tools.io.NoAbstractFile
-    val classfile = ctx.getSiblingClassfile(tastyFile)
-    if classfile != NoAbstractFile then
+    val classfile =
+      val className = tastyFile.name.stripSuffix(".tasty")
+      tastyFile.resolveSibling(className + ".class")
+    if classfile != null then
       val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else

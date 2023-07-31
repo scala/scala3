@@ -113,6 +113,11 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
       null
   }
 
+  final def fakeSibling(name: String): AbstractFile = {
+    val child = givenPath.parent / name
+    new PlainFile(child)
+  }
+
   /** Does this abstract file denote an existing file? */
   def create(): Unit = if (!exists) givenPath.createFile()
 

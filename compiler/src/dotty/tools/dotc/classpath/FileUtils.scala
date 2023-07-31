@@ -17,14 +17,14 @@ object FileUtils {
   extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 
-    def isClass: Boolean = !file.isDirectory && file.hasExtension("class") && !file.name.endsWith("$class.class")
+    def isClass: Boolean = !file.isDirectory && hasClassExtension && !file.name.endsWith("$class.class")
       // FIXME: drop last condition when we stop being compatible with Scala 2.11
 
-    def isClassExtension: Boolean = file.hasExtension("class")
+    def hasClassExtension: Boolean = file.hasExtension("class")
 
-    def isTastyExtension: Boolean = file.hasExtension("tasty")
+    def hasTastyExtension: Boolean = file.hasExtension("tasty")
 
-    def isTasty: Boolean = !file.isDirectory && file.hasExtension("tasty")
+    def isTasty: Boolean = !file.isDirectory && hasTastyExtension
 
     def isScalaBinary: Boolean = file.isClass || file.isTasty
 

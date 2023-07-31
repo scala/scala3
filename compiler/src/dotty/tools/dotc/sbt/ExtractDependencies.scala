@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{isTasty, isClassExtension, isTastyExtension}
+import dotty.tools.dotc.classpath.FileUtils.{isTasty, hasClassExtension, hasTastyExtension}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
@@ -424,10 +424,28 @@ class DependencyRecorder {
       classDependencies.foreach(recordClassDependency(cb, _))
     clear()
 
+  private val _siblingClassfiles = new mutable.HashMap[PlainFile, Path]
+
+  extension (pf: PlainFile)
+    /**Constructs a sibling class to the `jpath`.
+     * Does not validate if it exists as a real file.
+     * The way this works is that by the end of compilation analysis,
+     * there should be a corresponding NonLocalClass sent to zinc with the same class file name.
+     *
+     * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
+     * different outputs (e.g. stdlib-bootstrapped).
+     */
+    private def siblingClass: Path =
+      _siblingClassfiles.getOrElseUpdate(pf, {
+        val jpath = pf.jpath
+        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
+      })
+
    /** Clear all state. */
    def clear(): Unit =
      _usedNames.clear()
      _classDependencies.clear()
+     _siblingClassfiles.clear()
      lastOwner = NoSymbol
      lastDepSource = NoSymbol
      _responsibleForImports = NoSymbol
@@ -440,10 +458,10 @@ class DependencyRecorder {
     val fromClassName = classNameAsString(dep.fromClass)
     val sourceFile = ctx.compilationUnit.source
 
-    def binaryDependency(file: Path, binaryClassName: String) =
-      cb.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
+    def binaryDependency(path: Path, binaryClassName: String) =
+      cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, dep.context)
 
-    def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
+    def processExternalDependency(depFile: AbstractFile, binaryClassName: String, convertTasty: Boolean) = {
       depFile match {
         case ze: ZipArchive#Entry => // The dependency comes from a JAR
           ze.underlyingSource match
@@ -451,7 +469,7 @@ class DependencyRecorder {
               binaryDependency(zip.jpath, binaryClassName)
             case _ =>
         case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-          binaryDependency(pf.jpath, binaryClassName)
+          binaryDependency(if convertTasty then pf.siblingClass else pf.jpath, binaryClassName)
         case _ =>
           internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.fromClass.srcPos)
       }
@@ -461,15 +479,10 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
-      if depFile.isTastyExtension then
-        val depClassFile = ctx.getSiblingClassfile(depFile)
-        if depClassFile != NoAbstractFile then
-          // did not find associated class file, e.g. for a TASTy-only classpath.
-          // The file that Zinc recieves with binaryDependency is used to lookup any either any
-          // generated non-local classes or produced xsbti.API associated with the file.
-          processExternalDependency(depClassFile, dep.toClass.binaryClassName)
-      else if depFile.isClassExtension then
-        processExternalDependency(depFile, dep.toClass.binaryClassName)
+      if depFile.hasTastyExtension then
+        processExternalDependency(depFile, dep.toClass.binaryClassName, convertTasty = true)
+      else if depFile.hasClassExtension then
+        processExternalDependency(depFile, dep.toClass.binaryClassName, convertTasty = false)
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.

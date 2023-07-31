@@ -272,16 +272,6 @@ object Contexts {
     /** AbstractFile with given path, memoized */
     def getFile(name: String): AbstractFile = getFile(name.toTermName)
 
-    def getSiblingClassfile(tastyFile: AbstractFile): AbstractFile =
-      base.siblingClassfiles.getOrElseUpdate(tastyFile, {
-        val className = tastyFile.name.stripSuffix(".tasty")
-        val classfile0 = tastyFile.resolveSibling(className + ".class")
-        if classfile0 == null then
-          NoAbstractFile
-        else
-          classfile0
-      })
-
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
 
     private def lookup(key: Phase | SourceFile): Context | Null =
@@ -958,7 +948,6 @@ object Contexts {
     /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
-    val siblingClassfiles: util.HashMap[AbstractFile, AbstractFile] = util.HashMap()
 
     // Types state
     /** A table for hash consing unique types */
@@ -1063,7 +1052,6 @@ object Contexts {
       errorTypeMsg.clear()
       sources.clear()
       files.clear()
-      siblingClassfiles.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
 
     // Test that access is single threaded
