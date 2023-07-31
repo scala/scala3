@@ -19,6 +19,9 @@ import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd._
 import Synthesizer._
+import sbt.ExtractDependencies.*
+import sbt.ClassDependency
+import xsbti.api.DependencyContext._
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -457,7 +460,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
             withErrors(i"${defn.PairClass} is not a generic product because $reason")
         case MirrorSource.ClassSymbol(pre, cls) =>
-          if cls.isGenericProduct then makeProductMirror(pre, cls, None)
+          if cls.isGenericProduct then
+            if ctx.runZincPhases then
+              // The mirror should be resynthesized if the constructor of the
+              // case class `cls` changes. See `sbt-test/source-dependencies/mirror-product`.
+              val rec = ctx.compilationUnit.depRecorder
+              rec.addClassDependency(cls, DependencyByMemberRef)
+              rec.addUsedName(cls.primaryConstructor)
+            makeProductMirror(pre, cls, None)
           else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
       case Left(msg) =>
         withErrors(i"type `$mirroredType` is not a generic product because $msg")
@@ -477,6 +487,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val clsIsGenericSum = cls.isGenericSum(pre)
 
     if acceptableMsg.isEmpty && clsIsGenericSum then
+      if ctx.runZincPhases then
+        // The mirror should be resynthesized if any child of the sealed class
+        // `cls` changes. See `sbt-test/source-dependencies/mirror-sum`.
+        val rec = ctx.compilationUnit.depRecorder
+        rec.addClassDependency(cls, DependencyByMemberRef)
+        rec.addUsedName(cls, includeSealedChildren = true)
+
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def internalError(msg: => String)(using Context): Unit =
