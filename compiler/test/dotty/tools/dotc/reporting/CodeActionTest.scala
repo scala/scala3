@@ -56,26 +56,28 @@ class CodeActionTest extends DottyTest:
 
   @Test def insertMissingCases =
     checkCodeAction(
-      code = """|enum Tree:
-         |  case Node(l: Tree, r: Tree)
-         |  case Leaf(v: String)
-         |
-         |object Test:
-         |  def foo(tree: Tree) = tree match {
-         |    case Tree.Node(_, _) => ???
-         |  }
-         |""".stripMargin,
+      code =
+        """|enum Tree:
+           |  case Node(l: Tree, r: Tree)
+           |  case Leaf(v: String)
+           |
+           |object Test:
+           |  def foo(tree: Tree) = tree match {
+           |    case Tree.Node(_, _) => ???
+           |  }
+           |""".stripMargin,
          title = "Insert missing cases (1)",
-      expected = """|enum Tree:
-         |  case Node(l: Tree, r: Tree)
-         |  case Leaf(v: String)
-         |
-         |object Test:
-         |  def foo(tree: Tree) = tree match {
-         |    case Tree.Node(_, _) => ???
-         |    case Tree.Leaf(_) => ???
-         |  }
-         |""".stripMargin,
+      expected =
+        """|enum Tree:
+           |  case Node(l: Tree, r: Tree)
+           |  case Leaf(v: String)
+           |
+           |object Test:
+           |  def foo(tree: Tree) = tree match {
+           |    case Tree.Node(_, _) => ???
+           |    case Tree.Leaf(_) => ???
+           |  }
+           |""".stripMargin,
          afterPhase = "patternMatcher"
       )
 
