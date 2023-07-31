@@ -100,6 +100,25 @@ class CodeActionTest extends DottyTest:
          afterPhase = "patternMatcher"
       )
 
+  @Test def insertMissingCasesForUnionIntType =
+    checkCodeAction(
+      code =
+        """object Test:
+           |  def foo(text: 1 | 2) = text match {
+           |    case 2 => ???
+           |  }
+           |""".stripMargin,
+         title = "Insert missing cases (1)",
+      expected =
+        """object Test:
+           |  def foo(text: 1 | 2) = text match {
+           |    case 2 => ???
+           |    case 1 => ???
+           |  }
+           |""".stripMargin,
+         afterPhase = "patternMatcher"
+      )
+
   // Make sure we're not using the default reporter, which is the ConsoleReporter,
   // meaning they will get reported in the test run and that's it.
   private def newContext =
