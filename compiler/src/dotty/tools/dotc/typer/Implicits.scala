@@ -55,11 +55,13 @@ object Implicits:
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
-  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel {
+  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel with Showable {
     def ref: TermRef = implicitRef.underlyingRef
 
     def isExtension = (kind & Candidate.Extension) != 0
     def isConversion = (kind & Candidate.Conversion) != 0
+
+    def toText(printer: Printer): Text = printer.toText(this)
   }
   object Candidate {
     type Kind = Int
@@ -331,6 +333,7 @@ object Implicits:
       else if outerEligible.isEmpty then ownEligible
       else
         def filter(xs: List[Candidate], remove: List[Candidate]) =
+          // Drop candidates that are shadowed by candidates in "remove"
           val shadowed = remove.map(_.ref.implicitName).toSet
           xs.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
 
@@ -342,7 +345,22 @@ object Implicits:
         if !migrateTo3(using irefCtx) && level == outer.level && (preferDefinitions || preferNamedImport) then
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
-          filter(ownEligible, outerEligible) ::: outerEligible
+
+          // Using only the outer candidates at the same level as us,
+          // remove from our own eligibles any shadowed candidate.
+          // This removes locally imported candidates from shadowing local definitions, (foo's in i18316)
+          // but without a remotely imported candidate removing a more locally imported candidates (mkFoo's in i18183)
+          val ownEligible1 = filter(ownEligible, outerEligible.filter(_.level == level))
+
+          // Remove, from the outer eligibles, any candidate shadowed by one of our own candidates,
+          // provided that the outer eligibles aren't at the same level (so actually shadows).
+          // This complements the filtering of our own eligible candidates, by removing candidates in the outer candidates
+          // that are low-level priority and shadowed by our candidates.  E.g. the outer import Imp.mkFoo in i18183.
+          val shadowed = ownEligible.map(_.ref.implicitName).toSet
+          val outerEligible1 =
+            outerEligible.filterConserve(cand => cand.level == level || !shadowed.contains(cand.ref.implicitName))
+
+          ownEligible1 ::: outerEligible1
         else
           ownEligible ::: filter(outerEligible, ownEligible)
 
