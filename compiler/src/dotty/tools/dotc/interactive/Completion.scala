@@ -3,6 +3,7 @@ package dotty.tools.dotc.interactive
 import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.config.Printers.interactiv
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
@@ -129,16 +130,29 @@ object Completion {
       case _ => 0
     }
 
+  /**
+   * Inspect `path` to deterimine whether enclosing tree is a result of tree extension.
+   * If so, completion should use untyped path containing tree before extension to get proper results.
+   */
+  def pathBeforeDesugaring(path: List[Tree], pos: SourcePosition)(using Context): List[Tree] =
+    val hasUntypedTree = path.headOption.forall(NavigateAST.untypedPath(_, exactMatch = true).nonEmpty)
+    if hasUntypedTree then
+      path
+    else
+      NavigateAST.untypedPath(pos.span).collect:
+        case tree: untpd.Tree => tree
+
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
-    val mode = completionMode(path, pos)
-    val rawPrefix = completionPrefix(path, pos)
+    val path0 = pathBeforeDesugaring(path, pos)
+    val mode = completionMode(path0, pos)
+    val rawPrefix = completionPrefix(path0, pos)
 
     val hasBackTick = rawPrefix.headOption.contains('`')
     val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
 
     val completer = new Completer(mode, prefix, pos)
 
-    val completions = path match {
+    val completions = path0 match {
         // Ignore synthetic select from `This` because in code it was `Ident`
         // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
         case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
@@ -153,7 +167,7 @@ object Completion {
     val backtickedCompletions =
       describedCompletions.map(completion => backtickCompletions(completion, hasBackTick))
 
-    val offset = completionOffset(path)
+    val offset = completionOffset(path0)
 
     interactiv.println(i"""completion with pos     = $pos,
                           |                prefix  = ${completer.prefix},

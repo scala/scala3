@@ -1528,4 +1528,13 @@ class CompletionTest {
         )
       )
   }
+
+  @Test def desugaredErrorStatement: Unit =
+    code"""|trait Foo
+           |object T:
+           |  extension (x: Fo$m1)
+           |"""
+      .completion(m1, Set(
+          ("Foo",Class,"Foo")
+      ))
 }

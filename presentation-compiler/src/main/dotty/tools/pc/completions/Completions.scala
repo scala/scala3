@@ -125,7 +125,7 @@ class Completions(
   end CursorPos
 
   private lazy val cursorPos =
-    calculateTypeInstanceAndNewPositions(path)
+    calculateTypeInstanceAndNewPositions(Completion.pathBeforeDesugaring(path, pos))
 
   private def calculateTypeInstanceAndNewPositions(
       path: List[Tree]

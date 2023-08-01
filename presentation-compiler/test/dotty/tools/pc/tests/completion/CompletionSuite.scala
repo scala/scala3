@@ -1326,6 +1326,26 @@ class CompletionSuite extends BaseCompletionSuite:
       """|AClass[A <: Int] test.O
          |AClass test.O
          |AbstractTypeClassManifest - scala.reflect.ClassManifestFactory
+         """.stripMargin
+    )
+
+  @Test def `extension-definition-scope` =
+    check(
+      """|object T:
+         |  extension (x: ListBuffe@@)
+         |""".stripMargin,
+      """|ListBuffer[T] - scala.collection.mutable
+         |ListBuffer - scala.collection.mutable
+         |""".stripMargin,
+    )
+
+  @Test def `extension-definition-symbol-search` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
          |""".stripMargin
     )
 
