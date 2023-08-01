@@ -458,17 +458,8 @@ object SpaceEngine {
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
-        val args2 =
-          if tycon.isRef(defn.ArrayClass) then
-            args.map(arg => erase(arg, inArray = true, isValue = false))
-          else tycon.typeParams.lazyZip(args).map { (tparam, arg) =>
-            if isValue && tparam.paramVarianceSign == 0 then
-              // when matching against a value,
-              // any type argument for an invariant type parameter will be unchecked,
-              // meaning it won't fail to match against anything; thus the wildcard replacement
-              WildcardType
-            else erase(arg, inArray = false, isValue = false)
-          }
+        val inArray = tycon.isRef(defn.ArrayClass)
+        val args2 = args.map(arg => erase(arg, inArray = inArray, isValue = false))
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
