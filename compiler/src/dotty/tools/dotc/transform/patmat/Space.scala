@@ -320,7 +320,7 @@ object SpaceEngine {
    * The types should be atomic (non-decomposable) and unrelated (neither
    * should be a subtype of the other).
    */
-  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug) {
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug, show) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
       // Since projections of types don't include null, intersection with null is empty.
