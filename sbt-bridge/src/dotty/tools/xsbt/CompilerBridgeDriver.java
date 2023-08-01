@@ -136,8 +136,23 @@ public class CompilerBridgeDriver extends Driver {
         doCompile(compiler, sourcesBuffer.toList(), context);
 
         for (xsbti.Problem problem: delegate.problems()) {
-          callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),
-            true);
+          try {
+            AnalysisCallback2 callback2 = (AnalysisCallback2)callback;
+            callback2.problem2(
+              problem.category(),
+              problem.position(),
+              problem.message(),
+              problem.severity(),
+              true, // reported
+              problem.rendered(),
+              problem.diagnosticCode(),
+              problem.diagnosticRelatedInformation(),
+              problem.actions()
+            );
+          } catch (NoClassDefFoundError e) {
+            callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),
+              true);
+          }
         }
       } else {
         delegate.printSummary();
