@@ -1191,12 +1191,13 @@ class Definitions {
   }
 
   object DependentFunctionRefinementOf {
-    /** Matches a refined `FunctionN[...]` or `ContextFunctionN[...]` type and extracts the function type and apply info.
+    /** Matches a dependent refinement of `FunctionN[...]` or `ContextFunctionN[...]` type.
+     *  Extracts the method type type and apply info.
      *
      *  Pattern: `$ft { def apply: $mt }`
      */
     def unapply(ft: Type)(using Context): Option[(Type, MethodType)] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodType) if isFunctionNType(parent) =>
+      case RefinedType(parent, nme.apply, mt: MethodType) if isFunctionNType(parent) && mt.isResultDependent =>
         Some((parent, mt))
       case _ => None
   }
