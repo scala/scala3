@@ -409,7 +409,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing:
-          case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
+          case defn.NonDependentFunctionOf(paramtpe :: Nil, restpe, isContextual) =>
             defn.FunctionNOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
 
       else
@@ -531,7 +531,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   recheckDef(mdef, meth)
               meth.updateInfoBetween(preRecheckPhase, thisPhase, completer)
           pt.dealias match
-            case defn.FunctionOf(ptformals, _, _) => recheckFunction(ptformals)
+            case defn.NonDependentFunctionOf(ptformals, _, _) => recheckFunction(ptformals)
             case defn.DependentFunctionRefinementOf(_, mt) => recheckFunction(mt.paramInfos)
             case _ =>
           mdef.rhs match
@@ -709,7 +709,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           val eparent1 = recur(eparent)
           if eparent1 eq eparent then expected
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
-        case defn.FunctionOf(args, resultType, isContextual) =>
+        case defn.NonDependentFunctionOf(args, resultType, isContextual) =>
           actual match
             case defn.DependentFunctionRefinementOf(_, _) =>
               toDepFun(args, resultType, isContextual)
@@ -785,7 +785,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         try
           val (eargs, eres) = expected.dealias.stripCapturing match
-            case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
+            case defn.NonDependentFunctionOf(eargs, eres, _) => (eargs, eres)
             case expected: MethodType => (expected.paramInfos, expected.resType)
             case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionNType(expected) => (rinfo.paramInfos, rinfo.resType)
             case _ => (aargs.map(_ => WildcardType), WildcardType)

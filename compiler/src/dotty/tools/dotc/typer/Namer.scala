@@ -1896,7 +1896,7 @@ class Namer { typer: Typer =>
         case defn.DependentFunctionRefinementOf(_, mt) if mt.isContextualMethod =>
           // in this case `resType` is lying, gives us only the non-dependent upper bound
           originalTp
-        case atp @ defn.ContextFunctionOf(_, resType)
+        case atp @ defn.NonDependentContextFunctionOf(_, resType)
         if resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
           originalTp
         case _ =>

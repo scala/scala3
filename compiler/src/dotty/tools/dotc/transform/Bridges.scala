@@ -131,7 +131,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         else
           val (argTypes, resType, erasedParams) = atPhase(erasurePhase) {
             tp match
-              case defn.ContextFunctionOf(argTypes, resType) =>
+              case defn.NonDependentContextFunctionOf(argTypes, resType) =>
                 (argTypes, resType, defn.erasedFunctionParams(tp))
           }
           val anonFun = newAnonFun(ctx.owner,

@@ -3193,7 +3193,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
-    val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement: @unchecked
+    val defn.NonDependentContextFunctionOf(formals, _) = pt.dropDependentRefinement: @unchecked
 
     // The getter of default parameters may reach here.
     // Given the code below

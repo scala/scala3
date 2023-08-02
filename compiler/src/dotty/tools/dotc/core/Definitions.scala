@@ -1117,7 +1117,9 @@ class Definitions {
       val ft = mt.toFunctionType(isJava = false)
       assert(ft.exists, s"not a valid function type: $mt")
       ft
+  }
 
+  object NonDependentFunctionOf {
     /** Matches a (possibly aliased) `FunctionN[...]`, `ContextFunctionN[...]` or refined `PolyFunction`.
      *  Extracts the list of function argument types, the result type and whether function is contextual.
      *  It only matches a `PolyFunction` if the function type is not result dependent.
@@ -1156,10 +1158,10 @@ class Definitions {
    *  dependent refinements. Optionally returns a triple consisting of the argument
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
-  object ContextFunctionOf:
+  object NonDependentContextFunctionOf:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
       tp match
-        case FunctionOf(argTypes, resultType, true) => Some((argTypes, resultType))
+        case NonDependentFunctionOf(argTypes, resultType, true) => Some((argTypes, resultType))
         case _ => None
 
   object PolyFunctionOf {
@@ -1173,8 +1175,8 @@ class Definitions {
      *
      *  Pattern: `PolyFunction { def apply: $mt }`
      */
-    def unapply(ft: Type)(using Context): Option[MethodicType] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodicType)
+    def unapply(ft: Type)(using Context): Option[MethodOrPoly] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodOrPoly)
       if parent.derivesFrom(defn.PolyFunctionClass) =>
         Some(mt)
       case _ => None
