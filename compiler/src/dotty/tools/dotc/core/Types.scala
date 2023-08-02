@@ -3675,7 +3675,7 @@ object Types {
   trait LambdaType extends BindingType with TermType { self =>
     type ThisName <: Name
     type PInfo <: Type
-    type This <: LambdaType{type PInfo = self.PInfo}
+    type This >: this.type <: LambdaType{type PInfo = self.PInfo}
     type ParamRefType <: ParamRef
 
     def paramNames: List[ThisName]
@@ -3733,7 +3733,7 @@ object Types {
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
-                          resType: Type = this.resType)(using Context): LambdaType =
+                          resType: Type = this.resType)(using Context): This =
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
@@ -3852,7 +3852,7 @@ object Types {
     import DepStatus._
     type ThisName = TermName
     type PInfo = Type
-    type This <: TermLambda
+    type This >: this.type <: TermLambda
     type ParamRefType = TermParamRef
 
     override def resultType(using Context): Type =
@@ -4149,7 +4149,7 @@ object Types {
   trait TypeLambda extends LambdaType {
     type ThisName = TypeName
     type PInfo = TypeBounds
-    type This <: TypeLambda
+    type This >: this.type <: TypeLambda
     type ParamRefType = TypeParamRef
 
     def isResultDependent(using Context): Boolean = true

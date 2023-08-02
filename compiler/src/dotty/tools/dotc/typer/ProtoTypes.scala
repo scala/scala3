@@ -845,9 +845,9 @@ object ProtoTypes {
               tp
             case pt: ApplyingProto =>
               if (rt eq mt.resultType) tp
-              else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
+              else mt.derivedLambdaType(resType = rt)
             case _ =>
-              val ft = defn.FunctionOf(mt.paramInfos, rt)
+              val ft = defn.FunctionOf(mt.derivedLambdaType(resType = rt))
               if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }

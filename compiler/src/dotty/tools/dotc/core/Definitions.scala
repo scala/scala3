@@ -1109,7 +1109,16 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    /** Create a `FunctionN`, `ContextFunctionN` or refined `PolyFunction` type applied to the arguments and result type
+    /** Create a `FunctionN`, `ContextFunctionN`, refined `PolyFunction` or dependent refinement of a `FunctionN`/`ContextFunctionN`.
+     *
+     *  `PolyFunction` is used if at least one of the parameters is annotated as erased.
+     */
+    def apply(mt: MethodOrPoly)(using Context): Type =
+      val ft = mt.toFunctionType(isJava = false)
+      assert(ft.exists, s"not a valid function type: $mt")
+      ft
+
+    /** Create a `FunctionN`/`ContextFunctionN` type applied to the arguments and result type or a refined `PolyFunction`.
      *
      *  `PolyFunction` is used if at least one of the arguments is annotated as erased.
      */
