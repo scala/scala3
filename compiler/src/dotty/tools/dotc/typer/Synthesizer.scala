@@ -20,7 +20,6 @@ import annotation.{tailrec, constructorOnly}
 import ast.tpd._
 import Synthesizer._
 import sbt.ExtractDependencies.*
-import sbt.ClassDependency
 import xsbti.api.DependencyContext._
 
 /** Synthesize terms for special classes */
