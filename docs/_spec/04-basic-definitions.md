@@ -1,16 +1,12 @@
 ---
-title: Basic Declarations & Definitions
+title: Basic Definitions
 layout: default
 chapter: 4
 ---
 
-# Basic Declarations and Definitions
+# Basic Definitions
 
 ```ebnf
-Dcl         ::=  ‘val’ ValDcl
-              |  ‘var’ VarDcl
-              |  ‘def’ FunDcl
-              |  ‘type’ {nl} TypeDcl
 PatVarDef   ::=  ‘val’ PatDef
               |  ‘var’ VarDef
 Def         ::=  PatVarDef
@@ -20,19 +16,17 @@ Def         ::=  PatVarDef
               |  TmplDef
 ```
 
-A _declaration_ introduces names and assigns them types or type definitions.
-It can form part of a [class definition](05-classes-and-objects.html#templates) or of a refinement in a [refined type](03-types.html#concrete-refined-types).
+A _definition_ introduces names that denote terms and assigns them types, or that denote types and assigns them [type definitions](./03-types.html#type-definitions).
+It can form part of an object or [class definition](05-classes-and-objects.html#templates) or it can be local to a block.
 
-A _definition_ introduces names that denote terms or types.
-It can form part of an object or class definition or it can be local to a block.
-Both declarations and definitions produce _bindings_ that associate type names with type definitions or bounds, and that associate term names with types.
-
-The scope of a name introduced by a declaration or definition is the whole statement sequence containing the binding.
+The scope of a name introduced by a definition is the whole statement sequence containing the definition.
 However, there is a restriction on forward references in blocks:
 In a statement sequence ´s_1 ... s_n´ making up a block, if a simple name in ´s_i´ refers to an entity defined by ´s_j´ where ´j \geq i´, then for all ´s_k´ between and including ´s_i´ and ´s_j´,
 
 - ´s_k´ cannot be a variable definition.
 - If ´s_k´ is a value definition, it must be lazy.
+
+Moreover, in a block, all term definitions must be concrete, and opaque type alias definitions are not allowed.
 
 <!--
 Every basic definition may introduce several defined names, separated
@@ -45,32 +39,30 @@ by commas. These are expanded according to the following scheme:
                   && \VAR;y: T := x\\[0.5em]
 \eda
 
-The variable declaration `var x, y: Int`
+The variable definition `var x, y: Int`
 expands to `var x: Int; var y: Int`.
 
 The value definition `val x, y: Int = 1`
 expands to `val x: Int = 1; val y: Int = 1`.
 -->
 
-## Value Declarations and Definitions
+## Value Definitions
 
 ```ebnf
-Dcl          ::=  ‘val’ ValDcl
-ValDcl       ::=  ids ‘:’ Type
 PatVarDef    ::=  ‘val’ PatDef
-PatDef       ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr
+PatDef       ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] [‘=’ Expr]
 ids          ::=  id {‘,’ id}
 ```
 
-A value declaration `val ´x´: ´T´` introduces ´x´ as a name of a value of _declared type_ ´T´.
+An abstract value definition `val ´x´: ´T´` introduces ´x´ as a name of a value of _declared type_ ´T´.
+´T´ must be explicitly specified and must be a [proper type](03-types.html#proper-types).
 
-A value definition `val ´x´: ´T´ = ´e´` defines ´x´ as a name of the value that results from the evaluation of ´e´.
-If the value definition is not recursive, the declared type ´T´ may be omitted, in which case the [packed type](06-expressions.html#expression-typing) of expression ´e´ is assumed.
+A concrete value definition `val ´x´: ´T´ = ´e´` defines ´x´ as a name of the value that results from the evaluation of ´e´.
+If the value definition is not recursive, the declared type ´T´ may be omitted, in which case the [packed type](06-expressions.html#expression-typing) of the expression ´e´ is assumed.
 If a type ´T´ is given, then it must be a [proper type](03-types.html#proper-types) and ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
 
 Evaluation of the value definition implies evaluation of its right-hand side ´e´, unless it has the modifier `lazy`.
-The effect of the value definition is to bind ´x´ to the value of ´e´
-converted to type ´T´.
+The effect of the value definition is to bind ´x´ to the value of ´e´ converted to type ´T´.
 A `lazy` value definition evaluates its right hand side ´e´ the first time the value is accessed.
 
 A _constant value definition_ is of the form
@@ -83,7 +75,7 @@ where `e` is a [constant expression](06-expressions.html#constant-expressions).
 The `final` modifier must be present and no type annotation may be given.
 References to the constant value `x` are themselves treated as constant expressions; in the generated code they are replaced by the definition's right-hand side `e`.
 
-Value definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
+Concrete value definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
 If ´p´ is some pattern other than a simple name or a name followed by a colon and a type, then the value definition `val ´p´ = ´e´` is expanded as follows:
 
 1. If the pattern ´p´ has bound variables ´x_1, ..., x_n´, where ´n > 1´:
@@ -106,7 +98,7 @@ val ´x´ = ´e´ match { case ´p´ => ´x´ }
 3. If ´p´ has no bound variables:
 
 ```scala
-´e´ match { case ´p´ => ()}
+´e´ match { case ´p´ => () }
 ```
 
 ###### Example
@@ -114,6 +106,7 @@ val ´x´ = ´e´ match { case ´p´ => ´x´ }
 The following are examples of value definitions
 
 ```scala
+val foo: Int              // abstract value definition
 val pi = 3.1415
 val pi: Double = 3.1415   // equivalent to first definition
 val Some(x) = f()         // a pattern definition
@@ -130,13 +123,13 @@ val x = x´\$´._1
 val xs = x´\$´._2
 ```
 
-The name of any declared or defined value may not end in `_=`.
+The name of any defined value may not end in `_=`.
 
-A value declaration `val ´x_1, ..., x_n´: ´T´` is a shorthand for the sequence of value declarations `val ´x_1´: ´T´; ...; val ´x_n´: ´T´`.
+A value definition `val ´x_1, ..., x_n´: ´T´` is a shorthand for the sequence of value definitions `val ´x_1´: ´T´; ...; val ´x_n´: ´T´`.
 A value definition `val ´p_1, ..., p_n´ = ´e´` is a shorthand for the sequence of value definitions `val ´p_1´ = ´e´; ...; val ´p_n´ = ´e´`.
 A value definition `val ´p_1, ..., p_n: T´ = ´e´` is a shorthand for the sequence of value definitions `val ´p_1: T´ = ´e´; ...; val ´p_n: T´ = ´e´`.
 
-## Variable Declarations and Definitions
+## Variable Definitions
 
 ```ebnf
 Dcl            ::=  ‘var’ VarDcl
@@ -146,23 +139,23 @@ VarDef         ::=  PatDef
                  |  ids ‘:’ Type ‘=’ ‘_’
 ```
 
-A variable declaration `var ´x´: ´T´` is equivalent to the declarations of both a _getter method_ ´x´ *and* a _setter method_ `´x´_=`:
+An abstract variable definition `var ´x´: ´T´` is equivalent to the definition of both a _getter method_ ´x´ *and* a _setter method_ `´x´_=`:
 
 ```scala
 def ´x´: ´T´
 def ´x´_= (´y´: ´T´): Unit
 ```
 
-An implementation of a class may _define_ a declared variable using a variable definition, or by defining the corresponding setter and getter methods.
+An implementation of a class may implement a defined abstract variable using a concrete variable definition, or by defining the corresponding setter and getter methods.
 
-A variable definition `var ´x´: ´T´ = ´e´` introduces a mutable variable with type ´T´ and initial value as given by the expression ´e´.
+A concrete variable definition `var ´x´: ´T´ = ´e´` introduces a mutable variable with type ´T´ and initial value as given by the expression ´e´.
 The type ´T´ can be omitted, in which case the type of ´e´ is assumed.
 If ´T´ is given, then it must be a [proper type](03-types.html#proper-types) and ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
 
 Variable definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
-A variable definition  `var ´p´ = ´e´` where ´p´ is a pattern other than a simple name or a name followed by a colon and a type is expanded in the same way as a [value definition](#value-declarations-and-definitions) `val ´p´ = ´e´`, except that the free names in ´p´ are introduced as mutable variables, not values.
+A variable definition  `var ´p´ = ´e´` where ´p´ is a pattern other than a simple name or a name followed by a colon and a type is expanded in the same way as a [value definition](#value-definitions) `val ´p´ = ´e´`, except that the free names in ´p´ are introduced as mutable variables, not values.
 
-The name of any declared or defined variable may not end in `_=`.
+The name of any defined variable may not end in `_=`.
 
 The right-hand-side of a mutable variable definition that is a member of a template can be the special reference `scala.compiletime.uninitialized`: `var ´x´: ´T´ = scala.compiletime.uninitialized`.
 It introduces a mutable field with type ´T´ and a default initial value.
@@ -181,9 +174,9 @@ The default value depends on the type ´T´ as follows:
 `scala.compiletime.uninitialized` can never appear anywhere else.
 For compatibility with Scala 2, the syntax `var ´x´: ´T´ = _` is accepted as equivalent to using `uninitialized`.
 
-When they occur as members of a template, both forms of variable definition also introduce a getter method ´x´ which returns the value currently assigned to the variable, as well as a setter method `´x´_=` which changes the value currently assigned to the variable.
-The methods have the same signatures as for a variable declaration.
-The template then has these getter and setter methods as members, whereas the original variable cannot be accessed directly as a template member.
+When they occur as members of a template, both forms of concrete variable definition also introduce a setter method `´x´_=` which changes the value currently assigned to the variable.
+The setter has the same signatures as for an abstract variable definition.
+It is then not possible to directly modify the value assigned to the variable; mutations always go through the corresponding setter.
 
 ###### Example
 
@@ -215,11 +208,11 @@ d.hours = 8; d.minutes = 30; d.seconds = 0
 d.hours = 25                  // throws a DateError exception
 ```
 
-A variable declaration `var ´x_1, ..., x_n´: ´T´` is a shorthand for the sequence of variable declarations `var ´x_1´: ´T´; ...; var ´x_n´: ´T´`.
+A variable definition `var ´x_1, ..., x_n´: ´T´` is a shorthand for the sequence of variable definitions `var ´x_1´: ´T´; ...; var ´x_n´: ´T´`.
 A variable definition `var ´x_1, ..., x_n´ = ´e´` is a shorthand for the sequence of variable definitions `var ´x_1´ = ´e´; ...; var ´x_n´ = ´e´`.
 A variable definition `var ´x_1, ..., x_n: T´ = ´e´` is a shorthand for the sequence of variable definitions `var ´x_1: T´ = ´e´; ...; var ´x_n: T´ = ´e´`.
 
-## Type Declarations and Type Aliases
+## Type Member Definitions
 
 ```ebnf
 Dcl             ::=  ‘type’ {nl} TypeDcl
@@ -230,23 +223,25 @@ TypeDef         ::=  id [TypeParamClause] ‘=’ Type
 OpaqueTypeDef   ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type] ‘=’ Type
 ```
 
-A possibly parameterized _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´` declares ´t´ to be an abstract type.
+_Type members_ can be abstract type members, type aliases, or opaque type aliases.
+
+A possibly parameterized _abstract type member_ definition `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´` declares ´t´ to be an abstract type.
 If omitted, ´L´ and ´H´ are implied to be `Nothing` and `scala.Any`, respectively.
 
-A possibly parameterized _type alias_ `type ´t´[´\mathit{tps}\,´] = ´T´` defines ´t´ to be a concrete type member.
+A possibly parameterized _type alias_ definition `type ´t´[´\mathit{tps}\,´] = ´T´` defines ´t´ to be a concrete type member.
 
-A possibly parameterized _opaque type alias_ `opaque type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
+A possibly parameterized _opaque type alias_ definition `opaque type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
 
 If a type parameter clause `[´\mathit{tps}\,´]` is present, it is desugared away according to the rules in the following section.
 
-### Desugaring of parameterized type declarations
+### Desugaring of parameterized type definitions
 
-A parameterized type declaration is desugared into an unparameterized type declaration whose bounds are [type lambdas](03-types.html#type-lambdas) with explicit variance annotations.
+A parameterized type definition is desugared into an unparameterized type definition whose bounds are [type lambdas](03-types.html#type-lambdas) with explicit variance annotations.
 
 The scope of a type parameter extends over the bounds `>: ´L´ <: ´U´` or the alias `= ´T´` and the type parameter clause ´\mathit{tps}´ itself.
-A higher-order type parameter clause (of an abstract type constructor ´tc´) has the same kind of scope, restricted to the declaration of the type parameter ´tc´.
+A higher-order type parameter clause (of an abstract type constructor ´tc´) has the same kind of scope, restricted to the definition of the type parameter ´tc´.
 
-To illustrate nested scoping, these declarations are all equivalent: `type t[m[x] <: Bound[x], Bound[x]]`, `type t[m[x] <: Bound[x], Bound[y]]` and `type t[m[x] <: Bound[x], Bound[_]]`, as the scope of, e.g., the type parameter of ´m´ is limited to the declaration of ´m´.
+To illustrate nested scoping, these definitions are all equivalent: `type t[m[x] <: Bound[x], Bound[x]]`, `type t[m[x] <: Bound[x], Bound[y]]` and `type t[m[x] <: Bound[x], Bound[_]]`, as the scope of, e.g., the type parameter of ´m´ is limited to the definition of ´m´.
 In all of them, ´t´ is an abstract type member that abstracts over two type constructors: ´m´ stands for a type constructor that takes one type parameter and that must be a subtype of `Bound`, ´t´'s second type constructor parameter.
 `t[MutableList, Iterable]` is a valid use of ´t´.
 
@@ -313,16 +308,16 @@ type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´ <: [´\mathit{tps'}\,´] =>> ´H´
   ```
 where ´\mathit{tps'}´ is computed as in the previous cases.
 
-### Non-Parameterized Type Declarations and Type Aliases
+### Non-Parameterized Type Member Definitions
 
-A _type declaration_ `type ´t´ >: ´L´ <: ´H´` declares ´t´ to be an abstract type whose [type definition](03-types.html#type-definitions) has the lower bound type ´L´ and upper bound type ´H´.
+An _abstract type member_ definition `type ´t´ >: ´L´ <: ´H´` declares ´t´ to be an abstract type whose [type definition](03-types.html#type-definitions) has the lower bound type ´L´ and upper bound type ´H´.
 
-If a type declaration appears as a member declaration of a type, implementations of the type may implement ´t´ with any type ´T´ for which ´L <: T <: H´.
+If a type definition appears as a member definition of a type, implementations of the type may implement ´t´ with any type ´T´ for which ´L <: T <: H´.
 It is a compile-time error if ´L´ does not conform to ´H´.
 
-A _type alias_ `type ´t´ = ´T´` defines ´t´ to be an alias name for the type ´T´.
+A _type alias_ definition `type ´t´ = ´T´` defines ´t´ to be an alias name for the type ´T´.
 
-An _opaque type alias_ `opaque type ´t´ >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
+An _opaque type alias_ definition `opaque type ´t´ >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
 An opaque type alias can only be declared within a [template](./05-classes-and-objects.html#templates).
 It cannot be `private` and cannot be overridden in subclasses.
 In order for the definition to be valid, ´T´ must satisfy some constraints:
@@ -332,17 +327,17 @@ In order for the definition to be valid, ´T´ must satisfy some constraints:
 - If ´T´ is a type lambda, its result must be a proper type (i.e., it cannot be a curried type lambda).
 
 When viewed from within its enclosing template, an opaque type alias behaves as a type alias with type definition `= ´T´`.
-When viewed from anywhere else, it behaves as a type declaration with type definition `>: ´L´ <: ´H´`.
+When viewed from anywhere else, it behaves as an abstract type member with type definition `>: ´L´ <: ´H´`.
 See [`memberType`](./03-types.html#member-type) for the precise mechanism that governs this dual view.
 
-The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bounds or in its right-hand side.
+The scope rules for [definitions](#basic-definitions) and [type parameters](#method-definitions) make it possible that a type name appears in its own bounds or in its right-hand side.
 However, it is a static error if a type alias refers recursively to the defined type itself.
 That is, the type ´T´ in a type alias `type ´t´[´\mathit{tps}\,´] = ´T´` may not refer directly or indirectly to the name ´t´.
 It is also an error if an abstract type is directly or indirectly its own upper or lower bound.
 
 ###### Example
 
-The following are legal type declarations and definitions:
+The following are legal type definitions:
 
 ```scala
 type IntList = List[Integer]
@@ -457,7 +452,7 @@ Variance annotations indicate how instances of parameterized types vary with res
 A ‘+’ variance indicates a covariant dependency, a ‘-’ variance indicates a contravariant dependency, and a missing variance indication indicates an invariant dependency.
 
 A variance annotation constrains the way the annotated type variable may appear in the type or class which binds the type parameter.
-In a type definition `type ´T´[´\mathit{tps}\,´] = ´S´`, or a type declaration `type ´T´[´\mathit{tps}\,´] >: ´L´ <: ´U´` type parameters labeled ‘+’ must only appear in covariant position whereas type parameters labeled ‘-’ must only appear in contravariant position.
+In a type definition `type ´T´[´\mathit{tps}\,´] = ´S´`, `type ´T´[´\mathit{tps}\,´] >: ´L´ <: ´U´` or `opaque type ´T´[´\mathit{tps}\,´] >: ´L´ <: ´U´ = ´S´`, type parameters labeled ‘+’ must only appear in covariant position whereas type parameters labeled ‘-’ must only appear in contravariant position.
 Analogously, for a class definition `class ´C´[´\mathit{tps}\,´](´\mathit{ps}\,´) extends ´T´ { ´x´: ´S´ => ...}`, type parameters labeled ‘+’ must only appear in covariant position in the self type ´S´ and the template ´T´, whereas type parameters labeled ‘-’ must only appear in contravariant position.
 
 The variance position of a type parameter in a type or template is defined as follows.
@@ -467,7 +462,7 @@ The variance position changes at the following constructs.
 
 - The variance position of a method parameter is the opposite of the variance position of the enclosing parameter clause.
 - The variance position of a type parameter is the opposite of the variance position of the enclosing type parameter clause.
-- The variance position of the lower bound of a type declaration or type parameter is the opposite of the variance position of the type declaration or parameter.
+- The variance position of the lower bound of a type definition or type parameter is the opposite of the variance position of the type definition or parameter.
 - The type of a mutable variable is always in invariant position.
 - The right-hand side of a type alias is always in invariant position.
 - The prefix ´p´ of a type selection `´p.T´` is always in invariant position.
@@ -544,13 +539,11 @@ abstract class OutputChannel[-A] {
 With that annotation, we have that `OutputChannel[AnyRef]` conforms to `OutputChannel[String]`.
 That is, a channel on which one can write any object can substitute for a channel on which one can write only strings.
 
-## Method Declarations and Definitions
+## Method Definitions
 
 ```ebnf
-Dcl                ::=  ‘def’ FunDcl
-FunDcl             ::=  FunSig ‘:’ Type
 Def                ::=  ‘def’ FunDef
-FunDef             ::=  FunSig [‘:’ Type] ‘=’ Expr
+FunDef             ::=  FunSig [‘:’ Type] [‘=’ Expr]
 FunSig             ::=  id [FunTypeParamClause] ParamClauses
 FunTypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
 ParamClauses       ::=  {ParamClause} [[nl] ‘(’ ‘implicit’ Params ‘)’]
@@ -562,15 +555,17 @@ ParamType          ::=  Type
                      |  Type ‘*’
 ```
 
-A _method declaration_ has the form `def ´f\,\mathit{psig}´: ´T´`, where ´f´ is the method's name, ´\mathit{psig}´ is its parameter signature and ´T´ is its result type.
-A _method definition_ `def ´f\,\mathit{psig}´: ´T´ = ´e´` also includes a _method body_ ´e´, i.e. an expression which defines the method's result.
+An _abstract method definition_ has the form `def ´f\,\mathit{psig}´: ´T´`, where ´f´ is the method's name, ´\mathit{psig}´ is its parameter signature and ´T´ is its result type.
+A _concrete method definition_ `def ´f\,\mathit{psig}´: ´T´ = ´e´` also includes a _method body_ ´e´, i.e. an expression which defines the method's result.
 A parameter signature consists of an optional type parameter clause `[´\mathit{tps}\,´]`, followed by zero or more value parameter clauses `(´\mathit{ps}_1´)...(´\mathit{ps}_n´)`.
-Such a declaration or definition introduces a value with a (possibly polymorphic) method type whose parameter types and result type are as given.
+
+If there is no type or term parameter clause, a method definition introduces a method with a proper type, which is also its result type.
+Otherwise, it introduces a method with a methodic type whose parameter types and result type are as given.
 
 The type of the method body is expected to [conform](06-expressions.html#expression-typing) to the method's declared result type, if one is given.
 If the method definition is not recursive, the result type may be omitted, in which case it is determined from the packed type of the method body.
 
-A _type parameter clause_ ´\mathit{tps}´ consists of one or more [type declarations](#type-declarations-and-type-aliases), which introduce type parameters, possibly with bounds.
+A _type parameter clause_ ´\mathit{tps}´ consists of one or more [type definitions](#type-definitions), which introduce type parameters, possibly with bounds.
 The scope of a type parameter includes the whole signature, including any of the type parameter bounds as well as the method body, if it is present.
 
 A _value parameter clause_ ´\mathit{ps}´ consists of zero or more formal parameter bindings such as `´x´: ´T´` or `´x: T = e´`, which bind value parameters and associate them with their types.
@@ -580,11 +575,11 @@ A unary operator is a method named `"unary_´op´"` where ´op´ is one of `+`, 
 
 ### Default Arguments
 
-Each value parameter declaration may optionally define a default argument.
+Each value parameter may optionally define a default argument.
 The default argument expression ´e´ is type-checked with an expected type ´T'´ obtained by replacing all occurrences of the method's type parameters in ´T´ by the undefined type.
 
-For every parameter ´p_{i,j}´ with a default argument a method named `´f\$´default´\$´n` is generated which computes the default argument expression.
-Here, ´n´ denotes the parameter's position in the method declaration.
+For every parameter ´p_{i,j}´ with a default argument, a method named `´f\$´default´\$´n` is generated which computes the default argument expression.
+Here, ´n´ denotes the parameter's position in the method definition.
 These methods are parametrized by the type parameter clause `[´\mathit{tps}\,´]` and all value parameter clauses `(´\mathit{ps}_1´)...(´\mathit{ps}_{i-1}´)` preceding ´p_{i,j}´.
 The `´f\$´default´\$´n` methods are inaccessible for user programs.
 
@@ -595,8 +590,7 @@ In the method
 def compare[T](a: T = 0)(b: T = a) = (a == b)
 ```
 
-the default expression `0` is type-checked with an undefined expected
-type.
+the default expression `0` is type-checked with an undefined expected type.
 When applying `compare()`, the default value `0` is inserted and `T` is instantiated to `Int`.
 The methods computing the default arguments have the form:
 
@@ -638,7 +632,7 @@ That is, the argument is evaluated using _call-by-name_.
 The by-name modifier is disallowed for parameters of classes that carry a `val` or `var` prefix, including parameters of case classes for which a `val` prefix is implicitly generated.
 
 ###### Example
-The declaration
+The definition
 
 ```scala
 def whileLoop (cond: => Boolean) (stat: => Unit): Unit
