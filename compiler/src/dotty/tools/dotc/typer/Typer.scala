@@ -1321,7 +1321,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case tp: TypeParamRef =>
         decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, pos)
       case _ => pt1.findFunctionType match {
-        case ft @ defn.FunctionRefinementOf(_, mt @ MethodTpe(_, formals, restpe)) =>
+        case ft @ defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) =>
+          if formals.length != defaultArity then fallbackProto
+          else (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
+        case ft @ defn.DependentFunctionRefinementOf(_, mt @ MethodTpe(_, formals, restpe)) =>
           if formals.length != defaultArity then fallbackProto
           else (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case ft @ defn.FunctionNOf(_, _, _) =>
