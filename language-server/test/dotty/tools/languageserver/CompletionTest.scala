@@ -1529,7 +1529,7 @@ class CompletionTest {
       )
   }
 
-  @Test def desugaredErrorStatement: Unit =
+  @Test def extensionDefinitionCompletions: Unit =
     code"""|trait Foo
            |object T:
            |  extension (x: Fo$m1)

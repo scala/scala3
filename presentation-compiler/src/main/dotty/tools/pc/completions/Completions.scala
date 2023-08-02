@@ -12,6 +12,7 @@ import scala.meta.internal.pc.{IdentifierComparator, MemberOrdering}
 import scala.meta.pc.*
 
 import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
@@ -24,6 +25,7 @@ import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
+import dotty.tools.dotc.interactive.Completion.Mode
 import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
@@ -54,6 +56,14 @@ class Completions(
 
   val coursierComplete = new CoursierComplete(BuildInfo.scalaVersion)
 
+  private lazy val completionMode =
+    val adjustedPath = Completion.pathBeforeDesugaring(path, pos)
+    val mode = Completion.completionMode(adjustedPath, pos)
+    path match
+      case Literal(Constant(_: String)) :: _ => Mode.Term // literal completions
+      case _ => mode
+
+
   private lazy val shouldAddSnippet =
     path match
       /* In case of `method@@()` we should not add snippets and the path
@@ -69,113 +79,41 @@ class Completions(
       case (_: Ident) :: (_: SeqLiteral) :: _ => false
       case _ => true
 
-  enum CursorPos:
-    case Type(hasTypeParams: Boolean, hasNewKw: Boolean)
-    case Term
-    case Import
-
-    def include(sym: Symbol)(using Context): Boolean =
-      def hasSyntheticCursorSuffix: Boolean =
-        if !sym.name.endsWith(Cursor.value) then false
-        else
-          val realNameLength = sym.decodedName.length - Cursor.value.length
-          sym.source == pos.source &&
-          sym.span.start + realNameLength == pos.span.end
-
-      val generalExclude =
-        isUninterestingSymbol(sym) ||
-          !isNotLocalForwardReference(sym) ||
-          sym.isPackageObject ||
-          hasSyntheticCursorSuffix
-
-      def isWildcardParam(sym: Symbol) =
-        if sym.isTerm && sym.owner.isAnonymousFunction then
-          sym.name match
-            case DerivedName(under, _) =>
-              under.isEmpty
-            case _ => false
-        else false
-
-      if generalExclude then false
-      else
-        this match
-          case Type(_, _) => true
-          case Term if isWildcardParam(sym) => false
-          case Term if sym.isTerm || sym.is(Package) => true
-          case Import => true
-          case _ => false
-      end if
-    end include
-
-    def allowBracketSuffix: Boolean =
-      this match
-        case Type(hasTypeParams, _) => !hasTypeParams
-        case _ => false
-
-    def allowTemplateSuffix: Boolean =
-      this match
-        case Type(_, hasNewKw) => hasNewKw
-        case _ => false
-
-    def allowApplicationSuffix: Boolean =
-      this match
-        case Term => true
-        case _ => false
-
-  end CursorPos
-
-  private lazy val cursorPos =
-    calculateTypeInstanceAndNewPositions(Completion.pathBeforeDesugaring(path, pos))
-
-  private def calculateTypeInstanceAndNewPositions(
-      path: List[Tree]
-  ): CursorPos =
+  private lazy val allowTemplateSuffix: Boolean =
     path match
-      case (_: Import) :: _ => CursorPos.Import
-      case _ :: (_: Import) :: _ => CursorPos.Import
-      case (head: (Select | Ident)) :: tail =>
-        // https://github.com/lampepfl/dotty/issues/15750
-        // due to this issue in dotty, because of which trees after typer lose information,
-        // we have to calculate hasNoSquareBracket manually:
-        val hasSquareBracket =
-          val span: Span = head.srcPos.span
-          if span.exists then
-            var i = span.end
-            while i < (text.length() - 1) && text(i).isWhitespace do i = i + 1
+      case _ :: New(selectOrIdent: (Select | Ident)) :: _ => true
+      case _ => false
 
-            if i < text.length() then text(i) == '['
-            else false
-          else false
+  def includeSymbol(sym: Symbol)(using Context): Boolean =
+    def hasSyntheticCursorSuffix: Boolean =
+      if !sym.name.endsWith(Cursor.value) then false
+      else
+        val realNameLength = sym.decodedName.length - Cursor.value.length
+        sym.source == pos.source &&
+        sym.span.start + realNameLength == pos.span.end
 
-        def typePos = CursorPos.Type(hasSquareBracket, hasNewKw = false)
-        def newTypePos =
-          CursorPos.Type(hasSquareBracket, hasNewKw = true)
+    val generalExclude =
+      isUninterestingSymbol(sym) ||
+        !isNotLocalForwardReference(sym) ||
+        sym.isPackageObject ||
+        hasSyntheticCursorSuffix
 
-        tail match
-          case (v: ValOrDefDef) :: _ if v.tpt.sourcePos.contains(pos) =>
-            typePos
-          case New(selectOrIdent: (Select | Ident)) :: _
-              if selectOrIdent.sourcePos.contains(pos) =>
-            newTypePos
-          case (a @ AppliedTypeTree(_, args)) :: _
-              if args.exists(_.sourcePos.contains(pos)) =>
-            typePos
-          case (templ @ Template(constr, _, self, _)) :: _
-              if (constr :: self :: templ.parents).exists(
-                _.sourcePos.contains(pos)
-              ) =>
-            typePos
-          case _ =>
-            CursorPos.Term
-        end match
+    def isWildcardParam(sym: Symbol) =
+      if sym.isTerm && sym.owner.isAnonymousFunction then
+        sym.name match
+          case DerivedName(under, _) =>
+            under.isEmpty
+          case _ => false
+      else false
 
-      case (_: TypeTree) :: TypeApply(Select(newQualifier: New, _), _) :: _
-          if newQualifier.sourcePos.contains(pos) =>
-        CursorPos.Type(hasTypeParams = false, hasNewKw = true)
+    if generalExclude then false
+    else if completionMode.is(Mode.ImportOrExport) then true
+    else if completionMode.is(Mode.Term) && isWildcardParam(sym) then false
+    else if completionMode.is(Mode.Term) && (sym.isTerm || sym.is(Package)) then true
+    else !completionMode.is(Mode.Term)
+    end if
+  end includeSymbol
 
-      case _ => CursorPos.Term
-    end match
-  end calculateTypeInstanceAndNewPositions
 
   def completions(): (List[CompletionValue], SymbolSearch.Result) =
     val (advanced, exclusive) = advancedCompletions(path, pos, completionPos)
@@ -206,7 +144,7 @@ class Completions(
         end match
 
     val application = CompletionApplication.fromPath(path)
-    val ordering = completionOrdering(application, cursorPos)
+    val ordering = completionOrdering(application)
     val values = application.postProcess(all.sorted(ordering))
     (values, result)
   end completions
@@ -256,8 +194,7 @@ class Completions(
   private def findSuffix(symbol: Symbol): CompletionSuffix =
     CompletionSuffix.empty
       .chain { suffix => // for [] suffix
-        if shouldAddSnippet &&
-          cursorPos.allowBracketSuffix && symbol.info.typeParams.nonEmpty
+        if shouldAddSnippet && symbol.info.typeParams.nonEmpty
         then suffix.withNewSuffixSnippet(SuffixKind.Bracket)
         else suffix
       }
@@ -285,7 +222,7 @@ class Completions(
         else suffix
       }
       .chain { suffix => // for {} suffix
-        if shouldAddSnippet && cursorPos.allowTemplateSuffix
+        if shouldAddSnippet && allowTemplateSuffix
           && isAbstractType(symbol)
         then
           if suffix.hasSnippet then suffix.withNewSuffix(SuffixKind.Template)
@@ -307,7 +244,7 @@ class Completions(
     val methodSymbols =
       if shouldAddSnippet &&
         (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) &&
-          !sym.is(Flags.JavaDefined) && cursorPos.allowApplicationSuffix
+          !sym.is(Flags.JavaDefined) && completionMode.is(Mode.Term)
       then
         val info =
           /* Companion will be added even for normal classes now,
@@ -635,7 +572,7 @@ class Completions(
               val suffix =
                 if symOnly.snippetSuffix.addLabelSnippet then "[]" else ""
               val id = nameId + suffix
-              val include = cursorPos.include(sym)
+              val include = includeSymbol(sym)
               (id, include)
             case kw: CompletionValue.Keyword => (kw.label, true)
             case mc: CompletionValue.MatchCompletion => (mc.label, true)
@@ -695,7 +632,6 @@ class Completions(
   private def computeRelevancePenalty(
       completion: CompletionValue,
       application: CompletionApplication,
-      cursorPos: CursorPos,
   ): Int =
     import scala.meta.internal.pc.MemberOrdering.*
 
@@ -741,10 +677,8 @@ class Completions(
         relevance |= IsSynthetic
       if sym.isDeprecated then relevance |= IsDeprecated
       if isEvilMethod(sym.name) then relevance |= IsEvilMethod
-      cursorPos match
-        case CursorPos.Type(_, _) if !sym.isType =>
-          relevance |= IsNotTypeInTypePos
-        case _ =>
+      if !completionMode.is(Mode.ImportOrExport) &&
+        completionMode.is(Mode.Type) && !sym.isType then relevance |= IsNotTypeInTypePos
       relevance
     end symbolRelevance
 
@@ -822,8 +756,7 @@ class Completions(
   end CompletionApplication
 
   private def completionOrdering(
-      application: CompletionApplication,
-      cursorPos: CursorPos,
+      application: CompletionApplication
   ): Ordering[CompletionValue] =
     new Ordering[CompletionValue]:
       val queryLower = completionPos.query.toLowerCase()
@@ -838,8 +771,8 @@ class Completions(
 
       def compareByRelevance(o1: CompletionValue, o2: CompletionValue): Int =
         Integer.compare(
-          computeRelevancePenalty(o1, application, cursorPos),
-          computeRelevancePenalty(o2, application, cursorPos),
+          computeRelevancePenalty(o1, application),
+          computeRelevancePenalty(o2, application),
         )
 
       def fuzzyScore(o: CompletionValue.Symbolic): Int =

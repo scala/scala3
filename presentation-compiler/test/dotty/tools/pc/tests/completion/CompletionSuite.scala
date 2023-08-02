@@ -673,8 +673,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some[?] scala
-         |Seq scala.collection.immutable
-         |Set scala.collection.immutable
+         |SafeVarargs java.lang
+         |ScalaReflectionException scala
          |""".stripMargin,
       topLines = Some(3)
     )
@@ -709,8 +709,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Number: Regex
-         |Nil scala.collection.immutable
-         |NoManifest scala.reflect
+         |NegativeArraySizeException java.lang
+         |NoClassDefFoundError java.lang
          |""".stripMargin,
       topLines = Option(3)
     )
@@ -724,8 +724,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Number: Regex
-         |Nil scala.collection.immutable
-         |NoManifest scala.reflect
+         |NegativeArraySizeException java.lang
+         |NoClassDefFoundError java.lang
          |""".stripMargin,
       topLines = Option(3)
     )
