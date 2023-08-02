@@ -532,7 +532,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               meth.updateInfoBetween(preRecheckPhase, thisPhase, completer)
           pt.dealias match
             case defn.NonDependentFunctionOf(ptformals, _, _) => recheckFunction(ptformals)
-            case defn.DependentFunctionRefinementOf(_, mt) => recheckFunction(mt.paramInfos)
+            case defn.DependentFunctionRefinementOf(mt) => recheckFunction(mt.paramInfos)
             case _ =>
           mdef.rhs match
             case rhs @ closure(_, _, _) =>
@@ -711,7 +711,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
         case defn.NonDependentFunctionOf(args, resultType, isContextual) =>
           actual match
-            case defn.DependentFunctionRefinementOf(_, _) =>
+            case defn.DependentFunctionRefinementOf(_) =>
               toDepFun(args, resultType, isContextual)
             case _ =>
               expected

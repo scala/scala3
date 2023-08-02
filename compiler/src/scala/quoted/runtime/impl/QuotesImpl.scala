@@ -1815,7 +1815,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => false
         def isDependentFunctionType: Boolean =
           self match
-            case dotc.core.Symbols.defn.DependentFunctionRefinementOf(_, _) => true
+            case dotc.core.Symbols.defn.DependentFunctionRefinementOf(_) => true
             case _ => false
         def isTupleN: Boolean =
           dotc.core.Symbols.defn.isTupleNType(self)

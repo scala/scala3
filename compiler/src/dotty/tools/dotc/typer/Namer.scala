@@ -1893,7 +1893,7 @@ class Namer { typer: Typer =>
       val originalTp = defaultParamType
       val approxTp = wildApprox(originalTp)
       approxTp.stripPoly match
-        case defn.DependentFunctionRefinementOf(_, mt) if mt.isContextualMethod =>
+        case defn.DependentFunctionRefinementOf(mt) if mt.isContextualMethod =>
           // in this case `resType` is lying, gives us only the non-dependent upper bound
           originalTp
         case atp @ defn.NonDependentContextFunctionOf(_, resType)

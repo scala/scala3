@@ -1330,7 +1330,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case ft @ defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) =>
           if formals.length != defaultArity then fallbackProto
           else (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
-        case ft @ defn.DependentFunctionRefinementOf(_, mt @ MethodTpe(_, formals, restpe)) =>
+        case ft @ defn.DependentFunctionRefinementOf(mt @ MethodTpe(_, formals, restpe)) =>
           if formals.length != defaultArity then fallbackProto
           else (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>

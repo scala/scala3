@@ -1198,9 +1198,10 @@ class Definitions {
      *
      *  Pattern: `$ft { def apply: $mt }`
      */
-    def unapply(ft: Type)(using Context): Option[(Type, MethodType)] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodType) if isFunctionNType(parent) && mt.isResultDependent =>
-        Some((parent, mt))
+    def unapply(ft: Type)(using Context): Option[MethodType] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodType)
+      if isFunctionNType(parent) && mt.isResultDependent =>
+        Some(mt)
       case _ => None
   }
 
