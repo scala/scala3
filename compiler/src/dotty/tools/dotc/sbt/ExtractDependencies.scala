@@ -421,72 +421,80 @@ class DependencyRecorder {
           usedNames.names.foreach:
             case (usedName, scopes) =>
               cb.usedName(className, usedName.toString, scopes)
-      classDependencies.foreach(recordClassDependency(cb, _))
+      val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
+      classDependencies.foreach(recordClassDependency(cb, _, siblingClassfiles))
     clear()
 
-  private val _siblingClassfiles = new mutable.HashMap[PlainFile, Path]
-
-  extension (pf: PlainFile)
-    /**Constructs a sibling class to the `jpath`.
-     * Does not validate if it exists as a real file.
-     * The way this works is that by the end of compilation analysis,
-     * there should be a corresponding NonLocalClass sent to zinc with the same class file name.
-     *
-     * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
-     * different outputs (e.g. stdlib-bootstrapped).
-     */
-    private def siblingClass: Path =
-      _siblingClassfiles.getOrElseUpdate(pf, {
-        val jpath = pf.jpath
-        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
-      })
-
    /** Clear all state. */
-   def clear(): Unit =
-     _usedNames.clear()
-     _classDependencies.clear()
-     _siblingClassfiles.clear()
-     lastOwner = NoSymbol
-     lastDepSource = NoSymbol
-     _responsibleForImports = NoSymbol
+  def clear(): Unit =
+    _usedNames.clear()
+    _classDependencies.clear()
+    lastOwner = NoSymbol
+    lastDepSource = NoSymbol
+    _responsibleForImports = NoSymbol
 
   /** Handles dependency on given symbol by trying to figure out if represents a term
    *  that is coming from either source code (not necessarily compiled in this compilation
    *  run) or from class file and calls respective callback method.
    */
-  private def recordClassDependency(cb: interfaces.IncrementalCallback, dep: ClassDependency)(using Context): Unit = {
+  private def recordClassDependency(cb: interfaces.IncrementalCallback, dep: ClassDependency,
+      siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
     val fromClassName = classNameAsString(dep.fromClass)
     val sourceFile = ctx.compilationUnit.source
+
+    /**For a `.tasty` file, constructs a sibling class to the `jpath`.
+     * Does not validate if it exists as a real file.
+     *
+     * Because classpath scanning looks for tasty files first, `dep.fromClass` will be
+     * associated to a `.tasty` file. However Zinc records all dependencies either based on `.jar` or `.class` files,
+     * where classes are in directories on the filesystem.
+     *
+     * So if the dependency comes from an upstream `.tasty` file and it was not packaged in a jar, then
+     * we need to call this to resolve the classfile that will eventually exist at runtime.
+     *
+     * The way this works is that by the end of compilation analysis,
+     * we should have called `cb.generatedNonLocalClass` with the same class file name.
+     *
+     * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
+     * different outputs (e.g. stdlib-bootstrapped).
+     */
+    def cachedSiblingClass(pf: PlainFile): Path =
+      siblingClassfiles.getOrElseUpdate(pf, {
+        val jpath = pf.jpath
+        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
+      })
 
     def binaryDependency(path: Path, binaryClassName: String) =
       cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, dep.context)
 
-    def processExternalDependency(depFile: AbstractFile, binaryClassName: String, convertTasty: Boolean) = {
-      depFile match {
-        case ze: ZipArchive#Entry => // The dependency comes from a JAR
-          ze.underlyingSource match
-            case Some(zip) if zip.jpath != null =>
-              binaryDependency(zip.jpath, binaryClassName)
-            case _ =>
-        case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-          binaryDependency(if convertTasty then pf.siblingClass else pf.jpath, binaryClassName)
-        case _ =>
-          internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.fromClass.srcPos)
-      }
-    }
-
-    val depFile = dep.toClass.associatedFile
+    val depClass = dep.toClass
+    val depFile = depClass.associatedFile
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
-      if depFile.hasTastyExtension then
-        processExternalDependency(depFile, dep.toClass.binaryClassName, convertTasty = true)
-      else if depFile.hasClassExtension then
-        processExternalDependency(depFile, dep.toClass.binaryClassName, convertTasty = false)
+      val isTasty = depFile.hasTastyExtension
+
+      def processExternalDependency() = {
+        val binaryClassName = depClass.binaryClassName
+        depFile match {
+          case ze: ZipArchive#Entry => // The dependency comes from a JAR
+            ze.underlyingSource match
+              case Some(zip) if zip.jpath != null =>
+                binaryDependency(zip.jpath, binaryClassName)
+              case _ =>
+          case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
+            binaryDependency(if isTasty then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
+          case _ =>
+            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.fromClass.srcPos)
+        }
+      }
+
+      if isTasty || depFile.hasClassExtension then
+        processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
-        val toClassName = classNameAsString(dep.toClass)
+        val toClassName = classNameAsString(depClass)
         cb.classDependency(toClassName, fromClassName, dep.context)
     }
   }
