@@ -501,9 +501,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckBlock(block: Block, pt: Type)(using Context): Type =
       block match
         case closureDef(mdef) =>
-          pt.dealias match
-            case defn.FunctionOf(ptformals, _, _)
-            if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
+          def recheckFunction(ptformals: List[Type]) =
+            if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) then
               // Redo setup of the anonymous function so that formal parameters don't
               // get capture sets. This is important to avoid false widenings to `cap`
               // when taking the base type of the actual closures's dependent function
@@ -531,6 +530,9 @@ class CheckCaptures extends Recheck, SymTransformer:
                     .showing(i"simplify info of $meth to $result", capt)
                   recheckDef(mdef, meth)
               meth.updateInfoBetween(preRecheckPhase, thisPhase, completer)
+          pt.dealias match
+            case defn.FunctionOf(ptformals, _, _) => recheckFunction(ptformals)
+            case defn.DependentFunctionRefinementOf(_, mt) => recheckFunction(mt.paramInfos)
             case _ =>
           mdef.rhs match
             case rhs @ closure(_, _, _) =>

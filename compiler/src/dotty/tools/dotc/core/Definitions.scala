@@ -1122,10 +1122,11 @@ class Definitions {
 
     /** Matches a (possibly aliased) `FunctionN[...]`, `ContextFunctionN[...]` or refined `PolyFunction`.
      *  Extracts the list of function argument types, the result type and whether function is contextual.
+     *  It only matches a `PolyFunction` if the function type is not result dependent.
      */
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft.dealias match
-        case PolyFunctionOf(mt: MethodType) =>
+        case PolyFunctionOf(mt: MethodType) if !mt.isResultDependent =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
         case FunctionNOf(targs, resType, isContextual) =>
           Some(targs, resType, isContextual)
