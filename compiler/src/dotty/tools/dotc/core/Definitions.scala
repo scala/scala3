@@ -1118,17 +1118,6 @@ class Definitions {
       assert(ft.exists, s"not a valid function type: $mt")
       ft
 
-    /** Create a `FunctionN`/`ContextFunctionN` type applied to the arguments and result type or a refined `PolyFunction`.
-     *
-     *  `PolyFunction` is used if at least one of the arguments is annotated as erased.
-     */
-    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
-      val mt = MethodType.companion(isContextual, false)(args, resultType)
-      if mt.hasErasedParams then
-        RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
-      else
-        FunctionNOf(args, resultType, isContextual)
-
     /** Matches a (possibly aliased) `FunctionN[...]`, `ContextFunctionN[...]` or refined `PolyFunction`.
      *  Extracts the list of function argument types, the result type and whether function is contextual.
      *  It only matches a `PolyFunction` if the function type is not result dependent.

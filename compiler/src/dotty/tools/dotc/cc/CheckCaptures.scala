@@ -410,7 +410,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing:
           case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
-            defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
+            defn.FunctionNOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
 
       else
         super.recheckApply(tree, pt) match
