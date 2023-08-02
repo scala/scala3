@@ -1934,7 +1934,7 @@ trait Applications extends Compatibility {
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionOf(
+        defn.FunctionNOf(
           args.map(Function.const(defn.AnyType)), typeShape(body),
           isContextual = untpd.isContextualClosure(tree))
       case Match(EmptyTree, _) =>

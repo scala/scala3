@@ -1109,23 +1109,47 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
+    /** Create a `FunctionN`, `ContextFunctionN` or refined `PolyFunction` type applied to the arguments and result type
+     *
+     *  `PolyFunction` is used if at least one of the arguments is annotated as erased.
+     */
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
       val mt = MethodType.companion(isContextual, false)(args, resultType)
       if mt.hasErasedParams then
         RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
       else
-        FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+        FunctionNOf(args, resultType, isContextual)
+
+    /** Matches a (possibly aliased) `FunctionN[...]`, `ContextFunctionN[...]` or refined `PolyFunction`.
+     *  Extracts the list of function argument types, the result type and whether function is contextual.
+     */
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft.dealias match
         case PolyFunctionOf(mt: MethodType) =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
-        case dft =>
-          val tsym = dft.typeSymbol
-          if isFunctionSymbol(tsym) && ft.isRef(tsym) then
-            val targs = dft.argInfos
-            if (targs.isEmpty) None
-            else Some(targs.init, targs.last, tsym.name.isContextFunction)
-          else None
+        case FunctionNOf(targs, resType, isContextual) =>
+          Some(targs, resType, isContextual)
+        case _ =>
+          None
+    }
+  }
+
+  object FunctionNOf {
+    /** Create a `FunctionN` or `ContextFunctionN` type applied to the arguments and result type */
+    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
+      FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+
+    /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
+     *  Extracts the list of function argument types, the result type and whether function is contextual.
+     */
+    def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
+      val dft = ft.dealias
+      val tsym = dft.typeSymbol
+      if isFunctionSymbol(tsym) && ft.isRef(tsym) then
+        val targs = dft.argInfos
+        if (targs.isEmpty) None
+        else Some(targs.init, targs.last, tsym.name.isContextFunction)
+      else None
     }
   }
 

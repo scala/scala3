@@ -1882,7 +1882,7 @@ object Types {
             case res: MethodType => res.toFunctionType(isJava)
             case res => res
           }
-          defn.FunctionOf(
+          defn.FunctionNOf(
             formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
