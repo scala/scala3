@@ -1324,7 +1324,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case ft @ defn.FunctionRefinementOf(_, mt @ MethodTpe(_, formals, restpe)) =>
           if formals.length != defaultArity then fallbackProto
           else (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
-        case ft @ defn.FunctionOf(_, _, _) =>
+        case ft @ defn.FunctionNOf(_, _, _) =>
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
