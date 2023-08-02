@@ -41,18 +41,18 @@ def barVal: Unit =
 
 // i18050
 package p {
-  package _root_ { // error
+  package _root_ { // not-reported
     object X // error
   }
 }
 
 // scala/bug#12508
-package _root_ { // error
+package _root_ { // ok
   class C {
     val _root_ = 42 // error
   }
 }
-package _root_.p { // error
+package _root_.p { // ok
   class C
 }
 
