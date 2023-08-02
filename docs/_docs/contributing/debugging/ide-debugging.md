@@ -147,6 +147,16 @@ The debugger should start and pause on your breakpoint.
 
 ![Start debugger](/images/contribution/start-debugger.jpg)
 
+If you are working on presentation compiler module, there is an easier way to start the debugger, without need of custom `launch.json`.
+It can be accomplished by running `Debug Test` code lens on exact test case.
+
+![Debug test via code lens](/images/contribution/debug-test-code-lens.jpg)
+
+The second way to run presentation compiler tests is to use test explorer tab which lists all available test cases.
+The debugger is started either by pressing debug button or by selecting `Debug Test` option from the menu.
+
+![Debug test via code lens](/images/contribution/debug-test-explorer.jpg)
+
 ## Using the debugger
 
 ### Navigating the call stack
