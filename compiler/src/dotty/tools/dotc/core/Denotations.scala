@@ -884,7 +884,6 @@ object Denotations {
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.
      *  It's placed here because it needs access to private fields of SingleDenotation.
-     *  @pre  Can only be called in `phase.next`.
      */
     protected def installAfter(phase: DenotTransformer)(using Context): Unit = {
       val targetId = phase.next.id
@@ -892,16 +891,21 @@ object Denotations {
       else {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
-        // printPeriods(current)
+        // println(current.definedPeriodsString)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId >= targetId)
           current.replaceWith(this)
+          symbol.denot
+            // Let symbol point to updated denotation
+            // Without this we can get problems when we immediately recompute the denotation
+            // at another phase since the invariant that symbol used to point to a valid
+            // denotation is lost.
         else {
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
           insertAfter(current)
         }
+        // println(current.definedPeriodsString)
       }
-      // printPeriods(this)
     }
 
     /** Apply a transformation `f` to all denotations in this group that start at or after
