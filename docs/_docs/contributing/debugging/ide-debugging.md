@@ -20,9 +20,22 @@ It may take a few minutes to import, compile and index the full project.
 If you have any trouble with importing, you can try to switch the build server from Bloop to sbt,
 by running the `Metals: Switch build server` command from VSCode command palette.
 
-## Configuring the debugger
+## Debugging the unit tests
 
-To configure the debugger in VSCode, you can go to the `Run and Debug` view and click `create a launch.json file`.
+If the module you're working on contains unit tests, you can debug a specific one without any additional work.
+It can be accomplished by running `Debug Test` code lens on an exact test case.
+
+![Debug test via code lens](/images/contribution/debug-test-code-lens.jpg)
+
+The second way to run a unit test is to use the test explorer tab, which lists all available test cases.
+The debugger is started either by pressing a debug button or by selecting `Debug Test` option from the menu.
+
+![Debug test via code lens](/images/contribution/debug-test-explorer.jpg)
+
+## Debugging the compilation
+
+Debugging of the compilation requires additional configuration in order to work.
+In VSCode, you can go to the `Run and Debug` view and click `create a launch.json file`.
 It creates the `launch.json` file in the `.vscode` folder, in which we will define the debug configurations.
 
 ![Create launch.json file](/images/contribution/launch-config-file.jpg)
@@ -89,9 +102,9 @@ Here is the final configuration:
 }
 ```
 
-## Customizing the debug configurations
+### Customizing the debug configurations
 
-### Compiling several files at once
+#### Compiling several files at once
 
 You can compile more than one Scala file, by adding them in the `args`:
 ```json
@@ -103,7 +116,7 @@ You can compile more than one Scala file, by adding them in the `args`:
 ]
 ```
 
-### Depending on a library
+#### Depending on a library
 
 To add a dependency to an external library you need to download it and all its transitive dependencies, and to add them in the classpath.
 The Coursier CLI can help you to do that.
@@ -123,7 +136,7 @@ And concatenate the output into the classpath argument, which should already con
 ]
 ```
 
-### Add more compiler options
+#### Add more compiler options
 
 In the `args` you can add any additional compiler option you want.
 
@@ -131,11 +144,11 @@ For instance you can add `-Xprint:all` to print all the generated trees after ea
 
 Run `scalac -help` to get an overview of the available compiler options.
 
-### Defining more than one launch configuration
+#### Defining more than one launch configuration
 
 You can create as many debug configurations as you need: to compile different files, with different compiler options or different classpaths.
 
-## Starting the debugger
+### Starting the debugger
 
 Before starting the debugger you need to put a breakpoint in the part of the code that you want to debug.
 If you don't know where to start, you can put a breakpoint in the `main` method of the `dotty.tools.dotc.Driver` trait.

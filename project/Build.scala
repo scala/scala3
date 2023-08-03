@@ -1119,8 +1119,9 @@ object Build {
         dottyLib :: scalaLib
         // Nil
       },
-      Compile / buildInfoPackage := "dotty.tools.pc.util",
+      Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
       Compile / buildInfoKeys := Seq(scalaVersion),
+      Test / buildInfoPackage := "dotty.tools.pc.tests.buildinfo",
       Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath)
     ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
