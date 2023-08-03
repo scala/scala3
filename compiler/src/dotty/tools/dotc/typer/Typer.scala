@@ -3193,7 +3193,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     tree
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
-    val defn.NonDependentFunctionOf(formals, _, _) = pt.dropDependentRefinement: @unchecked
+    val defn.FunctionOf(mt: MethodType) = pt.dropDependentRefinement: @unchecked
+    val formals = mt.paramInfos
 
     // The getter of default parameters may reach here.
     // Given the code below
@@ -3221,12 +3222,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else formals.map(untpd.TypeTree)
     }
 
-    val erasedParams = pt match {
-      case defn.PolyFunctionOf(mt: MethodType) => mt.erasedParams
-      case _ => paramTypes.map(_ => false)
-    }
-
-    val ifun = desugar.makeContextualFunction(paramTypes, tree, erasedParams)
+    val ifun = desugar.makeContextualFunction(paramTypes, tree, mt.erasedParams)
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
     typedFunctionValue(ifun, pt)
   }
