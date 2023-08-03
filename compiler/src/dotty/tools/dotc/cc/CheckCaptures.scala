@@ -697,10 +697,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       //println(i"check conforms $actual1 <<< $expected1")
       super.checkConformsExpr(actual1, expected1, tree)
 
-    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
-      MethodType.companion(isContextual = isContextual)(args, resultType)
-        .toFunctionType(isJava = false, alwaysDependent = true)
-
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
       def recur(expected: Type): Type = expected.dealias match
@@ -708,10 +704,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           val eparent1 = recur(eparent)
           if eparent1 eq eparent then expected
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
-        case defn.NonDependentFunctionOf(args, resultType, isContextual) =>
+        case defn.FunctionOf(mt: MethodType) =>
           actual match
             case defn.DependentFunctionRefinementOf(_) =>
-              toDepFun(args, resultType, isContextual)
+              mt.toFunctionType(isJava = false, alwaysDependent = true)
             case _ =>
               expected
         case _ =>
