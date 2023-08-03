@@ -4014,7 +4014,8 @@ object Types {
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) || isContextualMethod
     final override def hasErasedParams(using Context): Boolean =
-      erasedParams.contains(true)
+      paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
+
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
 
