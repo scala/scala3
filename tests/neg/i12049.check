@@ -18,7 +18,7 @@
 -- [E184] Type Error: tests/neg/i12049.scala:14:23 ---------------------------------------------------------------------
 14 |val y3: String = ??? : Last[Int *: Int *: Boolean *: String *: EmptyTuple]  // error
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                       Match type reduction failed since selector EmptyTuple.type
+   |                       Match type reduction failed since selector EmptyTuple
    |                       matches none of the cases
    |
    |                           case _ *: _ *: t => Last[t]
@@ -48,7 +48,7 @@
 -- [E184] Type Error: tests/neg/i12049.scala:25:26 ---------------------------------------------------------------------
 25 |val _ = summon[String =:= Last[Int *: Int *: Boolean *: String *: EmptyTuple]] // error
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                          Match type reduction failed since selector EmptyTuple.type
+   |                          Match type reduction failed since selector EmptyTuple
    |                          matches none of the cases
    |
    |                              case _ *: _ *: t => Last[t]

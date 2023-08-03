@@ -7,7 +7,7 @@ import Flags._
 import Names._
 import StdNames._, NameOps._
 import NullOpsDecorator._
-import NameKinds.SkolemName
+import NameKinds.{SkolemName, WildcardParamName}
 import Scopes._
 import Constants._
 import Contexts._
@@ -43,7 +43,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TypeUtils.isErasedClass
+import dotty.tools.dotc.transform.TypeUtils.{isErasedClass, toNestedPairs}
 
 object Types {
 
@@ -5055,8 +5055,23 @@ object Types {
         case _ => None
   }
 
+  enum MatchTypeCasePattern:
+    case Capture(num: Int, isWildcard: Boolean)
+    case TypeTest(tpe: Type)
+    case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
+
+    def isTypeTest: Boolean =
+      this.isInstanceOf[TypeTest]
+
+    def needsConcreteScrutInVariantPos: Boolean = this match
+      case Capture(_, isWildcard) => !isWildcard
+      case TypeTest(_)            => false
+      case _                      => true
+  end MatchTypeCasePattern
+
   enum MatchTypeCaseSpec:
     case SubTypeTest(origMatchCase: Type, pattern: Type, body: Type)
+    case SpeccedPatMat(origMatchCase: HKTypeLambda, captureCount: Int, pattern: MatchTypeCasePattern, body: Type)
     case LegacyPatMat(origMatchCase: HKTypeLambda)
 
     def origMatchCase: Type
@@ -5066,11 +5081,59 @@ object Types {
     def analyze(cas: Type)(using Context): MatchTypeCaseSpec =
       cas match
         case cas: HKTypeLambda =>
-          LegacyPatMat(cas)
+          val defn.MatchCase(pat, body) = cas.resultType: @unchecked
+          val specPattern = tryConvertToSpecPattern(cas, pat)
+          if specPattern != null then
+            SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
+          else
+            LegacyPatMat(cas)
         case _ =>
           val defn.MatchCase(pat, body) = cas: @unchecked
           SubTypeTest(cas, pat, body)
     end analyze
+
+    private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCasePattern | Null =
+      var typeParamRefsAccountedFor: Int = 0
+
+      def rec(pat: Type, variance: Int): MatchTypeCasePattern | Null =
+        pat match
+          case pat @ TypeParamRef(binder, num) if binder eq caseLambda =>
+            typeParamRefsAccountedFor += 1
+            MatchTypeCasePattern.Capture(num, isWildcard = pat.paramName.is(WildcardParamName))
+
+          case pat @ AppliedType(tycon: TypeRef, args) if variance == 1 =>
+            val tyconSym = tycon.symbol
+            if tyconSym.isClass then
+              val cls = tyconSym.asClass
+              if cls.name.startsWith("Tuple") && defn.isTupleNType(pat) then
+                rec(pat.toNestedPairs, variance)
+              else
+                val tparams = tycon.typeParams
+                val argPatterns = args.zip(tparams).map { (arg, tparam) =>
+                  rec(arg, tparam.paramVarianceSign)
+                }
+                if argPatterns.exists(_ == null) then
+                  null
+                else
+                  val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not null
+                  if argPatterns1.forall(_.isTypeTest) then
+                    MatchTypeCasePattern.TypeTest(pat)
+                  else
+                    val needsConcreteScrut = argPatterns1.zip(tparams).exists {
+                      (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
+                    }
+                    MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns1, needsConcreteScrut)
+            else
+              null
+
+          case _ =>
+            MatchTypeCasePattern.TypeTest(pat)
+      end rec
+
+      val result = rec(pat, variance = 1)
+      if typeParamRefsAccountedFor == caseLambda.paramNames.size then result
+      else null
+    end tryConvertToSpecPattern
   end MatchTypeCaseSpec
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------

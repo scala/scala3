@@ -27,6 +27,6 @@
    |                                                  does not uniquely determine parameter x in
    |                                                    case Cov[x] => N[x]
    |                                                  The computed bounds for the parameter are:
-   |                                                    x >: Box[Int]
+   |                                                    x <: Box[Int]
    |
    | longer explanation available when compiling with `-explain`
