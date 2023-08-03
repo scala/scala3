@@ -1154,11 +1154,11 @@ class Definitions {
     }
   }
 
-  /** An extractor for context function types `As ?=> B`, possibly with
-   *  dependent refinements. Optionally returns a triple consisting of the argument
-   *  types `As`, the result type `B` and a whether the type is an erased context function.
-   */
   object NonDependentContextFunctionOf:
+    /** Matches a (possibly aliased) `ContextFunctionN[...]` or refined `PolyFunction`.
+     *  Extracts the list of function argument types and the result type.
+     *  It only matches a `PolyFunction` if the function type is not result dependent.
+     */
     def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
       tp match
         case NonDependentFunctionOf(argTypes, resultType, true) => Some((argTypes, resultType))
