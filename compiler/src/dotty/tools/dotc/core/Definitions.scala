@@ -1117,6 +1117,19 @@ class Definitions {
       val ft = mt.toFunctionType(isJava = false)
       assert(ft.exists, s"not a valid function type: $mt")
       ft
+
+    /** Matches a (possibly aliased) `FunctionN[...]`, `ContextFunctionN[...]`, refined `PolyFunction`, or result dependent refinement of `FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
+      ft.dealias match
+        case PolyFunctionOf(mt) => Some(mt)
+        case DependentFunctionRefinementOf(mt) => Some(mt)
+        case FunctionNOf(argTypes, resultType, isContextual) =>
+          val methodType = if isContextual then ContextualMethodType else MethodType
+          Some(methodType(argTypes, resultType))
+        case _ => None
+    }
   }
 
   object NonDependentFunctionOf {
