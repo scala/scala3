@@ -58,7 +58,7 @@ object ContextFunctionResults:
    */
   def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
     def allErased(tp: Type): Boolean = tp.dealias match
-      case ft @ defn.FunctionOf(mt) if mt.isContextualMethod =>
+      case ft @ defn.FunctionOf(mt: MethodType) if mt.isContextualMethod =>
         !mt.erasedParams.contains(false) && allErased(mt.resType)
       case _ => true
     contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
