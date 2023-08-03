@@ -105,7 +105,7 @@ object ContextFunctionResults:
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
       else tp match
-        case defn.NonDependentContextFunctionOf(_, resTpe) => recur(resTpe, n - 1)
+        case defn.NonDependentFunctionOf(_, resTpe, true) => recur(resTpe, n - 1) // TODO handle result-dependent functions?
     recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`

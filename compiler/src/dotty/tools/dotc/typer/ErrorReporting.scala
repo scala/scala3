@@ -167,7 +167,8 @@ object ErrorReporting {
       val normPt = normalize(pt, pt)
 
       def contextFunctionCount(tp: Type): Int = tp.stripped match
-        case defn.NonDependentContextFunctionOf(_, restp) => 1 + contextFunctionCount(restp)
+        // TODO handle result-dependent functions?
+        case defn.NonDependentFunctionOf(_, restp, true) => 1 + contextFunctionCount(restp)
         case _ => 0
       def strippedTpCount = contextFunctionCount(tree.tpe) - contextFunctionCount(normTp)
       def strippedPtCount = contextFunctionCount(pt) - contextFunctionCount(normPt)
