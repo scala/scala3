@@ -168,7 +168,7 @@ object ErrorReporting {
 
       def contextFunctionCount(tp: Type): Int = tp.stripped match
         // TODO handle result-dependent functions?
-        case defn.NonDependentFunctionOf(_, restp, true) => 1 + contextFunctionCount(restp)
+        case defn.FunctionOf(mt) if mt.isContextualMethod && !mt.isResultDependent => 1 + contextFunctionCount(mt.resType)
         case _ => 0
       def strippedTpCount = contextFunctionCount(tree.tpe) - contextFunctionCount(normTp)
       def strippedPtCount = contextFunctionCount(pt) - contextFunctionCount(normPt)

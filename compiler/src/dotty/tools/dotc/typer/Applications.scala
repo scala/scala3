@@ -2226,7 +2226,7 @@ trait Applications extends Compatibility {
         val formalsForArg: List[Type] = altFormals.map(_.head)
         def argTypesOfFormal(formal: Type): List[Type] =
           formal.dealias match {
-            case defn.NonDependentFunctionOf(args, result, isImplicit) => args
+            case defn.FunctionOf(mt: MethodType) if !mt.isResultDependent => mt.paramInfos // TODO handle result-dependent functions?
             case defn.PartialFunctionOf(arg, result) => arg :: Nil
             case _ => Nil
           }

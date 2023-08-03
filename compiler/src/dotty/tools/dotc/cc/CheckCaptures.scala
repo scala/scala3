@@ -409,9 +409,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing:
-          case defn.NonDependentFunctionOf(paramtpe :: Nil, restpe, isContextual) =>
-            defn.FunctionNOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
-
+          case defn.FunctionOf(mt: MethodType) if !mt.isResultDependent =>
+            defn.FunctionOf(mt.derivedLambdaType(resType = mt.resType.forceBoxStatus(true)))
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>
@@ -780,7 +779,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         try
           val (eargs, eres) = expected.dealias.stripCapturing match
-            case defn.NonDependentFunctionOf(eargs, eres, _) => (eargs, eres)
+            case defn.FunctionOf(mt) if !mt.isResultDependent => (mt.paramInfos, mt.resType)
             case expected: MethodType => (expected.paramInfos, expected.resType)
             case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionNType(expected) => (rinfo.paramInfos, rinfo.resType)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
