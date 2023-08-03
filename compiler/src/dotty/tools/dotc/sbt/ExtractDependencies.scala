@@ -271,14 +271,12 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
     // Avoid cycles by remembering both the types (testcase:
     // tests/run/enum-values.scala) and the symbols of named types (testcase:
     // tests/pos-java-interop/i13575) we've seen before.
-    val seen = new util.HashSet[Symbol | Type](64)
-    def traverse(tp: Type): Unit = if (!seen.contains(tp)) {
-      seen += tp
+    val seen = new util.EqHashSet[Symbol | Type](128) // 64 still needs to grow often for scala3-compiler
+    def traverse(tp: Type): Unit = if seen.add(tp) then {
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
-          if !seen.contains(sym) && !sym.is(Package) then
-            seen += sym
+          if !sym.is(Package) && seen.add(sym) then
             addDependency(sym)
             if !sym.isClass then traverse(tp.info)
             traverse(tp.prefix)
