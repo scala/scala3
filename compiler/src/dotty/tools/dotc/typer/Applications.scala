@@ -1975,7 +1975,7 @@ trait Applications extends Compatibility {
           val formals = ref.widen.firstParamTypes
           if formals.length > idx then
             formals(idx) match
-              case defn.NonDependentFunctionOf(args, _, _) => args.length
+              case defn.FunctionNOf(args, _, _) => args.length
               case _ => -1
           else -1
 
@@ -2061,7 +2061,7 @@ trait Applications extends Compatibility {
 
       case pt =>
         val compat0 = pt match
-          case defn.NonDependentFunctionOf(args, resType, _) =>
+          case defn.FunctionNOf(args, resType, _) =>
             narrowByTypes(alts, args, resType)
           case _ =>
             Nil
