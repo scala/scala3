@@ -47,7 +47,8 @@ object Scala3:
       // for secondary constructors `this`
       desig match
         case sym: Symbol =>
-          if sym.isConstructor && nameInSource == nme.THISkw.toString then
+          if sym.isConstructor
+          && (sym.isPrimaryConstructor || nameInSource == nme.THISkw.toString) then
             true
           else
             val target =
