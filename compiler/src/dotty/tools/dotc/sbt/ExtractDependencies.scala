@@ -232,6 +232,13 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
       throw ex
   }
 
+  /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
+   * Avoid cycles by remembering both the types (testcase:
+   * tests/run/enum-values.scala) and the symbols of named types (testcase:
+   * tests/pos-java-interop/i13575) we've seen before.
+   */
+  private val scratchSeen = new util.EqHashSet[Symbol | Type](128)
+
   /** Traverse a used type and record all the dependencies we need to keep track
    *  of for incremental recompilation.
    *
@@ -268,15 +275,13 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   private abstract class TypeDependencyTraverser(using Context) extends TypeTraverser() {
     protected def addDependency(symbol: Symbol): Unit
 
-    // Avoid cycles by remembering both the types (testcase:
-    // tests/run/enum-values.scala) and the symbols of named types (testcase:
-    // tests/pos-java-interop/i13575) we've seen before.
-    val seen = new util.EqHashSet[Symbol | Type](128) // 64 still needs to grow often for scala3-compiler
-    def traverse(tp: Type): Unit = if seen.add(tp) then {
+    scratchSeen.clear(resetToInitial = false)
+
+    def traverse(tp: Type): Unit = if scratchSeen.add(tp) then {
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
-          if !sym.is(Package) && seen.add(sym) then
+          if !sym.is(Package) && scratchSeen.add(sym) then
             addDependency(sym)
             if !sym.isClass then traverse(tp.info)
             traverse(tp.prefix)
