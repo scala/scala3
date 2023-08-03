@@ -68,9 +68,6 @@ How can the capability be produced? There are several possibilities:
 
 Most often, the capability is produced by having a using clause `(using CanThrow[Exc])` in some enclosing scope. This roughly corresponds to a [`throws`](https://docs.oracle.com/javase/specs/jls/se7/html/jls-8.html#jls-8.4.6) clause in Java. The analogy is even stronger since alongside [`CanThrow`](https://scala-lang.org/api/3.x/scala/CanThrow.html) there is also the following type alias defined in the [`scala`](https://scala-lang.org/api/3.x/scala.html) package:
 ```scala
-infix type A = Int
-```
-```scala
 infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
 ```
 That is, [`R $throws E`](https://scala-lang.org/api/3.x/scala/runtime.html#$throws-0) is a context function type that takes an implicit `CanThrow[E]` parameter and that returns a value of type `R`. What's more, the compiler will translate an infix types with `throws` as the operator to `$throws` applications according to the rules
