@@ -84,10 +84,10 @@ object ContextFunctionResults:
     def contextParamCount(tp: Type, crCount: Int): Int =
       if crCount == 0 then 0
       else
-        val defn.NonDependentContextFunctionOf(params, resTpe) = tp: @unchecked
-        val erasedParams = defn.erasedFunctionParams(tp)
-        val rest = contextParamCount(resTpe, crCount - 1)
-        if erasedParams.contains(true) then erasedParams.count(_ == false) + rest else params.length + rest
+        val defn.FunctionOf(mt) = tp: @unchecked
+        val rest = contextParamCount(mt.resType, crCount - 1)
+        if tp.hasErasedParams then mt.erasedParams.count(_ == false) + rest
+        else mt.paramInfos.length + rest
 
     def normalParamCount(tp: Type): Int = tp.widenExpr.stripPoly match
       case mt @ MethodType(pnames) =>

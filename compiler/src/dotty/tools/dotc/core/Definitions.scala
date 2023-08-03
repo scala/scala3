@@ -1802,15 +1802,6 @@ class Definitions {
     isFunctionNType(tp)
     || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
 
-  def erasedFunctionParams(tp: Type)(using Context): List[Boolean] =
-    tp match
-      case PolyFunctionOf(mt: MethodType) =>
-        mt.erasedParams
-      case tp =>
-        val arity = functionArity(tp)
-        if arity < 0 then Nil
-        else List.fill(arity) { false }
-
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     if !ctx.settings.Yscala2Stdlib.value then
       for base <- bases; tp <- paramTypes do

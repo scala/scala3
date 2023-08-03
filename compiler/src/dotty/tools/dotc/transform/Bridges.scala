@@ -131,11 +131,11 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         else
           val (argTypes, resType, erasedParams) = atPhase(erasurePhase) {
             tp match
-              case defn.NonDependentContextFunctionOf(argTypes, resType) =>
-                (argTypes, resType, defn.erasedFunctionParams(tp))
+              case defn.FunctionOf(mt: MethodType) if mt.isContextualMethod && !mt.isResultDependent =>
+                (mt.paramInfos, mt.resType, mt.erasedParams)
           }
           val anonFun = newAnonFun(ctx.owner,
-            MethodType(
+            MethodType( // TODO use derivedLambdaType on the mt above and support result-dependent functions?
               argTypes.zip(erasedParams.padTo(argTypes.length, false))
                       .flatMap((t, e) => if e then None else Some(t)),
               resType),
