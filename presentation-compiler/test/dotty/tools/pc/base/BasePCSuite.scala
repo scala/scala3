@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.Comparator
 import java.util.concurrent.{Executors, ScheduledExecutorService}
+import java.lang.management.ManagementFactory
 
 import scala.collection.immutable
 import scala.meta.internal.jdk.CollectionConverters.*
@@ -13,7 +14,7 @@ import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
 
 import dotty.tools.pc.*
 import dotty.tools.pc.ScalaPresentationCompiler
-import dotty.tools.pc.util.BuildInfo
+import dotty.tools.pc.tests.buildinfo.BuildInfo
 import dotty.tools.pc.utils._
 
 import org.eclipse.lsp4j.MarkupContent
@@ -27,6 +28,8 @@ object TestResources:
 
 @RunWith(classOf[ReusableClassRunner])
 abstract class BasePCSuite extends PcAssertions:
+  private val isDebug = ManagementFactory.getRuntimeMXBean.getInputArguments.toString.contains("-agentlib:jdwp")
+
   val tmp = Files.createTempDirectory("stable-pc-tests")
   val executorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor()
@@ -51,7 +54,7 @@ abstract class BasePCSuite extends PcAssertions:
       .newInstance("", myclasspath.asJava, scalacOpts.asJava)
 
   protected def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(snippetAutoIndent = false)
+    PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 5)
 
   private def inspectDialect(filename: String, code: String) =
     val file = tmp.resolve(filename)

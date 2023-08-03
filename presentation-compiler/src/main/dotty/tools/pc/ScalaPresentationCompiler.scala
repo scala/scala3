@@ -28,7 +28,7 @@ import scala.meta.pc.*
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.pc.completions.CompletionProvider
 import dotty.tools.pc.completions.OverrideCompletions
-import dotty.tools.pc.util.BuildInfo
+import dotty.tools.pc.buildinfo.BuildInfo
 
 import org.eclipse.lsp4j.DocumentHighlight
 import org.eclipse.lsp4j.TextEdit
