@@ -1331,6 +1331,16 @@ class CompletionSuite extends BaseCompletionSuite:
 
   @Test def `extension-definition-scope` =
     check(
+      """|trait Foo
+         |object T:
+         |  extension (x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-symbol-search` =
+    check(
       """|object T:
          |  extension (x: ListBuffe@@)
          |""".stripMargin,
@@ -1339,11 +1349,102 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
     )
 
-  @Test def `extension-definition-symbol-search` =
+  @Test def `extension-definition-type-parameter` =
     check(
       """|trait Foo
          |object T:
-         |  extension (x: Fo@@)
+         |  extension [A <: Fo@@]
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-type-parameter-symbol-search` =
+    check(
+      """|object T:
+         |  extension [A <: ListBuffe@@]
+         |""".stripMargin,
+      """|ListBuffer[T] - scala.collection.mutable
+         |ListBuffer - scala.collection.mutable
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-using-param-clause` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (using Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+
+  @Test def `extension-definition-mix-1` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (x: Int)(using Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-2` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (using Fo@@)(x: Int)(using Foo)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-3` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (using Foo)(x: Int)(using Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-4` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-5` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](using Fo@@)(x: Int)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-6` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](using Foo)(x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-7` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](using Foo)(x: Fo@@)(using Fo@@)
          |""".stripMargin,
       """|Foo test
          |""".stripMargin

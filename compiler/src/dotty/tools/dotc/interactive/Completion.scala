@@ -136,11 +136,9 @@ object Completion {
    */
   def pathBeforeDesugaring(path: List[Tree], pos: SourcePosition)(using Context): List[Tree] =
     val hasUntypedTree = path.headOption.forall(NavigateAST.untypedPath(_, exactMatch = true).nonEmpty)
-    if hasUntypedTree then
-      path
-    else
-      NavigateAST.untypedPath(pos.span).collect:
-        case tree: untpd.Tree => tree
+    if hasUntypedTree then path
+    else NavigateAST.untypedPath(pos.span).collect:
+      case tree: untpd.Tree => tree
 
   private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
     val path0 = pathBeforeDesugaring(path, pos)
