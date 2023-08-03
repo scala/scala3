@@ -297,10 +297,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
-    val erasedParams = lam.erasedParams
-    def paramText(ref: ParamRef, erased: Boolean) =
+    def paramText(ref: ParamRef) =
+      val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
       keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
-    Text(lam.paramRefs.lazyZip(erasedParams).map(paramText), ", ")
+    Text(lam.paramRefs.map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)

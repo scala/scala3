@@ -3721,8 +3721,6 @@ object Types {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
-    def erasedParams(using Context) = List.fill(paramInfos.size)(false)
-
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
      *
@@ -4019,7 +4017,7 @@ object Types {
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
 
-    override def erasedParams(using Context): List[Boolean] =
+    def erasedParams(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
     def nonErasedParamCount(using Context): Int =
