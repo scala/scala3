@@ -20,13 +20,9 @@ object ContextFunctionResults:
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
     def contextResultCount(rhs: Tree, tp: Type): Int = tp match
-      case defn.DependentFunctionRefinementOf(mt) if mt.isContextualMethod =>
+      case defn.FunctionOf(mt) if mt.isContextualMethod =>
         rhs match
           case closureDef(meth) => 1 + contextResultCount(meth.rhs, mt.resType)
-          case _ => 0
-      case defn.NonDependentContextFunctionOf(_, resTpe) =>
-        rhs match
-          case closureDef(meth) => 1 + contextResultCount(meth.rhs, resTpe)
           case _ => 0
       case _ => 0
 
@@ -62,10 +58,8 @@ object ContextFunctionResults:
    */
   def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
     def allErased(tp: Type): Boolean = tp.dealias match
-      case ft @ defn.DependentFunctionRefinementOf(mt) if mt.isContextualMethod =>
-        !defn.erasedFunctionParams(ft).contains(false) && allErased(mt.resType)
-      case ft @ defn.NonDependentContextFunctionOf(_, resTpe) =>
-        !defn.erasedFunctionParams(ft).contains(false) && allErased(resTpe)
+      case ft @ defn.FunctionOf(mt) if mt.isContextualMethod =>
+        !mt.erasedParams.contains(false) && allErased(mt.resType)
       case _ => true
     contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
 
@@ -79,10 +73,8 @@ object ContextFunctionResults:
         integrateContextResults(rt, crCount)
       case tp: MethodOrPoly =>
         tp.derivedLambdaType(resType = integrateContextResults(tp.resType, crCount))
-      case defn.DependentFunctionRefinementOf(mt) if mt.isContextualMethod =>
+      case defn.FunctionOf(mt) if mt.isContextualMethod =>
         mt.derivedLambdaType(resType = integrateContextResults(mt.resultType, crCount - 1))
-      case defn.NonDependentContextFunctionOf(argTypes, resType) =>
-        MethodType(argTypes, integrateContextResults(resType, crCount - 1))
 
   /** The total number of parameters of method `sym`, not counting
    *  erased parameters, but including context result parameters.
@@ -128,9 +120,7 @@ object ContextFunctionResults:
       case Select(qual, name) =>
         if name == nme.apply then
           qual.tpe match
-            case defn.DependentFunctionRefinementOf(mt) if mt.isContextualMethod =>
-              integrateSelect(qual, n + 1)
-            case defn.NonDependentContextFunctionOf(_, _) =>
+            case defn.FunctionOf(mt) if mt.isContextualMethod =>
               integrateSelect(qual, n + 1)
             case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
               integrateSelect(qual, n + 1)
