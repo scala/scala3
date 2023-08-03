@@ -1518,13 +1518,20 @@ trait Applications extends Compatibility {
       isApplicableMethodRef(_, args, resultType, ArgMatch.Compatible)
     }
 
-  private def onMethod(tp: Type, followApply: Boolean)(p: TermRef => Boolean)(using Context): Boolean = tp match {
+
+  private def onMethod(tp: Type, followApply: Boolean)(p: TermRef => Boolean)(using Context): Boolean =
+    def hasApply: Boolean =
+      followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
+
+    tp match {
+    case expr: TermRef if expr.widenSingleton.isInstanceOf[ExprType] =>
+      hasApply
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[MethodicType] =>
       p(methRef)
     case mt: MethodicType =>
       p(mt.narrow)
     case _ =>
-      followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
+      hasApply
   }
 
   /** Does `tp` have an extension method named `xname` with this-argument `argType` and
@@ -1661,7 +1668,7 @@ trait Applications extends Compatibility {
               tp2.isVarArgsMethod
               && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
-              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
+              isApplicableTerm(tp1.paramInfos, WildcardType, ArgMatch.Compatible)(alt2)
           }
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
@@ -1804,8 +1811,7 @@ trait Applications extends Compatibility {
   def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] = {
     record("narrowMostSpecific")
     alts match {
-      case Nil => alts
-      case _ :: Nil => alts
+      case Nil | _ :: Nil => alts
       case alt1 :: alt2 :: Nil =>
         compare(alt1, alt2) match {
           case  1 => alt1 :: Nil
@@ -1937,6 +1943,15 @@ trait Applications extends Compatibility {
     else resolve(alts)
   end resolveOverloaded
 
+  def isApplicableTerm(argTypes: List[Type], resultType: Type, argMatch: ArgMatch)(using Context): TermRef => Boolean =
+    onMethod(_, argTypes.nonEmpty):
+      isApplicableMethodRef(_, argTypes, resultType, argMatch)
+
+  def isApplicableTerm(argTypes: List[Tree], resultType: Type, keepConstraint: Boolean, argMatch: ArgMatch)(using Context): TermRef => Boolean =
+    onMethod(_, argTypes.nonEmpty):
+      isApplicableMethodRef(_, argTypes, resultType, keepConstraint, argMatch)
+
+
   /** This private version of `resolveOverloaded` does the bulk of the work of
    *  overloading resolution, but does neither result adaptation nor apply insertion.
    *  It might be called twice from the public `resolveOverloaded` method, once with
@@ -1972,7 +1987,8 @@ trait Applications extends Compatibility {
     }
 
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
-      alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
+      alts.filterConserve:
+        isApplicableTerm(argTypes, resultType, ArgMatch.CompatibleCAP)
 
     /** Normalization steps before checking arguments:
      *
@@ -2047,9 +2063,8 @@ trait Applications extends Compatibility {
             alts
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
-          alts.filterConserve(alt =>
-            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
-          )
+          alts.filterConserve:
+            isApplicableTerm(args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
 
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
