@@ -1141,11 +1141,10 @@ class Definitions {
     /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
      *  Extracts the list of function argument types, the result type and whether function is contextual.
      */
-    def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
-      val dft = ft.dealias
-      val tsym = dft.typeSymbol
-      if isFunctionSymbol(tsym) && ft.isRef(tsym) then
-        val targs = dft.argInfos
+    def unapply(tpe: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
+      val tsym = tpe.typeSymbol
+      if isFunctionSymbol(tsym) && tpe.isRef(tsym) then
+        val targs = tpe.argInfos
         if (targs.isEmpty) None
         else Some(targs.init, targs.last, tsym.name.isContextFunction)
       else None

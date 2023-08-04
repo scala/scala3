@@ -130,7 +130,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
         else
           val mtWithoutErasedParams = atPhase(erasurePhase) {
-            tp match
+            tp.dealias match
               case defn.FunctionOf(mt: MethodType) =>
                 val paramInfos = mt.paramInfos.zip(mt.erasedParams).collect { case (param, false) => param }
                 mt.derivedLambdaType(paramInfos = paramInfos)

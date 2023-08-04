@@ -383,7 +383,7 @@ object ProtoTypes {
     def allArgTypesAreCurrent()(using Context): Boolean =
       state.typedArg.size == args.length
 
-    private def isUndefined(tp: Type): Boolean = tp match {
+    private def isUndefined(tp: Type): Boolean = tp.dealias match {
       case _: WildcardType => true
       case defn.FunctionNOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false

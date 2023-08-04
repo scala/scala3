@@ -166,7 +166,7 @@ object ErrorReporting {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
-      def contextFunctionCount(tp: Type): Int = tp.stripped match
+      def contextFunctionCount(tp: Type): Int = tp.stripped.dealias match
         // TODO handle result-dependent functions?
         case defn.FunctionOf(mt) if mt.isContextualMethod && !mt.isResultDependent => 1 + contextFunctionCount(mt.resType)
         case _ => 0

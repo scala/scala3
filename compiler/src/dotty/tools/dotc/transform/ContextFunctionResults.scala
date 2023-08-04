@@ -19,7 +19,7 @@ object ContextFunctionResults:
    *  consists of a string of `n` nested context closures.
    */
   def annotateContextResults(mdef: DefDef)(using Context): Unit =
-    def contextResultCount(rhs: Tree, tp: Type): Int = tp match
+    def contextResultCount(rhs: Tree, tp: Type): Int = tp.dealias match
       case defn.FunctionOf(mt) if mt.isContextualMethod =>
         rhs match
           case closureDef(meth) => 1 + contextResultCount(meth.rhs, mt.resType)
@@ -68,7 +68,7 @@ object ContextFunctionResults:
    */
   def integrateContextResults(tp: Type, crCount: Int)(using Context): Type =
     if crCount == 0 then tp
-    else tp match
+    else tp.dealias match
       case ExprType(rt) =>
         integrateContextResults(rt, crCount)
       case tp: MethodOrPoly =>
@@ -113,7 +113,7 @@ object ContextFunctionResults:
     else tree match
       case Select(qual, name) =>
         if name == nme.apply then
-          qual.tpe match
+          qual.tpe.nn.dealias match
             case defn.FunctionOf(mt) if mt.isContextualMethod =>
               integrateSelect(qual, n + 1)
             case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs

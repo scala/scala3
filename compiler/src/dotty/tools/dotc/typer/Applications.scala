@@ -1974,7 +1974,7 @@ trait Applications extends Compatibility {
         def paramCount(ref: TermRef) =
           val formals = ref.widen.firstParamTypes
           if formals.length > idx then
-            formals(idx) match
+            formals(idx).dealias match
               case defn.FunctionNOf(args, _, _) => args.length
               case _ => -1
           else -1
@@ -2060,7 +2060,7 @@ trait Applications extends Compatibility {
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case pt =>
-        val compat0 = pt match
+        val compat0 = pt.dealias match
           case defn.FunctionNOf(args, resType, _) =>
             narrowByTypes(alts, args, resType)
           case _ =>

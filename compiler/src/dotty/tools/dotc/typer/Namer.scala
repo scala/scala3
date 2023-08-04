@@ -1892,7 +1892,7 @@ class Namer { typer: Typer =>
     def expectedDefaultArgType =
       val originalTp = defaultParamType
       val approxTp = wildApprox(originalTp)
-      approxTp.stripPoly match
+      approxTp.dealias.stripPoly match
         case defn.FunctionOf(mt)
         if mt.isContextualMethod && (
            mt.isResultDependent || // in this case `resType` is lying, gives us only the non-dependent upper bound
