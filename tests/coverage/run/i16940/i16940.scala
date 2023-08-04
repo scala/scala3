@@ -1,6 +1,3 @@
-// scalac: -coverage-out:coverage
-// scalajs: --skip
-
 import concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.*
 import scala.concurrent.duration.*
