@@ -1122,7 +1122,7 @@ class Definitions {
      *  Extracts the method type type and apply info.
      */
     def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
-      ft.dealias match
+      ft match
         case PolyFunctionOf(mt) => Some(mt)
         case DependentFunctionRefinementOf(mt) => Some(mt)
         case FunctionNOf(argTypes, resultType, isContextual) =>
