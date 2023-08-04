@@ -1162,11 +1162,12 @@ class Definitions {
      *
      *  Pattern: `PolyFunction { def apply: $mt }`
      */
-    def unapply(ft: Type)(using Context): Option[MethodOrPoly] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodOrPoly)
-      if parent.derivesFrom(defn.PolyFunctionClass) =>
-        Some(mt)
-      case _ => None
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply && tpe.parent.derivesFrom(defn.PolyFunctionClass) =>
+          Some(mt)
+        case _ => None
 
     private def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
       def isValidMethodType(info: Type) = info match
@@ -1183,13 +1184,14 @@ class Definitions {
     /** Matches a dependent refinement of `FunctionN[...]` or `ContextFunctionN[...]` type.
      *  Extracts the method type type and apply info.
      *
-     *  Pattern: `$ft { def apply: $mt }`
+     *  Pattern: `(FunctionN | ContextFunction|) { def apply: $mt }`
      */
-    def unapply(ft: Type)(using Context): Option[MethodType] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodType)
-      if isFunctionNType(parent) && mt.isResultDependent =>
-        Some(mt)
-      case _ => None
+    def unapply(tpe: RefinedType)(using Context): Option[MethodType] =
+      tpe.refinedInfo match
+        case mt: MethodType
+        if tpe.refinedName == nme.apply && isFunctionNType(tpe.parent) && mt.isResultDependent =>
+          Some(mt)
+        case _ => None
   }
 
   object PartialFunctionOf {
