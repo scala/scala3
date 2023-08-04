@@ -129,29 +129,26 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
         else
-          val (argTypes, resType, erasedParams) = atPhase(erasurePhase) {
+          val mt = atPhase(erasurePhase) {
             tp match
-              case defn.FunctionOf(mt: MethodType) if mt.isContextualMethod && !mt.isResultDependent =>
-                (mt.paramInfos, mt.resType, mt.erasedParams)
+              case defn.FunctionOf(mt: MethodType) => mt
           }
-          val anonFun = newAnonFun(ctx.owner,
-            MethodType( // TODO use derivedLambdaType on the mt above and support result-dependent functions?
-              argTypes.zip(erasedParams.padTo(argTypes.length, false))
-                      .flatMap((t, e) => if e then None else Some(t)),
-              resType),
-            coord = ctx.owner.coord)
+          val mtWithoutErasedParams =
+            val paramInfos = mt.paramInfos.zip(mt.erasedParams).collect { case (param, false) => param }
+            mt.derivedLambdaType(paramInfos = paramInfos)
+          val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)
           anonFun.info = transformInfo(anonFun, anonFun.info)
 
           def lambdaBody(refss: List[List[Tree]]) =
             val refs :: Nil = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
               case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                argTypes.indices.toList.map(n =>
+                mt.paramInfos.indices.toList.map(n => // TODO should this use mtWithoutErasedParams.paramInfos?
                   bunchedParam
                     .select(nme.primitive.arrayApply)
                     .appliedTo(Literal(Constant(n))))
               case refs1 => refs1
-            expand(args ::: expandedRefs, resType, n - 1)(using ctx.withOwner(anonFun))
+            expand(args ::: expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
 
           val unadapted = Closure(anonFun, lambdaBody)
           cpy.Block(unadapted)(unadapted.stats,
