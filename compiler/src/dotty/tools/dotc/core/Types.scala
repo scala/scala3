@@ -5059,6 +5059,7 @@ object Types {
     case Capture(num: Int, isWildcard: Boolean)
     case TypeTest(tpe: Type)
     case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
+    case CompileTimeS(argPattern: MatchTypeCasePattern)
 
     def isTypeTest: Boolean =
       this.isInstanceOf[TypeTest]
@@ -5123,6 +5124,14 @@ object Types {
                       (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
                     }
                     MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns1, needsConcreteScrut)
+            else if defn.isCompiletime_S(tyconSym) && args.sizeIs == 1 then
+              val argPattern = rec(args.head, variance)
+              if argPattern == null then
+                null
+              else if argPattern.isTypeTest then
+                MatchTypeCasePattern.TypeTest(pat)
+              else
+                MatchTypeCasePattern.CompileTimeS(argPattern)
             else
               null
 

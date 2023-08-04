@@ -3340,6 +3340,13 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
               case _ =>
                 false
+
+          case MatchTypeCasePattern.CompileTimeS(argPattern) =>
+            natValue(scrut) match
+              case Some(scrutValue) if scrutValue != Int.MinValue =>
+                rec(argPattern, ConstantType(Constant(scrutValue - 1)), variance, scrutIsWidenedAbstract)
+              case _ =>
+                false
       end rec
 
       // This might not be needed
