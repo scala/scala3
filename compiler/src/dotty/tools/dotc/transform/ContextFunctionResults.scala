@@ -99,7 +99,7 @@ object ContextFunctionResults:
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
       else tp match
-        case defn.FunctionOf(mt) if mt.isContextualMethod && !mt.isResultDependent => recur(mt.resType, n - 1) // TODO handle result-dependent functions?
+        case defn.FunctionOf(mt) => recur(mt.resType, n - 1)
     recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
