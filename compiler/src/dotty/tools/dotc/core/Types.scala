@@ -5062,6 +5062,7 @@ object Types {
     case TypeTest(tpe: Type)
     case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
     case CompileTimeS(argPattern: MatchTypeCasePattern)
+    case AbstractTypeConstructor(tycon: Type, argPatterns: List[MatchTypeCasePattern])
 
     def isTypeTest: Boolean =
       this.isInstanceOf[TypeTest]
@@ -5137,25 +5138,15 @@ object Types {
           case pat @ AppliedType(tycon: TypeRef, args) if variance == 1 =>
             val tyconSym = tycon.symbol
             if tyconSym.isClass then
-              val cls = tyconSym.asClass
-              if cls.name.startsWith("Tuple") && defn.isTupleNType(pat) then
+              if tyconSym.name.startsWith("Tuple") && defn.isTupleNType(pat) then
                 rec(pat.toNestedPairs, variance)
               else
-                val tparams = tycon.typeParams
-                val argPatterns = args.zip(tparams).map { (arg, tparam) =>
-                  rec(arg, tparam.paramVarianceSign)
+                recArgPatterns(pat) { argPatterns =>
+                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams).exists {
+                    (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
+                  }
+                  MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns, needsConcreteScrut)
                 }
-                if argPatterns.exists(_ == null) then
-                  null
-                else
-                  val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not null
-                  if argPatterns1.forall(_.isTypeTest) then
-                    MatchTypeCasePattern.TypeTest(pat)
-                  else
-                    val needsConcreteScrut = argPatterns1.zip(tparams).exists {
-                      (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
-                    }
-                    MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns1, needsConcreteScrut)
             else if defn.isCompiletime_S(tyconSym) && args.sizeIs == 1 then
               val argPattern = rec(args.head, variance)
               if argPattern == null then
@@ -5165,11 +5156,38 @@ object Types {
               else
                 MatchTypeCasePattern.CompileTimeS(argPattern)
             else
-              null
+              tycon.info match
+                case _: RealTypeBounds => recAbstractTypeConstructor(pat)
+                case _                 => null
+
+          case pat @ AppliedType(tycon: TypeParamRef, _) if variance == 1 =>
+            recAbstractTypeConstructor(pat)
 
           case _ =>
             MatchTypeCasePattern.TypeTest(pat)
       end rec
+
+      def recAbstractTypeConstructor(pat: AppliedType): MatchTypeCasePattern | Null =
+        recArgPatterns(pat) { argPatterns =>
+          MatchTypeCasePattern.AbstractTypeConstructor(pat.tycon, argPatterns)
+        }
+      end recAbstractTypeConstructor
+
+      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCasePattern | Null): MatchTypeCasePattern | Null =
+        val AppliedType(tycon, args) = pat
+        val tparams = tycon.typeParams
+        val argPatterns = args.zip(tparams).map { (arg, tparam) =>
+          rec(arg, tparam.paramVarianceSign)
+        }
+        if argPatterns.exists(_ == null) then
+          null
+        else
+          val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not null
+          if argPatterns1.forall(_.isTypeTest) then
+            MatchTypeCasePattern.TypeTest(pat)
+          else
+            whenNotTypeTest(argPatterns1)
+      end recArgPatterns
 
       val result = rec(pat, variance = 1)
       if typeParamRefsAccountedFor == caseLambda.paramNames.size then result
