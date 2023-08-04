@@ -197,7 +197,7 @@ class Splicing extends MacroTransform:
           if tree.isTerm then
             if isCaptured(tree.symbol) then
               val tpe = tree.tpe.widenTermRefExpr match {
-                case tpw: MethodicType => tpw.toFunctionType(isJava = false)
+                case tpw: MethodicType => tpw.toFunctionType()
                 case tpw => tpw
               }
               spliced(tpe)(capturedTerm(tree))
@@ -291,7 +291,7 @@ class Splicing extends MacroTransform:
 
     private def capturedTerm(tree: Tree)(using Context): Tree =
       val tpe = tree.tpe.widenTermRefExpr match
-        case tpw: MethodicType => tpw.toFunctionType(isJava = false)
+        case tpw: MethodicType => tpw.toFunctionType()
         case tpw => tpw
       capturedTerm(tree, tpe)
 

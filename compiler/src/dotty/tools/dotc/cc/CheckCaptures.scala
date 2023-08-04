@@ -410,7 +410,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeBoxFunArg then
         mapArgUsing: tp =>
           val defn.FunctionOf(mt: MethodType) = tp.dealias: @unchecked
-          defn.FunctionOf(mt.derivedLambdaType(resType = mt.resType.forceBoxStatus(true)))
+          mt.derivedLambdaType(resType = mt.resType.forceBoxStatus(true))
+            .toFunctionType()
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>
@@ -706,7 +707,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case defn.FunctionOf(mt: MethodType) =>
           actual.dealias match
             case defn.FunctionOf(mt2: MethodType) if mt2.isResultDependent =>
-              mt.toFunctionType(isJava = false, alwaysDependent = true)
+              mt.toFunctionType(alwaysDependent = true)
             case _ =>
               expected
         case _ =>
@@ -848,7 +849,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
-                    .toFunctionType(isJava = false, alwaysDependent = true))
+                    .toFunctionType(alwaysDependent = true))
             case actual: MethodType =>
               adaptFun(actual, actual.paramInfos, actual.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>

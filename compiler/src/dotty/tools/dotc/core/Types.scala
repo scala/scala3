@@ -1872,7 +1872,7 @@ object Types {
      *                         when forming the function type.
      *  @param alwaysDependent if true, always create a dependent function type.
      */
-    def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean = false, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
       case mt: MethodType =>
         assert(!mt.isParamDependent)
         def nonDependentFunType =
@@ -1886,14 +1886,25 @@ object Types {
             formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
-          defn.PolyFunctionOf(mt)
+          assert(isValidPolyFunctionInfo(mt), s"Not a valid PolyFunction refinement: $mt")
+          RefinedType(defn.PolyFunctionType, nme.apply, mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
-      case poly @ PolyType(_, mt: MethodType) =>
-        assert(!mt.isParamDependent)
-        defn.PolyFunctionOf(poly)
+      case poly: PolyType =>
+        assert(isValidPolyFunctionInfo(poly), s"Not a valid PolyFunction refinement: $poly")
+        RefinedType(defn.PolyFunctionType, nme.apply, poly)
     }
+
+    private def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
+      def isValidMethodType(info: Type) = info match
+        case info: MethodType =>
+          !info.resType.isInstanceOf[MethodOrPoly] // Has only one parameter list
+          && !info.isParamDependent
+        case _ => false
+      info match
+        case info: PolyType => isValidMethodType(info.resType)
+        case _ => isValidMethodType(info)
 
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
