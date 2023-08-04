@@ -297,18 +297,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
-    lam match
-      case lam: MethodType =>
-        def paramText(ref: ParamRef, erased: Boolean) =
-          // TODO can we figure out if the parameter is erased from the `ParamRef`? If so we can merge the two cases.
-          keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
-        Text(lam.paramRefs.lazyZip(lam.erasedParams).map(paramText), ", ")
-      case lam =>
-        def paramText(ref: ParamRef) =
-          ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
-        Text(lam.paramRefs.map(paramText), ", ")
-
-
+    def paramText(ref: ParamRef) =
+      val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
+      keywordText("erased ").provided(erased) ~ ParamRefNameString(ref) ~ lambdaHash(lam) ~ toTextRHS(ref.underlying, isParameter = true)
+    Text(lam.paramRefs.map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
