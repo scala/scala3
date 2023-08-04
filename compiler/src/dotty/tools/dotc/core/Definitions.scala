@@ -1109,13 +1109,13 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionOf {
-    /** Matches a (possibly aliased) `FunctionN[...]`, `ContextFunctionN[...]`, refined `PolyFunction`, or result dependent refinement of `FunctionN[...]`/`ContextFunctionN[...]`.
+    /** Matches a `FunctionN[...]`/`ContextFunctionN[...]` or refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
      *  Extracts the method type type and apply info.
      */
     def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
       ft match
         case RefinedType(parent, nme.apply, mt: MethodOrPoly)
-        if parent.derivesFrom(defn.PolyFunctionClass) || (isFunctionNType(parent) && mt.isResultDependent) =>
+        if parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(parent) =>
           Some(mt)
         case FunctionNOf(argTypes, resultType, isContextual) =>
           val methodType = if isContextual then ContextualMethodType else MethodType
