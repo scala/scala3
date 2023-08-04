@@ -1,0 +1,31 @@
+-- [E007] Type Mismatch Error: tests/explicit-nulls/neg/i17467.scala:4:22 ----------------------------------------------
+4 |    val a2: a1.type = null // error
+  |                      ^^^^
+  |                      Found:    Null
+  |                      Required: (a1 : String)
+  |                      Note that implicit conversions were not tried because the result of an implicit conversion
+  |                      must be more specific than (a1 : String)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/explicit-nulls/neg/i17467.scala:7:22 ----------------------------------------------
+7 |    val b2: b1.type = null // error
+  |                      ^^^^
+  |                      Found:    Null
+  |                      Required: (b1 : String | Null)
+  |                      Note that implicit conversions were not tried because the result of an implicit conversion
+  |                      must be more specific than (b1 : String | Null)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E172] Type Error: tests/explicit-nulls/neg/i17467.scala:8:28 -------------------------------------------------------
+8 |    summon[Null <:< b1.type] // error
+  |                            ^
+  |                            Cannot prove that Null <:< (b1 : String | Null).
+-- [E007] Type Mismatch Error: tests/explicit-nulls/neg/i17467.scala:14:22 ---------------------------------------------
+14 |    val c2: c1.type = null // error
+   |                      ^^^^
+   |                      Found:    Null
+   |                      Required: (c1 : Null)
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than (c1 : Null)
+   |
+   | longer explanation available when compiling with `-explain`

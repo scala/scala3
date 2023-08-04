@@ -1,0 +1,64 @@
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:6:20 -------------------------------------------------------------
+6 |    val b1: "foo" = null // error
+  |                    ^^^^
+  |                    Found:    Null
+  |                    Required: ("foo" : String)
+  |                    Note that implicit conversions were not tried because the result of an implicit conversion
+  |                    must be more specific than ("foo" : String)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:9:22 -------------------------------------------------------------
+9 |    val c2: c1.type = null // error
+  |                      ^^^^
+  |                      Found:    Null
+  |                      Required: (c1 : ("foo" : String))
+  |                      Note that implicit conversions were not tried because the result of an implicit conversion
+  |                      must be more specific than (c1 : ("foo" : String))
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:17:22 ------------------------------------------------------------
+17 |    val e2: e1.type = null // error
+   |                      ^^^^
+   |                      Found:    Null
+   |                      Required: (e1 : MyNonNullable)
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than (e1 : MyNonNullable)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E172] Type Error: tests/neg/i17467.scala:19:26 ---------------------------------------------------------------------
+19 |    summon[Null <:< "foo"] // error
+   |                          ^
+   |                          Cannot prove that Null <:< ("foo" : String).
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:21:23 ------------------------------------------------------------
+21 |    val f1: Mod.type = null // error
+   |                       ^^^^
+   |                      Found:    Null
+   |                      Required: Test.Mod.type
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than Test.Mod.type
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E083] Type Error: tests/neg/i17467.scala:24:12 ---------------------------------------------------------------------
+24 |    val g2: g1.type = null // error // error
+   |            ^^^^^^^
+   |            (g1 : AnyRef) is not a valid singleton type, since it is not an immutable path
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:24:22 ------------------------------------------------------------
+24 |    val g2: g1.type = null // error // error
+   |                      ^^^^
+   |                      Found:    Null
+   |                      Required: (g1 : AnyRef)
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than (g1 : AnyRef)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:33:24 ------------------------------------------------------------
+33 |    def me: this.type = null // error
+   |                        ^^^^
+   |                      Found:    Null
+   |                      Required: (Bar.this : Test.Bar)
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than (Bar.this : Test.Bar)
+   |
+   | longer explanation available when compiling with `-explain`
