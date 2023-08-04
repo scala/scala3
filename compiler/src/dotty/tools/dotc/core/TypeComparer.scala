@@ -3345,16 +3345,14 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
                 val innerScrutIsWidenedAbstract =
                   scrutIsWidenedAbstract
                     || (needsConcreteScrut && !isConcrete(scrut)) // no point in checking concreteness if it does not need to be concrete
+                matchArgs(argPatterns, baseArgs, classType.typeParams, innerScrutIsWidenedAbstract)
+              case _ =>
+                false
 
-                def matchArgs(argPatterns: List[MatchTypeCasePattern], baseArgs: List[Type], tparams: List[TypeParamInfo]): Boolean =
-                  if argPatterns.isEmpty then
-                    true
-                  else
-                    rec(argPatterns.head, baseArgs.head, tparams.head.paramVarianceSign, innerScrutIsWidenedAbstract)
-                      && matchArgs(argPatterns.tail, baseArgs.tail, tparams.tail)
-
-                matchArgs(argPatterns, baseArgs, classType.typeParams)
-
+          case MatchTypeCasePattern.AbstractTypeConstructor(tycon, argPatterns) =>
+            scrut.dealias match
+              case scrutDealias @ AppliedType(scrutTycon, args) if scrutTycon =:= tycon =>
+                matchArgs(argPatterns, args, tycon.typeParams, scrutIsWidenedAbstract)
               case _ =>
                 false
 
@@ -3365,6 +3363,13 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               case _ =>
                 false
       end rec
+
+      def matchArgs(argPatterns: List[MatchTypeCasePattern], args: List[Type], tparams: List[TypeParamInfo], scrutIsWidenedAbstract: Boolean): Boolean =
+        if argPatterns.isEmpty then
+          true
+        else
+          rec(argPatterns.head, args.head, tparams.head.paramVarianceSign, scrutIsWidenedAbstract)
+            && matchArgs(argPatterns.tail, args.tail, tparams.tail, scrutIsWidenedAbstract)
 
       // This might not be needed
       val constrainedCaseLambda = constrained(spec.origMatchCase, ast.tpd.EmptyTree)._1.asInstanceOf[HKTypeLambda]
