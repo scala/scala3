@@ -705,7 +705,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
         case defn.FunctionOf(mt: MethodType) =>
           actual match
-            case defn.DependentFunctionRefinementOf(_) =>
+            case defn.FunctionOf(mt2: MethodType) if mt2.isResultDependent =>
               mt.toFunctionType(isJava = false, alwaysDependent = true)
             case _ =>
               expected

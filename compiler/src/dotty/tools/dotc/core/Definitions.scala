@@ -1123,8 +1123,9 @@ class Definitions {
      */
     def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
       ft match
-        case PolyFunctionOf(mt) => Some(mt)
-        case DependentFunctionRefinementOf(mt) => Some(mt)
+        case RefinedType(parent, nme.apply, mt: MethodOrPoly)
+        if parent.derivesFrom(defn.PolyFunctionClass) || (isFunctionNType(parent) && mt.isResultDependent) =>
+          Some(mt)
         case FunctionNOf(argTypes, resultType, isContextual) =>
           val methodType = if isContextual then ContextualMethodType else MethodType
           Some(methodType(argTypes, resultType))
@@ -1178,20 +1179,6 @@ class Definitions {
       info match
         case info: PolyType => isValidMethodType(info.resType)
         case _ => isValidMethodType(info)
-  }
-
-  object DependentFunctionRefinementOf {
-    /** Matches a dependent refinement of `FunctionN[...]` or `ContextFunctionN[...]` type.
-     *  Extracts the method type type and apply info.
-     *
-     *  Pattern: `(FunctionN | ContextFunction|) { def apply: $mt }`
-     */
-    def unapply(tpe: RefinedType)(using Context): Option[MethodType] =
-      tpe.refinedInfo match
-        case mt: MethodType
-        if tpe.refinedName == nme.apply && isFunctionNType(tpe.parent) && mt.isResultDependent =>
-          Some(mt)
-        case _ => None
   }
 
   object PartialFunctionOf {
