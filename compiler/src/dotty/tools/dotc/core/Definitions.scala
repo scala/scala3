@@ -1114,12 +1114,24 @@ class Definitions {
      */
     def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
       ft match
-        case RefinedType(parent, nme.apply, mt: MethodOrPoly)
-        if parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(parent) =>
-          Some(mt)
+        case RefinedFunctionOf(mt) => Some(mt)
         case FunctionNOf(argTypes, resultType, isContextual) =>
           val methodType = if isContextual then ContextualMethodType else MethodType
           Some(methodType(argTypes, resultType))
+        case _ => None
+    }
+  }
+
+  object RefinedFunctionOf {
+    /** Matches a refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] = {
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply
+        && (tpe.parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(tpe.parent)) =>
+          Some(mt)
         case _ => None
     }
   }

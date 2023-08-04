@@ -195,7 +195,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               capt.println(i"solving $t")
               refs.solve()
             traverse(parent)
-          case t @ RefinedType(_, nme.apply, rinfo) if defn.isFunctionType(t) =>
+          case defn.RefinedFunctionOf(rinfo) =>
             traverse(rinfo)
           case tp: TypeVar =>
           case tp: TypeRef =>
@@ -302,8 +302,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             t
           case _ =>
             val t1  = t match
-              case t @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(t) =>
-                t.derivedRefinedType(parent, rname, this(rinfo))
+              case t @ defn.RefinedFunctionOf(rinfo: MethodType) =>
+                t.derivedRefinedType(t.parent, t.refinedName, this(rinfo))
               case _ =>
                 mapOver(t)
             if variance > 0 then t1
@@ -782,7 +782,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           val (eargs, eres) = expected.dealias.stripCapturing match
             case expected: MethodType => (expected.paramInfos, expected.resType)
             case defn.FunctionOf(mt: MethodType) => (mt.paramInfos, mt.resType)
-            case expected @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionNType(expected) => (rinfo.paramInfos, rinfo.resType)
             case _ => (aargs.map(_ => WildcardType), WildcardType)
           val aargs1 = aargs.zipWithConserve(eargs) { (aarg, earg) => adapt(aarg, earg, !covariant) }
           val ares1 = adapt(ares, eres, covariant)
@@ -844,23 +843,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             case actual @ AppliedType(tycon, args) if defn.isFunctionNType(actual) =>
               adaptFun(actual, args.init, args.last, expected, covariant, insertBox,
                   (aargs1, ares1) => actual.derivedAppliedType(tycon, aargs1 :+ ares1))
-            case actual @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(actual) =>
+            case actual @ defn.RefinedFunctionOf(rinfo: MethodType) =>
               // TODO Find a way to combine handling of generic and dependent function types (here and elsewhere)
               adaptFun(actual, rinfo.paramInfos, rinfo.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   rinfo.derivedLambdaType(paramInfos = aargs1, resType = ares1)
                     .toFunctionType(alwaysDependent = true))
+            case actual @ defn.RefinedFunctionOf(rinfo: PolyType) =>
+              adaptTypeFun(actual, rinfo.resType, expected, covariant, insertBox,
+                ares1 =>
+                  val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
+                  val actual1 = actual.derivedRefinedType(actual.parent, actual.refinedName, rinfo1)
+                  actual1
+              )
             case actual: MethodType =>
               adaptFun(actual, actual.paramInfos, actual.resType, expected, covariant, insertBox,
                 (aargs1, ares1) =>
                   actual.derivedLambdaType(paramInfos = aargs1, resType = ares1))
-            case actual @ RefinedType(p, nme, rinfo: PolyType) if defn.isFunctionType(actual) =>
-              adaptTypeFun(actual, rinfo.resType, expected, covariant, insertBox,
-                ares1 =>
-                  val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
-                  val actual1 = actual.derivedRefinedType(p, nme, rinfo1)
-                  actual1
-              )
             case _ =>
               (styp, CaptureSet())
           }
@@ -1079,7 +1078,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case CapturingType(parent, refs) =>
               healCaptureSet(refs)
               traverse(parent)
-            case tp @ RefinedType(parent, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
+            case defn.RefinedFunctionOf(rinfo: MethodType) =>
               traverse(rinfo)
             case tp: TermLambda =>
               val saved = allowed
