@@ -76,10 +76,11 @@ abstract class Lifter {
       tree
   }
 
-  /** Lift a function argument, stripping any NamedArg wrapper */
+  /** Lift a function argument, stripping any NamedArg wrapper and repeated Typed trees */
   private def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     arg match {
       case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
+      case arg @ Typed(arg1, tpt) if tpt.typeOpt.isRepeatedParam => cpy.Typed(arg)(lift(defs, arg1, prefix), tpt)
       case arg => lift(defs, arg, prefix)
     }
 
