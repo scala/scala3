@@ -3234,9 +3234,10 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     /** Match a single case. */
     def matchCase(cas: MatchTypeCaseSpec): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
       cas match
-        case cas: MatchTypeCaseSpec.SubTypeTest   => matchSubTypeTest(cas)
-        case cas: MatchTypeCaseSpec.SpeccedPatMat => matchSpeccedPatMat(cas)
-        case cas: MatchTypeCaseSpec.LegacyPatMat  => matchLegacyPatMat(cas)
+        case cas: MatchTypeCaseSpec.SubTypeTest     => matchSubTypeTest(cas)
+        case cas: MatchTypeCaseSpec.SpeccedPatMat   => matchSpeccedPatMat(cas)
+        case cas: MatchTypeCaseSpec.LegacyPatMat    => matchLegacyPatMat(cas)
+        case cas: MatchTypeCaseSpec.MissingCaptures => matchMissingCaptures(cas)
     }
 
     def matchSubTypeTest(spec: MatchTypeCaseSpec.SubTypeTest): MatchResult =
@@ -3417,6 +3418,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       else
         MatchResult.Stuck
     end matchLegacyPatMat
+
+    def matchMissingCaptures(spec: MatchTypeCaseSpec.MissingCaptures): MatchResult =
+      MatchResult.Stuck
 
     def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
       case cas :: remaining1 =>
