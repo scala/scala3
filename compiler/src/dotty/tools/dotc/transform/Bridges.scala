@@ -129,13 +129,12 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
         else
-          val mt = atPhase(erasurePhase) {
+          val mtWithoutErasedParams = atPhase(erasurePhase) {
             tp match
-              case defn.FunctionOf(mt: MethodType) => mt
+              case defn.FunctionOf(mt: MethodType) =>
+                val paramInfos = mt.paramInfos.zip(mt.erasedParams).collect { case (param, false) => param }
+                mt.derivedLambdaType(paramInfos = paramInfos)
           }
-          val mtWithoutErasedParams =
-            val paramInfos = mt.paramInfos.zip(mt.erasedParams).collect { case (param, false) => param }
-            mt.derivedLambdaType(paramInfos = paramInfos)
           val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)
           anonFun.info = transformInfo(anonFun, anonFun.info)
 
@@ -143,7 +142,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
             val refs :: Nil = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
               case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                mt.paramInfos.indices.toList.map(n => // TODO should this use mtWithoutErasedParams.paramInfos?
+                mtWithoutErasedParams.paramInfos.indices.toList.map(n =>
                   bunchedParam
                     .select(nme.primitive.arrayApply)
                     .appliedTo(Literal(Constant(n))))
