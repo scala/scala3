@@ -695,7 +695,9 @@ class TreePickler(pickler: TastyPickler) {
             writeNat(idx)
             pickleType(tree.tpe, richTypes = true)
             args.foreach { arg =>
-              if arg.isType then writeByte(EXPLICITtpt)
+              arg.tpe match
+                case _: TermRef if arg.isType => writeByte(EXPLICITtpt)
+                case _ =>
               pickleTree(arg)
             }
           }
