@@ -59,15 +59,15 @@ object Synthetics:
   /** Transform the type of a method either to its type under capture checking
    *  or back to its previous type.
    *  @param  sym  The method to transform @pre needsTransform(sym) must hold.
-   *  @param  toCC Whether to transform the type to cpature checking or back.
+   *  @param  toCC Whether to transform the type to capture checking or back.
    */
   def transform(sym: SymDenotation, toCC: Boolean)(using Context): SymDenotation =
 
     /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
      *  An apply method in a case class like this:
-     *    case class CC(a: {d} A, b: B, {cap} c: C)
+     *    case class CC(a: A^{d}, b: B, c: C^{cap})
      *  would get type
-     *    def apply(a': {d} A, b: B, {cap} c': C): {a', c'} CC { val a = {a'} A, val c = {c'} C }
+     *    def apply(a': A^{d}, b: B, c': C^{cap}): CC^{a', c'} { val a = A^{a'}, val c = C^{c'} }
      *  where `'` is used to indicate the difference between parameter symbol and refinement name.
      *  Analogous for the copy method.
      */
@@ -126,7 +126,7 @@ object Synthetics:
       case _ =>
         info
 
-    /** Augment an unapply of type `(x: C): D` to `(x: {cap} C): {x} D` if toCC is true,
+    /** Augment an unapply of type `(x: C): D` to `(x: C^{cap}): D^{x}` if toCC is true,
      *  or remove the added capture sets again if toCC = false.
      */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
