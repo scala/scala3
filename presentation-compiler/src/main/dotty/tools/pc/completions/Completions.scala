@@ -75,10 +75,18 @@ class Completions(
     case Import
 
     def include(sym: Symbol)(using Context): Boolean =
+      def hasSyntheticCursorSuffix: Boolean =
+        if !sym.name.endsWith(Cursor.value) then false
+        else
+          val realNameLength = sym.decodedName.length - Cursor.value.length
+          sym.source == pos.source &&
+          sym.span.start + realNameLength == pos.span.end
+
       val generalExclude =
         isUninterestingSymbol(sym) ||
           !isNotLocalForwardReference(sym) ||
-          sym.isPackageObject
+          sym.isPackageObject ||
+          hasSyntheticCursorSuffix
 
       def isWildcardParam(sym: Symbol) =
         if sym.isTerm && sym.owner.isAnonymousFunction then
