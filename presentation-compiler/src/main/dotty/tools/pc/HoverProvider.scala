@@ -159,23 +159,34 @@ object HoverProvider:
       printer: ShortenedTypePrinter
   )(using Context): ju.Optional[HoverSignature] = path match
     case SelectDynamicExtractor(sel, n, name) =>
-      def findRefinement(tp: Type): ju.Optional[HoverSignature] =
+      def findRefinement(tp: Type): Option[HoverSignature] =
         tp match
-          case RefinedType(info, refName, tpe) if name == refName.toString() =>
+          case RefinedType(_, refName, tpe) if name == refName.toString() =>
             val tpeString =
               if n == nme.selectDynamic then s": ${printer.tpe(tpe.resultType)}"
               else printer.tpe(tpe)
-            ju.Optional.of(
+
+            val valOrDef =
+              if n == nme.selectDynamic && !tpe.isInstanceOf[ExprType]
+              then "val"
+              else "def"
+
+            Some(
               new ScalaHover(
                 expressionType = Some(tpeString),
-                symbolSignature = Some(s"def $name$tpeString")
+                symbolSignature = Some(s"$valOrDef $name$tpeString"),
               )
             )
-          case RefinedType(info, _, _) =>
-            findRefinement(info)
-          case _ => ju.Optional.empty()
+          case RefinedType(parent, _, _) =>
+            findRefinement(parent)
+          case _ => None
 
-      findRefinement(sel.tpe.termSymbol.info.dealias)
+      val refTpe = sel.tpe.metalsDealias match
+        case r: RefinedType => Some(r)
+        case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.metalsDealias)
+        case _ => None
+
+      refTpe.flatMap(findRefinement).asJava
     case _ =>
       ju.Optional.empty()
 
