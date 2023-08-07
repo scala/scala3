@@ -125,4 +125,8 @@ object MatchTypeTrace:
        |
        |    ${casesText(cases)}"""
 
+  def legacyPatternText(scrut: Type, cas: MatchTypeCaseSpec.LegacyPatMat)(using Context): String =
+    i"""Illegal match type because it contains the legacy, unspecifed case
+       |    ${caseText(cas)}"""
+
 end MatchTypeTrace

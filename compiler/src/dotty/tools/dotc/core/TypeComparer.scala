@@ -3428,6 +3428,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       MatchResult.Stuck
 
     def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
+      case (cas: MatchTypeCaseSpec.LegacyPatMat) :: _ if ctx.settings.YnoLegacyMatchTypes.value =>
+        val errorText = MatchTypeTrace.legacyPatternText(scrut, cas)
+        ErrorType(reporting.MatchTypeLegacyPattern(errorText))
       case cas :: remaining1 =>
         matchCase(cas) match
           case MatchResult.Disjoint =>

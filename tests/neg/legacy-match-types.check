@@ -1,0 +1,30 @@
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:7:23 ----------------------------------------------------------
+7 |type InvNesting[X] = X match // error
+  |                     ^
+  |                     Illegal match type because it contains the legacy, unspecifed case
+  |                         case Inv[Cov[t]] => t
+8 |  case Inv[Cov[t]] => t
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:10:26 ---------------------------------------------------------
+10 |type ContraNesting[X] = X match // error
+   |                        ^
+   |                        Illegal match type because it contains the legacy, unspecifed case
+   |                            case Contra[Cov[t]] => t
+11 |  case Contra[Cov[t]] => t
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:15:22 ---------------------------------------------------------
+15 |type AndTypeMT[X] = X match // error
+   |                    ^
+   |                    Illegal match type because it contains the legacy, unspecifed case
+   |                        case t & Seq[Any] => t
+16 |  case t & Seq[Any] => t
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:22:33 ---------------------------------------------------------
+22 |type TypeAliasWithBoundMT[X] = X match // error
+   |                               ^
+   |                               Illegal match type because it contains the legacy, unspecifed case
+   |                                   case IsSeq[t] => t
+23 |  case IsSeq[t] => t
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:33:34 ---------------------------------------------------------
+33 |type TypeMemberExtractorMT[X] = X match // error
+   |                                ^
+   |                                Illegal match type because it contains the legacy, unspecifed case
+   |                                    case TypeMemberAux[t] => t
+34 |  case TypeMemberAux[t] => t

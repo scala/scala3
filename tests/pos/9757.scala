@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 type RemoveFrom[R, A] = R match {
   case A & newType => newType
 }

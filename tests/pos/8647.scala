@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 final class Two[A, B]()
 
 final class Blaaa

@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 import scala.util.Try
 
 trait RDF:

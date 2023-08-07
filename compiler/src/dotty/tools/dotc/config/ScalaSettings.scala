@@ -347,6 +347,7 @@ private sealed trait YSettings:
   val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "Show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting("-Yprint-pos-syms", "Show symbol definitions positions.")
   val YnoDeepSubtypes: Setting[Boolean] = BooleanSetting("-Yno-deep-subtypes", "Throw an exception on deep subtyping call stacks.")
+  val YnoLegacyMatchTypes: Setting[Boolean] = BooleanSetting("-Yno-legacy-match-types", "Refuse to reduce match types with legacy/unspecified patterns")
   val YnoPatmatOpt: Setting[Boolean] = BooleanSetting("-Yno-patmat-opt", "Disable all pattern matching optimizations.")
   val YplainPrinter: Setting[Boolean] = BooleanSetting("-Yplain-printer", "Pretty-print using a plain printer.")
   val YprintSyms: Setting[Boolean] = BooleanSetting("-Yprint-syms", "When printing trees print info in symbols instead of corresponding info in trees.")

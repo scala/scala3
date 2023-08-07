@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 object Helpers:
   type NodeFun[R] = Matchable // compiles without [R] parameter
 

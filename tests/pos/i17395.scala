@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 trait TC[T]
 
 object TC {

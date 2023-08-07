@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 object Test {
 
   type AV[t <: AnyVal] = t

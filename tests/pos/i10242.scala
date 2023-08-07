@@ -1,4 +1,6 @@
-// https://github.com/lampepfl/dotty/issues/10242  
+// scalac: -Yno-legacy-match-types:false
+
+// https://github.com/lampepfl/dotty/issues/10242
 type Foo[A, B <: A] = A
 
 type Bar[A] = A match {

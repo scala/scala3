@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 import Macros.simplified
 
 object Test {

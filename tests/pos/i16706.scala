@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 import scala.deriving.Mirror
 import scala.reflect.ClassTag
 

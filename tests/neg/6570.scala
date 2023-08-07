@@ -1,3 +1,5 @@
+// scalac: -Yno-legacy-match-types:false
+
 object Base {
   trait Trait1
   trait Trait2
