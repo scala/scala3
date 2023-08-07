@@ -49,17 +49,19 @@ object Implicits:
   }
 
   /** Both search candidates and successes are references with a specific nesting level. */
-  sealed trait RefAndLevel {
+  sealed trait RefAndLevel extends Showable {
     def ref: TermRef
     def level: Int
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
-  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel {
+  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel with Showable {
     def ref: TermRef = implicitRef.underlyingRef
 
     def isExtension = (kind & Candidate.Extension) != 0
     def isConversion = (kind & Candidate.Conversion) != 0
+
+    def toText(printer: Printer): Text = printer.toText(this)
   }
   object Candidate {
     type Kind = Int
