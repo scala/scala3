@@ -22,13 +22,20 @@ type IsSeq[X <: Seq[Any]] = X
 type TypeAliasWithBoundMT[X] = X match // error
   case IsSeq[t] => t
 
-// Poly type alias with a type member refinement to extract the type member
+// Poly type alias with an unknown type member refinement
+
+type TypeMemberAux[X] = { type TypeMember = X }
+
+type TypeMemberExtractorMT[X] = X match // error
+  case TypeMemberAux[t] => t
+
+// Poly type alias with a refined member of stronger bounds than in the parent
 
 class Base {
   type TypeMember
 }
 
-type TypeMemberAux[X] = Base { type TypeMember = X }
+type TypeMemberAux2[X <: Seq[Any]] = Base { type TypeMember = X }
 
-type TypeMemberExtractorMT[X] = X match // error
-  case TypeMemberAux[t] => t
+type TypeMemberExtractorMT2[X] = X match // error
+  case TypeMemberAux2[t] => t

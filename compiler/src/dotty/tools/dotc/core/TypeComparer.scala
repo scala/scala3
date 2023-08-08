@@ -3346,6 +3346,36 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
                 rec(argPattern, ConstantType(Constant(scrutValue - 1)), variance, scrutIsWidenedAbstract)
               case _ =>
                 false
+
+          case MatchTypeCasePattern.TypeMemberExtractor(typeMemberName, capture) =>
+            val stableScrut: SingletonType = scrut match
+              case scrut: SingletonType => scrut
+              case _                    => SkolemType(scrut)
+            stableScrut.member(typeMemberName) match
+              case denot: SingleDenotation if denot.exists =>
+                val info = denot.info match
+                  case TypeAlias(alias) => alias
+                  case info             => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
+                if info.isInstanceOf[ClassInfo] then
+                  /* The member is not an alias (we'll get Stuck instead of NoInstances,
+                   * which is not ideal, but we cannot make a RealTypeBounds of ClassInfo).
+                   */
+                  false
+                else
+                  val infoRefersToSkolem = stableScrut match
+                    case stableScrut: SkolemType =>
+                      new TypeAccumulator[Boolean] {
+                        def apply(prev: Boolean, tp: Type): Boolean =
+                          prev || (tp eq stableScrut) || foldOver(prev, tp)
+                      }.apply(false, info)
+                    case _ =>
+                      false
+                  val info1 =
+                    if infoRefersToSkolem && !info.isInstanceOf[TypeBounds] then RealTypeBounds(info, info) // to trigger a MatchResult.NoInstances
+                    else info
+                  rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
+              case _ =>
+                false
       end rec
 
       def matchArgs(argPatterns: List[MatchTypeCasePattern], args: List[Type], tparams: List[TypeParamInfo], scrutIsWidenedAbstract: Boolean): Boolean =

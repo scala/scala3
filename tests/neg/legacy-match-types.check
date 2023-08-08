@@ -22,9 +22,15 @@
    |                               Illegal match type because it contains the legacy, unspecifed case
    |                                   case IsSeq[t] => t
 23 |  case IsSeq[t] => t
--- [E189] Type Error: tests/neg/legacy-match-types.scala:33:34 ---------------------------------------------------------
-33 |type TypeMemberExtractorMT[X] = X match // error
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:29:34 ---------------------------------------------------------
+29 |type TypeMemberExtractorMT[X] = X match // error
    |                                ^
    |                                Illegal match type because it contains the legacy, unspecifed case
    |                                    case TypeMemberAux[t] => t
-34 |  case TypeMemberAux[t] => t
+30 |  case TypeMemberAux[t] => t
+-- [E189] Type Error: tests/neg/legacy-match-types.scala:40:35 ---------------------------------------------------------
+40 |type TypeMemberExtractorMT2[X] = X match // error
+   |                                 ^
+   |                                 Illegal match type because it contains the legacy, unspecifed case
+   |                                     case TypeMemberAux2[t] => t
+41 |  case TypeMemberAux2[t] => t
