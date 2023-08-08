@@ -9,6 +9,7 @@ object MiMaFilters {
     // New API in 3.4.X
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
+    ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.EXPLICITtpt"),
   )
   val Interfaces: Seq[ProblemFilter] = Seq(
   )
