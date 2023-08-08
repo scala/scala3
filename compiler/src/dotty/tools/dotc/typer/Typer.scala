@@ -4162,7 +4162,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               || x.tag == LongTag && cls == defn.DoubleClass && x.longValue.toDouble.toLong != x.longValue
             then
               report.warning(LossyWideningConstantConversion(x.tpe, pt), tree.srcPos)
-            return adaptConstant(tree, ConstantType(converted))
+            return readapt(adaptConstant(tree, ConstantType(converted)))
         case _ =>
 
       val captured = captureWildcardsCompat(wtp, pt)
