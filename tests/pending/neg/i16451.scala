@@ -1,10 +1,6 @@
 // scalac: -Werror
 enum Color:
   case Red, Green
-//sealed trait Color
-//object Color:
-//  case object Red   extends Color
-//  case object Green extends Color
 
 case class Wrapper[A](value: A)
 

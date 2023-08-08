@@ -321,7 +321,7 @@ object SpaceEngine {
    * The types should be atomic (non-decomposable) and unrelated (neither
    * should be a subtype of the other).
    */
-  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug) {
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug, show) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
       // Since projections of types don't include null, intersection with null is empty.
@@ -459,17 +459,8 @@ object SpaceEngine {
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
-        val args2 =
-          if tycon.isRef(defn.ArrayClass) then
-            args.map(arg => erase(arg, inArray = true, isValue = false))
-          else tycon.typeParams.lazyZip(args).map { (tparam, arg) =>
-            if isValue && tparam.paramVarianceSign == 0 then
-              // when matching against a value,
-              // any type argument for an invariant type parameter will be unchecked,
-              // meaning it won't fail to match against anything; thus the wildcard replacement
-              WildcardType
-            else erase(arg, inArray = false, isValue = false)
-          }
+        val inArray = tycon.isRef(defn.ArrayClass)
+        val args2 = args.map(arg => erase(arg, inArray = inArray, isValue = false))
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
@@ -640,7 +631,7 @@ object SpaceEngine {
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tp if tp.classSymbol.isDecomposableToChildren =>
+      case tp if tp.isDecomposableToChildren =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
@@ -676,8 +667,8 @@ object SpaceEngine {
     rec(tp, Nil)
   }
 
-  extension (cls: Symbol)
-    /** A type is decomposable to children if it's sealed,
+  extension (tp: Type)
+    /** A type is decomposable to children if it has a simple kind, it's sealed,
       * abstract (or a trait) - so its not a sealed concrete class that can be instantiated on its own,
       * has no anonymous children, which we wouldn't be able to name as counter-examples,
       * but does have children.
@@ -686,7 +677,8 @@ object SpaceEngine {
       * A sealed trait with subclasses that then get removed after `refineUsingParent`, decomposes to the empty list.
       * So that's why we consider whether a type has children. */
     def isDecomposableToChildren(using Context): Boolean =
-      cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
+      val cls = tp.classSymbol
+      tp.hasSimpleKind && cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
