@@ -5094,6 +5094,7 @@ object Types extends TypeUtils {
     case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
     case CompileTimeS(argPattern: MatchTypeCasePattern)
     case AbstractTypeConstructor(tycon: Type, argPatterns: List[MatchTypeCasePattern])
+    case TypeMemberExtractor(typeMemberName: TypeName, capture: Capture)
 
     def isTypeTest: Boolean =
       this.isInstanceOf[TypeTest]
@@ -5187,11 +5188,44 @@ object Types extends TypeUtils {
                 MatchTypeCasePattern.CompileTimeS(argPattern)
             else
               tycon.info match
-                case _: RealTypeBounds => recAbstractTypeConstructor(pat)
-                case _                 => null
+                case _: RealTypeBounds =>
+                  recAbstractTypeConstructor(pat)
+                case TypeAlias(tl @ HKTypeLambda(onlyParam :: Nil, resType: RefinedType)) =>
+                  /* Unlike for eta-expanded classes, the typer does not automatically
+                   * dealias poly type aliases to refined types. So we have to give them
+                   * a chance here.
+                   * We are quite specific about the shape of type aliases that we are willing
+                   * to dealias this way, because we must not dealias arbitrary type constructors
+                   * that could refine the bounds of the captures; those would amount of
+                   * type-test + capture combos, which are out of the specced match types.
+                   */
+                  rec(pat.superType, variance)
+                case _ =>
+                  null
 
           case pat @ AppliedType(tycon: TypeParamRef, _) if variance == 1 =>
             recAbstractTypeConstructor(pat)
+
+          case pat @ RefinedType(parent, refinedName: TypeName, TypeAlias(alias @ TypeParamRef(binder, num)))
+              if variance == 1 && (binder eq caseLambda) =>
+            parent.member(refinedName) match
+              case refinedMember: SingleDenotation if refinedMember.exists =>
+                // Check that the bounds of the capture contain the bounds of the inherited member
+                val refinedMemberBounds = refinedMember.info
+                val captureBounds = caseLambda.paramInfos(num)
+                if captureBounds.contains(refinedMemberBounds) then
+                  /* In this case, we know that any member we eventually find during reduction
+                   * will have bounds that fit in the bounds of the capture. Therefore, no
+                   * type-test + capture combo is necessary, and we can apply the specced match types.
+                   */
+                  val capture = rec(alias, variance = 0).asInstanceOf[MatchTypeCasePattern.Capture]
+                  MatchTypeCasePattern.TypeMemberExtractor(refinedName, capture)
+                else
+                  // Otherwise, a type-test + capture combo might be necessary, and we are out of spec
+                  null
+              case _ =>
+                // If the member does not refine a member of the `parent`, we are out of spec
+                null
 
           case _ =>
             MatchTypeCasePattern.TypeTest(pat)
