@@ -1,4 +1,4 @@
-// scalac: -Yno-legacy-match-types:false
+// scalac: -source:3.3
 
 // https://github.com/lampepfl/dotty/issues/10242
 type Foo[A, B <: A] = A

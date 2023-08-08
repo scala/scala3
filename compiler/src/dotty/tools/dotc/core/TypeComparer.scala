@@ -10,8 +10,9 @@ import TypeOps.refineUsingParent
 import collection.mutable
 import util.{Stats, NoSourcePosition, EqHashMap}
 import config.Config
-import config.Feature.migrateTo3
+import config.Feature.{migrateTo3, sourceVersion}
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
+import config.SourceVersion
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import Variances.{Variance, variancesConform}
@@ -3458,7 +3459,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       MatchResult.Stuck
 
     def recur(remaining: List[MatchTypeCaseSpec]): Type = remaining match
-      case (cas: MatchTypeCaseSpec.LegacyPatMat) :: _ if ctx.settings.YnoLegacyMatchTypes.value =>
+      case (cas: MatchTypeCaseSpec.LegacyPatMat) :: _ if sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
         val errorText = MatchTypeTrace.legacyPatternText(scrut, cas)
         ErrorType(reporting.MatchTypeLegacyPattern(errorText))
       case cas :: remaining1 =>

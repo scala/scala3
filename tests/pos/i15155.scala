@@ -1,4 +1,4 @@
-// scalac: -Yno-legacy-match-types:false
+// scalac: -source:3.3
 
 import scala.reflect.ClassTag
 // https://github.com/json4s/json4s/blob/355d8751391773e0d79d04402a4f9fb7bfc684ec/ext/src/main/scala-3/org/json4s/ext/package.scala#L4-L8
