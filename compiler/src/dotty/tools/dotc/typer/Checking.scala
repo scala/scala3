@@ -968,6 +968,11 @@ trait Checking {
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
 
+  /** Check that the definition name isn't root. */
+  def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =
+    if name == nme.ROOTPKG then
+      report.error(em"Illegal use of root package name.", ctx.source.atSpan(nameSpan))
+
   /** Check that module `sym` does not clash with a class of the same name
    *  that is concurrently compiled in another source file.
    */

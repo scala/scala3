@@ -41,7 +41,7 @@ def barVal: Unit =
 
 // i18050
 package p {
-  package _root_ { // not-reported
+  package _root_ { // error
     object X // error
   }
 }
