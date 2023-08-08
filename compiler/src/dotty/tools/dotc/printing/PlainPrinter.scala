@@ -642,7 +642,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else s"(no source file, offset = ${pos.span.point})"
 
   def toText(cand: Candidate): Text =
-    "Candidate(" ~ toText(cand.ref) ~ ", " ~ Str("kind=" + cand.kind) ~ ", " ~ Str("lvl=" + cand.level) ~ ")"
+    "Cand("
+      ~ toTextRef(cand.ref)
+      ~ (if cand.isConversion then " conv" else "")
+      ~ (if cand.isExtension then " ext" else "")
+      ~ Str(" L" + cand.level) ~ ")"
 
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>

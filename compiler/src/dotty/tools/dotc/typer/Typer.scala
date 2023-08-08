@@ -65,6 +65,11 @@ object Typer {
     case NothingBound, PackageClause, WildImport, NamedImport, Inheritance, Definition
 
     def isImportPrec = this == NamedImport || this == WildImport
+
+    /** special cases: definitions beat imports, and named imports beat
+     *  wildcard imports, provided both are in contexts with same scope */
+    def beats(prevPrec: BindingPrec): Boolean =
+      this == Definition || this == NamedImport && prevPrec == WildImport
   }
 
   /** Assert tree has a position, unless it is empty or a typed splice */
@@ -226,9 +231,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       def checkNewOrShadowed(found: Type, newPrec: BindingPrec, scala2pkg: Boolean = false)(using Context): Type =
         if !previous.exists || TypeComparer.isSameRef(previous, found) then
            found
-        else if (prevCtx.scope eq ctx.scope)
-                && (newPrec == Definition || newPrec == NamedImport && prevPrec == WildImport)
-        then
+        else if (prevCtx.scope eq ctx.scope) && newPrec.beats(prevPrec) then
           // special cases: definitions beat imports, and named imports beat
           // wildcard imports, provided both are in contexts with same scope
           found

@@ -23,6 +23,7 @@ import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
+import Typer.BindingPrec, BindingPrec.*
 import transform.TypeUtils._
 import Hashable._
 import util.{EqHashMap, Stats}
@@ -49,7 +50,7 @@ object Implicits:
   }
 
   /** Both search candidates and successes are references with a specific nesting level. */
-  sealed trait RefAndLevel {
+  sealed trait RefAndLevel extends Showable {
     def ref: TermRef
     def level: Int
   }
@@ -328,41 +329,28 @@ object Implicits:
       (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
     }
 
+    def bindingPrec: BindingPrec =
+      if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
+
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
-        def filter(xs: List[Candidate], remove: List[Candidate]) =
-          // Drop candidates that are shadowed by candidates in "remove"
-          val shadowed = remove.map(_.ref.implicitName).toSet
-          xs.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
-
+        val ownNames = mutable.Set(ownEligible.map(_.ref.implicitName)*)
         val outer = outerImplicits.uncheckedNN
-        def isWildcardImport(using Context) = ctx.importInfo.nn.isWildcardImport
-        def preferDefinitions = isImport && !outer.isImport
-        def preferNamedImport = isWildcardImport && !isWildcardImport(using outer.irefCtx)
-
-        if !migrateTo3(using irefCtx) && level == outer.level && (preferDefinitions || preferNamedImport) then
-          // special cases: definitions beat imports, and named imports beat
-          // wildcard imports, provided both are in contexts with same scope
-
-          // Using only the outer candidates at the same level as us,
-          // remove from our own eligibles any shadowed candidate.
-          // This removes locally imported candidates from shadowing local definitions, (foo's in i18316)
-          // but without a remotely imported candidate removing a more locally imported candidates (mkFoo's in i18183)
-          val ownEligible1 = filter(ownEligible, outerEligible.filter(_.level == level))
-
-          // Remove, from the outer eligibles, any candidate shadowed by one of our own candidates,
-          // provided that the outer eligibles aren't at the same level (so actually shadows).
-          // This complements the filtering of our own eligible candidates, by removing candidates in the outer candidates
-          // that are low-level priority and shadowed by our candidates.  E.g. the outer import Imp.mkFoo in i18183.
-          val shadowed = ownEligible.map(_.ref.implicitName).toSet
-          val outerEligible1 =
-            outerEligible.filterConserve(cand => cand.level == level || !shadowed.contains(cand.ref.implicitName))
-
-          ownEligible1 ::: outerEligible1
+        if !migrateTo3(using irefCtx) && level == outer.level && outer.bindingPrec.beats(bindingPrec) then
+          val keptOuters = outerEligible.filterConserve: cand =>
+            if ownNames.contains(cand.ref.implicitName) then
+              val keepOuter = cand.level == level
+              if keepOuter then ownNames -= cand.ref.implicitName
+              keepOuter
+            else true
+          val keptOwn = ownEligible.filterConserve: cand =>
+            ownNames.contains(cand.ref.implicitName)
+          keptOwn ::: keptOuters
         else
-          ownEligible ::: filter(outerEligible, ownEligible)
+          ownEligible ::: outerEligible.filterConserve: cand =>
+            !ownNames.contains(cand.ref.implicitName)
 
     def uncachedEligible(tp: Type)(using Context): List[Candidate] =
       Stats.record("uncached eligible")
