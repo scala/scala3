@@ -1071,10 +1071,6 @@ object Parsers {
         nme.ERROR
       }
 
-    def checkNotRoot(name: Name): name.type =
-      if name == nme.ROOTPKG then syntaxError(em"Illegal use of root package name.")
-      name
-
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
       makeIdent(in.token, in.offset, ident())
@@ -3602,13 +3598,6 @@ object Parsers {
         case _ =>
           first :: Nil
       }
-
-      def checkForRoot(trees: List[Tree]): Unit = for tree <- trees do tree match
-        case IdPattern(id, _) => checkNotRoot(id.name)
-        case Tuple(trees) => checkForRoot(trees)
-        case _ =>
-      checkForRoot(lhs)
-
       val tpt = typedOpt()
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
@@ -3689,7 +3678,7 @@ object Parsers {
       else {
         val mods1 = addFlag(mods, Method)
         val ident = termIdent()
-        var name = checkNotRoot(ident.name).asTermName
+        var name = ident.name.asTermName
         val paramss =
           if in.featureEnabled(Feature.clauseInterleaving) then
             // If you are making interleaving stable manually, please refer to the PR introducing it instead, section "How to make non-experimental"

@@ -2472,6 +2472,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
+    if name == nme.ROOTPKG then report.error(em"Illegal use of root package name.", vdef)
     completeAnnotations(vdef, sym)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     if sym.is(Module) then checkNoModuleClash(sym)
@@ -2505,6 +2506,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // hence we special case it until `erased` is no longer experimental.
       sym.setFlag(Erased)
     val DefDef(name, paramss, tpt, _) = ddef
+    if name == nme.ROOTPKG then report.error(em"Illegal use of root package name.", ddef)
     completeAnnotations(ddef, sym)
     val paramss1 = paramss.nestedMapConserve(typed(_)).asInstanceOf[List[ParamClause]]
     for case ValDefs(vparams) <- paramss1 do
