@@ -698,7 +698,7 @@ object TreeChecker {
       // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
       // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
       for arg <- args do
-        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
+        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef | TermRef | ThisType], "Unexpected type arg in Hole: " + arg.tpe)
 
       // Check result type of the hole
       if isTerm then assert(tree1.typeOpt <:< pt)
@@ -714,7 +714,7 @@ object TreeChecker {
               defn.AnyType
             case tpe => tpe
           defn.QuotedExprClass.typeRef.appliedTo(tpe)
-        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
+        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
       }
       val expectedResultType =
         if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
