@@ -429,7 +429,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
-      withNoErrors(mirrorRef.cast(mirrorType))
+      withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
     end makeProductMirror
 
     MirrorSource.reduce(mirroredType) match
@@ -442,12 +442,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
             }
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
-            withNoErrors(mirrorRef.cast(mirrorType))
+            withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
           else
             val mirrorType = formal.constrained_& {
               mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name)
             }
-            withNoErrors(singletonPath.cast(mirrorType))
+            withNoErrors(singletonPath.cast(mirrorType).withSpan(span))
         case MirrorSource.GenericTuple(tps) =>
           val maxArity = Definitions.MaxTupleArity
           val arity = tps.size
