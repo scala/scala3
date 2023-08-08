@@ -134,7 +134,7 @@ class PickleQuotes extends MacroTransform {
               contents += content
             val holeType =
               if isTerm then getTermHoleType(tree.tpe) else getTypeHoleType(tree.tpe)
-            val hole = cpy.Hole(tree)(content = EmptyTree, TypeTree(holeType))
+            val hole = cpy.Hole(tree)(content = EmptyTree, tpt = TypeTree(holeType))
             if isTerm then Inlined(EmptyTree, Nil, hole).withSpan(tree.span) else hole
           case tree: DefTree =>
             val newAnnotations = tree.symbol.annotations.mapconserve { annot =>
