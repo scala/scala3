@@ -98,7 +98,7 @@ object PickledQuotes {
 
   /** Replace all term holes with the spliced terms */
   private def spliceTerms(tree: Tree, typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    def evaluateHoles = new TreeMap {
+    def evaluateHoles = new TreeMapWithPreciseStatContexts {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args, _) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
