@@ -94,12 +94,6 @@
    |          Not found: bam
    |
    | longer explanation available when compiling with `-explain`
--- [E006] Not Found Error: tests/neg/syntax-error-recovery.scala:61:10 -------------------------------------------------
-61 |  println(bam) // error
-   |          ^^^
-   |          Not found: bam
-   |
-   | longer explanation available when compiling with `-explain`
 -- [E129] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:7:2 -------------------------------------------
 6 |        2
 7 |  }
