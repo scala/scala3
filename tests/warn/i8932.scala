@@ -1,5 +1,3 @@
-//> using options -Xfatal-warnings
-
 sealed trait Foo[+A]
 case class Bar[A]() extends Foo[A]
 

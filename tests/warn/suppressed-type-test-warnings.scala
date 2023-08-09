@@ -1,5 +1,3 @@
-//> using options -Xfatal-warnings
-
 object Test {
   sealed trait Foo[A, B]
   final case class Bar[X](x: X) extends Foo[X, X]

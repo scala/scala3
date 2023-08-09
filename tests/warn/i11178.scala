@@ -1,5 +1,3 @@
-//> using options -Xfatal-warnings
-
 trait Box[+T]
 case class Foo[+S](s: S) extends Box[S]
 

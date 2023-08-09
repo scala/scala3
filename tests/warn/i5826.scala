@@ -1,5 +1,3 @@
-//> using options -Xfatal-warnings
-
 class Foo {
   def test[A]: (List[Int] | A) => Int = {
     case ls: List[Int] => ls.head       // error, A = List[String]
@@ -7,8 +5,8 @@ class Foo {
   }
 
   def test2: List[Int] | List[String] => Int = {
-    case ls: List[Int] => ls.head       // error
-    case _ => 0
+    case ls: List[Int] => ls.head       // warn: unchecked
+    case _ => 0                         // warn: unreachable-only-null
   }
 
   trait A[T]

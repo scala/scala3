@@ -897,6 +897,7 @@ extends Message(PatternMatchExhaustivityID) {
 
 class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
   extends PatternMatchMsg(UncheckedTypePatternID) {
+  override def showAlways = true
   def msg(using Context) = i"the type test for $argType cannot be checked at runtime because $whyNot"
   def explain(using Context) =
     i"""|Type arguments and type refinements are erased during compile time, thus it's
