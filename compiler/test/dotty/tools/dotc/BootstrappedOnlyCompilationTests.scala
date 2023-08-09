@@ -132,7 +132,7 @@ class BootstrappedOnlyCompilationTests {
     )
     val tests =
       if scala.util.Properties.isWin then basicTests
-      else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+      else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
     aggregateTests(tests: _*).checkRuns()
   }
