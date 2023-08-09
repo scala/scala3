@@ -2855,7 +2855,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val pkg = pid1.symbol
     pid1 match
       case pid1: RefTree if pkg.is(Package) =>
-        if ctx.owner != defn.EmptyPackageClass then
+        if ctx.owner != defn.RootClass         // valid top-level "package _root_"
+        && ctx.owner != defn.EmptyPackageClass // valid "package _root_" after parser's "package <empty>" wrapper
+        then
           checkNonRootName(pid1.name, pid1.span)
         inContext(ctx.packageContext(tree, pkg)) {
           // If it exists, complete the class containing the top-level definitions
