@@ -1581,6 +1581,9 @@ object Trees {
             case tree @ TypeDef(name, rhs) =>
               cpy.TypeDef(tree)(name, transform(rhs))
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
+              // Currently we do not have cases where we expect `tree.derived` to contain trees for typed trees.
+              // If it is the case we will fall in `transformMoreCases` and throw an exception there.
+              // In the future we might keep the `derived` clause after typing, in that case we might want to start handling it here.
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body, tree.symbol))
             case Import(expr, selectors) =>
               cpy.Import(tree)(transform(expr), selectors)
