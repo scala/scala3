@@ -126,9 +126,9 @@ val experimentalDefinitionInLibrary = Set(
          |Found @experimental definition in library not listed:
          |${missingFromList.toSeq.sorted.mkString("\n")}
          |
-         |If added new experimental definitions to the library, add them to the list in tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala
+         |If added new experimental definitions to the library, add them to the list in tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala
          |
-         |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala"
+         |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala"
          |""".stripMargin
       )
       assert(missingInLibrary.isEmpty,
@@ -137,9 +137,9 @@ val experimentalDefinitionInLibrary = Set(
           |Listed @experimental definition was not found in the library
           |${missingInLibrary.toSeq.sorted.mkString("\n")}
           |
-          |If experimental definition was removed or stabilized, remove from the list in tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala
+          |If experimental definition was removed or stabilized, remove from the list in tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala
           |
-          |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala"
+          |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala"
           |""".stripMargin
         )
     }
