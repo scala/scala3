@@ -982,7 +982,9 @@ object RefChecks {
     then
       val cls = sym.owner.asClass
       for bc <- cls.baseClasses.tail do
-        val other = sym.matchingDecl(bc, cls.thisType)
+        var other = sym.matchingDecl(bc, cls.thisType)
+        if !other.exists && sym.targetName != sym.name then
+          other = sym.matchingDecl(bc, cls.thisType, sym.targetName)
         if other.exists then
           report.error(em"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
