@@ -1,4 +1,0 @@
--- Error: tests/neg-custom-args/fatal-warnings/i16728.scala:16:11 ------------------------------------------------------
-16 |      case tx : C[Int]#X => // error
-   |           ^
-   |     the type test for C[Int] cannot be checked at runtime because its type arguments can't be determined from A
