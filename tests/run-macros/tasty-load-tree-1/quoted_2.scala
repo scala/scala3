@@ -2,6 +2,7 @@
 
 object Test {
   def main(args: Array[String]): Unit = {
-    Macros.testDefinitions()
+    println(Foo.inspectBody(Foo.foo))
+    println(Foo.inspectBody(Foo.bar))
   }
 }
