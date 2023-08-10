@@ -246,6 +246,11 @@ object Types {
       case _ => false
     }
 
+    /** Is this type exactly `Any`, or a type lambda ending in `Any`? */
+    def isTopOfSomeKind(using Context): Boolean = dealias match
+      case tp: TypeLambda => tp.resType.isTopOfSomeKind
+      case _ => isExactlyAny
+
     def isBottomType(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
       else isBottomTypeAfterErasure
@@ -4813,7 +4818,7 @@ object Types {
     def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.finalResultType.isExactlyAny
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isTopOfSomeKind
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
