@@ -350,11 +350,17 @@ extends tpd.TreeTraverser:
           val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} --> $result", capt)
           if newInfo ne sym.info then
-            val completer = new LazyType:
-              def complete(denot: SymDenotation)(using Context) =
-                denot.info = newInfo
-                recheckDef(tree, sym)
-            updateInfo(sym, completer)
+            updateInfo(sym,
+              if sym.isAnonymousFunction then
+                // closures are handled specially; the newInfo is constrained from
+                // the expected type and only afterwards we recheck the definition
+                newInfo
+              else new LazyType:
+                def complete(denot: SymDenotation)(using Context) =
+                  // infos other methods are determined from their definitions which
+                  // are checked on depand
+                  denot.info = newInfo
+                  recheckDef(tree, sym))
       case tree: Bind =>
         val sym = tree.symbol
         updateInfo(sym, transformInferredType(sym.info, boxed = false))
