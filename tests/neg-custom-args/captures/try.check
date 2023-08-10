@@ -6,7 +6,7 @@
    |          This is often caused by a local capability in an argument of method handle
    |          leaking as part of its result.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:43 ------------------------------------------
-29 |  val b = handle[Exception, () -> Nothing] {  // error
+29 |  val b = handle[Exception, () -> Nothing] { // error
    |                                           ^
    |                                           Found:    (x: CT[Exception]^) ->? () ->{x} Nothing
    |                                           Required: (x$0: CanThrow[Exception]) => () -> Nothing

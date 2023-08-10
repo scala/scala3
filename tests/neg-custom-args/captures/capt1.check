@@ -15,7 +15,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
 14 |  def f(y: Int) = if x == null then y else y  // error
    |  ^
-   |  Found:    Int ->{x} Int
+   |  Found:    (y: Int) ->{x} Int
    |  Required: Matchable
 15 |  f
    |

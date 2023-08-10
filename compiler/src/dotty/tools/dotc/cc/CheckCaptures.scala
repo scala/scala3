@@ -408,10 +408,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
-        mapArgUsing:
+        def forceBox(tp: Type): Type = tp match
           case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
             defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
-
+          case tp @ RefinedType(parent, rname, rinfo: MethodType) =>
+            tp.derivedRefinedType(parent, rname,
+              rinfo.derivedLambdaType(
+                paramInfos = rinfo.paramInfos.map(_.forceBoxStatus(true))))
+          case tp @ CapturingType(parent, refs) =>
+            tp.derivedCapturingType(forceBox(parent), refs)
+        mapArgUsing(forceBox)
       else
         super.recheckApply(tree, pt) match
           case appType @ CapturingType(appType1, refs) =>
@@ -485,63 +491,28 @@ class CheckCaptures extends Recheck, SymTransformer:
       else ownType
     end instantiate
 
-    override def recheckClosure(tree: Closure, pt: Type)(using Context): Type =
+    override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
       capt.println(i"typing closure $tree with cvs $cs")
-      super.recheckClosure(tree, pt).capturing(cs)
-        .showing(i"rechecked $tree / $pt = $result", capt)
+      super.recheckClosure(tree, pt, forceDependent).capturing(cs)
+        .showing(i"rechecked closure $tree / $pt = $result", capt)
 
-    /** Additionally to normal processing, update types of closures if the expected type
-     *  is a function with only pure parameters. In that case, make the anonymous function
-     *  also have the same parameters as the prototype.
-     *  TODO: Develop a clearer rationale for this.
-     *  TODO: Can we generalize this to arbitrary parameters?
-     *        Currently some tests fail if we do this. (e.g. neg.../stackAlloc.scala, others)
-     */
-    override def recheckBlock(block: Block, pt: Type)(using Context): Type =
-      block match
-        case closureDef(mdef) =>
-          pt.dealias match
-            case defn.FunctionOf(ptformals, _, _)
-            if ptformals.nonEmpty && ptformals.forall(_.captureSet.isAlwaysEmpty) =>
-              // Redo setup of the anonymous function so that formal parameters don't
-              // get capture sets. This is important to avoid false widenings to `cap`
-              // when taking the base type of the actual closures's dependent function
-              // type so that it conforms to the expected non-dependent function type.
-              // See withLogFile.scala for a test case.
-              val meth = mdef.symbol
-              // First, undo the previous setup which installed a completer for `meth`.
-              atPhase(preRecheckPhase.prev)(meth.denot.copySymDenotation())
-                .installAfter(preRecheckPhase)
-
-              // Next, update all parameter symbols to match expected formals
-              meth.paramSymss.head.lazyZip(ptformals).foreach: (psym, pformal) =>
-                psym.updateInfoBetween(preRecheckPhase, thisPhase, pformal.mapExprType)
-
-              // Next, update types of parameter ValDefs
-              mdef.paramss.head.lazyZip(ptformals).foreach: (param, pformal) =>
-                val ValDef(_, tpt, _) = param: @unchecked
-                tpt.rememberTypeAlways(pformal)
-
-              // Next, install a new completer reflecting the new parameters for the anonymous method
-              val mt = meth.info.asInstanceOf[MethodType]
-              val completer = new LazyType:
-                def complete(denot: SymDenotation)(using Context) =
-                  denot.info = mt.companion(ptformals, mdef.tpt.knownType)
-                    .showing(i"simplify info of $meth to $result", capt)
-                  recheckDef(mdef, meth)
-              meth.updateInfoBetween(preRecheckPhase, thisPhase, completer)
-            case _ =>
-          mdef.rhs match
-            case rhs @ closure(_, _, _) =>
-              // In a curried closure `x => y => e` don't leak capabilities retained by
-              // the second closure `y => e` into the first one. This is an approximation
-              // of the CC rule which says that a closure contributes captures to its
-              // environment only if a let-bound reference to the closure is used.
-              mdef.rhs.putAttachment(ClosureBodyValue, ())
-            case _ =>
+    override def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
+      mdef.rhs match
+        case rhs @ closure(_, _, _) =>
+          // In a curried closure `x => y => e` don't leak capabilities retained by
+          // the second closure `y => e` into the first one. This is an approximation
+          // of the CC rule which says that a closure contributes captures to its
+          // environment only if a let-bound reference to the closure is used.
+          mdef.rhs.putAttachment(ClosureBodyValue, ())
         case _ =>
-      super.recheckBlock(block, pt)
+
+      // Constrain closure's parameters and result from the expected type before
+      // rechecking the body.
+      val res = recheckClosure(expr, pt, forceDependent = true)
+      recheckDef(mdef, mdef.symbol)
+      res
+    end recheckClosureBlock
 
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
       try
