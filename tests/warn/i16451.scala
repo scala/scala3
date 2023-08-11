@@ -11,7 +11,7 @@ case class Wrapper[A](value: A)
 object Test:
   def test_correct(x: Wrapper[Color]): Option[Wrapper[Color.Red.type]] = x match
     case x: Wrapper[Color.Red.type]   => Some(x)                      // warn: unchecked
-    case x: Wrapper[Color.Green.type] => None    // warn: unreachable // warn: unchecked
+    case x: Wrapper[Color.Green.type] => None    // warn: unreachable // also: unchecked (hidden)
 
   def test_different(x: Wrapper[Color]): Option[Wrapper[Color]] = x match
     case x @ Wrapper(_: Color.Red.type)   => Some(x)
@@ -19,7 +19,7 @@ object Test:
 
   def test_any(x: Any): Option[Wrapper[Color.Red.type]] = x match
     case x: Wrapper[Color.Red.type]   => Some(x)                      // warn: unchecked
-    case x: Wrapper[Color.Green.type] => None    // warn: unreachable // warn: unchecked
+    case x: Wrapper[Color.Green.type] => None    // warn: unreachable // also: unchecked (hidden)
 
   def test_wrong(x: Wrapper[Color]): Option[Wrapper[Color.Red.type]] = x match
     case x: Wrapper[Color.Red.type] => Some(x) // error: unreachable // error: unchecked
