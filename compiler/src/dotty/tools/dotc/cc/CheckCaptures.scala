@@ -77,7 +77,7 @@ object CheckCaptures:
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
     /** This SubstParamsMap is exact if `to` only contains `CaptureRef`s. */
-    private val isExactSubstitution: Boolean = to.forall(_.isInstanceOf[CaptureRef])
+    private val isExactSubstitution: Boolean = to.forall(_.isTrackableRef)
 
     /** As long as this substitution is exact, there is no need to create `Range`s when mapping invariant positions. */
     override protected def needsRangeIfInvariant(refs: CaptureSet): Boolean = !isExactSubstitution
@@ -136,7 +136,7 @@ object CheckCaptures:
     for elem <- retainedElems(ann) do
       elem.tpe match
         case ref: CaptureRef =>
-          if !ref.canBeTracked then
+          if !ref.isTrackableRef then
             report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
         case tpe =>
           report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
@@ -470,10 +470,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       case x :: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
       case Nil => true
 
-    private def isTrackable(tp: Type)(using Context) = tp match
-      case tp: CaptureRef => tp.canBeTracked
-      case _ => false
-
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means:
      *   - Instantiate result type with actual arguments
@@ -490,7 +486,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val ownType =
         if !mt.isResultDependent then
           mt.resType
-        else if argTypes.forall(isTrackable) && isDistinct(argTypes) then
+        else if argTypes.forall(_.isTrackableRef) && isDistinct(argTypes) then
           SubstParamsBiMap(mt, argTypes)(mt.resType)
         else
           SubstParamsMap(mt, argTypes)(mt.resType)
