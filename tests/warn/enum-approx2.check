@@ -1,5 +1,5 @@
 -- [E030] Match case Unreachable Warning: tests/warn/enum-approx2.scala:7:12 -------------------------------------------
-7 |    case Fun(x: Exp[Int => String]) => ??? // warn: unreachable            // warn: unchecked
+7 |    case Fun(x: Exp[Int => String]) => ??? // warn: unreachable            // also: unchecked (hidden)
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |         Unreachable case
 -- [E121] Pattern Match Warning: tests/warn/enum-approx2.scala:8:9 -----------------------------------------------------
@@ -10,11 +10,5 @@
 6 |    case Fun(x: Fun[Int, Double]) => ???                                   // warn: unchecked
   |             ^
   |the type test for Fun[Int, Double] cannot be checked at runtime because its type arguments can't be determined from Exp[Int => Int]
-  |
-  | longer explanation available when compiling with `-explain`
--- [E092] Pattern Match Unchecked Warning: tests/warn/enum-approx2.scala:7:13 ------------------------------------------
-7 |    case Fun(x: Exp[Int => String]) => ??? // warn: unreachable            // warn: unchecked
-  |             ^
-  |the type test for Exp[Int => String] cannot be checked at runtime because its type arguments can't be determined from Exp[Int => Int]
   |
   | longer explanation available when compiling with `-explain`
