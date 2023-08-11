@@ -73,7 +73,6 @@ object CheckCaptures:
 
   /** Similar normal substParams, but this is an approximating type map that
    *  maps parameters in contravariant capture sets to the empty set.
-   *  TODO: check what happens with non-variant.
    */
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
   extends ApproximatingTypeMap, IdempotentCaptRefMap:
@@ -95,6 +94,36 @@ object CheckCaptures:
         case _ =>
           mapOver(tp)
   end SubstParamsMap
+
+  final class SubstParamsBiMap(from: LambdaType, to: List[Type])(using Context)
+  extends BiTypeMap:
+
+    def apply(tp: Type): Type = tp match
+      case tp: ParamRef =>
+        if tp.binder == from then to(tp.paramNum) else tp
+      case tp: NamedType =>
+        if tp.prefix `eq` NoPrefix then tp
+        else tp.derivedSelect(apply(tp.prefix))
+      case _: ThisType =>
+        tp
+      case _ =>
+        mapOver(tp)
+
+    def inverse(tp: Type): Type = tp match
+      case tp: NamedType =>
+        var idx = 0
+        var to1 = to
+        while idx < to.length && (tp ne to(idx)) do
+          idx += 1
+          to1 = to1.tail
+        if idx < to.length then from.paramRefs(idx)
+        else if tp.prefix `eq` NoPrefix then tp
+        else tp.derivedSelect(apply(tp.prefix))
+      case _: ThisType =>
+        tp
+      case _ =>
+        mapOver(tp)
+  end SubstParamsBiMap
 
   /** Check that a @retains annotation only mentions references that can be tracked.
    *  This check is performed at Typer.
@@ -437,6 +466,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           case appType => appType
     end recheckApply
 
+    private def isDistinct(xs: List[Type]): Boolean = xs match
+      case x :: xs1 => xs1.isEmpty || !xs1.contains(x) && isDistinct(xs1)
+      case Nil => true
+
+    private def isTrackable(tp: Type)(using Context) = tp match
+      case tp: CaptureRef => tp.canBeTracked
+      case _ => false
+
     /** Handle an application of method `sym` with type `mt` to arguments of types `argTypes`.
      *  This means:
      *   - Instantiate result type with actual arguments
@@ -444,11 +481,19 @@ class CheckCaptures extends Recheck, SymTransformer:
      *      - remember types of arguments corresponding to tracked
      *        parameters in refinements.
      *      - add capture set of instantiated class to capture set of result type.
+     *  If all argument types are mutually disfferent trackable capture references, use a BiTypeMap,
+     *  since that is more precise. Otherwise use a normal idempotent map, which might lose information
+     *  in the case where the result type contains captureset variables that are further
+     *  constrained afterwards.
      */
     override def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       val ownType =
-        if mt.isResultDependent then SubstParamsMap(mt, argTypes)(mt.resType)
-        else mt.resType
+        if !mt.isResultDependent then
+          mt.resType
+        else if argTypes.forall(isTrackable) && isDistinct(argTypes) then
+          SubstParamsBiMap(mt, argTypes)(mt.resType)
+        else
+          SubstParamsMap(mt, argTypes)(mt.resType)
 
       if sym.isConstructor then
         val cls = sym.owner.asClass
