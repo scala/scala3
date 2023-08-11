@@ -478,6 +478,11 @@ object Types {
      */
     def isDeclaredVarianceLambda: Boolean = false
 
+    /** Is this type a CaptureRef that can be tracked?
+     *  This is true for all ThisTypes or ParamRefs but only for some NamedTypes.
+     */
+    def isTrackableRef(using Context): Boolean = false
+
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
       existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
@@ -2149,15 +2154,10 @@ object Types {
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
-    /** Can the reference be tracked? This is true for all ThisTypes or ParamRefs
-     *  but only for some NamedTypes.
-     */
-    def canBeTracked(using Context): Boolean
-
     /** Is the reference tracked? This is true if it can be tracked and the capture
      *  set of the underlying type is not always empty.
      */
-    final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
+    final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
 
     /** Is this reference the root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
@@ -2190,7 +2190,7 @@ object Types {
 
     override def captureSet(using Context): CaptureSet =
       val cs = captureSetOfInfo
-      if canBeTracked && !cs.isAlwaysEmpty then singletonCaptureSet else cs
+      if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
   end CaptureRef
 
   /** A trait for types that bind other types that refer to them.
@@ -2887,7 +2887,7 @@ object Types {
      *  They are subsumed in the capture sets of the enclosing class.
      *  TODO: ^^^ What about call-by-name?
      */
-    def canBeTracked(using Context) =
+    override def isTrackableRef(using Context) =
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
@@ -2897,7 +2897,7 @@ object Types {
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def normalizedRef(using Context): CaptureRef =
-      if canBeTracked then symbol.termRef else this
+      if isTrackableRef then symbol.termRef else this
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -3050,7 +3050,7 @@ object Types {
           // can happen in IDE if `cls` is stale
       }
 
-    def canBeTracked(using Context) = true
+    override def isTrackableRef(using Context) = true
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
@@ -4661,9 +4661,9 @@ object Types {
    */
   abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef, CaptureRef {
     type BT = TermLambda
-    def canBeTracked(using Context) = true
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    override def isTrackableRef(using Context) = true
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -5728,11 +5728,11 @@ object Types {
 
     /** A restriction of this map to a function on tracked CaptureRefs */
     def forward(ref: CaptureRef): CaptureRef = this(ref) match
-      case result: CaptureRef if result.canBeTracked => result
+      case result: CaptureRef if result.isTrackableRef => result
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
-      case result: CaptureRef if result.canBeTracked => result
+      case result: CaptureRef if result.isTrackableRef => result
   end BiTypeMap
 
   abstract class TypeMap(implicit protected var mapCtx: Context)
