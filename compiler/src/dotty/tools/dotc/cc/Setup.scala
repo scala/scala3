@@ -238,6 +238,7 @@ extends tpd.TreeTraverser:
    */
   private class SubstParams(from: List[List[Symbol]], to: List[LambdaType])(using Context)
   extends DeepTypeMap, BiTypeMap:
+    thisMap =>
 
     def apply(t: Type): Type = t match
       case t: NamedType =>
@@ -253,15 +254,17 @@ extends tpd.TreeTraverser:
       case _ =>
         mapOver(t)
 
-    def inverse(t: Type): Type = t match
-      case t: ParamRef =>
-        def recur(from: List[LambdaType], to: List[List[Symbol]]): Type =
-          if from.isEmpty then t
-          else if t.binder eq from.head then to.head(t.paramNum).namedType
-          else recur(from.tail, to.tail)
-        recur(to, from)
-      case _ =>
-        mapOver(t)
+    lazy val inverse = new BiTypeMap:
+      def apply(t: Type): Type = t match
+        case t: ParamRef =>
+          def recur(from: List[LambdaType], to: List[List[Symbol]]): Type =
+            if from.isEmpty then t
+            else if t.binder eq from.head then to.head(t.paramNum).namedType
+            else recur(from.tail, to.tail)
+          recur(to, from)
+        case _ =>
+          mapOver(t)
+      def inverse = thisMap
   end SubstParams
 
   /** Update info of `sym` for CheckCaptures phase only */

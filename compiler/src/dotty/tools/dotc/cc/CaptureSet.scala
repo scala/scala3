@@ -633,7 +633,7 @@ object CaptureSet:
      */
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       val supApprox = super.computeApprox(this)
-      if source eq origin then supApprox.map(bimap.inverseTypeMap)
+      if source eq origin then supApprox.map(bimap.inverse)
       else source.upperApprox(this).map(bimap) ** supApprox
 
     override def toString = s"BiMapped$id($source, elems = $elems)"
