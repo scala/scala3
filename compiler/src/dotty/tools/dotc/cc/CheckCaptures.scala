@@ -97,6 +97,7 @@ object CheckCaptures:
 
   final class SubstParamsBiMap(from: LambdaType, to: List[Type])(using Context)
   extends BiTypeMap:
+    thisMap =>
 
     def apply(tp: Type): Type = tp match
       case tp: ParamRef =>
@@ -109,20 +110,22 @@ object CheckCaptures:
       case _ =>
         mapOver(tp)
 
-    def inverse(tp: Type): Type = tp match
-      case tp: NamedType =>
-        var idx = 0
-        var to1 = to
-        while idx < to.length && (tp ne to(idx)) do
-          idx += 1
-          to1 = to1.tail
-        if idx < to.length then from.paramRefs(idx)
-        else if tp.prefix `eq` NoPrefix then tp
-        else tp.derivedSelect(apply(tp.prefix))
-      case _: ThisType =>
-        tp
-      case _ =>
-        mapOver(tp)
+    lazy val inverse = new BiTypeMap:
+      def apply(tp: Type): Type = tp match
+        case tp: NamedType =>
+          var idx = 0
+          var to1 = to
+          while idx < to.length && (tp ne to(idx)) do
+            idx += 1
+            to1 = to1.tail
+          if idx < to.length then from.paramRefs(idx)
+          else if tp.prefix `eq` NoPrefix then tp
+          else tp.derivedSelect(apply(tp.prefix))
+        case _: ThisType =>
+          tp
+        case _ =>
+          mapOver(tp)
+      def inverse = thisMap
   end SubstParamsBiMap
 
   /** Check that a @retains annotation only mentions references that can be tracked.

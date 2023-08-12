@@ -5727,15 +5727,8 @@ object Types {
   trait BiTypeMap extends TypeMap:
     thisMap =>
 
-    /** The inverse of the type map as a function */
-    def inverse(tp: Type): Type
-
-    /** The inverse of the type map as a BiTypeMap map, which
-     *  has the original type map as its own inverse.
-     */
-    def inverseTypeMap(using Context) = new BiTypeMap:
-      def apply(tp: Type) = thisMap.inverse(tp)
-      def inverse(tp: Type) = thisMap.apply(tp)
+    /** The inverse of the type map */
+    def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked CaptureRefs */
     def forward(ref: CaptureRef): CaptureRef = this(ref) match
