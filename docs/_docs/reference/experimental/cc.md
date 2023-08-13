@@ -227,7 +227,7 @@ class Logger(using FileSystem):
   def log(s: String): Unit = ???
 
 def test(using fs: FileSystem) =
-  val l: {fs} Logger = Logger()
+  val l: Logger^{fs} = Logger()
   ...
 ```
 In this version, `FileSystem` is a capability class, which means that the `{cap}` capture set is implied on the parameters of `Logger` and `test`. Writing the capture set explicitly produces a warning:
