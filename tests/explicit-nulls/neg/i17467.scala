@@ -13,4 +13,7 @@ object Test:
     val c1: Null = null
     val c2: c1.type = null // error
   end test
+
+  class Bar:
+    def me: this.type = null // error
 end Test

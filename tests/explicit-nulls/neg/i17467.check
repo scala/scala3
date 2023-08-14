@@ -29,3 +29,12 @@
    |                      must be more specific than (c1 : Null)
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/explicit-nulls/neg/i17467.scala:18:24 ---------------------------------------------
+18 |    def me: this.type = null // error
+   |                        ^^^^
+   |                      Found:    Null
+   |                      Required: (Bar.this : Test.Bar)
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than (Bar.this : Test.Bar)
+   |
+   | longer explanation available when compiling with `-explain`
