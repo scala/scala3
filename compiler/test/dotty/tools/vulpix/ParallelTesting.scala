@@ -226,14 +226,14 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       Try(testSource match {
         case testSource @ JointCompilationSource(name, files, flags, outDir, fromTasty, decompilation) =>
           val reporter =
-            if (fromTasty) compileFromTasty(flags, suppressErrors, outDir)
-            else compile(testSource.sourceFiles, flags, suppressErrors, outDir)
+            if (fromTasty) compileFromTasty(flags, outDir)
+            else compile(testSource.sourceFiles, flags, outDir)
           List(reporter)
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
             if group.compiler.isEmpty then
-              compile(files, flags, suppressErrors, outDir)
+              compile(files, flags, outDir)
             else
               compileWithOtherCompiler(group.compiler, files, flags, outDir)
           }
@@ -469,7 +469,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           registerCompletion()
           throw e
 
-    protected def compile(files0: Array[JFile], flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
+    protected def compile(files0: Array[JFile], flags0: TestFlags, targetDir: JFile): TestReporter = {
       import scala.util.Properties.*
 
       def flattenFiles(f: JFile): Array[JFile] =
@@ -634,7 +634,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       reporter
 
-    protected def compileFromTasty(flags0: TestFlags, suppressErrors: Boolean, targetDir: JFile): TestReporter = {
+    protected def compileFromTasty(flags0: TestFlags, targetDir: JFile): TestReporter = {
       val tastyOutput = new JFile(targetDir.getPath + "_from-tasty")
       tastyOutput.mkdir()
       val flags = flags0 and ("-d", tastyOutput.getPath) and "-from-tasty"
@@ -652,6 +652,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     private def mkLogLevel = if suppressErrors || suppressAllOutput then ERROR + 1 else ERROR
     private def mkReporter = TestReporter.reporter(realStdout, logLevel = mkLogLevel)
+
+    protected def diffCheckfile(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
+      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
+
+    private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
+      reporters.flatMap(_.consoleOutput.split("\n")).toList
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
@@ -808,10 +814,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     end maybeFailureMessage
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
-      checkFile(testSource).foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
-
-    def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
-      reporters.flatMap(_.consoleOutput.split("\n")).toList
+      diffCheckfile(testSource, reporters, logger)
 
     // In neg-tests we allow two or three types of error annotations.
     // Normally, `// error` must be annotated on the correct line number.
@@ -1014,20 +1017,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      *  compilation without generating errors and that they do not crash the
      *  compiler
      */
-    def checkCompile()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
-
-      cleanup()
-
-      if (!shouldFail && test.didFail) {
-        fail(s"Expected no errors when compiling, failed for the following reason(s):\n${reasonsForFailure(test)}\n")
-      }
-      else if (shouldFail && !test.didFail && test.skipCount == 0) {
-        fail("Pos test should have failed, but didn't")
-      }
-
-      this
-    }
+    def checkCompile()(implicit summaryReport: SummaryReporting): this.type =
+      checkPass(new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Pos")
 
     /** Creates a "neg" test run, which makes sure that each test generates the
      *  correct number of errors at the correct positions. It also makes sure
@@ -1047,35 +1038,16 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     end checkExpectedErrors
 
     /** Creates a "fuzzy" test run, which makes sure that each test compiles (or not) without crashing */
-    def checkNoCrash()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new NoCrashTest(targets, times, threadLimit, shouldSuppressOutput).executeTestSuite()
-
-      cleanup()
-
-      if (test.didFail) {
-        fail("Fuzzy test shouldn't have crashed, but did")
-      }
-
-      this
-    }
+    def checkNoCrash()(implicit summaryReport: SummaryReporting): this.type =
+      checkFail(new NoCrashTest(targets, times, threadLimit, shouldSuppressOutput), "Fuzzy")
 
     /** Creates a "run" test run, which is a superset of "pos". In addition to
      *  making sure that all tests pass compilation and that they do not crash
      *  the compiler; it also makes sure that all tests can run with the
      *  expected output
      */
-    def checkRuns()(implicit summaryReport: SummaryReporting): this.type = {
-      val test = new RunTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
-
-      cleanup()
-
-      if !shouldFail && test.didFail then
-        fail(s"Run test failed, but should not, reasons:\n${ reasonsForFailure(test) }")
-      else if shouldFail && !test.didFail && test.skipCount == 0 then
-        fail("Run test should have failed, but did not")
-
-      this
-    }
+    def checkRuns()(implicit summaryReport: SummaryReporting): this.type =
+      checkPass(new RunTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Run")
 
     /** Tests `-rewrite`, which makes sure that the rewritten files still compile
      *  and agree with the expected result (if specified).
@@ -1100,15 +1072,34 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           target.copy(dir = copyToDir(outDir, dir))
       }
 
-      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput).executeTestSuite()
+      val test = new RewriteTest(copiedTargets, checkFileMap, times, threadLimit, shouldFail || shouldSuppressOutput)
+
+      checkFail(test, "Rewrite")
+    }
+
+    private def checkPass(test: Test, desc: String): this.type =
+      test.executeTestSuite()
 
       cleanup()
 
-      if test.didFail then
-        fail("Rewrite test failed")
+      if !shouldFail && test.didFail then
+        fail(s"$desc test failed, but should not, reasons:\n${reasonsForFailure(test)}")
+      else if shouldFail && !test.didFail && test.skipCount == 0 then
+        fail(s"$desc test should have failed, but didn't")
 
       this
-    }
+
+    private def checkFail(test: Test, desc: String): this.type =
+      test.executeTestSuite()
+
+      cleanup()
+
+      if shouldFail && !test.didFail && test.skipCount == 0 then
+        fail(s"$desc test shouldn't have failed, but did. Reasons:\n${reasonsForFailure(test)}")
+      else if !shouldFail && test.didFail then
+        fail(s"$desc test failed")
+
+      this
 
     /** Deletes output directories and files */
     private def cleanup(): this.type = {
