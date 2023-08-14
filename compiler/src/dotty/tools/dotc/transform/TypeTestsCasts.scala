@@ -363,7 +363,7 @@ object TypeTestsCasts {
           if !isTrusted && !isUnchecked then
             val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
             if whyNot.nonEmpty then
-              report.uncheckedWarning(em"the type test for $argType cannot be checked at runtime because $whyNot", expr.srcPos)
+              report.uncheckedWarning(UncheckedTypePattern(argType, whyNot), expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
