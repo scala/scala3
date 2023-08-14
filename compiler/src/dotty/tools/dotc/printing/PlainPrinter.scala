@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed, ccNestingLevel}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -150,11 +150,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.FromJavaObjectSymbol
 
   def toTextCaptureSet(cs: CaptureSet): Text =
+    def nestingLevelStr = cs match
+      case cs: CaptureSet.Var if showNestingLevel => s"<in ${cs.owner.show}/${cs.owner.ccNestingLevel}>"
+      case _ => ""
     if printDebug && !cs.isConst then cs.toString
     else if ctx.settings.YccDebug.value then cs.show
     else if cs == CaptureSet.Fluid then "<fluid>"
-    else if !cs.isConst && cs.elems.isEmpty then "?"
-    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+    else if !cs.isConst && cs.elems.isEmpty then Str("?") ~ nestingLevelStr
+    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}" ~ nestingLevelStr
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.

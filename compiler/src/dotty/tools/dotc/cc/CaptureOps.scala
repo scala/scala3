@@ -253,6 +253,41 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
+  /** The owner of the current level. Qualifying owners are
+   *   - methods other than constructors
+   *   - classes, if they are not staticOwners
+   *   - _root_
+   */
+  def levelOwner(using Context): Symbol =
+    if sym.isStaticOwner then defn.RootClass
+    else if sym.isClass || sym.is(Method) && !sym.isConstructor then sym
+    else sym.owner.levelOwner
+
+  /** The nesting level of `sym` for the purposes of `cc`,
+   *  -1 for NoSymbol
+   */
+  def ccNestingLevel(using Context): Int =
+    if sym.exists then
+      val lowner = sym.levelOwner
+      val cache = ctx.property(CheckCaptures.NestingLevels).get
+      cache.getOrElseUpdate(lowner,
+        if lowner.isRoot then 0 else lowner.owner.ccNestingLevel + 1)
+    else -1
+
+  /** Optionally, the nesting level of `sym` for the purposes of `cc`, provided
+   *  a capture checker is running.
+   */
+  def ccNestingLevelOpt(using Context): Option[Int] =
+    if ctx.property(CheckCaptures.NestingLevels).isDefined then
+      Some(ccNestingLevel)
+    else None
+
+  def maxNested(other: Symbol)(using Context): Symbol =
+    if sym.ccNestingLevel < other.ccNestingLevel then other else sym
+
+  def minNested(other: Symbol)(using Context): Symbol =
+    if sym.ccNestingLevel > other.ccNestingLevel then other else sym
+
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match

@@ -29,7 +29,7 @@ import dotty.tools.dotc.core.Annotations.Annotation
 class Setup(
   preRecheckPhase: DenotTransformer,
   thisPhase: DenotTransformer,
-  recheckDef: (tpd.ValOrDefDef, Symbol) => Context ?=> Unit)
+  checker: CheckCaptures#CaptureChecker)
 extends tpd.TreeTraverser:
   import tpd.*
 
@@ -106,7 +106,7 @@ extends tpd.TreeTraverser:
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
-                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var()))
+                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(ctx.owner)))
                   .showing(i"add capture refinement $tp --> $result", capt)
               else
                 core
@@ -164,7 +164,7 @@ extends tpd.TreeTraverser:
             resType = this(tp.resType))
         case _ =>
           mapOver(tp)
-      Setup.addVar(addCaptureRefinements(tp1))
+      Setup.addVar(addCaptureRefinements(tp1), ctx.owner)
     end apply
   end mapInferred
 
@@ -276,14 +276,15 @@ extends tpd.TreeTraverser:
       case tree: DefDef =>
         if isExcluded(tree.symbol) then
           return
-        tree.tpt match
-          case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
-            tree.paramss.foreach(traverse)
-            transformTT(tpt, boxed = false, exact = true)
-            traverse(tree.rhs)
-            //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
-          case _ =>
-            traverseChildren(tree)
+        inContext(ctx.withOwner(tree.symbol)):
+          tree.tpt match
+            case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
+              tree.paramss.foreach(traverse)
+              transformTT(tpt, boxed = false, exact = true)
+              traverse(tree.rhs)
+              //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
+            case _ =>
+              traverseChildren(tree)
       case tree @ ValDef(_, tpt: TypeTree, _) =>
         transformTT(tpt,
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
@@ -311,87 +312,97 @@ extends tpd.TreeTraverser:
                 i"Sealed type variable $pname", "be instantiated to",
                 i"This is often caused by a local capability$where\nleaking as part of its result.",
                 tree.srcPos)
+      case tree: Template =>
+        inContext(ctx.withOwner(tree.symbol.owner)):
+          traverseChildren(tree)
       case _ =>
         traverseChildren(tree)
-    tree match
-      case tree: TypeTree =>
-        transformTT(tree, boxed = false, exact = false) // other types are not boxed
-      case tree: ValOrDefDef =>
-        val sym = tree.symbol
-
-        // replace an existing symbol info with inferred types where capture sets of
-        // TypeParamRefs and TermParamRefs put in correspondence by BiTypeMaps with the
-        // capture sets of the types of the method's parameter symbols and result type.
-        def integrateRT(
-            info: Type,                     // symbol info to replace
-            psymss: List[List[Symbol]],     // the local (type and term) parameter symbols corresponding to `info`
-            prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
-            prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
-          ): Type =
-          info match
-            case mt: MethodOrPoly =>
-              val psyms = psymss.head
-              mt.companion(mt.paramNames)(
-                mt1 =>
-                  if !psyms.exists(_.isUpdatedAfter(preRecheckPhase)) && !mt.isParamDependent && prevLambdas.isEmpty then
-                    mt.paramInfos
-                  else
-                    val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                    psyms.map(psym => subst(psym.info).asInstanceOf[mt.PInfo]),
-                mt1 =>
-                  integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
-              )
-            case info: ExprType =>
-              info.derivedExprType(resType =
-                integrateRT(info.resType, psymss, prevPsymss, prevLambdas))
-            case _ =>
-              val restp = tree.tpt.knownType
-              if prevLambdas.isEmpty then restp
-              else SubstParams(prevPsymss, prevLambdas)(restp)
-
-        if sym.exists && tree.tpt.hasRememberedType && !sym.isConstructor then
-          val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
-            .showing(i"update info $sym: ${sym.info} --> $result", capt)
-          if newInfo ne sym.info then
-            updateInfo(sym,
-              if sym.isAnonymousFunction then
-                // closures are handled specially; the newInfo is constrained from
-                // the expected type and only afterwards we recheck the definition
-                newInfo
-              else new LazyType:
-                def complete(denot: SymDenotation)(using Context) =
-                  // infos other methods are determined from their definitions which
-                  // are checked on depand
-                  denot.info = newInfo
-                  recheckDef(tree, sym))
-      case tree: Bind =>
-        val sym = tree.symbol
-        updateInfo(sym, transformInferredType(sym.info, boxed = false))
-      case tree: TypeDef =>
-        tree.symbol match
-          case cls: ClassSymbol =>
-            val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-            if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
-              // add capture set to self type of nested classes if no self type is given explicitly
-              val localRefs = CaptureSet.Var()
-              val newInfo = ClassInfo(prefix, cls, ps, decls,
-                CapturingType(cinfo.selfType, localRefs)
-                  .showing(i"inferred self type for $cls: $result", capt))
-              updateInfo(cls, newInfo)
-              cls.thisType.asInstanceOf[ThisType].invalidateCaches()
-              if cls.is(ModuleClass) then
-                // if it's a module, the capture set of the module reference is the capture set of the self type
-                val modul = cls.sourceModule
-                updateInfo(modul, CapturingType(modul.info, localRefs))
-                modul.termRef.invalidateCaches()
-          case _ =>
-            val info = atPhase(preRecheckPhase)(tree.symbol.info)
-            val newInfo = transformExplicitType(info, boxed = false)
-            if newInfo ne info then
-              updateInfo(tree.symbol, newInfo)
-              capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
-      case _ =>
+    postProcess(tree)
   end traverse
+
+  def postProcess(tree: Tree)(using Context): Unit = tree match
+    case tree: TypeTree =>
+      transformTT(tree, boxed = false, exact = false) // other types are not boxed
+    case tree: ValOrDefDef =>
+      val sym = tree.symbol
+
+      // replace an existing symbol info with inferred types where capture sets of
+      // TypeParamRefs and TermParamRefs put in correspondence by BiTypeMaps with the
+      // capture sets of the types of the method's parameter symbols and result type.
+      def integrateRT(
+          info: Type,                     // symbol info to replace
+          psymss: List[List[Symbol]],     // the local (type and term) parameter symbols corresponding to `info`
+          prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
+          prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
+        ): Type =
+        info match
+          case mt: MethodOrPoly =>
+            val psyms = psymss.head
+            mt.companion(mt.paramNames)(
+              mt1 =>
+                if !psyms.exists(_.isUpdatedAfter(preRecheckPhase)) && !mt.isParamDependent && prevLambdas.isEmpty then
+                  mt.paramInfos
+                else
+                  val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
+                  psyms.map(psym => subst(psym.info).asInstanceOf[mt.PInfo]),
+              mt1 =>
+                integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
+            )
+          case info: ExprType =>
+            info.derivedExprType(resType =
+              integrateRT(info.resType, psymss, prevPsymss, prevLambdas))
+          case _ =>
+            val restp = tree.tpt.knownType
+            if prevLambdas.isEmpty then restp
+            else SubstParams(prevPsymss, prevLambdas)(restp)
+
+      if sym.exists && tree.tpt.hasRememberedType && !sym.isConstructor then
+        val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
+          .showing(i"update info $sym: ${sym.info} --> $result", capt)
+        if newInfo ne sym.info then
+          updateInfo(sym,
+            if sym.isAnonymousFunction then
+              // closures are handled specially; the newInfo is constrained from
+              // the expected type and only afterwards we recheck the definition
+              newInfo
+            else new LazyType:
+              def complete(denot: SymDenotation)(using Context) =
+                // infos other methods are determined from their definitions which
+                // are checked on depand
+                denot.info = newInfo
+                checker.recheckDef(tree, sym))
+    case tree: Bind =>
+      val sym = tree.symbol
+      updateInfo(sym, transformInferredType(sym.info, boxed = false))
+    case tree: TypeDef =>
+      tree.symbol match
+        case cls: ClassSymbol =>
+          val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
+          if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
+            // add capture set to self type of nested classes if no self type is given explicitly
+            val selfRefs = CaptureSet.Var(cls)
+              // it's debatable what the right level owner should be. A self type should
+              // be able to mention class parameters, which are owned by the class; that's
+              // why the class was picked as level owner. But self types should not be able
+              // to mention other fields.
+            val newInfo = ClassInfo(prefix, cls, ps, decls,
+              CapturingType(cinfo.selfType, selfRefs)
+                .showing(i"inferred self type for $cls: $result", capt))
+            updateInfo(cls, newInfo)
+            cls.thisType.asInstanceOf[ThisType].invalidateCaches()
+            if cls.is(ModuleClass) then
+              // if it's a module, the capture set of the module reference is the capture set of the self type
+              val modul = cls.sourceModule
+              updateInfo(modul, CapturingType(modul.info, selfRefs))
+              modul.termRef.invalidateCaches()
+        case _ =>
+          val info = atPhase(preRecheckPhase)(tree.symbol.info)
+          val newInfo = transformExplicitType(info, boxed = false)
+          if newInfo ne info then
+            updateInfo(tree.symbol, newInfo)
+            capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
+    case _ =>
+  end postProcess
 
   def apply(tree: Tree)(using Context): Unit =
     traverse(tree)(using ctx.withProperty(Setup.IsDuringSetupKey, Some(())))
@@ -488,10 +499,10 @@ object Setup:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def addVar(tp: Type)(using Context): Type =
+  def addVar(tp: Type, owner: Symbol)(using Context): Type =
     decorate(tp,
       addedSet = _.dealias.match
-        case CapturingType(_, refs) => CaptureSet.Var(refs.elems)
-        case _ => CaptureSet.Var())
+        case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems)
+        case _ => CaptureSet.Var(owner))
 
 end Setup

@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun, ccNestingLevel}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -2191,6 +2191,8 @@ object Types {
     override def captureSet(using Context): CaptureSet =
       val cs = captureSetOfInfo
       if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
+
+    def ccNestingLevel(using Context): Int
   end CaptureRef
 
   /** A trait for types that bind other types that refer to them.
@@ -2898,6 +2900,8 @@ object Types {
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
+
+    def ccNestingLevel(using Context) = symbol.ccNestingLevel
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -3064,6 +3068,8 @@ object Types {
     def sameThis(that: Type)(using Context): Boolean = (that eq this) || that.match
       case that: ThisType => this.cls eq that.cls
       case _ => false
+
+    def ccNestingLevel(using Context) = cls.ccNestingLevel
   }
 
   final class CachedThisType(tref: TypeRef) extends ThisType(tref)
@@ -4664,6 +4670,7 @@ object Types {
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
+    def ccNestingLevel(using Context) = 0  // !!! Is this the right level? 
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)

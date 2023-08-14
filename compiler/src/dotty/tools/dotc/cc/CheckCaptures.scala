@@ -189,6 +189,9 @@ object CheckCaptures:
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
 
+  /** Attachment key for the nesting level cache */
+  val NestingLevels = Property.Key[mutable.HashMap[Symbol, Int]]
+
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
 
@@ -263,7 +266,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.error(em"$header included in allowed capture set ${res.blocking}", pos)
 
     /** The current environment */
-    private var curEnv: Env = Env(NoSymbol, EnvKind.Regular, CaptureSet.empty, null)
+    private var curEnv: Env = inContext(ictx):
+      Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
@@ -272,7 +276,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def capturedVars(sym: Symbol)(using Context) =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
+        if sym.ownersIterator.exists(_.isTerm) then
+          CaptureSet.Var(if sym.isConstructor then sym.owner.owner else sym.owner)
         else CaptureSet.empty)
 
     /** For all nested environments up to `limit` or a closed environment perform `op`,
@@ -655,9 +660,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       val saved = curEnv
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
-          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner), curEnv)
         case _ if tree.hasAttachment(ClosureBodyValue) =>
-          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>
       val res =
         try super.recheck(tree, pt)
@@ -674,13 +679,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  of simulated boxing and unboxing.
      */
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
-      val typeToCheck = tree match
-        case _: Ident | _: Select | _: Apply | _: TypeApply if tree.symbol.unboxesResult =>
-          tpe
-        case _: Try =>
-          tpe
-        case _ =>
-          NoType
+      def needsUniversalCheck = tree match
+        case _: RefTree | _: Apply | _: TypeApply => tree.symbol.unboxesResult
+        case _: Try => true
+        case _ => false
       def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
         case wtp @ CapturingType(parent, refs) =>
           refs.disallowRootCapability { () =>
@@ -691,8 +693,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      if !allowUniversalInBoxed then checkNotUniversal(typeToCheck)
+      if !allowUniversalInBoxed && needsUniversalCheck then
+        checkNotUniversal(tpe)
       super.recheckFinish(tpe, tree, pt)
+    end recheckFinish
 
   // ------------------ Adaptation -------------------------------------
   //
@@ -782,6 +786,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, alwaysConst: Boolean = false)(using Context): Type =
 
+      inline def inNestedEnv[T](boxed: Boolean)(op: => T): T =
+        val saved = curEnv
+        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(curEnv.owner), if boxed then null else curEnv)
+        try op
+        finally curEnv = saved
+
       /** Adapt function type `actual`, which is `aargs -> ares` (possibly with dependencies)
        *  to `expected` type.
        *  It returns the adapted type along with a capture set consisting of the references
@@ -791,10 +801,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
           covariant: Boolean, boxed: Boolean,
           reconstruct: (List[Type], Type) => Type): (Type, CaptureSet) =
-        val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
-
-        try
+        inNestedEnv(boxed):
           val (eargs, eres) = expected.dealias.stripCapturing match
             case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
             case expected: MethodType => (expected.paramInfos, expected.resType)
@@ -808,8 +815,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             else reconstruct(aargs1, ares1)
 
           (resTp, curEnv.captured)
-        finally
-          curEnv = saved
 
       /** Adapt type function type `actual` to the expected type.
        *  @see [[adaptFun]]
@@ -818,10 +823,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           actual: Type, ares: Type, expected: Type,
           covariant: Boolean, boxed: Boolean,
           reconstruct: Type => Type): (Type, CaptureSet) =
-        val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
-
-        try
+        inNestedEnv(boxed):
           val eres = expected.dealias.stripCapturing match
             case RefinedType(_, _, rinfo: PolyType) => rinfo.resType
             case expected: PolyType => expected.resType
@@ -834,8 +836,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             else reconstruct(ares1)
 
           (resTp, curEnv.captured)
-        finally
-          curEnv = saved
       end adaptTypeFun
 
       def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
@@ -977,16 +977,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         traverseChildren(t)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      Setup(preRecheckPhase, thisPhase, recheckDef)(ctx.compilationUnit.tpdTree)
-      //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
-      withCaptureSetsExplained {
-        super.checkUnit(unit)
-        checkOverrides.traverse(unit.tpdTree)
-        checkSelfTypes(unit.tpdTree)
-        postCheck(unit.tpdTree)
-        if ctx.settings.YccDebug.value then
-          show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
-      }
+      inContext(ctx.withProperty(NestingLevels, Some(new mutable.HashMap[Symbol, Int]))):
+        Setup(preRecheckPhase, thisPhase, this)(ctx.compilationUnit.tpdTree)
+        //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
+        withCaptureSetsExplained:
+          super.checkUnit(unit)
+          checkOverrides.traverse(unit.tpdTree)
+          checkSelfTypes(unit.tpdTree)
+          postCheck(unit.tpdTree)
+          if ctx.settings.YccDebug.value then
+            show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
@@ -1139,6 +1139,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
                 isLocal                         // local symbols still need explicit types if
                 && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
+              ||
+                sym.allOverriddenSymbols.nonEmpty
             def isNotPureThis(ref: CaptureRef) = ref match {
               case ref: ThisType => !ref.cls.isPureClass
               case _ => true
