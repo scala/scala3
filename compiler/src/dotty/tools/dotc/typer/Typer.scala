@@ -2472,6 +2472,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
+    checkNonRootName(vdef.name, vdef.nameSpan)
     completeAnnotations(vdef, sym)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     if sym.is(Module) then checkNoModuleClash(sym)
@@ -2505,6 +2506,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // hence we special case it until `erased` is no longer experimental.
       sym.setFlag(Erased)
     val DefDef(name, paramss, tpt, _) = ddef
+    checkNonRootName(ddef.name, ddef.nameSpan)
     completeAnnotations(ddef, sym)
     val paramss1 = paramss.nestedMapConserve(typed(_)).asInstanceOf[List[ParamClause]]
     for case ValDefs(vparams) <- paramss1 do
@@ -2853,6 +2855,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val pkg = pid1.symbol
     pid1 match
       case pid1: RefTree if pkg.is(Package) =>
+        if ctx.owner != defn.RootClass         // valid top-level "package _root_"
+        && ctx.owner != defn.EmptyPackageClass // valid "package _root_" after parser's "package <empty>" wrapper
+        then
+          checkNonRootName(pid1.name, pid1.span)
         inContext(ctx.packageContext(tree, pkg)) {
           // If it exists, complete the class containing the top-level definitions
           // before typing any statement in the package to avoid cycles as in i13669.scala

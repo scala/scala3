@@ -1073,10 +1073,7 @@ object Parsers {
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
-      val t = makeIdent(in.token, in.offset, ident())
-      if t.name == nme.ROOTPKG then
-        syntaxError(em"Illegal use of root package name.")
-      t
+      makeIdent(in.token, in.offset, ident())
 
     /** Accept identifier and return Ident with its name as a type name. */
     def typeIdent(): Ident =

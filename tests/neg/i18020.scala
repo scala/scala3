@@ -47,12 +47,12 @@ package p {
 }
 
 // scala/bug#12508
-package _root_ { // error
+package _root_ { // ok
   class C {
     val _root_ = 42 // error
   }
 }
-package _root_.p { // error
+package _root_.p { // ok
   class C
 }
 
