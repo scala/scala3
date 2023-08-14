@@ -723,6 +723,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
   private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
 
+  private final class WarnTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
+  extends Test(testSources, times, threadLimit, suppressAllOutput):
+    override def suppressErrors = true
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
+      diffCheckfile(testSource, reporters, logger)
+
   private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
@@ -1019,6 +1025,9 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      */
     def checkCompile()(implicit summaryReport: SummaryReporting): this.type =
       checkPass(new PosTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Pos")
+
+    def checkWarnings()(implicit summaryReport: SummaryReporting): this.type =
+      checkPass(new WarnTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput), "Warn")
 
     /** Creates a "neg" test run, which makes sure that each test generates the
      *  correct number of errors at the correct positions. It also makes sure
