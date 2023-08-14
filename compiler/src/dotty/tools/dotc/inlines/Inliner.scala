@@ -1067,6 +1067,8 @@ class Inliner(val call: tpd.Tree)(using Context):
         tree match {
           case tree: RefTree if tree.isTerm && level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
+          case _: This if level == -1 && tree.symbol.isDefinedInCurrentRun =>
+            tree.symbol :: syms
           case _: TypTree => syms
           case _ => foldOver(syms, tree)
         }
