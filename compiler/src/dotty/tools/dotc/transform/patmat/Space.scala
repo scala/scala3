@@ -449,6 +449,7 @@ object SpaceEngine {
    *
    *  @param inArray whether `tp` is a type argument to `Array`
    *  @param isValue whether `tp` is the type which match against values
+   *  @param isTyped whether `tp` is the type from a `Typed` tree
    *
    *  If `isValue` is true, then pattern-bound symbols are erased to its upper bound.
    *  This is needed to avoid spurious unreachable warnings. See tests/patmat/i6197.scala.
@@ -459,7 +460,7 @@ object SpaceEngine {
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
-        val inArray = tycon.isRef(defn.ArrayClass)
+        val inArray = tycon.isRef(defn.ArrayClass) || tp.translucentSuperType.isRef(defn.ArrayClass)
         val args2 =
           if isTyped && !inArray then args.map(_ => WildcardType)
           else args.map(arg => erase(arg, inArray = inArray, isValue = false))
