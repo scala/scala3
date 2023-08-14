@@ -30,5 +30,8 @@ object Test:
   object Mod
 
   class Bar:
+    def me: this.type = null
+
+  class Baz(val x: String) extends AnyVal:
     def me: this.type = null // error
 end Test

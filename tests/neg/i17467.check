@@ -53,12 +53,12 @@
    |                      must be more specific than (g1 : AnyRef)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/i17467.scala:33:24 ------------------------------------------------------------
-33 |    def me: this.type = null // error
+-- [E007] Type Mismatch Error: tests/neg/i17467.scala:36:24 ------------------------------------------------------------
+36 |    def me: this.type = null // error
    |                        ^^^^
    |                      Found:    Null
-   |                      Required: (Bar.this : Test.Bar)
+   |                      Required: (Baz.this : Test.Baz)
    |                      Note that implicit conversions were not tried because the result of an implicit conversion
-   |                      must be more specific than (Bar.this : Test.Bar)
+   |                      must be more specific than (Baz.this : Test.Baz)
    |
    | longer explanation available when compiling with `-explain`
