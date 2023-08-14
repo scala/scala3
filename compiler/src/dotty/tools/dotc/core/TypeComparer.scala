@@ -3357,23 +3357,33 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
                 val info = denot.info match
                   case TypeAlias(alias) => alias
                   case info             => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
-                if info.isInstanceOf[ClassInfo] then
-                  /* The member is not an alias (we'll get Stuck instead of NoInstances,
-                   * which is not ideal, but we cannot make a RealTypeBounds of ClassInfo).
+                val infoRefersToSkolem = stableScrut match
+                  case stableScrut: SkolemType =>
+                    new TypeAccumulator[Boolean] {
+                      def apply(prev: Boolean, tp: Type): Boolean =
+                        prev || (tp eq stableScrut) || foldOver(prev, tp)
+                    }.apply(false, info)
+                  case _ =>
+                    false
+                if infoRefersToSkolem && info.isInstanceOf[ClassInfo] then
+                  /* We would like to create a `RealTypeBounds(info, info)` to get a `MatchResult.NoInstances`
+                   * but that is not allowed for `ClassInfo`. So instead we return `false`, which will result
+                   * in a `MatchResult.Stuck` instead.
                    */
                   false
                 else
-                  val infoRefersToSkolem = stableScrut match
-                    case stableScrut: SkolemType =>
-                      new TypeAccumulator[Boolean] {
-                        def apply(prev: Boolean, tp: Type): Boolean =
-                          prev || (tp eq stableScrut) || foldOver(prev, tp)
-                      }.apply(false, info)
+                  val info1 = info match
+                    case ClassInfo(prefix, cls, _, _, _) =>
+                      // Re-select the class from the prefix
+                      prefix.select(cls)
+                    case info: TypeBounds =>
+                      // Will already trigger a MatchResult.NoInstances
+                      info
+                    case _ if infoRefersToSkolem =>
+                      // Explicitly trigger a MatchResult.NoInstances
+                      RealTypeBounds(info, info)
                     case _ =>
-                      false
-                  val info1 =
-                    if infoRefersToSkolem && !info.isInstanceOf[TypeBounds] then RealTypeBounds(info, info) // to trigger a MatchResult.NoInstances
-                    else info
+                      info
                   rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
               case _ =>
                 false
