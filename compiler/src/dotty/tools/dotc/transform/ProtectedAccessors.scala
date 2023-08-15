@@ -37,7 +37,7 @@ object ProtectedAccessors {
    *  is not in a subclass or subtrait of `sym`?
    */
   def needsAccessorIfNotInSubclass(sym: Symbol)(using Context): Boolean =
-    sym.isTerm && sym.is(Protected) &&
+    sym.isTerm && sym.is(Protected) && !sym.hasPublicInBinary &&
     !sym.owner.is(Trait) && // trait methods need to be handled specially, are currently always public
     !insideBoundaryOf(sym)
 

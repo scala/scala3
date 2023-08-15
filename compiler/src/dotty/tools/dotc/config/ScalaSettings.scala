@@ -166,6 +166,7 @@ private sealed trait WarningSettings:
   val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
   val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
   val WimplausiblePatterns = BooleanSetting("-Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+  val WunstableInlineAccessors = BooleanSetting("-WunstableInlineAccessors", "Warn an inline methods has references to non-stable binary APIs.")
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",

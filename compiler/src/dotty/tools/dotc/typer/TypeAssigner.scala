@@ -107,8 +107,10 @@ trait TypeAssigner {
     val tpe1 = accessibleType(tpe, superAccess)
     if tpe1.exists then tpe1
     else tpe match
-      case tpe: NamedType => inaccessibleErrorType(tpe, superAccess, pos)
-      case NoType => tpe
+      case tpe: NamedType =>
+        if tpe.termSymbol.hasPublicInBinary && tpd.enclosingInlineds.nonEmpty then tpe
+        else inaccessibleErrorType(tpe, superAccess, pos)
+      case _ => tpe
 
   /** Return a potentially skolemized version of `qualTpe` to be used
    *  as a prefix when selecting `name`.

@@ -122,14 +122,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else if homogenizedView then isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
       else if sym.isPackageObject then isOmittablePrefix(sym.owner)
       else isOmittablePrefix(sym)
+    def isSkippedPackageObject(sym: Symbol) =
+      sym.isPackageObject && !homogenizedView && !printDebug
 
     tp.prefix match {
-      case thisType: ThisType if isOmittable(thisType.cls) =>
-        ""
-      case termRef @ TermRef(pre, _) =>
+      case thisType: ThisType =>
+        val sym = thisType.cls
+        if isSkippedPackageObject(sym) then toTextPrefixOf(sym.typeRef)
+        else if isOmittable(sym) then ""
+        else super.toTextPrefixOf(tp)
+      case termRef: TermRef =>
         val sym = termRef.symbol
-        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefixOf(termRef)
-        else if (isOmittable(sym)) ""
+        if isSkippedPackageObject(sym) then toTextPrefixOf(termRef)
+        else if isOmittable(sym) then ""
         else super.toTextPrefixOf(tp)
       case _ => super.toTextPrefixOf(tp)
     }
