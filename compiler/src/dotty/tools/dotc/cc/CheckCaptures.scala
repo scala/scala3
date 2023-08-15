@@ -261,7 +261,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         def header =
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
           else i"references $cs1 are not all"
-        report.error(em"$header included in allowed capture set ${res.blocking}", pos)
+        def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
+        report.error(em"$header included in allowed capture set ${res.blocking}$toAdd", pos)
 
     /** The current environment */
     private var curEnv: Env = inContext(ictx):

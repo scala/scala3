@@ -41,7 +41,7 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:16 ------------------------------------------------------
 71 |    val later = usingFile("logfile",            // error
    |                ^^^^^^^^^
-   |                Sealed type variable T cannot be instantiated to box () => Unit since
-   |                that type captures the root capability `cap`.
-   |                This is often caused by a local capability in an argument of method usingFile
-   |                leaking as part of its result.
+   |       reference (_$1 : java.io.OutputStream^{<cap in $anonfun/2>}) is not included in allowed capture set {x$0}
+   |
+   |       Note that reference (_$1 : java.io.OutputStream^{<cap in $anonfun/2>}), defined at level 2
+   |       cannot be included in outer capture set {x$0}, defined at level 1 in method test

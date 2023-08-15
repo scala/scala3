@@ -2159,8 +2159,22 @@ object Types {
      */
     final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
 
-    /** Is this reference the root capability `cap` ? */
-    def isRootCapability(using Context): Boolean = false
+    /** Is this reference the generic root capability `cap` ? */
+    def isGenericRootCapability(using Context): Boolean = false
+
+    /** Is this reference a local root capability `{<cap in owner>}`
+     *  for some level owner?
+     */
+    final def isLocalRootCapability(using Context): Boolean =
+      localRootOwner.exists
+
+    /** If this is a local root capability, its owner, otherwise NoSymbol.
+     */
+    def localRootOwner(using Context): Symbol = NoSymbol
+
+    /** Is this reference the a (local or generic) root capability? */
+    def isRootCapability(using Context): Boolean =
+      isGenericRootCapability || isLocalRootCapability
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2895,8 +2909,11 @@ object Types {
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
-    override def isRootCapability(using Context): Boolean =
+    override def isGenericRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
+
+    override def localRootOwner(using Context): Symbol =
+      if name == nme.LOCAL_CAPTURE_ROOT then symbol.owner else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -4670,7 +4687,7 @@ object Types {
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
-    def ccNestingLevel(using Context) = 0  // !!! Is this the right level? 
+    def ccNestingLevel(using Context) = 0  // !!! Is this the right level?
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)

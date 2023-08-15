@@ -10,6 +10,7 @@ import config.SourceVersion
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
+import StdNames.nme
 import config.Feature
 import collection.mutable
 
@@ -40,6 +41,35 @@ class CCState:
   val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
   val localRoots: mutable.HashMap[Symbol, CaptureRef] = new mutable.HashMap
   var levelError: Option[(CaptureRef, CaptureSet)] = None
+
+class mapRoots(lowner: Symbol)(using Context) extends BiTypeMap:
+  thisMap =>
+
+  def apply(t: Type): Type = t.dealiasKeepAnnots match
+    case t1: CaptureRef if t1.isGenericRootCapability =>
+      assert(lowner.exists, "cannot map global root")
+      lowner.localRoot
+    case _: MethodOrPoly =>
+      t
+    case t1 if defn.isFunctionType(t1) =>
+      t
+    case t1 =>
+      val t2 = mapOver(t1)
+      if t2 ne t1 then t2 else t
+
+  def inverse = new BiTypeMap:
+    def apply(t: Type): Type = t.dealiasKeepAnnots match
+      case t1: CaptureRef if t1.localRootOwner == lowner =>
+        defn.captureRoot.termRef
+      case _: MethodOrPoly =>
+        t
+      case t1 if defn.isFunctionType(t1) =>
+        t
+      case t1 =>
+        val t2 = mapOver(t1)
+        if t2 ne t1 then t2 else t
+    def inverse = thisMap
+end mapRoots
 
 extension (tree: Tree)
 
@@ -208,6 +238,13 @@ extension (tp: Type)
     case _ =>
       false
 
+  def capturedLocalRoot(using Context): Symbol =
+    tp.captureSet.elems.toList
+      .filter(_.isLocalRootCapability)
+      .map(_.termSymbol)
+      .maxByOption(_.ccNestingLevel)
+      .getOrElse(NoSymbol)
+
 extension (cls: ClassSymbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
@@ -268,7 +305,7 @@ extension (sym: Symbol)
    *   - _root_
    */
   def levelOwner(using Context): Symbol =
-    if sym.isStaticOwner then defn.RootClass
+    if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
     else if sym.isClass || sym.is(Method) && !sym.isConstructor then sym
     else sym.owner.levelOwner
 
@@ -290,6 +327,11 @@ extension (sym: Symbol)
     if ctx.property(ccState).isDefined then
       Some(ccNestingLevel)
     else None
+
+  def localRoot(using Context): CaptureRef =
+    assert(sym.exists && sym.levelOwner == sym, sym)
+    ctx.property(ccState).get.localRoots.getOrElseUpdate(sym,
+      newSymbol(sym, nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.AnyType, nestingLevel = sym.ccNestingLevel).termRef)
 
   def maxNested(other: Symbol)(using Context): Symbol =
     if sym.ccNestingLevel < other.ccNestingLevel then other else sym

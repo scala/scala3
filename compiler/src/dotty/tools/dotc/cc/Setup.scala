@@ -326,6 +326,8 @@ extends tpd.TreeTraverser:
     case tree: ValOrDefDef =>
       val sym = tree.symbol
 
+      def remapRoot(tp: Type): Type = mapRoots(sym.levelOwner).inverse(tp)
+
       // replace an existing symbol info with inferred types where capture sets of
       // TypeParamRefs and TermParamRefs put in correspondence by BiTypeMaps with the
       // capture sets of the types of the method's parameter symbols and result type.
@@ -344,9 +346,9 @@ extends tpd.TreeTraverser:
                   mt.paramInfos
                 else
                   val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                  psyms.map(psym => subst(psym.info).asInstanceOf[mt.PInfo]),
+                  psyms.map(psym => remapRoot(subst(psym.info)).asInstanceOf[mt.PInfo]),
               mt1 =>
-                integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
+                integrateRT(remapRoot(mt.resType), psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
             )
           case info: ExprType =>
             info.derivedExprType(resType =

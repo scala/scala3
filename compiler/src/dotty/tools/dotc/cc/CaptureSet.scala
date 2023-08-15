@@ -119,11 +119,18 @@ sealed abstract class CaptureSet extends Showable:
     else addNewElems(elem.singletonCaptureSet.elems, origin)
 
   /* x subsumes y if x is the same as y, or x is a this reference and y refers to a field of x */
-  extension (x: CaptureRef) private def subsumes(y: CaptureRef) =
-    (x eq y)
-    || y.match
-        case y: TermRef => y.prefix eq x
-        case _ => false
+  extension (x: CaptureRef)(using Context)
+    private def subsumes(y: CaptureRef) =
+      (x eq y)
+      || x.isGenericRootCapability
+      || y.match
+          case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
+          case _ => false
+
+    private def isRootIncluding(y: CaptureRef) =
+      x.isLocalRootCapability && y.isLocalRootCapability
+      && x.termSymbol.nestingLevel >= y.termSymbol.nestingLevel
+  end extension
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
@@ -468,7 +475,8 @@ object CaptureSet:
         res
 
     private def recordLevelError()(using Context): Unit =
-      ctx.property(ccState).get.levelError = Some((triedElem.get, this))
+      for elem <- triedElem do
+        ctx.property(ccState).get.levelError = Some((elem, this))
 
     private def levelsOK(elems: Refs)(using Context): Boolean =
       !elems.exists(_.ccNestingLevel > ownLevel)
@@ -990,7 +998,7 @@ object CaptureSet:
     else op
 
   def levelErrors: Addenda = new Addenda:
-    override def toAdd(using Context) =
+    override def toAdd(using Context): List[String] =
       for
         state <- ctx.property(ccState).toList
         (ref, cs) <- state.levelError

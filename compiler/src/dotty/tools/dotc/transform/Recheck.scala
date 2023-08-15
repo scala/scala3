@@ -286,12 +286,15 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
+    protected def prepareFunction(funtpe: MethodType)(using Context): MethodType = funtpe
+
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
       val funTp = recheck(tree.fun)
       // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
       val funtpe = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funTp
       funtpe.widen match
-        case fntpe: MethodType =>
+        case fntpe0: MethodType =>
+          val fntpe = prepareFunction(fntpe0)
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =
             if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs

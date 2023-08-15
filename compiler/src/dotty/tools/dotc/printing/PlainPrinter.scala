@@ -358,7 +358,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        toTextPrefixOf(tp) ~ selectionString(tp)
+        if tp.isLocalRootCapability then Str(s"<cap in ${tp.symbol.owner.name}/${tp.symbol.ccNestingLevel}>")
+        else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
