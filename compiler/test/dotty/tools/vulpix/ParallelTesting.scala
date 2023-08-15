@@ -729,6 +729,74 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
       diffCheckfile(testSource, reporters, logger)
 
+    override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
+      lazy val (map, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
+      lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
+      lazy val (expected, unexpected) = getMissingExpectedWarnings(map, reporters.iterator.flatMap(_.diagnostics))
+      def hasMissingAnnotations = expected.nonEmpty || unexpected.nonEmpty
+      def showDiagnostics = "-> following the diagnostics:\n" +
+        reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
+      Option:
+        if reporters.exists(_.compilerCrashed) then s"Compiler crashed when compiling: ${testSource.title}"
+        else if reporters.exists(_.errorCount > 0) then
+          s"""Compilation failed for: ${testSource.title}
+             |$showDiagnostics
+             |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
+        else if obtCount == 0 then s"\nNo warnings found when compiling warn test $testSource"
+        else if expCount == 0 then s"\nNo warning expected/defined in $testSource -- use // warn"
+        else if expCount != obtCount then
+          s"""|Wrong number of warnings encountered when compiling $testSource
+              |expected: $expCount, actual: $obtCount
+              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
+              |${unexpected.mkString("Unexpected warnings:\n", "\n", "")}
+              |$showDiagnostics
+              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
+        else if hasMissingAnnotations then s"\nWarnings found on incorrect row numbers when compiling $testSource\n$showDiagnostics"
+        else if !map.isEmpty then s"\nExpected warnings(s) have {<warning position>=<unreported warning>}: $map"
+        else null
+    end maybeFailureMessage
+
+    def getWarnMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) =
+      val comment = raw"//( *)warn".r
+      val map = new HashMap[String, Integer]()
+      var count = 0
+      def bump(key: String): Unit =
+        map.get(key) match
+          case null => map.put(key, 1)
+          case n    => map.put(key, n+1)
+        count += 1
+      files.filter(isSourceFile).foreach { file =>
+        Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
+          source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
+            comment.findAllMatchIn(line).foreach { _ =>
+              bump(s"${file.getPath}:${lineNbr+1}")
+            }
+          }
+        }.get
+      }
+      (map, count)
+
+    def getMissingExpectedWarnings(map: HashMap[String, Integer], reporterWarnings: Iterator[Diagnostic]): (List[String], List[String]) =
+      val unexpected, unpositioned = ListBuffer.empty[String]
+      def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
+      def seenAt(key: String): Boolean =
+        map.get(key) match
+          case null => false
+          case 1 => map.remove(key) ; true
+          case n => map.put(key, n - 1) ; true
+      def sawDiagnostic(d: Diagnostic): Unit =
+        val srcpos = d.pos.nonInlined
+        if srcpos.exists then
+          val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
+          if !seenAt(key) then unexpected += key
+        else
+          unpositioned += relativize(srcpos.source.file.toString())
+
+      reporterWarnings.foreach(sawDiagnostic)
+
+      (map.asScala.keys.toList, (unexpected ++ unpositioned).toList)
+    end getMissingExpectedWarnings
+
   private final class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(implicit summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
