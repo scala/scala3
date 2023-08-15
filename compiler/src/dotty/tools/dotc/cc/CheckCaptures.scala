@@ -12,6 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
+import typer.ErrorReporting.Addenda
 import util.{SimpleIdentitySet, EqHashMap, SrcPos, Property}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
@@ -188,9 +189,6 @@ object CheckCaptures:
 
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
-
-  /** Attachment key for the nesting level cache */
-  val NestingLevels = Property.Key[mutable.HashMap[Symbol, Int]]
 
 class CheckCaptures extends Recheck, SymTransformer:
   thisPhase =>
@@ -709,11 +707,11 @@ class CheckCaptures extends Recheck, SymTransformer:
   //   - Adapt box status and environment capture sets by simulating box/unbox operations.
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
-    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Unit =
       val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
       val actual1 = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actual1 <<< $expected1")
-      super.checkConformsExpr(actual1, expected1, tree)
+      super.checkConformsExpr(actual1, expected1, tree, addenda ++ CaptureSet.levelErrors)
 
     private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
       MethodType.companion(isContextual = isContextual)(args, resultType)
@@ -977,7 +975,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         traverseChildren(t)
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      inContext(ctx.withProperty(NestingLevels, Some(new mutable.HashMap[Symbol, Int]))):
+      inContext(ctx.withProperty(ccState, Some(new CCState))):
         Setup(preRecheckPhase, thisPhase, this)(ctx.compilationUnit.tpdTree)
         //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
         withCaptureSetsExplained:

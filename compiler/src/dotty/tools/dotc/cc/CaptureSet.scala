@@ -13,6 +13,7 @@ import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 import util.{SimpleIdentitySet, Property, optional}, optional.{break, ?}
+import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import config.Config.ccAllowUnsoundMaps
@@ -421,6 +422,8 @@ object CaptureSet:
 
     var description: String = ""
 
+    private var triedElem: Option[CaptureRef] = None
+
     /** Record current elements in given VarState provided it does not yet
      *  contain an entry for this variable.
      */
@@ -457,9 +460,15 @@ object CaptureSet:
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
         }
-      else widenCaptures(newElems) match
-        case Some(newElems1) => tryInclude(newElems1, origin)
-        case None => CompareResult.fail(this)
+      else
+        val res = widenCaptures(newElems) match
+          case Some(newElems1) => tryInclude(newElems1, origin)
+          case None => CompareResult.fail(this)
+        if !res.isOK then recordLevelError()
+        res
+
+    private def recordLevelError()(using Context): Unit =
+      ctx.property(ccState).get.levelError = Some((triedElem.get, this))
 
     private def levelsOK(elems: Refs)(using Context): Boolean =
       !elems.exists(_.ccNestingLevel > ownLevel)
@@ -469,8 +478,13 @@ object CaptureSet:
         (SimpleIdentitySet[CaptureRef]() /: elems): (acc, elem) =>
           if elem.ccNestingLevel <= ownLevel then acc + elem
           else if elem.isRootCapability then break()
-          else acc ++ widenCaptures(elem.captureSetOfInfo.elems).?
-      val resStr = res match
+          else
+            val saved = triedElem
+            triedElem = triedElem.orElse(Some(elem))
+            val res = acc ++ widenCaptures(elem.captureSetOfInfo.elems).?
+            triedElem = saved  // reset only in case of success, leave as is on error
+            res
+      def resStr = res match
         case Some(refs) => i"${refs.toList}"
         case None => "FAIL"
       capt.println(i"widen captures ${elems.toList} for $this at $owner = $resStr")
@@ -974,4 +988,17 @@ object CaptureSet:
             println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
       }
     else op
+
+  def levelErrors: Addenda = new Addenda:
+    override def toAdd(using Context) =
+      for
+        state <- ctx.property(ccState).toList
+        (ref, cs) <- state.levelError
+      yield
+        val level = ref.ccNestingLevel
+        i"""
+           |
+           |Note that reference ${ref}, defined at level $level
+           |cannot be included in outer capture set $cs, defined at level ${cs.owner.nestingLevel} in ${cs.owner}"""
+
 end CaptureSet

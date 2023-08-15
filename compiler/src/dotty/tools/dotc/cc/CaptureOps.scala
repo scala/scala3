@@ -11,9 +11,13 @@ import config.Printers.capt
 import util.Property.Key
 import tpd.*
 import config.Feature
+import collection.mutable
 
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
+
+/** Attachment key for the nesting level cache */
+val ccState: Key[CCState] = Key()
 
 /** Switch whether unpickled function types and byname types should be mapped to
  *  impure types. With the new gradual typing using Fluid capture sets, this should
@@ -31,6 +35,11 @@ def allowUniversalInBoxed(using Context) =
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
+
+class CCState:
+  val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
+  val localRoots: mutable.HashMap[Symbol, CaptureRef] = new mutable.HashMap
+  var levelError: Option[(CaptureRef, CaptureSet)] = None
 
 extension (tree: Tree)
 
@@ -269,7 +278,7 @@ extension (sym: Symbol)
   def ccNestingLevel(using Context): Int =
     if sym.exists then
       val lowner = sym.levelOwner
-      val cache = ctx.property(CheckCaptures.NestingLevels).get
+      val cache = ctx.property(ccState).get.nestingLevels
       cache.getOrElseUpdate(lowner,
         if lowner.isRoot then 0 else lowner.owner.ccNestingLevel + 1)
     else -1
@@ -278,7 +287,7 @@ extension (sym: Symbol)
    *  a capture checker is running.
    */
   def ccNestingLevelOpt(using Context): Option[Int] =
-    if ctx.property(CheckCaptures.NestingLevels).isDefined then
+    if ctx.property(ccState).isDefined then
       Some(ccNestingLevel)
     else None
 

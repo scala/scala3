@@ -15,6 +15,7 @@ import typer.ErrorReporting.err
 import typer.ProtoTypes.*
 import typer.TypeAssigner.seqLitType
 import typer.ConstFold
+import typer.ErrorReporting.{Addenda, NothingToAdd}
 import NamerOps.methodType
 import config.Printers.recheckr
 import util.Property
@@ -561,7 +562,7 @@ abstract class Recheck extends Phase, SymTransformer:
       case _ =>
         checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
-    def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Unit =
       //println(i"check conforms $actual <:< $expected")
 
       def isCompatible(expected: Type): Boolean =
@@ -574,7 +575,7 @@ abstract class Recheck extends Phase, SymTransformer:
         }
       if !isCompatible(expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actual), expected)
+        err.typeMismatch(tree.withType(actual), expected, addenda)
       else if debugSuccesses then
         tree match
           case _: Ident =>
