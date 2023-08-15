@@ -149,15 +149,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.ObjectClass
     + defn.FromJavaObjectSymbol
 
-  def toTextCaptureSet(cs: CaptureSet): Text =
-    def nestingLevelStr = cs match
-      case cs: CaptureSet.Var if showNestingLevel => s"<in ${cs.owner.show}/${cs.owner.ccNestingLevel}>"
-      case _ => ""
+  def toTextCaptureSet(cs: CaptureSet, describe: Boolean): Text =
+    def descr = Str(cs.description).provided(describe)
+      ~ cs.match
+        case cs: CaptureSet.Var if showNestingLevel => s"<in ${cs.owner.show}/${cs.owner.ccNestingLevel}>"
+        case _ => ""
     if printDebug && !cs.isConst then cs.toString
     else if ctx.settings.YccDebug.value then cs.show
     else if cs == CaptureSet.Fluid then "<fluid>"
-    else if !cs.isConst && cs.elems.isEmpty then Str("?") ~ nestingLevelStr
-    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}" ~ nestingLevelStr
+    else if !cs.isConst && cs.elems.isEmpty then Str("?") ~~ descr
+    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}" ~~ descr
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -225,7 +226,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
+        val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs, describe = false)
         toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
@@ -250,7 +251,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ExprType(restp) =>
         def arrowText: Text = restp match
           case ct @ EventuallyCapturingType(parent, refs) if ct.annot.symbol == defn.RetainsByNameAnnot =>
-            if refs.isUniversal then Str("=>") else Str("->") ~ toTextCaptureSet(refs)
+            if refs.isUniversal then Str("=>") else Str("->") ~ toTextCaptureSet(refs, describe = false)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))

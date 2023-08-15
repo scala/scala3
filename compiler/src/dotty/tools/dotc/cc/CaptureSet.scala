@@ -320,7 +320,7 @@ sealed abstract class CaptureSet extends Showable:
     Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
 
   override def toText(printer: Printer): Text =
-    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}") ~~ description
+    printer.toTextCaptureSet(this)
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
