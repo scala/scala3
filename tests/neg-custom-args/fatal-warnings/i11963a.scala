@@ -1,1 +1,0 @@
-open trait Foo // error
