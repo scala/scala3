@@ -3,7 +3,7 @@ case class Foo[+S](s: S) extends Box[S]
 
 def unwrap2[A](b: Box[A]): A =
   b match
-  case _: Foo[Int] => 0 // error
+  case _: Foo[Int] => 0 // warn
 
 object Test1 {
   // Invariant case, OK
@@ -11,8 +11,7 @@ object Test1 {
 
   def test[A](bar: Bar[A]) =
     bar match {
-      case _: Bar[Boolean] => ??? // error
-      case _ => ???
+      case _: Bar[Boolean] => ??? // warn
     }
 }
 
@@ -22,8 +21,7 @@ object Test2 {
 
   def test[A](bar: Bar[A]) =
     bar match {
-      case _: Bar[Boolean] => ??? // error
-      case _ => ???
+      case _: Bar[Boolean] => ??? // warn
     }
 }
 
@@ -33,7 +31,6 @@ object Test3 {
 
   def test[A](bar: Bar[A]) =
     bar match {
-      case _: Bar[Boolean] => ??? // error
-      case _ => ???
+      case _: Bar[Boolean] => ??? // warn
     }
 }
