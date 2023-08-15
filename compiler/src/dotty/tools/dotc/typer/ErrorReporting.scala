@@ -70,6 +70,15 @@ object ErrorReporting {
           case _ => foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
 
+  /** A mixin trait that can produce added elements for an error message */
+  trait Addenda:
+    self =>
+    def toAdd(using Context): List[String] = Nil
+    def ++ (follow: Addenda) = new Addenda:
+      override def toAdd(using Context) = self.toAdd ++ follow.toAdd
+
+  object NothingToAdd extends Addenda
+
   class Errors(using Context) {
 
     /** An explanatory note to be added to error messages
@@ -162,7 +171,7 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailureType = NoMatchingImplicits): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, addenda: Addenda = NothingToAdd): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
@@ -184,7 +193,7 @@ object ErrorReporting {
           "\nMaybe you are missing an else part for the conditional?"
         case _ => ""
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), implicitFailure.whyNoConversion, missingElse))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), (addenda.toAdd :+ missingElse)*))
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
