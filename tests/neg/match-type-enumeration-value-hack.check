@@ -7,5 +7,7 @@
    |
    |                                          trying to reduce  EnumValue[Suit]
    |                                          failed since selector Suit
-   |                                          does not match  case EnumValueAux[t] => t
-   |                                          and cannot be shown to be disjoint from it either.
+   |                                          does not uniquely determine parameter t in
+   |                                            case EnumValueAux[t] => t
+   |                                          The computed bounds for the parameter are:
+   |                                            t >: ?1.Value <: ?1.Value
