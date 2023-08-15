@@ -76,8 +76,8 @@ class ExtractDependencies extends Phase {
     collector.traverse(unit.tpdTree)
 
     if (ctx.settings.YdumpSbtInc.value) {
-      val deps = rec.foundDeps.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
-      val names = rec.foundDeps.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
+      val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
+      val names = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
       Arrays.sort(deps)
       Arrays.sort(names)
 
@@ -325,7 +325,7 @@ class DependencyRecorder {
   /** A map from a non-local class to the names and classes it uses, this does not include
    *  names which are only defined and not referenced.
    */
-  def foundDeps: collection.Map[Symbol, FoundDepsInClass] = _foundDeps
+  def foundDeps: util.ReadOnlyMap[Symbol, FoundDepsInClass] = _foundDeps
 
   /** Record a reference to the name of `sym` from the current non-local
    *  enclosing class.
@@ -429,13 +429,13 @@ class DependencyRecorder {
     if (fromClass.exists)
       lastFoundCache.addDependency(toClass, context)
 
-  private val _foundDeps = new mutable.HashMap[Symbol, FoundDepsInClass]
+  private val _foundDeps = new util.EqHashMap[Symbol, FoundDepsInClass]
 
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
     ctx.withIncCallback: cb =>
       val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
-      foundDeps.foreach:
+      _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
           foundDeps.names.foreach: (usedName, scopes) =>
