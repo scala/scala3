@@ -76,12 +76,8 @@ class ExtractDependencies extends Phase {
     collector.traverse(unit.tpdTree)
 
     if (ctx.settings.YdumpSbtInc.value) {
-      val deps = rec.classDependencies.flatMap((k,vs) =>
-        vs.iterator.flatMap((to, depCtxs) =>
-          depCtxs.asScala.map(depCtx => s"ClassDependency($k, $to, $depCtx)")
-        )
-      ).toArray[Object]
-      val names = rec.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
+      val deps = rec.foundDeps.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
+      val names = rec.foundDeps.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
       Arrays.sort(deps)
       Arrays.sort(names)
 
@@ -168,7 +164,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
 
 
   /** Traverse the tree of a source file and record the dependencies and used names which
-   *  can be retrieved using `dependencies` and`usedNames`.
+   *  can be retrieved using `foundDeps`.
    */
   override def traverse(tree: Tree)(using Context): Unit = try {
     tree match {
@@ -315,16 +311,6 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   }
 }
 
-class ClassDepsInClass:
-  private val _classes = util.EqHashMap[Symbol, EnumSet[DependencyContext]]()
-
-  def addDependency(fromClass: Symbol, context: DependencyContext): Unit =
-    val set = _classes.getOrElseUpdate(fromClass, EnumSet.noneOf(classOf[DependencyContext]))
-    set.add(context)
-
-  def iterator: Iterator[(Symbol, EnumSet[DependencyContext])] =
-    _classes.iterator
-
 /** Record dependencies using `addUsedName`/`addClassDependency` and inform Zinc using `sendToZinc()`.
  *
  *  Note: As an alternative design choice, we could directly call the appropriate
@@ -336,10 +322,10 @@ class ClassDepsInClass:
 class DependencyRecorder {
   import ExtractDependencies.*
 
-  /** A map from a non-local class to the names it uses, this does not include
+  /** A map from a non-local class to the names and classes it uses, this does not include
    *  names which are only defined and not referenced.
    */
-  def usedNames: collection.Map[Symbol, UsedNamesInClass] = _usedNames
+  def foundDeps: collection.Map[Symbol, FoundDepsInClass] = _foundDeps
 
   /** Record a reference to the name of `sym` from the current non-local
    *  enclosing class.
@@ -374,7 +360,7 @@ class DependencyRecorder {
   def addUsedRawName(name: Name, includeSealedChildren: Boolean = false)(using Context): Unit = {
     val fromClass = resolveDependencyFromClass
     if (fromClass.exists) {
-      lastUsedCache.update(name, includeSealedChildren)
+      lastFoundCache.recordName(name, includeSealedChildren)
     }
   }
 
@@ -383,27 +369,49 @@ class DependencyRecorder {
   private val DefaultScopes = EnumSet.of(UseScope.Default)
   private val PatMatScopes = EnumSet.of(UseScope.Default, UseScope.PatMatTarget)
 
-  /** An object that maintain the set of used names from within a class */
-  final class UsedNamesInClass {
+  /** An object that maintain the set of used names and class dependencies from within a class */
+  final class FoundDepsInClass {
     /** Each key corresponds to a name used in the class. To understand the meaning
      *  of the associated value, see the documentation of parameter `includeSealedChildren`
      *  of `addUsedRawName`.
      */
     private val _names = new util.HashMap[Name, DefaultScopes.type | PatMatScopes.type]
 
-    def iterator: Iterator[(Name, EnumSet[UseScope])] = _names.iterator
+    /** Each key corresponds to a class dependency used in the class.
+     */
+    private val _classes = util.EqHashMap[Symbol, EnumSet[DependencyContext]]()
 
-    private[DependencyRecorder] def update(name: Name, includeSealedChildren: Boolean): Unit = {
+    def addDependency(fromClass: Symbol, context: DependencyContext): Unit =
+      val set = _classes.getOrElseUpdate(fromClass, EnumSet.noneOf(classOf[DependencyContext]))
+      set.add(context)
+
+    def classes: Iterator[(Symbol, EnumSet[DependencyContext])] = _classes.iterator
+
+    def names: Iterator[(Name, EnumSet[UseScope])] = _names.iterator
+
+    private[DependencyRecorder] def recordName(name: Name, includeSealedChildren: Boolean): Unit = {
       if (includeSealedChildren)
         _names(name) = PatMatScopes
       else
         _names.getOrElseUpdate(name, DefaultScopes)
     }
 
-    override def toString(): String = {
+    def namesString: String = {
       val builder = new StringBuilder
-      iterator.foreach { (name, scopes) =>
+      names.foreach { case (name, scopes) =>
         builder.append(name.mangledString)
+        builder.append(" in [")
+        scopes.forEach(scope => builder.append(scope.toString))
+        builder.append("]")
+        builder.append(", ")
+      }
+      builder.toString()
+    }
+
+    def classesString: String = {
+      val builder = new StringBuilder
+      classes.foreach { case (clazz, scopes) =>
+        builder.append(clazz.toString)
         builder.append(" in [")
         scopes.forEach(scope => builder.append(scope.toString))
         builder.append("]")
@@ -413,44 +421,36 @@ class DependencyRecorder {
     }
   }
 
-
-  private val _classDependencies = new mutable.HashMap[Symbol, ClassDepsInClass]
-
-  def classDependencies: collection.Map[Symbol, ClassDepsInClass] = _classDependencies
-
   /** Record a dependency to the class `to` in a given `context`
    *  from the current non-local enclosing class.
   */
   def addClassDependency(toClass: Symbol, context: DependencyContext)(using Context): Unit =
     val fromClass = resolveDependencyFromClass
     if (fromClass.exists)
-      lastDepCache.addDependency(toClass, context)
+      lastFoundCache.addDependency(toClass, context)
 
-  private val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
+  private val _foundDeps = new mutable.HashMap[Symbol, FoundDepsInClass]
 
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
     ctx.withIncCallback: cb =>
-      usedNames.foreach:
-        case (clazz, usedNames) =>
-          val className = classNameAsString(clazz)
-          usedNames.iterator.foreach: (usedName, scopes) =>
-            cb.usedName(className, usedName.toString, scopes)
       val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
-      for (fromClass, partialDependencies) <- _classDependencies do
-        for (toClass, deps) <- partialDependencies.iterator do
-          for dep <- deps.asScala do
-            recordClassDependency(cb, fromClass, toClass, dep, siblingClassfiles)
+      foundDeps.foreach:
+        case (clazz, foundDeps) =>
+          val className = classNameAsString(clazz)
+          foundDeps.names.foreach: (usedName, scopes) =>
+            cb.usedName(className, usedName.toString, scopes)
+          for (toClass, deps) <- foundDeps.classes do
+            for dep <- deps.asScala do
+              recordClassDependency(cb, clazz, toClass, dep, siblingClassfiles)
     clear()
 
    /** Clear all state. */
   def clear(): Unit =
-    _usedNames.clear()
-    _classDependencies.clear()
+    _foundDeps.clear()
     lastOwner = NoSymbol
     lastDepSource = NoSymbol
-    lastDepCache = null
-    lastUsedCache = null
+    lastFoundCache = null
     _responsibleForImports = NoSymbol
 
   /** Handles dependency on given symbol by trying to figure out if represents a term
@@ -521,8 +521,7 @@ class DependencyRecorder {
 
   private var lastOwner: Symbol = _
   private var lastDepSource: Symbol = _
-  private var lastDepCache: ClassDepsInClass | Null = _
-  private var lastUsedCache: UsedNamesInClass | Null = _
+  private var lastFoundCache: FoundDepsInClass | Null = _
 
   /** The source of the dependency according to `nonLocalEnclosingClass`
    *  if it exists, otherwise fall back to `responsibleForImports`.
@@ -537,8 +536,7 @@ class DependencyRecorder {
       val fromClass = if (source.is(PackageClass)) responsibleForImports else source
       if lastDepSource != fromClass then
         lastDepSource = fromClass
-        lastDepCache = _classDependencies.getOrElseUpdate(fromClass, new ClassDepsInClass)
-        lastUsedCache = _usedNames.getOrElseUpdate(fromClass, new UsedNamesInClass)
+        lastFoundCache = _foundDeps.getOrElseUpdate(fromClass, new FoundDepsInClass)
     }
 
     lastDepSource
