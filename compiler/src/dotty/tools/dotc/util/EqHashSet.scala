@@ -85,36 +85,6 @@ class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends 
 
   override def +=(x: T): Unit = put(x)
 
-  override def remove(x: T): Boolean =
-    Stats.record(statsItem("remove"))
-    var idx = firstIndex(x)
-    var e: T | Null = entryAt(idx)
-    while e != null do
-      if isEqual(e.uncheckedNN, x) then
-        var hole = idx
-        while
-          idx = nextIndex(idx)
-          e = entryAt(idx)
-          e != null
-        do
-          val eidx = index(hash(e.uncheckedNN))
-          if isDense
-            || index(eidx - (hole + 1)) > index(idx - (hole + 1))
-               // entry `e` at `idx` can move unless `index(hash(e))` is in
-               // the (ring-)interval [hole + 1 .. idx]
-          then
-            setEntry(hole, e.uncheckedNN)
-            hole = idx
-        table(hole) = null
-        used -= 1
-        return true
-      idx = nextIndex(idx)
-      e = entryAt(idx)
-    false
-
-  override def -=(x: T): Unit =
-    remove(x)
-
   private def addOld(x: T) =
     Stats.record(statsItem("re-enter"))
     var idx = firstIndex(x)

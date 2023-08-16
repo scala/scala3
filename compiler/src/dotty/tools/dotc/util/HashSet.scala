@@ -64,6 +64,17 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
     if used > limit then growTable()
     x
 
+  override def add(x: T): Boolean =
+    Stats.record(statsItem("enter"))
+    var idx = firstIndex(x)
+    var e: T | Null = entryAt(idx)
+    while e != null do
+      if isEqual(e.uncheckedNN, x) then return false // already entered
+      idx = nextIndex(idx)
+      e = entryAt(idx)
+    addEntryAt(idx, x)
+    true // first entry
+
   override def put(x: T): T =
     Stats.record(statsItem("put"))
     var idx = firstIndex(x)
@@ -76,36 +87,6 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
     addEntryAt(idx, x)
 
   override def +=(x: T): Unit = put(x)
-
-  override def remove(x: T): Boolean =
-    Stats.record(statsItem("remove"))
-    var idx = firstIndex(x)
-    var e: T | Null = entryAt(idx)
-    while e != null do
-      if isEqual(e.uncheckedNN, x) then
-        var hole = idx
-        while
-          idx = nextIndex(idx)
-          e = entryAt(idx)
-          e != null
-        do
-          val eidx = index(hash(e.uncheckedNN))
-          if isDense
-            || index(eidx - (hole + 1)) > index(idx - (hole + 1))
-               // entry `e` at `idx` can move unless `index(hash(e))` is in
-               // the (ring-)interval [hole + 1 .. idx]
-          then
-            setEntry(hole, e.uncheckedNN)
-            hole = idx
-        table(hole) = null
-        used -= 1
-        return true
-      idx = nextIndex(idx)
-      e = entryAt(idx)
-    false
-
-  override def -=(x: T): Unit =
-    remove(x)
 
   private def addOld(x: T) =
     Stats.record(statsItem("re-enter"))
@@ -125,7 +106,4 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
         val e: T | Null = oldTable(idx).asInstanceOf[T | Null]
         if e != null then addOld(e.uncheckedNN)
         idx += 1
-
-  override def iterator: Iterator[T] = new EntryIterator():
-    def entry(idx: Int) = entryAt(idx)
 }
