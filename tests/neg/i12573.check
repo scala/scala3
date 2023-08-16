@@ -4,6 +4,6 @@
    |         value getDFType is not a member of DFBits[(8 : Int)].
    |         Extension methods were tried, but the search failed with:
    |
-   |             method getDFType cannot be accessed as a member of DFType.type from module class i12573$package$.
+   |             method getDFType cannot be accessed as a member of DFType.type from package object i12573$package.
    |              Access to protected method getDFType not permitted because enclosing package object i12573$package
    |              is not a subclass of object DFType where target is defined
