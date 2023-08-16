@@ -259,14 +259,8 @@ trait QuotesAndSplices {
             pat.symbol.addAnnotation(Annotation(New(ref(defn.QuotedRuntimePatterns_fromAboveAnnot.typeRef)).withSpan(pat.span)))
           allTypeBindings += pat
           TypeTree(pat.symbol.typeRef).withSpan(pat.span)
-
-        case Typed(splice: SplicePattern, tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
-          // We drop the type ascription because it is redundant, the SplicePattern contains the same type
-          transform(tpt) // Collect type bindings
-          splice
         case _: SplicePattern =>
           tree
-
         case _ =>
           super.transform(tree)
     }

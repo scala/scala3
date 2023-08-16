@@ -492,17 +492,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
-        case _: Quote =>
+        case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
-          super.transform(tree)
-        case _: QuotePattern =>
-          if !ctx.reporter.errorsReported then
-            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
-          ctx.compilationUnit.needsStaging = true
-          super.transform(tree)
-        case tree: SplicePattern =>
-          if !ctx.reporter.errorsReported then
-            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
           super.transform(tree)
         case tree =>
           super.transform(tree)
