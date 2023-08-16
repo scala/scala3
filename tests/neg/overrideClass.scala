@@ -1,4 +1,4 @@
-// scalac: -source 3.0-migration
+//> using options -source 3.0-migration
 
   abstract class FooA {
     type A <: Ax;

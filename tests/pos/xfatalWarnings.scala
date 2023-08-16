@@ -1,4 +1,4 @@
-// scalac: -nowarn -Xfatal-warnings
+//> using options -nowarn -Xfatal-warnings
 // succeeds despite -Xfatal-warnings because of -nowarn
 
 object xfatalWarnings {

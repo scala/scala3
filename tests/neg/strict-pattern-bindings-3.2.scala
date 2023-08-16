@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 // These tests should fail under -Xfatal-warnings with source version source version 3.2 or later
 import language.`3.2`
 

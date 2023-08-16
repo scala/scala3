@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wimplausible-patterns
+//> using options -Xfatal-warnings -Wimplausible-patterns
 abstract class RecoveryCompleted
 object RecoveryCompleted extends RecoveryCompleted
 

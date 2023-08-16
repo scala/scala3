@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:locals
+//> using options -Xfatal-warnings -Wunused:locals
 
 val a = 1 // OK
 

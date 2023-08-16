@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:params
+//> using options -Xfatal-warnings -Wunused:params
 
 /* This goes around the "trivial method" detection */
 object Foo {

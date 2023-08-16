@@ -1,4 +1,4 @@
-// scalac: -Xmax-inlines:33
+//> using options -Xmax-inlines:33
 
 import scala.deriving.Mirror
 import scala.compiletime._

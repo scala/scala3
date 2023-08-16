@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 class Foo:
   erased given Int = 1

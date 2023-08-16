@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 case class Token(tokenType: TokenType, lexeme: StringV, line: IntV)
 

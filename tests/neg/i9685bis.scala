@@ -1,4 +1,4 @@
-// scalac: -source future
+//> using options -source future
 
 package foo
 

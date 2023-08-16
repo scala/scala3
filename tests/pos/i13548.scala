@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed abstract class Foo[N, A]
 final case class Bar[B](foo: Foo[B, B]) extends Foo[B, B]
 class Test:

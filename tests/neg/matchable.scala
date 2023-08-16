@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -source future
+//> using options -Xfatal-warnings -source future
 
 def foo[T](x: T): Matchable =
   println(x.getClass())   // ok

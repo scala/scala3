@@ -1,4 +1,4 @@
-// scalac: -explain
+//> using options -explain
 
 // This is OK
 object test1:

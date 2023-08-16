@@ -1,4 +1,4 @@
-// scalac: -Ycheck-all-patmat
+//> using options -Ycheck-all-patmat
 class Foo {
   def foo(x: quoted.Expr[Int])(using scala.quoted.Quotes): Unit = x match {
     case '{ 1 } =>

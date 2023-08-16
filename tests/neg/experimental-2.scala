@@ -1,4 +1,4 @@
-// scalac: -Yno-experimental
+//> using options -Yno-experimental
 
 class Test7 {
   import scala.language.experimental

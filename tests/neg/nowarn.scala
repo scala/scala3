@@ -1,4 +1,4 @@
-// scalac: -deprecation -Wunused:nowarn "-Wconf:msg=@nowarn annotation does not suppress any warnings:e"
+//> using options -deprecation -Wunused:nowarn "-Wconf:msg=@nowarn annotation does not suppress any warnings:e"
 
 import scala.annotation.{ nowarn, Annotation }
 

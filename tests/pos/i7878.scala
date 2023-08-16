@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 object Boom {
   import scala.compiletime.*

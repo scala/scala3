@@ -1,4 +1,4 @@
-// scalac: -explain
+//> using options -explain
 infix type A[b, a] = Nothing
 
 infix type B[b, a] = b match {

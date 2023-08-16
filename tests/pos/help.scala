@@ -1,4 +1,4 @@
-// scalac: -help -V -W -X -Y
+//> using options -help -V -W -X -Y
 
 // dummy source for exercising information flags
 //

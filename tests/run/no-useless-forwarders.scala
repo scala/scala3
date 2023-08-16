@@ -1,4 +1,4 @@
-// scalac: -Xmixin-force-forwarders:false
+//> using options -Xmixin-force-forwarders:false
 // scalajs: --skip
 
 trait A {

@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 object Foo {
   type X = (using ) => Int // error: an identifier expected, but ')' found

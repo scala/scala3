@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -deprecation
+//> using options -Xfatal-warnings -deprecation
 
 @main def Test =
   val a: IArray[Int] = IArray(2)

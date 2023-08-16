@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:strict-no-implicit-warn
+//> using options -Xfatal-warnings -Wunused:strict-no-implicit-warn
 
 package foo.unused.strict.test:
   package a:

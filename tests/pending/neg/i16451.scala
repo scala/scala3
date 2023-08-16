@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 enum Color:
   case Red, Green
 

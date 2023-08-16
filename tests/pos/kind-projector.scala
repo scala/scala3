@@ -1,4 +1,4 @@
-// scalac: -Ykind-projector
+//> using options -Ykind-projector
 
 package kind_projector
 

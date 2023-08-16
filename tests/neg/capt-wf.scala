@@ -1,4 +1,4 @@
-// scalac: -language:experimental.captureChecking -Xfatal-warnings
+//> using options -language:experimental.captureChecking -Xfatal-warnings
 
 class C
 type Cap = C^

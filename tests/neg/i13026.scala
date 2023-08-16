@@ -1,4 +1,4 @@
-// scalac: -print-lines
+//> using options -print-lines
 
 val x: Int = "not an int" // error
 val y: Int = "not an int" // error

@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 class Test:
   type Foo = Option[String] | Option[Int]
 

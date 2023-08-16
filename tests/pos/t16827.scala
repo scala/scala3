@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 
 trait Outer[F[_]]:
   sealed trait Inner

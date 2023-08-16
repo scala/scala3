@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 sealed trait P
 case class PC1(a: String) extends P

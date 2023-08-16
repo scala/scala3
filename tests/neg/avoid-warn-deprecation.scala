@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -feature
+//> using options -Xfatal-warnings -feature
 
 object A {
   @deprecated("use bar instead of this one", "0.2.3")

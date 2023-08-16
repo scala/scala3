@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 @main def test: Unit = {
   class C { type T1; type T2 }

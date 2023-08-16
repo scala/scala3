@@ -1,4 +1,4 @@
-// scalac: -Ysafe-init
+//> using options -Ysafe-init
 
 class C1:
   sealed abstract class Name {

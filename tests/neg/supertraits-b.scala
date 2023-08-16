@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 transparent sealed trait TA
 transparent sealed trait TB

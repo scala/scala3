@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -feature
+//> using options -Xfatal-warnings -feature
 
 class A
 class B

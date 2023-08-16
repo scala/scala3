@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:all
+//> using options -Xfatal-warnings -Wunused:all
 
 object Foo {
   private def myMethod(a: Int, b: Int, c: Int) = adder // ok

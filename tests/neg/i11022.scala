@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -deprecation
+//> using options -Xfatal-warnings -deprecation
 
 @deprecated("no CaseClass")
 case class CaseClass(rgb: Int):
