@@ -672,6 +672,10 @@ object SymDenotations {
     def isPackageObject(using Context): Boolean =
       name.isPackageObjectName && owner.is(Package) && this.is(Module)
 
+    /** Is this symbol a package object containing top-level definitions? */
+    def isTopLevelDefinitionsObject(using Context): Boolean =
+      name.isTopLevelPackageObjectName && owner.is(Package) && this.is(Module)
+
     /** Is this symbol a toplevel definition in a package object? */
     def isWrappedToplevelDef(using Context): Boolean =
       !isConstructor && owner.isPackageObject
