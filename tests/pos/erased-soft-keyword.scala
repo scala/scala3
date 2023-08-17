@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 def f1(x: Int, erased y: Int) = 0
 def f2(x: Int, erased: Int) = 0

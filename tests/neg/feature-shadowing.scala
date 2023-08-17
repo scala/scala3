@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -feature
+//> using options -Xfatal-warnings -feature
 
 import language.implicitConversions
 given Conversion[Int, String] = _.toString

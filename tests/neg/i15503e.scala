@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:explicits
+//> using options -Xfatal-warnings -Wunused:explicits
 
 object Foo {
   /* This goes around the "trivial method" detection */

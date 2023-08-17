@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 // Verify that expressions below perform correct boxings in erasure.
 object Test {

@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 abstract class Namer:
   private enum CanForward:
     case Yes

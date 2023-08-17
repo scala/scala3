@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed trait Nat
 case class Zero() extends Nat
 case class Succ[N <: Nat](n: N) extends Nat

@@ -1,4 +1,4 @@
-// scalac: -Xmax-inlines 40
+//> using options -Xmax-inlines 40
 
 import scala.collection.mutable
 import scala.annotation.tailrec

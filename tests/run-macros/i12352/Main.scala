@@ -1,4 +1,4 @@
-// scalac: -Yread-docs
+//> using options -Yread-docs
 
 @main def Test(): Unit = {
     val res = getDocString[scala.quoted.Quotes]

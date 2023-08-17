@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 class UnableToTransformValue extends Enumeration {
   val a = {

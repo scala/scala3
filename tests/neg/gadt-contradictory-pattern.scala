@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wimplausible-patterns
+//> using options -Xfatal-warnings -Wimplausible-patterns
 object Test {
   sealed abstract class Foo[T]
   case object Bar1 extends Foo[Int]

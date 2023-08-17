@@ -1,4 +1,4 @@
-// scalac: -source:3.0-migration
+//> using options -source:3.0-migration
 
 // A not-fully-minimal reproduction of the CI failure in http4s
 // While implementing the fix to name "shadowing" in implicit lookup.

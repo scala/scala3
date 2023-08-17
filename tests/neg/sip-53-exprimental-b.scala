@@ -1,4 +1,4 @@
-// scalac: -Yno-experimental
+//> using options -Yno-experimental
 
 import scala.quoted.*
 

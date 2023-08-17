@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 object GADT {
   import =:=._
 

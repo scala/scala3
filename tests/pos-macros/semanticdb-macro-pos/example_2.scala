@@ -1,4 +1,4 @@
-// scalac: -Xsemanticdb
+//> using options -Xsemanticdb
 
 import quoted.*
 

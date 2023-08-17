@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed trait Schema[A]
 
 object Schema extends RecordInstances

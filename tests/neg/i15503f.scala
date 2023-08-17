@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:implicits
+//> using options -Xfatal-warnings -Wunused:implicits
 
 /* This goes around the "trivial method" detection */
 val default_int = 1

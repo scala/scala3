@@ -1,4 +1,4 @@
-// scalac: -explain
+//> using options -explain
 
 object C:
   def m(x: Int) = 1

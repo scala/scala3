@@ -1,4 +1,4 @@
-// scalac: -Yno-deep-subtypes:false
+//> using options -Yno-deep-subtypes:false
 // Minimisation of tests/run-macros/i17257
 // to understand how changes to match type reduction
 // impacted this use of Tuple.IsMappedBy.

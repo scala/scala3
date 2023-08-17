@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:imports
+//> using options -Xfatal-warnings -Wunused:imports
 
 
 object FooUnused:

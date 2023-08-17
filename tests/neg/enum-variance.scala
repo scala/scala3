@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 enum View[-T]:
   case Refl(f: T => T) // error: enum case Refl requires explicit declaration of type T

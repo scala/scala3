@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 
 object O1:
   sealed trait A

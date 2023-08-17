@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 object Test {
   def foo(a: Int)(b: Int, c: Int) = 42
