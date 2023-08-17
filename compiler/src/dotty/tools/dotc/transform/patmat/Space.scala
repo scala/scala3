@@ -312,7 +312,7 @@ object SpaceEngine {
   def isIrrefutableQuotePattern(pat: tpd.QuotePattern, pt: Type)(using Context): Boolean = {
     if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
     else pat.body match
-      case _: SplicePattern => pat.bindings.isEmpty && pt <:< pat.tpe
+      case _: SplicePattern | Typed(_: SplicePattern, _) => pat.bindings.isEmpty && pt <:< pat.tpe
       case _ => false
   }
 
