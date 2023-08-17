@@ -1,0 +1,15 @@
+
+-- [E172] Type Error: tests/neg/i13190/B_2.scala:14:38 -----------------------------------------------------------------
+14 |  summon[FindField[R, "B"] =:= Double] // error
+   |                                      ^
+   |                                      Cannot prove that Test.FindField[Test.R, ("B" : String)] =:= Double.
+   |
+   |                                      Note: a match type could not be fully reduced:
+   |
+   |                                        trying to reduce  Test.FindField[Test.R, ("B" : String)]
+   |                                        failed since selector Test.R
+   |                                        does not match  case Opaque.FieldType[("B" : String), f] *: t => f
+   |                                        and cannot be shown to be disjoint from it either.
+   |                                        Therefore, reduction cannot advance to the remaining case
+   |
+   |                                          case _ *: t => Test.FindField[t, ("B" : String)]

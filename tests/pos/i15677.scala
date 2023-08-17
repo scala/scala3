@@ -1,3 +1,5 @@
+// scalac: -Yno-deep-subtypes:false
+
 class Inv[A]
 
 class Foo[B, M[_]]
