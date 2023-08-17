@@ -1128,6 +1128,7 @@ class Definitions {
   @tu lazy val StableNullAnnot: ClassSymbol = requiredClass("scala.annotation.stableNull")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
+  @tu lazy val JavaAnnotationAnnot: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
   // Initialization annotations
   @tu lazy val InitModule: Symbol = requiredModule("scala.annotation.init")
