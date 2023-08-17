@@ -1944,12 +1944,18 @@ trait Applications extends Compatibility {
   end resolveOverloaded
 
   def isApplicableTerm(argTypes: List[Type], resultType: Type, argMatch: ArgMatch)(using Context): TermRef => Boolean =
-    onMethod(_, argTypes.nonEmpty):
-      isApplicableMethodRef(_, argTypes, resultType, argMatch)
+    term => term.widen match
+      case _: AppliedType =>
+        isApplicableType(term, argTypes, resultType)
+      case _ =>
+        isApplicableMethodRef(term, argTypes, resultType, argMatch)
 
   def isApplicableTerm(argTypes: List[Tree], resultType: Type, keepConstraint: Boolean, argMatch: ArgMatch)(using Context): TermRef => Boolean =
-    onMethod(_, argTypes.nonEmpty):
-      isApplicableMethodRef(_, argTypes, resultType, keepConstraint, argMatch)
+    term => term.widen match
+      case _: AppliedType =>
+        isApplicableType(term, argTypes, resultType, keepConstraint)
+      case _ =>
+        isApplicableMethodRef(term, argTypes, resultType, keepConstraint, argMatch)
 
 
   /** This private version of `resolveOverloaded` does the bulk of the work of
