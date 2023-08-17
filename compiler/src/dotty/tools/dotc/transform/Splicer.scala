@@ -216,7 +216,7 @@ object Splicer {
           args.flatten.foreach(checkIfValidArgument)
 
         case Call(fn, args) if fn.symbol.name.is(NameKinds.InlineAccessorName) =>
-          // TODO suggest use of @binaryAPI one we have the annotation
+          // TODO suggest use of @binaryAPI once we have the annotation
           report.error(
             i"""Macro implementation is not statically accessible.
               |
