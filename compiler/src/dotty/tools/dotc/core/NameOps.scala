@@ -109,12 +109,22 @@ object NameOps {
         false
     }
 
-    /** is this the name of an object enclosing packagel-level definitions? */
+    /** is this the name of an object enclosing package-level definitions? */
     def isPackageObjectName: Boolean = name match {
       case name: TermName => name == nme.PACKAGE || name.endsWith(str.TOPLEVEL_SUFFIX)
       case name: TypeName =>
         name.toTermName match {
           case ModuleClassName(original) => original.isPackageObjectName
+          case _ => false
+        }
+    }
+
+    /** is this the name of an object enclosing top-level definitions? */
+    def isTopLevelPackageObjectName: Boolean = name match {
+      case name: TermName => name.endsWith(str.TOPLEVEL_SUFFIX)
+      case name: TypeName =>
+        name.toTermName match {
+          case ModuleClassName(original) => original.isTopLevelPackageObjectName
           case _ => false
         }
     }
