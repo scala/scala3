@@ -1,6 +1,7 @@
 object G {
-  final class X
-  final class Y
+  trait X
+  class Y
+  class Z
 
   trait FooSig {
     type Type
@@ -13,14 +14,14 @@ object G {
   type Foo = Foo.Type
 
   type Bar[A] = A match {
-    case X & Y => String
+    case X & Z => String
     case Y => Int
   }
 
   def main(args: Array[String]): Unit = {
     val a: Bar[X & Y] = "hello" // error
     val i: Bar[Y & Foo] = Foo.apply[Bar](a)
-    val b: Int = i // error
+    val b: Int = i
     println(b + 1)
   }
 }
