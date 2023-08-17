@@ -357,8 +357,8 @@ object Settings:
     def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[String] = Nil): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
-    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
-      publish(Setting(category, prependName(name), descr, default, helpArg))
+    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile, aliases: List[String] = Nil): Setting[AbstractFile] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases))
 
     def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases))
