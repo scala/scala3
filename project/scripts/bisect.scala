@@ -35,9 +35,9 @@ val usageMessage = """
   |* --releases <releases-range>
   |    Bisect only releases from the given range (defaults to all releases).
   |    The range format is <first>...<last>, where both <first> and <last> are optional, e.g.
-  |    * 3.1.0-RC1-bin-20210827-427d313-NIGHTLY..3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
-  |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY..
-  |    * ..3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
+  |    * 3.1.0-RC1-bin-20210827-427d313-NIGHTLY...3.2.1-RC1-bin-20220716-bb9c8ff-NIGHTLY
+  |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY...
+  |    * ...3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
   |    The ranges are treated as inclusive.
   |
   |* --bootstrapped
