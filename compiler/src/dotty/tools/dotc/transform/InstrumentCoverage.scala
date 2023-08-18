@@ -457,7 +457,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
          * they shouldn't be lifted.
          */
         val sym = fun.symbol
-        sym.exists && (isShortCircuitedOp(sym) || StringInterpolatorOpt.isCompilerIntrinsic(sym))
+        sym.exists && (isShortCircuitedOp(sym) || StringInterpolatorOpt.isCompilerIntrinsic(sym) || sym == defn.Object_synchronized)
       end
 
       val fun = tree.fun
