@@ -17,6 +17,8 @@ import scala.language.unsafeNulls
 import scala.collection.mutable.Buffer
 import dotty.tools.dotc.util.DiffUtil
 
+import java.util.stream.Collectors
+
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
   import CoverageTests.{*, given}
@@ -61,6 +63,26 @@ class CoverageTests:
           val instructions = FileDiff.diffMessage(expectFile.toString, targetFile.toString)
           fail(s"Coverage report differs from expected data.\n$instructions")
 
+      // measurement files only exist in the "run" category
+      // as these are generated at runtime by the scala.runtime.coverage.Invoker
+      val expectMeasurementFile = path.resolveSibling(s"$fileName.measurement.check")
+      if run && Files.exists(expectMeasurementFile) then
+
+        // Note that this assumes that the test invoked was single threaded,
+        // if that is not the case then this will have to be adjusted
+        val targetMeasurementFile = findMeasurementFile(targetDir)
+
+        if updateCheckFiles then
+          Files.copy(targetMeasurementFile, expectMeasurementFile, StandardCopyOption.REPLACE_EXISTING)
+
+        else
+          val targetMeasurementFile = findMeasurementFile(targetDir)
+          val expectedMeasurements = fixWindowsPaths(Files.readAllLines(expectMeasurementFile).asScala)
+          val obtainedMeasurements = fixWindowsPaths(Files.readAllLines(targetMeasurementFile).asScala)
+          if expectedMeasurements != obtainedMeasurements then
+            val instructions = FileDiff.diffMessage(expectMeasurementFile.toString, targetMeasurementFile.toString)
+            fail(s"Measurement report differs from expected data.\n$instructions")
+      ()
     })
 
   /** Generates the coverage report for the given input file, in a temporary directory. */
@@ -74,6 +96,14 @@ class CoverageTests:
       val test = compileFile(inputFile.toString, options)
       test.checkCompile()
     target
+
+  private def findMeasurementFile(targetDir: Path): Path = {
+    val allFilesInTarget = Files.list(targetDir).collect(Collectors.toList).asScala
+    allFilesInTarget.filter(_.getFileName.toString.startsWith("scoverage.measurements.")).headOption.getOrElse(
+      throw new AssertionError(s"Expected to find measurement file in targetDir [${targetDir}] but none were found.")
+    )
+  }
+
 
 object CoverageTests extends ParallelTesting:
   import scala.concurrent.duration.*
