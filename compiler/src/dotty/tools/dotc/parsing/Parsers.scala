@@ -1073,10 +1073,7 @@ object Parsers {
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
-      val t = makeIdent(in.token, in.offset, ident())
-      if t.name == nme.ROOTPKG then
-        syntaxError(em"Illegal use of root package name.")
-      t
+      makeIdent(in.token, in.offset, ident())
 
     /** Accept identifier and return Ident with its name as a type name. */
     def typeIdent(): Ident =
@@ -1426,23 +1423,6 @@ object Parsers {
       case _ => None
     }
 
-    private def checkFunctionNotErased(f: Function, context: String) =
-      def fail(span: Span) =
-        syntaxError(em"Implementation restriction: erased parameters are not supported in $context", span)
-      // erased parameter in type
-      val hasErasedParam = f match
-        case f: FunctionWithMods => f.hasErasedParams
-        case _ => false
-      if hasErasedParam then
-        fail(f.span)
-      // erased parameter in term
-      val hasErasedMods = f.args.collectFirst {
-        case v: ValDef if v.mods.is(Flags.Erased) => v
-      }
-      hasErasedMods match
-        case Some(param) => fail(param.span)
-        case _ =>
-
     /** CaptureRef  ::=  ident | `this`
      */
     def captureRef(): Tree =
@@ -1592,7 +1572,6 @@ object Parsers {
             atSpan(start, arrowOffset) {
               getFunction(body) match {
                 case Some(f) =>
-                  checkFunctionNotErased(f, "poly function")
                   PolyFunction(tparams, body)
                 case None =>
                   syntaxError(em"Implementation restriction: polymorphic function types must have a value parameter", arrowOffset)
@@ -1755,7 +1734,7 @@ object Parsers {
       while in.token == TYPE do tdefs += typeBlockStat()
       tdefs.toList
 
-    /**  TypeBlockStat ::= ‘type’ {nl} TypeDcl
+    /**  TypeBlockStat ::= ‘type’ {nl} TypeDef
      */
     def typeBlockStat(): Tree =
       val mods = defAnnotsMods(BitSet())
@@ -2159,7 +2138,6 @@ object Parsers {
           atSpan(start, arrowOffset) {
             getFunction(body) match
               case Some(f) =>
-                checkFunctionNotErased(f, "poly function")
                 PolyFunction(tparams, f)
               case None =>
                 syntaxError(em"Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
@@ -3578,12 +3556,8 @@ object Parsers {
     /** Def      ::= val PatDef
      *             | var VarDef
      *             | def DefDef
-     *             | type {nl} TypeDcl
+     *             | type {nl} TypeDef
      *             | TmplDef
-     *  Dcl      ::= val ValDcl
-     *             | var ValDcl
-     *             | def DefDcl
-     *             | type {nl} TypeDcl
      *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
@@ -3604,12 +3578,10 @@ object Parsers {
         tmplDef(start, mods)
     }
 
-    /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
-     *            |  Pattern2 [‘:’ Type] ‘=’ Expr
+    /** PatDef  ::=  ids [‘:’ Type] [‘=’ Expr]
+     *            |  Pattern2 [‘:’ Type] [‘=’ Expr]
      *  VarDef  ::=  PatDef
-     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
-     *  ValDcl  ::=  id {`,' id} `:' Type
-     *  VarDcl  ::=  id {`,' id} `:' Type
+     *            |  id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       val first = pattern2(Location.InPattern)
@@ -3658,9 +3630,8 @@ object Parsers {
       }
     }
 
-    /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
+    /** DefDef  ::=  DefSig [‘:’ Type] [‘=’ Expr]
      *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
-     *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefTermParamClauses
      *
      * if clauseInterleaving is enabled:
@@ -3758,7 +3729,7 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
+    /** TypeDef ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
@@ -4247,7 +4218,6 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Export
      *                     | Annotations Modifiers Def
-     *                     | Annotations Modifiers Dcl
      *                     | Extension
      *                     | Expr1
      *                     |
@@ -4277,10 +4247,10 @@ object Parsers {
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
-     *  RefineStat       ::=  ‘val’ VarDcl
-     *                     |  ‘def’ DefDcl
-     *                     |  ‘type’ {nl} TypeDcl
-     *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
+     *  RefineStat       ::=  ‘val’ VarDef
+     *                     |  ‘def’ DefDef
+     *                     |  ‘type’ {nl} TypeDef
+     *  (in reality we admit class defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
       val stats = new ListBuffer[Tree]

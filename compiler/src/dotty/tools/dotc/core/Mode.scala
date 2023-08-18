@@ -1,6 +1,14 @@
 package dotty.tools.dotc.core
 
-/** A collection of mode bits that are part of a context */
+/** A collection of mode bits that are part of a context.
+ *
+ * What's the difference between a boolean setting and a Mode?
+ * A setting is usually valid for the entire compilation run, whereas a mode is context specific.
+ * Changing a setting in a context creates a new SettingsState in that context, which is a relatively big object.
+ * By comparison, a mode is just an Int.
+ * But, Mode bits are a scarce resource, so for low priority situations, just reset the state with a setting.
+ * Also, a setting is externally settable, while a mode isn't.
+ */
 case class Mode(val bits: Int) extends AnyVal {
   import Mode._
   def | (that: Mode): Mode = Mode(bits | that.bits)
@@ -9,6 +17,9 @@ case class Mode(val bits: Int) extends AnyVal {
   def is (that: Mode): Boolean = (bits & that.bits) == that.bits
 
   def isExpr: Boolean = (this & PatternOrTypeBits) == None
+
+  /** Are we in the body of quoted pattern? */
+  def isQuotedPattern: Boolean = (this & QuotedPatternBits) != None
 
   override def toString: String =
     (0 until 31).filter(i => (bits & (1 << i)) != 0).map(modeName).mkString("Mode(", ",", ")")
@@ -69,6 +80,9 @@ object Mode {
    */
   val Printing: Mode = newMode(10, "Printing")
 
+  /** Are we in a quote the body of quoted type pattern? */
+  val QuotedTypePattern: Mode = newMode(11, "QuotedTypePattern")
+
   /** We are currently in a `viewExists` check. In that case, ambiguous
    *  implicits checks are disabled and we succeed with the first implicit
    *  found.
@@ -106,9 +120,6 @@ object Mode {
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
 
-  /** Don't suppress exceptions thrown during show */
-  val PrintShowExceptions: Mode = newMode(18, "PrintShowExceptions")
-
   val PatternOrTypeBits: Mode = Pattern | Type
 
   /** We are elaborating the fully qualified name of a package clause.
@@ -128,8 +139,10 @@ object Mode {
   /** Are we trying to find a hidden implicit? */
   val FindHiddenImplicits: Mode = newMode(24, "FindHiddenImplicits")
 
-  /** Are we in a quote in a pattern? */
-  val QuotedPattern: Mode = newMode(25, "QuotedPattern")
+  /** Are we in a quote the body of quoted expression pattern? */
+  val QuotedExprPattern: Mode = newMode(25, "QuotedExprPattern")
+
+  val QuotedPatternBits: Mode = QuotedExprPattern | QuotedTypePattern
 
   /** Are we typechecking the rhs of an extension method? */
   val InExtensionMethod: Mode = newMode(26, "InExtensionMethod")

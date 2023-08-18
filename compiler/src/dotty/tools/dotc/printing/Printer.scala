@@ -7,7 +7,7 @@ import Texts._, ast.Trees._
 import Types.{Type, SingletonType, LambdaParam, NamedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
-import typer.Implicits.SearchResult
+import typer.Implicits.*
 import util.SourcePosition
 import typer.ImportInfo
 
@@ -152,6 +152,9 @@ abstract class Printer {
 
   /** Textual representation of source position */
   def toText(pos: SourcePosition): Text
+
+  /** Textual representation of implicit candidates. */
+  def toText(cand: Candidate): Text
 
   /** Textual representation of implicit search result */
   def toText(result: SearchResult): Text

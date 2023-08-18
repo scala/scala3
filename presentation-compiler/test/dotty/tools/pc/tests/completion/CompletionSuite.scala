@@ -591,7 +591,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val foo: ListBuffe@@
           |}
           |""".stripMargin,
-      """|ListBuffer[T] - scala.collection.mutable
+      """|ListBuffer[A] - scala.collection.mutable
          |ListBuffer - scala.collection.mutable
          |""".stripMargin
     )
@@ -602,7 +602,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val foo: Map[Int, ListBuffe@@]
           |}
           |""".stripMargin,
-      """|ListBuffer[T] - scala.collection.mutable
+      """|ListBuffer[A] - scala.collection.mutable
          |ListBuffer - scala.collection.mutable
          |""".stripMargin
     )
@@ -1250,5 +1250,82 @@ class CompletionSuite extends BaseCompletionSuite:
          |  def foo: String = ${0:???}
          |""".stripMargin,
       assertSingleItem = false,
+    )
+
+  @Test def `type-with-params` =
+    check(
+      s"""|object O {
+          | type TTT[A <: Int] = List[A]
+          | val t: TT@@
+          |}
+          |""".stripMargin,
+      "TTT[A <: Int]",
+      includeDetail = false,
+    )
+
+  @Test def `type-with-params-with-detail` =
+    check(
+      s"""|object O {
+          | type TTT[A <: Int] = List[A]
+          | val t: TT@@
+          |}
+          |""".stripMargin,
+    "TTT[A <: Int] = List[A]"
+    )
+
+  @Test def `type-lambda` =
+    check(
+      s"""|object O {
+          | type TTT = [A <: Int] =>> List[A]
+          | val t: TT@@
+          |}
+          |""".stripMargin,
+      "TTT[A <: Int]",
+      includeDetail = false,
+    )
+
+  @Test def `type-lambda2` =
+    check(
+      s"""|object O {
+          | type TTT[K <: Int] = [V] =>> Map[K, V]
+          | val t: TT@@
+          |}
+          |""".stripMargin,
+      "TTT[K <: Int]",
+      includeDetail = false,
+    )
+
+  @Test def `type-lambda2-with-detail` =
+    check(
+      s"""|object O {
+          | type TTT[K <: Int] = [V] =>> Map[K, V]
+          | val t: TT@@
+          |}
+          |""".stripMargin,
+      "TTT[K <: Int] = [V] =>> Map[K, V]",
+    )
+
+  @Test def `type-bound` =
+    check(
+      s"""|trait O {
+          | type TTT <: Int
+          | val t: TT@@
+          |}
+          |""".stripMargin,
+      "TTT <: Int"
+    )
+
+  @Test def `class-with-params` =
+    check(
+      s"""|object O {
+          | class AClass[A <: Int]
+          | object AClass
+          | val v: ACla@@
+          |}
+          |""".stripMargin,
+      """|AClass[A <: Int] test.O
+         |AClass test.O
+         |AbstractTypeClassManifest - scala.reflect.ClassManifestFactory
+         |""".stripMargin
     )
 

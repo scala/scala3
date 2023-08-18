@@ -221,6 +221,8 @@ class Namer { typer: Typer =>
         else NoSymbol
 
       var flags1 = flags
+      if name.isTypeName && Feature.ccEnabled then
+        flags1 |= CaptureChecked
       var privateWithin = privateWithinClass(tree.mods)
       val effectiveOwner = owner.skipWeakOwner
       if (flags.is(Private) && effectiveOwner.is(Package)) {

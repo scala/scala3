@@ -193,10 +193,11 @@ object SpaceEngine {
         || canDecompose(b) && isSubspace(a, Or(decompose(b)))
       case (Prod(tp1, _, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
-      case (Typ(tp1, _), Prod(tp2, fun, ss)) =>
+      case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         isSubType(tp1, tp2)
         && covers(fun, tp1, ss.length)
         && isSubspace(Prod(tp2, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
+        || canDecompose(a) && isSubspace(Or(decompose(a)), b)
       case (Prod(_, fun1, ss1), Prod(_, fun2, ss2)) =>
         isSameUnapply(fun1, fun2) && ss1.lazyZip(ss2).forall(isSubspace)
     }
@@ -311,7 +312,7 @@ object SpaceEngine {
   def isIrrefutableQuotePattern(pat: tpd.QuotePattern, pt: Type)(using Context): Boolean = {
     if pat.body.isType then pat.bindings.isEmpty && pt =:= pat.tpe
     else pat.body match
-      case _: SplicePattern => pat.bindings.isEmpty && pt <:< pat.tpe
+      case _: SplicePattern | Typed(_: SplicePattern, _) => pat.bindings.isEmpty && pt <:< pat.tpe
       case _ => false
   }
 
@@ -320,7 +321,7 @@ object SpaceEngine {
    * The types should be atomic (non-decomposable) and unrelated (neither
    * should be a subtype of the other).
    */
-  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug) {
+  def intersectUnrelatedAtomicTypes(tp1: Type, tp2: Type)(sp: Space)(using Context): Space = trace(i"atomic intersection: ${AndType(tp1, tp2)}", debug, show) {
     // Precondition: !isSubType(tp1, tp2) && !isSubType(tp2, tp1).
     if !ctx.mode.is(Mode.SafeNulls) && (tp1.isNullType || tp2.isNullType) then
       // Since projections of types don't include null, intersection with null is empty.
@@ -458,17 +459,8 @@ object SpaceEngine {
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
-        val args2 =
-          if tycon.isRef(defn.ArrayClass) then
-            args.map(arg => erase(arg, inArray = true, isValue = false))
-          else tycon.typeParams.lazyZip(args).map { (tparam, arg) =>
-            if isValue && tparam.paramVarianceSign == 0 then
-              // when matching against a value,
-              // any type argument for an invariant type parameter will be unchecked,
-              // meaning it won't fail to match against anything; thus the wildcard replacement
-              WildcardType
-            else erase(arg, inArray = false, isValue = false)
-          }
+        val inArray = tycon.isRef(defn.ArrayClass)
+        val args2 = args.map(arg => erase(arg, inArray = inArray, isValue = false))
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
@@ -578,7 +570,13 @@ object SpaceEngine {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = resTp.select(nme.get).finalResultType.widenTermRefExpr
+            val getTp = resTp.select(nme.get).finalResultType match
+              case tp: TermRef if !tp.isOverloaded =>
+                // Like widenTermRefExpr, except not recursively.
+                // For example, in i17184 widen Option[foo.type]#get
+                // to Option[foo.type] instead of Option[Int].
+                tp.underlying.widenExpr
+              case tp => tp
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
@@ -591,7 +589,7 @@ object SpaceEngine {
   }
 
   /** Whether the extractor covers the given type */
-  def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean =
+  def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean = trace(i"covers($unapp, $scrutineeTp, $argLen)") {
     SpaceEngine.isIrrefutable(unapp, argLen)
     || unapp.symbol == defn.TypeTest_unapply && {
       val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
@@ -601,6 +599,7 @@ object SpaceEngine {
       val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
+  }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
   def decompose(tp: Type)(using Context): List[Type] = trace(i"decompose($tp)", debug) {
@@ -632,7 +631,7 @@ object SpaceEngine {
         // For instance, from i15029, `decompose((X | Y).Field[T]) = [X.Field[T], Y.Field[T]]`.
         parts.map(tp.derivedAppliedType(_, targs))
 
-      case tp if tp.classSymbol.isDecomposableToChildren =>
+      case tp if tp.isDecomposableToChildren =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
             if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
@@ -668,8 +667,8 @@ object SpaceEngine {
     rec(tp, Nil)
   }
 
-  extension (cls: Symbol)
-    /** A type is decomposable to children if it's sealed,
+  extension (tp: Type)
+    /** A type is decomposable to children if it has a simple kind, it's sealed,
       * abstract (or a trait) - so its not a sealed concrete class that can be instantiated on its own,
       * has no anonymous children, which we wouldn't be able to name as counter-examples,
       * but does have children.
@@ -678,7 +677,8 @@ object SpaceEngine {
       * A sealed trait with subclasses that then get removed after `refineUsingParent`, decomposes to the empty list.
       * So that's why we consider whether a type has children. */
     def isDecomposableToChildren(using Context): Boolean =
-      cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
+      val cls = tp.classSymbol
+      tp.hasSimpleKind && cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
 
   val ListOfNoType    = List(NoType)
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
@@ -769,7 +769,7 @@ object SpaceEngine {
     checkConstraint(genConstraint(sp))(using ctx.fresh.setNewTyperState())
   }
 
-  def showSpaces(ss: Seq[Space])(using Context): String = ss.map(show).mkString(", ")
+  def showSpaces(ss: Seq[Space])(using Context): Seq[String] = ss.map(show)
 
   /** Display spaces */
   def show(s: Space)(using Context): String = {
@@ -784,7 +784,7 @@ object SpaceEngine {
 
     def doShow(s: Space, flattenList: Boolean = false): String = s match {
       case Empty => "empty"
-      case Typ(c: ConstantType, _) => "" + c.value.value
+      case Typ(c: ConstantType, _) => c.value.show
       case Typ(tp: TermRef, _) =>
         if (flattenList && tp <:< defn.NilType) ""
         else tp.symbol.showName
@@ -894,9 +894,8 @@ object SpaceEngine {
 
 
     if uncovered.nonEmpty then
-      val hasMore = uncovered.lengthCompare(6) > 0
-      val deduped = dedup(uncovered.take(6))
-      report.warning(PatternMatchExhaustivity(showSpaces(deduped), hasMore), m.selector)
+      val deduped = dedup(uncovered)
+      report.warning(PatternMatchExhaustivity(showSpaces(deduped), m), m.selector)
   }
 
   private def redundancyCheckable(sel: Tree)(using Context): Boolean =

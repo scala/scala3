@@ -35,7 +35,7 @@ SimpleRef             ::=  id
 ParamType             ::=  [‘=>’] ParamValueType
 ParamValueType        ::=  ParamValueType [‘*’]
 TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
-Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+Refinement            ::=  :<<< [RefineDef] {semi [RefineDef]} >>>
 
 FunTypeArgs           ::=  InfixType
                         |  ‘(’ [ FunArgTypes ] ‘)’
@@ -51,9 +51,9 @@ TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBou
 TypeParamClause       ::=  ‘[’ VariantTypeParam {‘,’ VariantTypeParam} ‘]’
 VariantTypeParam      ::=  {Annotation} [‘+’ | ‘-’] (id | ‘_’) [TypeParamClause] TypeBounds
 
-RefineDcl             ::=  ‘val’ ValDcl
-                        |  ‘def’ DefDcl
-                        |  ‘type’ {nl} TypeDcl
+RefineDef             ::=  ‘val’ ValDef
+                        |  ‘def’ DefDef
+                        |  ‘type’ {nl} TypeDef
 
 TypeBounds            ::=  [‘>:’ Type] [‘<:’ Type]
 
@@ -193,11 +193,11 @@ TypedFunParam     ::=  id ‘:’ Type
 
 The concrete function type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
 The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
-An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters) of type ´T´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-definitions.html#by-name-parameters) of type ´T´.
 
 Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
 
-Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
+Function types are [covariant](04-basic-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-definitions.md#variance-annotations) in their argument types.
 
 Function types translate into internal class types that define an `apply` method.
 Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ translates to the internal class type `scala.Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
@@ -253,23 +253,24 @@ Notes:
 RefinedType           ::=  AnnotType {[nl] Refinement}
 SimpleType1           ::=  ...
                         |  Refinement
-Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+Refinement            ::=  :<<< [RefineDef] {semi [RefineDef]} >>>
 
-RefineDcl             ::=  ‘val’ ValDcl
-                        |  ‘def’ DefDcl
-                        |  ‘type’ {nl} TypeDcl
+RefineDef             ::=  ‘val’ ValDef
+                        |  ‘def’ DefDef
+                        |  ‘type’ {nl} TypeDef
 ```
 
-In the concrete syntax of types, refinements can contain several refined declarations.
-Moreover, the refined declarations can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
+In the concrete syntax of types, refinements can contain several refined definitions.
+They must all be abstract.
+Moreover, the refined definitions can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
 
-In the internal types, each refinement defines exactly one refined declaration, and references to `this` must be made explicit in a recursive type.
+In the internal types, each refinement defines exactly one refined definition, and references to `this` must be made explicit in a recursive type.
 
 The conversion from the concrete syntax to the abstract syntax works as follows:
 
 1. Create a fresh recursive this name ´\alpha´.
-2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
-3. Create nested [refined types](#refined-types), one for every refined declaration.
+2. Replace every implicit or explicit reference to `this` in the refinement definitions by ´\alpha´.
+3. Create nested [refined types](#refined-types), one for every refined definition.
 4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
 
 ### Concrete Type Lambdas
@@ -361,7 +362,7 @@ To each type constructor corresponds an _inferred type parameter clause_ which i
 
 ### Type Definitions
 
-A _type definition_ ´D´ represents the right-hand-side of a `type` declaration or the bounds of a type parameter.
+A _type definition_ ´D´ represents the right-hand-side of a `type` member definition or the bounds of a type parameter.
 It is either:
 
 - a type alias of the form ´= U´, or
@@ -465,7 +466,7 @@ If the class is monomorphic, the type designator is a value type denoting the se
 Otherwise it is a type constructor with the same type parameters as the class definition.
 All class types are concrete, non-stable types.
 
-If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` declaration) and has an _underlying [type definition](#type-definitions)_.
+If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` member definition) and has an _underlying [type definition](#type-definitions)_.
 If ´p = \epsilon´ or ´p´ is a package ref, the underlying type definition is the _declared type definition_ of `T`.
 Otherwise, it is determined by [`memberType`](#member-type)`(´p´, ´T´)`.
 A non-class type designator is concrete (resp. stable) if and only if its underlying type definition is an alias ´U´ and ´U´ is itself concrete (resp. stable).
@@ -860,7 +861,7 @@ If a method name is used as a value, its type is [implicitly converted](06-expre
 
 ###### Example
 
-The declarations
+The definitions
 
 ```scala
 def a: Int
@@ -889,7 +890,7 @@ This type represents named methods that take type arguments `´S_1, ..., S_n´` 
 
 ###### Example
 
-The declarations
+The definitions
 
 ```scala
 def empty[A]: List[A]
@@ -1030,7 +1031,7 @@ We define `memberType(´T´, ´id´, ´p´)` as follows:
 - If ´T´ is a possibly parameterized class type of the form ´q.C[T_1, ..., T_n]´ (with ´n \geq 0´):
   - Let ´m´ be the [class member](05-classes-and-objects.html#class-members) of ´C´ with name ´id´.
   - If ´m´ is not defined, the result is undefined.
-  - If ´m´ is a class declaration, the result is a class result with class ´m´.
+  - If ´m´ is a class definition, the result is a class result with class ´m´.
   - If ´m´ is a term definition in class ´D´ with declared type ´U´, the result is a term result with underlying type [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)` and stable flag true if and only if ´m´ is stable.
   - If ´m´ is a type member definition in class ´D´, the result is a type result with underlying type definition [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)` where ´U´ is defined as follows:
       - If ´m´ is an opaque type alias member definition with declared definition ´>: L <: H = V´, then

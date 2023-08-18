@@ -278,9 +278,31 @@ object NameKinds {
       if (underlying.isEmpty) "$" + info.num + "$" else super.mkString(underlying, info)
   }
 
+  /** The name of the term parameter generated for a context bound:
+   *
+   *      def foo[T: A](...): ...
+   *
+   *  becomes:
+   *
+   *      def foo[T](...)(using evidence$1: A[T]): ...
+   *
+   *  The "evidence$" prefix is a convention copied from Scala 2.
+   */
+  val ContextBoundParamName: UniqueNameKind    = new UniqueNameKind("evidence$")
+
+  /** The name of an inferred contextual function parameter:
+   *
+   *      val x: A ?=> B = b
+   *
+   *  becomes:
+   *
+   *      val x: A ?=> B = (contextual$1: A) ?=> b
+   */
+  val ContextFunctionParamName: UniqueNameKind = new UniqueNameKind("contextual$")
+
   /** Other unique names */
+  val CanThrowEvidenceName: UniqueNameKind   = new UniqueNameKind("canThrow$")
   val TempResultName: UniqueNameKind         = new UniqueNameKind("ev$")
-  val EvidenceParamName: UniqueNameKind      = new UniqueNameKind("evidence$")
   val DepParamName: UniqueNameKind           = new UniqueNameKind("(param)")
   val LazyImplicitName: UniqueNameKind       = new UniqueNameKind("$_lazy_implicit_$")
   val LazyLocalName: UniqueNameKind          = new UniqueNameKind("$lzy")

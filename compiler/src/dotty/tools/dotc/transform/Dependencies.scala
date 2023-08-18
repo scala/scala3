@@ -4,7 +4,7 @@ package transform
 import core.*
 import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
 import SymUtils.*
-import collection.mutable.{LinkedHashMap, TreeSet}
+import collection.mutable.{LinkedHashMap, LinkedHashSet}
 import annotation.constructorOnly
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
@@ -33,7 +33,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
    */
   def logicalOwner: collection.Map[Symbol, Symbol] = logicOwner
 
-  private type SymSet = TreeSet[Symbol]
+  private type SymSet = LinkedHashSet[Symbol]
 
   /** A map storing free variables of functions and classes */
   private val free: LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
@@ -56,8 +56,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
   /** A flag to indicate whether lifted owners have changed */
   private var changedLogicOwner: Boolean = _
 
-  private val ord: Ordering[Symbol] = Ordering.by(_.id)
-  private def newSymSet = TreeSet.empty[Symbol](ord)
+  private def newSymSet: LinkedHashSet[Symbol] = new LinkedHashSet[Symbol]
 
   private def symSet(f: LinkedHashMap[Symbol, SymSet], sym: Symbol): SymSet =
     f.getOrElseUpdate(sym, newSymSet)

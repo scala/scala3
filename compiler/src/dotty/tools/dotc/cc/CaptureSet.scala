@@ -356,6 +356,20 @@ object CaptureSet:
     override def toString = elems.toString
   end Const
 
+  /** A special capture set that gets added to the types of symbols that were not
+   *  themselves capture checked, in order to admit arbitrary corresponding capture
+   *  sets in subcapturing comparisons. Similar to platform types for explicit
+   *  nulls, this provides more lenient checking against compilation units that
+   *  were not yet compiled with capture checking on.
+   */
+  object Fluid extends Const(emptySet):
+    override def isAlwaysEmpty = false
+    override def addNewElems(elems: Refs, origin: CaptureSet)(using Context, VarState) = CompareResult.OK
+    override def accountsFor(x: CaptureRef)(using Context): Boolean = true
+    override def mightAccountFor(x: CaptureRef)(using Context): Boolean = true
+    override def toString = "<fluid>"
+  end Fluid
+
   /** The subclass of captureset variables with given initial elements */
   class Var(initialElems: Refs = emptySet) extends CaptureSet:
 
@@ -863,7 +877,7 @@ object CaptureSet:
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
         case tpd @ RefinedType(parent, _, rinfo: MethodType)
-        if followResult && defn.isFunctionType(tpd) =>
+        if followResult && defn.isFunctionNType(tpd) =>
           ofType(parent, followResult = false)                 // pick up capture set from parent type
           ++ (recur(rinfo.resType)                             // add capture set of result
           -- CaptureSet(rinfo.paramRefs.filter(_.isTracked)*)) // but disregard bound parameters

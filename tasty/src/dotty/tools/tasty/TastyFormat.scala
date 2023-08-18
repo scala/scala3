@@ -122,6 +122,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*              -- sel match { CaseDef } where `bound` is optional upper bound of all rhs
                   BYNAMEtpt             underlying_Term                            -- => underlying
                   SHAREDterm            term_ASTRef                                -- Link to previously serialized term
+    -- pickled quote trees:                                                        -- These trees can only appear in pickled quotes. They will never be in a TASTy file.
+                  EXPLICITtpt           tpt_Term                                   -- Tag for a type tree that in a context where it is not explicitly known that this tree is a type.
                   HOLE           Length idx_Nat tpe_Type arg_Tree*                 -- Splice hole with index `idx`, the type of the hole `tpe`, type and term arguments of the hole `arg`s
 
 
@@ -511,6 +513,8 @@ object TastyFormat {
   final val RECtype = 100
   final val SINGLETONtpt = 101
   final val BOUNDED = 102
+  final val EXPLICITtpt = 103
+
 
   // Cat. 4:    tag Nat AST
 
@@ -659,6 +663,7 @@ object TastyFormat {
        | ANNOTATEDtpt
        | BYNAMEtpt
        | MATCHtpt
+       | EXPLICITtpt
        | BIND => true
     case _ => false
   }
@@ -803,6 +808,7 @@ object TastyFormat {
     case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
+    case EXPLICITtpt => "EXPLICITtpt"
     case HOLE => "HOLE"
   }
 

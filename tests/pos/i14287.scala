@@ -1,4 +1,4 @@
-// scalac: -Yno-deep-subtypes
+//> using options -Yno-deep-subtypes
 enum Free[+F[_], A]:
   case Return(a: A)
   case Suspend(s: F[A])

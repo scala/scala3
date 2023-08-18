@@ -35,9 +35,9 @@ object APIUtils {
    *  a dummy empty class can be registered instead, using this method.
    */
   def registerDummyClass(classSym: ClassSymbol)(using Context): Unit = {
-    if (ctx.sbtCallback != null) {
+    ctx.withIncCallback { cb =>
       val classLike = emptyClassLike(classSym)
-      ctx.sbtCallback.api(ctx.compilationUnit.source.file.file, classLike)
+      cb.api(ctx.compilationUnit.source, classLike)
     }
   }
 

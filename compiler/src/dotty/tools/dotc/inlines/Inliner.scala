@@ -596,7 +596,7 @@ class Inliner(val call: tpd.Tree)(using Context):
               val inlinedSingleton = singleton(t).withSpan(argSpan)
               inlinedFromOutside(inlinedSingleton)(tree.span)
             case Some(t) if tree.isType =>
-              inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
+              inlinedFromOutside(new InferredTypeTree().withType(t).withSpan(argSpan))(tree.span)
             case _ => tree
           }
         case tree @ Select(qual: This, name) if tree.symbol.is(Private) && tree.symbol.isInlineMethod =>
@@ -1067,6 +1067,8 @@ class Inliner(val call: tpd.Tree)(using Context):
         tree match {
           case tree: RefTree if tree.isTerm && level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
+          case _: This if level == -1 && tree.symbol.isDefinedInCurrentRun =>
+            tree.symbol :: syms
           case _: TypTree => syms
           case _ => foldOver(syms, tree)
         }

@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed trait Tag[A]
 
 sealed trait Foo

@@ -251,6 +251,11 @@ object Types {
       case _ => false
     }
 
+    /** Is this type exactly `Any`, or a type lambda ending in `Any`? */
+    def isTopOfSomeKind(using Context): Boolean = dealias match
+      case tp: TypeLambda => tp.resType.isTopOfSomeKind
+      case _ => isExactlyAny
+
     def isBottomType(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
       else isBottomTypeAfterErasure
@@ -1886,13 +1891,13 @@ object Types {
             formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
-          RefinedType(defn.ErasedFunctionType, nme.apply, mt)
+          defn.PolyFunctionOf(mt)
         else if alwaysDependent || mt.isResultDependent then
           RefinedType(nonDependentFunType, nme.apply, mt)
         else nonDependentFunType
       case poly @ PolyType(_, mt: MethodType) =>
         assert(!mt.isParamDependent)
-        RefinedType(defn.PolyFunctionType, nme.apply, poly)
+        defn.PolyFunctionOf(poly)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -1940,7 +1945,7 @@ object Types {
      *  the two capture sets are combined.
      */
     def capturing(cs: CaptureSet)(using Context): Type =
-      if cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
+      if cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(captureSet, frozen = true).isOK then this
       else this match
         case CapturingType(parent, cs1) => parent.capturing(cs1 ++ cs)
         case _ => CapturingType(this, cs)
@@ -3603,7 +3608,7 @@ object Types {
 
   def expectValueTypeOrWildcard(tp: Type, where: => String)(using Context): Unit =
     if !tp.isValueTypeOrWildcard then
-      assert(!ctx.isAfterTyper, where) // we check correct kinds at PostTyper
+      assert(!ctx.isAfterTyper, s"$tp in $where") // we check correct kinds at PostTyper
       throw TypeError(em"$tp is not a value type, cannot be used $where")
 
   /** An extractor object to pattern match against a nullable union.
@@ -4896,7 +4901,7 @@ object Types {
     def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.finalResultType.isExactlyAny
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isTopOfSomeKind
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
@@ -5536,13 +5541,16 @@ object Types {
    *     and PolyType not allowed!) according to `possibleSamMethods`.
    *   - can be instantiated without arguments or with just () as argument.
    *
+   *  Additionally, a SAM type may contain type aliases refinements if they refine
+   *  an existing type member.
+   *
    *  The pattern `SAMType(samMethod, samParent)` matches a SAM type, where `samMethod` is the
    *  type of the single abstract method and `samParent` is a subtype of the matched
    *  SAM type which has been stripped of wildcards to turn it into a valid parent
    *  type.
    */
   object SAMType {
-    /** If possible, return a type which is both a subtype of `origTp` and a type
+    /** If possible, return a type which is both a subtype of `origTp` and a (possibly refined) type
      *  application of `samClass` where none of the type arguments are
      *  wildcards (thus making it a valid parent type), otherwise return
      *  NoType.
@@ -5572,27 +5580,41 @@ object Types {
      *  we arbitrarily pick the upper-bound.
      */
     def samParent(origTp: Type, samClass: Symbol, samMeth: Symbol)(using Context): Type =
-      val tp = origTp.baseType(samClass)
+      val tp0 = origTp.baseType(samClass)
+
+      /** Copy type aliases refinements to `toTp` from `fromTp` */
+      def withRefinements(toType: Type, fromTp: Type): Type = fromTp.dealias match
+        case RefinedType(fromParent, name, info: TypeAlias) if tp0.member(name).exists =>
+          val parent1 = withRefinements(toType, fromParent)
+          RefinedType(toType, name, info)
+        case _ => toType
+      val tp = withRefinements(tp0, origTp)
+
       if !(tp <:< origTp) then NoType
-      else tp match
-        case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
-          val accu = new TypeAccumulator[VarianceMap[Symbol]]:
-            def apply(vmap: VarianceMap[Symbol], t: Type): VarianceMap[Symbol] = t match
-              case tp: TypeRef if tp.symbol.isAllOf(ClassTypeParam) =>
-                vmap.recordLocalVariance(tp.symbol, variance)
-              case _ =>
-                foldOver(vmap, t)
-          val vmap = accu(VarianceMap.empty, samMeth.info)
-          val tparams = tycon.typeParamSymbols
-          val args1 = args.zipWithConserve(tparams):
-            case (arg @ TypeBounds(lo, hi), tparam) =>
-              val v = vmap.computedVariance(tparam)
-              if v.uncheckedNN < 0 then lo
-              else hi
-            case (arg, _) => arg
-          tp.derivedAppliedType(tycon, args1)
-        case _ =>
-          tp
+      else
+        def approxWildcardArgs(tp: Type): Type = tp match
+          case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
+            val accu = new TypeAccumulator[VarianceMap[Symbol]]:
+              def apply(vmap: VarianceMap[Symbol], t: Type): VarianceMap[Symbol] = t match
+                case tp: TypeRef if tp.symbol.isAllOf(ClassTypeParam) =>
+                  vmap.recordLocalVariance(tp.symbol, variance)
+                case _ =>
+                  foldOver(vmap, t)
+            val vmap = accu(VarianceMap.empty, samMeth.info)
+            val tparams = tycon.typeParamSymbols
+            val args1 = args.zipWithConserve(tparams):
+              case (arg @ TypeBounds(lo, hi), tparam) =>
+                val v = vmap.computedVariance(tparam)
+                if v.uncheckedNN < 0 then lo
+                else hi
+              case (arg, _) => arg
+            tp.derivedAppliedType(tycon, args1)
+          case tp @ RefinedType(parent, name, info) =>
+            tp.derivedRefinedType(approxWildcardArgs(parent), name, info)
+          case _ =>
+            tp
+        approxWildcardArgs(tp)
+    end samParent
 
     def samClass(tp: Type)(using Context): Symbol = tp match
       case tp: ClassInfo =>

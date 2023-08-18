@@ -112,7 +112,7 @@ object ScaladocCompletions:
           defdef.trailingParamss.flatten.collect {
             case param
                 if !param.symbol.isOneOf(Synthetic) &&
-                  !param.name.is(EvidenceParamName) &&
+                  !param.name.is(ContextBoundParamName) &&
                   param.symbol != extensionParam =>
               param.name.show
           }
@@ -121,7 +121,7 @@ object ScaladocCompletions:
             case param
                 if !param.is(Synthetic) &&
                   !param.isTypeParam &&
-                  !param.name.is(EvidenceParamName) =>
+                  !param.name.is(ContextBoundParamName) =>
               param.name.show
           }
         case other =>

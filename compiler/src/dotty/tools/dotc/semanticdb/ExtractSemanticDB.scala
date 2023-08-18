@@ -483,6 +483,9 @@ object ExtractSemanticDB:
       .filterNot(_.isEmpty)
       .map(Paths.get(_))
 
+  private def semanticdbText(using Context): Boolean =
+    ctx.settings.semanticdbText.value
+
   private def outputDirectory(using Context): AbstractFile = ctx.settings.outputDir.value
 
   def write(
@@ -503,7 +506,7 @@ object ExtractSemanticDB:
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = Tools.mkURIstring(Paths.get(relPath)),
-      text = "",
+      text = if semanticdbText then String(source.content) else "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
       occurrences = occurrences,

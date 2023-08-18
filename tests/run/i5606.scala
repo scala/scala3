@@ -1,3 +1,5 @@
+//> using options -Yretain-trees
+
 object Test extends App {
 
   extension [A, B](f: A => B) def `$` (a: A): B = f(a)

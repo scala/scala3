@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 
 // Like tests/pos/i15029.scala,
 // but with a more complicated prefix

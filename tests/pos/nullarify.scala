@@ -1,3 +1,5 @@
+//> using options -Ycheck:nullarify
+
 object Test {
 
   def foo: Int = 2

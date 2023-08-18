@@ -998,3 +998,23 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |    def double2(ys: List[EF]) = <<xs>> ++ ys
          |end extension""".stripMargin
     )
+
+  @Test def `enum-cases` =
+    check(
+      """|enum MyOption:
+         |  case <<My@@Some>>(value: Int)
+         |  case MyNone
+         |
+         |val alpha = MyOption.<<MySome>>(1)
+         |""".stripMargin
+    )
+
+  @Test def `enum-cases2` =
+    check(
+      """|enum MyOption:
+         |  case <<My@@Some>>[U](value: U)
+         |  case MyNone
+         |
+         |val alpha = MyOption.<<MySome>>(1)
+         |""".stripMargin,
+    )

@@ -1,0 +1,7 @@
+> compile
+
+# Add a child
+$ copy-file changes/Sum.scala Sum.scala
+
+# Both Sum.scala and Test.scala should be recompiled, otherwise the assertion will fail
+> run

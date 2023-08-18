@@ -44,6 +44,9 @@ sealed trait Plugin {
 trait StandardPlugin extends Plugin {
   /** Non-research plugins should override this method to return the phases
    *
+   *  The phases returned must be freshly constructed (not reused
+   *  and returned again on subsequent calls).
+   *
    *  @param options commandline options to the plugin.
    *  @return a list of phases to be added to the phase plan
    */
@@ -56,6 +59,9 @@ trait StandardPlugin extends Plugin {
  */
 trait ResearchPlugin extends Plugin {
   /** Research plugins should override this method to return the new phase plan
+   *
+   *  Any plugin phases included in the plan must be freshly constructed (not reused
+   *  and returned again on subsequent calls).
    *
    *  @param options commandline options to the plugin, `-P:plugname:opt1,opt2` becomes List(opt1, opt2)
    *  @param plan the given phase plan

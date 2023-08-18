@@ -218,13 +218,13 @@ Multiple newline tokens are accepted in the following places (note that a semico
 
 - between the condition of a [conditional expression](06-expressions.html#conditional-expressions) or [while loop](06-expressions.html#while-loop-expressions) and the next following expression,
 - between the enumerators of a [for-comprehension](06-expressions.html#for-comprehensions-and-for-loops) and the next following expression, and
-- after the initial `type` keyword in a [type definition or declaration](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
+- after the initial `type` keyword in a [type definition](04-basic-definitions.html#type-member-definitions).
 
 A single new line token is accepted
 
 - in front of an opening brace ‘{’, if that brace is a legal continuation of the current statement or expression,
 - after an [infix operator](06-expressions.html#prefix,-infix,-and-postfix-operations), if the first token on the next line can start an expression,
-- in front of a [parameter clause](04-basic-declarations-and-definitions.html#function-declarations-and-definitions), and
+- in front of a [parameter clause](04-basic-definitions.html#method-definitions), and
 - after an [annotation](11-annotations.html#user-defined-annotations).
 
 > The newline tokens between the two lines are not treated as statement separators.

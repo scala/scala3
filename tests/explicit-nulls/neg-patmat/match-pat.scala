@@ -1,3 +1,5 @@
+//> using options -Xfatal-warnings
+
 class Foo {
 
   val s: String = ???

@@ -37,14 +37,10 @@ def foo7(i: Int)(using CanThrow[Ex1]): Unit throws Ex1 | Ex2 =
 def foo8(i: Int)(using CanThrow[Ex2]): Unit throws Ex2 | Ex1 =
   if i > 0 then throw new Ex1 else throw new Ex2
 
-/** Does not work yet since the type of the rhs is not hygienic
-
 def foo9(i: Int): Unit throws Ex1 | Ex2 | Ex3 =
   if i > 0 then throw new Ex1
   else if i < 0 then throw new Ex2
   else throw new Ex3
-
-*/
 
 def test(): Unit =
   try

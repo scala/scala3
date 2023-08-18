@@ -1,4 +1,4 @@
-// scalac: -source:future
+//> using options -source:future
 
 object A:
   val x, y, z = 0

@@ -61,6 +61,17 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       "0.14.1"
     )
 
+  // We don't to add `::` before version if `sjs1` is specified
+  @Test def `version-edit` =
+    checkEdit(
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.1@@"
+         |package A
+         |""".stripMargin,
+      """|//> using lib "io.circe::circe-core_sjs1:0.14.1"
+         |package A
+         |""".stripMargin,
+    )
+
   @Test def `multiple-libs` =
     check(
       """|//> using lib "io.circe::circe-core:0.14.0", "io.circe::circe-core_na@@"
@@ -106,7 +117,7 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       """|//> using lib "co.fs2::fs2-core:@@"
          |package A
          |""".stripMargin,
-      """|//> using lib "co.fs2::fs2-core:3.4.0"
+      """|//> using lib "co.fs2::fs2-core::3.4.0"
          |package A
          |""".stripMargin,
       filter = _.startsWith("3.4")

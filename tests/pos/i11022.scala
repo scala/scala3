@@ -1,3 +1,3 @@
-// scalac: -Werror -deprecation
+//> using options -Werror -deprecation
 @deprecated("no CaseClass")
 case class CaseClass(rgb: Int)

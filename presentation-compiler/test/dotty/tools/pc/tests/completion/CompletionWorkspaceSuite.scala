@@ -684,7 +684,7 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |  ): String = ???
          |}
          |""".stripMargin,
-      """|Future[T] java.util.concurrent
+      """|Future[V] java.util.concurrent
          |Future java.util.concurrent
          |Future[T] - scala.concurrent
          |""".stripMargin,

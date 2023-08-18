@@ -91,7 +91,7 @@ This object implements methods in class `scala.AnyRef` as follows:
 - `eq(´x\,´)` and `==(´x\,´)` return `true` iff the argument ´x´ is also the "null" object.
 - `ne(´x\,´)` and `!=(´x\,´)` return true iff the argument x is not also the "null" object.
 - `isInstanceOf[´T\,´]` always returns `false`.
-- `asInstanceOf[´T\,´]` returns the [default value](04-basic-declarations-and-definitions.html#value-declarations-and-definitions) of type ´T´.
+- `asInstanceOf[´T\,´]` returns the [default value](04-basic-definitions.html#value-definitions) of type ´T´.
 - `##` returns ``0``.
 
 A reference to any other member of the "null" object causes a `NullPointerException` to be thrown.
@@ -106,7 +106,7 @@ SimpleExpr  ::=  Path
 A designator refers to a named term. It can be a _simple name_ or a _selection_.
 
 A simple name ´x´ refers to a value as specified [here](02-identifiers-names-and-scopes.html#identifiers,-names-and-scopes).
-If ´x´ is bound by a definition or declaration in an enclosing class or object ´C´, it is taken to be equivalent to the selection `´C´.this.´x´` where ´C´ is taken to refer to the class containing ´x´ even if the type name ´C´ is [shadowed](02-identifiers-names-and-scopes.html#identifiers,-names-and-scopes) at the occurrence of ´x´.
+If ´x´ is bound by a definition in an enclosing class or object ´C´, it is taken to be equivalent to the selection `´C´.this.´x´` where ´C´ is taken to refer to the class containing ´x´ even if the type name ´C´ is [shadowed](02-identifiers-names-and-scopes.html#identifiers,-names-and-scopes) at the occurrence of ´x´.
 
 If ´r´ is a [stable identifier](03-types.html#paths) of type ´T´, the selection ´r.x´ refers statically to a term member ´m´ of ´r´ that is identified in ´T´ by the name ´x´.
 
@@ -213,7 +213,7 @@ For this expression to be well-typed, the method must be *applicable* to its arg
 If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type.
 Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., n)´.
 The method ´f´ must be _applicable_ to its arguments ´e_1, ..., e_n´ of types ´S_1, ..., S_n´.
-If the last parameter type of ´f´ is [repeated](04-basic-declarations-and-definitions.html#repeated-parameters), [harmonization](#harmonization) is attempted on the suffix ´e_m, ..., e_n´ of the expression list that match the repeated parameter.
+If the last parameter type of ´f´ is [repeated](04-basic-definitions.html#repeated-parameters), [harmonization](#harmonization) is attempted on the suffix ´e_m, ..., e_n´ of the expression list that match the repeated parameter.
 We say that an argument expression ´e_i´ is a _named_ argument if it has the form `´x_i=e'_i´` and `´x_i´` is one of the parameter names `´p_1, ..., p_n´`.
 
 Once the types ´S_i´ have been determined, the method ´f´ of the above method type is said to be applicable if all of the following conditions hold:
@@ -242,7 +242,7 @@ The behavior of by-name parameters is preserved if the application is transforme
 In this case, the local value for that parameter has the form `val ´y_i´ = () => ´e´` and the argument passed to the method is `´y_i´()`.
 
 The last argument in an application may be marked as a sequence argument, e.g. `´e´: _*`.
-Such an argument must correspond to a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters) of type `´S´*` and it must be the only argument matching this parameter (i.e. the number of formal parameters and actual arguments must be the same).
+Such an argument must correspond to a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `´S´*` and it must be the only argument matching this parameter (i.e. the number of formal parameters and actual arguments must be the same).
 Furthermore, the type of ´e´ must conform to `scala.Seq[´T´]`, for some type ´T´ which conforms to ´S´.
 In this case, the argument list is transformed by replacing the sequence ´e´ with its elements.
 When the application uses named arguments, the vararg parameter has to be specified exactly once.
@@ -311,7 +311,7 @@ The result of transforming ´f´ is a block of the form
 
 where every argument in ´(\mathit{args}\_1), ..., (\mathit{args}\_l)´ is a reference to one of the values ´x_1, ..., x_k´.
 To integrate the current application into the block, first a value definition using a fresh name ´y_i´ is created for every argument in ´e_1, ..., e_m´, which is initialised to ´e_i´ for positional arguments and to ´e'_i´ for named arguments of the form `´x_i=e'_i´`.
-Then, for every parameter which is not specified by the argument list, a value definition using a fresh name ´z_i´ is created, which is initialized using the method computing the [default argument](04-basic-declarations-and-definitions.html#method-declarations-and-definitions) of this parameter.
+Then, for every parameter which is not specified by the argument list, a value definition using a fresh name ´z_i´ is created, which is initialized using the method computing the [default argument](04-basic-definitions.html#method-definitions) of this parameter.
 
 Let ´\mathit{args}´ be a permutation of the generated names ´y_i´ and ´z_i´ such such that the position of each name matches the position of its corresponding parameter in the method type `(´p_1:T_1, ..., p_n:T_n´)´U´`.
 The final result of the transformation is a block of the form
@@ -460,7 +460,7 @@ Block      ::=  BlockStat {semi BlockStat} [ResultExpr]
 ```
 
 A _block expression_ `{´s_1´; ...; ´s_n´; ´e\,´}` is constructed from a sequence of block statements ´s_1, ..., s_n´ and a final expression ´e´.
-The statement sequence may not contain two definitions or declarations that bind the same name in the same namespace.
+The statement sequence may not contain two definitions that bind the same name in the same namespace.
 The final expression can be omitted, in which case the unit value `()` is assumed.
 
 The expected type of the final expression ´e´ is the expected type of the block.
@@ -1031,7 +1031,7 @@ The definition of "constant expression" depends on the platform, but they includ
 - A class constructed with [`Predef.classOf`](12-the-scala-standard-library.html#the-predef-object)
 - An element of an enumeration from the underlying platform
 - A literal array, of the form `Array´(c_1, ..., c_n)´`, where all of the ´c_i´'s are themselves constant expressions
-- An identifier defined by a [constant value definition](04-basic-declarations-and-definitions.html#value-declarations-and-definitions).
+- An identifier defined by a [constant value definition](04-basic-definitions.html#value-definitions).
 
 ## Statements
 
@@ -1050,7 +1050,6 @@ TemplateStat ::=  Import
 
 Statements occur as parts of blocks and templates.
 A _statement_ can be an import, a definition or an expression, or it can be empty.
-Statements used in the template of a class definition can also be declarations.
 An expression that is used as a statement can have an arbitrary value type.
 An expression statement ´e´ is evaluated by evaluating ´e´ and discarding the result of the evaluation.
 
@@ -1294,7 +1293,7 @@ Solving means finding a substitution ´\sigma´ of types ´T_i´ for the type pa
 
 It is a compile time error if no such substitution exists.
 If several substitutions exist, local-type inference will choose for each type variable ´a_i´ a minimal or maximal type ´T_i´ of the solution space.
-A _maximal_ type ´T_i´ will be chosen if the type parameter ´a_i´ appears [contravariantly](04-basic-declarations-and-definitions.html#variance-annotations) in the type ´T´ of the expression.
+A _maximal_ type ´T_i´ will be chosen if the type parameter ´a_i´ appears [contravariantly](04-basic-definitions.html#variance-annotations) in the type ´T´ of the expression.
 A _minimal_ type ´T_i´ will be chosen in all other situations, i.e. if the variable appears covariantly, non-variantly or not at all in the type ´T´.
 We call such a substitution an _optimal solution_ of the given constraint system for the type ´T´.
 
