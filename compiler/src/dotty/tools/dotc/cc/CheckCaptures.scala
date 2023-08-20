@@ -339,7 +339,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ =>
                 mapOver(t)
             if variance > 0 then t1
-            else Setup.decorate(t1, Function.const(CaptureSet.Fluid))
+            else setup.decorate(t1, Function.const(CaptureSet.Fluid))
 
       def isPreCC(sym: Symbol): Boolean =
         sym.isTerm && sym.maybeOwner.isClass
@@ -674,13 +674,10 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  of simulated boxing and unboxing.
      */
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
-      val typeToCheck = tree match
-        case _: Ident | _: Select | _: Apply | _: TypeApply if tree.symbol.unboxesResult =>
-          tpe
-        case _: Try =>
-          tpe
-        case _ =>
-          NoType
+      def needsUniversalCheck = tree match
+        case _: RefTree | _: Apply | _: TypeApply => tree.symbol.unboxesResult
+        case _: Try => true
+        case _ => false
       def checkNotUniversal(tp: Type): Unit = tp.widenDealias match
         case wtp @ CapturingType(parent, refs) =>
           refs.disallowRootCapability { () =>
@@ -691,7 +688,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      if !allowUniversalInBoxed then checkNotUniversal(typeToCheck)
+      if !allowUniversalInBoxed && needsUniversalCheck then
+        checkNotUniversal(tpe)
       super.recheckFinish(tpe, tree, pt)
 
   // ------------------ Adaptation -------------------------------------
@@ -782,6 +780,12 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def adaptBoxed(actual: Type, expected: Type, pos: SrcPos, alwaysConst: Boolean = false)(using Context): Type =
 
+      inline def inNestedEnv[T](boxed: Boolean)(op: => T): T =
+        val saved = curEnv
+        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
+        try op
+        finally curEnv = saved
+
       /** Adapt function type `actual`, which is `aargs -> ares` (possibly with dependencies)
        *  to `expected` type.
        *  It returns the adapted type along with a capture set consisting of the references
@@ -791,10 +795,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def adaptFun(actual: Type, aargs: List[Type], ares: Type, expected: Type,
           covariant: Boolean, boxed: Boolean,
           reconstruct: (List[Type], Type) => Type): (Type, CaptureSet) =
-        val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
-
-        try
+        inNestedEnv(boxed):
           val (eargs, eres) = expected.dealias.stripCapturing match
             case defn.FunctionOf(eargs, eres, _) => (eargs, eres)
             case expected: MethodType => (expected.paramInfos, expected.resType)
@@ -808,8 +809,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             else reconstruct(aargs1, ares1)
 
           (resTp, curEnv.captured)
-        finally
-          curEnv = saved
 
       /** Adapt type function type `actual` to the expected type.
        *  @see [[adaptFun]]
@@ -818,10 +817,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           actual: Type, ares: Type, expected: Type,
           covariant: Boolean, boxed: Boolean,
           reconstruct: Type => Type): (Type, CaptureSet) =
-        val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
-
-        try
+        inNestedEnv(boxed):
           val eres = expected.dealias.stripCapturing match
             case defn.PolyFunctionOf(rinfo: PolyType) => rinfo.resType
             case expected: PolyType => expected.resType
@@ -834,8 +830,6 @@ class CheckCaptures extends Recheck, SymTransformer:
             else reconstruct(ares1)
 
           (resTp, curEnv.captured)
-        finally
-          curEnv = saved
       end adaptTypeFun
 
       def adaptInfo(actual: Type, expected: Type, covariant: Boolean): String =
@@ -976,8 +970,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         traverseChildren(t)
 
+    private var setup: Setup = compiletime.uninitialized
+
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      Setup(preRecheckPhase, thisPhase, recheckDef)(ctx.compilationUnit.tpdTree)
+      setup = Setup(preRecheckPhase, thisPhase, recheckDef)
+      setup(ctx.compilationUnit.tpdTree)
       //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
       withCaptureSetsExplained {
         super.checkUnit(unit)

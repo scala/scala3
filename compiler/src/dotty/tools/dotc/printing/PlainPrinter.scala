@@ -156,7 +156,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
         else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
-      core ~ cs.optionalInfo 
+      core ~ cs.optionalInfo
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
