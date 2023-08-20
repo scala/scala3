@@ -208,13 +208,14 @@ extends tpd.TreeTraverser:
     def apply(t: Type) = t match
       case _: AppliedType =>
         val t1 = expandThrowsAlias(t)
-        if t1 ne t then apply(t1) else mapOver(t)
-      case _: LazyRef =>
-        t
+        if t1 ne t then this(t1) else mapOver(t)
+      case t: LazyRef =>
+        val t1 = this(t.ref)
+        if t1 ne t.ref then t1 else t
       case t @ AnnotatedType(t1, ann) =>
         // Don't map capture sets, since that would implicitly normalize sets that
         // are not well-formed.
-        t.derivedAnnotatedType(apply(t1), ann)
+        t.derivedAnnotatedType(this(t1), ann)
       case _ =>
         mapOver(t)
 
@@ -425,13 +426,9 @@ extends tpd.TreeTraverser:
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
         else
-          sym != defn.FromJavaObjectSymbol
-            // For capture checking, we assume Object from Java is the same as Any
-          && {
-            val tp1 = tp.dealias
-            if tp1 ne tp then needsVariable(tp1)
-            else superTypeIsImpure(tp1)
-          }
+          val tp1 = tp.dealias
+          if tp1 ne tp then needsVariable(tp1)
+          else superTypeIsImpure(tp1)
       case tp: (RefinedOrRecType | MatchType) =>
         needsVariable(tp.underlying)
       case tp: AndType =>
@@ -442,6 +439,8 @@ extends tpd.TreeTraverser:
         needsVariable(parent)
         && refs.isConst      // if refs is a variable, no need to add another
         && !refs.isUniversal // if refs is {cap}, an added variable would not change anything
+      case AnnotatedType(parent, _) =>
+        needsVariable(parent)
       case _ =>
         false
   }.showing(i"can have inferred capture $tp = $result", capt)
@@ -474,10 +473,20 @@ extends tpd.TreeTraverser:
       CapturingType(OrType(parent1, tp2, tp.isSoft), refs1, tp1.isBoxed)
     case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
       CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
-    case _ if needsVariable(tp) =>
-      CapturingType(tp, addedSet(tp))
-    case _ =>
+    case tp: LazyRef =>
+      decorate(tp.ref, addedSet)
+    case _ if tp.typeSymbol == defn.FromJavaObjectSymbol =>
+      // For capture checking, we assume Object from Java is the same as Any
       tp
+    case _ =>
+      def maybeAdd(target: Type, fallback: Type) =
+        if needsVariable(target) then CapturingType(target, addedSet(target))
+        else fallback
+      val tp1 = tp.dealiasKeepAnnots
+      if tp1 ne tp then
+        val tp2 = transformExplicitType(tp1, boxed = false)
+        maybeAdd(tp2, if tp2 ne tp1 then tp2 else tp)
+      else maybeAdd(tp, tp)
 
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
