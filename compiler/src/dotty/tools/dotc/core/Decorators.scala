@@ -56,6 +56,11 @@ object Decorators {
     def indented(width: Int): String =
       val padding = " " * width
       padding + s.replace("\n", "\n" + padding)
+
+    def join(sep: String, other: String) =
+      if s.isEmpty then other
+      else if other.isEmpty then s
+      else s + sep + other
   end extension
 
   /** Convert lazy string to message. To be with caution, since no message-defined

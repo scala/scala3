@@ -300,15 +300,18 @@ sealed abstract class CaptureSet extends Showable:
   /** This capture set with a description that tells where it comes from */
   def withDescription(description: String): CaptureSet
 
-  /** The provided description (using `withDescription`) for this capture set or else "" */
+  /** The provided description (set via `withDescription`) for this capture set or else "" */
   def description: String
+
+  /** More info enabled by -Y flags */
+  def optionalInfo(using Context): String = ""
 
   /** A regular @retains or @retainsByName annotation with the elements of this set as arguments. */
   def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
     Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
 
   override def toText(printer: Printer): Text =
-    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}") ~~ description
+    printer.toTextCaptureSet(this) ~~ description
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
@@ -489,10 +492,16 @@ object CaptureSet:
       deps.foreach(_.propagateSolved())
 
     def withDescription(description: String): this.type =
-      this.description =
-        if this.description.isEmpty then description
-        else s"${this.description} and $description"
+      this.description = this.description.join(" and ", description)
       this
+
+    /** Adds variables to the ShownVars context property if that exists, which
+     *  establishes a record of all variables printed in an error message.
+     *  Returns variable `ids` under -Ycc-debug.
+     */
+    override def optionalInfo(using Context): String =
+      for vars <- ctx.property(ShownVars) do vars += this
+      if !isConst && ctx.settings.YccDebug.value then ids else ""
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -505,15 +514,6 @@ object CaptureSet:
         case dv: DerivedVar => dv.source.ids
         case _ => ""
       s"$id${getClass.getSimpleName.nn.take(1)}$trail"
-
-    /** Adds variables to the ShownVars context property if that exists, which
-     *  establishes a record of all variables printed in an error message.
-     *  Prints variables wih ids under -Ycc-debug.
-     */
-    override def toText(printer: Printer): Text = inContext(printer.printerContext) {
-      for vars <- ctx.property(ShownVars) do vars += this
-      super.toText(printer) ~ (Str(ids) provided !isConst && ctx.settings.YccDebug.value)
-    }
 
     override def toString = s"Var$id$elems"
   end Var

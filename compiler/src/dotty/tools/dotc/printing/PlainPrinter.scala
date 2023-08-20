@@ -151,10 +151,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureSet(cs: CaptureSet): Text =
     if printDebug && !cs.isConst then cs.toString
-    else if ctx.settings.YccDebug.value then cs.show
     else if cs == CaptureSet.Fluid then "<fluid>"
-    else if !cs.isConst && cs.elems.isEmpty then "?"
-    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+    else
+      val core: Text =
+        if !cs.isConst && cs.elems.isEmpty then "?"
+        else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+      core ~ cs.optionalInfo 
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
