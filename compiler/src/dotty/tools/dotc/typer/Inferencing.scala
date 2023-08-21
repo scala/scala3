@@ -537,7 +537,7 @@ object Inferencing {
       }
       if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1)
     case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
-    case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
+    case tp: RefinedType => tp.derivedRefinedType(parent = captureWildcards(tp.parent))
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
     case tp: LazyRef => captureWildcards(tp.ref)
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)

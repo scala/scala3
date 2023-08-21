@@ -1092,7 +1092,7 @@ trait Checking {
       case tp @ AppliedType(tycon, args) =>
         tp.derivedAppliedType(tycon, args.mapConserve(checkGoodBounds))
       case tp: RefinedType =>
-        tp.derivedRefinedType(tp.parent, tp.refinedName, checkGoodBounds(tp.refinedInfo))
+        tp.derivedRefinedType(refinedInfo = checkGoodBounds(tp.refinedInfo))
       case _ =>
         tp
     }
