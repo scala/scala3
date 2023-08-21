@@ -209,6 +209,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     if Synthetics.needsTransform(sym) then Synthetics.transform(sym, toCC = false)
     else super.transformSym(sym)
 
+  override def printingContext(ctx: Context) = ctx.withProperty(ccState, Some(new CCState))
+
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
 
