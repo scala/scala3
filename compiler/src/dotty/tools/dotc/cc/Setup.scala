@@ -204,23 +204,36 @@ extends tpd.TreeTraverser:
       else fntpe
     case _ => tp
 
-  private def expandThrowsAliases(using Context) = new TypeMap:
-    def apply(t: Type) = t match
-      case _: AppliedType =>
-        val t1 = expandThrowsAlias(t)
-        if t1 ne t then this(t1) else mapOver(t)
-      case t: LazyRef =>
-        val t1 = this(t.ref)
-        if t1 ne t.ref then t1 else t
-      case t @ AnnotatedType(t1, ann) =>
-        // Don't map capture sets, since that would implicitly normalize sets that
-        // are not well-formed.
-        t.derivedAnnotatedType(this(t1), ann)
-      case _ =>
-        mapOver(t)
+  /** Map references to capability classes C to C^ */
+  private def expandCapabilityClass(tp: Type)(using Context): Type = tp match
+    case _: TypeRef | _: AppliedType if tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot) =>
+      CapturingType(tp, CaptureSet.universal, boxed = false)
+    case _ =>
+      tp
+
+  private def expandAliases(using Context) = new TypeMap:
+    def apply(t: Type) =
+      val t1 = expandThrowsAlias(t)
+      if t1 ne t then return this(t1)
+      val t2 = expandCapabilityClass(t)
+      if t2 ne t then return t2
+      t match
+        case t: LazyRef =>
+          val t1 = this(t.ref)
+          if t1 ne t.ref then t1 else t
+        case t @ AnnotatedType(t1, ann) =>
+          // Don't map capture sets, since that would implicitly normalize sets that
+          // are not well-formed.
+          t.derivedAnnotatedType(this(t1), ann)
+        case _ =>
+          val t1 = t.dealias
+          if t1 ne t then
+            val t2 = this(t1)
+            if t2 ne t1 then return t2
+          mapOver(t)
 
   private def transformExplicitType(tp: Type, boxed: Boolean)(using Context): Type =
-    val tp1 = expandThrowsAliases(if boxed then box(tp) else tp)
+    val tp1 = expandAliases(if boxed then box(tp) else tp)
     if tp1 ne tp then capt.println(i"expanded: $tp --> $tp1")
     tp1
 
@@ -348,12 +361,20 @@ extends tpd.TreeTraverser:
           case info: ExprType =>
             info.derivedExprType(resType =
               integrateRT(info.resType, psymss, prevPsymss, prevLambdas))
+          case info if sym.isConstructor =>
+            info
           case _ =>
             val restp = tree.tpt.knownType
             if prevLambdas.isEmpty then restp
             else SubstParams(prevPsymss, prevLambdas)(restp)
 
-      if sym.exists && tree.tpt.hasRememberedType && !sym.isConstructor then
+      def signatureChanges =
+        tree.tpt.hasRememberedType && !sym.isConstructor
+        || tree.match
+          case tree: DefDef => tree.termParamss.nestedExists(_.tpt.hasRememberedType)
+          case _ => false
+
+      if sym.exists && signatureChanges then
         val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
           .showing(i"update info $sym: ${sym.info} --> $result", capt)
         if newInfo ne sym.info then

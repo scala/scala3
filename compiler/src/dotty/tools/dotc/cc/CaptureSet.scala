@@ -871,7 +871,7 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case _: TypeRef =>
-          if tp.classSymbol.hasAnnotation(defn.CapabilityAnnot) then universal else empty
+          empty
         case _: TypeParamRef =>
           empty
         case CapturingType(parent, refs) =>
