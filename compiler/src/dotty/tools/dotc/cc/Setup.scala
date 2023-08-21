@@ -106,7 +106,7 @@ extends tpd.TreeTraverser:
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
-                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var()))
+                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(ctx.owner)))
                   .showing(i"add capture refinement $tp --> $result", capt)
               else
                 core
@@ -164,7 +164,7 @@ extends tpd.TreeTraverser:
             resType = this(tp.resType))
         case _ =>
           mapOver(tp)
-      addVar(addCaptureRefinements(tp1))
+      addVar(addCaptureRefinements(tp1), ctx.owner)
     end apply
   end mapInferred
 
@@ -290,14 +290,15 @@ extends tpd.TreeTraverser:
       case tree: DefDef =>
         if isExcluded(tree.symbol) then
           return
-        tree.tpt match
-          case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
-            tree.paramss.foreach(traverse)
-            transformTT(tpt, boxed = false, exact = true)
-            traverse(tree.rhs)
-            //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
-          case _ =>
-            traverseChildren(tree)
+        inContext(ctx.withOwner(tree.symbol)):
+          tree.tpt match
+            case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
+              tree.paramss.foreach(traverse)
+              transformTT(tpt, boxed = false, exact = true)
+              traverse(tree.rhs)
+              //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
+            case _ =>
+              traverseChildren(tree)
       case tree @ ValDef(_, tpt: TypeTree, _) =>
         transformTT(tpt,
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
@@ -325,6 +326,9 @@ extends tpd.TreeTraverser:
                 i"Sealed type variable $pname", "be instantiated to",
                 i"This is often caused by a local capability$where\nleaking as part of its result.",
                 tree.srcPos)
+      case tree: Template =>
+        inContext(ctx.withOwner(tree.symbol.owner)):
+          traverseChildren(tree)
       case _ =>
         traverseChildren(tree)
     postProcess(tree)
@@ -336,7 +340,7 @@ extends tpd.TreeTraverser:
     case tree: ValOrDefDef =>
       val sym = tree.symbol
 
-      // replace an existing symbol info with inferred types where capture sets of
+      // Replace an existing symbol info with inferred types where capture sets of
       // TypeParamRefs and TermParamRefs put in correspondence by BiTypeMaps with the
       // capture sets of the types of the method's parameter symbols and result type.
       def integrateRT(
@@ -398,7 +402,11 @@ extends tpd.TreeTraverser:
           val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
           if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
             // add capture set to self type of nested classes if no self type is given explicitly
-            val selfRefs = CaptureSet.Var()
+            val selfRefs = CaptureSet.Var(cls)
+              // it's unclear what the right level owner should be. A self type should
+              // be able to mention class parameters, which are owned by the class; that's
+              // why the class was picked as level owner. But self types should not be able
+              // to mention other fields.
             val newInfo = ClassInfo(prefix, cls, ps, decls,
               CapturingType(cinfo.selfType, selfRefs)
                 .showing(i"inferred self type for $cls: $result", capt))
@@ -512,11 +520,11 @@ extends tpd.TreeTraverser:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def addVar(tp: Type)(using Context): Type =
+  def addVar(tp: Type, owner: Symbol)(using Context): Type =
     decorate(tp,
       addedSet = _.dealias.match
-        case CapturingType(_, refs) => CaptureSet.Var(refs.elems)
-        case _ => CaptureSet.Var())
+        case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems)
+        case _ => CaptureSet.Var(owner))
 
   def apply(tree: Tree)(using Context): Unit =
     traverse(tree)(using ctx.withProperty(Setup.IsDuringSetupKey, Some(())))

@@ -12,7 +12,8 @@ import annotation.internal.sharable
 import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property}
+import util.{SimpleIdentitySet, Property, optional}, optional.{break, ?}
+import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import config.Config.ccAllowUnsoundMaps
@@ -54,6 +55,11 @@ sealed abstract class CaptureSet extends Showable:
    *  always false.
    */
   def isAlwaysEmpty: Boolean
+
+  /** The level owner in which the set is defined. Sets can only take
+   *  elements with nesting level up to the cc-nestinglevel of owner.
+   */
+  def owner: Symbol
 
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
@@ -123,10 +129,14 @@ sealed abstract class CaptureSet extends Showable:
    *                 as frozen.
    */
   def accountsFor(x: CaptureRef)(using Context): Boolean =
-    reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true) {
-      elems.exists(_.subsumes(x))
-      || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
-    }
+    if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
+      reporting.trace.force(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
+        elems.exists(_.subsumes(x))
+        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+    else
+      reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
+        elems.exists(_.subsumes(x))
+        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
@@ -191,7 +201,8 @@ sealed abstract class CaptureSet extends Showable:
     if this.subCaptures(that, frozen = true).isOK then that
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
-    else Var(this.elems ++ that.elems).addAsDependentTo(this).addAsDependentTo(that)
+    else Var(this.owner.maxNested(that.owner), this.elems ++ that.elems)
+      .addAsDependentTo(this).addAsDependentTo(that)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
    */
@@ -276,7 +287,9 @@ sealed abstract class CaptureSet extends Showable:
     if isUniversal then handler()
     this
 
-  /** Invoke handler on the elements to check wellformedness of the capture set */
+  /** Invoke handler on the elements to ensure wellformedness of the capture set.
+   *  The handler might add additional elements to the capture set.
+   */
   def ensureWellformed(handler: List[CaptureRef] => Context ?=> Unit)(using Context): this.type =
     handler(elems.toList)
     this
@@ -356,6 +369,8 @@ object CaptureSet:
 
     def withDescription(description: String): Const = Const(elems, description)
 
+    def owner = NoSymbol
+
     override def toString = elems.toString
   end Const
 
@@ -374,15 +389,22 @@ object CaptureSet:
   end Fluid
 
   /** The subclass of captureset variables with given initial elements */
-  class Var(initialElems: Refs = emptySet) extends CaptureSet:
+  class Var(directOwner: Symbol, initialElems: Refs = emptySet)(using @constructorOnly ictx: Context) extends CaptureSet:
 
     /** A unique identification number for diagnostics */
     val id =
       varId += 1
       varId
 
+    override val owner = directOwner.levelOwner
+
     /** A variable is solved if it is aproximated to a from-then-on constant set. */
     private var isSolved: Boolean = false
+
+    private var ownLevelCache = -1
+    private def ownLevel(using Context) =
+      if ownLevelCache == -1 then ownLevelCache = owner.ccNestingLevel
+      ownLevelCache
 
     /** The elements currently known to be in the set */
     var elems: Refs = initialElems
@@ -402,6 +424,8 @@ object CaptureSet:
     var newElemAddedHandler: List[CaptureRef] => Context ?=> Unit = _ => ()
 
     var description: String = ""
+
+    private var triedElem: Option[CaptureRef] = None
 
     /** Record current elements in given VarState provided it does not yet
      *  contain an entry for this variable.
@@ -428,7 +452,10 @@ object CaptureSet:
       deps = state.deps(this)
 
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if !isConst && recordElemsState() then
+      if isConst || !recordElemsState() then
+        CompareResult.fail(this) // fail if variable is solved or given VarState is frozen
+      else if levelsOK(newElems) then
+        //assert(id != 2, newElems)
         elems ++= newElems
         if isUniversal then rootAddedHandler()
         newElemAddedHandler(newElems.toList)
@@ -436,8 +463,36 @@ object CaptureSet:
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
         }
-      else // fail if variable is solved or given VarState is frozen
-        CompareResult.fail(this)
+      else
+        val res = widenCaptures(newElems) match
+          case Some(newElems1) => tryInclude(newElems1, origin)
+          case None => CompareResult.fail(this)
+        if !res.isOK then recordLevelError()
+        res
+
+    private def recordLevelError()(using Context): Unit =
+      for elem <- triedElem do
+        ctx.property(ccState).get.levelError = Some((elem, this))
+
+    private def levelsOK(elems: Refs)(using Context): Boolean =
+      !elems.exists(_.ccNestingLevel > ownLevel)
+
+    private def widenCaptures(elems: Refs)(using Context): Option[Refs] =
+      val res = optional:
+        (SimpleIdentitySet[CaptureRef]() /: elems): (acc, elem) =>
+          if elem.ccNestingLevel <= ownLevel then acc + elem
+          else if elem.isRootCapability then break()
+          else
+            val saved = triedElem
+            triedElem = triedElem.orElse(Some(elem))
+            val res = acc ++ widenCaptures(elem.captureSetOfInfo.elems).?
+            triedElem = saved  // reset only in case of success, leave as is on error
+            res
+      def resStr = res match
+        case Some(refs) => i"${refs.toList}"
+        case None => "FAIL"
+      capt.println(i"widen captures ${elems.toList} for $this at $owner = $resStr")
+      res
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -497,11 +552,18 @@ object CaptureSet:
 
     /** Adds variables to the ShownVars context property if that exists, which
      *  establishes a record of all variables printed in an error message.
-     *  Returns variable `ids` under -Ycc-debug.
+     *  Returns variable `ids` under -Ycc-debug, and owner/nesting level info
+     *  under -Yprint-level.
      */
     override def optionalInfo(using Context): String =
       for vars <- ctx.property(ShownVars) do vars += this
-      if !isConst && ctx.settings.YccDebug.value then ids else ""
+      val debugInfo =
+        if !isConst && ctx.settings.YccDebug.value then ids else ""
+      val nestingInfo =
+        if ctx.settings.YprintLevel.value
+        then s"<in ${owner.show}/${owner.ccNestingLevel}>"
+        else ""
+      debugInfo ++ nestingInfo
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -519,8 +581,8 @@ object CaptureSet:
   end Var
 
   /** A variable that is derived from some other variable via a map or filter. */
-  abstract class DerivedVar(initialElems: Refs)(using @constructorOnly ctx: Context)
-  extends Var(initialElems):
+  abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
+  extends Var(owner, initialElems):
 
     // For debugging: A trace where a set was created. Note that logically it would make more
     // sense to place this variable in Mapped, but that runs afoul of the initializatuon checker.
@@ -546,7 +608,7 @@ object CaptureSet:
    */
   class Mapped private[CaptureSet]
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
-  extends DerivedVar(initial.elems):
+  extends DerivedVar(source.owner, initial.elems):
     addAsDependentTo(initial)  // initial mappings could change by propagation
 
     private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
@@ -612,7 +674,7 @@ object CaptureSet:
    */
   final class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
-  extends DerivedVar(initialElems):
+  extends DerivedVar(source.owner, initialElems):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if origin eq source then
@@ -642,7 +704,7 @@ object CaptureSet:
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
     (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.elems.filter(p)):
+  extends DerivedVar(source.owner, source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       val filtered = newElems.filter(p)
@@ -673,7 +735,7 @@ object CaptureSet:
   extends Filtered(source, !other.accountsFor(_))
 
   class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
-  extends Var(elemIntersection(cs1, cs2)):
+  extends Var(cs1.owner.minNested(cs2.owner), elemIntersection(cs1, cs2)):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
     deps += cs1
@@ -933,4 +995,17 @@ object CaptureSet:
             println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
       }
     else op
+
+  def levelErrors: Addenda = new Addenda:
+    override def toAdd(using Context) =
+      for
+        state <- ctx.property(ccState).toList
+        (ref, cs) <- state.levelError
+      yield
+        val level = ref.ccNestingLevel
+        i"""
+           |
+           |Note that reference ${ref}, defined at level $level
+           |cannot be included in outer capture set $cs, defined at level ${cs.owner.nestingLevel} in ${cs.owner}"""
+
 end CaptureSet

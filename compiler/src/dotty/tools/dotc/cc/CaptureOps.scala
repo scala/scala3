@@ -11,6 +11,7 @@ import config.Printers.capt
 import util.Property.Key
 import tpd.*
 import config.Feature
+import collection.mutable
 
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
@@ -31,6 +32,24 @@ def allowUniversalInBoxed(using Context) =
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
+
+
+/** Capture checking state, consisting of
+ *   - nestingLevels: A map associating certain symbols (the nesting level owners)
+ 8     with their ccNestingLevel
+ *   - localRoots: A map associating nesting level owners with the local roots valid
+ *     in their scopes.
+ *   - levelError: Optionally, the last pair of capture reference and capture set where
+ *     the reference could not be added to the set due to a level conflict.
+ *  The capture checking state is stored in a context property.
+ */
+class CCState:
+  val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
+  val localRoots: mutable.HashMap[Symbol, CaptureRef] = new mutable.HashMap
+  var levelError: Option[(CaptureRef, CaptureSet)] = None
+
+/** Property key for capture checking state */
+val ccState: Key[CCState] = Key()
 
 extension (tree: Tree)
 
@@ -252,6 +271,47 @@ extension (sym: Symbol)
     && !sym.allowsRootCapture
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
+
+  /** The owner of the current level. Qualifying owners are
+   *   - methods other than constructors
+   *   - classes, if they are not staticOwners
+   *   - _root_
+   */
+  def levelOwner(using Context): Symbol =
+    if sym.isStaticOwner then defn.RootClass
+    else if sym.isClass || sym.is(Method) && !sym.isConstructor then sym
+    else sym.owner.levelOwner
+
+  /** The nesting level of `sym` for the purposes of `cc`,
+   *  -1 for NoSymbol
+   */
+  def ccNestingLevel(using Context): Int =
+    if sym.exists then
+      val lowner = sym.levelOwner
+      val cache = ctx.property(ccState).get.nestingLevels
+      cache.getOrElseUpdate(lowner,
+        if lowner.isRoot then 0 else lowner.owner.ccNestingLevel + 1)
+    else -1
+
+  /** Optionally, the nesting level of `sym` for the purposes of `cc`, provided
+   *  a capture checker is running.
+   */
+  def ccNestingLevelOpt(using Context): Option[Int] =
+    if ctx.property(ccState).isDefined then
+      Some(ccNestingLevel)
+    else None
+
+  def maxNested(other: Symbol)(using Context): Symbol =
+    if sym.ccNestingLevel < other.ccNestingLevel then other else sym
+    /* does not work yet, we do mix sets with different levels, for instance in cc-this.scala.
+    else if sym.ccNestingLevel > other.ccNestingLevel then sym
+    else
+      assert(sym == other, i"conflicting symbols at same nesting level: $sym, $other")
+      sym
+    */
+
+  def minNested(other: Symbol)(using Context): Symbol =
+    if sym.ccNestingLevel > other.ccNestingLevel then other else sym
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

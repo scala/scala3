@@ -12,6 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
+import typer.ErrorReporting.Addenda
 import util.{SimpleIdentitySet, EqHashMap, SrcPos, Property}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
@@ -263,7 +264,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         report.error(em"$header included in allowed capture set ${res.blocking}", pos)
 
     /** The current environment */
-    private var curEnv: Env = Env(NoSymbol, EnvKind.Regular, CaptureSet.empty, null)
+    private var curEnv: Env = inContext(ictx):
+      Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
@@ -272,7 +274,8 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def capturedVars(sym: Symbol)(using Context) =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm) then CaptureSet.Var()
+        if sym.ownersIterator.exists(_.isTerm) then
+          CaptureSet.Var(if sym.isConstructor then sym.owner.owner else sym.owner)
         else CaptureSet.empty)
 
     /** For all nested environments up to `limit` or a closed environment perform `op`,
@@ -655,9 +658,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       val saved = curEnv
       tree match
         case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
-          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.Boxed, CaptureSet.Var(curEnv.owner), curEnv)
         case _ if tree.hasAttachment(ClosureBodyValue) =>
-          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(), curEnv)
+          curEnv = Env(curEnv.owner, EnvKind.ClosureResult, CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>
       val res =
         try super.recheck(tree, pt)
@@ -691,6 +694,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !allowUniversalInBoxed && needsUniversalCheck then
         checkNotUniversal(tpe)
       super.recheckFinish(tpe, tree, pt)
+    end recheckFinish
 
   // ------------------ Adaptation -------------------------------------
   //
@@ -703,11 +707,11 @@ class CheckCaptures extends Recheck, SymTransformer:
   //   - Adapt box status and environment capture sets by simulating box/unbox operations.
 
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
-    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree)(using Context): Unit =
+    override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Unit =
       val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
       val actual1 = adaptBoxed(actual, expected1, tree.srcPos)
       //println(i"check conforms $actual1 <<< $expected1")
-      super.checkConformsExpr(actual1, expected1, tree)
+      super.checkConformsExpr(actual1, expected1, tree, addenda ++ CaptureSet.levelErrors)
 
     private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
       MethodType.companion(isContextual = isContextual)(args, resultType)
@@ -782,7 +786,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       inline def inNestedEnv[T](boxed: Boolean)(op: => T): T =
         val saved = curEnv
-        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(), if boxed then null else curEnv)
+        curEnv = Env(curEnv.owner, EnvKind.NestedInOwner, CaptureSet.Var(curEnv.owner), if boxed then null else curEnv)
         try op
         finally curEnv = saved
 
@@ -974,16 +978,16 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       setup = Setup(preRecheckPhase, thisPhase, recheckDef)
-      setup(ctx.compilationUnit.tpdTree)
-      //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
-      withCaptureSetsExplained {
-        super.checkUnit(unit)
-        checkOverrides.traverse(unit.tpdTree)
-        checkSelfTypes(unit.tpdTree)
-        postCheck(unit.tpdTree)
-        if ctx.settings.YccDebug.value then
-          show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
-      }
+      inContext(ctx.withProperty(ccState, Some(new CCState))):
+        setup(ctx.compilationUnit.tpdTree)
+        //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
+        withCaptureSetsExplained:
+          super.checkUnit(unit)
+          checkOverrides.traverse(unit.tpdTree)
+          checkSelfTypes(unit.tpdTree)
+          postCheck(unit.tpdTree)
+          if ctx.settings.YccDebug.value then
+            show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes

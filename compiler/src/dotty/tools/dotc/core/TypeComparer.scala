@@ -676,6 +676,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   case tp1: RefinedType =>
                     return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
                   case _ =>
+          end if
 
           val skipped2 = skipMatching(tp1w, tp2)
           if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
@@ -3132,6 +3133,9 @@ object TypeComparer {
 
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     comparing(_.tracked(op))
+
+  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
+    comparing(_.subCaptures(refs1, refs2, frozen))
 }
 
 object TrackingTypeComparer:
