@@ -409,7 +409,9 @@ abstract class PcCollector[T](
          * All select statements such as:
          * val a = hello.<<b>>
          */
-        case sel: Select if sel.span.isCorrect && filter(sel) =>
+        case sel: Select 
+          if sel.span.isCorrect && filter(sel) &&
+            !isForComprehensionMethod(sel) =>
           occurrences + collect(
             sel,
             pos.withSpan(selectNameSpan(sel))
@@ -560,6 +562,17 @@ abstract class PcCollector[T](
         Span(span.start, span.start + realName.length, point)
       else Span(point, span.end, point)
     else span
+
+  private val forCompMethods =
+    Set(nme.map, nme.flatMap, nme.withFilter, nme.foreach)
+
+  // We don't want to collect synthethic `map`, `withFilter`, `foreach` and `flatMap` in for-comprenhensions
+  private def isForComprehensionMethod(sel: Select): Boolean =
+    val syntheticName = sel.name match
+      case name: TermName => forCompMethods(name)
+      case _ => false
+    val wrongSpan = sel.qualifier.span.contains(sel.nameSpan)
+    syntheticName && wrongSpan
 end PcCollector
 
 object PcCollector:
