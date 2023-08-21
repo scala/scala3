@@ -1129,13 +1129,16 @@ class CheckCaptures extends Recheck, SymTransformer:
               sym.owner.ownersIterator.exists(_.isTerm)
               || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
             def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-              sym.is(Private)                   // private symbols can always have inferred types
-              || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
+              sym.is(Private)                   // Private symbols can always have inferred types
+              || sym.name.is(DefaultGetterName) // Default getters are exempted since otherwise it would be
                                                 // too annoying. This is a hole since a defualt getter's result type
                                                 // might leak into a type variable.
               ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
                 isLocal                         // local symbols still need explicit types if
                 && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
+              ||                                // If there are overridden symbols, their types form an upper bound
+                sym.allOverriddenSymbols.nonEmpty // for the inferred type. In this case, separate compilation would
+                                                // not be a soundness issue.
             def isNotPureThis(ref: CaptureRef) = ref match {
               case ref: ThisType => !ref.cls.isPureClass
               case _ => true
