@@ -25,15 +25,15 @@ MatchNumbers$
 Object
 covtest.MatchNumbers$
 f
-106
-126
+127
+132
 6
 <none>
 Block
-false
+true
 0
 false
-case x: Int if x < 0
+=> -1
 
 1
 MatchNumbers.scala
@@ -42,15 +42,15 @@ MatchNumbers$
 Object
 covtest.MatchNumbers$
 f
-137
-148
+149
+153
 7
 <none>
 Block
-false
+true
 0
 false
-case x: Int
+=> x
 
 2
 MatchNumbers.scala
@@ -59,15 +59,15 @@ MatchNumbers$
 Object
 covtest.MatchNumbers$
 f
-158
-170
+171
+181
 8
 <none>
 Block
-false
+true
 0
 false
-case y: Long
+=> y.toInt
 
 3
 MatchNumbers.scala

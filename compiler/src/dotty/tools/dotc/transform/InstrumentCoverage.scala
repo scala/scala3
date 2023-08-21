@@ -188,12 +188,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * If the tree is empty, return itself and don't instrument.
      */
     private def transformBranch(tree: Tree)(using Context): Tree =
-      import dotty.tools.dotc.core.Decorators.{show,i}
-      if tree.isEmpty || tree.span.isSynthetic then
+      if tree.isEmpty then
         // - If t.isEmpty then `transform(t) == t` always hold,
         //   so we can avoid calling transform in that case.
-        // - If tree.span.isSynthetic then the branch has been generated
-        //   by the frontend phases, so we don't want to instrument it.
         tree
       else
         val transformed = transform(tree)
@@ -353,10 +350,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       // recursively transform the guard, but keep the pat
       val transformedGuard = transform(guard)
 
-      // ensure that the body is always instrumented by inserting a call to Invoker.invoked at its beginning
-      val coverageCall = createInvokeCall(tree.body, pos)
-      val transformedBody = transform(tree.body)
-      val instrumentedBody = InstrumentedParts.singleExprTree(coverageCall, transformedBody)
+      // ensure that the body is always instrumented as a branch
+      val instrumentedBody = transformBranch(tree.body)
 
       cpy.CaseDef(tree)(pat, transformedGuard, instrumentedBody)
 
