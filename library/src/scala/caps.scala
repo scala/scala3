@@ -4,12 +4,14 @@ import annotation.experimental
 
 @experimental object caps:
 
+  opaque type Root = Unit
+
   /** The universal capture reference (deprecated) */
   @deprecated("Use `cap` instead")
-  val `*`: Any = ()
+  val `*`: Root = ()
 
   /** The universal capture reference */
-  val cap: Any = ()
+  val cap: Root = ()
 
   object unsafe:
 

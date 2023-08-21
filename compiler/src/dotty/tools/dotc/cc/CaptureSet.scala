@@ -932,8 +932,8 @@ object CaptureSet:
           tp.captureSet
         case tp: TermParamRef =>
           tp.captureSet
-        case _: TypeRef =>
-          empty
+        case tp: TypeRef =>
+          if tp.typeSymbol == defn.Caps_Root then universal else empty
         case _: TypeParamRef =>
           empty
         case CapturingType(parent, refs) =>
