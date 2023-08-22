@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, RootVar, isBoxed, ccNestingLevel}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -192,6 +192,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
             if tvar.exists then s"#${tvar.asInstanceOf[TypeVar].nestingLevel.toString}" else ""
           else ""
         ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ suffix
+      case tp: RootVar =>
+        def boundText(sym: Symbol): Text =
+          if sym.exists then nameString(sym) ~ s"/${sym.ccNestingLevel}"
+          else ""
+        "'cap[" ~ nameString(tp.source)
+        ~ "](" ~ boundText(tp.lowerBound)
+        ~ ".." ~ boundText(tp.upperBound) ~ ")"
       case tp: SingletonType =>
         toTextSingleton(tp)
       case AppliedType(tycon, args) =>
