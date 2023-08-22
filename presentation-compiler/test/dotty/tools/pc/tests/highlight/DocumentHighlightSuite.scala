@@ -758,6 +758,90 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
         |  }
         |}""".stripMargin
     )
+  
+  @Test def `for-comp-map` = 
+    check(
+      """|object Main {
+         |  val x = List(1).<<m@@ap>>(_ + 1)
+         |  val y = for {
+         |    a <- List(1)
+         |  } yield a + 1
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `for-comp-map1` = 
+    check(
+      """|object Main {
+         |  val x = List(1).<<m@@ap>>(_ + 1)
+         |  val y = for {
+         |    a <- List(1)
+         |    if true
+         |  } yield a + 1
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `for-comp-foreach` = 
+    check(
+      """|object Main {
+         |  val x = List(1).<<for@@each>>(_ => ())
+         |  val y = for {
+         |    a <- List(1)
+         |  } {}
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `for-comp-withFilter` = 
+    check(
+      """|object Main {
+         |  val x = List(1).<<with@@Filter>>(_ => true)
+         |  val y = for {
+         |    a <- List(1)
+         |    if true
+         |  } {}
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `for-comp-withFilter1` = 
+    check(
+      """|object Main {
+         |  val x = List(1).withFilter(_ => true).<<m@@ap>>(_ + 1)
+         |  val y = for {
+         |    a <- List(1)
+         |    if true
+         |  } yield a + 1
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `for-comp-flatMap1` = 
+    check(
+      """|object Main {
+         |  val x = List(1).<<flat@@Map>>(_ => List(1))
+         |  val y = for {
+         |    a <- List(1)
+         |    b <- List(2)
+         |    if true
+         |  } yield a + 1
+         |}
+         |""".stripMargin,
+    )
+
+  @Test def `for-comp-flatMap2` = 
+    check(
+      """|object Main {
+         |  val x = List(1).withFilter(_ => true).<<flat@@Map>>(_ => List(1))
+         |  val y = for {
+         |    a <- List(1)
+         |    if true
+         |    b <- List(2)
+         |  } yield a + 1
+         |}
+         |""".stripMargin,
+    )
 
   @Test def `enum1` =
     check(
