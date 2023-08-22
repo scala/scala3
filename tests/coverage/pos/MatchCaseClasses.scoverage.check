@@ -25,23 +25,6 @@ MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-135
-147
-7
-<none>
-Block
-false
-0
-false
-case Pat1(0)
-
-1
-MatchCaseClasses.scala
-covtest
-MatchCaseClasses$
-Object
-covtest.MatchCaseClasses$
-f
 151
 163
 7
@@ -52,24 +35,24 @@ false
 false
 println("a")
 
-2
+1
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-168
-180
-8
+148
+163
+7
 <none>
 Block
-false
+true
 0
 false
-case Pat1(_)
+=> println("a")
 
-3
+2
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -86,24 +69,24 @@ false
 false
 println("b")
 
-4
+3
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-201
-221
-9
+181
+196
+8
 <none>
 Block
-false
+true
 0
 false
-case p @ Pat2(1, -1)
+=> println("b")
 
-5
+4
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -120,24 +103,24 @@ false
 false
 println("c")
 
-6
+5
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-242
-265
-10
+222
+237
+9
 <none>
 Block
-false
+true
 0
 false
-case Pat2(_, y: String)
+=> println("c")
 
-7
+6
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -154,7 +137,7 @@ false
 false
 println(y)
 
-8
+7
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -171,24 +154,24 @@ false
 false
 println("d")
 
-9
+8
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-309
-321
-13
+275
+304
+11
 <none>
 Block
-false
+true
 0
 false
-case p: Pat2
+println(y)\n      println("d")
 
-10
+9
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -205,24 +188,24 @@ false
 false
 println("e")
 
-11
+10
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
 Object
 covtest.MatchCaseClasses$
 f
-342
-348
-14
+322
+337
+13
 <none>
 Block
-false
+true
 0
 false
-case _
+=> println("e")
 
-12
+11
 MatchCaseClasses.scala
 covtest
 MatchCaseClasses$
@@ -238,6 +221,23 @@ false
 0
 false
 println("other")
+
+12
+MatchCaseClasses.scala
+covtest
+MatchCaseClasses$
+Object
+covtest.MatchCaseClasses$
+f
+349
+368
+14
+<none>
+Block
+true
+0
+false
+=> println("other")
 
 13
 MatchCaseClasses.scala
