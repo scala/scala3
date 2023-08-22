@@ -1108,6 +1108,22 @@ class Definitions {
     //  - .linkedClass: the ClassSymbol of the enumeration (class E)
     sym.owner.linkedClass.typeRef
 
+  object FunctionTypeOfMethod {
+    /** Matches a `FunctionN[...]`/`ContextFunctionN[...]` or refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
+      ft match
+        case RefinedType(parent, nme.apply, mt: MethodOrPoly)
+        if parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(parent) =>
+          Some(mt)
+        case FunctionOf(argTypes, resultType, isContextual) =>
+          val methodType = if isContextual then ContextualMethodType else MethodType
+          Some(methodType(argTypes, resultType))
+        case _ => None
+    }
+  }
+
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
       val mt = MethodType.companion(isContextual, false)(args, resultType)
