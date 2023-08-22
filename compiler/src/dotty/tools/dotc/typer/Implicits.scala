@@ -23,6 +23,7 @@ import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
+import Typer.BindingPrec, BindingPrec.*
 import transform.TypeUtils._
 import Hashable._
 import util.{EqHashMap, Stats}
@@ -328,25 +329,28 @@ object Implicits:
       (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
     }
 
+    def bindingPrec: BindingPrec =
+      if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
+
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
-        def filter(xs: List[Candidate], remove: List[Candidate]) =
-          val shadowed = remove.map(_.ref.implicitName).toSet
-          xs.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
-
+        val ownNames = mutable.Set(ownEligible.map(_.ref.implicitName)*)
         val outer = outerImplicits.uncheckedNN
-        def isWildcardImport(using Context) = ctx.importInfo.nn.isWildcardImport
-        def preferDefinitions = isImport && !outer.isImport
-        def preferNamedImport = isWildcardImport && !isWildcardImport(using outer.irefCtx)
-
-        if !migrateTo3(using irefCtx) && level == outer.level && (preferDefinitions || preferNamedImport) then
-          // special cases: definitions beat imports, and named imports beat
-          // wildcard imports, provided both are in contexts with same scope
-          filter(ownEligible, outerEligible) ::: outerEligible
+        if !migrateTo3(using irefCtx) && level == outer.level && outer.bindingPrec.beats(bindingPrec) then
+          val keptOuters = outerEligible.filterConserve: cand =>
+            if ownNames.contains(cand.ref.implicitName) then
+              val keepOuter = cand.level == level
+              if keepOuter then ownNames -= cand.ref.implicitName
+              keepOuter
+            else true
+          val keptOwn = ownEligible.filterConserve: cand =>
+            ownNames.contains(cand.ref.implicitName)
+          keptOwn ::: keptOuters
         else
-          ownEligible ::: filter(outerEligible, ownEligible)
+          ownEligible ::: outerEligible.filterConserve: cand =>
+            !ownNames.contains(cand.ref.implicitName)
 
     def uncachedEligible(tp: Type)(using Context): List[Candidate] =
       Stats.record("uncached eligible")
