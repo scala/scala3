@@ -1596,32 +1596,31 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if desugared.isEmpty then
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
-          val (formalBounds, isErased) = protoFormal(i)
-          val param0 =
-            if (!param.tpt.isEmpty) param
-            else
-              val formal = formalBounds.loBound
-              val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
-              val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
-              // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
-              // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
-              val paramType =
-                // Strip inferred erased annotation, to avoid accidentally inferring erasedness
-                val formal0 = if !isErased then formal.stripAnnots(_.symbol != defn.ErasedParamAnnot) else formal
-                if knownFormal && !isBottomFromWildcard then
-                  formal0
-                else
-                  inferredFromTarget(param, formal, calleeType, isErased, paramIndex).orElse(
-                    if knownFormal then formal0
-                    else errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos)
-                  )
-              val paramTpt = untpd.TypedSplice(
-                  (if knownFormal then InferredTypeTree() else untpd.TypeTree())
-                    .withType(paramType.translateFromRepeated(toArray = false))
-                    .withSpan(param.span.endPos)
+          if (!param.tpt.isEmpty) param
+          else
+            val (formalBounds, isErased) = protoFormal(i)
+            val formal = formalBounds.loBound
+            val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
+            val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+            // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
+            // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
+            val paramType =
+              // Strip inferred erased annotation, to avoid accidentally inferring erasedness
+              val formal0 = if !isErased then formal.stripAnnots(_.symbol != defn.ErasedParamAnnot) else formal
+              if knownFormal && !isBottomFromWildcard then
+                formal0
+              else
+                inferredFromTarget(param, formal, calleeType, isErased, paramIndex).orElse(
+                  if knownFormal then formal0
+                  else errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos)
                 )
-              cpy.ValDef(param)(tpt = paramTpt)
-          if isErased then param0.withAddedFlags(Flags.Erased) else param0
+            val paramTpt = untpd.TypedSplice(
+                (if knownFormal then InferredTypeTree() else untpd.TypeTree())
+                  .withType(paramType.translateFromRepeated(toArray = false))
+                  .withSpan(param.span.endPos)
+              )
+            val param0 = cpy.ValDef(param)(tpt = paramTpt)
+            if isErased then param0.withAddedFlags(Flags.Erased) else param0
       desugared = desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
 
     typed(desugared, pt)
