@@ -2553,7 +2553,7 @@ object Parsers {
      */
     def newExpr(): Tree =
       val start = in.skipToken()
-      def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
+      def reposition(t: Tree) = t.withSpan(Span(start, in.lastCharOffset))
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
