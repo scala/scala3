@@ -1140,11 +1140,12 @@ class Definitions {
      *
      *  Pattern: `PolyFunction { def apply: $mt }`
      */
-    def unapply(ft: Type)(using Context): Option[MethodicType] = ft.dealias match
-      case RefinedType(parent, nme.apply, mt: MethodicType)
-      if parent.derivesFrom(defn.PolyFunctionClass) =>
-        Some(mt)
-      case _ => None
+    def unapply(tpe: RefinedType)(using Context): Option[MethodOrPoly] =
+      tpe.refinedInfo match
+        case mt: MethodOrPoly
+        if tpe.refinedName == nme.apply && tpe.parent.derivesFrom(defn.PolyFunctionClass) =>
+          Some(mt)
+        case _ => None
 
     private def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
       def isValidMethodType(info: Type) = info match

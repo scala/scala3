@@ -1648,10 +1648,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedPolyFunctionValue(tree: untpd.PolyFunction, pt: Type)(using Context): Tree =
     val untpd.PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun) = tree: @unchecked
     val untpd.Function(vparams: List[untpd.ValDef] @unchecked, body) = fun: @unchecked
+    val dpt = pt.dealias
 
     // If the expected type is a polymorphic function with the same number of
     // type and value parameters, then infer the types of value parameters from the expected type.
-    val inferredVParams = pt match
+    val inferredVParams = dpt match
       case defn.PolyFunctionOf(poly @ PolyType(_, mt: MethodType))
       if tparams.lengthCompare(poly.paramNames) == 0 && vparams.lengthCompare(mt.paramNames) == 0 =>
         vparams.zipWithConserve(mt.paramInfos): (vparam, formal) =>
@@ -1667,7 +1668,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         vparams
 
-    val resultTpt = pt.dealias match
+    val resultTpt = dpt match
       case defn.PolyFunctionOf(poly @ PolyType(_, mt: MethodType)) =>
         untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
           mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
