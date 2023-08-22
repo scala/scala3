@@ -33,7 +33,6 @@ def allowUniversalInBoxed(using Context) =
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
 
-
 /** Capture checking state, consisting of
  *   - nestingLevels: A map associating certain symbols (the nesting level owners)
  8     with their ccNestingLevel
@@ -273,13 +272,15 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeUnbox
 
   /** The owner of the current level. Qualifying owners are
-   *   - methods other than constructors
+   *   - methods other than constructors and anonymous functions
    *   - classes, if they are not staticOwners
    *   - _root_
    */
   def levelOwner(using Context): Symbol =
     if sym.isStaticOwner then defn.RootClass
-    else if sym.isClass || sym.is(Method) && !sym.isConstructor then sym
+    else if sym.isClass
+        || sym.is(Method) && !sym.isConstructor && !sym.isAnonymousFunction
+    then sym
     else sym.owner.levelOwner
 
   /** The nesting level of `sym` for the purposes of `cc`,
