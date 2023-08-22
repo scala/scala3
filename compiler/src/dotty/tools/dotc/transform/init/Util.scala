@@ -75,11 +75,9 @@ object Util:
       case _ =>
         None
 
-  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show) {
-    if (sym.isEffectivelyFinal || sym.isConstructor) sym
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol = log("resove " + cls + ", " + sym, printer, (_: Symbol).show):
+    if sym.isEffectivelyFinal then sym
     else sym.matchingMember(cls.appliedRef)
-  }
-
 
   extension (sym: Symbol)
     def hasSource(using Context): Boolean = !sym.defTree.isEmpty
