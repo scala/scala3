@@ -82,7 +82,7 @@ extends tpd.TreeTraverser:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def mapInferred(using Context) = new TypeMap:
+  private def mapInferred(mapRoots: Boolean)(using Context) = new TypeMap:
 
     /** Drop @retains annotations everywhere */
     object cleanup extends TypeMap:
@@ -165,12 +165,12 @@ extends tpd.TreeTraverser:
             resType = this(tp.resType))
         case _ =>
           mapOver(tp)
-      addVar(addCaptureRefinements(tp1), ctx.owner)
+      addVar(addCaptureRefinements(tp1), ctx.owner, mapRoots)
     end apply
   end mapInferred
 
-  private def transformInferredType(tp: Type, boxed: Boolean)(using Context): Type =
-    val tp1 = mapInferred(tp)
+  private def transformInferredType(tp: Type, boxed: Boolean, mapRoots: Boolean)(using Context): Type =
+    val tp1 = mapInferred(mapRoots)(tp)
     if boxed then box(tp1) else tp1
 
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
@@ -241,7 +241,7 @@ extends tpd.TreeTraverser:
     if !tree.hasRememberedType then
       tree.rememberType(
         if tree.isInstanceOf[InferredTypeTree] && !exact
-        then transformInferredType(tree.tpe, boxed)
+        then transformInferredType(tree.tpe, boxed, mapRoots)
         else transformExplicitType(tree.tpe, boxed, mapRoots))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
@@ -302,15 +302,18 @@ extends tpd.TreeTraverser:
             case _ =>
               traverseChildren(tree)
       case tree @ ValDef(_, tpt: TypeTree, rhs) =>
-        rhs match
+        val mapRoots = rhs match
           case possiblyTypedClosureDef(ddef) =>
-            // toplevel closures bound to vals count as level owners
             ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
+              // toplevel closures bound to vals count as level owners
+            !tpt.isInstanceOf[InferredTypeTree]
+              // in this case roots in inferred val type count as polymorphic
           case _ =>
+            true
         transformTT(tpt,
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
           exact = tree.symbol.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
-          mapRoots = true
+          mapRoots
         )
         capt.println(i"mapped $tree = ${tpt.knownType}")
         if allowUniversalInBoxed && tree.symbol.is(Mutable)
@@ -346,7 +349,7 @@ extends tpd.TreeTraverser:
   def postProcess(tree: Tree)(using Context): Unit = tree match
     case tree: TypeTree =>
       transformTT(tree, boxed = false, exact = false,
-          mapRoots = !ctx.owner.levelOwner.isStaticOwner // other types in static locaations are not boxed
+          mapRoots = !ctx.owner.levelOwner.isStaticOwner // other types in static locations are not boxed
         )
     case tree: ValOrDefDef =>
       val sym = tree.symbol
@@ -424,7 +427,7 @@ extends tpd.TreeTraverser:
                 recheckDef(tree, sym))
     case tree: Bind =>
       val sym = tree.symbol
-      updateInfo(sym, transformInferredType(sym.info, boxed = false))
+      updateInfo(sym, transformInferredType(sym.info, boxed = false, mapRoots = true))
     case tree: TypeDef =>
       tree.symbol match
         case cls: ClassSymbol =>
@@ -506,7 +509,7 @@ extends tpd.TreeTraverser:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def decorate(tp: Type, addedSet: Type => CaptureSet)(using Context): Type = tp match
+  def decorate(tp: Type, mapRoots: Boolean, addedSet: Type => CaptureSet)(using Context): Type = tp match
     case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
       CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
     case tp: RecType =>
@@ -532,7 +535,7 @@ extends tpd.TreeTraverser:
     case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
       CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
     case tp: LazyRef =>
-      decorate(tp.ref, addedSet)
+      decorate(tp.ref, mapRoots, addedSet)
     case _ if tp.typeSymbol == defn.FromJavaObjectSymbol =>
       // For capture checking, we assume Object from Java is the same as Any
       tp
@@ -542,15 +545,15 @@ extends tpd.TreeTraverser:
         else fallback
       val tp1 = tp.dealiasKeepAnnots
       if tp1 ne tp then
-        val tp2 = transformExplicitType(tp1, boxed = false, mapRoots = true)
+        val tp2 = transformExplicitType(tp1, boxed = false, mapRoots)
         maybeAdd(tp2, if tp2 ne tp1 then tp2 else tp)
       else maybeAdd(tp, tp)
 
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def addVar(tp: Type, owner: Symbol)(using Context): Type =
-    decorate(tp,
+  def addVar(tp: Type, owner: Symbol, mapRoots: Boolean)(using Context): Type =
+    decorate(tp, mapRoots,
       addedSet = _.dealias.match
         case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems)
         case _ => CaptureSet.Var(owner))
