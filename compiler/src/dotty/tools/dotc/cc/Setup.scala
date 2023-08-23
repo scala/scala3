@@ -351,6 +351,24 @@ extends tpd.TreeTraverser:
     case tree: ValOrDefDef =>
       val sym = tree.symbol
 
+      /** The return type of a constructor instantiated with local type and value
+       *  parameters. Constructors have `unit` result type, that's why we can't
+       *  get this type by reading the result type tree, and have to construct it
+       *  explicitly.
+       */
+      def constrReturnType(info: Type, psymss: List[List[Symbol]]): Type = info match
+        case info: MethodOrPoly =>
+          constrReturnType(info.instantiate(psymss.head.map(_.namedType)), psymss.tail)
+        case _ =>
+          info
+
+      /** The local result type, which is the known type of the result type tree,
+       *  with special treatment for constructors.
+       */
+      def localReturnType =
+        if sym.isConstructor then constrReturnType(sym.info, sym.paramSymss)
+        else tree.tpt.knownType
+
       // Replace an existing symbol info with inferred types where capture sets of
       // TypeParamRefs and TermParamRefs put in correspondence by BiTypeMaps with the
       // capture sets of the types of the method's parameter symbols and result type.
@@ -364,7 +382,7 @@ extends tpd.TreeTraverser:
           case mt: MethodOrPoly =>
             val psyms = psymss.head
             val mapr =
-              if (sym.isAnonymousFunction) then identity[Type]
+              if sym.isAnonymousFunction then identity[Type]
               else mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
             mt.companion(mt.paramNames)(
               mt1 =>
@@ -379,12 +397,9 @@ extends tpd.TreeTraverser:
           case info: ExprType =>
             info.derivedExprType(resType =
               integrateRT(info.resType, psymss, prevPsymss, prevLambdas))
-          case info if sym.isConstructor =>
-            info
-          case _ =>
-            val restp = tree.tpt.knownType
-            if prevLambdas.isEmpty then restp
-            else SubstParams(prevPsymss, prevLambdas)(restp)
+          case info =>
+            if prevLambdas.isEmpty then localReturnType
+            else SubstParams(prevPsymss, prevLambdas)(localReturnType)
 
       def signatureChanges =
         tree.tpt.hasRememberedType && !sym.isConstructor
