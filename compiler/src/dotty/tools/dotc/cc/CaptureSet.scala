@@ -126,14 +126,15 @@ sealed abstract class CaptureSet extends Showable:
   extension (x: CaptureRef)(using Context)
     private def subsumes(y: CaptureRef) =
       (x eq y)
-      || x.isGenericRootCapability
+      || x.isGenericRootCapability // !!! dubious
       || y.match
           case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
+          case y: CaptureRoot.Var => x.isRootIncluding(y)
           case _ => false
 
-    private def isRootIncluding(y: CaptureRef) =
+    private def isRootIncluding(y: CaptureRoot) =
       x.isLocalRootCapability && y.isLocalRootCapability
-      && CaptureRoot.isEnclosingRoot(y.asInstanceOf[CaptureRoot], x.asInstanceOf[CaptureRoot])
+      && CaptureRoot.isEnclosingRoot(y, x.asInstanceOf[CaptureRoot])
   end extension
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables

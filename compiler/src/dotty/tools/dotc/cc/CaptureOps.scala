@@ -341,17 +341,25 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
+  def isLevelOwner(using Context): Boolean =
+    if sym.isClass then true
+    else if sym.is(Method) then
+      if sym.isAnonymousFunction then
+        // Setup added anonymous functions counting as level owners to nestingLevels
+        ctx.property(ccState).get.nestingLevels.contains(sym)
+      else !sym.isConstructor
+    else false
+
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
+   *   - anonymous functions, provided they either define a local
+   *     root of type caps.Root, or they are the rhs of a val definition.
    *   - classes, if they are not staticOwners
    *   - _root_
    */
   def levelOwner(using Context): Symbol =
-    if !sym.exists || sym.isRoot || sym.isStaticOwner
-    then defn.RootClass
-    else if sym.isClass
-        || sym.is(Method) && !sym.isConstructor && !sym.isAnonymousFunction
-    then sym
+    if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
+    else if sym.isLevelOwner then sym
     else sym.owner.levelOwner
 
   /** The nesting level of `sym` for the purposes of `cc`,
@@ -373,16 +381,25 @@ extension (sym: Symbol)
       Some(ccNestingLevel)
     else None
 
+  def setNestingLevel(level: Int)(using Context): Unit =
+    ctx.property(ccState).get.nestingLevels(sym) = level
+
+  /** The parameter with type caps.Root in the leading term parameter section,
+   *  or NoSymbol, if none exists.
+   */
+  def definedLocalRoot(using Context): Symbol =
+    sym.paramSymss.dropWhile(psyms => psyms.nonEmpty && psyms.head.isType) match
+      case psyms :: Nil => psyms.find(_.info.typeSymbol == defn.Caps_Root).getOrElse(NoSymbol)
+      case _ => NoSymbol
+
   def localRoot(using Context): Symbol =
     val owner = sym.levelOwner
     assert(owner.exists)
     def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
       nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Root.typeRef, nestingLevel = owner.ccNestingLevel)
     def lclRoot =
-      if owner.isTerm then
-        owner.paramSymss.nestedFind(_.info.typeSymbol == defn.Caps_Root).getOrElse(newRoot)
-      else
-        newRoot
+      if owner.isTerm then owner.definedLocalRoot.orElse(newRoot)
+      else newRoot
     ctx.property(ccState).get.localRoots.getOrElseUpdate(owner, lclRoot)
 
   def maxNested(other: Symbol)(using Context): Symbol =

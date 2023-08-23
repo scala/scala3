@@ -799,6 +799,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  /** An extractor for def of a closure contained the block of the closure,
+   *  possibly with type ascriptions.
+   */
+  object possiblyTypedClosureDef:
+    def unapply(tree: Tree)(using Context): Option[DefDef] = tree match
+      case Typed(expr, _)  => unapply(expr)
+      case _ => closureDef.unapply(tree)
+
   /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: Tree)(using Context): Tree = tree match {
     case closureDef(meth) => meth.rhs

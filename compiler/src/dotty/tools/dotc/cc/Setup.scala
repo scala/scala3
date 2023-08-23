@@ -290,6 +290,9 @@ extends tpd.TreeTraverser:
         if isExcluded(tree.symbol) then
           return
         inContext(ctx.withOwner(tree.symbol)):
+          if tree.symbol.isAnonymousFunction && tree.symbol.definedLocalRoot.exists then
+            // closures that define parameters of type caps.Root count as level owners
+            tree.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
           tree.tpt match
             case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
               tree.paramss.foreach(traverse)
@@ -298,7 +301,12 @@ extends tpd.TreeTraverser:
               //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
             case _ =>
               traverseChildren(tree)
-      case tree @ ValDef(_, tpt: TypeTree, _) =>
+      case tree @ ValDef(_, tpt: TypeTree, rhs) =>
+        rhs match
+          case possiblyTypedClosureDef(ddef) =>
+            // toplevel closures bound to vals count as level owners
+            ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
+          case _ =>
         transformTT(tpt,
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
           exact = tree.symbol.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
