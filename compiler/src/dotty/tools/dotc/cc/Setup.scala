@@ -382,8 +382,8 @@ extends tpd.TreeTraverser:
           case mt: MethodOrPoly =>
             val psyms = psymss.head
             val mapr =
-              if sym.isAnonymousFunction then identity[Type]
-              else mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
+              if sym.isLevelOwner then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
+              else identity[Type]
             mt.companion(mt.paramNames)(
               mt1 =>
                 if !psyms.exists(_.isUpdatedAfter(preRecheckPhase)) && !mt.isParamDependent && prevLambdas.isEmpty then
@@ -392,7 +392,7 @@ extends tpd.TreeTraverser:
                   val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
                   psyms.map(psym => mapr(subst(psym.info)).asInstanceOf[mt.PInfo]),
               mt1 =>
-                integrateRT(mapr(mt.resType), psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
+                mapr(integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas))
             )
           case info: ExprType =>
             info.derivedExprType(resType =
@@ -409,7 +409,7 @@ extends tpd.TreeTraverser:
 
       if sym.exists && signatureChanges then
         val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
-          .showing(i"update info $sym: ${sym.info} --> $result", capt)
+          .showing(i"update info $sym: ${sym.info} = $result", capt)
         if newInfo ne sym.info then
           updateInfo(sym,
             if sym.isAnonymousFunction then
