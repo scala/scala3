@@ -98,7 +98,6 @@ object Recheck:
       case Some(tpe) => tree.withType(tpe).asInstanceOf[T]
       case None => tree
 
-
   /** Map ExprType => T to () ?=> T (and analogously for pure versions).
    *  Even though this phase runs after ElimByName, ExprTypes can still occur
    *  as by-name arguments of applied types. See note in doc comment for
@@ -286,12 +285,15 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
+    protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
+
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
-      val funTp = recheck(tree.fun)
+      val funtpe0 = recheck(tree.fun)
       // reuse the tree's type on signature polymorphic methods, instead of using the (wrong) rechecked one
-      val funtpe = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funTp
-      funtpe.widen match
-        case fntpe: MethodType =>
+      val funtpe1 = if tree.fun.symbol.originalSignaturePolymorphic.exists then tree.fun.tpe else funtpe0
+      funtpe1.widen match
+        case fntpe1: MethodType =>
+          val fntpe = prepareFunction(fntpe1, tree.fun.symbol)
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val formals =
             if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs
@@ -312,7 +314,7 @@ abstract class Recheck extends Phase, SymTransformer:
           constFold(tree, instantiate(fntpe, argTypes, tree.fun.symbol))
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
-          assert(false, i"unexpected type of ${tree.fun}: $funtpe")
+          assert(false, i"unexpected type of ${tree.fun}: $tp")
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
       recheck(tree.fun).widen match

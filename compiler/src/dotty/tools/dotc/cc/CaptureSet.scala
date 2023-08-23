@@ -118,12 +118,23 @@ sealed abstract class CaptureSet extends Showable:
     if accountsFor(elem) then CompareResult.OK
     else addNewElems(elem.singletonCaptureSet.elems, origin)
 
-  /* x subsumes y if x is the same as y, or x is a this reference and y refers to a field of x */
-  extension (x: CaptureRef) private def subsumes(y: CaptureRef) =
-    (x eq y)
-    || y.match
-        case y: TermRef => y.prefix eq x
-        case _ => false
+  /* x subsumes y if one of the following is true:
+   *   - x is the same as y,
+   *   - x is a this reference and y refers to a field of x
+   *   - x and y are local roots and y is an enclosing root of x
+   */
+  extension (x: CaptureRef)(using Context)
+    private def subsumes(y: CaptureRef) =
+      (x eq y)
+      || x.isGenericRootCapability
+      || y.match
+          case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
+          case _ => false
+
+    private def isRootIncluding(y: CaptureRef) =
+      x.isLocalRootCapability && y.isLocalRootCapability
+      && CaptureRoot.isEnclosingRoot(y.asInstanceOf[CaptureRoot], x.asInstanceOf[CaptureRoot])
+  end extension
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
@@ -454,7 +465,13 @@ object CaptureSet:
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then
         CompareResult.fail(this) // fail if variable is solved or given VarState is frozen
-      else if levelsOK(newElems) then
+      else if newElems.exists(!levelOK(_)) then
+        val res = widenCaptures(newElems) match
+          case Some(newElems1) => tryInclude(newElems1, origin)
+          case None => CompareResult.fail(this)
+        if !res.isOK then recordLevelError()
+        res
+      else
         //assert(id != 2, newElems)
         elems ++= newElems
         if isUniversal then rootAddedHandler()
@@ -463,24 +480,20 @@ object CaptureSet:
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
         }
-      else
-        val res = widenCaptures(newElems) match
-          case Some(newElems1) => tryInclude(newElems1, origin)
-          case None => CompareResult.fail(this)
-        if !res.isOK then recordLevelError()
-        res
 
     private def recordLevelError()(using Context): Unit =
       for elem <- triedElem do
         ctx.property(ccState).get.levelError = Some((elem, this))
 
-    private def levelsOK(elems: Refs)(using Context): Boolean =
-      !elems.exists(_.ccNestingLevel > ownLevel)
+    private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
+      case elem: (TermRef | ThisType) => elem.ccNestingLevel <= ownLevel
+      case elem: CaptureRoot.Var => CaptureRoot.isEnclosingRoot(elem, owner.localRoot.termRef)
+      case _ => true
 
     private def widenCaptures(elems: Refs)(using Context): Option[Refs] =
       val res = optional:
         (SimpleIdentitySet[CaptureRef]() /: elems): (acc, elem) =>
-          if elem.ccNestingLevel <= ownLevel then acc + elem
+          if levelOK(elem) then acc + elem
           else if elem.isRootCapability then break()
           else
             val saved = triedElem
@@ -518,8 +531,8 @@ object CaptureSet:
      *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
-      if computingApprox then universal
-      else if isConst then this
+      if isConst || elems.exists(_.isRootCapability) then this
+      else if computingApprox then universal
       else
         computingApprox = true
         try computeApprox(origin).ensuring(_.isConst)
@@ -536,6 +549,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       if !isConst then
         val approx = upperApprox(empty)
+          .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
         if newElems.isEmpty || addNewElems(newElems, empty)(using ctx, VarState()).isOK then
@@ -1009,10 +1023,12 @@ object CaptureSet:
         state <- ctx.property(ccState).toList
         (ref, cs) <- state.levelError
       yield
-        val level = ref.ccNestingLevel
+        val levelStr = ref match
+          case ref: (TermRef | ThisType) => i", defined at level ${ref.ccNestingLevel}"
+          case _ => ""
         i"""
            |
-           |Note that reference ${ref}, defined at level $level
+           |Note that reference ${ref}$levelStr
            |cannot be included in outer capture set $cs, defined at level ${cs.owner.nestingLevel} in ${cs.owner}"""
 
 end CaptureSet

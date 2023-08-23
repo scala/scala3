@@ -239,6 +239,9 @@ object Decorators {
     def nestedExists(p: T => Boolean): Boolean = xss match
       case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
       case nil => false
+    def nestedFind(p: T => Boolean): Option[T] = xss match
+      case xs :: xss1 => xs.find(p).orElse(xss1.nestedFind(p))
+      case nil => None
   end extension
 
   extension (text: Text)

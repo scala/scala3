@@ -10,11 +10,14 @@ import config.SourceVersion
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
+import StdNames.nme
 import config.Feature
 import collection.mutable
 
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
+
+private val enableRootMapping = false
 
 /** Switch whether unpickled function types and byname types should be mapped to
  *  impure types. With the new gradual typing using Fluid capture sets, this should
@@ -44,11 +47,45 @@ class IllegalCaptureRef(tpe: Type) extends Exception
  */
 class CCState:
   val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
-  val localRoots: mutable.HashMap[Symbol, CaptureRef] = new mutable.HashMap
+  val localRoots: mutable.HashMap[Symbol, Symbol] = new mutable.HashMap
   var levelError: Option[(CaptureRef, CaptureSet)] = None
 
 /** Property key for capture checking state */
 val ccState: Key[CCState] = Key()
+
+trait FollowAliases extends TypeMap:
+  def mapOverFollowingAliases(t: Type): Type = t match
+    case t: LazyRef =>
+      val t1 = this(t.ref)
+      if t1 ne t.ref then t1 else t
+    case _ =>
+      val t1 = t.dealias
+      if t1 ne t then
+        val t2 = this(t1)
+        if t2 ne t1 then return t2
+      mapOver(t)
+
+class mapRoots(from: CaptureRoot, to: CaptureRoot)(using Context) extends BiTypeMap, FollowAliases:
+  thisMap =>
+
+  def apply(t: Type): Type = t match
+    case t: TermRef if (t eq from) && enableRootMapping =>
+      to
+    case t: CaptureRoot.Var =>
+      val ta = t.followAlias
+      if ta ne t then apply(ta)
+      else from match
+        case from: TermRef
+        if t.upperLevel >= from.symbol.ccNestingLevel
+          && CaptureRoot.isEnclosingRoot(from, t)
+          && CaptureRoot.isEnclosingRoot(t, from) => to
+        case from: CaptureRoot.Var if from.followAlias eq t => to
+        case _ => from
+    case _ =>
+      mapOverFollowingAliases(t)
+
+  def inverse = mapRoots(to, from)
+end mapRoots
 
 extension (tree: Tree)
 
@@ -216,6 +253,39 @@ extension (tp: Type)
       tp.tp1.isAlwaysPure && tp.tp2.isAlwaysPure
     case _ =>
       false
+/*!!!
+  def capturedLocalRoot(using Context): Symbol =
+    tp.captureSet.elems.toList
+      .filter(_.isLocalRootCapability)
+      .map(_.termSymbol)
+      .maxByOption(_.ccNestingLevel)
+      .getOrElse(NoSymbol)
+
+  /** Remap roots defined in `cls` to the ... */
+  def remapRoots(pre: Type, cls: Symbol)(using Context): Type =
+    if cls.isStaticOwner then tp
+    else
+      val from =
+        if cls.source == ctx.compilationUnit.source then cls.localRoot
+        else defn.captureRoot
+      mapRoots(from, capturedLocalRoot)(tp)
+
+
+  def containsRoot(root: Symbol)(using Context): Boolean =
+    val search = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, t: Type): Boolean =
+        if x then true
+        else t.dealias match
+          case t1: TermRef if t1.symbol == root => true
+          case t1: TypeRef if t1.classSymbol.hasAnnotation(defn.CapabilityAnnot) => true
+          case t1: MethodType =>
+            !foldOver(x, t1.paramInfos) && this(x, t1.resType)
+          case t1 @ AppliedType(tycon, args) if defn.isFunctionSymbol(tycon.typeSymbol) =>
+            val (inits, last :: Nil) = args.splitAt(args.length - 1): @unchecked
+            !foldOver(x, inits) && this(x, last)
+          case t1 => foldOver(x, t1)
+    search(false, tp)
+*/
 
 extension (cls: ClassSymbol)
 
@@ -277,7 +347,8 @@ extension (sym: Symbol)
    *   - _root_
    */
   def levelOwner(using Context): Symbol =
-    if sym.isStaticOwner then defn.RootClass
+    if !sym.exists || sym.isRoot || sym.isStaticOwner
+    then defn.RootClass
     else if sym.isClass
         || sym.is(Method) && !sym.isConstructor && !sym.isAnonymousFunction
     then sym
@@ -302,6 +373,18 @@ extension (sym: Symbol)
       Some(ccNestingLevel)
     else None
 
+  def localRoot(using Context): Symbol =
+    val owner = sym.levelOwner
+    assert(owner.exists)
+    def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
+      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Root.typeRef, nestingLevel = owner.ccNestingLevel)
+    def lclRoot =
+      if owner.isTerm then
+        owner.paramSymss.nestedFind(_.info.typeSymbol == defn.Caps_Root).getOrElse(newRoot)
+      else
+        newRoot
+    ctx.property(ccState).get.localRoots.getOrElseUpdate(owner, lclRoot)
+
   def maxNested(other: Symbol)(using Context): Symbol =
     if sym.ccNestingLevel < other.ccNestingLevel then other else sym
     /* does not work yet, we do mix sets with different levels, for instance in cc-this.scala.
@@ -313,6 +396,12 @@ extension (sym: Symbol)
 
   def minNested(other: Symbol)(using Context): Symbol =
     if sym.ccNestingLevel > other.ccNestingLevel then other else sym
+
+extension (tp: TermRef | ThisType)
+  /** The nesting level of this reference as defined by capture checking */
+  def ccNestingLevel(using Context): Int = tp match
+    case tp: TermRef => tp.symbol.ccNestingLevel
+    case tp: ThisType => tp.cls.ccNestingLevel
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

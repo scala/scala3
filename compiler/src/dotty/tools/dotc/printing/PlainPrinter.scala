@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, RootVar, isBoxed, ccNestingLevel}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -192,13 +192,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
             if tvar.exists then s"#${tvar.asInstanceOf[TypeVar].nestingLevel.toString}" else ""
           else ""
         ParamRefNameString(tp) ~ lambdaHash(tp.binder) ~ suffix
-      case tp: RootVar =>
-        def boundText(sym: Symbol): Text =
-          if sym.exists then nameString(sym) ~ s"/${sym.ccNestingLevel}"
-          else ""
-        "'cap[" ~ nameString(tp.source)
-        ~ "](" ~ boundText(tp.lowerBound)
-        ~ ".." ~ boundText(tp.upperBound) ~ ")"
       case tp: SingletonType =>
         toTextSingleton(tp)
       case AppliedType(tycon, args) =>
@@ -231,7 +224,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
+        val refsText =
+          if refs.isUniversal &&
+            (refs.elems.size == 1
+            || !ctx.settings.YccDebug.value && !refs.elems.exists(_.isLocalRootCapability))
+          then rootSetText
+          else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
@@ -363,7 +361,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        toTextPrefixOf(tp) ~ selectionString(tp)
+        if tp.isLocalRootCapability then Str(s"<cap in ${tp.localRootOwner.name}/${tp.symbol.ccNestingLevel}>")
+        else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
@@ -382,6 +381,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (homogenizedView) toText(tp.info)
         else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
         else toText(tp.repr)
+      case tp: CaptureRoot.Var =>
+        if tp.followAlias ne tp then toTextRef(tp.followAlias)
+        else
+          def boundText(sym: Symbol): Text =
+            if sym.exists then toTextRef(sym.termRef) ~ s"/${sym.ccNestingLevel}"
+            else ""
+          "'cap[" ~ nameString(tp.source)
+          ~ "](" ~ boundText(tp.lowerBound)
+          ~ ".." ~ boundText(tp.upperBound) ~ ")"
     }
   }
 

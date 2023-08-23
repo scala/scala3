@@ -2174,8 +2174,22 @@ object Types {
      */
     final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
 
-    /** Is this reference the root capability `cap` ? */
-    def isRootCapability(using Context): Boolean = false
+    /** Is this reference the generic root capability `cap` ? */
+    def isGenericRootCapability(using Context): Boolean = false
+
+    /** Is this reference a local root capability `{<cap in owner>}`
+     *  for some level owner?
+     */
+    def isLocalRootCapability(using Context): Boolean =
+      localRootOwner.exists
+
+    /** If this is a local root capability, its owner, otherwise NoSymbol.
+     */
+    def localRootOwner(using Context): Symbol = NoSymbol
+
+    /** Is this reference the a (local or generic) root capability? */
+    def isRootCapability(using Context): Boolean =
+      isGenericRootCapability || isLocalRootCapability
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2207,8 +2221,6 @@ object Types {
       val cs = captureSetOfInfo
       if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
 
-    /** The nesting level of this reference as defined by capture checking */
-    def ccNestingLevel(using Context): Int
   end CaptureRef
 
   /** A trait for types that bind other types that refer to them.
@@ -2911,13 +2923,18 @@ object Types {
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
-    override def isRootCapability(using Context): Boolean =
+    override def isGenericRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
+
+    override def localRootOwner(using Context): Symbol =
+      if name == nme.LOCAL_CAPTURE_ROOT
+      then
+        if symbol.owner.isLocalDummy then symbol.owner.owner
+        else symbol.owner
+      else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
-
-    def ccNestingLevel(using Context) = symbol.ccNestingLevel
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -3084,8 +3101,6 @@ object Types {
     def sameThis(that: Type)(using Context): Boolean = (that eq this) || that.match
       case that: ThisType => this.cls eq that.cls
       case _ => false
-
-    def ccNestingLevel(using Context) = cls.ccNestingLevel
   }
 
   final class CachedThisType(tref: TypeRef) extends ThisType(tref)
@@ -4689,7 +4704,6 @@ object Types {
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
     override def isTrackableRef(using Context) = true
-    def ccNestingLevel(using Context) = 0  // !!! Is this the right level? 
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)

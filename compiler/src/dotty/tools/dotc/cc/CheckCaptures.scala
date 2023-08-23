@@ -263,7 +263,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         def header =
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
           else i"references $cs1 are not all"
-        report.error(em"$header included in allowed capture set ${res.blocking}", pos)
+        def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
+        report.error(em"$header included in allowed capture set ${res.blocking}$toAdd", pos)
 
     /** The current environment */
     private var curEnv: Env = inContext(ictx):
@@ -409,6 +410,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         else
           selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
+
+    override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
+      val srcRoot =
+        if meth.isConstructor && meth.owner.source == ctx.compilationUnit.source
+        then meth.owner.localRoot
+        else defn.captureRoot
+      val mapr = mapRoots(srcRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner, meth))
+      funtpe.derivedLambdaType(
+        paramInfos = funtpe.paramInfos.mapConserve(mapr),
+        resType = mapr(funtpe.resType)).asInstanceOf[MethodType]
 
     /** A specialized implementation of the apply rule.
      *
@@ -560,6 +571,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       // rechecking the body.
       val res = recheckClosure(expr, pt, forceDependent = true)
       recheckDef(mdef, mdef.symbol)
+      //println(i"RECHECK CLOSURE ${mdef.symbol.info}")
       res
     end recheckClosureBlock
 
@@ -815,6 +827,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             else reconstruct(aargs1, ares1)
 
           (resTp, curEnv.captured)
+      end adaptFun
 
       /** Adapt type function type `actual` to the expected type.
        *  @see [[adaptFun]]

@@ -212,39 +212,37 @@ extends tpd.TreeTraverser:
     case _ =>
       tp
 
-  private def expandAliases(using Context) = new TypeMap:
+  private def expandAliases(using Context) = new TypeMap with FollowAliases:
     def apply(t: Type) =
       val t1 = expandThrowsAlias(t)
       if t1 ne t then return this(t1)
       val t2 = expandCapabilityClass(t)
       if t2 ne t then return t2
       t match
-        case t: LazyRef =>
-          val t1 = this(t.ref)
-          if t1 ne t.ref then t1 else t
         case t @ AnnotatedType(t1, ann) =>
           // Don't map capture sets, since that would implicitly normalize sets that
           // are not well-formed.
           t.derivedAnnotatedType(this(t1), ann)
         case _ =>
-          val t1 = t.dealias
-          if t1 ne t then
-            val t2 = this(t1)
-            if t2 ne t1 then return t2
-          mapOver(t)
+          mapOverFollowingAliases(t)
 
-  private def transformExplicitType(tp: Type, boxed: Boolean)(using Context): Type =
+  private def transformExplicitType(tp: Type, boxed: Boolean, mapRoots: Boolean)(using Context): Type =
     val tp1 = expandAliases(if boxed then box(tp) else tp)
-    if tp1 ne tp then capt.println(i"expanded: $tp --> $tp1")
-    tp1
+    val tp2 =
+      if mapRoots
+      then cc.mapRoots(defn.captureRoot.termRef, ctx.owner.localRoot.termRef)(tp1)
+            .showing(i"map roots $tp1, ${tp1.getClass} == $result", capt)
+      else tp1
+    if tp2 ne tp then capt.println(i"expanded: $tp --> $tp2")
+    tp2
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
-  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean)(using Context): Unit =
+  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean, mapRoots: Boolean)(using Context): Unit =
     if !tree.hasRememberedType then
       tree.rememberType(
         if tree.isInstanceOf[InferredTypeTree] && !exact
         then transformInferredType(tree.tpe, boxed)
-        else transformExplicitType(tree.tpe, boxed))
+        else transformExplicitType(tree.tpe, boxed, mapRoots))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
    *  method or poly types `to`. We use a single BiTypeMap to do everything.
@@ -295,7 +293,7 @@ extends tpd.TreeTraverser:
           tree.tpt match
             case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
               tree.paramss.foreach(traverse)
-              transformTT(tpt, boxed = false, exact = true)
+              transformTT(tpt, boxed = false, exact = true, mapRoots = true)
               traverse(tree.rhs)
               //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
             case _ =>
@@ -303,8 +301,10 @@ extends tpd.TreeTraverser:
       case tree @ ValDef(_, tpt: TypeTree, _) =>
         transformTT(tpt,
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
-          exact = tree.symbol.allOverriddenSymbols.hasNext // types of symbols that override a parent don't get a capture set
+          exact = tree.symbol.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
+          mapRoots = true
         )
+        capt.println(i"mapped $tree = ${tpt.knownType}")
         if allowUniversalInBoxed && tree.symbol.is(Mutable)
             && !tree.symbol.hasAnnotation(defn.UncheckedCapturesAnnot)
         then
@@ -316,7 +316,7 @@ extends tpd.TreeTraverser:
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
-          transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
+          transformTT(arg, boxed = true, exact = false, mapRoots = true) // type arguments in type applications are boxed
 
         if allowUniversalInBoxed then
           val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
@@ -337,7 +337,9 @@ extends tpd.TreeTraverser:
 
   def postProcess(tree: Tree)(using Context): Unit = tree match
     case tree: TypeTree =>
-      transformTT(tree, boxed = false, exact = false) // other types are not boxed
+      transformTT(tree, boxed = false, exact = false,
+          mapRoots = !ctx.owner.levelOwner.isStaticOwner // other types in static locaations are not boxed
+        )
     case tree: ValOrDefDef =>
       val sym = tree.symbol
 
@@ -353,15 +355,18 @@ extends tpd.TreeTraverser:
         info match
           case mt: MethodOrPoly =>
             val psyms = psymss.head
+            val mapr =
+              if (sym.isAnonymousFunction) then identity[Type]
+              else mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
             mt.companion(mt.paramNames)(
               mt1 =>
                 if !psyms.exists(_.isUpdatedAfter(preRecheckPhase)) && !mt.isParamDependent && prevLambdas.isEmpty then
                   mt.paramInfos
                 else
                   val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                  psyms.map(psym => subst(psym.info).asInstanceOf[mt.PInfo]),
+                  psyms.map(psym => mapr(subst(psym.info)).asInstanceOf[mt.PInfo]),
               mt1 =>
-                integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
+                integrateRT(mapr(mt.resType), psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas)
             )
           case info: ExprType =>
             info.derivedExprType(resType =
@@ -420,7 +425,7 @@ extends tpd.TreeTraverser:
               modul.termRef.invalidateCaches()
         case _ =>
           val info = atPhase(preRecheckPhase)(tree.symbol.info)
-          val newInfo = transformExplicitType(info, boxed = false)
+          val newInfo = transformExplicitType(info, boxed = false, mapRoots = !ctx.owner.isStaticOwner)
           if newInfo ne info then
             updateInfo(tree.symbol, newInfo)
             capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
@@ -514,7 +519,7 @@ extends tpd.TreeTraverser:
         else fallback
       val tp1 = tp.dealiasKeepAnnots
       if tp1 ne tp then
-        val tp2 = transformExplicitType(tp1, boxed = false)
+        val tp2 = transformExplicitType(tp1, boxed = false, mapRoots = true)
         maybeAdd(tp2, if tp2 ne tp1 then tp2 else tp)
       else maybeAdd(tp, tp)
 
