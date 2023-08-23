@@ -676,6 +676,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   case tp1: RefinedType =>
                     return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
                   case _ =>
+            else tp2.refinedInfo match
+              case rinfo2 @ CapturingType(_, refs: CaptureSet.RefiningVar) =>
+                tp1.widen match
+                  case RefinedType(parent1, tp2.refinedName, rinfo1) =>
+                    // When comparing against a Var in class instance refinement,
+                    // take the Var as the precise truth, don't also look in the parent.
+                    // The parent might have a capture root at the wrong level.
+                    // TODO: Generalize this to other refinement situations where the
+                    // lower type's refinement appears elsewhere?
+                    return isSubType(rinfo1, rinfo2) && recur(parent1, tp2.parent)
+                  case _ =>
+              case _ =>
           end if
 
           val skipped2 = skipMatching(tp1w, tp2)

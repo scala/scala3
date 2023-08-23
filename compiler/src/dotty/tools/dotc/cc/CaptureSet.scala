@@ -580,6 +580,11 @@ object CaptureSet:
     override def toString = s"Var$id$elems"
   end Var
 
+  /** A variable used in refinements of class parameters. See `addCaptureRefinements`.
+   */
+  class RefiningVar(owner: Symbol, getter: Symbol)(using @constructorOnly ctx: Context) extends Var(owner):
+    description = i"of parameter ${getter.name} of ${getter.owner}"
+
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends Var(owner, initialElems):
@@ -936,6 +941,8 @@ object CaptureSet:
           if tp.typeSymbol == defn.Caps_Root then universal else empty
         case _: TypeParamRef =>
           empty
+        case CapturingType(parent, refs: RefiningVar) =>
+          refs
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>

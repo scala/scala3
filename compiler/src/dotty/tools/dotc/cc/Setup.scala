@@ -106,7 +106,8 @@ extends tpd.TreeTraverser:
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if getter.termRef.isTracked then
                 val getterType = tp.memberInfo(getter).strippedDealias
-                RefinedType(core, getter.name, CapturingType(getterType, CaptureSet.Var(ctx.owner)))
+                RefinedType(core, getter.name,
+                    CapturingType(getterType, CaptureSet.RefiningVar(ctx.owner, getter)))
                   .showing(i"add capture refinement $tp --> $result", capt)
               else
                 core
