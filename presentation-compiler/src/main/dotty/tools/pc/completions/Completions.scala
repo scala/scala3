@@ -63,7 +63,6 @@ class Completions(
       case Literal(Constant(_: String)) :: _ => Mode.Term // literal completions
       case _ => mode
 
-
   private lazy val shouldAddSnippet =
     path match
       /* In case of `method@@()` we should not add snippets and the path
@@ -113,7 +112,6 @@ class Completions(
     else !completionMode.is(Mode.Term)
     end if
   end includeSymbol
-
 
   def completions(): (List[CompletionValue], SymbolSearch.Result) =
     val (advanced, exclusive) = advancedCompletions(path, pos, completionPos)
@@ -242,9 +240,8 @@ class Completions(
     def companionSynthetic = sym.companion.exists && sym.companion.is(Synthetic)
     // find the apply completion that would need a snippet
     val methodSymbols =
-      if shouldAddSnippet &&
-        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) &&
-          !sym.is(Flags.JavaDefined) && completionMode.is(Mode.Term)
+      if shouldAddSnippet && completionMode.is(Mode.Term) &&
+        (sym.is(Flags.Module) || sym.isClass && !sym.is(Flags.Trait)) && !sym.is(Flags.JavaDefined)
       then
         val info =
           /* Companion will be added even for normal classes now,

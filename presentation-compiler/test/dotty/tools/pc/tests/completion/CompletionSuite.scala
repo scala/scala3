@@ -673,8 +673,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some[?] scala
-         |SafeVarargs java.lang
          |ScalaReflectionException scala
+         |Seq[A] scala.collection.immutable
          |""".stripMargin,
       topLines = Some(3)
     )
@@ -709,8 +709,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Number: Regex
-         |NegativeArraySizeException java.lang
-         |NoClassDefFoundError java.lang
+         |NoSuchElementException java.util
+         |NoSuchFieldError java.lang
          |""".stripMargin,
       topLines = Option(3)
     )
@@ -724,10 +724,22 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Number: Regex
-         |NegativeArraySizeException java.lang
-         |NoClassDefFoundError java.lang
+         |NoSuchElementException java.util
+         |NoSuchFieldError java.lang
          |""".stripMargin,
       topLines = Option(3)
+    )
+
+  @Test def `no-methods-on-case-type` =
+    check(
+      s"""|object Main {
+          |  val Number = "".r
+          |  "" match {
+          |    case _: NotImpl@@
+          |}
+          |""".stripMargin,
+      """|NotImplementedError scala
+         |""".stripMargin,
     )
 
   @Test def underscore =
@@ -1344,7 +1356,7 @@ class CompletionSuite extends BaseCompletionSuite:
       """|object T:
          |  extension (x: ListBuffe@@)
          |""".stripMargin,
-      """|ListBuffer[T] - scala.collection.mutable
+      """|ListBuffer[A] - scala.collection.mutable
          |ListBuffer - scala.collection.mutable
          |""".stripMargin,
     )
@@ -1364,7 +1376,7 @@ class CompletionSuite extends BaseCompletionSuite:
       """|object T:
          |  extension [A <: ListBuffe@@]
          |""".stripMargin,
-      """|ListBuffer[T] - scala.collection.mutable
+      """|ListBuffer[A] - scala.collection.mutable
          |ListBuffer - scala.collection.mutable
          |""".stripMargin
     )
