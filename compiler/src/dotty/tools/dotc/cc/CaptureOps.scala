@@ -342,12 +342,15 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeUnbox
 
   def isLevelOwner(using Context): Boolean =
+    def isCaseClassSynthetic =
+      sym.owner.isClass && sym.owner.is(Case) && sym.is(Synthetic) && sym.info.firstParamNames.isEmpty
     if sym.isClass then true
     else if sym.is(Method) then
       if sym.isAnonymousFunction then
         // Setup added anonymous functions counting as level owners to nestingLevels
         ctx.property(ccState).get.nestingLevels.contains(sym)
-      else !sym.isConstructor
+      else
+        !sym.isConstructor && !isCaseClassSynthetic
     else false
 
   /** The owner of the current level. Qualifying owners are
