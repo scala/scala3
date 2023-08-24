@@ -2927,10 +2927,12 @@ object Types {
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def localRootOwner(using Context): Symbol =
-      if name == nme.LOCAL_CAPTURE_ROOT
-      then
+      if name == nme.LOCAL_CAPTURE_ROOT then
         if symbol.owner.isLocalDummy then symbol.owner.owner
         else symbol.owner
+      else if info.isRef(defn.Caps_Root) then
+        val owner = symbol.maybeOwner
+        if owner.isTerm then owner else NoSymbol
       else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =

@@ -1090,14 +1090,17 @@ class CheckCaptures extends Recheck, SymTransformer:
             ctx ?=>
               var seen = new util.HashSet[CaptureRef]
               def recur(elems: List[CaptureRef]): Unit =
-                for ref <- elems do
-                  if !isAllowed(ref) && !seen.contains(ref) then
+                for case ref: TermParamRef <- elems do
+                  if !allowed.contains(ref) && !seen.contains(ref) then
                     seen += ref
-                    val widened = ref.captureSetOfInfo
-                    val added = widened.filter(isAllowed(_))
-                    capt.println(i"heal $ref in $cs by widening to $added")
-                    checkSubset(added, cs, tree.srcPos)
-                    recur(widened.elems.toList)
+                    if ref.underlying.isRef(defn.Caps_Root) then
+                      report.error(i"escaping local reference $ref", tree.srcPos)
+                    else
+                      val widened = ref.captureSetOfInfo
+                      val added = widened.filter(isAllowed(_))
+                      capt.println(i"heal $ref in $cs by widening to $added")
+                      checkSubset(added, cs, tree.srcPos)
+                      recur(widened.elems.toList)
               recur(elems)
 
         def traverse(tp: Type) =

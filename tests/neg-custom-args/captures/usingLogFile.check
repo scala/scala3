@@ -24,13 +24,13 @@
    |                       the part () => Unit of that type captures the root capability `cap`.
    |                       This is often caused by a local capability in an argument of method usingLogFile
    |                       leaking as part of its result.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:6 -------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:14 ------------------------------------------------------
 47 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Non-local value later cannot have an inferred type
-   |  () => Unit
-   |  with non-empty capture set {x$0, cap}.
-   |  The type needs to be declared explicitly.
+   |              ^^^^^^^^^^^^
+   |              Sealed type variable T cannot be instantiated to box () => Unit since
+   |              that type captures the root capability `cap`.
+   |              This is often caused by a local capability in an argument of method usingLogFile
+   |              leaking as part of its result.
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:16 ------------------------------------------------------
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
