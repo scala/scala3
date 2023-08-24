@@ -201,6 +201,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
+  private val state = new CCState
+
   override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
@@ -993,7 +995,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       setup = Setup(preRecheckPhase, thisPhase, recheckDef)
-      inContext(ctx.withProperty(ccState, Some(new CCState))):
+      inContext(ctx.withProperty(ccState, Some(state))):
         setup(ctx.compilationUnit.tpdTree)
         //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
         withCaptureSetsExplained:
