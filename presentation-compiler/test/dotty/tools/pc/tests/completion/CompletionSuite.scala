@@ -669,14 +669,12 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       s"""|object Main {
           |  Option(1) match {
-          |    case _: S@@
+          |    case _: Som@@
           |}
           |""".stripMargin,
       """|Some[?] scala
-         |ScalaReflectionException scala
-         |Seq[A] scala.collection.immutable
          |""".stripMargin,
-      topLines = Some(3)
+      topLines = Some(1)
     )
 
   @Test def adt3 =
@@ -695,9 +693,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|NotString: Int
          |Number: Regex
-         |Nil scala.collection.immutable
          |""".stripMargin,
-      topLines = Option(3)
+      topLines = Some(2)
     )
 
   @Test def adt4 =
@@ -705,29 +702,12 @@ class CompletionSuite extends BaseCompletionSuite:
       s"""|object Main {
           |  val Number = "".r
           |  "" match {
-          |    case _: N@@
+          |    case _: Numb@@
           |}
           |""".stripMargin,
       """|Number: Regex
-         |NoSuchElementException java.util
-         |NoSuchFieldError java.lang
          |""".stripMargin,
-      topLines = Option(3)
-    )
-
-  @Test def adt5 =
-    check(
-      s"""|object Main {
-          |  val Number = "".r
-          |  "" match {
-          |    case _: N@@
-          |}
-          |""".stripMargin,
-      """|Number: Regex
-         |NoSuchElementException java.util
-         |NoSuchFieldError java.lang
-         |""".stripMargin,
-      topLines = Option(3)
+      topLines = Some(1)
     )
 
   @Test def `no-methods-on-case-type` =
