@@ -292,6 +292,9 @@ extends tpd.TreeTraverser:
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type)(using Context) =
     sym.updateInfoBetween(preRecheckPhase, thisPhase, info)
+    sym.namedType match
+      case ref: CaptureRef => ref.invalidateCaches()
+      case _ =>
 
   def traverse(tree: Tree)(using Context): Unit =
     tree match
