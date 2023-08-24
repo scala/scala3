@@ -83,6 +83,7 @@ extends tpd.TreeTraverser:
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
   private def mapInferred(mapRoots: Boolean)(using Context) = new TypeMap:
+    override def toString = "map inferred"
 
     /** Drop @retains annotations everywhere */
     object cleanup extends TypeMap:
@@ -205,14 +206,18 @@ extends tpd.TreeTraverser:
       else fntpe
     case _ => tp
 
+  def isCapabilityClassRef(tp: Type)(using Context) = tp match
+    case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
+    case _ => false
+
   /** Map references to capability classes C to C^ */
-  private def expandCapabilityClass(tp: Type)(using Context): Type = tp match
-    case _: TypeRef | _: AppliedType if tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot) =>
-      CapturingType(tp, CaptureSet.universal, boxed = false)
-    case _ =>
-      tp
+  private def expandCapabilityClass(tp: Type)(using Context): Type =
+    if isCapabilityClassRef(tp)
+    then CapturingType(tp, CaptureSet.universal, boxed = false)
+    else tp
 
   private def expandAliases(using Context) = new TypeMap with FollowAliases:
+    override def toString = "expand aliases"
     def apply(t: Type) =
       val t1 = expandThrowsAlias(t)
       if t1 ne t then return this(t1)
@@ -220,9 +225,12 @@ extends tpd.TreeTraverser:
       if t2 ne t then return t2
       t match
         case t @ AnnotatedType(t1, ann) =>
+          val t2 =
+            if ann.symbol == defn.RetainsAnnot && isCapabilityClassRef(t1) then t1
+            else this(t1)
           // Don't map capture sets, since that would implicitly normalize sets that
           // are not well-formed.
-          t.derivedAnnotatedType(this(t1), ann)
+          t.derivedAnnotatedType(t2, ann)
         case _ =>
           mapOverFollowingAliases(t)
 
@@ -268,6 +276,7 @@ extends tpd.TreeTraverser:
         mapOver(t)
 
     lazy val inverse = new BiTypeMap:
+      override def toString = "SubstParams.inverse"
       def apply(t: Type): Type = t match
         case t: ParamRef =>
           def recur(from: List[LambdaType], to: List[List[Symbol]]): Type =

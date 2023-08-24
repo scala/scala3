@@ -19,8 +19,9 @@ object Generic:
 object Monomorphic:
 
   class Pair(x: Cap => Unit, y: Cap => Unit):
-    def fst: Cap ->{x} Unit = x
-    def snd: Cap ->{y} Unit = y
+    type PCap = Cap
+    def fst: PCap ->{x} Unit = x
+    def snd: PCap ->{y} Unit = y
 
   def test(c: Cap, d: Cap) =
     def f(x: Cap): Unit = if c == x then ()
