@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure, mapRoots, localRoot}
 import NameKinds.WildcardParamName
 
 /** Provides methods to compare types.
@@ -2085,7 +2085,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       def qualifies(m: SingleDenotation): Boolean =
         val info2 = tp2.refinedInfo
         val isExpr2 = info2.isInstanceOf[ExprType]
-        val info1 = m.info match
+        var info1 = m.info match
           case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
             // OK: { val x: T } <: { def x: T }
             // OK: { var x: T } <: { def x: T }
@@ -2095,9 +2095,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // OK{ { def x(): T } <: { def x: T} // if x is Java defined
             ExprType(info1.resType)
           case info1 => info1
+
+        if ctx.phase == Phases.checkCapturesPhase then
+          // When comparing against a RefiningVar refinement, map the
+          // localRoot of the corresponding class in `tp1` to the owner of the
+          // refining capture set.
+          tp2.refinedInfo match
+            case rinfo2 @ CapturingType(_, refs: CaptureSet.RefiningVar) =>
+              info1 = mapRoots(refs.getter.owner.localRoot.termRef, refs.owner.localRoot.termRef)(info1)
+            case _ =>
+
         isSubInfo(info1, info2, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
+      end qualifies
 
       tp1.member(name).hasAltWithInline(qualifies)
     }

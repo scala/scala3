@@ -597,8 +597,11 @@ object CaptureSet:
 
   /** A variable used in refinements of class parameters. See `addCaptureRefinements`.
    */
-  class RefiningVar(owner: Symbol, getter: Symbol)(using @constructorOnly ctx: Context) extends Var(owner):
+  class RefiningVar(owner: Symbol, val getter: Symbol)(using @constructorOnly ctx: Context) extends Var(owner):
     description = i"of parameter ${getter.name} of ${getter.owner}"
+    override def optionalInfo(using Context): String =
+      super.optionalInfo + (
+        if ctx.settings.YprintDebug.value then "(refining)" else "")
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
