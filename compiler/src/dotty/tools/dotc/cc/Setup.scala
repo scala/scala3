@@ -342,7 +342,8 @@ extends tpd.TreeTraverser:
           transformTT(arg, boxed = true, exact = false, mapRoots = true) // type arguments in type applications are boxed
 
         if allowUniversalInBoxed then
-          val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
+          val polyType = atPhase(preRecheckPhase):
+            fn.tpe.widen.asInstanceOf[TypeLambda]
           for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
             if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
               def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
