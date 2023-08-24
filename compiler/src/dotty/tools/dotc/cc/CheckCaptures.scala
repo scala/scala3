@@ -1044,7 +1044,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               }
             selfType match
               case CapturingType(_, refs: CaptureSet.Var)
-              if !refs.isUniversal && !matchesExplicitRefsInBaseClass(refs, root) =>
+              if !refs.elems.exists(_.isRootCapability) && !matchesExplicitRefsInBaseClass(refs, root) =>
                 // Forbid inferred self types unless they are already implied by an explicit
                 // self type in a parent.
                 report.error(

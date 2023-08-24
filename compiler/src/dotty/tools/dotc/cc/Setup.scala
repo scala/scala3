@@ -441,22 +441,29 @@ extends tpd.TreeTraverser:
       tree.symbol match
         case cls: ClassSymbol =>
           val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-          if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
-            // add capture set to self type of nested classes if no self type is given explicitly
-            val selfRefs = CaptureSet.Var(cls)
-              // it's unclear what the right level owner should be. A self type should
+          val newSelfType =
+            if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
+              // add capture set to self type of nested classes if no self type is given explicitly.
+              // It's unclear what the right level owner should be. A self type should
               // be able to mention class parameters, which are owned by the class; that's
               // why the class was picked as level owner. But self types should not be able
               // to mention other fields.
-            val newInfo = ClassInfo(prefix, cls, ps, decls,
-              CapturingType(cinfo.selfType, selfRefs)
-                .showing(i"inferred self type for $cls: $result", capt))
+              CapturingType(cinfo.selfType, CaptureSet.Var(cls))
+            else selfInfo match
+              case selfInfo: Type =>
+                inContext(ctx.withOwner(cls)):
+                  transformExplicitType(selfInfo, boxed = false, mapRoots = true)
+              case _ =>
+                NoType
+          if newSelfType.exists then
+            capt.println(i"mapped self type for $cls: $newSelfType, was $selfInfo")
+            val newInfo = ClassInfo(prefix, cls, ps, decls, newSelfType)
             updateInfo(cls, newInfo)
             cls.thisType.asInstanceOf[ThisType].invalidateCaches()
             if cls.is(ModuleClass) then
               // if it's a module, the capture set of the module reference is the capture set of the self type
               val modul = cls.sourceModule
-              updateInfo(modul, CapturingType(modul.info, selfRefs))
+              updateInfo(modul, CapturingType(modul.info, newSelfType.captureSet))
               modul.termRef.invalidateCaches()
         case _ =>
           val info = atPhase(preRecheckPhase)(tree.symbol.info)
