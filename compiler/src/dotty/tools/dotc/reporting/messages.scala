@@ -1670,10 +1670,15 @@ class CannotExtendAnyVal(sym: Symbol)(using Context)
   extends SyntaxMsg(CannotExtendAnyValID) {
   def msg(using Context) = i"""$sym cannot extend ${hl("AnyVal")}"""
   def explain(using Context) =
-    i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
-        |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
-        |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
-        |"""
+    if sym.is(Trait) then
+      i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
+          |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
+          |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
+          |"""
+    else if sym.is(Module) then
+      i"""Only classes (not objects) are allowed to extend ${hl("AnyVal")}.
+          |"""
+    else ""
 }
 
 class CannotExtendJavaEnum(sym: Symbol)(using Context)
