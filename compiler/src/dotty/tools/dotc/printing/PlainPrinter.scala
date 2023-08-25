@@ -150,7 +150,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.FromJavaObjectSymbol
 
   def toTextCaptureSet(cs: CaptureSet): Text =
-    if printDebug && !cs.isConst then cs.toString
+    if printDebug && ctx.settings.YccDebug.value && !cs.isConst then cs.toString
     else if cs == CaptureSet.Fluid then "<fluid>"
     else
       val core: Text =
@@ -361,7 +361,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        if tp.isLocalRootCapability then Str(s"<cap in ${tp.localRootOwner.name}/${tp.symbol.ccNestingLevel}>")
+        if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then
+          Str(s"cap[${tp.localRootOwner.name}]@${tp.symbol.ccNestingLevel}")
         else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
