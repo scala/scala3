@@ -586,6 +586,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       // Constrain closure's parameters and result from the expected type before
       // rechecking the body.
       val res = recheckClosure(expr, pt, forceDependent = true)
+      checkConformsExpr(res, pt, expr)
       recheckDef(mdef, mdef.symbol)
       //println(i"RECHECK CLOSURE ${mdef.symbol.info}")
       res
