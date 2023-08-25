@@ -231,6 +231,16 @@ class CheckCaptures extends Recheck, SymTransformer:
             if variance < 0 then
               capt.println(i"solving $t")
               refs.solve()
+            if ctx.owner.isLevelOwner then
+              // instantiate root vars with upper bound ctx.owner to its local root
+              for ref <- refs.elems do ref match
+                case ref: CaptureRoot.Var => ref.followAlias match
+                  case rv: CaptureRoot.Var if rv.upperBound == ctx.owner =>
+                    val inst = ctx.owner.localRoot.termRef
+                    capt.println(i"instantiate $rv to $inst")
+                    rv.setAlias(inst)
+                  case _ =>
+                case _ =>
             traverse(parent)
           case t @ defn.RefinedFunctionOf(rinfo) =>
             traverse(rinfo)

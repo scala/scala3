@@ -28,6 +28,9 @@ object CaptureRoot:
     override def isTrackableRef(using Context): Boolean = true
     override def captureSetOfInfo(using Context) = CaptureSet.universal
 
+    def setAlias(target: CaptureRoot) =
+      alias = target
+
     def followAlias: CaptureRoot = alias match
       case alias: Var if alias ne this => alias.followAlias
       case _ => this
