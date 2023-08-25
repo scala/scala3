@@ -392,7 +392,7 @@ extension (sym: Symbol)
    */
   def definedLocalRoot(using Context): Symbol =
     sym.paramSymss.dropWhile(psyms => psyms.nonEmpty && psyms.head.isType) match
-      case psyms :: Nil => psyms.find(_.info.typeSymbol == defn.Caps_Root).getOrElse(NoSymbol)
+      case psyms :: _ => psyms.find(_.info.typeSymbol == defn.Caps_Root).getOrElse(NoSymbol)
       case _ => NoSymbol
 
   def localRoot(using Context): Symbol =
