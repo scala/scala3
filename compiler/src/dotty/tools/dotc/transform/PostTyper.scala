@@ -381,6 +381,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: ValDef =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
+          Checking.checkPolyFunctionType(tree.tpt)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           if tree1.removeAttachment(desugar.UntupledParam).isDefined then
             checkStableSelection(tree.rhs)
@@ -388,6 +389,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: DefDef =>
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
+          Checking.checkPolyFunctionType(tree.tpt)
           annotateContextResults(tree)
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
@@ -492,6 +494,9 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
+        case tree: RefinedTypeTree =>
+          Checking.checkPolyFunctionType(tree)
+          super.transform(tree)
         case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)
