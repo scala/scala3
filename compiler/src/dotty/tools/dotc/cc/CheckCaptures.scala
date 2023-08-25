@@ -18,7 +18,7 @@ import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
 import StdNames.nme
 import NameKinds.DefaultGetterName
 import reporting.trace
@@ -262,21 +262,25 @@ class CheckCaptures extends Recheck, SymTransformer:
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
 
+    def checkOK(res: CompareResult, prefix: => String, pos: SrcPos)(using Context): Unit =
+      if !res.isOK then
+        def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
+        report.error(em"$prefix included in the allowed capture set ${res.blocking}$toAdd", pos)
+
     /** Check subcapturing `{elem} <: cs`, report error on failure */
     def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
-      val res = elem.singletonCaptureSet.subCaptures(cs, frozen = false)
-      if !res.isOK then
-        report.error(em"$elem cannot be referenced here; it is not included in the allowed capture set ${res.blocking}", pos)
+      checkOK(
+          elem.singletonCaptureSet.subCaptures(cs, frozen = false),
+          i"$elem cannot be referenced here; it is not",
+          pos)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
     def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
-      val res = cs1.subCaptures(cs2, frozen = false)
-      if !res.isOK then
-        def header =
+      checkOK(
+          cs1.subCaptures(cs2, frozen = false),
           if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
-          else i"references $cs1 are not all"
-        def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
-        report.error(em"$header included in allowed capture set ${res.blocking}$toAdd", pos)
+          else i"references $cs1 are not all",
+          pos)
 
     /** The current environment */
     private var curEnv: Env = inContext(ictx):

@@ -495,10 +495,10 @@ object CaptureSet:
       val res = optional:
         (SimpleIdentitySet[CaptureRef]() /: elems): (acc, elem) =>
           if levelOK(elem) then acc + elem
-          else if elem.isRootCapability then break()
           else
             val saved = triedElem
             triedElem = triedElem.orElse(Some(elem))
+            if elem.isRootCapability then break()
             val res = acc ++ widenCaptures(elem.captureSetOfInfo.elems).?
             triedElem = saved  // reset only in case of success, leave as is on error
             res
