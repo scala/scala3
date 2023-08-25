@@ -1175,7 +1175,7 @@ class Definitions {
         case info: MethodType =>
           !info.resType.isInstanceOf[MethodOrPoly] && // Has only one parameter list
           !info.isVarArgsMethod &&
-          !info.paramInfos.exists(_.isInstanceOf[ExprType]) // No by-name parameters
+          !info.isMethodWithByNameArgs // No by-name parameters
         case _ => false
       info match
         case info: PolyType => isValidMethodType(info.resType)
