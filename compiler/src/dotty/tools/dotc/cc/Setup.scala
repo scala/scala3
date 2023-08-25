@@ -488,7 +488,8 @@ extends tpd.TreeTraverser:
           sym == defn.AnyClass
             // we assume Any is a shorthand of {cap} Any, so if Any is an upper
             // bound, the type is taken to be impure.
-        else superTypeIsImpure(tp.superType)
+        else
+          sym != defn.Caps_Root && superTypeIsImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
         superTypeIsImpure(tp.underlying)
       case tp: AndType =>
