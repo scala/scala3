@@ -205,12 +205,12 @@ object desugar {
 
   def makeImplicitParameters(
       tpts: List[Tree], implicitFlag: FlagSet,
-      mkParamName: () => TermName,
+      mkParamName: Int => TermName,
       forPrimaryConstructor: Boolean = false
   )(using Context): List[ValDef] =
     for (tpt, i) <- tpts.zipWithIndex yield {
        val paramFlags: FlagSet = if (forPrimaryConstructor) LocalParamAccessor else Param
-       val epname = mkParamName()
+       val epname = mkParamName(i)
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
     }
 
@@ -254,7 +254,7 @@ object desugar {
           // using clauses, we only need names that are unique among the
           // parameters of the method since shadowing does not affect
           // implicit resolution in Scala 3.
-          mkParamName = () =>
+          mkParamName = i =>
             val index = seenContextBounds + 1 // Start at 1 like FreshNameCreator.
             val ret = ContextBoundParamName(EmptyTermName, index)
             seenContextBounds += 1
@@ -1602,9 +1602,12 @@ object desugar {
       case vd: ValDef => vd
     }
 
-  def makeContextualFunction(formals: List[Tree], body: Tree, erasedParams: List[Boolean])(using Context): Function = {
+  def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean])(using Context): Function = {
     val mods = Given
-    val params = makeImplicitParameters(formals, mods, mkParamName = () => ContextFunctionParamName.fresh())
+    val params = makeImplicitParameters(formals, mods,
+      mkParamName = i =>
+        if paramNamesOrNil.isEmpty then ContextFunctionParamName.fresh()
+        else paramNamesOrNil(i))
     FunctionWithMods(params, body, Modifiers(mods), erasedParams)
   }
 
