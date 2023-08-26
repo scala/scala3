@@ -1,8 +1,10 @@
--- Error: tests/neg-custom-args/captures/levels.scala:15:11 ------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:15:11 ---------------------------------------
 15 |    r.setV(g) // error
    |           ^
-   |           reference (cap3 : CC^) is not included in the allowed capture set ?
-   |           of an enclosing function literal with expected type box (x$0: String) ->? String
+   |           Found:    box (x: String) ->{cap3} String
+   |           Required: box (x$0: String) ->? String
    |
    |           Note that reference (cap3 : CC^), defined at level 2
    |           cannot be included in outer capture set ?, defined at level 1 in method test
+   |
+   | longer explanation available when compiling with `-explain`

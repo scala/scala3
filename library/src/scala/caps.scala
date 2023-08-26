@@ -13,6 +13,8 @@ import annotation.experimental
   /** The universal capture reference */
   val cap: Root = ()
 
+  given Root = cap
+
   object unsafe:
 
     extension [T](x: T)
