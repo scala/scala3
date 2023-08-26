@@ -1452,7 +1452,13 @@ class TreeUnpickler(reader: TastyReader,
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
               val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
-              tree.withType(postProcessFunction(ownType))
+              val tp = postProcessFunction(ownType)
+              // Much like in the MATCHtpt case,
+              // normalize the type to avoid differences in the type of trees,
+              // (between joint compilation and separate compilation)
+              // which affects how types are compared in subtyping.
+              val tpn = tp.normalized
+              tree.withType(tpn)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTree())
             case LAMBDAtpt =>
