@@ -1075,28 +1075,29 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
         assert(roots.nonEmpty)
         for case root: ClassSymbol <- roots do
-          checkSelfAgainstParents(root, root.baseClasses)
-          val selfType = root.asClass.classInfo.selfType
-          interpolator(startingVariance = -1).traverse(selfType)
-          if !root.isEffectivelySealed  then
-            def matchesExplicitRefsInBaseClass(refs: CaptureSet, cls: ClassSymbol): Boolean =
-              cls.baseClasses.tail.exists { psym =>
-                val selfType = psym.asClass.givenSelfType
-                selfType.exists && selfType.captureSet.elems == refs.elems
-              }
-            selfType match
-              case CapturingType(_, refs: CaptureSet.Var)
-              if !refs.elems.exists(_.isRootCapability) && !matchesExplicitRefsInBaseClass(refs, root) =>
-                // Forbid inferred self types unless they are already implied by an explicit
-                // self type in a parent.
-                report.error(
-                  em"""$root needs an explicitly declared self type since its
-                      |inferred self type $selfType
-                      |is not visible in other compilation units that define subclasses.""",
-                  root.srcPos)
-              case _ =>
-          parentTrees -= root
-          capt.println(i"checked $root with $selfType")
+          inContext(ctx.withOwner(root)):
+            checkSelfAgainstParents(root, root.baseClasses)
+            val selfType = root.asClass.classInfo.selfType
+            interpolator(startingVariance = -1).traverse(selfType)
+            if !root.isEffectivelySealed  then
+              def matchesExplicitRefsInBaseClass(refs: CaptureSet, cls: ClassSymbol): Boolean =
+                cls.baseClasses.tail.exists { psym =>
+                  val selfType = psym.asClass.givenSelfType
+                  selfType.exists && selfType.captureSet.elems == refs.elems
+                }
+              selfType match
+                case CapturingType(_, refs: CaptureSet.Var)
+                if !refs.elems.exists(_.isRootCapability) && !matchesExplicitRefsInBaseClass(refs, root) =>
+                  // Forbid inferred self types unless they are already implied by an explicit
+                  // self type in a parent.
+                  report.error(
+                    em"""$root needs an explicitly declared self type since its
+                        |inferred self type $selfType
+                        |is not visible in other compilation units that define subclasses.""",
+                    root.srcPos)
+                case _ =>
+            parentTrees -= root
+            capt.println(i"checked $root with $selfType")
     end checkSelfTypes
 
     /** Heal ill-formed capture sets in the type parameter.

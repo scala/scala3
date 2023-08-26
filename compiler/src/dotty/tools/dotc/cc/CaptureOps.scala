@@ -17,7 +17,7 @@ import collection.mutable
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
 
-private val enableRootMapping = false
+private val enableRootMapping = true
 
 /** Switch whether unpickled function types and byname types should be mapped to
  *  impure types. With the new gradual typing using Fluid capture sets, this should
