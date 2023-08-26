@@ -36,22 +36,26 @@ def allowUniversalInBoxed(using Context) =
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
 
-/** Capture checking state, consisting of
- *   - nestingLevels: A map associating certain symbols (the nesting level owners)
- 8     with their ccNestingLevel
- *   - localRoots: A map associating nesting level owners with the local roots valid
- *     in their scopes.
- *   - levelError: Optionally, the last pair of capture reference and capture set where
- *     the reference could not be added to the set due to a level conflict.
- *  The capture checking state is stored in a context property.
- */
+/** Capture checking state, which is stored in a context property */
 class CCState:
+
+  /** Associates certain symbols (the nesting level owners) with their ccNestingLevel */
   val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
+
+  /** Associates nesting level owners with the local roots valid in their scopes. */
   val localRoots: mutable.HashMap[Symbol, Symbol] = new mutable.HashMap
+
+  /** The last pair of capture reference and capture set where
+   *  the reference could not be added to the set due to a level conflict.
+   */
   var levelError: Option[(CaptureRef, CaptureSet)] = None
+end CCState
 
 /** Property key for capture checking state */
-val ccState: Key[CCState] = Key()
+val ccStateKey: Key[CCState] = Key()
+
+/** The currently valid CCState */
+def ccState(using Context) = ctx.property(ccStateKey).get
 
 trait FollowAliases extends TypeMap:
   def mapOverFollowingAliases(t: Type): Type = t match
@@ -348,7 +352,7 @@ extension (sym: Symbol)
     else if sym.is(Method) then
       if sym.isAnonymousFunction then
         // Setup added anonymous functions counting as level owners to nestingLevels
-        ctx.property(ccState).get.nestingLevels.contains(sym)
+        ccState.nestingLevels.contains(sym)
       else
         !sym.isConstructor && !isCaseClassSynthetic
     else false
@@ -371,8 +375,7 @@ extension (sym: Symbol)
   def ccNestingLevel(using Context): Int =
     if sym.exists then
       val lowner = sym.levelOwner
-      val cache = ctx.property(ccState).get.nestingLevels
-      cache.getOrElseUpdate(lowner,
+      ccState.nestingLevels.getOrElseUpdate(lowner,
         if lowner.isRoot then 0 else lowner.owner.ccNestingLevel + 1)
     else -1
 
@@ -380,12 +383,10 @@ extension (sym: Symbol)
    *  a capture checker is running.
    */
   def ccNestingLevelOpt(using Context): Option[Int] =
-    if ctx.property(ccState).isDefined then
-      Some(ccNestingLevel)
-    else None
+    if ctx.property(ccStateKey).isDefined then Some(ccNestingLevel) else None
 
   def setNestingLevel(level: Int)(using Context): Unit =
-    ctx.property(ccState).get.nestingLevels(sym) = level
+    ccState.nestingLevels(sym) = level
 
   /** The parameter with type caps.Root in the leading term parameter section,
    *  or NoSymbol, if none exists.
@@ -403,7 +404,7 @@ extension (sym: Symbol)
     def lclRoot =
       if owner.isTerm then owner.definedLocalRoot.orElse(newRoot)
       else newRoot
-    ctx.property(ccState).get.localRoots.getOrElseUpdate(owner, lclRoot)
+    ccState.localRoots.getOrElseUpdate(owner, lclRoot)
 
   def maxNested(other: Symbol)(using Context): Symbol =
     if sym.ccNestingLevel < other.ccNestingLevel then other else sym

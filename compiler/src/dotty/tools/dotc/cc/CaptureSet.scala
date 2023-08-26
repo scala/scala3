@@ -484,7 +484,7 @@ object CaptureSet:
 
     private def recordLevelError()(using Context): Unit =
       for elem <- triedElem do
-        ctx.property(ccState).get.levelError = Some((elem, this))
+        ccState.levelError = Some((elem, this))
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
       case elem: (TermRef | ThisType) => elem.ccNestingLevel <= ownLevel
@@ -1024,7 +1024,7 @@ object CaptureSet:
   def levelErrors: Addenda = new Addenda:
     override def toAdd(using Context) =
       for
-        state <- ctx.property(ccState).toList
+        state <- ctx.property(ccStateKey).toList
         (ref, cs) <- state.levelError
       yield
         val levelStr = ref match

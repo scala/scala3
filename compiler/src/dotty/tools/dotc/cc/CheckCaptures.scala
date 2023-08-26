@@ -46,11 +46,11 @@ object CheckCaptures:
 
   enum EnvKind:
     case Regular        // normal case
-    case NestedInOwner  // environment is  a temporary one nested in the owner's environment,
+    case NestedInOwner  // environment is a temporary one nested in the owner's environment,
                         // and does not have a different actual owner symbol
                         // (this happens when doing box adaptation).
     case ClosureResult  // environment is for the result of a closure
-    case Boxed          // envrionment is inside a box (in which case references are not counted)
+    case Boxed          // environment is inside a box (in which case references are not counted)
 
   /** A class describing environments.
    *  @param owner     the current owner
@@ -211,7 +211,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     if Synthetics.needsTransform(sym) then Synthetics.transform(sym, toCC = false)
     else super.transformSym(sym)
 
-  override def printingContext(ctx: Context) = ctx.withProperty(ccState, Some(new CCState))
+  override def printingContext(ctx: Context) = ctx.withProperty(ccStateKey, Some(new CCState))
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
@@ -1010,7 +1010,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
       setup = Setup(preRecheckPhase, thisPhase, recheckDef)
-      inContext(ctx.withProperty(ccState, Some(state))):
+      inContext(ctx.withProperty(ccStateKey, Some(state))):
         setup(ctx.compilationUnit.tpdTree)
         //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
         withCaptureSetsExplained:
