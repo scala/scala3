@@ -262,29 +262,35 @@ class CheckCaptures extends Recheck, SymTransformer:
     def assertSub(cs1: CaptureSet, cs2: CaptureSet)(using Context) =
       assert(cs1.subCaptures(cs2, frozen = false).isOK, i"$cs1 is not a subset of $cs2")
 
-    def checkOK(res: CompareResult, prefix: => String, pos: SrcPos)(using Context): Unit =
+    def checkOK(res: CompareResult, prefix: => String, pos: SrcPos, provenance: => String = "")(using Context): Unit =
       if !res.isOK then
         def toAdd: String = CaptureSet.levelErrors.toAdd.mkString
-        report.error(em"$prefix included in the allowed capture set ${res.blocking}$toAdd", pos)
+        def descr: String =
+          val d = res.blocking.description
+          if d.isEmpty then provenance else ""
+        report.error(em"$prefix included in the allowed capture set ${res.blocking}$descr$toAdd", pos)
 
     /** Check subcapturing `{elem} <: cs`, report error on failure */
-    def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos)(using Context) =
+    def checkElem(elem: CaptureRef, cs: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
           elem.singletonCaptureSet.subCaptures(cs, frozen = false),
           i"$elem cannot be referenced here; it is not",
-          pos)
+          pos, provenance)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
-    def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos)(using Context) =
+    def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
       checkOK(
           cs1.subCaptures(cs2, frozen = false),
-          if cs1.elems.size == 1 then i"reference ${cs1.elems.toList}%, % is not"
+          if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head} is not"
           else i"references $cs1 are not all",
-          pos)
+          pos, provenance)
 
     /** The current environment */
     private var curEnv: Env = inContext(ictx):
       Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
+
+    /** Currently checked closures and their expected types, used for error reporting */
+    private var openClosures: List[(Symbol, Type)] = Nil
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
@@ -312,6 +318,19 @@ class CheckCaptures extends Recheck, SymTransformer:
             recur(nextEnv, skip = env.kind == EnvKind.ClosureResult)
       recur(curEnv, skip = false)
 
+    /** A description where this environment comes from */
+    private def provenance(env: Env)(using Context): String =
+      val owner = env.owner
+      if owner.isAnonymousFunction then
+        val expected = openClosures
+          .find(_._1 == owner)
+          .map(_._2)
+          .getOrElse(owner.info.toFunctionType(isJava = false))
+        i"\nof an enclosing function literal with expected type $expected"
+      else
+        i"\nof the enclosing ${owner.showLocated}"
+
+
     /** Include `sym` in the capture sets of all enclosing environments nested in the
      *  the environment in which `sym` is defined.
      */
@@ -321,7 +340,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if ref.isTracked then
           forallOuterEnvsUpTo(sym.enclosure): env =>
             capt.println(i"Mark $sym with cs ${ref.captureSet} free in ${env.owner}")
-            checkElem(ref, env.captured, pos)
+            checkElem(ref, env.captured, pos, provenance(env))
 
     /** Make sure (projected) `cs` is a subset of the capture sets of all enclosing
      *  environments. At each stage, only include references from `cs` that are outside
@@ -338,7 +357,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case ref: ThisType => isVisibleFromEnv(ref.cls)
             case _ => false
           capt.println(i"Include call capture $included in ${env.owner}")
-          checkSubset(included, env.captured, pos)
+          checkSubset(included, env.captured, pos, provenance(env))
 
     /** Include references captured by the called method in the current environment stack */
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
@@ -585,11 +604,15 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       // Constrain closure's parameters and result from the expected type before
       // rechecking the body.
-      val res = recheckClosure(expr, pt, forceDependent = true)
-      checkConformsExpr(res, pt, expr)
-      recheckDef(mdef, mdef.symbol)
-      //println(i"RECHECK CLOSURE ${mdef.symbol.info}")
-      res
+      openClosures = (mdef.symbol, pt) :: openClosures
+      try
+        val res = recheckClosure(expr, pt, forceDependent = true)
+        checkConformsExpr(res, pt, expr)
+        recheckDef(mdef, mdef.symbol)
+        //println(i"RECHECK CLOSURE ${mdef.symbol.info}")
+        res
+      finally
+        openClosures = openClosures.tail
     end recheckClosureBlock
 
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
@@ -608,7 +631,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !Synthetics.isExcluded(sym) then
         val saved = curEnv
         val localSet = capturedVars(sym)
-        if !localSet.isAlwaysEmpty then curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
+        if !localSet.isAlwaysEmpty then
+          curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
         try super.recheckDefDef(tree, sym)
         finally
           interpolateVarsIn(tree.tpt)
@@ -625,7 +649,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       val saved = curEnv
       val localSet = capturedVars(cls)
       for parent <- impl.parents do // (1)
-        checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos)
+        checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
+          i"\nof the references allowed to be captured by $cls")
       if !localSet.isAlwaysEmpty then curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")

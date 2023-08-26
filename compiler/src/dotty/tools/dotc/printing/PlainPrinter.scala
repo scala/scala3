@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel, levelOwner}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -173,8 +173,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeType =>
         toTextRHS(tp)
       case tp: TermRef
-      if !tp.denotationIsCurrent && !homogenizedView || // always print underlying when testing picklers
-         tp.symbol.is(Module) || tp.symbol.name == nme.IMPORT =>
+      if !tp.denotationIsCurrent
+          && !homogenizedView // always print underlying when testing picklers
+          && !tp.isRootCapability
+          || tp.symbol.is(Module)
+          || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
@@ -224,12 +227,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val refsText =
-          if refs.isUniversal &&
-            (refs.elems.size == 1
-            || !ctx.settings.YccDebug.value && !refs.elems.exists(_.isLocalRootCapability))
-          then rootSetText
-          else toTextCaptureSet(refs)
+        val rootsInRefs = refs.elems.filter(_.isRootCapability).toList
+        val showAsCap = rootsInRefs match
+          case (tp: TermRef) :: Nil =>
+            if tp.symbol == defn.captureRoot then
+              refs.elems.size == 1 || !printDebug
+                // {caps.cap} gets printed as `{cap}` even under printDebug as long as there
+                // are no other elements in the set
+            else
+              tp.symbol.name == nme.LOCAL_CAPTURE_ROOT
+              && ctx.owner.levelOwner == tp.localRootOwner
+              && !printDebug
+                // local roots get printed as themselves under printDebug
+          case _ =>
+            false
+        val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
@@ -361,8 +373,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then
-          Str(s"cap[${tp.localRootOwner.name}]@${tp.symbol.ccNestingLevel}")
+        if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
+          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug then
+            Str("cap")
+          else
+            Str(s"cap[${tp.localRootOwner.name}]") ~
+              Str(s"%${tp.symbol.ccNestingLevel}").provided(showNestingLevel)
         else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"

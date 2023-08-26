@@ -45,5 +45,5 @@
 -- Error: tests/neg-custom-args/captures/lazylists2.scala:60:10 --------------------------------------------------------
 60 |    class Mapped2 extends Mapped:  // error
    |    ^
-   |    references {f, xs} are not all included in allowed capture set {} of the self type of class Mapped2
+   |    references {f, xs} are not all included in the allowed capture set {} of the self type of class Mapped2
 61 |      this: Mapped =>
