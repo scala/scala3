@@ -1668,8 +1668,7 @@ class TreeUnpickler(reader: TastyReader,
               val pat = readTree()
               val patType = readType()
               val (targs, args) = until(end)(readTree()).span(_.isType)
-              assert(targs.isEmpty, "unexpected type arguments in SPLICEPATTERN") // `targs` will be needed for #18271. Until this fearure is added they should be empty.
-              SplicePattern(pat, args, patType)
+              SplicePattern(pat, targs, args, patType)
             case HOLE =>
               readHole(end, isTerm = true)
             case _ =>

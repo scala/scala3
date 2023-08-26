@@ -85,6 +85,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.internal.WitnessNames",
   "scala.compiletime.package$package$.deferred",
   "scala.runtime.stdLibPatches.Predef$.is",
+
+  // New feature: functions with erased parameters.
+  // Need quotedPatternsWithPolymorphicFunctions enabled.
+  "scala.quoted.runtime.Patterns$.higherOrderHoleWithTypes"
 )
 
 

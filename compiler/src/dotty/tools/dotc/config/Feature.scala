@@ -37,6 +37,7 @@ object Feature:
   val namedTuples = experimental("namedTuples")
   val modularity = experimental("modularity")
   val betterMatchTypeExtractors = experimental("betterMatchTypeExtractors")
+  val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
@@ -129,6 +130,9 @@ object Feature:
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
   def betterMatchTypeExtractorsEnabled(using Context) = enabled(betterMatchTypeExtractors)
+
+  def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
+    enabled(quotedPatternsWithPolymorphicFunctions)
 
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
