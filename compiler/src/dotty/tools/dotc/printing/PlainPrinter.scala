@@ -402,11 +402,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if tp.followAlias ne tp then toTextRef(tp.followAlias)
         else
           def boundText(sym: Symbol): Text =
-            if sym.exists then toTextRef(sym.termRef) ~ s"/${sym.ccNestingLevel}"
-            else ""
-          "'cap[" ~ nameString(tp.source)
-          ~ "](" ~ boundText(tp.lowerBound)
-          ~ ".." ~ boundText(tp.upperBound) ~ ")"
+            (toTextRef(sym.termRef)
+              ~ Str(s"/${sym.ccNestingLevel}").provided(showNestingLevel)
+            ).provided(sym.exists)
+          "'cap[" ~ boundText(tp.lowerBound) ~ ".." ~ boundText(tp.upperBound) ~ "]"
+          ~ ("(from instantiating " ~ nameString(tp.source) ~ ")").provided(tp.source.exists)
     }
   }
 
