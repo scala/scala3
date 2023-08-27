@@ -6,13 +6,14 @@ import core._
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
+import Annotations.Annotation
+import config.Feature
 import config.Printers.capt
 import ast.tpd
 import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
 import util.Property
-import dotty.tools.dotc.core.Annotations.Annotation
 
 /** A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:
@@ -289,12 +290,26 @@ extends tpd.TreeTraverser:
       def inverse = thisMap
   end SubstParams
 
+  /** If the outer context directly enclosing the definition of `sym`
+   *  has a <try block> owner, that owner, otherwise null.
+   */
+  def newOwnerFor(sym: Symbol)(using Context): Symbol | Null =
+    var octx = ctx
+    while octx.owner == sym do octx = octx.outer
+    if octx.owner.name == nme.TRY_BLOCK then octx.owner else null
+
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type)(using Context) =
-    sym.updateInfoBetween(preRecheckPhase, thisPhase, info)
+    sym.updateInfoBetween(preRecheckPhase, thisPhase, info, newOwnerFor(sym))
     sym.namedType match
       case ref: CaptureRef => ref.invalidateCaches()
       case _ =>
+
+  /** Update only the owner part fo info if necessary. A symbol should be updated
+   *  only once by either updateInfo or updateOwner.
+   */
+  private def updateOwner(sym: Symbol)(using Context) =
+    if newOwnerFor(sym) != null then updateInfo(sym, sym.info)
 
   def traverse(tree: Tree)(using Context): Unit =
     tree match
@@ -367,10 +382,23 @@ extends tpd.TreeTraverser:
       case tree: Template =>
         inContext(ctx.withOwner(tree.symbol.owner)):
           traverseChildren(tree)
+      case tree: Try if Feature.enabled(Feature.saferExceptions) =>
+        val tryOwner = newSymbol(ctx.owner, nme.TRY_BLOCK, SyntheticMethod, MethodType(Nil, defn.UnitType))
+        ccState.tryBlockOwner(tree) = tryOwner
+        inContext(ctx.withOwner(tryOwner)):
+          traverseChildren(tree)
       case _ =>
         traverseChildren(tree)
     postProcess(tree)
   end traverse
+
+  override def apply(x: Unit, trees: List[Tree])(using Context): Unit = trees match
+    case (imp: Import) :: rest =>
+      traverse(rest)(using ctx.importContext(imp, imp.symbol))
+    case tree :: rest =>
+      traverse(tree)
+      traverse(rest)
+    case Nil =>
 
   def postProcess(tree: Tree)(using Context): Unit = tree match
     case tree: TypeTree =>
@@ -451,6 +479,9 @@ extends tpd.TreeTraverser:
                 // are checked on depand
                 denot.info = newInfo
                 recheckDef(tree, sym))
+        else updateOwner(sym)
+      else if !sym.is(Module) then updateOwner(sym) // Modules are updated with their module classes
+
     case tree: Bind =>
       val sym = tree.symbol
       updateInfo(sym, transformInferredType(sym.info, boxed = false, mapRoots = true))
@@ -482,11 +513,14 @@ extends tpd.TreeTraverser:
               val modul = cls.sourceModule
               updateInfo(modul, CapturingType(modul.info, newSelfType.captureSet))
               modul.termRef.invalidateCaches()
+          else
+            updateOwner(cls)
+            if cls.is(ModuleClass) then updateOwner(cls.sourceModule)
         case _ =>
           val info = atPhase(preRecheckPhase)(tree.symbol.info)
           val newInfo = transformExplicitType(info, boxed = false, mapRoots = !ctx.owner.isStaticOwner)
+          updateInfo(tree.symbol, newInfo)
           if newInfo ne info then
-            updateInfo(tree.symbol, newInfo)
             capt.println(i"update info of ${tree.symbol} from $info to $newInfo")
     case _ =>
   end postProcess

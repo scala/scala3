@@ -4,9 +4,9 @@ class CT[E]
 type CanThrow[E] = CT[E]^
 type Top  = Any^
 
-def handle[E <: Exception, sealed T <: Top](op: CanThrow[E] ?=> T)(handler: E => T): T =
-  val x: CanThrow[E] = ???
-  try op(using x)
+def handle[E <: Exception, T <: Top](op: (lcap: caps.Root) ?-> CT[E]^{lcap} ?=> T)(handler: E => T): T =
+  val x: CT[E] = ???
+  try op(using caps.cap)(using x)
   catch case ex: E => handler(ex)
 
 def raise[E <: Exception](ex: E)(using CanThrow[E]): Nothing =
@@ -14,7 +14,8 @@ def raise[E <: Exception](ex: E)(using CanThrow[E]): Nothing =
 
 @main def Test: Int =
   def f(a: Boolean) =
-    handle {  // error
+    handle {  // error: implementation restriction: curried dependent CFT not supported
+              // should work but give capture error
       if !a then raise(IOException())
       (b: Boolean) =>
         if !b then raise(IOException())

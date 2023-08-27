@@ -299,6 +299,7 @@ object StdNames {
     val SELF: N                     = "$this"
     val SKOLEM: N                   = "<skolem>"
     val TRAIT_CONSTRUCTOR: N        = "$init$"
+    val TRY_BLOCK: N                = "<try block>"
     val THROWS: N                   = "$throws"
     val U2EVT: N                    = "u2evt$"
     val ALLARGS: N                  = "$allArgs"

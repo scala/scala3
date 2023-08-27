@@ -9,7 +9,7 @@ object Test1:
     logFile.close()
     result
 
-  val later = usingLogFile { f => () => f.write(0) }
+  val later = usingLogFile { f => () => f.write(0) }  // error
   later()
 
 object Test2:
@@ -28,12 +28,12 @@ object Test2:
   private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
   later2.x()
 
-  var later3: () => Unit = () => ()  // error
-  usingLogFile { f => later3 = () => f.write(0) }
+  var later3: () => Unit = () => ()
+  usingLogFile { f => later3 = () => f.write(0) }  // error
   later3()
 
-  var later4: Cell[() => Unit] = Cell(() => ())  // error
-  usingLogFile { f => later4 = Cell(() => f.write(0)) }
+  var later4: Cell[() => Unit] = Cell(() => ())
+  usingLogFile { f => later4 = Cell(() => f.write(0)) }  // error
   later4.x()
 
 object Test3:
@@ -68,6 +68,6 @@ object Test4:
     op(logger)
 
   def test =
-    val later = usingFile("logfile",            // error
-      usingLogger(_, l => () => l.log("test"))) // ok, since we can widen `l` to `file` instead of to `cap`
+    val later = usingFile("logfile", // error
+      usingLogger(_, l => () => l.log("test"))) // error ??? but had the comment: ok, since we can widen `l` to `file` instead of to `cap`
     later()

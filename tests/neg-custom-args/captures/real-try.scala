@@ -9,20 +9,26 @@ def foo(i: Int): (CanThrow[Ex1], CanThrow[Ex2]) ?-> Unit =
 class Cell[+T](val x: T)
 
 def test(): Unit =
-  try  // error
-    () => foo(1)
+  try
+    () => foo(1)  // no error, since result type is Unit
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  try  // error
-    () => Cell(foo(1))
+  val x = try
+    () => foo(1)  // error
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???
 
-  val b = try  // error
-    Cell(() => foo(1))//: Cell[box {ev} () => Unit] <: Cell[box {cap} () => Unit]
+  val y = try
+    () => Cell(foo(1))  // error
+  catch
+    case _: Ex1 => ???
+    case _: Ex2 => ???
+
+  val b = try
+    Cell(() => foo(1))// // error
   catch
     case _: Ex1 => ???
     case _: Ex2 => ???

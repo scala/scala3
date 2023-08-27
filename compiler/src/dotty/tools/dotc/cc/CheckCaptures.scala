@@ -163,14 +163,15 @@ object CheckCaptures:
    *  Note: We need to perform the check on the original annotation rather than its
    *  capture set since the conversion to a capture set already eliminates redundant elements.
    */
-  def warnIfRedundantCaptureSet(ann: Tree)(using Context): Unit =
+  def warnIfRedundantCaptureSet(ann: Tree, tpt: Tree)(using Context): Unit =
     var retained = retainedElems(ann).toArray
     for i <- 0 until retained.length do
       val ref = retained(i).toCaptureRef
       val others = for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
       val remaining = CaptureSet(others*)
       if remaining.accountsFor(ref) then
-        report.warning(em"redundant capture: $remaining already accounts for $ref", ann.srcPos)
+        val srcTree = if ann.span.exists then ann else tpt
+        report.warning(em"redundant capture: $remaining already accounts for $ref", srcTree.srcPos)
 
   /** Report an error if some part of `tp` contains the root capability in its capture set */
   def disallowRootCapabilitiesIn(tp: Type, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
@@ -689,7 +690,14 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckTyped(tree)
 
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
-      val tp = super.recheckTry(tree, pt)
+      val tryOwner = ccState.tryBlockOwner.remove(tree).getOrElse(ctx.owner)
+      val saved = curEnv
+      curEnv = Env(tryOwner, EnvKind.Regular, CaptureSet.Var(curEnv.owner), curEnv)
+      val tp = try
+        inContext(ctx.withOwner(tryOwner)):
+          super.recheckTry(tree, pt)
+        finally
+          curEnv = saved
       if allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
         disallowRootCapabilitiesIn(tp,
           "Result of `try`", "have type",
@@ -1192,7 +1200,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               checkWellformedPost(tp, tree.srcPos)
               tp match
                 case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-                  warnIfRedundantCaptureSet(annot.tree)
+                  warnIfRedundantCaptureSet(annot.tree, tree)
                 case _ =>
             }
           case t: ValOrDefDef

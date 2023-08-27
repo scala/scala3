@@ -49,10 +49,12 @@ object Recheck:
   extension (sym: Symbol)
 
     /** Update symbol's info to newInfo from prevPhase.next to lastPhase.
-     *  Reset to previous info for phases after lastPhase.
+     *  Also update owner to newOwnerOrNull if it is not null.
+     *  Reset to previous info and owner for phases after lastPhase.
      */
-    def updateInfoBetween(prevPhase: DenotTransformer, lastPhase: DenotTransformer, newInfo: Type)(using Context): Unit =
-      if sym.info ne newInfo then
+    def updateInfoBetween(prevPhase: DenotTransformer, lastPhase: DenotTransformer, newInfo: Type, newOwnerOrNull: Symbol | Null = null)(using Context): Unit =
+      val newOwner = if newOwnerOrNull == null then sym.owner else newOwnerOrNull
+      if (sym.info ne newInfo) || (sym.owner ne newOwner)  then
         val flags = sym.flags
         sym.copySymDenotation(
             initFlags =
@@ -61,6 +63,7 @@ object Recheck:
               else flags
           ).installAfter(lastPhase) // reset
         sym.copySymDenotation(
+            owner = newOwner,
             info = newInfo,
             initFlags =
               if newInfo.isInstanceOf[LazyType] then flags &~ Touched

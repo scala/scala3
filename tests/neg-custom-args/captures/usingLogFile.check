@@ -1,47 +1,46 @@
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:31:6 -------------------------------------------------------
-31 |  var later3: () => Unit = () => ()  // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Mutable variable later3 cannot have type box () => Unit since
-   |  that type captures the root capability `cap`.
-   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:35:6 -------------------------------------------------------
-35 |  var later4: Cell[() => Unit] = Cell(() => ())  // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Mutable variable later4 cannot have type Test2.Cell[() => Unit] since
-   |  the part () => Unit of that type captures the root capability `cap`.
-   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:32:37 ------------------------------------------------------
+32 |  usingLogFile { f => later3 = () => f.write(0) }  // error
+   |                                     ^
+   |(f : java.io.FileOutputStream^{local}) cannot be referenced here; it is not included in the allowed capture set {cap[<root>]}
+   |of an enclosing function literal with expected type box () ->{cap[<root>]} Unit
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:36:35 ---------------------------------
+36 |  usingLogFile { f => later4 = Cell(() => f.write(0)) }  // error
+   |                               ^^^^^^^^^^^^^^^^^^^^^^
+   |                               Found:    Test2.Cell[box () ->{f} Unit]^?
+   |                               Required: Test2.Cell[() ->{cap[<root>]} Unit]
+   |
+   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:12:14 ------------------------------------------------------
+12 |  val later = usingLogFile { f => () => f.write(0) }  // error
+   |              ^^^^^^^^^^^^
+   |              escaping local reference local.type
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
-   |              Sealed type variable T cannot be instantiated to box () => Unit since
-   |              that type captures the root capability `cap`.
-   |              This is often caused by a local capability in an argument of method usingLogFile
-   |              leaking as part of its result.
+   |              escaping local reference local.type
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:28:23 ------------------------------------------------------
 28 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                       ^^^^^^^^^^^^
-   |                       Sealed type variable T cannot be instantiated to box Test2.Cell[() => Unit]^? since
-   |                       the part () => Unit of that type captures the root capability `cap`.
-   |                       This is often caused by a local capability in an argument of method usingLogFile
-   |                       leaking as part of its result.
+   |                       escaping local reference local.type
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:14 ------------------------------------------------------
 47 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
-   |              Sealed type variable T cannot be instantiated to box () => Unit since
-   |              that type captures the root capability `cap`.
-   |              This is often caused by a local capability in an argument of method usingLogFile
-   |              leaking as part of its result.
+   |              escaping local reference local.type
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:16 ------------------------------------------------------
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
-   |                Sealed type variable T cannot be instantiated to box (x$0: Int) => Unit since
-   |                that type captures the root capability `cap`.
-   |                This is often caused by a local capability in an argument of method usingFile
-   |                leaking as part of its result.
+   |                escaping local reference local.type
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:16 ------------------------------------------------------
-71 |    val later = usingFile("logfile",            // error
+71 |    val later = usingFile("logfile", // error
    |                ^^^^^^^^^
-   |                Sealed type variable T cannot be instantiated to box () => Unit since
-   |                that type captures the root capability `cap`.
-   |                This is often caused by a local capability in an argument of method usingFile
-   |                leaking as part of its result.
+   |  reference (_$1 : java.io.OutputStream^{local}) is not included in the allowed capture set {x$0, local, local²}
+   |
+   |  Note that reference (_$1 : java.io.OutputStream^{local}), defined at level 6
+   |  cannot be included in outer capture set {x$0, local, local}, defined at level 1 in method test
+   |
+   |  where:    local  is a reference to a value parameter
+   |            local² is a reference to a value parameter
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:72:6 -------------------------------------------------------
+72 |      usingLogger(_, l => () => l.log("test"))) // error ??? but had the comment: ok, since we can widen `l` to `file` instead of to `cap`
+   |      ^^^^^^^^^^^
+   |      escaping local reference local.type

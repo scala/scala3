@@ -1,7 +1,10 @@
--- Error: tests/neg-custom-args/captures/usingLogFile-alt.scala:18:2 ---------------------------------------------------
-18 |  usingFile(  // error
-   |  ^^^^^^^^^
-   |  Sealed type variable T cannot be instantiated to box () => Unit since
-   |  that type captures the root capability `cap`.
-   |  This is often caused by a local capability in an argument of method usingFile
-   |  leaking as part of its result.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile-alt.scala:21:24 -----------------------------
+21 |      usingLogger(file)(l => () => l.log("test"))  // error
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |          Found:    (l: Test.Logger{val f: java.io.OutputStream^?}^{file}) ->? box () ->? Unit
+   |          Required: (x$0: Test.Logger^{file}) ->{'cap[..<root>](from instantiating usingLogger)} box () ->? Unit
+   |
+   |          Note that reference (cap[Logger] : caps.Root), defined at level 1
+   |          cannot be included in outer capture set ?, defined at level 0 in package <root>
+   |
+   | longer explanation available when compiling with `-explain`

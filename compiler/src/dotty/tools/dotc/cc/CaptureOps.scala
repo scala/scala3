@@ -49,6 +49,11 @@ class CCState:
    *  the reference could not be added to the set due to a level conflict.
    */
   var levelError: Option[(CaptureRef, CaptureSet)] = None
+
+  /** Under saferExceptions: The <try block> symbol generated  for a try.
+   *  Installed by Setup, removed by CheckCaptures.
+   */
+  val tryBlockOwner: mutable.HashMap[Try, Symbol] = new mutable.HashMap
 end CCState
 
 /** Property key for capture checking state */
