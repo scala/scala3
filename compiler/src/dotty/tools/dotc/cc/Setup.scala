@@ -314,10 +314,23 @@ extends tpd.TreeTraverser:
             case _ =>
               traverseChildren(tree)
       case tree @ ValDef(_, tpt: TypeTree, rhs) =>
+        def containsCap(tp: Type) = tp.existsPart:
+          case CapturingType(_, refs) => refs.isUniversal
+          case _ => false
+        def mentionsCap(tree: Tree): Boolean = tree match
+          case Apply(fn, _) => mentionsCap(fn)
+          case TypeApply(fn, args) => args.exists(mentionsCap)
+          case _: InferredTypeTree => false
+          case _: TypeTree => containsCap(expandAliases(tree.tpe))
+          case _ => false
         val mapRoots = rhs match
-          case possiblyTypedClosureDef(ddef) =>
+          case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
             ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-              // toplevel closures bound to vals count as level owners
+              // Toplevel closures bound to vals count as level owners
+              // unless the closure is an implicit eta expansion over a type application
+              // that mentions `cap`. In that case we prefer not to silently rebind
+              // the `cap` to a local root of an invisible closure. See
+              // pos-custom-args/captures/eta-expansions.scala for examples of both cases.
             !tpt.isInstanceOf[InferredTypeTree]
               // in this case roots in inferred val type count as polymorphic
           case _ =>

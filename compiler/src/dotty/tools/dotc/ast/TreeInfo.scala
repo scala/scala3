@@ -813,6 +813,23 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => tree
   }
 
+  /** An extractor for eta expanded `mdef` an eta-expansion of a method reference? To recognize this, we use
+   *  the following criterion: A method definition is an eta expansion, if
+   *  it contains at least one term paramter, the parameter has a zero extent span,
+   *  and the right hand side is either an application or a closure with'
+   *  an anonymous method that's itself characterized as an eta expansion.
+   */
+  def isEtaExpansion(mdef: DefDef)(using Context): Boolean =
+    !rhsOfEtaExpansion(mdef).isEmpty
+
+  def rhsOfEtaExpansion(mdef: DefDef)(using Context): Tree = mdef.paramss match
+    case (param :: _) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
+      mdef.rhs match
+        case rhs: Apply => rhs
+        case closureDef(mdef1) => rhsOfEtaExpansion(mdef1)
+        case _ => EmptyTree
+    case _ => EmptyTree
+
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
     val acc = new TreeAccumulator[List[Symbol]] { outer =>

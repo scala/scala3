@@ -606,13 +606,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       // rechecking the body.
       openClosures = (mdef.symbol, pt) :: openClosures
       try
-        def isEtaExpansion(mdef: DefDef): Boolean = mdef.paramss match
-          case (param :: _) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
-            mdef.rhs match
-              case _: Apply => true
-              case closureDef(mdef1) => isEtaExpansion(mdef1)
-              case _ => false
-          case _ => false
         val res = recheckClosure(expr, pt, forceDependent = true)
         if !isEtaExpansion(mdef) then
           // If closure is an eta expanded method reference it's better to not constrain
