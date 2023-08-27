@@ -5,14 +5,14 @@ class File:
   def write(x: String): Unit = ???
 
 class Service:
-  var file: File^ = uninitialized  // error
+  var file: File^ = uninitialized
   def log = file.write("log")
 
-def withFile[T](op: (f: File^) => T): T =
+def withFile[T](op: (l: caps.Root) ?-> (f: File^{l}) => T): T =
   op(new File)
 
 def test =
   withFile: f =>
     val o = Service()
-    o.file = f
+    o.file = f  // error
     o.log

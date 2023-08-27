@@ -3,7 +3,7 @@ import annotation.capability
 
 object Test1:
 
-  def usingLogFile[sealed T](op: FileOutputStream => T): T =
+  def usingLogFile[T](op: (local: caps.Root) ?-> FileOutputStream => T): T =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -14,7 +14,7 @@ object Test1:
 
 object Test2:
 
-  def usingLogFile[sealed T](op: FileOutputStream^ => T): T =
+  def usingLogFile[T](op: (local: caps.Root) ?-> FileOutputStream^{local} => T): T =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -38,7 +38,7 @@ object Test2:
 
 object Test3:
 
-  def usingLogFile[sealed T](op: FileOutputStream^ => T) =
+  def usingLogFile[T](op: (local: caps.Root) ?-> FileOutputStream^{local} => T) =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -50,7 +50,7 @@ object Test4:
   class Logger(f: OutputStream^):
     def log(msg: String): Unit = ???
 
-  def usingFile[sealed T](name: String, op: OutputStream^ => T): T =
+  def usingFile[T](name: String, op: (local: caps.Root) ?-> OutputStream^{local} => T): T =
     val f = new FileOutputStream(name)
     val result = op(f)
     f.close()
@@ -63,7 +63,7 @@ object Test4:
     later(1)
 
 
-  def usingLogger[sealed T](f: OutputStream^, op: Logger^{f} => T): T =
+  def usingLogger[T](f: OutputStream^, op: (local: caps.Root) ?-> Logger^{f} => T): T =
     val logger = Logger(f)
     op(logger)
 
