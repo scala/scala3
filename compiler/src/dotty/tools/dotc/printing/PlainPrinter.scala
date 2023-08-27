@@ -48,6 +48,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
   protected def debugPos: Boolean = ctx.settings.YdebugPos.value
 
+  /** If true, shorten local roots of current owner tp `cap`,
+   *  TODO: we should drop this switch once we implemented disambiguation of capture roots.
+   */
+  private val shortenCap = true
+
   def homogenize(tp: Type): Type =
     if (homogenizedView)
       tp match {
@@ -166,7 +171,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       boxText ~ toTextLocal(parent) ~ "^"
       ~ (refsText provided refsText != rootSetText)
 
-  final protected def rootSetText = Str("{cap}")
+  final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -238,6 +243,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
               tp.symbol.name == nme.LOCAL_CAPTURE_ROOT
               && ctx.owner.levelOwner == tp.localRootOwner
               && !printDebug
+              && shortenCap // !!!
                 // local roots get printed as themselves under printDebug
           case _ =>
             false
@@ -374,7 +380,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TermRef =>
         if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
-          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug then
+          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug && shortenCap then
             Str("cap")
           else
             Str(s"cap[${tp.localRootOwner.name}]") ~
