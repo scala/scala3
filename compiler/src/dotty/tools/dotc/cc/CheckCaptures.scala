@@ -466,7 +466,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.capturing(CaptureSet.universal))
+        val argType0 = recheck(arg, pt.capturing(CaptureSet(CaptureRoot.Var(ctx.owner))))
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing

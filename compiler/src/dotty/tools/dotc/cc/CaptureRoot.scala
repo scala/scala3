@@ -14,7 +14,7 @@ type CaptureRoot = TermRef | CaptureRoot.Var
 
 object CaptureRoot:
 
-  case class Var(owner: Symbol, source: Symbol)(using @constructorOnly ictx: Context) extends CaptureRef, Showable:
+  case class Var(owner: Symbol, source: Symbol = NoSymbol)(using @constructorOnly ictx: Context) extends CaptureRef, Showable:
 
     var upperBound: Symbol = owner
     var lowerBound: Symbol = NoSymbol
