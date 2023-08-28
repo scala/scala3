@@ -669,8 +669,10 @@ object CheckUnused:
         val simpleSelections = qual.tpe.member(sym.name).alternatives
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
         val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
+        val sameTermPath = qual.isTerm && sym.exists && sym.owner.isType && qual.tpe.typeSymbol == sym.owner.asType
         val selectionsToDealias = typeSelections ::: termSelections
-        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym)
+        def renamedSelection = if(sameTermPath) then sels.find(sel => sel.imported.name == sym.name) else None
+        val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym) || renamedSelection.isDefined
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
         def dealiasedSelector = if(isDerived) sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
           case (sel, sym) if dealias(sym) == dealiasedSym => sel
@@ -680,7 +682,7 @@ object CheckUnused:
           else None
         def wildcard = sels.find(sel => sel.isWildcard && ((sym.is(Given) == sel.isGiven && sel.bound.isEmpty) || sym.is(Implicit)))
         if qualHasSymbol && (!isAccessible || sym.isRenamedSymbol(symName)) && sym.exists then
-          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard) // selector with name or wildcard (or given)
+          selector.orElse(dealiasedSelector).orElse(givenSelector).orElse(wildcard).orElse(renamedSelection) // selector with name or wildcard (or given)
         else
           None
 
