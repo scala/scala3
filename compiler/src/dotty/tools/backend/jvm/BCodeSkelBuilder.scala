@@ -763,9 +763,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       for (p <- params) { locals.makeLocal(p.symbol) }
       // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
 
-      if (params.size > MaximumJvmParameters) {
+      val paramsSize = params.map { param =>
+        val tpeTym = param.symbol.info.typeSymbol
+        if tpeTym == defn.LongClass || tpeTym == defn.DoubleClass then 2 else 1
+      }.sum
+      if (paramsSize > MaximumJvmParameters) {
         // SI-7324
-        report.error(em"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters.", ctx.source.atSpan(methSymbol.span))
+        val info = if paramsSize == params.length then "" else " (Long and Double count as 2)" // https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.3.3
+        report.error(em"Platform restriction: a parameter list's length cannot exceed $MaximumJvmParameters$info.", ctx.source.atSpan(methSymbol.span))
         return
       }
 
