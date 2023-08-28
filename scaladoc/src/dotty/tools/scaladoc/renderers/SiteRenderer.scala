@@ -29,6 +29,14 @@ trait SiteRenderer(using DocContext) extends Locations:
 
   def siteContent(pageDri: DRI, content: ResolvedTemplate): PageContent =
     import content.ctx
+
+    def tryAsDriPlain(str: String): Option[String] =
+      val (path, prefix) = str match
+        case HashRegex(path, prefix) => (path, prefix)
+        case _ => (str, "")
+      val res = ctx.driForLink(content.template.file, path).filter(driExists)
+      res.headOption.map(pathToPage(pageDri, _) + prefix)
+
     def tryAsDri(str: String): Option[String] =
       val newStr =
         str.dropWhile(c => c == '.' || c == '/').replaceAll("/", ".") match
@@ -51,7 +59,7 @@ trait SiteRenderer(using DocContext) extends Locations:
       )(
         resolveLink(pageDri, str.stripPrefix("/"))
       )
-      def asStaticSite: Option[String] = tryAsDri(str)
+      def asStaticSite: Option[String] = tryAsDriPlain(str).orElse(tryAsDri(str))
 
       /* Link resolving checks performs multiple strategies with following priority:
         1. We check if the link is a valid URL e.g. http://dotty.epfl.ch
