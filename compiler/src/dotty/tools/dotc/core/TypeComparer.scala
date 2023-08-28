@@ -2800,12 +2800,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
    */
-  def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
-    // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
+  def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean =
+    provablyDisjoint(tp1, tp2, null)
 
-    def isEnumValue(ref: TermRef): Boolean =
-      val sym = ref.termSymbol
-      sym.isAllOf(EnumCase, butNot=JavaDefined)
+  def provablyDisjoint(tp1: Type, tp2: Type, pending: util.HashSet[(Type, Type)] | Null)(
+      using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
+    // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
 
     @scala.annotation.tailrec
     def disjointnessBoundary(tp: Type): Type = tp match
@@ -2823,7 +2823,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
         tp
       case tp: TermRef =>
-        if isEnumValue(tp) then tp
+        val isEnumValue = tp.termSymbol.isAllOf(EnumCase, butNot = JavaDefined)
+        if isEnumValue then tp
         else
           val optGadtBounds = gadtBounds(tp.symbol)
           if optGadtBounds != null then disjointnessBoundary(optGadtBounds.hi)
@@ -2841,17 +2842,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     end disjointnessBoundary
 
     (disjointnessBoundary(tp1), disjointnessBoundary(tp2)) match
+      // Infinite recursion detection
+      case pair if pending != null && pending.contains(pair) =>
+        false
+
       // Cases where there is an intersection or union on the right
       case (tp1, tp2: OrType) =>
-        provablyDisjoint(tp1, tp2.tp1) && provablyDisjoint(tp1, tp2.tp2)
+        provablyDisjoint(tp1, tp2.tp1, pending) && provablyDisjoint(tp1, tp2.tp2, pending)
       case (tp1, tp2: AndType) =>
-        provablyDisjoint(tp1, tp2.tp1) || provablyDisjoint(tp1, tp2.tp2)
+        provablyDisjoint(tp1, tp2.tp1, pending) || provablyDisjoint(tp1, tp2.tp2, pending)
 
       // Cases where there is an intersection or union on the left but not on the right
       case (tp1: OrType, tp2) =>
-        provablyDisjoint(tp1.tp1, tp2) && provablyDisjoint(tp1.tp2, tp2)
+        provablyDisjoint(tp1.tp1, tp2, pending) && provablyDisjoint(tp1.tp2, tp2, pending)
       case (tp1: AndType, tp2) =>
-        provablyDisjoint(tp1.tp1, tp2) || provablyDisjoint(tp1.tp2, tp2)
+        provablyDisjoint(tp1.tp1, tp2, pending) || provablyDisjoint(tp1.tp2, tp2, pending)
 
       /* Cases where both are unique values (enum cases or constant types)
        *
@@ -2888,18 +2893,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *
        * Regardless, we do not look at prefixes.
        */
-      case (tp1, tp2) =>
+      case tpPair @ (tp1, tp2) =>
         val cls1 = tp1.classSymbol.asClass
         val cls2 = tp2.classSymbol.asClass
 
-        def isBaseTypeWithDisjointArguments(baseClass: ClassSymbol): Boolean =
+        def isBaseTypeWithDisjointArguments(baseClass: ClassSymbol, pending: util.HashSet[(Type, Type)]): Boolean =
           if baseClass.typeParams.isEmpty then
             // A common mono base class can never be disjoint thanks to type params
             false
           else
             (tp1.baseType(baseClass), tp2.baseType(baseClass)) match
               case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) =>
-                provablyDisjointTypeArgs(baseClass, args1, args2)
+                provablyDisjointTypeArgs(baseClass, args1, args2, pending)
               case _ =>
                 false
         end isBaseTypeWithDisjointArguments
@@ -2922,16 +2927,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
              * We exclude any base class that is an ancestor of one of the other base classes:
              * they are useless, since anything discovered at their level would also be discovered at
              * the level of the descendant common base class.
-             * Moreover, we have to do this to prevent infinite recursion with curiously-recursive
-             * superclasses: for example `class Seq[A] extends SeqOps[A, Seq[A]]`.
              */
+            val innerPending =
+              if pending != null then pending
+              else util.HashSet[(Type, Type)]()
+            innerPending += tpPair
+
             val cls2BaseClassSet = SymDenotations.BaseClassSet(cls2.classDenot.baseClasses)
             val commonBaseClasses = cls1.classDenot.baseClasses.filter(cls2BaseClassSet.contains(_))
             def isAncestorOfOtherBaseClass(cls: ClassSymbol): Boolean =
               commonBaseClasses.exists(other => (other ne cls) && other.derivesFrom(cls))
-            commonBaseClasses.exists { baseClass =>
-              !isAncestorOfOtherBaseClass(baseClass) && isBaseTypeWithDisjointArguments(baseClass)
+            val result = commonBaseClasses.exists { baseClass =>
+              !isAncestorOfOtherBaseClass(baseClass) && isBaseTypeWithDisjointArguments(baseClass, innerPending)
             }
+
+            innerPending -= tpPair
+            result
         end existsCommonBaseTypeWithDisjointArguments
 
         provablyDisjointClasses(cls1, cls2)
@@ -2941,7 +2952,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private def provablyDisjointClasses(cls1: Symbol, cls2: Symbol)(using Context): Boolean =
     def isDecomposable(cls: Symbol): Boolean =
-        cls.is(Sealed) && !cls.hasAnonymousChild
+      cls.is(Sealed) && !cls.hasAnonymousChild
 
     def decompose(cls: Symbol): List[Symbol] =
       cls.children.map { child =>
@@ -2979,7 +2990,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
   end provablyDisjointClasses
 
-  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type])(using Context): Boolean =
+  private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: util.HashSet[(Type, Type)])(using Context): Boolean =
     def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
       override def apply(x: Boolean, t: Type) =
         x && {
@@ -2993,11 +3004,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     // It is possible to conclude that two types applied are disjoint by
     // looking at covariant type parameters if the said type parameters
-    // are disjoin and correspond to fields.
+    // are disjoint and correspond to fields.
     // (Type parameter disjointness is not enough by itself as it could
     // lead to incorrect conclusions for phantom type parameters).
-    def covariantDisjoint(tp1: Type, tp2: Type): Boolean =
-      provablyDisjoint(tp1, tp2)
+    def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
+      provablyDisjoint(tp1, tp2, pending) && typeparamCorrespondsToField(cls.appliedRef, tparam)
 
     // In the invariant case, we also use a stronger notion of disjointness:
     // we consider fully instantiated types not equal wrt =:= to be disjoint
@@ -3008,65 +3019,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     // Note that this is currently a theoretical concern since Dotty
     // doesn't have type tags, meaning that users cannot write patterns
     // that do type tests on higher kinded types.
-    def invariantDisjoint(tp1: Type, tp2: Type): Boolean =
-      provablyDisjoint(tp1, tp2) ||
+    def invariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
+      provablyDisjoint(tp1, tp2, pending) ||
       !isSameType(tp1, tp2) &&
       fullyInstantiated(tp1) && // We can only trust a "no" from `isSameType` when
       fullyInstantiated(tp2)    // both `tp1` and `tp2` are fully instantiated.
 
     args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
       (arg1, arg2, tparam) =>
-        val v = typeParamVarianceStatusForDisjointness(cls, tparam)
-        if (v.is(Covariant))
-          covariantDisjoint(arg1, arg2)
-        else if (v.is(Contravariant))
+        val v = tparam.paramVarianceSign
+        if (v > 0)
+          covariantDisjoint(arg1, arg2, tparam)
+        else if (v < 0)
+          // Contravariant case: a value where this type parameter is
+          // instantiated to `Any` belongs to both types.
           false
         else
-          invariantDisjoint(arg1, arg2)
+          invariantDisjoint(arg1, arg2, tparam)
     }
   end provablyDisjointTypeArgs
-
-  /** The "variance status" of the given type parameter for the purpose of deciding disjointness.
-   *
-   *  The variance status of a type parameter is its variance if it is "usable for deciding disjointness",
-   *  and `Contravariant` otherwise.
-   *
-   *  - `Contravariant` means that it is not usable.
-   *  - `Covariant` means that it is usable and requires type arguments to be provably disjoint.
-   *  - `Invariant` means that it is usable and requires type arguments be either a) provably disjoint
-   *    or b) not equivalent and fully defined.
-   *
-   *  A contravariant type parameter is never usable for deciding disjointness.
-   *  We can always instantiate them to their upper bound to find a common type.
-   *
-   *  An invariant type parameter is usable if its bounds do not depend on the prefix.
-   *
-   *  A covariant type parameter is usable if its bounds do not depend on the prefix *and*
-   *  it corresponds to a field.
-   *  (Type parameter disjointness is not enough by itself as it could lead to
-   *  incorrect conclusions for phantom type parameters.)
-   */
-  private def typeParamVarianceStatusForDisjointness(cls: ClassSymbol, tparam: TypeSymbol)(using Context): Variance =
-    // Should this be cached in `tparam` or its denotation?
-
-    if tparam.is(Contravariant) then
-      Contravariant
-    else
-      val boundsDependOnPrefix = new TypeAccumulator[Boolean] {
-        override def apply(x: Boolean, t: Type): Boolean =
-          x || (t match {
-            case t: ThisType => true
-            case _           => foldOver(false, t)
-          })
-      }.apply(false, tparam.info)
-
-      if boundsDependOnPrefix then
-        Contravariant
-      else if tparam.is(Covariant) && !typeparamCorrespondsToField(cls.appliedRef, tparam) then
-        Contravariant
-      else
-        tparam.variance
-  end typeParamVarianceStatusForDisjointness
 
   protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
   protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
