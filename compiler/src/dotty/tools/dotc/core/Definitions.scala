@@ -1878,14 +1878,13 @@ class Definitions {
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
   object ContextFunctionType:
-    def unapply(tp: Type)(using Context): Option[(List[Type], Type, List[Boolean])] =
+    def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
       asContextFunctionType(tp) match
         case PolyFunctionOf(mt: MethodType) =>
-          Some((mt.paramInfos, mt.resType, mt.erasedParams))
+          Some((mt.paramInfos, mt.resType))
         case tp1 if tp1.exists =>
           val args = tp1.functionArgInfos
-          val erasedParams = List.fill(functionArity(tp1)) { false }
-          Some((args.init, args.last, erasedParams))
+          Some((args.init, args.last))
         case _ => None
 
   /** A whitelist of Scala-2 classes that are known to be pure */
