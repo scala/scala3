@@ -532,7 +532,9 @@ object CaptureSet:
      *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
-      if isConst || elems.exists(_.isRootCapability) then this
+      if isConst then this
+      else if elems.exists(_.isRootCapability) then
+        CaptureSet(elems.filter(_.isRootCapability).toList*)
       else if computingApprox then universal
       else
         computingApprox = true
