@@ -69,7 +69,7 @@ This flag forces a stack trace to be printed each time an error happens, from th
 Analysing the trace will give you a clue about the objects involved in producing
 the error. For example, you can add some debug statements before the error is
 issued to discover the state of the compiler. [See some useful ways to debug
-values.](./debugging/inspection.md)
+values.](../debugging/inspection.md)
 
 ### Where was a particular object created?
 
