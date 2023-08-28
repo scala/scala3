@@ -2991,17 +2991,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   end provablyDisjointClasses
 
   private def provablyDisjointTypeArgs(cls: ClassSymbol, args1: List[Type], args2: List[Type], pending: util.HashSet[(Type, Type)])(using Context): Boolean =
-    def fullyInstantiated(tp: Type): Boolean = new TypeAccumulator[Boolean] {
-      override def apply(x: Boolean, t: Type) =
-        x && {
-          t.dealias match {
-            case tp: TypeRef if !tp.symbol.isClass => false
-            case _: SkolemType | _: TypeVar | _: TypeParamRef | _: TypeBounds => false
-            case _ => foldOver(x, t)
-          }
-        }
-    }.apply(true, tp)
-
     // It is possible to conclude that two types applied are disjoint by
     // looking at covariant type parameters if the said type parameters
     // are disjoint and correspond to fields.
@@ -3010,20 +2999,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def covariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
       provablyDisjoint(tp1, tp2, pending) && typeparamCorrespondsToField(cls.appliedRef, tparam)
 
-    // In the invariant case, we also use a stronger notion of disjointness:
-    // we consider fully instantiated types not equal wrt =:= to be disjoint
-    // (under any context). This is fine because it matches the runtime
-    // semantics of pattern matching. To implement a pattern such as
-    // `case Inv[T] => ...`, one needs a type tag for `T` and the compiler
-    // is used at runtime to check it the scrutinee's type is =:= to `T`.
-    // Note that this is currently a theoretical concern since Dotty
-    // doesn't have type tags, meaning that users cannot write patterns
-    // that do type tests on higher kinded types.
+    // In the invariant case, direct type parameter disjointness is enough.
     def invariantDisjoint(tp1: Type, tp2: Type, tparam: TypeParamInfo): Boolean =
-      provablyDisjoint(tp1, tp2, pending) ||
-      !isSameType(tp1, tp2) &&
-      fullyInstantiated(tp1) && // We can only trust a "no" from `isSameType` when
-      fullyInstantiated(tp2)    // both `tp1` and `tp2` are fully instantiated.
+      provablyDisjoint(tp1, tp2, pending)
 
     args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
       (arg1, arg2, tparam) =>
