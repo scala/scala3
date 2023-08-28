@@ -10,10 +10,13 @@
    |                               Required: Test2.Cell[() ->{cap[<root>]} Unit]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:12:14 ------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:12:6 -------------------------------------------------------
 12 |  val later = usingLogFile { f => () => f.write(0) }  // error
-   |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Non-local value later cannot have an inferred type
+   |  () ->{x$0, 'cap[..<root>](from instantiating usingLogFile)} Unit
+   |  with non-empty capture set {x$0, 'cap[..<root>](from instantiating usingLogFile)}.
+   |  The type needs to be declared explicitly.
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
@@ -30,17 +33,3 @@
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
    |                escaping local reference local.type
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:16 ------------------------------------------------------
-71 |    val later = usingFile("logfile", // error
-   |                ^^^^^^^^^
-   |  reference (_$1 : java.io.OutputStream^{local}) is not included in the allowed capture set {x$0, local, local²}
-   |
-   |  Note that reference (_$1 : java.io.OutputStream^{local}), defined at level 6
-   |  cannot be included in outer capture set {x$0, local, local}, defined at level 1 in method test
-   |
-   |  where:    local  is a reference to a value parameter
-   |            local² is a reference to a value parameter
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:72:6 -------------------------------------------------------
-72 |      usingLogger(_, l => () => l.log("test"))) // error ??? but had the comment: ok, since we can widen `l` to `file` instead of to `cap`
-   |      ^^^^^^^^^^^
-   |      escaping local reference local.type

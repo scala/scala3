@@ -18,7 +18,7 @@ import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, LooseRootChecking}
 import StdNames.nme
 import NameKinds.DefaultGetterName
 import reporting.trace
@@ -747,23 +747,26 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckFinish(tpe, tree, pt)
     end recheckFinish
 
-  // ------------------ Adaptation -------------------------------------
-  //
-  // Adaptations before checking conformance of actual vs expected:
-  //
-  //   - Convert function to dependent function if expected type is a dependent function type
-  //     (c.f. alignDependentFunction).
-  //   - Relax expected capture set containing `this.type`s by adding references only
-  //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
-  //   - Adapt box status and environment capture sets by simulating box/unbox operations.
+    // ------------------ Adaptation -------------------------------------
+    //
+    // Adaptations before checking conformance of actual vs expected:
+    //
+    //   - Convert function to dependent function if expected type is a dependent function type
+    //     (c.f. alignDependentFunction).
+    //   - Relax expected capture set containing `this.type`s by adding references only
+    //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
+    //   - Adapt box status and environment capture sets by simulating box/unbox operations.
+    //   - Instantiate `cap` in actual as needed to a local root.
 
-    override def isCompatible(actual: Type, expected: Type, tree: Tree)(using Context): Boolean =
-      super.isCompatible(actual, expected, tree)
+    override def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
+      super.isCompatible(actual, expected)
       || {
-        val mapr = mapRoots(defn.captureRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))
-        val actual1 = mapr(actual)
+        // When testing whether `A <: B`, it could be that `B` uses a local capture root,
+        // but a uses `cap`, i.e. is capture polymorphic. In this case, adaptation is allowed
+        // to instantiate `A` to match the root in `B`.
+        val actual1 = mapRoots(defn.captureRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))(actual)
         (actual1 ne actual) && {
-          val res = super.isCompatible(actual1, expected, tree)
+          val res = super.isCompatible(actual1, expected)
           if !res && ctx.settings.YccDebug.value then
             println(i"Failure under mapped roots:")
             println(i"${TypeComparer.explained(_.isSubType(actual, expected))}")
@@ -1084,7 +1087,12 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
         assert(roots.nonEmpty)
         for case root: ClassSymbol <- roots do
-          inContext(ctx.withOwner(root)):
+          inContext(ctx.fresh.setOwner(root).withProperty(LooseRootChecking, Some(()))):
+            // Without LooseRootChecking, we get problems with F-bounded parent types.
+            // These can make `cap` "pop out" in ways that are hard to prevent. I believe
+            // to prevent it we'd have to map `cap` in a whole class graph with all parent
+            // classes, which would be very expensive. So for now we approximate by assuming
+            // different roots are compatible for self type conformance checking.
             checkSelfAgainstParents(root, root.baseClasses)
             val selfType = root.asClass.classInfo.selfType
             interpolator(startingVariance = -1).traverse(selfType)

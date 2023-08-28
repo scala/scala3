@@ -122,15 +122,18 @@ sealed abstract class CaptureSet extends Showable:
    *   - x is the same as y,
    *   - x is a this reference and y refers to a field of x
    *   - x and y are local roots and y is an enclosing root of x
+   *   - the LooseRootChecking property is asserted, and either `x` is `cap`
+   *     or `x` is a local root and y is `cap`.
    */
   extension (x: CaptureRef)(using Context)
     private def subsumes(y: CaptureRef) =
       (x eq y)
-      || x.isGenericRootCapability // !!! dubious
       || y.match
           case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
           case y: CaptureRoot.Var => x.isRootIncluding(y)
           case _ => false
+      || (x.isGenericRootCapability || y.isGenericRootCapability && x.isRootCapability)
+          && ctx.property(LooseRootChecking).isDefined
 
     private def isRootIncluding(y: CaptureRoot) =
       x.isLocalRootCapability && y.isLocalRootCapability
@@ -366,6 +369,13 @@ object CaptureSet:
 
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
+
+  /** If this context property is asserted, we conflate capture roots in subCapture
+   *  tests. Specifically, `cap` then subsumes everything and all local roots subsume `cap`.
+   *  This generally not sound. We currently use loose root checking only in self type
+   *  conformance tests in CheckCaptures.checkSelfTypes.
+   */
+  val LooseRootChecking: Property.Key[Unit] = Property.Key()
 
   /** The subclass of constant capture sets with given elements `elems` */
   class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
