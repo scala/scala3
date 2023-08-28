@@ -17,13 +17,16 @@ import collection.mutable
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
 
-private val enableRootMapping = true
-
 /** Switch whether unpickled function types and byname types should be mapped to
  *  impure types. With the new gradual typing using Fluid capture sets, this should
  *  be no longer needed. Also, it has bad interactions with pickling tests.
  */
 private val adaptUnpickledFunctionTypes = false
+
+/** Switch whether we constrain a root var that includes the source of a
+ *  root map to be an alias of that source (so that it can be mapped)
+ */
+private val constrainRootsWhenMapping = true
 
 /** The arguments of a @retains or @retainsByName annotation */
 private[cc] def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
@@ -77,21 +80,22 @@ trait FollowAliases extends TypeMap:
 class mapRoots(from: CaptureRoot, to: CaptureRoot)(using Context) extends BiTypeMap, FollowAliases:
   thisMap =>
 
-  def apply(t: Type): Type = t match
-    case t: TermRef if (t eq from) && enableRootMapping =>
-      to
-    case t: CaptureRoot.Var =>
-      val ta = t.followAlias
-      if ta ne t then apply(ta)
-      else from match
-        case from: TermRef
-        if t.upperLevel >= from.symbol.ccNestingLevel
-          && CaptureRoot.isEnclosingRoot(from, t)
-          && CaptureRoot.isEnclosingRoot(t, from) => to
-        case from: CaptureRoot.Var if from.followAlias eq t => to
-        case _ => from
-    case _ =>
-      mapOverFollowingAliases(t)
+  def apply(t: Type): Type =
+    if t eq from then to
+    else t match
+      case t: CaptureRoot.Var =>
+        val ta = t.followAlias
+        if ta ne t then apply(ta)
+        else from match
+          case from: TermRef
+          if t.upperLevel >= from.symbol.ccNestingLevel
+            && constrainRootsWhenMapping   // next two lines do the constraining
+            && CaptureRoot.isEnclosingRoot(from, t)
+            && CaptureRoot.isEnclosingRoot(t, from) => to
+          case from: CaptureRoot.Var if from.followAlias eq t => to
+          case _ => t
+      case _ =>
+        mapOverFollowingAliases(t)
 
   def inverse = mapRoots(to, from)
 end mapRoots
