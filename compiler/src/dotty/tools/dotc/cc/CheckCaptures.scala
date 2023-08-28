@@ -173,21 +173,6 @@ object CheckCaptures:
         val srcTree = if ann.span.exists then ann else tpt
         report.warning(em"redundant capture: $remaining already accounts for $ref", srcTree.srcPos)
 
-  /** Report an error if some part of `tp` contains the root capability in its capture set */
-  def disallowRootCapabilitiesIn(tp: Type, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
-    val check = new TypeTraverser:
-      def traverse(t: Type) =
-        if variance >= 0 then
-          t.captureSet.disallowRootCapability: () =>
-            def part = if t eq tp then "" else i"the part $t of "
-            report.error(
-              em"""$what cannot $have $tp since
-                  |${part}that type captures the root capability `cap`.
-                  |$addendum""",
-              pos)
-        traverseChildren(t)
-    check.traverse(tp)
-
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
 
@@ -693,17 +678,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       val tryOwner = ccState.tryBlockOwner.remove(tree).getOrElse(ctx.owner)
       val saved = curEnv
       curEnv = Env(tryOwner, EnvKind.Regular, CaptureSet.Var(curEnv.owner), curEnv)
-      val tp = try
+      try
         inContext(ctx.withOwner(tryOwner)):
           super.recheckTry(tree, pt)
         finally
           curEnv = saved
-      if allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
-        disallowRootCapabilitiesIn(tp,
-          "Result of `try`", "have type",
-          "This is often caused by a locally generated exception capability leaking as part of its result.",
-          tree.srcPos)
-      tp
 
     /* Currently not needed, since capture checking takes place after ElimByName.
      * Keep around in case we need to get back to it

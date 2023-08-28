@@ -356,29 +356,11 @@ extends tpd.TreeTraverser:
           mapRoots
         )
         capt.println(i"mapped $tree = ${tpt.knownType}")
-        if allowUniversalInBoxed && tree.symbol.is(Mutable)
-            && !tree.symbol.hasAnnotation(defn.UncheckedCapturesAnnot)
-        then
-          CheckCaptures.disallowRootCapabilitiesIn(tpt.knownType,
-            i"Mutable variable ${tree.symbol.name}", "have type",
-            "This restriction serves to prevent local capabilities from escaping the scope where they are defined.",
-            tree.srcPos)
         traverse(tree.rhs)
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
           transformTT(arg, boxed = true, exact = false, mapRoots = true) // type arguments in type applications are boxed
-
-        if allowUniversalInBoxed then
-          val polyType = atPhase(preRecheckPhase):
-            fn.tpe.widen.asInstanceOf[TypeLambda]
-          for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
-            if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
-              def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
-              CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
-                i"Sealed type variable $pname", "be instantiated to",
-                i"This is often caused by a local capability$where\nleaking as part of its result.",
-                tree.srcPos)
       case tree: Template =>
         inContext(ctx.withOwner(tree.symbol.owner)):
           traverseChildren(tree)

@@ -1,10 +1,10 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile-alt.scala:21:24 -----------------------------
-21 |      usingLogger(file)(l => () => l.log("test"))  // error
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^
-   |          Found:    (l: Test.Logger{val f: java.io.OutputStream^?}^{file}) ->? box () ->? Unit
-   |          Required: (x$0: Test.Logger^{file}) ->{'cap[..<root>](from instantiating usingLogger)} box () ->? Unit
+-- Error: tests/neg-custom-args/captures/usingLogFile-alt.scala:18:2 ---------------------------------------------------
+18 |  usingFile( // error
+   |  ^^^^^^^^^
+   |  reference (file : java.io.OutputStream^{lcap}) is not included in the allowed capture set {x$0, x$0²}
    |
-   |          Note that reference (cap[Logger] : caps.Root), defined at level 1
-   |          cannot be included in outer capture set ?, defined at level 0 in package <root>
+   |  Note that reference (file : java.io.OutputStream^{lcap}), defined at level 4
+   |  cannot be included in outer capture set {x$0, x$0}, defined at level 0 in package <root>
    |
-   | longer explanation available when compiling with `-explain`
+   |  where:    x$0  is a reference to a value parameter
+   |            x$0² is a reference to a value parameter
