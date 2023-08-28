@@ -757,6 +757,20 @@ class CheckCaptures extends Recheck, SymTransformer:
   //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
   //   - Adapt box status and environment capture sets by simulating box/unbox operations.
 
+    override def isCompatible(actual: Type, expected: Type, tree: Tree)(using Context): Boolean =
+      super.isCompatible(actual, expected, tree)
+      || {
+        val mapr = mapRoots(defn.captureRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))
+        val actual1 = mapr(actual)
+        (actual1 ne actual) && {
+          val res = super.isCompatible(actual1, expected, tree)
+          if !res && ctx.settings.YccDebug.value then
+            println(i"Failure under mapped roots:")
+            println(i"${TypeComparer.explained(_.isSubType(actual, expected))}")
+          res
+        }
+      }
+
     /** Massage `actual` and `expected` types using the methods below before checking conformance */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Unit =
       val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
