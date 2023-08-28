@@ -133,7 +133,7 @@ not be passed). This saves typing the same arguments each time you want to use t
 
 The following `launch.iss` file is an example of how you can use multiline
 commands as a template for solving issues that [run compiled
-code](../issues/testing.md#checking-program-output). It demonstrates configuring
+code](../testing.md#checking-program-output). It demonstrates configuring
 the `scala3/scalac` command using compiler flags, which are commented out. Put
 your favourite flags there for quick usage.
 

@@ -9,6 +9,6 @@ that you're having issues with. This can be just inspecting the trees of your
 code or stepping through the dotty codebase with a Debugger.
 
 The following sections will help you with this:
-- [Debugging with your IDE](./ide-debugging.md.md)
+- [Debugging with your IDE](./ide-debugging.md)
 - [How to Inspect Values](./inspection.md)
 - [Other Debugging Techniques](./other-debugging.md)
