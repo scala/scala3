@@ -452,8 +452,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
          * they shouldn't be lifted.
          */
         val sym = fun.symbol
-        sym.exists && (isShortCircuitedOp(sym) || StringInterpolatorOpt.isCompilerIntrinsic(sym) || sym == defn.Object_synchronized)
-      end
+        sym.exists && (
+          isShortCircuitedOp(sym)
+          || StringInterpolatorOpt.isCompilerIntrinsic(sym)
+          || sym == defn.Object_synchronized
+          || isContextFunctionApply(fun)
+        )
+      end isUnliftableFun
 
       val fun = tree.fun
       val nestedApplyNeedsLift = fun match
@@ -462,6 +467,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
       nestedApplyNeedsLift ||
       !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+
+    private def isContextFunctionApply(fun: Tree)(using Context): Boolean =
+      fun match
+        case Select(prefix, nme.apply) =>
+          defn.isContextFunctionType(prefix.tpe.widen)
+        case _ => false
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
