@@ -2811,10 +2811,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         if isErased then
           throw new Exception("Erased function classes are not supported. Use a refined `scala.runtime.ErasedFunction`")
         else dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit)
-      def FunctionClass(arity: Int): Symbol =
-        FunctionClass(arity, false, false)
-      def FunctionClass(arity: Int, isContextual: Boolean): Symbol =
-        FunctionClass(arity, isContextual, false)
       def ErasedFunctionClass = dotc.core.Symbols.defn.ErasedFunctionClass
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
