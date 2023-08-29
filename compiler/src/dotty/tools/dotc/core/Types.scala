@@ -1878,22 +1878,20 @@ object Types {
 
     /** Turn type into a function type.
      *  @pre this is a method type without parameter dependencies.
-     *  @param dropLast        the number of trailing parameters that should be dropped
-     *                         when forming the function type.
+     *  @param isJava          translate repeated params as as java `Array`s?
      *  @param alwaysDependent if true, always create a dependent function type.
      */
-    def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean = false, alwaysDependent: Boolean = false)(using Context): Type = this match {
       case mt: MethodType =>
         assert(!mt.isParamDependent)
         def nonDependentFunType =
-          val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
           val isContextual = mt.isContextualMethod && !ctx.erasedTypes
           val result1 = mt.nonDependentResultApprox match {
             case res: MethodType => res.toFunctionType(isJava)
             case res => res
           }
           defn.FunctionOf(
-            formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
+            mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
           defn.PolyFunctionOf(mt)
