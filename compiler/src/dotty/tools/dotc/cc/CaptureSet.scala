@@ -876,9 +876,8 @@ object CaptureSet:
           empty
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
-        case tpd @ RefinedType(parent, _, rinfo: MethodType)
-        if followResult && defn.isFunctionNType(tpd) =>
-          ofType(parent, followResult = false)                 // pick up capture set from parent type
+        case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
+          ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
           ++ (recur(rinfo.resType)                             // add capture set of result
           -- CaptureSet(rinfo.paramRefs.filter(_.isTracked)*)) // but disregard bound parameters
         case tpd @ AppliedType(tycon, args) =>
