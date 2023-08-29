@@ -2820,6 +2820,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp.symbol match
           case cls: ClassSymbol =>
             if cls == defn.SingletonClass then defn.AnyType
+            else if cls.typeParams.nonEmpty then EtaExpansion(tp)
             else tp
           case sym =>
             if !ctx.erasedTypes && sym == defn.FromJavaObjectSymbol then defn.AnyType
@@ -2839,6 +2840,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp: AndOrType =>
         tp
       case tp: ConstantType =>
+        tp
+      case tp: HKTypeLambda =>
         tp
       case tp: TypeProxy =>
         disjointnessBoundary(tp.superTypeNormalized)
@@ -2864,6 +2867,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(tp1.tp1, tp2, pending) && provablyDisjoint(tp1.tp2, tp2, pending)
       case (tp1: AndType, tp2) =>
         provablyDisjoint(tp1.tp1, tp2, pending) || provablyDisjoint(tp1.tp2, tp2, pending)
+
+      // Cases involving type lambdas
+      case (tp1: HKTypeLambda, tp2: HKTypeLambda) =>
+        tp1.paramNames.sizeCompare(tp2.paramNames) != 0
+          || provablyDisjoint(tp1.resultType, tp2.resultType, pending)
+      case (tp1: HKTypeLambda, tp2) =>
+        !tp2.isDirectRef(defn.AnyKindClass)
+      case (tp1, tp2: HKTypeLambda) =>
+        !tp1.isDirectRef(defn.AnyKindClass)
 
       /* Cases where both are unique values (enum cases or constant types)
        *
