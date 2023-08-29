@@ -4318,8 +4318,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *   -  ...
       *   -  Nth element is `FunctionN`
       */
-      // TODO: deprecate in 3.4 and stabilize FunctionClass(Int)/FunctionClass(Int,Boolean)
-      // @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
+      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
       /** Class symbol of a function class `scala.FunctionN`.
@@ -4327,7 +4326,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param arity the arity of the function where `0 <= arity`
        *  @return class symbol of `scala.FunctionN` where `N == arity`
        */
-      @experimental
       def FunctionClass(arity: Int): Symbol
 
       /** Class symbol of a context function class `scala.FunctionN` or `scala.ContextFunctionN`.
@@ -4336,7 +4334,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param isContextual if it is a `scala.ContextFunctionN`
        *  @return class symbol of `scala.FunctionN` or `scala.ContextFunctionN` where `N == arity`
        */
-      @experimental
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol
 
       /** The `scala.PolyFunction` built-in trait. */
