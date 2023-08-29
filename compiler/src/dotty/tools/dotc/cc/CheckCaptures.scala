@@ -311,7 +311,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val expected = openClosures
           .find(_._1 == owner)
           .map(_._2)
-          .getOrElse(owner.info.toFunctionType(isJava = false))
+          .getOrElse(owner.info.toFunctionType())
         i"\nof an enclosing function literal with expected type $expected"
       else
         i"\nof the enclosing ${owner.showLocated}"
