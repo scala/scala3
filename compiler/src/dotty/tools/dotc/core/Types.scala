@@ -854,9 +854,14 @@ object Types {
             // is made to save execution time in the common case. See i9844.scala for test cases.
             def qualifies(sd: SingleDenotation) =
               !sd.symbol.is(Private) || sd.symbol.owner == tp.cls
-            d match
+            d.match
               case d: SingleDenotation => if qualifies(d) then d else NoDenotation
               case d => d.filterWithPredicate(qualifies)
+            .orElse:
+              // Only inaccessible private symbols were found. But there could still be
+              // shadowed non-private symbols, so as a fallback search for those.
+              // Test case is i18361.scala.
+              findMember(name, pre, required, excluded | Private)
           else d
         else
           // There is a special case to handle:
