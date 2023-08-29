@@ -661,7 +661,7 @@ object CheckUnused:
         val simpleSelections = qual.tpe.member(sym.name).alternatives
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
         val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
-        val sameTermPath = qual.isTerm && sym.owner.exists && sym.owner.isType && qual.tpe.typeSymbol == sym.owner.asType
+        val sameTermPath = qual.isTerm && sym.exists && sym.owner.isType && qual.tpe.typeSymbol == sym.owner.asType
         val selectionsToDealias = typeSelections ::: termSelections
         def renamedSelection = if(sameTermPath) then sels.find(sel => sel.imported.name == sym.name) else None
         val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym) || renamedSelection.isDefined
