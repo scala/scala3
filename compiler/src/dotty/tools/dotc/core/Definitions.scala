@@ -1117,14 +1117,12 @@ class Definitions {
         case RefinedType(parent, nme.apply, mt: MethodOrPoly)
         if parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(parent) =>
           Some(mt)
+        case AppliedType(parent, targs) if targs.nonEmpty && isFunctionNType(ft) =>
+          val isContextual = ft.typeSymbol.name.isContextFunction
+          val methodType = if isContextual then ContextualMethodType else MethodType
+          Some(methodType(targs.init, targs.last))
         case _ =>
-          val tsym = ft.typeSymbol
-          val targs = ft.argInfos
-          if targs.nonEmpty && isFunctionSymbol(tsym) && ft.isRef(tsym) then
-            val isContextual = tsym.name.isContextFunction
-            val methodType = if isContextual then ContextualMethodType else MethodType
-            Some(methodType(targs.init, targs.last))
-          else None
+          None
     }
   }
 
