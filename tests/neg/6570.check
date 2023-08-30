@@ -1,0 +1,116 @@
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:26:50 --------------------------------------------------------------
+26 |  def foo[T <: Cov[Int]](c: Child[T]): Trait2 = c.thing  // error
+   |                                                ^^^^^^^
+   |                         Found:    UpperBoundParametricVariant.M[T]
+   |                         Required: Base.Trait2
+   |
+   |                         where:    T is a type in method foo with bounds <: UpperBoundParametricVariant.Cov[Int]
+   |
+   |
+   |                         Note: a match type could not be fully reduced:
+   |
+   |                           trying to reduce  UpperBoundParametricVariant.M[T]
+   |                           failed since selector T
+   |                           does not uniquely determine parameter x in
+   |                             case UpperBoundParametricVariant.Cov[x] => Base.N[x]
+   |                           The computed bounds for the parameter are:
+   |                             x <: Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:29:29 --------------------------------------------------------------
+29 |    def thing = new Trait1 {} // error
+   |                             ^
+   |                             Found:    Object with Base.Trait1 {...}
+   |                             Required: Base.N[String & Int]
+   |
+   |                             Note: a match type could not be fully reduced:
+   |
+   |                               trying to reduce  Base.N[String & Int]
+   |                               failed since selector String & Int
+   |                               is uninhabited (there are no values of that type).
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:47:32 --------------------------------------------------------------
+47 |  def foo(c: Child): Trait2 = c.thing  // error
+   |                              ^^^^^^^
+   |                              Found:    InheritanceVariant.M[c.B]
+   |                              Required: Base.Trait2
+   |
+   |                              Note: a match type could not be fully reduced:
+   |
+   |                                trying to reduce  InheritanceVariant.M[c.B]
+   |                                failed since selector c.B
+   |                                does not uniquely determine parameter a in
+   |                                  case InheritanceVariant.Trick[a] => Base.N[a]
+   |                                The computed bounds for the parameter are:
+   |                                  a >: Int
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:51:29 --------------------------------------------------------------
+51 |    def thing = new Trait1 {} // error
+   |                             ^
+   |                             Found:    Object with Base.Trait1 {...}
+   |                             Required: Base.N[String & Int]
+   |
+   |                             Note: a match type could not be fully reduced:
+   |
+   |                               trying to reduce  Base.N[String & Int]
+   |                               failed since selector String & Int
+   |                               is uninhabited (there are no values of that type).
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:69:29 --------------------------------------------------------------
+69 |    def thing = new Trait1 {} // error
+   |                             ^
+   |                             Found:    Object with Base.Trait1 {...}
+   |                             Required: Base.N[String & Int]
+   |
+   |                             Note: a match type could not be fully reduced:
+   |
+   |                               trying to reduce  Base.N[String & Int]
+   |                               failed since selector String & Int
+   |                               is uninhabited (there are no values of that type).
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:86:29 --------------------------------------------------------------
+86 |    def thing = new Trait1 {} // error
+   |                             ^
+   |                             Found:    Object with Base.Trait1 {...}
+   |                             Required: Base.N[String & Int]
+   |
+   |                             Note: a match type could not be fully reduced:
+   |
+   |                               trying to reduce  Base.N[String & Int]
+   |                               failed since selector String & Int
+   |                               is uninhabited (there are no values of that type).
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:103:32 -------------------------------------------------------------
+103 |  def foo(c: Child): Trait2 = c.thing  // error
+    |                              ^^^^^^^
+    |                              Found:    UpperBoundVariant.M[c.A]
+    |                              Required: Base.Trait2
+    |
+    |                              Note: a match type could not be fully reduced:
+    |
+    |                                trying to reduce  UpperBoundVariant.M[c.A]
+    |                                failed since selector c.A
+    |                                does not uniquely determine parameter t in
+    |                                  case UpperBoundVariant.Cov[t] => Base.N[t]
+    |                                The computed bounds for the parameter are:
+    |                                  t <: Int
+    |
+    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/6570.scala:107:29 -------------------------------------------------------------
+107 |    def thing = new Trait1 {} // error
+    |                             ^
+    |                             Found:    Object with Base.Trait1 {...}
+    |                             Required: Base.N[String & Int]
+    |
+    |                             Note: a match type could not be fully reduced:
+    |
+    |                               trying to reduce  Base.N[String & Int]
+    |                               failed since selector String & Int
+    |                               is uninhabited (there are no values of that type).
+    |
+    | longer explanation available when compiling with `-explain`
