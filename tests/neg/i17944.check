@@ -1,0 +1,46 @@
+-- [E172] Type Error: tests/neg/i17944.scala:40:87 ---------------------------------------------------------------------
+40 |    val s = Selector.selectorInst[("s" ->> String) *: ("i" ->> Int) *: EmptyTuple, "i"] // error
+   |                                                                                       ^
+   |No singleton value available for Tuple.Elem[test.FindField[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String)], (1 : Int)]; eligible singleton types for `ValueOf` synthesis include literals and stable paths.
+   |
+   |Note: a match type could not be fully reduced:
+   |
+   |  trying to reduce  Tuple.Elem[test.FindField[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String)], (1 : Int)]
+   |  trying to reduce  test.FindField[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String)]
+   |  trying to reduce  test.FindField0[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String), (0 : Int)]
+   |  failed since selector (("s" : String) ->> String, ("i" : String) ->> Int)
+   |  does not match  case (("i" : String) ->> f) *: _ => (f, (0 : Int))
+   |  and cannot be shown to be disjoint from it either.
+   |  Therefore, reduction cannot advance to the remaining case
+   |
+   |    case _ *: t => test.FindField0[t, ("i" : String), scala.compiletime.ops.int.S[(0 : Int)]]
+   |  trying to reduce  test.FindField[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String)]
+   |  trying to reduce  test.FindField0[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String), (0 : Int)]
+   |  failed since selector (("s" : String) ->> String, ("i" : String) ->> Int)
+   |  does not match  case (("i" : String) ->> f) *: _ => (f, (0 : Int))
+   |  and cannot be shown to be disjoint from it either.
+   |  Therefore, reduction cannot advance to the remaining case
+   |
+   |    case _ *: t => test.FindField0[t, ("i" : String), scala.compiletime.ops.int.S[(0 : Int)]]
+   |  trying to reduce  test.FindField0[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String), (0 : Int)]
+   |  failed since selector (("s" : String) ->> String, ("i" : String) ->> Int)
+   |  does not match  case (("i" : String) ->> f) *: _ => (f, (0 : Int))
+   |  and cannot be shown to be disjoint from it either.
+   |  Therefore, reduction cannot advance to the remaining case
+   |
+   |    case _ *: t => test.FindField0[t, ("i" : String), scala.compiletime.ops.int.S[(0 : Int)]]
+   |  trying to reduce  test.FindField[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String)]
+   |  trying to reduce  test.FindField0[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String), (0 : Int)]
+   |  failed since selector (("s" : String) ->> String, ("i" : String) ->> Int)
+   |  does not match  case (("i" : String) ->> f) *: _ => (f, (0 : Int))
+   |  and cannot be shown to be disjoint from it either.
+   |  Therefore, reduction cannot advance to the remaining case
+   |
+   |    case _ *: t => test.FindField0[t, ("i" : String), scala.compiletime.ops.int.S[(0 : Int)]]
+   |  trying to reduce  test.FindField0[(("s" : String) ->> String, ("i" : String) ->> Int), ("i" : String), (0 : Int)]
+   |  failed since selector (("s" : String) ->> String, ("i" : String) ->> Int)
+   |  does not match  case (("i" : String) ->> f) *: _ => (f, (0 : Int))
+   |  and cannot be shown to be disjoint from it either.
+   |  Therefore, reduction cannot advance to the remaining case
+   |
+   |    case _ *: t => test.FindField0[t, ("i" : String), scala.compiletime.ops.int.S[(0 : Int)]]
