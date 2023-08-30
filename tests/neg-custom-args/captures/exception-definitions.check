@@ -1,7 +1,7 @@
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:2:6 -----------------------------------------------
 2 |class Err extends Exception: // error
   |^
-  |reference (cap : caps.Root) is not included in the allowed capture set {} of pure base class class Throwable
+  |reference (cap : caps.Cap) is not included in the allowed capture set {} of pure base class class Throwable
 3 |  self: Err^ =>
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:7:12 ----------------------------------------------
 7 |    val x = c  // error

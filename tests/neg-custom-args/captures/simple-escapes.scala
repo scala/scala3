@@ -4,7 +4,7 @@ class FileOutputStream(str: String):
 
 def Test1 =
 
-  def usingLogFile[T](op: (local: caps.Root) -> FileOutputStream^{local} => T): T =
+  def usingLogFile[T](op: (local: caps.Cap) -> FileOutputStream^{local} => T): T =
     val logFile = FileOutputStream("log")
     val result = op(caps.cap)(logFile)
     logFile.close()

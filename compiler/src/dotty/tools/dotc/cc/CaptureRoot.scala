@@ -42,7 +42,7 @@ object CaptureRoot:
 
     def computeHash(bs: Binders): Int = hash
     def hash: Int = System.identityHashCode(this)
-    def underlying(using Context): Type = defn.Caps_Root.typeRef
+    def underlying(using Context): Type = defn.Caps_Cap.typeRef
   end Var
 
   def isEnclosingRoot(c1: CaptureRoot, c2: CaptureRoot)(using Context): Boolean =

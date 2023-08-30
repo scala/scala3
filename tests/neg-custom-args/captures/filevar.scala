@@ -8,7 +8,7 @@ class Service:
   var file: File^ = uninitialized
   def log = file.write("log")
 
-def withFile[T](op: (l: caps.Root) ?-> (f: File^{l}) => T): T =
+def withFile[T](op: (l: caps.Cap) ?-> (f: File^{l}) => T): T =
   op(new File)
 
 def test =

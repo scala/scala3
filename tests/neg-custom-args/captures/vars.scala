@@ -30,7 +30,7 @@ def test(cap1: Cap, cap2: Cap) =
   val s = scope // error (but should be OK, we need to allow poly-captures)
   val sc: String => String = scope // error (but should also be OK)
 
-  def local[T](op: (local: caps.Root) -> CC^{local} -> T): T = op(caps.cap)(CC())
+  def local[T](op: (local: caps.Cap) -> CC^{local} -> T): T = op(caps.cap)(CC())
 
   local { root => cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"

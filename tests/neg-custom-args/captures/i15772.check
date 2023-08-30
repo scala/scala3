@@ -28,7 +28,7 @@
    |                                  Found:    box C^{cap[c]}
    |                                  Required: box C{val arg: C^?}^?
    |
-   |                                  Note that reference (cap[c] : caps.Root), defined at level 2
+   |                                  Note that reference (cap[c] : caps.Cap), defined at level 2
    |                                  cannot be included in outer capture set ?, defined at level 1 in method main3
    |
    | longer explanation available when compiling with `-explain`
@@ -38,7 +38,7 @@
    |                             Found:    C^{cap[c]}
    |                             Required: C^{'cap[..main3](from instantiating unsafe)}
    |
-   |                             Note that reference (cap[c] : caps.Root), defined at level 2
+   |                             Note that reference (cap[c] : caps.Cap), defined at level 2
    |                             cannot be included in outer capture set ?, defined at level 1 in method main3
    |
    | longer explanation available when compiling with `-explain`
@@ -48,7 +48,7 @@
    |  Found:    () ->{x} Unit
    |  Required: () -> Unit
    |
-   |  Note that reference (cap[c] : caps.Root), defined at level 2
+   |  Note that reference (cap[c] : caps.Cap), defined at level 2
    |  cannot be included in outer capture set ?, defined at level 1 in method main3
    |
    | longer explanation available when compiling with `-explain`

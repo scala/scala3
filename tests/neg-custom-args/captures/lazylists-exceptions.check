@@ -4,7 +4,7 @@
    |    Found:    LazyList[Int]^
    |    Required: LazyList[Int]^?
    |
-   |    Note that reference (cap : caps.Root), defined at level 2
+   |    Note that reference (cap : caps.Cap), defined at level 2
    |    cannot be included in outer capture set ?, defined at level 1 in method problem
 38 |      if i > 9 then throw Ex1()
 39 |      i * i

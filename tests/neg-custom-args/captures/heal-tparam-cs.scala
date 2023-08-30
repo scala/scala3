@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 
 trait Cap { def use(): Unit }
 
-def localCap[T](op: (lcap: caps.Root) ?-> (c: Cap^{lcap}) => T): T = ???
+def localCap[T](op: (lcap: caps.Cap) ?-> (c: Cap^{lcap}) => T): T = ???
 
 def main(io: Cap^{cap}, net: Cap^{cap}): Unit = {
 

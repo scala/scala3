@@ -369,7 +369,7 @@ extension (sym: Symbol)
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
    *   - anonymous functions, provided they either define a local
-   *     root of type caps.Root, or they are the rhs of a val definition.
+   *     root of type caps.Cap, or they are the rhs of a val definition.
    *   - classes, if they are not staticOwners
    *   - _root_
    */
@@ -397,19 +397,19 @@ extension (sym: Symbol)
   def setNestingLevel(level: Int)(using Context): Unit =
     ccState.nestingLevels(sym) = level
 
-  /** The parameter with type caps.Root in the leading term parameter section,
+  /** The parameter with type caps.Cap in the leading term parameter section,
    *  or NoSymbol, if none exists.
    */
   def definedLocalRoot(using Context): Symbol =
     sym.paramSymss.dropWhile(psyms => psyms.nonEmpty && psyms.head.isType) match
-      case psyms :: _ => psyms.find(_.info.typeSymbol == defn.Caps_Root).getOrElse(NoSymbol)
+      case psyms :: _ => psyms.find(_.info.typeSymbol == defn.Caps_Cap).getOrElse(NoSymbol)
       case _ => NoSymbol
 
   def localRoot(using Context): Symbol =
     val owner = sym.levelOwner
     assert(owner.exists)
     def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
-      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Root.typeRef, nestingLevel = owner.ccNestingLevel)
+      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef, nestingLevel = owner.ccNestingLevel)
     def lclRoot =
       if owner.isTerm then owner.definedLocalRoot.orElse(newRoot)
       else newRoot

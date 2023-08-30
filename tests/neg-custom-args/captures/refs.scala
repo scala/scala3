@@ -11,14 +11,14 @@ class MonoRef(init: Proc):
   var x: MonoProc = init
   def setX(x: MonoProc): Unit = this.x = x
 
-def usingLogFile[T](op: (local: caps.Root) ?-> FileOutputStream^{local} => T): T =
+def usingLogFile[T](op: (local: caps.Cap) ?-> FileOutputStream^{local} => T): T =
   val logFile = FileOutputStream("log")
   val result = op(logFile)
   logFile.close()
   result
 
 def test1 =
-  usingLogFile[Proc]: (local: caps.Root) ?=> // error (but with a hard to parse error message)
+  usingLogFile[Proc]: (local: caps.Cap) ?=> // error (but with a hard to parse error message)
     (f: FileOutputStream^{local}) =>
       () => f.write(1)  // this line has type () ->{local} Unit, but usingLogFile
                         // requires Proc, which expands to () -> 'cap[..test1](from instantiating usingLogFile)

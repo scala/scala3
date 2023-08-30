@@ -1151,7 +1151,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 for case ref: TermParamRef <- elems do
                   if !allowed.contains(ref) && !seen.contains(ref) then
                     seen += ref
-                    if ref.underlying.isRef(defn.Caps_Root) then
+                    if ref.underlying.isRef(defn.Caps_Cap) then
                       report.error(i"escaping local reference $ref", tree.srcPos)
                     else
                       val widened = ref.captureSetOfInfo

@@ -318,7 +318,7 @@ extends tpd.TreeTraverser:
           return
         inContext(ctx.withOwner(tree.symbol)):
           if tree.symbol.isAnonymousFunction && tree.symbol.definedLocalRoot.exists then
-            // closures that define parameters of type caps.Root count as level owners
+            // closures that define parameters of type caps.Cap count as level owners
             tree.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
           tree.tpt match
             case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
@@ -518,7 +518,7 @@ extends tpd.TreeTraverser:
             // we assume Any is a shorthand of {cap} Any, so if Any is an upper
             // bound, the type is taken to be impure.
         else
-          sym != defn.Caps_Root && superTypeIsImpure(tp.superType)
+          sym != defn.Caps_Cap && superTypeIsImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
         superTypeIsImpure(tp.underlying)
       case tp: AndType =>

@@ -2,7 +2,7 @@
 import java.io.*
 def Test2 =
 
-  def usingLogFile[T](op: (l: caps.Root) ?-> FileOutputStream^{l} => T): T =
+  def usingLogFile[T](op: (l: caps.Cap) ?-> FileOutputStream^{l} => T): T =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
