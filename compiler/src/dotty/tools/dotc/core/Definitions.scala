@@ -1115,7 +1115,7 @@ class Definitions {
     def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
       ft match
         case RefinedType(parent, nme.apply, mt: MethodOrPoly)
-        if parent.derivesFrom(defn.PolyFunctionClass) || isFunctionNType(parent) =>
+        if parent.derivesFrom(defn.PolyFunctionClass) || (mt.isInstanceOf[MethodType] && isFunctionNType(parent)) =>
           Some(mt)
         case AppliedType(parent, targs) if targs.nonEmpty && isFunctionNType(ft) =>
           val isContextual = ft.typeSymbol.name.isContextFunction
