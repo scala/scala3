@@ -10,13 +10,6 @@
    |                               Required: Test2.Cell[() ->{cap[<root>]} Unit]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:12:6 -------------------------------------------------------
-12 |  val later = usingLogFile { f => () => f.write(0) }  // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Non-local value later cannot have an inferred type
-   |  () ->{x$0, 'cap[..<root>](from instantiating usingLogFile)} Unit
-   |  with non-empty capture set {x$0, 'cap[..<root>](from instantiating usingLogFile)}.
-   |  The type needs to be declared explicitly.
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^

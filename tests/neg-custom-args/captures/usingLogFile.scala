@@ -9,7 +9,7 @@ object Test1:
     logFile.close()
     result
 
-  val later = usingLogFile { f => () => f.write(0) }  // error
+  private val later = usingLogFile { f => () => f.write(0) }  // OK, `f` has global lifetime
   later()
 
 object Test2:
@@ -61,7 +61,6 @@ object Test4:
   def fail =
     val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
     later(1)
-
 
   def usingLogger[T](f: OutputStream^, op: (local: caps.Root) ?-> Logger^{f} => T): T =
     val logger = Logger(f)

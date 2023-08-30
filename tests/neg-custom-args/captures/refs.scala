@@ -1,8 +1,15 @@
 import java.io.*
 
+type Proc = () => Unit
+
 class Ref[T](init: T):
   var x: T = init
   def setX(x: T): Unit = this.x = x
+
+class MonoRef(init: Proc):
+  type MonoProc = Proc
+  var x: MonoProc = init
+  def setX(x: MonoProc): Unit = this.x = x
 
 def usingLogFile[T](op: (local: caps.Root) ?-> FileOutputStream^{local} => T): T =
   val logFile = FileOutputStream("log")
@@ -10,7 +17,6 @@ def usingLogFile[T](op: (local: caps.Root) ?-> FileOutputStream^{local} => T): T
   logFile.close()
   result
 
-type Proc = () => Unit
 def test1 =
   usingLogFile[Proc]: (local: caps.Root) ?=> // error (but with a hard to parse error message)
     (f: FileOutputStream^{local}) =>
@@ -19,19 +25,25 @@ def test1 =
 
 def test2 =
   val r = new Ref[Proc](() => ())
-   usingLogFile[Unit]: f =>
+  usingLogFile: f =>
     r.setX(() => f.write(10))  // error
   r.x() // crash: f is closed at that point
+  val mr = new MonoRef(() => ())
+  usingLogFile[Unit]: f =>
+    mr.setX(() => f.write(10))  // error
 
 def test3 =
   val r = new Ref[Proc](() => ())
-   usingLogFile[Unit]: f =>
+  usingLogFile[Unit]: f =>
     r.x = () => f.write(10)   // error
   r.x() // crash: f is closed at that point
+  val mr = MonoRef(() => ())
+  usingLogFile: f =>
+    mr.x = () => f.write(10)   // error
 
 def test4 =
   var r: Proc = () => ()
-   usingLogFile[Unit]: f =>
+  usingLogFile[Unit]: f =>
     r = () => f.write(10)  // error
   r() // crash: f is closed at that point
 
