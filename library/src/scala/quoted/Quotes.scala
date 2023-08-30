@@ -4337,7 +4337,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol
 
       /** The `scala.PolyFunction` built-in trait. */
-      @experimental
       def PolyFunctionClass: Symbol
 
       /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
