@@ -1,6 +1,6 @@
-baseurl: /files/archive/spec/2.13
-latestScalaVersion: 2.13
-thisScalaVersion: 2.13
+baseurl: /files/archive/spec/3.4
+latestScalaVersion: 3.4
+thisScalaVersion: 3.4
 versionCompareMessage: "an upcoming"
 safe: true
 lsi: false
