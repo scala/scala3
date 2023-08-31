@@ -663,7 +663,7 @@ object CheckUnused:
         val termSelections = sels.flatMap(n => qual.tpe.member(n.name.toTermName).alternatives)
         val sameTermPath = qual.isTerm && sym.exists && sym.owner.isType && qual.tpe.typeSymbol == sym.owner.asType
         val selectionsToDealias = typeSelections ::: termSelections
-        lazy val renamedSelection = if sameTermPath then sels.find(sel => sel.imported.name == sym.name) else None
+        val renamedSelection = if sameTermPath then sels.find(sel => sel.imported.name == sym.name) else None
         val qualHasSymbol = simpleSelections.map(_.symbol).contains(sym) || (simpleSelections ::: selectionsToDealias).map(_.symbol).map(dealias).contains(dealiasedSym) || renamedSelection.isDefined
         def selector = sels.find(sel => (sel.name.toTermName == sym.name || sel.name.toTypeName == sym.name) && symName.map(n => n.toTermName == sel.rename).getOrElse(true))
         def dealiasedSelector = if(isDerived) sels.flatMap(sel => selectionsToDealias.map(m => (sel, m.symbol))).collect {
