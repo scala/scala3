@@ -3724,8 +3724,6 @@ object Types {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
-    def erasedParams(using Context) = List.fill(paramInfos.size)(false)
-
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
      *
@@ -4017,12 +4015,17 @@ object Types {
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) || isContextualMethod
     final override def hasErasedParams(using Context): Boolean =
-      erasedParams.contains(true)
+      paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
+
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
 
-    override def erasedParams(using Context): List[Boolean] =
+    def erasedParams(using Context): List[Boolean] =
       paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
+
+    def nonErasedParamCount(using Context): Int =
+      paramInfos.count(p => !p.hasAnnotation(defn.ErasedParamAnnot))
+
 
     protected def prefixString: String = companion.prefixString
   }
