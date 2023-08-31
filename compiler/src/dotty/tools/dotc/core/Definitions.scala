@@ -1139,9 +1139,8 @@ class Definitions {
      *  Extracts the list of function argument types, the result type and whether function is contextual.
      */
     def unapply(tpe: AppliedType)(using Context): Option[(List[Type], Type, Boolean)] = {
-      val targs = tpe.args
-      if targs.isEmpty || !isFunctionNType(tpe) then None
-      else Some(targs.init, targs.last, tpe.typeSymbol.name.isContextFunction)
+      if !isFunctionNType(tpe) then None
+      else Some(tpe.args.init, tpe.args.last, tpe.typeSymbol.name.isContextFunction)
     }
   }
 
