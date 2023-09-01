@@ -22,6 +22,9 @@ class CompilerSearchVisitor(
   private def isAccessible(sym: Symbol): Boolean = try
     sym != NoSymbol && sym.isPublic && sym.isStatic
   catch
+    case err: AssertionError =>
+      logger.log(Level.WARNING, err.getMessage())
+      false
     case NonFatal(e) =>
       reports.incognito.create(
         Report(
@@ -64,8 +67,14 @@ class CompilerSearchVisitor(
       .stripSuffix("$")
       .split("\\$")
 
-    val added = toSymbols(pkg, innerPath.toList).filter(visitSymbol)
+    val added =
+      try toSymbols(pkg, innerPath.toList).filter(visitSymbol)
+      catch
+        case NonFatal(e) =>
+          logger.log(Level.WARNING, e.getMessage(), e)
+          Nil
     added.size
+  end visitClassfile
 
   def visitWorkspaceSymbol(
       path: java.nio.file.Path,
