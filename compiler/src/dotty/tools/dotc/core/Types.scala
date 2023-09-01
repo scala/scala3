@@ -6465,7 +6465,9 @@ object Types {
         seen += tp
         tp match {
           case tp: AppliedType =>
-            foldOver(n + 1, tp)
+            val tpNorm = tp.tryNormalize
+            if tpNorm.exists then apply(n, tpNorm)
+            else foldOver(n + 1, tp)
           case tp: RefinedType =>
             foldOver(n + 1, tp)
           case tp: TypeRef if tp.info.isTypeAlias =>
