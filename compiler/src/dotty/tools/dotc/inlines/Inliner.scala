@@ -877,8 +877,12 @@ class Inliner(val call: tpd.Tree)(using Context):
                 }
               case _ => rhs0
             }
-            val (usedBindings, rhs2) = dropUnusedDefs(caseBindings, rhs1)
-            val rhs = seq(usedBindings, rhs2)
+            val rhs2 = rhs1 match {
+              case Typed(expr, tpt) if rhs1.span.isSynthetic => constToLiteral(expr)
+              case _ => constToLiteral(rhs1)
+            }
+            val (usedBindings, rhs3) = dropUnusedDefs(caseBindings, rhs2)
+            val rhs = seq(usedBindings, rhs3)
             inlining.println(i"""--- reduce:
                                 |$tree
                                 |--- to:
