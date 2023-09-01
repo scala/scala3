@@ -217,6 +217,11 @@ extends tpd.TreeTraverser:
     then CapturingType(tp, CaptureSet.universal, boxed = false)
     else tp
 
+  private def checkQualifiedRoots(tree: Tree)(using Context): Unit =
+    for case elem @ QualifiedRoot(outer) <- retainedElems(tree) do
+      if !ctx.owner.levelOwnerNamed(outer).exists then
+        report.error(em"`$outer` does not name an outer definition that represents a capture level", elem.srcPos)
+
   private def expandAliases(using Context) = new TypeMap with FollowAliases:
     override def toString = "expand aliases"
     def apply(t: Type) =
@@ -226,12 +231,13 @@ extends tpd.TreeTraverser:
       if t2 ne t then return t2
       t match
         case t @ AnnotatedType(t1, ann) =>
-          val t2 =
+          checkQualifiedRoots(ann.tree)
+          val t3 =
             if ann.symbol == defn.RetainsAnnot && isCapabilityClassRef(t1) then t1
             else this(t1)
           // Don't map capture sets, since that would implicitly normalize sets that
           // are not well-formed.
-          t.derivedAnnotatedType(t2, ann)
+          t.derivedAnnotatedType(t3, ann)
         case _ =>
           mapOverFollowingAliases(t)
 

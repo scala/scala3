@@ -138,12 +138,15 @@ object CheckCaptures:
         report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
       case _ =>
     for elem <- retainedElems(ann) do
-      elem.tpe match
-        case ref: CaptureRef =>
-          if !ref.isTrackableRef then
-            report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
-        case tpe =>
-          report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
+      elem match
+        case QualifiedRoot(outer) =>
+          // Will be checked by Setup's checkOuterRoots
+        case _ => elem.tpe match
+          case ref: CaptureRef =>
+            if !ref.isTrackableRef then
+              report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
+          case tpe =>
+            report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
   /** If `tp` is a capturing type, check that all references it mentions have non-empty
    *  capture sets. Also: warn about redundant capture annotations.
@@ -155,7 +158,7 @@ object CheckCaptures:
         if ref.captureSetOfInfo.elems.isEmpty then
           report.error(em"$ref cannot be tracked since its capture set is empty", pos)
         else if parent.captureSet.accountsFor(ref) then
-          report.warning(em"redundant capture: $parent already accounts for $ref", pos)
+          report.warning(em"redundant capture: $parent already accounts for $ref in $tp", pos)
     case _ =>
 
   /** Warn if `ann`, which is the tree of a @retains annotation, defines some elements that
@@ -166,11 +169,15 @@ object CheckCaptures:
   def warnIfRedundantCaptureSet(ann: Tree, tpt: Tree)(using Context): Unit =
     var retained = retainedElems(ann).toArray
     for i <- 0 until retained.length do
-      val ref = retained(i).toCaptureRef
+      val refTree = retained(i)
+      val ref = refTree.toCaptureRef
       val others = for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
       val remaining = CaptureSet(others*)
       if remaining.accountsFor(ref) then
-        val srcTree = if ann.span.exists then ann else tpt
+        val srcTree =
+          if refTree.span.exists then refTree
+          else if ann.span.exists then ann
+          else tpt
         report.warning(em"redundant capture: $remaining already accounts for $ref", srcTree.srcPos)
 
   /** Attachment key for bodies of closures, provided they are values */
@@ -1192,9 +1199,12 @@ class CheckCaptures extends Recheck, SymTransformer:
     def postCheck(unit: tpd.Tree)(using Context): Unit =
       val checker = new TreeTraverser:
         def traverse(tree: Tree)(using Context): Unit =
-          traverseChildren(tree)
+          val lctx = tree match
+            case _: DefTree | _: TypeDef if tree.symbol.exists => ctx.withOwner(tree.symbol)
+            case _ => ctx
+          traverseChildren(tree)(using lctx)
           check(tree)
-        def check(tree: Tree) = tree match
+        def check(tree: Tree)(using Context) = tree match
           case _: InferredTypeTree =>
           case tree: TypeTree if !tree.span.isZeroExtent =>
             tree.knownType.foreachPart { tp =>
@@ -1253,7 +1263,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         end check
       end checker
-      checker.traverse(unit)
+      checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

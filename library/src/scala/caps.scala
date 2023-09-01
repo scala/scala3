@@ -15,6 +15,8 @@ import annotation.experimental
 
   given Cap = cap
 
+  def capIn(scope: String): Cap = ()
+
   object unsafe:
 
     extension [T](x: T)

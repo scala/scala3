@@ -1423,13 +1423,23 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident | `this`
+    /** CaptureRef  ::=  ident | `this` | `cap` [`[` ident `]`]
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
       else termIdent() match
-        case Ident(nme.CAPTURE_ROOT) => captureRoot
-        case id => id
+        case id @ Ident(nme.CAPTURE_ROOT) =>
+          if in.token == LBRACKET then
+            val ref = atSpan(id.span.start)(captureRootIn)
+            val qual =
+              inBrackets:
+                atSpan(in.offset):
+                  Literal(Constant(ident().toString))
+            atSpan(id.span.start)(Apply(ref, qual :: Nil))
+          else
+            atSpan(id.span.start)(captureRoot)
+        case id =>
+          id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
