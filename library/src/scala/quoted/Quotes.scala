@@ -3185,6 +3185,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MethodType` */
     trait MethodTypeModule { this: MethodType.type =>
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+      /** Companion for method type without implicit nor contextual parameter */
+      def Plain: MethodTypeCompanion
+      /** Companion for method type with contextual parameter */
+      def Contextual: MethodTypeCompanion
+      /** Companion for method type with implicit parameter */
+      def Implicit: MethodTypeCompanion
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
@@ -3194,8 +3200,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
       extension (self: MethodType)
+        /** Is this the type of using parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        def isContextual: Boolean
         /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Companion of this method type. Can be used to construct method types with the same implicitness of parameters */
+        def companion: MethodTypeCompanion
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
         // TODO:deprecate in 3.4 and stabilize `erasedParams` and `hasErasedParams`.
         // @deprecated("Use `hasErasedParams`","3.4")
@@ -3210,6 +3220,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def param(idx: Int): TypeRepr
       end extension
     end MethodTypeMethods
+
+    /** Companion of a method type. It provides a way to instantiate new method types with a given implicitness of arguments. */
+    type MethodTypeCompanion
+
+    trait MethodTypeCompanionMethods {
+      /** Create a MethodType with the same implicitness as this companion */
+      def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
+    }
 
     /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
     type PolyType <: MethodOrPoly

@@ -2180,6 +2180,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end MethodOrPolyTypeTest
 
     type MethodType = dotc.core.Types.MethodType
+    type MethodTypeCompanion = dotc.core.Types.MethodTypeCompanion
 
     object MethodTypeTypeTest extends TypeTest[TypeRepr, MethodType]:
       def unapply(x: TypeRepr): Option[MethodType & x.type] = x match
@@ -2190,6 +2191,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+      def Plain: MethodTypeCompanion = Types.MethodType
+      def Contextual: MethodTypeCompanion = Types.ContextualMethodType
+      def Implicit: MethodTypeCompanion = Types.ImplicitMethodType
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
         (x.paramNames.map(_.toString), x.paramTypes, x.resType)
     end MethodType
@@ -2197,9 +2201,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given MethodTypeMethods: MethodTypeMethods with
       extension (self: MethodType)
         def isErased: Boolean = false
+        def isContextual: Boolean = self.isContextualMethod
         def isImplicit: Boolean = self.isImplicitMethod
+        def companion: MethodTypeCompanion = self.companion
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-
         def erasedParams: List[Boolean] = self.erasedParams
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
