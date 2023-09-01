@@ -410,9 +410,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
       val accessors = cls.caseAccessors
       val Seq(elemLabels, elemHasDefaults, elemTypes1) =
+        val supportsDefaults = cls.mirrorSupportsDefaultArguments
         Seq(
           accessors.map(acc => ConstantType(Constant(acc.name.toString))),
-          accessors.map(acc => ConstantType(Constant(acc.is(HasDefault)))),
+          accessors.map(acc => ConstantType(Constant(supportsDefaults && acc.is(HasDefault)))),
           tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
         ).map(TypeOps.nestedPairs)
       val (monoType, elemTypes) = mirroredType match

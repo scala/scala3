@@ -663,7 +663,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       addParent(defn.Mirror_ProductClass.typeRef)
       addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
         fromProductBody(_, _, optInfo).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
-      if cls.primaryConstructor.hasDefaultParams then
+      if cls.primaryConstructor.hasDefaultParams && cls.mirrorSupportsDefaultArguments then
         overrideMethod(nme.defaultArgument, MethodType(defn.IntType :: Nil, defn.AnyType), cls,
           defaultArgumentBody(_, _, optInfo), isExperimental = true)
     }
