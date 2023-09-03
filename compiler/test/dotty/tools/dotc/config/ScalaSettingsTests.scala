@@ -83,4 +83,18 @@ class ScalaSettingsTests:
     val nowr = new Diagnostic.Warning("This is a problem.".toMessage, util.NoSourcePosition)
     assertEquals(Action.Silent, sut.action(nowr))
 
+  @Test def `i18367 rightmost WConf flags take precedence over flags to the left`: Unit =
+    import reporting.{Action, Diagnostic}
+    val sets = new ScalaSettings
+    val args = List("-Wconf:cat=deprecation:e", "-Wconf:cat=deprecation:s")
+    val sumy = ArgsSummary(sets.defaultState, args, errors = Nil, warnings = Nil)
+    val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
+    val conf = sets.Wconf.valueIn(proc.sstate)
+    val msg  = "Don't use that!".toMessage
+    val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition)
+    val sut  = reporting.WConf.fromSettings(conf).getOrElse(???)
+    assertEquals(Action.Silent, sut.action(depr))
+
+
+
 end ScalaSettingsTests
