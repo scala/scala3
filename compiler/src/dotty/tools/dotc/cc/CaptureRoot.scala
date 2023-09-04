@@ -108,7 +108,5 @@ object CaptureRoot:
   end isEnclosingRoot
 end CaptureRoot
 
-//class LevelError(val rvar: RootVar, val newBound: Symbol, val isUpper: Boolean) extends Exception
-
 
 

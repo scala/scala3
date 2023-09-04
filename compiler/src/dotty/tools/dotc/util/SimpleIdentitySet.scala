@@ -142,8 +142,10 @@ object SimpleIdentitySet {
       val y0 = f(x0.asInstanceOf[Elem])
       val y1 = f(x1.asInstanceOf[Elem])
       val y2 = f(x2.asInstanceOf[Elem])
-      if (y0 ne y1) && (y0 ne y2) && (y1 ne y2) then Set3(y0, y1, y2)
-      else super.map(f)
+      if y1 eq y0 then
+        if y2 eq y0 then Set1(y0) else Set2(y0, y2)
+      else if (y2 eq y0) || (y2 eq y1) then Set2(y0, y1)
+      else Set3(y0, y1, y2)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
     def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil

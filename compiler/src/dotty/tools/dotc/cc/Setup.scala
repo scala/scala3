@@ -242,14 +242,15 @@ extends tpd.TreeTraverser:
           mapOverFollowingAliases(t)
 
   private def transformExplicitType(tp: Type, boxed: Boolean, mapRoots: Boolean)(using Context): Type =
-    val tp1 = expandAliases(if boxed then box(tp) else tp)
+    val tp1 = expandAliases(tp)
     val tp2 =
       if mapRoots
       then cc.mapRoots(defn.captureRoot.termRef, ctx.owner.localRoot.termRef)(tp1)
             .showing(i"map roots $tp1, ${tp1.getClass} == $result", capt)
       else tp1
-    if tp2 ne tp then capt.println(i"expanded: $tp --> $tp2")
-    tp2
+    val tp3 = if boxed then box(tp2) else tp2
+    if tp3 ne tp then capt.println(i"expanded: $tp --> $tp3")
+    tp3
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
   private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean, mapRoots: Boolean)(using Context): Unit =
@@ -463,8 +464,8 @@ extends tpd.TreeTraverser:
               newInfo
             else new LazyType:
               def complete(denot: SymDenotation)(using Context) =
-                // infos other methods are determined from their definitions which
-                // are checked on depand
+                // infos of other methods are determined from their definitions which
+                // are checked on demand
                 denot.info = newInfo
                 recheckDef(tree, sym))
         else updateOwner(sym)
