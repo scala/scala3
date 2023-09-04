@@ -824,7 +824,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ => tree
   }
 
-  /** An extractor for eta expanded `mdef` an eta-expansion of a method reference? To recognize this, we use
+  /** Is `mdef` an eta-expansion of a method reference? To recognize this, we use
    *  the following criterion: A method definition is an eta expansion, if
    *  it contains at least one term paramter, the parameter has a zero extent span,
    *  and the right hand side is either an application or a closure with'
