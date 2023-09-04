@@ -2749,6 +2749,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(tp1, defn.AnyType)
       case _ if !ctx.erasedTypes && tp1.isFromJavaObject =>
         provablyDisjoint(defn.AnyType, tp2)
+      case (tp1: TypeRef, _) if tp1.symbol == defn.AnyKindClass =>
+        false
+      case (_, tp2: TypeRef) if tp2.symbol == defn.AnyKindClass =>
+        false
       case (tp1: TypeRef, _) if tp1.symbol == defn.SingletonClass =>
         false
       case (_, tp2: TypeRef) if tp2.symbol == defn.SingletonClass =>
