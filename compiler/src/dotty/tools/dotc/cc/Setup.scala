@@ -320,22 +320,20 @@ extends tpd.TreeTraverser:
 
   def traverse(tree: Tree)(using Context): Unit =
     tree match
-      case tree: DefDef =>
+      case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
         if isExcluded(tree.symbol) then
           return
         inContext(ctx.withOwner(tree.symbol)):
           if tree.symbol.isAnonymousFunction && tree.symbol.definedLocalRoot.exists then
             // closures that define parameters of type caps.Cap count as level owners
             tree.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-          tree.tpt match
-            case tpt: TypeTree if tree.symbol.allOverriddenSymbols.hasNext =>
-              tree.paramss.foreach(traverse)
-              transformTT(tpt, boxed = false, exact = true, mapRoots = true)
-              traverse(tree.rhs)
-              //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
-            case _ =>
-              traverseChildren(tree)
-      case tree @ ValDef(_, tpt: TypeTree, rhs) =>
+          paramss.foreach(traverse)
+          transformTT(tpt, boxed = false,
+              exact = tree.symbol.allOverriddenSymbols.hasNext,
+              mapRoots = true)
+          traverse(tree.rhs)
+          //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
+      case tree @ ValDef(_, tpt: TypeTree, _) =>
         def containsCap(tp: Type) = tp.existsPart:
           case CapturingType(_, refs) => refs.isUniversal
           case _ => false
@@ -345,7 +343,7 @@ extends tpd.TreeTraverser:
           case _: InferredTypeTree => false
           case _: TypeTree => containsCap(expandAliases(tree.tpe))
           case _ => false
-        val mapRoots = rhs match
+        val mapRoots = tree.rhs match
           case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
             ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
               // Toplevel closures bound to vals count as level owners
