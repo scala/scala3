@@ -385,7 +385,7 @@ object SpaceEngine {
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots, isValue = true), decomposed = false)
+      Typ(erase(tpt.tpe.stripAnnots, isValue = true, isTyped = true), decomposed = false)
 
     case This(_) =>
       Typ(pat.tpe.stripAnnots, decomposed = false)
@@ -449,28 +449,31 @@ object SpaceEngine {
    *
    *  @param inArray whether `tp` is a type argument to `Array`
    *  @param isValue whether `tp` is the type which match against values
+   *  @param isTyped whether `tp` is the type from a `Typed` tree
    *
    *  If `isValue` is true, then pattern-bound symbols are erased to its upper bound.
    *  This is needed to avoid spurious unreachable warnings. See tests/patmat/i6197.scala.
    */
-  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false)(using Context): Type =
-    trace(i"erase($tp${if inArray then " inArray" else ""}${if isValue then " isValue" else ""})", debug)(tp match {
+  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false, isTyped: Boolean = false)(using Context): Type =
+    trace(i"erase($tp${if inArray then " inArray" else ""}${if isValue then " isValue" else ""}${if isTyped then " isTyped" else ""})", debug)(tp match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isPatternBound =>
         WildcardType
 
       case tp @ AppliedType(tycon, args) =>
-        val inArray = tycon.isRef(defn.ArrayClass)
-        val args2 = args.map(arg => erase(arg, inArray = inArray, isValue = false))
+        val inArray = tycon.isRef(defn.ArrayClass) || tp.translucentSuperType.isRef(defn.ArrayClass)
+        val args2 =
+          if isTyped && !inArray then args.map(_ => WildcardType)
+          else args.map(arg => erase(arg, inArray = inArray, isValue = false))
         tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
-        OrType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue), tp.isSoft)
+        OrType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped), tp.isSoft)
 
       case AndType(tp1, tp2) =>
-        AndType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue))
+        AndType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped))
 
       case tp @ RefinedType(parent, _, _) =>
-        erase(parent, inArray, isValue)
+        erase(parent, inArray, isValue, isTyped)
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
         if inArray then tref.underlying

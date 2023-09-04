@@ -109,6 +109,15 @@ class CompilationTests {
     ).times(2).checkCompile()
   }
 
+  // Warning tests ------------------------------------------------------------
+
+  @Test def warn: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("compileWarn")
+    aggregateTests(
+      compileFilesInDir("tests/warn", defaultOptions),
+    ).checkWarnings()
+  }
+
   // Negative tests ------------------------------------------------------------
 
   @Test def negAll: Unit = {
