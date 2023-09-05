@@ -4,18 +4,18 @@ import annotation.experimental
 
 @experimental object caps:
 
-  opaque type Cap = Unit
+  class Cap // should be @erased
 
   /** The universal capture reference (deprecated) */
   @deprecated("Use `cap` instead")
-  val `*`: Cap = ()
+  val `*`: Cap = cap
 
   /** The universal capture reference */
-  val cap: Cap = ()
+  val cap: Cap = Cap()
 
   given Cap = cap
 
-  def capIn(scope: String): Cap = ()
+  def capIn(scope: String): Cap = cap
 
   object unsafe:
 
