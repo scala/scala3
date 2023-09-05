@@ -82,7 +82,7 @@ object Build {
 
   val referenceVersion = "3.3.0"
 
-  val baseVersion = "3.3.1-RC7"
+  val baseVersion = "3.3.1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -98,7 +98,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.3.1-RC6"
+  val previousDottyVersion = "3.3.0"
 
   object CompatMode {
     final val BinaryCompatible = 0
