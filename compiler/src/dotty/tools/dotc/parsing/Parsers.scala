@@ -1419,7 +1419,11 @@ object Parsers {
     private def getFunction(tree: Tree): Option[Function] = tree match {
       case Parens(tree1) => getFunction(tree1)
       case Block(Nil, tree1) => getFunction(tree1)
-      case Function(_, _: CapturesAndResult) => None
+      case Function(_, _: CapturesAndResult) =>
+        // A function tree like this will be desugared
+        // into a capturing type in the typer,
+        // so None is returned.
+        None
       case t: Function => Some(t)
       case _ => None
     }
