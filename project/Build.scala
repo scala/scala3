@@ -2207,8 +2207,7 @@ object ScaladocConfigs {
     val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
     val docRootFile = stdLibRoot.resolve("rootdoc.txt")
 
-    val dottyManagesSources =
-      (`scala3-library-bootstrapped`/Compile/sourceDirectory).value
+    val dottyManagesSources = (`scala3-library-bootstrapped`/Compile/baseDirectory).value
 
     val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
 
