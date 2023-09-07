@@ -235,14 +235,14 @@ trait Dynamic {
           if ValueClasses.isDerivedValueClass(tpe.classSymbol) && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
-            New(tpe, tree.cast(underlying) :: Nil)
+            New(tpe.widen, tree.cast(underlying) :: Nil)
           else
             tree
         maybeBoxed.cast(tpe)
 
     fun.tpe.widen match {
       case tpe: ValueType =>
-        structuralCall(nme.selectDynamic, Nil).maybeBoxingCast(tpe)
+        structuralCall(nme.selectDynamic, Nil).maybeBoxingCast(fun.tpe)
 
       case tpe: MethodType =>
         def isDependentMethod(tpe: Type): Boolean = tpe match {
