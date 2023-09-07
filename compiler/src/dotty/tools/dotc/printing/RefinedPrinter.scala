@@ -29,7 +29,7 @@ import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, toCaptureSet, IllegalCaptureRef, ccNestingLevelOpt}
+import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, ccNestingLevelOpt}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -268,7 +268,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(tycon)
       case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
-          isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction)
+          isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction,
+          refs = tp.parent match
+            case CapturingType(_, cs) => toTextCaptureSet(cs)
+            case _ => "")
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
