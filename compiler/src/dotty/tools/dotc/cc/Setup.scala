@@ -124,8 +124,7 @@ extends tpd.TreeTraverser:
       isTopLevel = false
       try ts.mapConserve(this) finally isTopLevel = saved
 
-    def apply(t: Type) =
-      val tp = expandThrowsAlias(t)
+    def apply(tp: Type) =
       val tp1 = tp match
         case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
           // Drop explicit retains annotations
