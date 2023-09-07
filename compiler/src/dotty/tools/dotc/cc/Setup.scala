@@ -237,8 +237,8 @@ extends tpd.TreeTraverser:
           // Don't map capture sets, since that would implicitly normalize sets that
           // are not well-formed.
           t.derivedAnnotatedType(t3, ann)
-        case _ =>
-          mapOverFollowingAliases(t)
+        case t =>
+          normalizeCaptures(mapOverFollowingAliases(t))
 
   private def transformExplicitType(tp: Type, boxed: Boolean, mapRoots: Boolean)(using Context): Type =
     val tp1 = expandAliases(tp)
@@ -560,10 +560,8 @@ extends tpd.TreeTraverser:
         false
   }.showing(i"can have inferred capture $tp = $result", capt)
 
-  /** Add a capture set variable to `tp` if necessary, or maybe pull out
-   *  an embedded capture set variable from a part of `tp`.
-   */
-  def decorate(tp: Type, mapRoots: Boolean, addedSet: Type => CaptureSet)(using Context): Type = tp match
+  /** Pull out an embedded capture set from a part of `tp` */
+  def normalizeCaptures(tp: Type)(using Context): Type = tp match
     case tp @ RefinedType(parent @ CapturingType(parent1, refs), rname, rinfo) =>
       CapturingType(tp.derivedRefinedType(parent1, rname, rinfo), refs, parent.isBoxed)
     case tp: RecType =>
@@ -575,13 +573,9 @@ extends tpd.TreeTraverser:
               // by `mapInferred`. Hence if the underlying type admits capture variables
               // a variable was already added, and the first case above would apply.
     case AndType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-      assert(refs1.elems.isEmpty)
-      assert(refs2.elems.isEmpty)
       assert(tp1.isBoxed == tp2.isBoxed)
       CapturingType(AndType(parent1, parent2), refs1 ** refs2, tp1.isBoxed)
     case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2 @ CapturingType(parent2, refs2)) =>
-      assert(refs1.elems.isEmpty)
-      assert(refs2.elems.isEmpty)
       assert(tp1.isBoxed == tp2.isBoxed)
       CapturingType(OrType(parent1, parent2, tp.isSoft), refs1 ++ refs2, tp1.isBoxed)
     case tp @ OrType(tp1 @ CapturingType(parent1, refs1), tp2) =>
@@ -589,19 +583,27 @@ extends tpd.TreeTraverser:
     case tp @ OrType(tp1, tp2 @ CapturingType(parent2, refs2)) =>
       CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
     case tp: LazyRef =>
-      decorate(tp.ref, mapRoots, addedSet)
-    case _ if tp.typeSymbol == defn.FromJavaObjectSymbol =>
+      normalizeCaptures(tp.ref)
+    case _ =>
+      tp
+
+  /** Add a capture set variable to `tp` if necessary, or maybe pull out
+   *  an embedded capture set variable from a part of `tp`.
+   */
+  def decorate(tp: Type, mapRoots: Boolean, addedSet: Type => CaptureSet)(using Context): Type =
+    if tp.typeSymbol == defn.FromJavaObjectSymbol then
       // For capture checking, we assume Object from Java is the same as Any
       tp
-    case _ =>
+    else
       def maybeAdd(target: Type, fallback: Type) =
         if needsVariable(target) then CapturingType(target, addedSet(target))
         else fallback
-      val tp1 = tp.dealiasKeepAnnots
-      if tp1 ne tp then
+      val tp0 = normalizeCaptures(tp)
+      val tp1 = tp0.dealiasKeepAnnots
+      if tp1 ne tp0 then
         val tp2 = transformExplicitType(tp1, boxed = false, mapRoots)
-        maybeAdd(tp2, if tp2 ne tp1 then tp2 else tp)
-      else maybeAdd(tp, tp)
+        maybeAdd(tp2, if tp2 ne tp1 then tp2 else tp0)
+      else maybeAdd(tp0, tp0)
 
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
