@@ -7,7 +7,7 @@ type Op[T, C] =
   (v: T) => (s: C) => C
 
 type List[T] =
-  [C] -> (op: Op[T, C]) -> {op} (s: C) -> C
+  [C] -> (op: Op[T, C]) -> (s: C) ->{op} C
 
 def nil[T]: List[T] =
   [C] => (op: Op[T, C]) => (s: C) => s
@@ -15,7 +15,7 @@ def nil[T]: List[T] =
 def cons[T](hd: T, tl: List[T]): List[T] =
   [C] => (op: Op[T, C]) => (s: C) => op(hd)(tl(op)(s))
 
-def foo(c: {*} Cap) =
+def foo(c: Cap^) =
   def f(x: String @retains(c), y: String @retains(c)) =
     cons(x, cons(y, nil))
   def g(x: String @retains(c), y: Any) =

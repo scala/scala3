@@ -295,7 +295,7 @@ object RefChecks {
    *  TODO This still needs to be cleaned up; the current version is a straight port of what was there
    *       before, but it looks too complicated and method bodies are far too large.
    *
-   *   @param makeOverridePairsChecker  A function for creating a OverridePairsChecker instance
+   *   @param makeOverridingPairsChecker A function for creating a OverridePairsChecker instance
    *                                    from the class symbol and the self type
    */
   def checkAllOverrides(clazz: ClassSymbol, makeOverridingPairsChecker: ((ClassSymbol, Type) => Context ?=> OverridingPairsChecker) | Null = null)(using Context): Unit = {
@@ -1090,6 +1090,12 @@ object RefChecks {
 
   end checkImplicitNotFoundAnnotation
 
+  def checkAnyRefMethodCall(tree: Tree)(using Context) =
+    if tree.symbol.exists
+       && defn.topClasses.contains(tree.symbol.owner)
+       && (!ctx.owner.enclosingClass.exists || ctx.owner.enclosingClass.isPackageObject) then
+      report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
+
 }
 import RefChecks._
 
@@ -1163,12 +1169,16 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
     tree
-  }
-  catch {
+  } catch {
     case ex: TypeError =>
       report.error(ex, tree.srcPos)
       tree
   }
+
+  override def transformIdent(tree: Ident)(using Context): Tree =
+    checkAnyRefMethodCall(tree)
+    tree
+
 }
 
 /* todo: rewrite and re-enable
@@ -1679,7 +1689,7 @@ class RefChecks extends MiniPhase { thisPhase =>
             // if (settings.warnNullaryUnit)
             //  checkNullaryMethodReturnType(sym)
             // if (settings.warnInaccessible) {
-            //  if (!sym.isConstructor && !sym.isEffectivelyFinal && !sym.isSynthetic)
+            //  if (!sym.isEffectivelyFinal && !sym.isSynthetic)
             //    checkAccessibilityOfReferencedTypes(tree)
             // }
             // tree match {

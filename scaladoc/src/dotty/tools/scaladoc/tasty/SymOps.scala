@@ -143,7 +143,9 @@ object SymOps:
       import reflect._
       sym.flags.is(Flags.Artifact)
 
-    def isLeftAssoc: Boolean = !sym.name.endsWith(":")
+    def isRightAssoc: Boolean = sym.name.endsWith(":")
+
+    def isLeftAssoc: Boolean = !sym.isRightAssoc
 
     def extendedSymbol: Option[reflect.ValDef] =
       import reflect.*
@@ -172,41 +174,36 @@ object SymOps:
           )
         case _ => Nil -> Nil
 
-    def extendedTypeParams: List[reflect.TypeDef] =
-      import reflect.*
-      sym.tree match
-        case tree: DefDef =>
-          tree.leadingTypeParams
-        case _ => Nil
+    def extendedParamLists: List[reflect.ParamClause] = sym.splitExtensionParamList._1
 
-    def extendedTermParamLists: List[reflect.TermParamClause] =
-      import reflect.*
-      sym.splitExtensionParamList._1.collect {
-        case tpc: TermParamClause => tpc
+    def extendedTypeParamLists: List[reflect.TypeParamClause] =
+      sym.extendedParamLists.collect {
+        case typeClause: reflect.TypeParamClause => typeClause
       }
 
-    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
-      import reflect.*
-      if sym.nonExtensionLeadingTypeParams.nonEmpty then
-        sym.nonExtensionParamLists.dropWhile {
-          case _: TypeParamClause => false
-          case _ => true
-        }.drop(1).collect {
-          case tpc: TermParamClause => tpc
-        }
-      else
-        sym.nonExtensionParamLists.collect {
-          case tpc: TermParamClause => tpc
-        }
+    def extendedTypeParams: List[reflect.TypeDef] =
+      sym.extendedTypeParamLists.headOption.map(_.params).getOrElse(List())
+
+    def extendedTermParamLists: List[reflect.TermParamClause] =
+      sym.extendedParamLists.collect {
+        case tpc: reflect.TermParamClause => tpc
+      }
 
     def nonExtensionParamLists: List[reflect.ParamClause] =
       sym.splitExtensionParamList._2
 
+    def nonExtensionTermParamLists: List[reflect.TermParamClause] =
+      sym.nonExtensionParamLists.collect {
+        case tpc: reflect.TermParamClause => tpc
+      }
+
+    def nonExtensionTypeParamLists: List[reflect.TypeParamClause] =
+      sym.nonExtensionParamLists.collect {
+        case typeClause: reflect.TypeParamClause => typeClause
+      }
+
     def nonExtensionLeadingTypeParams: List[reflect.TypeDef] =
-      import reflect.*
-      sym.nonExtensionParamLists.collectFirst {
-        case TypeParamClause(params) => params
-      }.toList.flatten
+      sym.nonExtensionTypeParamLists.headOption.map(_.params).getOrElse(List())
 
   end extension
 
@@ -238,7 +235,7 @@ class SymOpsWithLinkCache:
       def constructPathForScaladoc2: String =
         val l = escapeUrl(location.mkString("/"))
         val scaladoc2Anchor = if anchor.isDefined then {
-          "#" + getScaladoc2Type(sym.tree)
+          "#" + getScaladoc2Type(sym)
         } else ""
         docURL + l + extension + scaladoc2Anchor
 

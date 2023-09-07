@@ -214,7 +214,7 @@ object NameOps {
             if str == mustHave then found = true
             idx + str.length
           else idx
-        skip(skip(skip(0, "Impure"), "Erased"), "Context") == suffixStart
+        skip(skip(0, "Impure"), "Context") == suffixStart
         && found
       }
 
@@ -225,10 +225,11 @@ object NameOps {
     private def checkedFunArity(suffixStart: Int)(using Context): Int =
       if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1
 
-    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ErasedFunctionN, ErasedContextFunctionN for N >= 0
+    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ImpureFunctionN, ImpureContextFunctionN for N >= 0
      */
     def isFunction(using Context): Boolean =
-      (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
+      (name eq tpnme.FunctionXXL)
+      || checkedFunArity(functionSuffixStart) >= 0
 
     /** Is a function name
      *    - FunctionN for N >= 0
@@ -241,14 +242,11 @@ object NameOps {
       isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
 
     def isContextFunction(using Context): Boolean = isSpecificFunction("Context")
-    def isErasedFunction(using Context): Boolean = isSpecificFunction("Erased")
     def isImpureFunction(using Context): Boolean = isSpecificFunction("Impure")
 
     /** Is a synthetic function name, i.e. one of
      *    - FunctionN for N > 22
      *    - ContextFunctionN for N >= 0
-     *    - ErasedFunctionN for N >= 0
-     *    - ErasedContextFunctionN for N >= 0
      */
     def isSyntheticFunction(using Context): Boolean =
       val suffixStart = functionSuffixStart

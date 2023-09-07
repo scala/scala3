@@ -2,22 +2,25 @@ package dotty.tools
 package dotc
 package transform
 
-import scala.annotation.tailrec
 import core._
 import MegaPhase._
-import collection.mutable
 import Symbols._, Contexts._, Types._, StdNames._, NameOps._
+import patmat.SpaceEngine
 import util.Spans._
 import typer.Applications.*
 import SymUtils._
 import TypeUtils.*
+import Annotations.*
 import Flags._, Constants._
 import Decorators._
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
 import reporting._
-import dotty.tools.dotc.ast._
+import ast._
 import util.Property._
+
+import scala.annotation.tailrec
+import scala.collection.mutable
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -45,9 +48,8 @@ class PatternMatcher extends MiniPhase {
       val translated = new Translator(matchType, this).translateMatch(tree)
 
       // check exhaustivity and unreachability
-      val engine = new patmat.SpaceEngine
-      engine.checkExhaustivity(tree)
-      engine.checkRedundancy(tree)
+      SpaceEngine.checkExhaustivity(tree)
+      SpaceEngine.checkRedundancy(tree)
 
       translated.ensureConforms(matchType)
     }
@@ -707,9 +709,9 @@ object PatternMatcher {
     // ----- Generating trees from plans ---------------
 
     /** The condition a test plan rewrites to */
-    private def emitCondition(plan: TestPlan): Tree = {
+    private def emitCondition(plan: TestPlan): Tree =
       val scrutinee = plan.scrutinee
-      (plan.test: @unchecked) match {
+      (plan.test: @unchecked) match
         case NonEmptyTest =>
           constToLiteral(
             scrutinee
@@ -737,41 +739,49 @@ object PatternMatcher {
         case TypeTest(tpt, trusted) =>
           val expectedTp = tpt.tpe
 
-          // An outer test is needed in a situation like  `case x: y.Inner => ...`
-          def outerTestNeeded: Boolean = {
-            def go(expected: Type): Boolean = expected match {
-              case tref @ TypeRef(pre: SingletonType, _) =>
-                tref.symbol.isClass &&
-                ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
-              case AppliedType(tpe, _) => go(tpe)
-              case _ =>
-                false
-            }
-            // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
-            // generates an outer test based on `patType.prefix` with automatically dealises.
-            go(expectedTp.dealias)
-          }
+          def typeTest(scrut: Tree, expected: Type): Tree =
+            val ttest = scrut.select(defn.Any_typeTest).appliedToType(expected)
+            if trusted then ttest.pushAttachment(TrustedTypeTestKey, ())
+            ttest
 
-          def outerTest: Tree = thisPhase.transformFollowingDeep {
-            val expectedOuter = singleton(expectedTp.normalizedPrefix)
-            val expectedClass = expectedTp.dealias.classSymbol.asClass
-            ExplicitOuter.ensureOuterAccessors(expectedClass)
-            scrutinee.ensureConforms(expectedTp)
-              .outerSelect(1, expectedClass.owner.typeRef)
-              .select(defn.Object_eq)
-              .appliedTo(expectedOuter)
-          }
+          /** An outer test is needed in a situation like  `case x: y.Inner => ...
+           *  or like  case x: O#Inner  if the owner of Inner is not a subclass of O.
+           *  Outer tests are added here instead of in TypeTestsCasts since they
+           *  might cause outer accessors to be added to inner classes (via ensureOuterAccessors)
+           *  and therefore have to run before ExplicitOuter.
+           */
+          def addOuterTest(tree: Tree, expected: Type): Tree = expected.dealias match
+            case tref @ TypeRef(pre, _) =>
+              tref.symbol match
+                case expectedCls: ClassSymbol if ExplicitOuter.needsOuterIfReferenced(expectedCls) =>
+                  def selectOuter =
+                    ExplicitOuter.ensureOuterAccessors(expectedCls)
+                    scrutinee.ensureConforms(expected).outerSelect(1, expectedCls.owner.typeRef)
+                  if pre.isSingleton then
+                    val expectedOuter = singleton(pre)
+                    tree.and(selectOuter.select(defn.Object_eq).appliedTo(expectedOuter))
+                  else if !expectedCls.isStatic
+                    && expectedCls.owner.isType
+                    && !expectedCls.owner.derivesFrom(pre.classSymbol)
+                  then
+                    val testPre =
+                      if expected.hasAnnotation(defn.UncheckedAnnot) then
+                        AnnotatedType(pre, Annotation(defn.UncheckedAnnot, tree.span))
+                      else pre
+                    tree.and(typeTest(selectOuter, testPre))
+                  else tree
+                case _ => tree
+            case AppliedType(tycon, _) =>
+              addOuterTest(tree, tycon)
+            case _ =>
+              tree
 
-          expectedTp.dealias match {
+          expectedTp.dealias match
             case expectedTp: SingletonType =>
               scrutinee.isInstance(expectedTp)  // will be translated to an equality test
             case _ =>
-              val typeTest = scrutinee.select(defn.Any_typeTest).appliedToType(expectedTp)
-              if (trusted) typeTest.pushAttachment(TrustedTypeTestKey, ())
-              if (outerTestNeeded) typeTest.and(outerTest) else typeTest
-          }
-      }
-    }
+              addOuterTest(typeTest(scrutinee, expectedTp), expectedTp)
+    end emitCondition
 
     @tailrec
     private def canFallThrough(plan: Plan): Boolean = plan match {

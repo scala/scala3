@@ -87,7 +87,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  signatures of a Java varargs method and a Scala varargs override are not the same.
    */
   private def overridesJava(sym: Symbol)(using Context) =
-    sym.owner.info.baseClasses.drop(1).exists { bc =>
+    sym.memberCanMatchInheritedSymbols
+    && sym.owner.info.baseClasses.drop(1).exists { bc =>
       bc.is(JavaDefined) && {
         val other = bc.info.nonPrivateDecl(sym.name)
         other.hasAltWith { alt =>

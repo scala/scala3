@@ -202,6 +202,7 @@ class TemplateFileTests:
         content -> "md"
       )
     )
+
   @Test
   def markdown(): Unit =
     testTemplate(
@@ -222,10 +223,10 @@ class TemplateFileTests:
       ext = "md"
     ) { t =>
       assertEquals(
-        """<section id="hello-there">
-        |<h1 class="h500"><a href="#hello-there" class="anchor"></a>Hello there!</h1>
+        """<section id="hello-there2">
+        |<h1 class="h500"><a href="#hello-there2" class="anchor"></a>Hello there2!</h1>
         |</section>""".stripMargin,
-      t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
+      t.resolveInner(RenderingContext(Map("msg" -> "there2"))).code.trim())
     }
 
   @Test

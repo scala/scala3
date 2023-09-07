@@ -14,6 +14,4 @@ final class TypeImpl(val typeTree: tpd.Tree, val scope: Scope) extends Type[?] {
   }
 
   override def hashCode(): Int = typeTree.hashCode()
-
-  override def toString: String = "Type.of[...]"
 }

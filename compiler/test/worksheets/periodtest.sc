@@ -2,9 +2,9 @@ package dotty.tools.dotc.core
 
 object periodtest {
   println("Welcome to the Scala worksheet")       //> Welcome to the Scala worksheet
-  
+
   import Periods._
-  
+
   val p1 = Period(1, 2, 7)                        //> p1  : dotty.tools.dotc.core.Periods.Period = Period(2..7, run = 1)
   val p2 = Period(1, 3, 7)                        //> p2  : dotty.tools.dotc.core.Periods.Period = Period(3..7, run = 1)
   p1 contains p2                                  //> res0: Boolean = true

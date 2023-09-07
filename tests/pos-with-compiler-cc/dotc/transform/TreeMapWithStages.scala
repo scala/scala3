@@ -18,7 +18,7 @@ import scala.annotation.constructorOnly
  *                     and `l == -1` is code inside a top level splice (in an inline method).
  *  @param  levels     a stacked map from symbols to the levels in which they were defined
  */
-abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMapWithImplicits { this: {} TreeMapWithStages =>
+abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMapWithImplicits { this: TreeMapWithStages^{} =>
 
   import tpd._
   import TreeMapWithStages._

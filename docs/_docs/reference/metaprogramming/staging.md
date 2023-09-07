@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Runtime Multi-Stage Programming"
+title: "Run-Time Multi-Stage Programming"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/metaprogramming/staging.html
 ---
 
@@ -60,7 +60,7 @@ impose the following restrictions on the use of splices.
 The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
-to `T` but only `$` is subject to the [PCP](./macros.md#the-phase-consistency-principle), whereas `run` is just a normal method.
+to `T` but only `$` is subject to [Cross-Stage Safety](./macros.md#cross-stage-safety), whereas `run` is just a normal method.
 `scala.quoted.staging.run` provides a `Quotes` that can be used to show the expression in its scope.
 On the other hand `scala.quoted.staging.withQuotes` provides a `Quotes` without evaluating the expression.
 

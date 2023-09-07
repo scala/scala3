@@ -2,20 +2,22 @@ package dotty.tools
 package dotc
 package typer
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Names.{Name, TermName}
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.TypeErasure
-import util.Spans._
-import core.Symbols._
-import ErrorReporting._
-import reporting._
+import util.Spans.*
+import core.Symbols.*
+import ErrorReporting.*
+import dotty.tools.dotc.transform.ValueClasses
+import dotty.tools.dotc.transform.TypeUtils.isPrimitiveValueType
+import reporting.*
 
 object Dynamic {
   private def isDynamicMethod(name: Name): Boolean =
@@ -179,12 +181,12 @@ trait Dynamic {
     val vargss = termArgss(tree)
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
-      val selectable = adapt(qual, defn.SelectableClass.typeRef)
+      val selectable = adapt(qual, defn.SelectableClass.typeRef | defn.DynamicClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name")
       val base =
         untpd.Apply(
-          untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
+          untpd.Select(untpd.TypedSplice(selectable), selectorName).withSpan(fun.span),
           (Literal(Constant(name.encode.toString)) :: Nil).map(untpd.TypedSplice(_)))
 
       val scall =
@@ -214,9 +216,33 @@ trait Dynamic {
     def fail(reason: String): Tree =
       errorTree(tree, em"Structural access not allowed on method $name because it $reason")
 
+    extension (tree: Tree)
+      /** The implementations of `selectDynamic` and `applyDynamic` in `scala.reflect.SelectDynamic` have no information about the expected return type of a value/method which was declared in the refinement,
+       *  only the JVM type after erasure can be obtained through reflection, e.g.
+       *
+       *  class Foo(val i: Int) extends AnyVal
+       *  class Reflective extends reflect.Selectable
+       *  val reflective = new Reflective {
+       *    def foo = Foo(1) // Foo at compile time, java.lang.Integer in reflection
+       *  }
+       *
+       *  Because of that reflective access cannot be implemented properly in `scala.reflect.SelectDynamic` itself
+       *  because it's not known there if the value should be wrapped in a value class constructor call or not.
+       *  Hence the logic of wrapping is performed here, relying on the fact that the implementations of `selectDynamic` and `applyDynamic` in `scala.reflect.SelectDynamic` are final.
+       */
+      def maybeBoxingCast(tpe: Type) =
+        val maybeBoxed =
+          if ValueClasses.isDerivedValueClass(tpe.classSymbol) && qual.tpe <:< defn.ReflectSelectableTypeRef then
+            val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
+            val underlying = tpe.select(genericUnderlying).widen.resultType
+            New(tpe, tree.cast(underlying) :: Nil)
+          else
+            tree
+        maybeBoxed.cast(tpe)
+
     fun.tpe.widen match {
       case tpe: ValueType =>
-        structuralCall(nme.selectDynamic, Nil).cast(tpe)
+        structuralCall(nme.selectDynamic, Nil).maybeBoxingCast(tpe)
 
       case tpe: MethodType =>
         def isDependentMethod(tpe: Type): Boolean = tpe match {
@@ -236,7 +262,7 @@ trait Dynamic {
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
               TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
-          structuralCall(nme.applyDynamic, classOfs).cast(tpe.finalResultType)
+          structuralCall(nme.applyDynamic, classOfs).maybeBoxingCast(tpe.finalResultType)
         }
 
       // (@allanrenucci) I think everything below is dead code

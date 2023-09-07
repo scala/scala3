@@ -271,7 +271,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val flags = javaFlags(claszSymbol)
 
       val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner)
-      cnode.visit(classfileVersion, flags,
+      cnode.visit(backendUtils.classfileVersion, flags,
                   thisName, thisSignature,
                   superClass, interfaceNames.toArray)
 
@@ -556,11 +556,17 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => false } )
     }
     def lineNumber(tree: Tree): Unit = {
+      @tailrec
+      def getNonLabelNode(a: asm.tree.AbstractInsnNode): asm.tree.AbstractInsnNode = a match {
+        case a: asm.tree.LabelNode => getNonLabelNode(a.getPrevious)
+        case _                     => a
+      }
+
       if (!emitLines || !tree.span.exists) return;
       val nr = ctx.source.offsetToLine(tree.span.point) + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
-        lastInsn match {
+        getNonLabelNode(lastInsn) match {
           case lnn: asm.tree.LineNumberNode =>
             // overwrite previous landmark as no instructions have been emitted for it
             lnn.line = nr

@@ -13,6 +13,9 @@ import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
 import com.vladsch.flexmark.ast.FencedCodeBlock
+import com.vladsch.flexmark.util.data.MutableDataHolder
+import com.vladsch.flexmark.html.renderer.NodeRenderingHandler.CustomNodeRenderer
+import com.vladsch.flexmark.util.data.DataHolder
 
 /**
  * SnippetRenderingExtension is responsible for running an analysis for scala codeblocks in the static documentation/scaladoc comments.
@@ -39,7 +42,7 @@ object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
       )
 
   object Factory extends NodeRendererFactory:
-    override def create(options: DataHolder): NodeRenderer = Render
+    override def apply(options: DataHolder): NodeRenderer = Render
 
   def extend(htmlRendererBuilder: HtmlRenderer.Builder, tpe: String): Unit =
     htmlRendererBuilder.nodeRendererFactory(Factory)

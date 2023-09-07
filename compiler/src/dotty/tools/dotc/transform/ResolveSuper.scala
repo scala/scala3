@@ -119,6 +119,9 @@ object ResolveSuper {
           report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
       bcs = bcs.tail
     }
+    if sym.is(Accessor) then
+      report.error(
+        em"parent ${acc.owner} has a super call which binds to the value ${sym.showFullName}. Super calls can only target methods.", base)
     sym.orElse {
       val originalName = acc.name.asTermName.originalOfSuperAccessorName
       report.error(em"Member method ${originalName.debugString} of mixin ${acc.owner} is missing a concrete super implementation in $base.", base.srcPos)

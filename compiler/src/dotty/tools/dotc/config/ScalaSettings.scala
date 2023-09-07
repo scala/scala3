@@ -15,9 +15,9 @@ import scala.util.chaining._
 class ScalaSettings extends SettingGroup with AllScalaSettings
 
 object ScalaSettings:
-  // Keep synchronized with `classfileVersion` in `BCodeIdiomatic`
+  // Keep synchronized with `classfileVersion` in `BackendUtils`
   private val minTargetVersion = 8
-  private val maxTargetVersion = 20
+  private val maxTargetVersion = 21
 
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
@@ -160,6 +160,7 @@ private sealed trait WarningSettings:
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
   val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
+  val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
 
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",

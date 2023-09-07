@@ -290,9 +290,9 @@ trait TypesSupport:
         }
         inner(sc) ++ keyword(" match ").l ++ plain("{\n").l ++ casesTexts ++ plain(spaces + "}").l
 
-      case ParamRef(TypeLambda(names, _, _), i) => tpe(names.apply(i)).l
-
       case ParamRef(m: MethodType, i) => tpe(m.paramNames(i)).l ++ plain(".type").l
+
+      case ParamRef(binder: LambdaType, i) => tpe(binder.paramNames(i)).l
 
       case RecursiveType(tp) => inner(tp)
 

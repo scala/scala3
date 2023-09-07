@@ -283,17 +283,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           val ctx = comparerContext
           given Context = ctx // optimization for performance
           val info2 = tp2.info
+
+          /** Does `tp2` have a stable prefix?
+           *  If that's not the case, following an alias via asSeenFrom could be lossy
+           *  so we should not conclude `false` if comparing aliases fails.
+           *  See pos/i17064.scala for a test case
+           */
+          def hasStablePrefix(tp: NamedType) =
+            tp.prefix.isStable
+
           info2 match
             case info2: TypeAlias =>
               if recur(tp1, info2.alias) then return true
-              if tp2.asInstanceOf[TypeRef].canDropAlias then return false
+              if tp2.asInstanceOf[TypeRef].canDropAlias && hasStablePrefix(tp2) then
+                return false
             case _ =>
           tp1 match
             case tp1: NamedType =>
               tp1.info match {
                 case info1: TypeAlias =>
                   if recur(info1.alias, tp2) then return true
-                  if tp1.asInstanceOf[TypeRef].canDropAlias then return false
+                  if tp1.asInstanceOf[TypeRef].canDropAlias && hasStablePrefix(tp2) then
+                    return false
                 case _ =>
               }
               val sym2 = tp2.symbol
@@ -302,7 +313,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // For convenience we want X$ <:< X.type
                 // This is safe because X$ self-type is X.type
                 sym1 = sym1.companionModule
-              if ((sym1 ne NoSymbol) && (sym1 eq sym2))
+              if (sym1 ne NoSymbol) && (sym1 eq sym2) then
                 ctx.erasedTypes ||
                 sym1.isStaticOwner ||
                 isSubPrefix(tp1.prefix, tp2.prefix) ||
@@ -580,7 +591,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val base = nonExprBaseType(tp1, cls2)
             if (base.typeSymbol == cls2) return true
           }
-          else if tp1.isLambdaSub && !tp1.isAnyKind then
+          else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(tp2))
         fourthTry
     }
@@ -1339,8 +1350,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
           } || tryLiftedToThis2
 
-        case _: TypeVar =>
-          recur(tp1, tp2.superType)
+        case tv: TypeVar =>
+          if tv.isInstantiated then
+            recur(tp1, tp2.superType)
+          else
+            compareAppliedType2(tp2, tv.origin, args2)
         case tycon2: AnnotatedType if !tycon2.isRefining =>
           recur(tp1, tp2.superType)
         case tycon2: AppliedType =>
@@ -2116,7 +2130,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case nil =>
         formals2.isEmpty
     }
-    loop(tp1.paramInfos, tp2.paramInfos)
+    // If methods have erased parameters, then the erased parameters must match
+    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.erasedParams == tp2.erasedParams)
+
+    erasedValid && loop(tp1.paramInfos, tp2.paramInfos)
   }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
@@ -2719,7 +2736,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         x && {
           t.dealias match {
             case tp: TypeRef if !tp.symbol.isClass => false
-            case _: SkolemType | _: TypeVar | _: TypeParamRef => false
+            case _: SkolemType | _: TypeVar | _: TypeParamRef | _: TypeBounds => false
             case _ => foldOver(x, t)
           }
         }

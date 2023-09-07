@@ -1,32 +1,26 @@
+-- Error: tests/neg-custom-args/captures/vars.scala:13:6 ---------------------------------------------------------------
+13 |  var a: String => String = f // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Mutable variable a cannot have type box String => String since
+   |  that type captures the root capability `cap`.
+   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
+-- Error: tests/neg-custom-args/captures/vars.scala:14:6 ---------------------------------------------------------------
+14 |  var b: List[String => String] = Nil // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Mutable variable b cannot have type List[String => String] since
+   |  the part String => String of that type captures the root capability `cap`.
+   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:24 -----------------------------------------
 11 |  val z2c: () -> Unit = z2  // error
    |                        ^^
-   |                        Found:    {z2} () -> Unit
+   |                        Found:    () ->{z2} Unit
    |                        Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:15:10 -----------------------------------------
-15 |  val u = a  // error
-   |          ^
-   |          Found:    (a : box {*} String -> String)
-   |          Required: {*} (x$0: String) -> String
-   |
-   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:16:2 ---------------------------------------------------------------
-16 |  a("")  // error
-   |  ^
-   |  box {*} String -> String cannot be box-converted to a type that can be selected or applied
-   |  since one of their capture sets contains the root capability `*`
--- Error: tests/neg-custom-args/captures/vars.scala:17:4 ---------------------------------------------------------------
-17 |  b.head // error
-   |  ^^^^^^
-   |  The expression's type box {*} String -> String is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/vars.scala:32:8 ---------------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/vars.scala:32:2 ---------------------------------------------------------------
 32 |  local { cap3 => // error
-   |  ^
-   |  The expression's type box {x$0, *} (x$0: String) -> String is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
-33 |    def g(x: String): String = if cap3 == cap3 then "" else "a"
-34 |    g
-35 |  }
+   |  ^^^^^
+   |  Sealed type variable T cannot  be instantiated to box (x$0: String) => String since
+   |  that type captures the root capability `cap`.
+   |  This is often caused by a local capability in the body of method local
+   |  leaking as part of its result.

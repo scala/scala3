@@ -42,17 +42,18 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  *  @version 1.0
  *
  */
-trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
+trait BCodeHelpers extends BCodeIdiomatic {
   // for some reason singleton types aren't allowed in constructor calls. will need several casts in code to enforce
-
   //import global._
-  //import bTypes._
-  //import coreBTypes._
   import bTypes._
   import tpd._
   import coreBTypes._
   import int.{_, given}
   import DottyBackendInterface._
+
+  // We need to access GenBCode phase to get access to post-processor components.
+  // At this point it should always be initialized already.
+  protected lazy val backendUtils = genBCodePhase.asInstanceOf[GenBCode].postProcessor.backendUtils
 
   def ScalaATTRName: String = "Scala"
   def ScalaSignatureATTRName: String = "ScalaSig"
@@ -64,96 +65,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
 
-  /*
-   * must-single-thread
-   */
-  def getFileForClassfile(base: AbstractFile, clsName: String, suffix: String): AbstractFile = {
-    getFile(base, clsName, suffix)
-  }
-
-  /*
-   * must-single-thread
-   */
-  def getOutFolder(csym: Symbol, cName: String): AbstractFile = {
-    try {
-      outputDirectory
-    } catch {
-      case ex: Throwable =>
-        report.error(em"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
-        null
-    }
-  }
-
   final def traitSuperAccessorName(sym: Symbol): String = {
     val nameString = sym.javaSimpleName.toString
     if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
     else nameString + "$"
   }
 
-  // -----------------------------------------------------------------------------------------
-  // finding the least upper bound in agreement with the bytecode verifier (given two internal names handed by ASM)
-  // Background:
-  //  http://gallium.inria.fr/~xleroy/publi/bytecode-verification-JAR.pdf
-  //  http://comments.gmane.org/gmane.comp.java.vm.languages/2293
-  //  https://issues.scala-lang.org/browse/SI-3872
-  // -----------------------------------------------------------------------------------------
-
-  /*  An `asm.ClassWriter` that uses `jvmWiseLUB()`
-   *  The internal name of the least common ancestor of the types given by inameA and inameB.
-   *  It's what ASM needs to know in order to compute stack map frames, http://asm.ow2.org/doc/developer-guide.html#controlflow
-   */
-  final class CClassWriter(flags: Int) extends asm.ClassWriter(flags) {
-
-    /**
-     * This method is thread-safe: it depends only on the BTypes component, which does not depend
-     * on global. TODO @lry move to a different place where no global is in scope, on bTypes.
-     */
-    override def getCommonSuperClass(inameA: String, inameB: String): String = {
-      val a = classBTypeFromInternalName(inameA)
-      val b = classBTypeFromInternalName(inameB)
-      val lub = a.jvmWiseLUB(b)
-      val lubName = lub.internalName
-      assert(lubName != "scala/Any")
-      lubName // ASM caches the answer during the lifetime of a ClassWriter. We outlive that. Not sure whether caching on our side would improve things.
-    }
-  }
-
-  /*
-   * must-single-thread
-   */
-  def initBytecodeWriter(): BytecodeWriter = {
-    (None: Option[AbstractFile] /*getSingleOutput*/) match { // todo: implement
-      case Some(f) if f.hasExtension("jar") =>
-        new DirectToJarfileWriter(f.file)
-      case _ =>
-        factoryNonJarBytecodeWriter()
-    }
-  }
-
-  /*
-   * Populates the InnerClasses JVM attribute with `refedInnerClasses`. See also the doc on inner
-   * classes in BTypes.scala.
-   *
-   * `refedInnerClasses` may contain duplicates, need not contain the enclosing inner classes of
-   * each inner class it lists (those are looked up and included).
-   *
-   * This method serializes in the InnerClasses JVM attribute in an appropriate order,
-   * not necessarily that given by `refedInnerClasses`.
-   *
-   * can-multi-thread
-   */
-  final def addInnerClasses(jclass: asm.ClassVisitor, declaredInnerClasses: List[ClassBType], refedInnerClasses: List[ClassBType]): Unit = {
-    // sorting ensures nested classes are listed after their enclosing class thus satisfying the Eclipse Java compiler
-    val allNestedClasses = new mutable.TreeSet[ClassBType]()(Ordering.by(_.internalName))
-    allNestedClasses ++= declaredInnerClasses
-    refedInnerClasses.foreach(allNestedClasses ++= _.enclosingNestedClassesChain)
-    for nestedClass <- allNestedClasses
-    do {
-      // Extract the innerClassEntry - we know it exists, enclosingNestedClassesChain only returns nested classes.
-      val Some(e) = nestedClass.innerClassAttributeEntry: @unchecked
-      jclass.visitInnerClass(e.name, e.outerName, e.innerName, e.flags)
-    }
-  }
 
   /*
    * can-multi-thread
@@ -680,7 +597,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       val mirrorClass = new asm.tree.ClassNode
       mirrorClass.visit(
-        classfileVersion,
+        backendUtils.classfileVersion,
         bType.info.flags,
         mirrorName,
         null /* no java-generic-signature */,

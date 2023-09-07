@@ -338,9 +338,9 @@ object desugar {
   def quotedPattern(tree: untpd.Tree, expectedTpt: untpd.Tree)(using Context): untpd.Tree = {
     def adaptToExpectedTpt(tree: untpd.Tree): untpd.Tree = tree match {
       // Add the expected type as an ascription
-      case _: untpd.Splice =>
+      case _: untpd.SplicePattern =>
         untpd.Typed(tree, expectedTpt).withSpan(tree.span)
-      case Typed(expr: untpd.Splice, tpt) =>
+      case Typed(expr: untpd.SplicePattern, tpt) =>
         cpy.Typed(tree)(expr, untpd.makeAndType(tpt, expectedTpt).withSpan(tpt.span))
 
       // Propagate down the expected type to the leafs of the expression
@@ -915,16 +915,16 @@ object desugar {
       name = normalizeName(mdef, mdef.tpt).asTermName,
       paramss =
         if mdef.name.isRightAssocOperatorName then
-          val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
+          val (rightTyParams, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
           paramss match
-            case params :: paramss1 => // `params` must have a single parameter and without `given` flag
+            case rightParam :: paramss1 => // `rightParam` must have a single parameter and without `given` flag
 
               def badRightAssoc(problem: String) =
                 report.error(em"right-associative extension method $problem", mdef.srcPos)
                 extParamss ++ mdef.paramss
 
-              params match
+              rightParam match
                 case ValDefs(vparam :: Nil) =>
                   if !vparam.mods.is(Given) then
                     // we merge the extension parameters with the method parameters,
@@ -934,8 +934,10 @@ object desugar {
                     //     def %:[E](f: F)(g: G)(using H): Res = ???
                     // will be encoded as
                     //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
-                    val (leadingUsing, otherExtParamss) = extParamss.span(isUsingOrTypeParamClause)
-                    leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
+                    //
+                    // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
+                    val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+                    leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
                   else
                     badRightAssoc("cannot start with using clause")
                 case _ =>
@@ -1496,10 +1498,10 @@ object desugar {
       case vd: ValDef => vd
     }
 
-  def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
-    val mods = if (isErased) Given | Erased else Given
+  def makeContextualFunction(formals: List[Tree], body: Tree, erasedParams: List[Boolean])(using Context): Function = {
+    val mods = Given
     val params = makeImplicitParameters(formals, mods)
-    FunctionWithMods(params, body, Modifiers(mods))
+    FunctionWithMods(params, body, Modifiers(mods), erasedParams)
   }
 
   private def derivedValDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) = {
@@ -1730,7 +1732,7 @@ object desugar {
 
           val applyVParams = vargs.zipWithIndex.map {
             case (p: ValDef, _) => p.withAddedFlags(mods.flags)
-            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
+            case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags.toTermFlags)
           }
           RefinedTypeTree(polyFunctionTpt, List(
             DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree).withFlags(Synthetic)
@@ -1822,16 +1824,7 @@ object desugar {
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), Literal(Constant(())).withSpan(ext.span))
-      case CapturingTypeTree(refs, parent) =>
-        // convert   `{refs} T`   to `T @retains refs`
-        //           `{refs}-> T` to `-> (T @retainsByName refs)`
-        def annotate(annotName: TypeName, tp: Tree) =
-          Annotated(tp, New(scalaAnnotationDot(annotName), List(refs)))
-        parent match
-          case ByNameTypeTree(restpt) =>
-            cpy.ByNameTypeTree(parent)(annotate(tpnme.retainsByName, restpt))
-          case _ =>
-            annotate(tpnme.retains, parent)
+      case f: FunctionWithMods if f.hasErasedParams => makeFunctionWithValDefs(f, pt)
     }
     desugared.withSpan(tree.span)
   }
@@ -1907,6 +1900,28 @@ object desugar {
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 
+  /** Ensure the given function tree use only ValDefs for parameters.
+   *  For example,
+   *      FunctionWithMods(List(TypeTree(A), TypeTree(B)), body, mods, erasedParams)
+   *  gets converted to
+   *      FunctionWithMods(List(ValDef(x$1, A), ValDef(x$2, B)), body, mods, erasedParams)
+   */
+  def makeFunctionWithValDefs(tree: Function, pt: Type)(using Context): Function = {
+    val Function(args, result) = tree
+    args match {
+      case (_ : ValDef) :: _ => tree // ValDef case can be easily handled
+      case _ if !ctx.mode.is(Mode.Type) => tree
+      case _ =>
+        val applyVParams = args.zipWithIndex.map {
+          case (p, n) => makeSyntheticParameter(n + 1, p)
+        }
+        tree match
+          case tree: FunctionWithMods =>
+            untpd.FunctionWithMods(applyVParams, result, tree.mods, tree.erasedParams)
+          case _ => untpd.Function(applyVParams, result)
+    }
+  }
+
   /** Returns list of all pattern variables, possibly with their types,
    *  without duplicates
    */
@@ -1961,15 +1976,13 @@ object desugar {
         trees foreach collect
       case Block(Nil, expr) =>
         collect(expr)
-      case Quote(expr) =>
+      case Quote(body, _) =>
         new UntypedTreeTraverser {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
-            case Splice(expr) => collect(expr)
+            case SplicePattern(body, _) => collect(body)
             case _ => traverseChildren(tree)
           }
-        }.traverse(expr)
-      case CapturingTypeTree(refs, parent) =>
-        collect(parent)
+        }.traverse(body)
       case _ =>
     }
     collect(tree)

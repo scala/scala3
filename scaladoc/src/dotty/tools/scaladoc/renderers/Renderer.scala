@@ -2,18 +2,11 @@ package dotty.tools.scaladoc
 package renderers
 
 import util.HTML._
-import scala.jdk.CollectionConverters._
 import collection.mutable.ListBuffer
-import java.net.URI
-import java.net.URL
 import dotty.tools.scaladoc.site._
-import scala.util.Try
-import org.jsoup.Jsoup
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
-import java.nio.file.FileVisitOption
-import java.io.File
 
 case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page], hidden: Boolean = false):
   def withNewChildren(newChildren: Seq[Page]) = copy(children = children ++ newChildren)

@@ -11,6 +11,7 @@ import core.DenotTransformers.IdentityDenotTransformer
 import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
 import core.NameOps.isContextFunction
+import core.StdNames.nme
 import core.Types.*
 import coverage.*
 import typer.LiftCoverage
@@ -325,7 +326,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Only transform the params (for the default values) and the rhs, not the name and tpt.
         val transformedParamss = transformParamss(tree.paramss)
         val transformedRhs =
-          if !sym.isOneOf(Accessor | Artifact | Synthetic) && !tree.rhs.isEmpty then
+          if tree.rhs.isEmpty then
+            tree.rhs
+          else if sym.isClassConstructor then
+            instrumentSecondaryCtor(tree)
+          else if !sym.isOneOf(Accessor | Artifact | Synthetic) then
             // If the body can be instrumented, do it (i.e. insert a "coverage call" at the beginning)
             // This is useful because methods can be stored and called later, or called by reflection,
             // and if the rhs is too simple to be instrumented (like `def f = this`),
@@ -410,6 +415,24 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           val coverageCall = createInvokeCall(parent, pos)
           InstrumentedParts.singleExprTree(coverageCall, body)
 
+    /** Instruments the body of a secondary constructor DefDef.
+     *
+     *  We must preserve the delegate constructor call as the first statement of
+     *  the rhs Block, otherwise `HoistSuperArgs` will not be happy (see #17042).
+     */
+    private def instrumentSecondaryCtor(ctorDef: DefDef)(using Context): Tree =
+      // compute position like in instrumentBody
+      val namePos = ctorDef.namePos
+      val pos = namePos.withSpan(namePos.span.withStart(ctorDef.span.start))
+      val coverageCall = createInvokeCall(ctorDef, pos)
+
+      ctorDef.rhs match
+        case b @ Block(delegateCtorCall :: stats, expr: Literal) =>
+          cpy.Block(b)(transform(delegateCtorCall) :: coverageCall :: stats.mapConserve(transform), expr)
+        case rhs =>
+          cpy.Block(rhs)(transform(rhs) :: coverageCall :: Nil, unitLiteral)
+    end instrumentSecondaryCtor
+
     /**
      * Checks if the apply needs a lift in the coverage phase.
      * In case of a nested application, we have to lift all arguments
@@ -447,9 +470,14 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
+      def isSecondaryCtorDelegateCall: Boolean = tree.fun match
+        case Select(This(_), nme.CONSTRUCTOR) => true
+        case _                                => false
+
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
+      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall)
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
           /* If the last expression in a block is a context function, we'll try to

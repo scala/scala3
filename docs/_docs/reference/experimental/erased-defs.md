@@ -54,13 +54,13 @@ semantics and they are completely erased.
 ## How to define erased terms?
 
 Parameters of methods and functions can be declared as erased, placing `erased`
-in front of a parameter list (like `given`).
+in front of each erased parameter (like `inline`).
 
 ```scala
-def methodWithErasedEv(erased ev: Ev): Int = 42
+def methodWithErasedEv(erased ev: Ev, x: Int): Int = x + 2
 
-val lambdaWithErasedEv: erased Ev => Int =
-  (erased ev: Ev) => 42
+val lambdaWithErasedEv: (erased Ev, Int) => Int =
+  (erased ev, x) => x + 2
 ```
 
 `erased` parameters will not be usable for computations, though they can be used
@@ -80,7 +80,7 @@ parameters.
 
 ```scala
 erased val erasedEvidence: Ev = ...
-methodWithErasedEv(erasedEvidence)
+methodWithErasedEv(erasedEvidence, 40) // 42
 ```
 
 ## What happens with erased values at runtime?
@@ -89,15 +89,15 @@ As `erased` are guaranteed not to be used in computations, they can and will be
 erased.
 
 ```scala
-// becomes def methodWithErasedEv(): Int at runtime
-def methodWithErasedEv(erased ev: Ev): Int = ...
+// becomes def methodWithErasedEv(x: Int): Int at runtime
+def methodWithErasedEv(x: Int, erased ev: Ev): Int = ...
 
 def evidence1: Ev = ...
 erased def erasedEvidence2: Ev = ... // does not exist at runtime
 erased val erasedEvidence3: Ev = ... // does not exist at runtime
 
-// evidence1 is not evaluated and no value is passed to methodWithErasedEv
-methodWithErasedEv(evidence1)
+// evidence1 is not evaluated and only `x` is passed to methodWithErasedEv
+methodWithErasedEv(x, evidence1)
 ```
 
 ## State machine with erased evidence example

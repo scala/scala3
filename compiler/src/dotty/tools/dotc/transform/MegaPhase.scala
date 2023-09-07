@@ -5,6 +5,7 @@ package transform
 import core._
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
+import staging.StagingLevel.*
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.
@@ -66,6 +67,8 @@ object MegaPhase {
     def prepareForTry(tree: Try)(using Context): Context = ctx
     def prepareForSeqLiteral(tree: SeqLiteral)(using Context): Context = ctx
     def prepareForInlined(tree: Inlined)(using Context): Context = ctx
+    def prepareForQuote(tree: Quote)(using Context): Context = ctx
+    def prepareForSplice(tree: Splice)(using Context): Context = ctx
     def prepareForTypeTree(tree: TypeTree)(using Context): Context = ctx
     def prepareForBind(tree: Bind)(using Context): Context = ctx
     def prepareForAlternative(tree: Alternative)(using Context): Context = ctx
@@ -100,6 +103,8 @@ object MegaPhase {
     def transformTry(tree: Try)(using Context): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(using Context): Tree = tree
     def transformInlined(tree: Inlined)(using Context): Tree = tree
+    def transformQuote(tree: Quote)(using Context): Tree = tree
+    def transformSplice(tree: Splice)(using Context): Tree = tree
     def transformTypeTree(tree: TypeTree)(using Context): Tree = tree
     def transformBind(tree: Bind)(using Context): Tree = tree
     def transformAlternative(tree: Alternative)(using Context): Tree = tree
@@ -394,6 +399,16 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
           goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
         }
+      case tree: Quote =>
+        inContext(prepQuote(tree, start)(using outerCtx)) {
+          val body = transformTree(tree.body, start)(using quoteContext)
+          goQuote(cpy.Quote(tree)(body, Nil), start)
+        }
+      case tree: Splice =>
+        inContext(prepSplice(tree, start)(using outerCtx)) {
+          val expr = transformTree(tree.expr, start)(using spliceContext)
+          goSplice(cpy.Splice(tree)(expr), start)
+        }
       case tree: Return =>
         inContext(prepReturn(tree, start)(using outerCtx)) {
           val expr = transformTree(tree.expr, start)
@@ -546,6 +561,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxSeqLiteralTransPhase = init("transformSeqLiteral")
   private val nxInlinedPrepPhase = init("prepareForInlined")
   private val nxInlinedTransPhase = init("transformInlined")
+  private val nxQuotePrepPhase = init("prepareForQuote")
+  private val nxQuoteTransPhase = init("transformQuote")
+  private val nxSplicePrepPhase = init("prepareForPrep")
+  private val nxSpliceTransPhase = init("transformSplice")
   private val nxTypeTreePrepPhase = init("prepareForTypeTree")
   private val nxTypeTreeTransPhase = init("transformTypeTree")
   private val nxBindPrepPhase = init("prepareForBind")
@@ -889,6 +908,36 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     if (phase == null) tree
     else phase.transformInlined(tree) match {
       case tree1: Inlined => goInlined(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepQuote(tree: Quote, start: Int)(using Context): Context = {
+    val phase = nxQuotePrepPhase(start)
+    if (phase == null) ctx
+    else prepQuote(tree, phase.idxInGroup + 1)(using phase.prepareForQuote(tree))
+  }
+
+  def goQuote(tree: Quote, start: Int)(using Context): Tree = {
+    val phase = nxQuoteTransPhase(start)
+    if (phase == null) tree
+    else phase.transformQuote(tree) match {
+      case tree1: Quote => goQuote(tree1, phase.idxInGroup + 1)
+      case tree1 => transformNode(tree1, phase.idxInGroup + 1)
+    }
+  }
+
+  def prepSplice(tree: Splice, start: Int)(using Context): Context = {
+    val phase = nxSplicePrepPhase(start)
+    if (phase == null) ctx
+    else prepSplice(tree, phase.idxInGroup + 1)(using phase.prepareForSplice(tree))
+  }
+
+  def goSplice(tree: Splice, start: Int)(using Context): Tree = {
+    val phase = nxSpliceTransPhase(start)
+    if (phase == null) tree
+    else phase.transformSplice(tree) match {
+      case tree1: Splice => goSplice(tree1, phase.idxInGroup + 1)
       case tree1 => transformNode(tree1, phase.idxInGroup + 1)
     }
   }

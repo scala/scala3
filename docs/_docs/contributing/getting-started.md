@@ -3,15 +3,41 @@ layout: doc-page
 title: Getting Started
 ---
 
+## Scala CLA
 
+Sometime before submitting your pull request you'll want to make sure you have
+signed the [Scala CLA][scala-cla]. You can read more about why we require a CLA
+and what exactly is included in it [here][scala-cla].
 
-Requirements
-------------
-Make sure that you are using macOS or Linux (or WSL on Windows) with Java 8 or newer. You can determine which version of the JDK is the
-default by typing `java -version` in a Terminal window.
+## Making sure the team is aware
 
-Compiling and Running
----------------------
+Before digging into an issue or starting on a new feature it's a good idea to
+make sure an [issue][dotty-issue] or a [discussion][dotty-discussion] has been
+created outlining what you plan to work on. This is both for your and the team's
+benefit. It ensures you get the help you need, and also gives the compiler team
+a heads-up that someone is working on an issue.
+
+For some small changes like documentation, this isn't always necessary, but it's
+never a bad idea to check.
+
+## Requirements
+
+- [git] is essential for managing the Scala 3 code, and contributing to GitHub,
+  where the code is hosted.
+- A Java Virtual Machine (JDK 8 or higher), required for running the build tool.
+  - download Java from [Oracle Java 8][java8], [Oracle Java 11][java11],
+   or [AdoptOpenJDK 8/11][adopt]. Refer to [JDK Compatibility][compat] for Scala/Java compatibility detail.
+  - Verify that the JVM is installed by running the following command in a terminal: `java -version`.
+- [sbt][sbt-download], the build tool required to build the Scala 3 compiler and libraries.
+
+## Nice To Have
+
+An IDE, such as [Metals] will help you develop in Scala 3 with features such as autocompletion or goto-definition,
+and with the [VS Code][vs-code] text editor you can even use the Scala debugger, or create interactive worksheets for an
+iterative workflow.
+
+## Compiling and Running
+
 Start by cloning the repository:
 
 ```bash
@@ -48,8 +74,8 @@ $ scala HelloWorld
 ```
 
 
-Starting a REPL
----------------
+## Starting a REPL
+
 ```bash
 $ sbt
 > repl
@@ -64,8 +90,9 @@ or via bash:
 ```bash
 $ scala
 ```
-Publish to local repository
----------------------------------
+
+## Publish to local repository
+
 To test our cloned compiler on local projects:
 
 ```bash
@@ -79,8 +106,8 @@ ThisBuild / scalaVersion := "<dotty-version>-bin-SNAPSHOT"
 where `dotty-version` can be found in the file `project/Build.scala`, like `3.0.0-M2`
 
 
-Generating Documentation
--------------------------
+## Generating Documentation
+
 To generate this page and other static page docs, run
 ```bash
 $ sbt
@@ -92,9 +119,22 @@ Before contributing to Dotty, we invite you to consult the
 [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/main/CONTRIBUTING.md).
 
 
-Community
--------------
+## Community
+
 The main development discussion channels are:
 - [github.com/lampepfl/dotty/discussions](https://github.com/lampepfl/dotty/discussions)
 - [contributors.scala-lang.org](https://contributors.scala-lang.org)
 - [gitter.im/scala/contributors](https://gitter.im/scala/contributors)
+
+[git]: https://git-scm.com
+[Metals]: https://scalameta.org/metals/
+[vs-code]: https://code.visualstudio.com
+[lampepfl/dotty]: https://github.com/lampepfl/dotty
+[sbt-download]: https://www.scala-sbt.org/download.html
+[java8]: https://www.oracle.com/java/technologies/javase-jdk8-downloads.html
+[java11]: https://www.oracle.com/java/technologies/javase-jdk11-downloads.html
+[adopt]: https://adoptopenjdk.net/
+[compat]: https://docs.scala-lang.org/overviews/jdk-compatibility/overview.html
+[scala-cla]: https://www.lightbend.com/contribute/cla/scala
+[dotty-issue]: https://github.com/lampepfl/dotty/issues
+[dotty-discussion]: https://github.com/lampepfl/dotty/discussions

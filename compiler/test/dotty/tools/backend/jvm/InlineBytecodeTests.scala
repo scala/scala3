@@ -163,28 +163,27 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(6, Label(0)),
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(6),
-          LineNumber(8, Label(6)),
+          Label(5),
+          LineNumber(8, Label(5)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(11),
-          LineNumber(3, Label(11)),
+          Label(10),
+          LineNumber(3, Label(10)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(16),
-          LineNumber(10, Label(16)),
+          Label(15),
+          LineNumber(10, Label(15)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "inner"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
-          Label(22)
+          Label(21)
         )
       assert(instructions == expected,
         "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
@@ -228,23 +227,22 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(12, Label(0)),
           LineNumber(7, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(6),
-          LineNumber(3, Label(6)),
+          Label(5),
+          LineNumber(3, Label(5)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(11),
-          LineNumber(14, Label(11)),
+          Label(10),
+          LineNumber(14, Label(10)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
-          Label(17)
+          Label(16)
         )
       assert(instructions == expected,
         "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
@@ -288,23 +286,22 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(12, Label(0)),
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(6),
-          LineNumber(8, Label(6)),
+          Label(5),
+          LineNumber(8, Label(5)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "fgh"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(11),
-          LineNumber(14, Label(11)),
+          Label(10),
+          LineNumber(14, Label(10)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
-          Label(17)
+          Label(16)
         )
       assert(instructions == expected,
         "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
@@ -349,23 +346,22 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(13, Label(0)),
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(6),
-          LineNumber(3, Label(6)),
+          Label(5),
+          LineNumber(3, Label(5)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
-          Label(11),
-          LineNumber(15, Label(11)),
+          Label(10),
+          LineNumber(15, Label(10)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "abc"),
           Invoke(INVOKEVIRTUAL, "Foo", "foo", "(Ljava/lang/String;)V", false),
           Op(RETURN),
-          Label(17)
+          Label(16)
         )
       assert(instructions == expected,
         "`track` was not properly inlined in `main`\n" + diffInstructions(instructions, expected))
@@ -573,6 +569,63 @@ class InlineBytecodeTests extends DottyBytecodeTest {
           Op(ICONST_2),
           VarOp(ILOAD, 1),
           Op(IADD),
+          Op(IRETURN),
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def beta_reduce_polymorphic_function = {
+    val source = """class Test:
+                   |  def test =
+                   |    ([Z] => (arg: Z) => { val a: Z = arg; a }).apply[Int](2)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Op(ICONST_2),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(IRETURN)
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def beta_reduce_function_of_opaque_types = {
+    val source = """object foo:
+                   |  opaque type T = Int
+                   |  inline def apply(inline op: T => T): T = op(2)
+                   |
+                   |class Test:
+                   | def test = foo { n => n }
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Field(GETSTATIC, "foo$", "MODULE$", "Lfoo$;"),
+          VarOp(ASTORE, 1),
+          VarOp(ALOAD, 1),
+          VarOp(ASTORE, 2),
+          Op(ICONST_2),
           Op(IRETURN),
         )
 

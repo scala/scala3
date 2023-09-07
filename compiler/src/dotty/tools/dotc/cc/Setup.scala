@@ -12,6 +12,7 @@ import transform.Recheck.*
 import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
 import util.Property
+import dotty.tools.dotc.core.Annotations.Annotation
 
 /** A tree traverser that prepares a compilation unit to be capture checked.
  *  It does the following:
@@ -38,7 +39,6 @@ extends tpd.TreeTraverser:
   private def depFun(tycon: Type, argTypes: List[Type], resType: Type)(using Context): Type =
     MethodType.companion(
         isContextual = defn.isContextFunctionClass(tycon.classSymbol),
-        isErased = defn.isErasedFunctionClass(tycon.classSymbol)
       )(argTypes, resType)
       .toFunctionType(isJava = false, alwaysDependent = true)
 
@@ -54,7 +54,7 @@ extends tpd.TreeTraverser:
         val boxedRes = recur(res)
         if boxedRes eq res then tp
         else tp1.derivedAppliedType(tycon, args.init :+ boxedRes)
-      case tp1 @ RefinedType(_, _, rinfo) if defn.isFunctionType(tp1) =>
+      case tp1 @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionOrPolyType(tp1) =>
         val boxedRinfo = recur(rinfo)
         if boxedRinfo eq rinfo then tp
         else boxedRinfo.toFunctionType(isJava = false, alwaysDependent = true)
@@ -122,7 +122,7 @@ extends tpd.TreeTraverser:
           val sym = tp.typeSymbol
           if sym.isClass then
             sym == defn.AnyClass
-              // we assume Any is a shorthand of {*} Any, so if Any is an upper
+              // we assume Any is a shorthand of {cap} Any, so if Any is an upper
               // bound, the type is taken to be impure.
           else superTypeIsImpure(tp.superType)
         case tp: (RefinedOrRecType | MatchType) =>
@@ -155,7 +155,7 @@ extends tpd.TreeTraverser:
         case CapturingType(parent, refs) =>
           needsVariable(parent)
           && refs.isConst      // if refs is a variable, no need to add another
-          && !refs.isUniversal // if refs is {*}, an added variable would not change anything
+          && !refs.isUniversal // if refs is {cap}, an added variable would not change anything
         case _ =>
           false
     }.showing(i"can have inferred capture $tp = $result", capt)
@@ -231,7 +231,7 @@ extends tpd.TreeTraverser:
                 tp.derivedAppliedType(tycon1, args1 :+ res1)
           else
             tp.derivedAppliedType(tycon1, args.mapConserve(arg => this(arg)))
-        case tp @ RefinedType(core, rname, rinfo) if defn.isFunctionType(tp) =>
+        case tp @ RefinedType(core, rname, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
           val rinfo1 = apply(rinfo)
           if rinfo1 ne rinfo then rinfo1.toFunctionType(isJava = false, alwaysDependent = true)
           else tp
@@ -260,7 +260,13 @@ extends tpd.TreeTraverser:
   private def expandThrowsAlias(tp: Type)(using Context) = tp match
     case AppliedType(tycon, res :: exc :: Nil) if tycon.typeSymbol == defn.throwsAlias =>
       // hard-coded expansion since $throws aliases in stdlib are defined with `?=>` rather than `?->`
-      defn.FunctionOf(defn.CanThrowClass.typeRef.appliedTo(exc) :: Nil, res, isContextual = true, isErased = true)
+      defn.FunctionOf(
+        AnnotatedType(
+          defn.CanThrowClass.typeRef.appliedTo(exc),
+          Annotation(defn.ErasedParamAnnot, defn.CanThrowClass.span)) :: Nil,
+        res,
+        isContextual = true
+      )
     case _ => tp
 
   private def expandThrowsAliases(using Context) = new TypeMap:
@@ -323,7 +329,7 @@ extends tpd.TreeTraverser:
               args.last, CaptureSet.empty, currentCs ++ outerCs)
             tp.derivedAppliedType(tycon1, args1 :+ resType1)
         tp1.capturing(outerCs)
-      case tp @ RefinedType(parent, nme.apply, rinfo: MethodType) if defn.isFunctionType(tp) =>
+      case tp @ RefinedType(parent, nme.apply, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
         propagateDepFunctionResult(mapOver(tp), currentCs ++ outerCs)
           .capturing(outerCs)
       case _ =>
@@ -405,11 +411,28 @@ extends tpd.TreeTraverser:
           boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
           exact = tree.symbol.allOverriddenSymbols.hasNext // types of symbols that override a parent don't get a capture set
         )
+        if allowUniversalInBoxed && tree.symbol.is(Mutable)
+            && !tree.symbol.hasAnnotation(defn.UncheckedCapturesAnnot)
+        then
+          CheckCaptures.disallowRootCapabilitiesIn(tpt.knownType,
+            i"Mutable variable ${tree.symbol.name}", "have type",
+            "This restriction serves to prevent local capabilities from escaping the scope where they are defined.",
+            tree.srcPos)
         traverse(tree.rhs)
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
           transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
+
+        if allowUniversalInBoxed then
+          val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
+          for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
+            if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
+              def where = if fn.symbol.exists then i" in the body of ${fn.symbol}" else ""
+              CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
+                i"Sealed type variable $pname", " be instantiated to",
+                i"This is often caused by a local capability$where\nleaking as part of its result.",
+                tree.srcPos)
       case _ =>
         traverseChildren(tree)
     tree match
@@ -488,11 +511,10 @@ extends tpd.TreeTraverser:
 
   def apply(tree: Tree)(using Context): Unit =
     traverse(tree)(using ctx.withProperty(Setup.IsDuringSetupKey, Some(())))
-end Setup
 
 object Setup:
   val IsDuringSetupKey = new Property.Key[Unit]
 
   def isDuringSetup(using Context): Boolean =
     ctx.property(IsDuringSetupKey).isDefined
-
+end Setup

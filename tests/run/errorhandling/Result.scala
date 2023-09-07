@@ -29,14 +29,14 @@ object Result:
       case err: Err[_] => err
 
     /** Validate both `r` and `other`; return a pair of successes or a list of failures. */
-    def * [U](other: Result[U, E]): Result[(T, U), List[E]] = (r, other) match
+    def zip[U](other: Result[U, E]): Result[(T, U), List[E]] = (r, other) match
       case (Ok(x), Ok(y))     => Ok((x, y))
       case (Ok(_), Err(e))    => Err(e :: Nil)
       case (Err(e), Ok(_))    => Err(e :: Nil)
       case (Err(e1), Err(e2)) => Err(e1 :: e2 :: Nil)
 
     /** Validate both `r` and `other`; return a tuple of successes or a list of failures.
-     *  Unlike with `*`, the right hand side `other` must be a `Result` returning a `Tuple`,
+     *  Unlike with `zip`, the right hand side `other` must be a `Result` returning a `Tuple`,
      *  and the left hand side is added to it. See `Result.empty` for a convenient
      *  right unit of chains of `*:`s.
      */

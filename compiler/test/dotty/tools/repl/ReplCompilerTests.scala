@@ -347,6 +347,12 @@ class ReplCompilerTests extends ReplTest:
     assertEquals("java.lang.AssertionError: assertion failed", all.head)
   }
 
+  @Test def `i13097 expect lambda after colon` = contextually:
+    assert(ParseResult.isIncomplete("val x = List(42).foreach:"))
+
+  @Test def `i13097 expect template after colon` = contextually:
+    assert(ParseResult.isIncomplete("class C:"))
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");

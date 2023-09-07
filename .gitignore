@@ -93,3 +93,5 @@ compiler/test-coursier/run/*.jar
 # docs related
 contributors.js
 content-contributors.css
+docs/_spec/_site/
+docs/_spec/.jekyll-metadata

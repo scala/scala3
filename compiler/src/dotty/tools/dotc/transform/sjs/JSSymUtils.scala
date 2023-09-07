@@ -211,6 +211,23 @@ object JSSymUtils {
         }
       }
     }
+
+    /** Tests whether the semantics of Scala.js require a field for this symbol,
+     *  irrespective of any optimization we think we can do.
+     *
+     *  This is the case if one of the following is true:
+     *
+     *  - it is a member of a JS type, since it needs to be visible as a JavaScript field
+     *  - is is exported as static member of the companion class, since it needs to be visible as a JavaScript static field
+     *  - it is exported to the top-level, since that can only be done as a true top-level variable, i.e., a field
+     */
+    def sjsNeedsField(using Context): Boolean =
+      ctx.settings.scalajs.value && (
+        sym.owner.isJSType
+          || sym.hasAnnotation(jsdefn.JSExportTopLevelAnnot)
+          || sym.hasAnnotation(jsdefn.JSExportStaticAnnot)
+      )
+    end sjsNeedsField
   }
 
   private object JSUnaryOpMethodName {

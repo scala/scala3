@@ -20,6 +20,4 @@ final class ExprImpl(val tree: tpd.Tree, val scope: Scope) extends Expr[Any] {
   }
 
   override def hashCode(): Int = tree.hashCode()
-
-  override def toString: String = "'{ ... }"
 }

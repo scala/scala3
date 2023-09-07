@@ -9,8 +9,7 @@ package io
 
 import scala.language.unsafeNulls
 
-import java.net.MalformedURLException
-import java.net.URL
+import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.util.regex.PatternSyntaxException
 
 import File.pathSeparator
@@ -182,8 +181,8 @@ object ClassPath {
   }
 
   def specToURL(spec: String): Option[URL] =
-    try Some(new URL(spec))
-    catch { case _: MalformedURLException => None }
+    try Some(new URI(spec).toURL)
+    catch case _: MalformedURLException | _: URISyntaxException => None
 
   def manifests: List[java.net.URL] = {
     import scala.jdk.CollectionConverters.EnumerationHasAsScala

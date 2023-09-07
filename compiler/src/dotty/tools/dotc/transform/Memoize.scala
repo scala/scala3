@@ -20,8 +20,6 @@ import sjs.JSSymUtils._
 
 import util.Store
 
-import dotty.tools.backend.sjs.JSDefinitions.jsdefn
-
 object Memoize {
   val name: String = "memoize"
   val description: String = "add private fields to getters and setters"
@@ -130,32 +128,17 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
 
     if sym.is(Accessor, butNot = NoFieldNeeded) then
-      /* Tests whether the semantics of Scala.js require a field for this symbol, irrespective of any
-       * optimization we think we can do. This is the case if one of the following is true:
-       * - it is a member of a JS type, since it needs to be visible as a JavaScript field
-       * - is is exported as static member of the companion class, since it needs to be visible as a JavaScript static field
-       * - it is exported to the top-level, since that can only be done as a true top-level variable, i.e., a field
-       */
-      def sjsNeedsField: Boolean =
-        ctx.settings.scalajs.value && (
-          sym.owner.isJSType
-            || sym.hasAnnotation(jsdefn.JSExportTopLevelAnnot)
-            || sym.hasAnnotation(jsdefn.JSExportStaticAnnot)
-        )
-
       def adaptToField(field: Symbol, tree: Tree): Tree =
         if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
       def isErasableBottomField(field: Symbol, cls: Symbol): Boolean =
         !field.isVolatile
           && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
-          && !sjsNeedsField
+          && !sym.sjsNeedsField
 
       if sym.isGetter then
-        val constantFinalVal =
-          sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal] && !sjsNeedsField
-        if constantFinalVal then
-          // constant final vals do not need to be transformed at all, and do not need a field
+        if sym.isConstExprFinalVal then
+          // const-expr final vals do not need to be transformed at all, and do not need a field
           tree
         else
           val field = newField.asTerm
@@ -167,7 +150,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             if isErasableBottomField(field, rhsClass) then erasedBottomTree(rhsClass)
             else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
           val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
-          sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot))
+          sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot))
           Thicket(fieldDef, getterDef)
       else if sym.isSetter then
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs: @unchecked } // This is intended as an assertion
@@ -193,7 +176,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             then Literal(Constant(()))
             else Assign(ref(field), adaptToField(field, ref(tree.termParamss.head.head.symbol)))
           val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
-          sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
+          sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
           setterDef
       else
         // Curiously, some accessors from Scala2 have ' ' suffixes.

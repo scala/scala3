@@ -70,7 +70,7 @@ sealed abstract class CaptureSet extends Showable:
     assert(!isConst)
     asInstanceOf[Var]
 
-  /** Does this capture set contain the root reference `*` as element? */
+  /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
     elems.exists {
       case ref: TermRef => ref.symbol == defn.captureRoot
@@ -133,7 +133,7 @@ sealed abstract class CaptureSet extends Showable:
    *  for `x` in a state where we assume all supersets of `x` have just the elements
    *  known at this point. On the other hand if x's capture set has no known elements,
    *  a set `cs` might account for `x` only if it subsumes `x` or it contains the
-   *  root capability `*`.
+   *  root capability `cap`.
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
@@ -270,9 +270,14 @@ sealed abstract class CaptureSet extends Showable:
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
 
-  /** Invoke handler if this set has (or later aquires) the root capability `*` */
+  /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
     if isUniversal then handler()
+    this
+
+  /** Invoke handler on the elements to check wellformedness of the capture set */
+  def ensureWellformed(handler: List[CaptureRef] => Context ?=> Unit)(using Context): this.type =
+    handler(elems.toList)
     this
 
   /** An upper approximation of this capture set, i.e. a constant set that is
@@ -319,7 +324,7 @@ object CaptureSet:
   /** The empty capture set `{}` */
   val empty: CaptureSet.Const = Const(emptySet)
 
-  /** The universal capture set `{*}` */
+  /** The universal capture set `{cap}` */
   def universal(using Context): CaptureSet =
     defn.captureRoot.termRef.singletonCaptureSet
 
@@ -372,8 +377,11 @@ object CaptureSet:
     def isConst = isSolved
     def isAlwaysEmpty = false
 
-    /** A handler to be invoked if the root reference `*` is added to this set */
+    /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
+
+    /** A handler to be invoked when new elems are added to this set */
+    var newElemAddedHandler: List[CaptureRef] => Context ?=> Unit = _ => ()
 
     var description: String = ""
 
@@ -405,7 +413,8 @@ object CaptureSet:
       if !isConst && recordElemsState() then
         elems ++= newElems
         if isUniversal then rootAddedHandler()
-        // assert(id != 2 || elems.size != 2, this)
+        newElemAddedHandler(newElems.toList)
+        // assert(id != 5 || elems.size != 3, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
         }
@@ -425,11 +434,15 @@ object CaptureSet:
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
 
+    override def ensureWellformed(handler: List[CaptureRef] => (Context) ?=> Unit)(using Context): this.type =
+      newElemAddedHandler = handler
+      super.ensureWellformed(handler)
+
     private var computingApprox = false
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The universal set {*} is a sound fallback.
+     *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if computingApprox then universal

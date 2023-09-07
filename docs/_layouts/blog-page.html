@@ -5,14 +5,25 @@ layout: static-site-main
     <header>
         <h1>{{ page.title }}</h1>
         <div class="byline">
-            <time class="date">
-                <i class="far fa-calendar-alt"></i>
-                {{ page.date | date: "%Y-%m-%d" }}
-            </time>
-            <span class="author">
-                <i class="fas fa-pen-nib"></i>
-                {{ page.author }}
-            </span>
+            {% if page.author and page.authorImg %}
+            <img id="author-img" src="{{ site.baseurl }}{{ page.authorImg }}">
+            {% endif %}
+            <div class="secondary-infos">
+                {% if page.author %}
+                <div>
+                    <span class="author">
+                        <i class="fas fa-pen-nib"></i>
+                        {{ page.author }}
+                    </span>
+                </div>
+                {% endif %}
+                <div>
+                    <time class="date">
+                        <i class="far fa-calendar-alt"></i>
+                        {{ page.date | date: "%Y-%m-%d" }}
+                    </time>
+                </div>
+            </div>
         </div>
         {% if page.subTitle %}
         <div class="subtitle">
@@ -22,14 +33,4 @@ layout: static-site-main
     </header>
 
     {{ content }}
-
-    {% if page.author and page.authorImg %}
-    <hr/>
-    <div class="blog-author">
-        <img id="author-img" src="{{ site.baseurl }}{{ page.authorImg }}">
-        <span id="author-signature">
-            {{ page.author }}
-        </span>
-    </div>
-    {% endif %}
 </main>

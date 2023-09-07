@@ -12,8 +12,6 @@ import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import config.Printers.inlining
 import util.SimpleIdentityMap
 
-import dotty.tools.dotc.transform.BetaReduce
-
 import collection.mutable
 
 /** A utility class offering methods for rewriting inlined code */
@@ -148,44 +146,6 @@ class InlineReducer(inliner: Inliner)(using Context):
         binding
     }
     binding1.withSpan(call.span)
-  }
-
-  /** Rewrite an application
-    *
-    *    ((x1, ..., xn) => b)(e1, ..., en)
-    *
-    *  to
-    *
-    *    val/def x1 = e1; ...; val/def xn = en; b
-    *
-    *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
-    *  refs among the ei's directly without creating an intermediate binding.
-    *
-    *  This variant of beta-reduction preserves the integrity of `Inlined` tree nodes.
-    */
-  def betaReduce(tree: Tree)(using Context): Tree = tree match {
-    case Apply(Select(cl, nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-      val bindingsBuf = new mutable.ListBuffer[ValDef]
-      def recur(cl: Tree): Option[Tree] = cl match
-        case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
-          ddef.tpe.widen match
-            case mt: MethodType if ddef.paramss.head.length == args.length =>
-              Some(BetaReduce.reduceApplication(ddef, args, bindingsBuf))
-            case _ => None
-        case Block(stats, expr) if stats.forall(isPureBinding) =>
-          recur(expr).map(cpy.Block(cl)(stats, _))
-        case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
-          recur(expr).map(cpy.Inlined(cl)(call, bindings, _))
-        case Typed(expr, tpt) =>
-          recur(expr)
-        case _ => None
-      recur(cl) match
-        case Some(reduced) =>
-          seq(bindingsBuf.result(), reduced).withSpan(tree.span)
-        case None =>
-          tree
-    case _ =>
-      tree
   }
 
   /** The result type of reducing a match. It consists optionally of a list of bindings

@@ -20,7 +20,8 @@ import StdNames._
 import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
-import scala.collection.mutable.ListBuffer
+
+import scala.collection.mutable.{ListBuffer, LinkedHashMap}
 
 object JavaParsers {
 
@@ -96,7 +97,11 @@ object JavaParsers {
     def javaLangDot(name: Name): Tree =
       Select(javaDot(nme.lang), name)
 
+    /** Tree representing `java.lang.Object` */
     def javaLangObject(): Tree = javaLangDot(tpnme.Object)
+
+    /** Tree representing `java.lang.Record` */
+    def javaLangRecord(): Tree = javaLangDot(tpnme.Record)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
       AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
@@ -555,6 +560,14 @@ object JavaParsers {
 
     def definesInterface(token: Int): Boolean = token == INTERFACE || token == AT
 
+    /** If the next token is the identifier "record", convert it into the RECORD token.
+      * This makes it easier to handle records in various parts of the code,
+      * in particular when a `parentToken` is passed to some functions.
+      */
+    def adaptRecordIdentifier(): Unit =
+      if in.token == IDENTIFIER && in.name == jnme.RECORDid then
+        in.token = RECORD
+
     def termDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = {
       val inInterface = definesInterface(parentToken)
       val tparams = if (in.token == LT) typeParams(Flags.JavaDefined | Flags.Param) else List()
@@ -581,6 +594,16 @@ object JavaParsers {
                    TypeTree(), methodBody()).withMods(mods)
           }
         }
+      } else if (in.token == LBRACE && rtptName != nme.EMPTY && parentToken == RECORD) {
+        /*
+        record RecordName(T param1, ...) {
+          RecordName { // <- here
+            // methodBody
+          }
+        }
+        */
+        methodBody()
+        Nil
       }
       else {
         var mods1 = mods
@@ -717,12 +740,11 @@ object JavaParsers {
       ValDef(name, tpt2, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
-    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match {
-      case CLASS | ENUM | INTERFACE | AT =>
-        typeDecl(start, if (definesInterface(parentToken)) mods | Flags.JavaStatic else mods)
+    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match
+      case CLASS | ENUM | RECORD | INTERFACE | AT =>
+        typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
       case _ =>
         termDecl(start, mods, parentToken, parentTParams)
-    }
 
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
       atSpan(cdef.span) {
@@ -804,6 +826,51 @@ object JavaParsers {
       addCompanionObject(statics, cls)
     }
 
+    def recordDecl(start: Offset, mods: Modifiers): List[Tree] =
+      accept(RECORD)
+      val nameOffset = in.offset
+      val name = identForType()
+      val tparams = typeParams()
+      val header = formalParams()
+      val superclass = javaLangRecord() // records always extend java.lang.Record
+      val interfaces = interfacesOpt() // records may implement interfaces
+      val (statics, body) = typeBody(RECORD, name, tparams)
+
+      // We need to generate accessors for every param, if no method with the same name is already defined
+
+      var fieldsByName = header.map(v => (v.name, (v.tpt, v.mods.annotations))).to(LinkedHashMap)
+
+      for case DefDef(name, paramss, _, _) <- body
+      if paramss.isEmpty && fieldsByName.contains(name)
+      do
+        fieldsByName -= name
+      end for
+
+      val accessors =
+        (for (name, (tpt, annots)) <- fieldsByName yield
+          DefDef(name, Nil, tpt, unimplementedExpr)
+            .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
+        ).toList
+
+      // generate the canonical constructor
+      val canonicalConstructor =
+        DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(header)), TypeTree(), EmptyTree)
+          .withMods(Modifiers(Flags.JavaDefined | Flags.Synthetic, mods.privateWithin))
+
+      // return the trees
+      val recordTypeDef = atSpan(start, nameOffset) {
+        TypeDef(name,
+          makeTemplate(
+            parents = superclass :: interfaces,
+            stats = canonicalConstructor :: accessors ::: body,
+            tparams = tparams,
+            true
+          )
+        ).withMods(mods)
+      }
+      addCompanionObject(statics, recordTypeDef)
+    end recordDecl
+
     def interfaceDecl(start: Offset, mods: Modifiers): List[Tree] = {
       accept(INTERFACE)
       val nameOffset = in.offset
@@ -846,7 +913,8 @@ object JavaParsers {
         else if (in.token == SEMI)
           in.nextToken()
         else {
-          if (in.token == ENUM || definesInterface(in.token)) mods |= Flags.JavaStatic
+          adaptRecordIdentifier()
+          if (in.token == ENUM || in.token == RECORD || definesInterface(in.token)) mods |= Flags.JavaStatic
           val decls = memberDecl(start, mods, parentToken, parentTParams)
           (if (mods.is(Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
             statics
@@ -947,13 +1015,13 @@ object JavaParsers {
       }
     }
 
-    def typeDecl(start: Offset, mods: Modifiers): List[Tree] = in.token match {
+    def typeDecl(start: Offset, mods: Modifiers): List[Tree] = in.token match
       case ENUM      => enumDecl(start, mods)
       case INTERFACE => interfaceDecl(start, mods)
       case AT        => annotationDecl(start, mods)
       case CLASS     => classDecl(start, mods)
+      case RECORD    => recordDecl(start, mods)
       case _         => in.nextToken(); syntaxError(em"illegal start of type declaration", skipIt = true); List(errorTypeTree)
-    }
 
     def tryConstant: Option[Constant] = {
       val negate = in.token match {
@@ -1004,6 +1072,7 @@ object JavaParsers {
         if (in.token != EOF) {
           val start = in.offset
           val mods = modifiers(inInterface = false)
+          adaptRecordIdentifier() // needed for typeDecl
           buf ++= typeDecl(start, mods)
         }
       }

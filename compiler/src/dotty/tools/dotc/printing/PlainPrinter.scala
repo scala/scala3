@@ -120,10 +120,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
     (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
-  protected def argText(arg: Type): Text = homogenizeArg(arg) match {
+  protected def argText(arg: Type, isErased: Boolean = false): Text = keywordText("erased ").provided(isErased) ~ (homogenizeArg(arg) match {
     case arg: TypeBounds => "?" ~ toText(arg)
     case arg => toText(arg)
-  }
+  })
 
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
@@ -149,8 +149,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.ObjectClass
     + defn.FromJavaObjectSymbol
 
-  def toText(cs: CaptureSet): Text =
-    "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+  def toTextCaptureSet(cs: CaptureSet): Text =
+    if printDebug && !cs.isConst then cs.toString
+    else if ctx.settings.YccDebug.value then cs.show
+    else if !cs.isConst && cs.elems.isEmpty then "?"
+    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+
+  /** Print capturing type, overridden in RefinedPrinter to account for
+   *  capturing function types.
+   */
+  protected def toTextCapturing(parent: Type, refsText: Text, boxText: Text): Text =
+    changePrec(InfixPrec):
+      boxText ~ toTextLocal(parent) ~ "^"
+      ~ (refsText provided refsText != rootSetText)
+
+  final protected def rootSetText = Str("{cap}")
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -207,20 +220,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
-        def box =
-          Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        def printRegular(refsText: Text) =
-          changePrec(GlobalPrec)(box ~ refsText ~ " " ~ toText(parent))
-        if printDebug && !refs.isConst then
-          printRegular(refs.toString)
-        else if ctx.settings.YccDebug.value then
-          printRegular(refs.show)
-        else if !refs.isConst && refs.elems.isEmpty then
-          printRegular("?")
-        else if Config.printCaptureSetsAsPrefix then
-          printRegular(toText(refs))
-        else
-          changePrec(InfixPrec)(box ~ toText(parent) ~ " @retains(" ~ toText(refs.elems.toList, ",") ~ ")")
+        val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
+        val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
+        toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
@@ -235,21 +237,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) {
           "("
           ~ keywordText("using ").provided(tp.isContextualMethod)
-          ~ keywordText("erased ").provided(tp.isErasedMethod)
           ~ keywordText("implicit ").provided(tp.isImplicitMethod && !tp.isContextualMethod)
           ~ paramsText(tp)
           ~ ")"
           ~ (Str(": ") provided !tp.resultType.isInstanceOf[MethodOrPoly])
           ~ toText(tp.resultType)
         }
-      case ExprType(ct @ EventuallyCapturingType(parent, refs))
-      if ct.annot.symbol == defn.RetainsByNameAnnot =>
-        if refs.isUniversal then changePrec(GlobalPrec) { "=> " ~ toText(parent) }
-        else toText(CapturingType(ExprType(parent), refs))
       case ExprType(restp) =>
-        changePrec(GlobalPrec) {
-          (if Feature.pureFunsEnabled then "-> " else "=> ") ~ toText(restp)
-        }
+        def arrowText: Text = restp match
+          case ct @ EventuallyCapturingType(parent, refs) if ct.annot.symbol == defn.RetainsByNameAnnot =>
+            if refs.isUniversal then Str("=>") else Str("->") ~ toTextCaptureSet(refs)
+          case _ =>
+            if Feature.pureFunsEnabled then "->" else "=>"
+        changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))
       case tp: HKTypeLambda =>
         changePrec(GlobalPrec) {
           "[" ~ paramsText(tp) ~ "]" ~ lambdaHash(tp) ~ Str(" =>> ") ~ toTextGlobal(tp.resultType)
@@ -296,9 +296,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
-    def paramText(name: Name, tp: Type) =
-      toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
-    Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
+    val erasedParams = lam.erasedParams
+    def paramText(name: Name, tp: Type, erased: Boolean) =
+      keywordText("erased ").provided(erased) ~ toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp, isParameter = true)
+    Text(lam.paramNames.lazyZip(lam.paramInfos).lazyZip(erasedParams).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
@@ -385,7 +386,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCaptureRef(tp: Type): Text =
     homogenize(tp) match
-      case tp: TermRef if tp.symbol == defn.captureRoot => Str("*")
+      case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
       case tp: SingletonType => toTextRef(tp)
       case _ => toText(tp)
 
@@ -638,6 +639,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
     if (!pos.exists) "<no position>"
     else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
+
+  def toText(cand: Candidate): Text =
+    "Cand("
+      ~ toTextRef(cand.ref)
+      ~ (if cand.isConversion then " conv" else "")
+      ~ (if cand.isExtension then " ext" else "")
+      ~ Str(" L" + cand.level) ~ ")"
 
   def toText(result: SearchResult): Text = result match {
     case result: SearchSuccess =>

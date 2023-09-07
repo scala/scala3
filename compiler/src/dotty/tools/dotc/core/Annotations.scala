@@ -194,7 +194,7 @@ object Annotations {
   object Annotation {
 
     def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
-    
+
     def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
       apply(cls, Nil, span)
 
@@ -206,7 +206,7 @@ object Annotations {
 
     def apply(atp: Type, arg: Tree, span: Span)(using Context): Annotation =
       apply(atp, arg :: Nil, span)
-    
+
     def apply(atp: Type, args: List[Tree], span: Span)(using Context): Annotation =
       apply(New(atp, args).withSpan(span))
 

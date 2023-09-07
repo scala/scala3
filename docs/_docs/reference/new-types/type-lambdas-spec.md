@@ -6,7 +6,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/new-types/type-lambdas-s
 
 ## Syntax
 
-```
+```ebnf
 Type            ::=  ... |  TypeParamClause ‘=>>’ Type
 TypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
 TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds

@@ -157,14 +157,20 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           checkInferredWellFormed(tree.tpt)
           if sym.is(Method) then
             if sym.isSetter then
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
+            if sym.isOneOf(GivenOrImplicit) then
+              val cls = sym.info.finalResultType.classSymbol
+              if cls.isOneOf(GivenOrImplicit) then
+                sym.updateAnnotationsAfter(thisPhase,
+                  atPhase(thisPhase)(cls.annotationsCarrying(Set(defn.CompanionMethodMetaAnnot)))
+                    ++ sym.annotations)
           else
             if sym.is(Param) then
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
             else if sym.is(ParamAccessor) then
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot))
             else
-              sym.copyAndKeepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot, defn.FieldMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
@@ -277,16 +283,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.isType then
             checkNotPackage(tree)
           else
-            if tree.symbol.is(Inline) && !Inlines.inInlineMethod then
-              ctx.compilationUnit.needsInlining = true
             checkNoConstructorProxy(tree)
+            registerNeedsInlining(tree)
             tree.tpe match {
               case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
               case _ => tree
             }
         case tree @ Select(qual, name) =>
-          if tree.symbol.is(Inline) then
-            ctx.compilationUnit.needsInlining = true
+          registerNeedsInlining(tree)
           if name.isTypeName then
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
@@ -296,19 +300,21 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: Apply =>
           val methType = tree.fun.tpe.widen.asInstanceOf[MethodType]
           val app =
-            if (methType.isErasedMethod)
+            if (methType.hasErasedParams)
               tpd.cpy.Apply(tree)(
                 tree.fun,
-                tree.args.mapConserve(arg =>
-                  if methType.isResultDependent then
-                    Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
-                  if (methType.isImplicitMethod && arg.span.isSynthetic)
-                    arg match
-                      case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
-                        dropInlines.transform(arg)
-                      case _ =>
-                        PruneErasedDefs.trivialErasedTree(arg)
-                  else dropInlines.transform(arg)))
+                tree.args.zip(methType.erasedParams).map((arg, isErased) =>
+                  if !isErased then arg
+                  else
+                    if methType.isResultDependent then
+                      Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
+                    if (methType.isImplicitMethod && arg.span.isSynthetic)
+                      arg match
+                        case _: RefTree | _: Apply | _: TypeApply if arg.symbol.is(Erased) =>
+                          dropInlines.transform(arg)
+                        case _ =>
+                          PruneErasedDefs.trivialErasedTree(arg)
+                    else dropInlines.transform(arg)))
             else
               tree
           def app1 =
@@ -334,10 +340,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val patterns1 = transform(patterns)
           cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
         case tree: TypeApply =>
-          if tree.symbol.isQuote then
+          if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
-          if tree.symbol.is(Inline) then
-            ctx.compilationUnit.needsInlining = true
+          registerNeedsInlining(tree)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
             checkInferredWellFormed(arg)
@@ -355,6 +360,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
+          withMode(Mode.InlinedCall)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
@@ -386,6 +392,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             VarianceChecker.check(tree)
             annotateExperimental(sym)
             checkMacroAnnotation(sym)
+            if sym.isOneOf(GivenOrImplicit) then
+              sym.keepAnnotationsCarrying(thisPhase, Set(defn.CompanionClassMetaAnnot), orNoneOf = defn.MetaAnnots)
             tree.rhs match
               case impl: Template =>
                 for parent <- impl.parents do
@@ -475,6 +483,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
+        case _: Quote =>
+          ctx.compilationUnit.needsStaging = true
+          super.transform(tree)
         case tree =>
           super.transform(tree)
       }
@@ -493,6 +504,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def registerNeedsInlining(tree: Tree)(using Context): Unit =
+      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.InlinedCall) then
+        ctx.compilationUnit.needsInlining = true
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
     private def registerIfHasMacroAnnotations(tree: DefTree)(using Context) =

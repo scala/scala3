@@ -100,7 +100,7 @@ There are two rules:
 
      - An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses.
 
-It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
+It is generally an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 
 ```scala
 if x < 0 then
@@ -108,6 +108,19 @@ if x < 0 then
   else   // error: `else` does not align correctly
     x
 ```
+
+However, there is one exception to this rule: If the next line starts with a '`.`' _and_ the indentation
+width is different from the indentation widths of the two neighboring regions by more than a single space, the line accepted. For instance, the following is OK:
+
+```scala
+xs.map: x =>
+    x + 1
+  .filter: x =>
+    x > 0
+```
+Here, the line starting with `.filter` does not have an indentation level matching a previous line,
+but it is still accepted since it starts with a '`.`' and differs in at least two spaces from the
+indentation levels of both the region that is closed and the next outer region.
 
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
 at the top-level, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
@@ -174,12 +187,12 @@ The syntax changes allowing this are as follows:
 
 Define for an arbitrary sequence of tokens or non-terminals `TS`:
 
-```
+```ebnf
 :<<< TS >>>   ::=   ‘{’ TS ‘}’
                 |   <colon> <indent" TS <outdent>
 ```
 Then the grammar changes as follows:
-```
+```ebnf
 TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 EnumBody          ::=  :<<< [SelfType] EnumStat {semi EnumStat} >>>
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
@@ -229,7 +242,7 @@ xs.foldLeft(0): (x, y) =>
 
 The grammar changes for optional braces around arguments are as follows.
 
-```
+```ebnf
 SimpleExpr       ::=  ...
                    |  SimpleExpr ColonArgument
 InfixExpr        ::=  ...
@@ -431,7 +444,7 @@ If none of these criteria apply, it's often better to not use an end marker sinc
 
 ### Syntax
 
-```
+```ebnf
 EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
                     |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’

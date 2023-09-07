@@ -500,7 +500,7 @@ object Erasure {
         if isFunction && !ctx.settings.scalajs.value then
           val arity = implParamTypes.length
           val specializedFunctionalInterface =
-            if defn.isSpecializableFunctionSAM(implParamTypes, implResultType) then
+            if !implType.hasErasedParams && defn.isSpecializableFunctionSAM(implParamTypes, implResultType) then
               // Using these subclasses is critical to avoid boxing since their
               // SAM is a specialized method `apply$mc*$sp` whose default
               // implementation in FunctionN boxes.
@@ -679,6 +679,8 @@ object Erasure {
             val qualTp = tree.qualifier.typeOpt.widen
             if qualTp.derivesFrom(defn.PolyFunctionClass) then
               erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
+            else if defn.isErasedFunctionType(qualTp) then
+              eraseErasedFunctionApply(qualTp.select(nme.apply).widen.asInstanceOf[MethodType]).classSymbol
             else
               NoSymbol
           }
@@ -774,7 +776,7 @@ object Erasure {
             select(qual1, sym)
           else
             val castTarget = // Avoid inaccessible cast targets, see i8661
-              if isJvmAccessible(sym.owner)
+              if isJvmAccessible(sym.owner) && sym.owner.isType
               then
                 sym.owner.typeRef
               else
@@ -827,7 +829,10 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
-      val ownArgs = if origFunType.isErasedMethod then Nil else args
+      val ownArgs = origFunType match
+        case mt: MethodType if mt.hasErasedParams =>
+          args.zip(mt.erasedParams).collect { case (arg, false) => arg }
+        case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
         case mt: MethodType =>

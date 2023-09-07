@@ -1394,7 +1394,7 @@ object Trees {
         case _ =>
           sourced
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self: TreeMap @retains(caps.*) =>
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self: TreeMap @retains(caps.cap) =>
       def transform(tree: Tree)(using Context): Tree = {
         inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")
@@ -1520,7 +1520,7 @@ object Trees {
       }
     }
 
-    abstract class TreeAccumulator[X] { self: TreeAccumulator[X] @retains(caps.*) =>
+    abstract class TreeAccumulator[X] { self: TreeAccumulator[X] @retains(caps.cap) =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(using Context): X
 

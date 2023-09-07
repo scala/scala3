@@ -1,6 +1,6 @@
 @annotation.capability class C
 object test1:
-  case class Ref(x: {*} String)
+  case class Ref(x: String^)
 
   def test(c: C) =
     val x1 = Ref("hello")
@@ -14,7 +14,7 @@ object test2:
 
     val pure: () -> Unit = () => ()
     val impure: () => Unit = pure
-    val mixed: {c} () -> Unit = pure
+    val mixed: () ->{c} Unit = pure
     val x = Ref(impure)
     val y0 = x.copy(pure)
     val yc0: Ref = y0
@@ -25,10 +25,10 @@ object test2:
     val yc2: Ref = y2
 
     val x3 = Ref(mixed)
-    val _: {c} Ref = x3
+    val _: Ref^{c} = x3
     val y3 = x3.copy()
-    val yc3: {c} Ref = y3
+    val yc3: Ref^{c} = y3
 
     val y4 = y3 match
       case Ref(xx) => xx
-    val y4c: {x3} () -> Unit = y4
+    val y4c: () ->{x3} Unit = y4

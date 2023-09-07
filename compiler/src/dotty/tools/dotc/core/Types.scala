@@ -43,6 +43,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
 object Types {
 
@@ -245,6 +246,11 @@ object Types {
       case _ => false
     }
 
+    /** Is this type exactly `Any`, or a type lambda ending in `Any`? */
+    def isTopOfSomeKind(using Context): Boolean = dealias match
+      case tp: TypeLambda => tp.resType.isTopOfSomeKind
+      case _ => isExactlyAny
+
     def isBottomType(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
       else isBottomTypeAfterErasure
@@ -425,7 +431,7 @@ object Types {
     def isContextualMethod: Boolean = false
 
     /** Is this a MethodType for which the parameters will not be used? */
-    def isErasedMethod: Boolean = false
+    def hasErasedParams(using Context): Boolean = false
 
     /** Is this a match type or a higher-kinded abstraction of one?
      */
@@ -734,33 +740,24 @@ object Types {
         // TODO: change tp.parent to nullable or other values
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
-        else {
+        else
           //println(s"find member $pre . $name in $tp")
 
           // We have to be careful because we might open the same (wrt eq) recursive type
-          // twice during findMember which risks picking the wrong prefix in the `substRecThis(rt, pre)`
-          // call below. To avoid this problem we do a defensive copy of the recursive
-          // type first. But if we do this always we risk being inefficient and we ran into
-          // stackoverflows when compiling pos/hk.scala under the refinement encoding
-          // of hk-types. So we only do a copy if the type
-          // is visited again in a recursive call to `findMember`, as tracked by `tp.opened`.
-          // Furthermore, if this happens we mark the original recursive type with `openedTwice`
-          // which means that we always defensively copy the type in the future. This second
-          // measure is necessary because findMember calls might be cached, so do not
-          // necessarily appear in nested order.
-          // Without the `openedTwice` trick, Typer.scala fails to Ycheck
-          // at phase resolveSuper.
+          // twice during findMember with two different prefixes, which risks picking the wrong prefix
+          // in the `substRecThis(rt, pre)` call below. To avoid this problem we do a defensive copy
+          // of the recursive type if the new prefix `pre` is neq the prefix with which the
+          // type was previously opened.
+
+          val openedPre = tp.openedWithPrefix
           val rt =
-            if (tp.opened) { // defensive copy
-              tp.openedTwice = true
+            if openedPre.exists && (openedPre ne pre) then // defensive copy
               RecType(rt => tp.parent.substRecThis(tp, rt.recThis))
-            }
             else tp
-          rt.opened = true
+          rt.openedWithPrefix = pre
           try go(rt.parent).mapInfo(_.substRecThis(rt, pre))
-          finally
-            if (!rt.openedTwice) rt.opened = false
-        }
+          finally rt.openedWithPrefix = NoType
+      end goRec
 
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
@@ -811,9 +808,14 @@ object Types {
             // is made to save execution time in the common case. See i9844.scala for test cases.
             def qualifies(sd: SingleDenotation) =
               !sd.symbol.is(Private) || sd.symbol.owner == tp.cls
-            d match
+            d.match
               case d: SingleDenotation => if qualifies(d) then d else NoDenotation
               case d => d.filterWithPredicate(qualifies)
+            .orElse:
+              // Only inaccessible private symbols were found. But there could still be
+              // shadowed non-private symbols, so as a fallback search for those.
+              // Test case is i18361.scala.
+              findMember(name, pre, required, excluded | Private)
           else d
         else
           // There is a special case to handle:
@@ -1180,7 +1182,8 @@ object Types {
 
     /** Remove all AnnotatedTypes wrapping this type.
      */
-    def stripAnnots(using Context): Type = this
+    def stripAnnots(keep: Annotation => Context ?=> Boolean)(using Context): Type = this
+    final def stripAnnots(using Context): Type = stripAnnots(_ => false)
 
     /** Strip TypeVars and Annotation and CapturingType wrappers */
     def stripped(using Context): Type = this
@@ -1470,7 +1473,7 @@ object Types {
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
     final def dropDependentRefinement(using Context): Type = dealias match {
-      case RefinedType(parent, nme.apply, _) => parent
+      case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }
 
@@ -1573,8 +1576,6 @@ object Types {
           else NoType
         case SkolemType(tp) =>
           loop(tp)
-        case pre: WildcardType =>
-          WildcardType
         case pre: TypeRef =>
           pre.info match {
             case TypeAlias(alias) => loop(alias)
@@ -1712,6 +1713,8 @@ object Types {
         else NoType
       case t if defn.isNonRefinedFunction(t) =>
         t
+      case t if defn.isErasedFunctionType(t) =>
+        t
       case t @ SAMType(_) =>
         t
       case _ =>
@@ -1839,15 +1842,15 @@ object Types {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
-        val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
           case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
         val funType = defn.FunctionOf(
           formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
-          result1, isContextual, isErased)
-        if alwaysDependent || mt.isResultDependent then RefinedType(funType, nme.apply, mt)
+          result1, isContextual)
+        if alwaysDependent || mt.isResultDependent then
+          RefinedType(funType, nme.apply, mt)
         else funType
     }
 
@@ -2100,7 +2103,7 @@ object Types {
      */
     final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
 
-    /** Is this reference the root capability `*` ? */
+    /** Is this reference the root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
@@ -2181,7 +2184,7 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  abstract class NamedType extends CachedProxyType, ValueType { self =>
+  abstract class NamedType extends CachedProxyType, ValueType, Product { self =>
 
     type ThisType >: this.type <: NamedType
     type ThisName <: Name
@@ -2189,6 +2192,8 @@ object Types {
     val prefix: Type
     def designator: Designator
     protected def designator_=(d: Designator): Unit
+    def _1: Type
+    def _2: Designator
 
     assert(NamedType.validPrefix(prefix), s"invalid prefix $prefix")
 
@@ -2500,10 +2505,49 @@ object Types {
 
     /** A reference with the initial symbol in `symd` has an info that
      *  might depend on the given prefix.
+     *  Note: If M is an abstract type or non-final term member in trait or class C,
+     *  its info depends even on C.this if class C has a self type that refines
+     *  the info of M.
      */
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(using Context): Boolean =
+
+      def refines(tp: Type, name: Name): Boolean = tp match
+        case tp: TypeRef =>
+          tp.symbol match
+            case cls: ClassSymbol =>
+              val otherd = cls.nonPrivateMembersNamed(name)
+              otherd.exists && !otherd.containsSym(symd.symbol)
+            case tsym =>
+              refines(tsym.info.hiBound, name)
+                // avoid going through tp.denot, since that might call infoDependsOnPrefix again
+        case RefinedType(parent, rname, _) =>
+          rname == name || refines(parent, name)
+        case tp: TypeProxy =>
+          refines(tp.underlying, name)
+        case AndType(tp1, tp2) =>
+          refines(tp1, name) || refines(tp2, name)
+        case _ =>
+          false
+
+      def givenSelfTypeOrCompleter(cls: Symbol) = cls.infoOrCompleter match
+        case cinfo: ClassInfo =>
+          cinfo.selfInfo match
+            case sym: Symbol => sym.infoOrCompleter
+            case tpe: Type => tpe
+        case _ => NoType
+
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
-      || prefix.isInstanceOf[Types.ThisType] && symd.is(Opaque) // see pos/i11277.scala for a test where this matters
+      || prefix.match
+        case prefix: Types.ThisType =>
+          (symd.isAbstractType
+            || symd.isTerm
+                && !symd.flagsUNSAFE.isOneOf(Module | Final | Param)
+                && !symd.isConstructor
+                && !symd.maybeOwner.isEffectivelyFinal)
+          && prefix.sameThis(symd.maybeOwner.thisType)
+          && refines(givenSelfTypeOrCompleter(prefix.cls), symd.name)
+        case _ => false
+    end infoDependsOnPrefix
 
     /** Is this a reference to a class or object member with an info that might depend
      *  on the prefix?
@@ -2513,10 +2557,7 @@ object Types {
       case _ => true
     }
 
-    /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
-     *  to an (unbounded) wildcard type.
-     *
-     *  (2) Reduce a type-ref `T { X = U; ... } # X`  to   `U`
+    /** Reduce a type-ref `T { X = U; ... } # X`  to   `U`
      *  provided `U` does not refer with a RecThis to the
      *  refinement type `T { X = U; ... }`
      */
@@ -2638,45 +2679,33 @@ object Types {
               case _ =>
             }
         }
-        if (prefix.isInstanceOf[WildcardType]) WildcardType
+        if (prefix.isInstanceOf[WildcardType]) WildcardType.sameKindAs(this)
         else withPrefix(prefix)
       }
 
     /** A reference like this one, but with the given symbol, if it exists */
-    final def withSym(sym: Symbol)(using Context): ThisType =
-      if ((designator ne sym) && sym.exists) NamedType(prefix, sym).asInstanceOf[ThisType]
+    private def withSym(sym: Symbol)(using Context): ThisType =
+      if designator ne sym then NamedType(prefix, sym).asInstanceOf[ThisType]
+      else this
+
+    private def withName(name: Name)(using Context): ThisType =
+      if designator ne name then NamedType(prefix, name).asInstanceOf[ThisType]
       else this
 
     /** A reference like this one, but with the given denotation, if it exists.
-     *  Returns a new named type with the denotation's symbol if that symbol exists, and
-     *  one of the following alternatives applies:
-     *   1. The current designator is a symbol and the symbols differ, or
-     *   2. The current designator is a name and the new symbolic named type
-     *      does not have a currently known denotation.
-     *   3. The current designator is a name and the new symbolic named type
-     *      has the same info as the current info
-     *  Otherwise the current denotation is overwritten with the given one.
-     *
-     *  Note: (2) and (3) are a "lock in mechanism" where a reference with a name as
-     *  designator can turn into a symbolic reference.
-     *
-     *  Note: This is a subtle dance to keep the balance between going to symbolic
-     *  references as much as we can (since otherwise we'd risk getting cycles)
-     *  and to still not lose any type info in the denotation (since symbolic
-     *  references often recompute their info directly from the symbol's info).
-     *  A test case is neg/opaque-self-encoding.scala.
+     *  Returns a new named type with the denotation's symbol as designator
+     *  if that symbol exists and it is different from the current designator.
+     *  Returns a new named type with the denotations's name as designator
+     *  if the denotation is overloaded and its name is different from the
+     *  current designator.
      */
     final def withDenot(denot: Denotation)(using Context): ThisType =
       if denot.exists then
-        val adapted = withSym(denot.symbol)
-        val result =
-          if (adapted.eq(this)
-              || designator.isInstanceOf[Symbol]
-              || !adapted.denotationIsCurrent
-              || adapted.info.eq(denot.info))
-            adapted
+        val adapted =
+          if denot.symbol.exists then withSym(denot.symbol)
+          else if denot.isOverloaded then withName(denot.name)
           else this
-        val lastDenot = result.lastDenotation
+        val lastDenot = adapted.lastDenotation
         denot match
           case denot: SymDenotation
           if denot.validFor.firstPhaseId < ctx.phase.id
@@ -2686,15 +2715,15 @@ object Types {
             // In this case the new SymDenotation might be valid for all phases, which means
             // we would not recompute the denotation when travelling to an earlier phase, maybe
             // in the next run. We fix that problem by creating a UniqueRefDenotation instead.
-            core.println(i"overwrite ${result.toString} / ${result.lastDenotation}, ${result.lastDenotation.getClass} with $denot at ${ctx.phaseId}")
-            result.setDenot(
+            core.println(i"overwrite ${adapted.toString} / ${adapted.lastDenotation}, ${adapted.lastDenotation.getClass} with $denot at ${ctx.phaseId}")
+            adapted.setDenot(
               UniqueRefDenotation(
                 denot.symbol, denot.info,
                 Period(ctx.runId, ctx.phaseId, denot.validFor.lastPhaseId),
                 this.prefix))
           case _ =>
-            result.setDenot(denot)
-        result.asInstanceOf[ThisType]
+            adapted.setDenot(denot)
+        adapted.asInstanceOf[ThisType]
       else // don't assign NoDenotation, we might need to recover later. Test case is pos/avoid.scala.
         this
 
@@ -2904,6 +2933,7 @@ object Types {
     def apply(prefix: Type, designator: Name, denot: Denotation)(using Context): NamedType =
       if (designator.isTermName) TermRef.apply(prefix, designator.asTermName, denot)
       else TypeRef.apply(prefix, designator.asTypeName, denot)
+    def unapply(tp: NamedType): NamedType = tp
 
     def validPrefix(prefix: Type): Boolean = prefix.isValueType || (prefix eq NoPrefix)
   }
@@ -3163,9 +3193,8 @@ object Types {
    */
   class RecType(parentExp: RecType => Type) extends RefinedOrRecType with BindingType {
 
-    // See discussion in findMember#goRec why these vars are needed
-    private[Types] var opened: Boolean = false
-    private[Types] var openedTwice: Boolean = false
+    // See discussion in findMember#goRec why this field is needed
+    private[Types] var openedWithPrefix: Type = NoType
 
     val parent: Type = parentExp(this: @unchecked)
 
@@ -3619,6 +3648,8 @@ object Types {
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
 
+    def erasedParams(using Context) = List.fill(paramInfos.size)(false)
+
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
      *
@@ -3696,7 +3727,11 @@ object Types {
             else Signature(tp, sourceLanguage)
         this match
           case tp: MethodType =>
-            val params = if (isErasedMethod) Nil else tp.paramInfos
+            val params = if (hasErasedParams)
+              tp.paramInfos
+                .zip(tp.erasedParams)
+                .collect { case (param, isErased) if !isErased => param }
+            else tp.paramInfos
             resultSignature.prependTermParams(params, sourceLanguage)
           case tp: PolyType =>
             resultSignature.prependTypeParams(tp.paramNames.length)
@@ -3856,7 +3891,8 @@ object Types {
     /** Does one of the parameter types contain references to earlier parameters
      *  of this method type which cannot be eliminated by de-aliasing?
      */
-    def isParamDependent(using Context): Boolean = paramDependencyStatus == TrueDeps
+    def isParamDependent(using Context): Boolean =
+      paramDependencyStatus == TrueDeps || paramDependencyStatus == CaptureDeps
 
     /** Is there a dependency involving a reference in a capture set, but
      *  otherwise no true result dependency?
@@ -3903,16 +3939,14 @@ object Types {
     def companion: MethodTypeCompanion
 
     final override def isImplicitMethod: Boolean =
-      companion.eq(ImplicitMethodType) ||
-      companion.eq(ErasedImplicitMethodType) ||
-      isContextualMethod
-    final override def isErasedMethod: Boolean =
-      companion.eq(ErasedMethodType) ||
-      companion.eq(ErasedImplicitMethodType) ||
-      companion.eq(ErasedContextualMethodType)
+      companion.eq(ImplicitMethodType) || isContextualMethod
+    final override def hasErasedParams(using Context): Boolean =
+      erasedParams.contains(true)
     final override def isContextualMethod: Boolean =
-      companion.eq(ContextualMethodType) ||
-      companion.eq(ErasedContextualMethodType)
+      companion.eq(ContextualMethodType)
+
+    override def erasedParams(using Context): List[Boolean] =
+      paramInfos.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
 
     protected def prefixString: String = companion.prefixString
   }
@@ -3938,10 +3972,15 @@ object Types {
 
     protected def toPInfo(tp: Type)(using Context): PInfo
 
+    /** If `tparam` is a sealed type parameter symbol of a polymorphic method, add
+     *  a @caps.Sealed annotation to the upperbound in `tp`.
+     */
+    protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type = tp
+
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(using Context): Type =
       if (params.isEmpty) resultType
       else apply(params.map(_.paramName))(
-        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+        tl => params.map(param => toPInfo(addSealed(param, tl.integrate(params, param.paramInfo)))),
         tl => tl.integrate(params, resultType))
   }
 
@@ -4009,7 +4048,7 @@ object Types {
          tl => tl.integrate(params, resultType))
     end fromSymbols
 
-    final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
+    def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
 
     def checkValid(mt: MethodType)(using Context): mt.type = {
@@ -4024,19 +4063,14 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
-      if (isContextual)
-        if (isErased) ErasedContextualMethodType else ContextualMethodType
-      else if (isImplicit)
-        if (isErased) ErasedImplicitMethodType else ImplicitMethodType
-      else
-        if (isErased) ErasedMethodType else MethodType
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false): MethodTypeCompanion =
+      if (isContextual) ContextualMethodType
+      else if (isImplicit) ImplicitMethodType
+      else MethodType
   }
-  object ErasedMethodType extends MethodTypeCompanion("ErasedMethodType")
+
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
-  object ErasedContextualMethodType extends MethodTypeCompanion("ErasedContextualMethodType")
   object ImplicitMethodType extends MethodTypeCompanion("ImplicitMethodType")
-  object ErasedImplicitMethodType extends MethodTypeCompanion("ErasedImplicitMethodType")
 
   /** A ternary extractor for MethodType */
   object MethodTpe {
@@ -4267,6 +4301,16 @@ object Types {
         paramInfosExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(using Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
+
+    override protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type =
+      tparam match
+        case tparam: Symbol if tparam.is(Sealed) =>
+          tp match
+            case tp @ TypeBounds(lo, hi) =>
+              tp.derivedTypeBounds(lo,
+                AnnotatedType(hi, Annotation(defn.Caps_SealedAnnot, tparam.span)))
+            case _ => tp
+        case _ => tp
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -4780,7 +4824,7 @@ object Types {
     def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isRef(defn.AnyClass)
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isTopOfSomeKind
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
@@ -4972,9 +5016,9 @@ object Types {
           if (!givenSelf.isValueType) appliedRef
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
-          else givenSelf match
-            case givenSelf @ EventuallyCapturingType(tp, _) =>
-              givenSelf.derivedAnnotatedType(tp & appliedRef, givenSelf.annot)
+          else givenSelf.dealiasKeepAnnots match
+            case givenSelf1 @ EventuallyCapturingType(tp, _) =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
             case _ =>
               AndType(givenSelf, appliedRef)
         }
@@ -5223,6 +5267,10 @@ object Types {
       else
         result
     def emptyPolyKind(using Context): TypeBounds = apply(defn.NothingType, defn.AnyKindType)
+    /** An interval covering all types of the same kind as `tp`. */
+    def emptySameKindAs(tp: Type)(using Context): TypeBounds =
+      val top = tp.topType
+      if top.isExactlyAny then empty else apply(defn.NothingType, top)
     def upper(hi: Type)(using Context): TypeBounds = apply(defn.NothingType, hi)
     def lower(lo: Type)(using Context): TypeBounds = apply(lo, defn.AnyType)
   }
@@ -5251,7 +5299,10 @@ object Types {
     override def stripTypeVar(using Context): Type =
       derivedAnnotatedType(parent.stripTypeVar, annot)
 
-    override def stripAnnots(using Context): Type = parent.stripAnnots
+    override def stripAnnots(keep: Annotation => (Context) ?=> Boolean)(using Context): Type =
+      val p = parent.stripAnnots(keep)
+      if keep(annot) then derivedAnnotatedType(p, annot)
+      else p
 
     override def stripped(using Context): Type = parent.stripped
 
@@ -5398,6 +5449,9 @@ object Types {
         else
           result
       else unique(CachedWildcardType(bounds))
+    /** A wildcard matching any type of the same kind as `tp`. */
+    def sameKindAs(tp: Type)(using Context): WildcardType =
+      apply(TypeBounds.emptySameKindAs(tp))
   }
 
   /** An extractor for single abstract method types.
@@ -5705,6 +5759,12 @@ object Types {
 
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
+
+        case tp @ ConstantType(const @ Constant(_: Type)) =>
+          val classType = const.tpe
+          val classType1 = this(classType)
+          if classType eq classType1 then tp
+          else classType1
 
         case tp: LazyRef =>
           LazyRef { refCtx =>

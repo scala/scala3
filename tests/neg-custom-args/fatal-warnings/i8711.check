@@ -6,3 +6,7 @@
 12 |    case x: C => x // error
    |         ^^^^
    |         Unreachable case
+-- [E030] Match case Unreachable Error: tests/neg-custom-args/fatal-warnings/i8711.scala:17:9 --------------------------
+17 |    case x: (B | C) => x // error
+   |         ^^^^^^^^^^
+   |         Unreachable case

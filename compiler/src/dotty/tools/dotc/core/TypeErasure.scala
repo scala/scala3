@@ -520,8 +520,9 @@ object TypeErasure {
         case _: ClassInfo => true
         case _ => false
       }
-    case tp: TypeParamRef => false
-    case tp: TypeBounds => false
+    case _: TypeParamRef => false
+    case _: TypeBounds => false
+    case _: MatchType => false
     case tp: TypeProxy => hasStableErasure(tp.translucentSuperType)
     case tp: AndType => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
     case tp: OrType  => hasStableErasure(tp.tp1) && hasStableErasure(tp.tp2)
@@ -535,7 +536,14 @@ object TypeErasure {
     val paramss = res.paramNamess
     assert(paramss.length == 1)
     erasure(defn.FunctionType(paramss.head.length,
-      isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
+      isContextual = res.isImplicitMethod))
+
+  def eraseErasedFunctionApply(erasedFn: MethodType)(using Context): Type =
+    val fnType = defn.FunctionType(
+      n = erasedFn.erasedParams.count(_ == false),
+      isContextual = erasedFn.isContextualMethod,
+    )
+    erasure(fnType)
 }
 
 import TypeErasure._
@@ -612,6 +620,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       defn.FunctionType(0)
     case RefinedType(parent, nme.apply, refinedInfo) if parent.typeSymbol eq defn.PolyFunctionClass =>
       erasePolyFunctionApply(refinedInfo)
+    case RefinedType(parent, nme.apply, refinedInfo: MethodType) if defn.isErasedFunctionType(parent) =>
+      eraseErasedFunctionApply(refinedInfo)
     case tp: TypeProxy =>
       this(tp.underlying)
     case tp @ AndType(tp1, tp2) =>
@@ -638,7 +648,13 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK)(tpToErase)
-      val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
+      val (names, formals0) = if tp.hasErasedParams then
+        tp.paramNames
+          .zip(tp.paramInfos)
+          .zip(tp.erasedParams)
+          .collect{ case (param, isErased) if !isErased => param }
+          .unzip
+      else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
@@ -869,6 +885,8 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         // we need this case rather than falling through to the default
         // because RefinedTypes <: TypeProxy and it would be caught by
         // the case immediately below
+        sigName(this(tp))
+      case tp @ RefinedType(parent, nme.apply, refinedInfo) if defn.isErasedFunctionType(parent) =>
         sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)

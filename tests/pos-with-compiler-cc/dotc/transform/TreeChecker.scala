@@ -458,7 +458,7 @@ class TreeChecker extends Phase with SymTransformer {
             val inliningPhase = ctx.base.inliningPhase
             inliningPhase.exists && ctx.phase.id > inliningPhase.id
           if isAfterInlining then
-            // The staging phase destroys in PCPCheckAndHeal the property that
+            // The staging phase destroys in CrossStageSafety the property that
             // tree.expr.tpe <:< pt1. A test case where this arises is run-macros/enum-nat-macro.
             // We should follow up why this happens. If the problem is fixed, we can
             // drop the isAfterInlining special case. To reproduce the problem, just

@@ -18,6 +18,7 @@ import NameKinds.OuterSelectName
 import StdNames._
 import TypeUtils.isErasedValueType
 import config.Feature
+import inlines.Inlines.inInlineMethod
 
 object FirstTransform {
   val name: String = "firstTransform"

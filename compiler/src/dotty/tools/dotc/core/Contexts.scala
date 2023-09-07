@@ -444,6 +444,12 @@ object Contexts {
     def useColors: Boolean =
       base.settings.color.value == "always"
 
+    def withColors: FreshContext =
+      fresh.setSetting(ctx.settings.color, "always")
+
+    def withoutColors: FreshContext =
+      fresh.setSetting(ctx.settings.color, "never")
+
     /** Is the explicit nulls option set? */
     def explicitNulls: Boolean = base.settings.YexplicitNulls.value
 

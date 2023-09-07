@@ -506,7 +506,12 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
+      val illegal = sym.flags & ClassOnlyFlags
+      if sym.is(TypeParam) && illegal == Sealed && Feature.ccEnabled && cc.allowUniversalInBoxed then
+        if !sym.owner.is(Method) then
+          fail(em"only method type parameters can be sealed")
+      else
+        fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -743,13 +748,16 @@ object Checking {
     if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
+  /** Check that `tree` refers to a value, unless `tree` is selected or applied
+   *  (singleton types x.type don't count as selections).
+   */
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
     tree match
-      case tree: RefTree
-      if tree.name.isTermName
-         && !proto.isInstanceOf[SelectionProto]
-         && !proto.isInstanceOf[FunOrPolyProto] =>
-        checkValue(tree)
+      case tree: RefTree if tree.name.isTermName =>
+        proto match
+          case _: SelectionProto if proto ne SingletonTypeProto => // no value check
+          case _: FunOrPolyProto => // no value check
+          case _ => checkValue(tree)
       case _ =>
     tree
 
@@ -1193,15 +1201,11 @@ trait Checking {
    */
   def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
     case vparam :: vparams1 =>
-      val check = new TreeTraverser {
-        def traverse(tree: Tree)(using Context) = tree match {
-          case id: Ident if vparams.exists(_.symbol == id.symbol) =>
-            report.error(em"illegal forward reference to method parameter", id.srcPos)
-          case _ =>
-            traverseChildren(tree)
-        }
+      vparam.tpt.foreachSubTree {
+        case id: Ident if vparams.exists(_.symbol == id.symbol) =>
+          report.error(em"illegal forward reference to method parameter", id.srcPos)
+        case _ =>
       }
-      check.traverse(vparam.tpt)
       checkNoForwardDependencies(vparams1)
     case Nil =>
   }
@@ -1461,7 +1465,6 @@ trait Checking {
 
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
-      val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
 
   /** Check that there is an implicit capability to throw a checked exception

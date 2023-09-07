@@ -5,6 +5,12 @@ trait Mirror:
 
 class Eq:
 
+  def test0(using Quotes): Unit = '{
+    type T
+    ${ summonType[T]; ??? }
+    ${ summonType[List[T]]; ??? }
+  }
+
   def test1(using Quotes): Unit = '{
     val m: Mirror = ???
     ${ summonType[m.ElemTypes]; ??? }

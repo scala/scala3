@@ -18,7 +18,7 @@ class InitializedAccessGeneric {
 
   @Setup
   def prepare: Unit = {
-    holder = new LazyGenericHolder[String]("foo") 
+    holder = new LazyGenericHolder[String]("foo")
     holder.value
   }
 

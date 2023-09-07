@@ -154,11 +154,13 @@ object CompilationUnit {
     var containsCaptureChecking = false
     var containsMacroAnnotation = false
     def traverse(tree: Tree)(using Context): Unit = {
-      if (tree.symbol.isQuote)
-        containsQuote = true
       if tree.symbol.is(Flags.Inline) then
         containsInline = true
       tree match
+        case _: tpd.Quote =>
+          containsQuote = true
+        case tree: tpd.Apply if tree.symbol == defn.QuotedTypeModule_of =>
+          containsQuote = true
         case Import(qual, selectors) =>
           tpd.languageImport(qual) match
             case Some(prefix) =>

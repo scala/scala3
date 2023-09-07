@@ -13,13 +13,14 @@ import scala.collection.mutable.ListBuffer
 
 /** Rewrite an application
  *
- *    (((x1, ..., xn) => b): T)(y1, ..., yn)
+ *    (([X1, ..., Xm] => (x1, ..., xn) => b): T)[T1, ..., Tm](y1, ..., yn)
  *
  *  where
  *
  *    - all yi are pure references without a prefix
  *    - the closure can also be contextual or erased, but cannot be a SAM type
- *    _ the type ascription ...: T is optional
+ *    - the type parameters Xi and type arguments Ti are optional
+ *    - the type ascription ...: T is optional
  *
  *  to
  *
@@ -38,14 +39,10 @@ class BetaReduce extends MiniPhase:
 
   override def description: String = BetaReduce.description
 
-  override def transformApply(app: Apply)(using Context): Tree = app.fun match
-    case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
-      val app1 = BetaReduce(app, fn, app.args)
-      if app1 ne app then report.log(i"beta reduce $app -> $app1")
-      app1
-    case _ =>
-      app
-
+  override def transformApply(app: Apply)(using Context): Tree =
+    val app1 = BetaReduce(app)
+    if app1 ne app then report.log(i"beta reduce $app -> $app1")
+    app1
 
 object BetaReduce:
   import ast.tpd._
@@ -53,36 +50,77 @@ object BetaReduce:
   val name: String = "betaReduce"
   val description: String = "reduce closure applications"
 
-  /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
-  def apply(original: Tree, fn: Tree, args: List[Tree])(using Context): Tree =
-    fn match
-      case Typed(expr, _) =>
-        BetaReduce(original, expr, args)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) =>
-        BetaReduce(anonFun, args)
-      case Block(stats, expr) =>
-        val tree = BetaReduce(original, expr, args)
-        if tree eq original then original
-        else cpy.Block(fn)(stats, tree)
-      case Inlined(call, bindings, expr) =>
-        val tree = BetaReduce(original, expr, args)
-        if tree eq original then original
-        else cpy.Inlined(fn)(call, bindings, tree)
+  /** Rewrite an application
+   *
+   *    ((x1, ..., xn) => b)(e1, ..., en)
+   *
+   *  to
+   *
+   *    val/def x1 = e1; ...; val/def xn = en; b
+   *
+   *  where `def` is used for call-by-name parameters. However, we shortcut any NoPrefix
+   *  refs among the ei's directly without creating an intermediate binding.
+   *
+   *  Similarly, rewrites type applications
+   *
+   *    ([X1, ..., Xm] => (x1, ..., xn) => b).apply[T1, .., Tm](e1, ..., en)
+   *
+   *  to
+   *
+   *    type X1 = T1; ...; type Xm = Tm;val/def x1 = e1; ...; val/def xn = en; b
+   *
+   *  This beta-reduction preserves the integrity of `Inlined` tree nodes.
+   */
+  def apply(tree: Tree)(using Context): Tree =
+    val bindingsBuf = new ListBuffer[DefTree]
+    def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
+      case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
+        Some(reduceApplication(ddef, argss, bindingsBuf))
+      case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
+        template.body match
+          case (ddef: DefDef) :: Nil => Some(reduceApplication(ddef, argss, bindingsBuf))
+          case _ => None
+      case Block(stats, expr) if stats.forall(isPureBinding) =>
+        recur(expr, argss).map(cpy.Block(fn)(stats, _))
+      case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+        recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
+      case Typed(expr, tpt) =>
+        recur(expr, argss)
+      case TypeApply(Select(expr, nme.asInstanceOfPM), List(tpt)) =>
+        recur(expr, argss)
+      case _ => None
+    tree match
+      case Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
+        recur(fn, List(args)) match
+          case Some(reduced) =>
+            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+          case None =>
+            tree
+      case Apply(TypeApply(Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
+        recur(fn, List(targs, args)) match
+          case Some(reduced) =>
+            seq(bindingsBuf.result(), reduced).withSpan(tree.span)
+          case None =>
+            tree
       case _ =>
-        original
-  end apply
-
-  /** Beta-reduces a call to `ddef` with arguments `args` */
-  def apply(ddef: DefDef, args: List[Tree])(using Context) =
-    val bindings = new ListBuffer[ValDef]()
-    val expansion1 = reduceApplication(ddef, args, bindings)
-    val bindings1 = bindings.result()
-    seq(bindings1, expansion1)
+        tree
 
   /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings */
-  def reduceApplication(ddef: DefDef, args: List[Tree], bindings: ListBuffer[ValDef])(using Context): Tree =
-    val vparams = ddef.termParamss.iterator.flatten.toList
-    assert(args.hasSameLengthAs(vparams))
+  def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])(using Context): Tree =
+    val (targs, args) = argss.flatten.partition(_.isType)
+    val tparams = ddef.leadingTypeParams
+    val vparams = ddef.termParamss.flatten
+
+    val targSyms =
+      for (targ, tparam) <- targs.zip(tparams) yield
+        targ.tpe.dealias match
+          case ref @ TypeRef(NoPrefix, _) =>
+            ref.symbol
+          case _ =>
+            val binding = TypeDef(newSymbol(ctx.owner, tparam.name, EmptyFlags, TypeAlias(targ.tpe), coord = targ.span)).withSpan(targ.span)
+            bindings += binding
+            binding.symbol
+
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield
         arg.tpe.dealias match
@@ -90,7 +128,10 @@ object BetaReduce:
             ref.symbol
           case _ =>
             val flags = Synthetic | (param.symbol.flags & Erased)
-            val tpe = if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias else arg.tpe.widen
+            val tpe =
+              if arg.tpe.isBottomType then param.tpe.widenTermRefExpr
+              else if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias
+              else arg.tpe.widen
             val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
             if !(tpe.isInstanceOf[ConstantType] && isPureExpr(arg)) then
               bindings += binding
@@ -99,8 +140,8 @@ object BetaReduce:
     val expansion = TreeTypeMap(
       oldOwners = ddef.symbol :: Nil,
       newOwners = ctx.owner :: Nil,
-      substFrom = vparams.map(_.symbol),
-      substTo = argSyms
+      substFrom = (tparams ::: vparams).map(_.symbol),
+      substTo = targSyms ::: argSyms
     ).transform(ddef.rhs)
 
     val expansion1 = new TreeMap {

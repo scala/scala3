@@ -1,20 +1,7 @@
 package dotty.tools.scaladoc
 
-import java.util.ServiceLoader
-import java.io.File
-import java.util.jar._
-import scala.jdk.CollectionConverters._
-import collection.immutable.ArraySeq
-
-import java.nio.file.Files
-
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.AllScalaSettings
-import dotty.tools.scaladoc.Scaladoc._
-import dotty.tools.dotc.config.Settings.Setting.value
-import dotty.tools.dotc.config.Properties._
-import dotty.tools.dotc.config.CliCommand
-import dotty.tools.dotc.core.Contexts._
 
 class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val unsupportedSettings = Seq(

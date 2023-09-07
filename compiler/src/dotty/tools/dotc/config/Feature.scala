@@ -28,6 +28,8 @@ object Feature:
   val symbolLiterals = deprecated("symbolLiterals")
   val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
+  val clauseInterleaving = experimental("clauseInterleaving")
+  val relaxedExtensionImports = experimental("relaxedExtensionImports")
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
@@ -75,6 +77,8 @@ object Feature:
   def dependentEnabled(using Context) = enabled(dependent)
 
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
+
+  def clauseInterleavingEnabled(using Context) = enabled(clauseInterleaving)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 

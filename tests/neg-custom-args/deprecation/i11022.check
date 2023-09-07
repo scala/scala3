@@ -1,0 +1,20 @@
+-- Error: tests/neg-custom-args/deprecation/i11022.scala:8:7 -----------------------------------------------------------
+8 |val a: CaseClass = CaseClass(42)        // error: deprecated type // error: deprecated apply method
+  |       ^^^^^^^^^
+  |       class CaseClass is deprecated: no CaseClass
+-- Error: tests/neg-custom-args/deprecation/i11022.scala:8:19 ----------------------------------------------------------
+8 |val a: CaseClass = CaseClass(42)        // error: deprecated type // error: deprecated apply method
+  |                   ^^^^^^^^^
+  |                   class CaseClass is deprecated: no CaseClass
+-- Error: tests/neg-custom-args/deprecation/i11022.scala:9:7 -----------------------------------------------------------
+9 |val b: CaseClass = new CaseClass(42)    // error: deprecated type // error: deprecated class
+  |       ^^^^^^^^^
+  |       class CaseClass is deprecated: no CaseClass
+-- Error: tests/neg-custom-args/deprecation/i11022.scala:9:23 ----------------------------------------------------------
+9 |val b: CaseClass = new CaseClass(42)    // error: deprecated type // error: deprecated class
+  |                       ^^^^^^^^^
+  |                       class CaseClass is deprecated: no CaseClass
+-- Error: tests/neg-custom-args/deprecation/i11022.scala:10:14 ---------------------------------------------------------
+10 |val c: Unit = CaseClass(42).magic()     // error: deprecated apply method
+   |              ^^^^^^^^^
+   |              class CaseClass is deprecated: no CaseClass

@@ -125,8 +125,8 @@ object ProtoTypes {
   /** A trait for prototypes that match all types */
   trait MatchAlways extends ProtoType, caps.Pure {
     def isMatchedBy(tp1: Type, keepConstraint: Boolean)(using Context): Boolean = true
-    def map(tm: TypeMap @retains(caps.*))(using Context): ProtoType = this
-    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T = x
+    def map(tm: TypeMap @retains(caps.cap))(using Context): ProtoType = this
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T = x
     override def toString: String = getClass.toString
   }
 
@@ -239,8 +239,8 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       memberProto.unusableForInference
 
-    def map(tm: TypeMap @retains(caps.*))(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
-    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T = ta(x, memberProto)
+    def map(tm: TypeMap @retains(caps.cap))(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T = ta(x, memberProto)
 
     override def deepenProto(using Context): SelectionProto =
       derivedSelectionProto(name, memberProto.deepenProto, compat)
@@ -542,10 +542,10 @@ object ProtoTypes {
 
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 
-    def map(tm: TypeMap @retains(caps.*))(using Context): FunProto =
+    def map(tm: TypeMap @retains(caps.cap))(using Context): FunProto =
       derivedFunProto(args, tm(resultType), typer)
 
-    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T =
       ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
     override def deepenProto(using Context): FunProto =
@@ -600,9 +600,9 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       argType.unusableForInference || resType.unusableForInference
 
-    def map(tm: TypeMap @retains(caps.*))(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
+    def map(tm: TypeMap @retains(caps.cap))(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T =
       ta(ta(x, argType), resultType)
 
     override def deepenProto(using Context): ViewProto =
@@ -653,10 +653,10 @@ object ProtoTypes {
     override def unusableForInference(using Context): Boolean =
       targs.exists(_.tpe.unusableForInference)
 
-    def map(tm: TypeMap @retains(caps.*))(using Context): PolyProto =
+    def map(tm: TypeMap @retains(caps.cap))(using Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.*))(using Context): T =
+    def fold[T](x: T, ta: TypeAccumulator[T] @retains(caps.cap))(using Context): T =
       ta(ta.foldOver(x, targs.tpes), resultType)
 
     override def deepenProto(using Context): PolyProto =
@@ -834,7 +834,7 @@ object ProtoTypes {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  private def wildApprox(tp: Type, theMap: WildApproxMap @retains(caps.*) | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type =
+  private def wildApprox(tp: Type, theMap: WildApproxMap @retains(caps.cap) | Null, seen: Set[TypeParamRef], internal: Set[TypeLambda])(using Context): Type =
     tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound

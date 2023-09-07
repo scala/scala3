@@ -541,7 +541,11 @@ class Namer { typer: Typer =>
           res = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
-              body = fromTempl.body ++ modTempl.body))
+              body = fromTempl.body.filter {
+                  case stat: DefDef => stat.name != nme.toString_
+                    // toString should only be generated if explicit companion is missing
+                  case _ => true
+                } ++ modTempl.body))
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
@@ -858,7 +862,6 @@ class Namer { typer: Typer =>
      *  with a user-defined method in the same scope with a matching type.
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
-
       def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
@@ -875,10 +878,19 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic, butNot = ConstructorProxy)
-        && desugar.isRetractableCaseClassMethodName(denot.name)
-        && isCaseClassOrCompanion(denot.owner)
-        && (definesMember || inheritsConcreteMember)
+        denot.is(Synthetic, butNot = ConstructorProxy) &&
+        (
+          (desugar.isRetractableCaseClassMethodName(denot.name)
+            && isCaseClassOrCompanion(denot.owner)
+            && (definesMember || inheritsConcreteMember)
+          )
+          ||
+          // remove synthetic constructor of a java Record if it clashes with a non-synthetic constructor
+          (denot.isConstructor
+            && denot.owner.is(JavaDefined) && denot.owner.derivesFrom(defn.JavaRecordClass)
+            && denot.owner.unforcedDecls.lookupAll(denot.name).exists(c => c != denot.symbol && c.info.matches(denot.info))
+          )
+        )
 
       if isClashingSynthetic then
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
@@ -1227,13 +1239,21 @@ class Namer { typer: Typer =>
               case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
               case _ => 0
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
+              val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
               val ref = path.appliedToArgss(pathRefss).select(sym.asTerm)
-              ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
-                .etaExpandCFT(using ctx.withOwner(forwarder))
+              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+                .etaExpandCFT(using forwarderCtx)
+              if forwarder.isInlineMethod then
+                // Eagerly make the body inlineable. `registerInlineInfo` does this lazily
+                // but it does not get evaluated during typer as the forwarder we are creating
+                // is already typed.
+                val inlinableRhs = PrepareInlineable.makeInlineable(rhs)(using forwarderCtx)
+                PrepareInlineable.registerInlineInfo(forwarder, inlinableRhs)(using forwarderCtx)
+                inlinableRhs
+              else
+                rhs
             })
-            if forwarder.isInlineMethod then
-              PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
             buf += ddef.withSpan(span)
             if hasDefaults then
               foreachDefaultGetterOf(sym.asTerm,
@@ -1335,7 +1355,7 @@ class Namer { typer: Typer =>
        *
        *  The idea is that this simulates the hypothetical case where export forwarders
        *  are not generated and we treat an export instead more like an import where we
-       *  expand the use site reference. Test cases in {neg,pos}/i14699.scala.
+       *  expand the use site reference. Test cases in {neg,pos}/i14966.scala.
        *
        *  @pre Forwarders with the same name are consecutive in `forwarders`.
        */
@@ -1453,27 +1473,41 @@ class Namer { typer: Typer =>
        * only if parent type contains uninstantiated type parameters.
        */
       def parentType(parent: untpd.Tree)(using Context): Type =
-        if (parent.isType)
-          typedAheadType(parent, AnyTypeConstructorProto).tpe
-        else {
-          val (core, targs) = stripApply(parent) match {
+
+        def typedParentApplication(parent: untpd.Tree): Type =
+          val (core, targs) = stripApply(parent) match
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
-          }
-          core match {
+          core match
             case Select(New(tpt), nme.CONSTRUCTOR) =>
               val targs1 = targs map (typedAheadType(_))
               val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
               if (ptype.typeParams.isEmpty) ptype
-              else {
+              else
                 if (denot.is(ModuleClass) && denot.sourceModule.isOneOf(GivenOrImplicit))
                   missingType(denot.symbol, "parent ")(using creationContext)
                 fullyDefinedType(typedAheadExpr(parent).tpe, "class parent", parent.srcPos)
-              }
             case _ =>
               UnspecifiedErrorType.assertingErrorsReported
-          }
-        }
+
+        def typedParentType(tree: untpd.Tree): tpd.Tree =
+          val parentTpt = typer.typedType(parent, AnyTypeConstructorProto)
+          val ptpe = parentTpt.tpe
+          if ptpe.typeParams.nonEmpty
+              && ptpe.underlyingClassRef(refinementOK = false).exists
+          then
+            // Try to infer type parameters from a synthetic application.
+            // This might yield new info if implicit parameters are resolved.
+            // A test case is i16778.scala.
+            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Nil)
+            typedParentApplication(app)
+            app.getAttachment(TypedAhead).getOrElse(parentTpt)
+          else
+            parentTpt
+
+        if parent.isType then typedAhead(parent, typedParentType).tpe
+        else typedParentApplication(parent)
+      end parentType
 
       /** Check parent type tree `parent` for the following well-formedness conditions:
        *  (1) It must be a class type with a stable prefix (@see checkClassTypeWithStablePrefix)
@@ -1607,7 +1641,7 @@ class Namer { typer: Typer =>
       case Some(ttree) => ttree
       case none =>
         val ttree = typed(tree)
-        xtree.putAttachment(TypedAhead, ttree)
+        if !ttree.isEmpty then xtree.putAttachment(TypedAhead, ttree)
         ttree
     }
   }

@@ -1,5 +1,3 @@
-// scalajs: --skip --pending
-
 object Test {
 
   val f = (x1: Int,

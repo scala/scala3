@@ -176,7 +176,7 @@ extension (x: String)
 
 ## Syntax changes:
 
-```
+```ebnf
 TemplateStat      ::=  ...
                     |  Export
 TopStat           ::=  ...

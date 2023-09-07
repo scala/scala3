@@ -1297,7 +1297,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             .toList
 
           // `StringConcatFactory` only got added in JDK 9, so use `StringBuilder` for lower
-          if (classfileVersion < asm.Opcodes.V9) {
+          if (backendUtils.classfileVersion < asm.Opcodes.V9) {
 
             // Estimate capacity needed for the string builder
             val approxBuilderSize = concatArguments.view.map {

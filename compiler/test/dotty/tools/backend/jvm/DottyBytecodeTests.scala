@@ -1622,7 +1622,6 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
       val expected = List(
-        LineNumber(2, Label(0)),
         LineNumber(3, Label(0)),
         LineNumber(4, Label(5)), // case y =>
         LineNumber(5, Label(9)),
@@ -1664,7 +1663,6 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
       val expected = List(
-        LineNumber(2, Label(0)),
         LineNumber(3, Label(0)),
         LineNumber(4, Label(5)), // case a if a == 3 =>
         LineNumber(5, Label(15)),

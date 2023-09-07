@@ -19,6 +19,9 @@ i12299a.scala
 i13871.scala
 i15181.scala
 i15922.scala
+t5031_2.scala
+i16997.scala
+i7414.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
@@ -92,3 +95,6 @@ i4176-gadt.scala
 i13974a.scala
 
 java-inherited-type1
+
+# recursion limit exceeded
+i7445b.scala

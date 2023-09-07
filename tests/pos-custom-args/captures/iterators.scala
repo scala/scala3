@@ -1,19 +1,19 @@
 package cctest
 
 abstract class Iterator[T]:
-  thisIterator: {*} Iterator[T] =>
+  thisIterator: Iterator[T]^ =>
 
   def hasNext: Boolean
   def next: T
-  def map(f: {*} T => T): {f, this} Iterator[T] = new Iterator:
+  def map(f: T => T): Iterator[T]^{f, this} = new Iterator:
     def hasNext = thisIterator.hasNext
     def next = f(thisIterator.next)
 end Iterator
 
 class C
-type Cap = {*} C
+type Cap = C^
 
-def map[T, U](it: {*} Iterator[T], f: {*} T => U): {it, f} Iterator[U] = new Iterator:
+def map[T, U](it: Iterator[T]^, f: T^ => U): Iterator[U]^{it, f} = new Iterator:
   def hasNext = it.hasNext
   def next = f(it.next)
 

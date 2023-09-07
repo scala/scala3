@@ -1,39 +1,47 @@
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:33:2 -------------------------------------------------------
-33 |  later3() // error
-   |  ^^^^^^
-   |  box {*} () -> Unit cannot be box-converted to a type that can be selected or applied
-   |  since one of their capture sets contains the root capability `*`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:37:9 -------------------------------------------------------
-37 |  later4.x() // error
-   |  ^^^^^^^^
-   |  The expression's type box {*} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:6 -------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:31:6 -------------------------------------------------------
+31 |  var later3: () => Unit = () => ()  // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Mutable variable later3 cannot have type box () => Unit since
+   |  that type captures the root capability `cap`.
+   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:35:6 -------------------------------------------------------
+35 |  var later4: Cell[() => Unit] = Cell(() => ())  // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Mutable variable later4 cannot have type Test2.Cell[() => Unit] since
+   |  the part () => Unit of that type captures the root capability `cap`.
+   |  This restriction serves to prevent local capabilities from escaping the scope where they are defined.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |  Non-local value later cannot have an inferred type
-   |  {x$0} () -> Unit
-   |  with non-empty capture set {x$0}.
-   |  The type needs to be declared explicitly.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:29:9 -------------------------------------------------------
-29 |  later2.x()  // error
-   |  ^^^^^^^^
-   |  The expression's type box {x$0, *} () -> Unit is not allowed to capture the root capability `*`.
-   |  This usually means that a capability persists longer than its allowed lifetime.
+   |              ^^^^^^^^^^^^
+   |              Sealed type variable T cannot  be instantiated to box () => Unit since
+   |              that type captures the root capability `cap`.
+   |              This is often caused by a local capability in the body of method usingLogFile
+   |              leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:28:23 ------------------------------------------------------
+28 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
+   |                       ^^^^^^^^^^^^
+   |                       Sealed type variable T cannot  be instantiated to box Test2.Cell[() => Unit]^? since
+   |                       the part () => Unit of that type captures the root capability `cap`.
+   |                       This is often caused by a local capability in the body of method usingLogFile
+   |                       leaking as part of its result.
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:6 -------------------------------------------------------
 47 |  val later = usingLogFile { f => () => f.write(0) } // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |  Non-local value later cannot have an inferred type
-   |  {x$0} () -> Unit
-   |  with non-empty capture set {x$0}.
+   |  () => Unit
+   |  with non-empty capture set {x$0, cap}.
    |  The type needs to be declared explicitly.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:25 ------------------------------------------------------
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:16 ------------------------------------------------------
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |        The expression's type box {x$0, *} (x$0: Int) -> Unit is not allowed to capture the root capability `*`.
-   |        This usually means that a capability persists longer than its allowed lifetime.
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:25 ------------------------------------------------------
-71 |    val later = usingFile("logfile", usingLogger(_, l => () => l.log("test"))) // error
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                The expression's type box {x$0, *} () -> Unit is not allowed to capture the root capability `*`.
-   |                This usually means that a capability persists longer than its allowed lifetime.
+   |                ^^^^^^^^^
+   |                Sealed type variable T cannot  be instantiated to box (x$0: Int) => Unit since
+   |                that type captures the root capability `cap`.
+   |                This is often caused by a local capability in the body of method usingFile
+   |                leaking as part of its result.
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:71:16 ------------------------------------------------------
+71 |    val later = usingFile("logfile",            // error
+   |                ^^^^^^^^^
+   |                Sealed type variable T cannot  be instantiated to box () => Unit since
+   |                that type captures the root capability `cap`.
+   |                This is often caused by a local capability in the body of method usingFile
+   |                leaking as part of its result.

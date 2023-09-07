@@ -512,7 +512,7 @@ method please read more at [How to write a type class `derived` method using mac
 
 ## Syntax
 
-```
+```ebnf
 Template          ::=  InheritClauses [TemplateBody]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

@@ -1,3 +1,5 @@
-X1: (i: scala.Int) isImplicit=true, isGiven=false, isErased=false
-X2: (i: scala.Int) isImplicit=false, isGiven=true, isErased=false
-X3: (i: scala.Int) isImplicit=false, isGiven=false, isErased=true
+X1: (i: scala.Int) isImplicit=true, isGiven=false, erasedArgs=List(false)
+X2: (i: scala.Int) isImplicit=false, isGiven=true, erasedArgs=List(false)
+X3: (i: scala.Int) isImplicit=false, isGiven=false, erasedArgs=List(true)
+X4: (i: scala.Int, j: scala.Int) isImplicit=false, isGiven=false, erasedArgs=List(false, true)
+X5: (i: EC) isImplicit=false, isGiven=false, erasedArgs=List(true)

@@ -1,62 +1,62 @@
 class CC
-type Cap = {*} CC
+type Cap = CC^
 
 trait LazyList[+A]:
-  this: ({*} LazyList[A]) =>
+  this: LazyList[A]^ =>
 
   def isEmpty: Boolean
   def head: A
-  def tail: {this} LazyList[A]
+  def tail: LazyList[A]^{this}
 
 object LazyNil extends LazyList[Nothing]:
   def isEmpty: Boolean = true
   def head = ???
   def tail = ???
 
-extension [A](xs: {*} LazyList[A])
-  def map[B](f: A => B): {f} LazyList[B] =
+extension [A](xs: LazyList[A]^)
+  def map[B](f: A => B): LazyList[B]^{f} =
     final class Mapped extends LazyList[B]:  // error
-      this: ({xs, f} Mapped) =>
+      this: (Mapped^{xs, f}) =>
 
       def isEmpty = false
       def head: B = f(xs.head)
-      def tail: {this} LazyList[B] = xs.tail.map(f)
+      def tail: LazyList[B]^{this} = xs.tail.map(f)
     new Mapped
 
-  def map2[B](f: A => B): {xs} LazyList[B] =
+  def map2[B](f: A => B): LazyList[B]^{xs} =
     final class Mapped extends LazyList[B]:  // error
-      this: ({xs, f} Mapped) =>
+      this: Mapped^{xs, f} =>
 
       def isEmpty = false
       def head: B = f(xs.head)
-      def tail: {this} LazyList[B] = xs.tail.map(f)
+      def tail: LazyList[B]^{this} = xs.tail.map(f)
     new Mapped
 
-  def map3[B](f: A => B): {xs} LazyList[B] =
+  def map3[B](f: A => B): LazyList[B]^{xs} =
     final class Mapped extends LazyList[B]:
-      this: ({xs} Mapped) =>
+      this: Mapped^{xs} =>
 
       def isEmpty = false
       def head: B = f(xs.head)  // error
-      def tail: {this} LazyList[B] = xs.tail.map(f) // error
+      def tail: LazyList[B]^{this}= xs.tail.map(f) // error
     new Mapped
 
-  def map4[B](f: A => B): {xs} LazyList[B] =
+  def map4[B](f: A => B): LazyList[B]^{xs} =
     final class Mapped extends LazyList[B]:  // error
-      this: ({xs, f} Mapped) =>
+      this: (Mapped^{xs, f}) =>
 
       def isEmpty = false
       def head: B = f(xs.head)
-      def tail: {xs, f} LazyList[B] = xs.tail.map(f)
+      def tail: LazyList[B]^{xs, f} = xs.tail.map(f)
     new Mapped
 
   def map5[B](f: A => B): LazyList[B] =
     class Mapped extends LazyList[B]:
-      this: ({xs, f} Mapped) =>
+      this: (Mapped^{xs, f}) =>
 
       def isEmpty = false
       def head: B = f(xs.head)
-      def tail: {this} LazyList[B] = xs.tail.map(f)
+      def tail: LazyList[B]^{this} = xs.tail.map(f)
     class Mapped2 extends Mapped:  // error
       this: Mapped =>
     new Mapped2

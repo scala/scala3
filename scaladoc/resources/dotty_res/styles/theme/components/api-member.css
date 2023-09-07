@@ -42,6 +42,10 @@
   margin-block-end: 0;
 }
 
+.documentableElement .doc img {
+  max-width: 100%;
+}
+
 .documentableElement .annotations {
   display: none;
 }

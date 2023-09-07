@@ -18,7 +18,7 @@ class InitializedAccessString {
 
   @Setup
   def prepare: Unit = {
-    holder = new LazyStringHolder 
+    holder = new LazyStringHolder
     holder.value
   }
 

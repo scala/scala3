@@ -13,9 +13,9 @@ jobs:
       options: --cpu-shares 4096
 
     env:
-      SDKMAN_KEY: ${{ secrets.SDKMAN_KEY }} 
+      SDKMAN_KEY: ${{ secrets.SDKMAN_KEY }}
       SDKMAN_TOKEN: ${{ secrets.SDKMAN_TOKEN }}
-      
+
     steps:
       - name: Reset existing repo
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true

@@ -1,0 +1,45 @@
+-- [E172] Type Error: tests/neg/i16453.scala:21:19 ---------------------------------------------------------------------
+21 |  summon[List[Int]] // error
+   |                   ^
+   |                 No given instance of type List[Int] was found for parameter x of method summon in object Predef
+-- [E172] Type Error: tests/neg/i16453.scala:23:21 ---------------------------------------------------------------------
+23 |  summon[Option[Int]] // error
+   |                     ^
+   |No given instance of type Option[Int] was found for parameter x of method summon in object Predef
+   |
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
+   |The following implicits in scope can be implicitly converted to Option[Int]:
+   |- final lazy given val baz3: Char
+   |- final lazy given val bar3: Int
+-- [E172] Type Error: tests/neg/i16453.scala:24:26 ---------------------------------------------------------------------
+24 |  implicitly[Option[Char]] // error
+   |                          ^
+   |No given instance of type Option[Char] was found for parameter e of method implicitly in object Predef
+   |
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
+   |The following implicits in scope can be implicitly converted to Option[Char]:
+   |- final lazy given val baz3: Char
+-- [E172] Type Error: tests/neg/i16453.scala:25:20 ---------------------------------------------------------------------
+25 |  implicitly[String] // error
+   |                    ^
+   |No given instance of type String was found for parameter e of method implicitly in object Predef
+   |
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
+   |The following implicits in scope can be implicitly converted to String:
+   |- final lazy given val baz3: Char
+-- [E172] Type Error: tests/neg/i16453.scala:35:16 ---------------------------------------------------------------------
+35 |  summon[String] // error
+   |                ^
+   |No given instance of type String was found for parameter x of method summon in object Predef
+   |
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
+   |The following implicits in scope can be implicitly converted to String:
+   |- implicit val baz2: Char
+-- [E172] Type Error: tests/neg/i16453.scala:36:25 ---------------------------------------------------------------------
+36 |  implicitly[Option[Int]] // error
+   |                         ^
+   |No given instance of type Option[Int] was found for parameter e of method implicitly in object Predef
+   |
+   |Note: implicit conversions are not automatically applied to arguments of using clauses. You will have to pass the argument explicitly.
+   |The following implicits in scope can be implicitly converted to Option[Int]:
+   |- implicit val bar2: Int

@@ -1,21 +1,21 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:4:2 ------------------------------------------
 4 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    {x} () -> ? C
+  |  Found:    () ->{x} C^?
   |  Required: () -> C
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:7:2 ------------------------------------------
 7 |  () => if x == null then y else y  // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  Found:    {x} () -> ? C
+  |  Found:    () ->{x} C^?
   |  Required: Matchable
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
 14 |  def f(y: Int) = if x == null then y else y  // error
    |  ^
-   |  Found:    {x} Int -> Int
+   |  Found:    Int ->{x} Int
    |  Required: Matchable
 15 |  f
    |
@@ -23,7 +23,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:21:2 -----------------------------------------
 21 |  class F(y: Int) extends A:   // error
    |  ^
-   |  Found:    {x} A
+   |  Found:    A^{x}
    |  Required: A
 22 |    def m() = if x == null then y else y
 23 |  F(22)
@@ -32,7 +32,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:26:2 -----------------------------------------
 26 |  new A: // error
    |  ^
-   |  Found:    {x} A
+   |  Found:    A^{x}
    |  Required: A
 27 |    def m() = if x == null then y else y
    |
@@ -40,14 +40,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:32:24 ----------------------------------------
 32 |  val z2 = h[() -> Cap](() => x) // error
    |                        ^^^^^^^
-   |                        Found:    {x} () -> Cap
-   |                        Required: () -> box {*} C
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:33:5 -----------------------------------------
-33 |    (() => C())  // error
-   |     ^^^^^^^^^
-   |     Found:    ? () -> Cap
-   |     Required: () -> box {*} C
+   |                        Found:    () ->{x} box C^
+   |                        Required: () -> box C^
    |
    | longer explanation available when compiling with `-explain`

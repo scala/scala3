@@ -18,7 +18,7 @@ trait TypeAssigner {
   import TypeAssigner.*
 
   /** The qualifying class of a this or super with prefix `qual` (which might be empty).
-   *  @param packageOk   The qualifier may refer to a package.
+   *  @param packageOK   The qualifier may refer to a package.
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(using Context): Symbol = {
     def qualifies(sym: Symbol) =
@@ -77,21 +77,25 @@ trait TypeAssigner {
    *  (2) in Java compilation units, `Object` is replaced by `defn.FromJavaObjectType`
    */
   def accessibleType(tpe: Type, superAccess: Boolean)(using Context): Type =
-    tpe match
+    if ctx.isJava && tpe.isAnyRef then
+      defn.FromJavaObjectType
+    else tpe match
       case tpe: NamedType =>
-        val pre = tpe.prefix
-        val name = tpe.name
-        def postProcess(d: Denotation) =
-          if ctx.isJava && tpe.isAnyRef then defn.FromJavaObjectType
-          else TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
-        val d = tpe.denot.accessibleFrom(pre, superAccess)
-        if d.exists then postProcess(d)
+        val tpe1 = TypeOps.makePackageObjPrefixExplicit(tpe)
+        if tpe1 ne tpe then
+          accessibleType(tpe1, superAccess)
         else
-          // it could be that we found an inaccessible private member, but there is
-          // an inherited non-private member with the same name and signature.
-          val d2 = pre.nonPrivateMember(name).accessibleFrom(pre, superAccess)
-          if reallyExists(d2) then postProcess(d2)
-          else NoType
+          val pre = tpe.prefix
+          val name = tpe.name
+          val d = tpe.denot.accessibleFrom(pre, superAccess)
+          if d eq tpe.denot then tpe
+          else if d.exists then tpe.withDenot(d)
+          else
+            // it could be that we found an inaccessible private member, but there is
+            // an inherited non-private member with the same name and signature.
+            val d2 = pre.nonPrivateMember(name).accessibleFrom(pre, superAccess)
+            if reallyExists(d2) then tpe.withDenot(d2)
+            else NoType
       case tpe => tpe
 
   /** Try to make `tpe` accessible, emit error if not possible */

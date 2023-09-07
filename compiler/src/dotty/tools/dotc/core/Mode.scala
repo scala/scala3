@@ -141,4 +141,7 @@ object Mode {
    *  Type `Null` becomes a subtype of non-primitive value types in TypeComparer.
    */
   val RelaxedOverriding: Mode = newMode(30, "RelaxedOverriding")
+
+  /** We are checking the original call of an Inlined node */
+  val InlinedCall: Mode = newMode(31, "InlinedCall")
 }

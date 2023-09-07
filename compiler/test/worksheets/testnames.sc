@@ -2,7 +2,7 @@ package dotty.tools.dotc.core
 
 object testnames {
   println("Welcome to the Scala worksheet")       //> Welcome to the Scala worksheet
-  
+
   import Names._
   val n = termName("hello")                       //> n  : dotty.tools.dotc.core.Names.TermName = hello
   val tn = n.toTypeName                           //> tn  : dotty.tools.dotc.core.Names.TypeName = hello
@@ -10,7 +10,7 @@ object testnames {
   assert(tn.toTermName eq n)
   assert(tn.toLocalName eq ln)
   assert(n.toLocalName eq ln)
-  
+
   n == tn                                         //> res0: Boolean = false
   n == ln                                         //> res1: Boolean = false
   n eq tn                                         //> res2: Boolean = false
@@ -19,7 +19,7 @@ object testnames {
   val foo = encodedTermName("++")                 //> foo  : dotty.tools.dotc.core.Names.TermName = $plus$plus
   foo.hashCode                                    //> res5: Int = 5
   foo.toTypeName.hashCode                         //> res6: Int = -5
-  
+
   val nfoo = n ++ foo                             //> nfoo  : dotty.tools.dotc.core.testnames.n.ThisName = hello$plus$plus
   nfoo contains '$'                               //> res7: Boolean = true
   nfoo.replace('$', '.')                          //> res8: dotty.tools.dotc.core.testnames.nfoo.ThisName = hello.plus.plus
@@ -36,7 +36,7 @@ object testnames {
   termName("abc")                                 //> res18: dotty.tools.dotc.core.Names.TermName = abc
   nfoo.filter(_ >= 'l')                           //> res19: dotty.tools.dotc.core.Names.Name = lloplusplus
   nfoo map (_.toUpper)                            //> res20: dotty.tools.dotc.core.Names.Name = HELLO$PLUS$PLUS
-  
+
   import Decorators._
 
   val local = "local".toTermName.toLocalName      //> local  : dotty.tools.dotc.core.Names.LocalName = local

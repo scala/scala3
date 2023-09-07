@@ -1,0 +1,18 @@
+-- Error: tests/neg/outdent-dot.scala:6:5 ------------------------------------------------------------------------------
+6 |     .toString  // error
+  |     ^
+  |     The start of this line does not match any of the previous indentation widths.
+  |     Indentation width of current line : 5 spaces
+  |     This falls between previous widths: 2 spaces and 6 spaces
+-- Error: tests/neg/outdent-dot.scala:11:3 -----------------------------------------------------------------------------
+11 |   .filter: x =>  // error
+   |   ^
+   |   The start of this line does not match any of the previous indentation widths.
+   |   Indentation width of current line : 3 spaces
+   |   This falls between previous widths: 2 spaces and 6 spaces
+-- Error: tests/neg/outdent-dot.scala:13:4 -----------------------------------------------------------------------------
+13 |    println("foo")  // error
+   |    ^
+   |    The start of this line does not match any of the previous indentation widths.
+   |    Indentation width of current line : 4 spaces
+   |    This falls between previous widths: 2 spaces and 6 spaces

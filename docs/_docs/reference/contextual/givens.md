@@ -10,7 +10,7 @@ that serve for synthesizing arguments to [context parameters](./using-clauses.md
 ```scala
 trait Ord[T]:
   def compare(x: T, y: T): Int
-  extension (x: T) 
+  extension (x: T)
     def < (y: T) = compare(x, y) < 0
     def > (y: T) = compare(x, y) > 0
 
@@ -174,7 +174,7 @@ is created for each reference.
 
 Here is the syntax for given instances:
 
-```
+```ebnf
 TmplDef             ::=  ...
                      |   ‘given’ GivenDef
 GivenDef            ::=  [GivenSig] StructuralInstance

@@ -1,7 +1,7 @@
 -- Error: tests/init/neg/unsound3.scala:10:38 --------------------------------------------------------------------------
 10 |        if (x < 12) then foo().getC().b else newB // error
    |                         ^^^^^^^^^^^^^^
-   |                         Access field value b on a cold object. Calling trace:
+   |                         Access field value b on an uninitialized (Cold) object. Calling trace:
    |                         -> class C {	[ unsound3.scala:5 ]
    |                            ^
    |                         -> val b = foo()	[ unsound3.scala:12 ]

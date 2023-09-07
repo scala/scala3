@@ -13,7 +13,6 @@ import dotty.tools.dotc.reporting.{ Diagnostic, StoreReporter }
 import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
-import com.vladsch.flexmark.util.options.MutableDataSet
 import scala.jdk.CollectionConverters._
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock

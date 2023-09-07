@@ -63,6 +63,14 @@
   align-items: center;
 }
 
+.logo-container .project-logo {
+  max-width: 40px;
+}
+
+.logo-container .project-logo img {
+  max-width: 100%;
+}
+
 #mobile-menu-toggle {
   display: none;
 }
@@ -72,7 +80,7 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  width: calc(9 * var(--base-spacing));
+  width: auto;
 }
 
 .single {
@@ -89,6 +97,7 @@
   #mobile-menu-toggle {
     margin-left: calc(3 * var(--base-spacing));
     display: block;
+    padding: 16px;
   }
 
   .header-container-right .text-button {
@@ -101,6 +110,10 @@
 
   #search-toggle {
     display: none;
+  }
+
+  .projectVersion{
+    max-width: calc(12 * var(--base-spacing));
   }
 }
 

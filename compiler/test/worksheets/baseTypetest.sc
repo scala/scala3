@@ -22,5 +22,5 @@ object baseTypetest extends DottyTest {
   defn.StringClass isSubClass defn.NullClass      //> res4: Boolean = false
   defn.StringClass.typeRef.baseType(defn.NullClass)
                                                   //> res5: dotty.tools.dotc.core.Types.Type = NoType
-                                                  
+
 }

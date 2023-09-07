@@ -166,14 +166,18 @@ object Inferencing {
 
     private var toMaximize: List[TypeVar] = Nil
 
-    def apply(x: Boolean, tp: Type): Boolean =
-      try tp.dealias match
+    def apply(x: Boolean, tp: Type): Boolean = trace(i"isFullyDefined($tp, $force)", typr) {
+      try {
+      val tpd = tp.dealias
+      if tpd ne tp then apply(x, tpd)
+      else tp match
         case _: WildcardType | _: ProtoType =>
           false
         case tvar: TypeVar if !tvar.isInstantiated =>
           force.appliesTo(tvar)
           && ctx.typerState.constraint.contains(tvar)
           && {
+            var fail = false
             val direction = instDirection(tvar.origin)
             if minimizeSelected then
               if direction <= 0 && tvar.hasLowerBound then
@@ -183,20 +187,23 @@ object Inferencing {
               // else hold off instantiating unbounded unconstrained variable
             else if direction != 0 then
               instantiate(tvar, fromBelow = direction < 0)
-            else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
+            else if variance >= 0 && tvar.hasLowerBound then
+              instantiate(tvar, fromBelow = true)
+            else if (variance > 0 || variance == 0 && !tvar.hasUpperBound)
+                && force.ifBottom == IfBottom.ok
+            then // if variance == 0, prefer upper bound if one is given
               instantiate(tvar, fromBelow = true)
             else if variance >= 0 && force.ifBottom == IfBottom.fail then
-              return false
+              fail = true
             else
               toMaximize = tvar :: toMaximize
-            foldOver(x, tvar)
+            !fail && foldOver(x, tvar)
           }
-        case tp =>
-          reporting.trace(s"IFT $tp") {
-            foldOver(x, tp)
-          }
+        case tp => foldOver(x, tp)
+      }
       catch case ex: Throwable =>
         handleRecursive("check fully defined", tp.show, ex)
+    }
 
     def process(tp: Type): Boolean =
       // Maximize type vars in the order they were visited before */
@@ -307,16 +314,17 @@ object Inferencing {
   }
 
   /** If `tree` has a type lambda type, infer its type parameters by comparing with expected type `pt` */
-  def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match {
+  def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
       var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
       tree1.tpe <:< pt
-      fullyDefinedType(tree1.tpe, "template parent", tree.srcPos)
-      tree1
+      if isFullyDefined(tree1.tpe, force = ForceDegree.failBottom) then
+        tree1
+      else
+        EmptyTree
     case _ =>
       tree
-  }
 
   def isSkolemFree(tp: Type)(using Context): Boolean =
     !tp.existsPart(_.isInstanceOf[SkolemType])
@@ -542,6 +550,10 @@ object Inferencing {
     case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
     case _ => tp
   }
+
+  def hasCaptureConversionArg(tp: Type)(using Context): Boolean = tp match
+    case tp: AppliedType => tp.args.exists(_.typeSymbol == defn.TypeBox_CAP)
+    case _ => false
 }
 
 trait Inferencing { this: Typer =>
@@ -763,13 +775,14 @@ trait Inferencing { this: Typer =>
   end constrainIfDependentParamRef
 }
 
-/** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
+/** An enumeration controlling the degree of forcing in "is-fully-defined" checks. */
 @sharable object ForceDegree {
-  class Value(val appliesTo: TypeVar => Boolean, val ifBottom: IfBottom)
-  val none: Value = new Value(_ => false, IfBottom.ok)
-  val all: Value = new Value(_ => true, IfBottom.ok)
-  val failBottom: Value = new Value(_ => true, IfBottom.fail)
-  val flipBottom: Value = new Value(_ => true, IfBottom.flip)
+  class Value(val appliesTo: TypeVar => Boolean, val ifBottom: IfBottom):
+    override def toString = s"ForceDegree.Value(.., $ifBottom)"
+  val none: Value       = new Value(_ => false, IfBottom.ok)  { override def toString = "ForceDegree.none" }
+  val all: Value        = new Value(_ => true, IfBottom.ok)   { override def toString = "ForceDegree.all" }
+  val failBottom: Value = new Value(_ => true, IfBottom.fail) { override def toString = "ForceDegree.failBottom" }
+  val flipBottom: Value = new Value(_ => true, IfBottom.flip) { override def toString = "ForceDegree.flipBottom" }
 }
 
 enum IfBottom:

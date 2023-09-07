@@ -80,9 +80,9 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.2.2"
+  val referenceVersion = "3.3.0"
 
-  val baseVersion = "3.3.0"
+  val baseVersion = "3.3.1"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
@@ -98,7 +98,7 @@ object Build {
    *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
    *  3.0.x release.
    */
-  val previousDottyVersion = "3.2.2"
+  val previousDottyVersion = "3.3.0"
 
   object CompatMode {
     final val BinaryCompatible = 0
@@ -360,6 +360,7 @@ object Build {
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
+    // To enable support of scaladoc and language-server projects you need to change this to true and use sbt as your build server
     bspEnabled := false,
     (Compile / unmanagedSourceDirectories) += baseDirectory.value / "src-bootstrapped",
 
@@ -546,7 +547,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.4.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
@@ -925,7 +926,6 @@ object Build {
   lazy val `stdlib-bootstrapped` = project.in(file("stdlib-bootstrapped")).
     withCommonSettings(Bootstrapped).
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    dependsOn(`scala3-tasty-inspector` % "test->test").
     settings(commonBootstrappedSettings).
     settings(
       moduleName := "scala-library",
@@ -1130,6 +1130,7 @@ object Build {
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
+      bspEnabled := false,
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
 
       // Required to run Scala.js tests.
@@ -1215,6 +1216,18 @@ object Build {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
         val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
         org.scalajs.jsenv.Input.Script(f) +: (Test / jsEnvInput).value
+      },
+
+      Test / unmanagedSourceDirectories ++= {
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (Test / fastLinkJS / scalaJSLinkerConfig).value
+          case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
+        }
+
+        if (linkerConfig.moduleKind != ModuleKind.NoModule && !linkerConfig.closureCompiler)
+          Seq(baseDirectory.value / "test-require-multi-modules")
+        else
+          Nil
       },
 
       (Compile / managedSources) ++= {
@@ -1935,7 +1948,7 @@ object ScaladocConfigs {
   }
 
   lazy val DefaultGenerationConfig = Def.task {
-    def distLocation = (dist / pack).value
+    def distLocation = (dist / Compile / pack).value
     DefaultGenerationSettings.value
   }
 

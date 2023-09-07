@@ -6,18 +6,18 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.transform.TreeMapWithStages._
+import dotty.tools.dotc.staging.StagingLevel.*
+import dotty.tools.dotc.staging.CrossStageSafety
+import dotty.tools.dotc.staging.HealType
 
-
-
-/** Checks that the Phase Consistency Principle (PCP) holds and heals types.
+/** Checks that staging level consistency holds and heals types used in higher levels.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into `${ implicitly[Type[T]] }`.
+ *  See `CrossStageSafety`
  */
 class Staging extends MacroTransform {
   import tpd._
@@ -31,27 +31,38 @@ class Staging extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    if (ctx.phase <= splicingPhase) {
-      // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
+    if (ctx.phase <= stagingPhase) {
+      // Recheck that staging level consistency holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
-          val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
-              def symStr =
-                if (sym.is(ModuleClass)) sym.sourceModule.show
-                else i"${sym.name}.this"
-              val errMsg = s"\nin ${ctx.owner.fullName}"
-              assert(
-                ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
-                (sym.isType && levelOf(sym) > 0),
-                em"""access to $symStr from wrong staging level:
-                    | - the definition is at level ${levelOf(sym)},
-                    | - but the access is at level $level.$errMsg""")
+          val checker = new CrossStageSafety {
+            override protected def healType(pos: SrcPos)(tpe: Type)(using Context) = new HealType(pos) {
+              override protected def tryHeal(tp: TypeRef): TypeRef = {
+                val sym = tp.symbol
+                def symStr =
+                  if (sym.is(ModuleClass)) sym.sourceModule.show
+                  else i"${sym.name}.this"
+                val errMsg = s"\nin ${ctx.owner.fullName}"
+                assert(
+                  ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
+                  (sym.isType && levelOf(sym) > 0),
+                  em"""access to $symStr from wrong staging level:
+                      | - the definition is at level ${levelOf(sym)},
+                      | - but the access is at level $level.$errMsg""")
 
-              tp
-            }
+                tp
+              }
+            }.apply(tpe)
           }
           checker.transform(tree)
+        case _ =>
+      }
+    }
+    if !Inlines.inInlineMethod then
+      tree match {
+        case tree: RefTree =>
+          assert(level != 0 || tree.symbol != defn.QuotedTypeModule_of,
+            "scala.quoted.Type.of at level 0 should have been replaced with Quote AST in staging phase")
         case _ =>
       }
 
@@ -63,14 +74,14 @@ class Staging extends MacroTransform {
         case _ =>
           // OK
       }
-    }
+  end checkPostCondition
 
   override def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
+    if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      new PCPCheckAndHeal(ctx).transform(tree)
+      (new CrossStageSafety).transform(tree)
   }
 }
 

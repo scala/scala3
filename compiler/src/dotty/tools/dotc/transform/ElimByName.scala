@@ -15,6 +15,7 @@ import MegaPhase.*
 import Decorators.*
 import typer.RefChecks
 import reporting.trace
+import dotty.tools.dotc.core.Names.Name
 
 /** This phase implements the following transformations:
  *
@@ -79,11 +80,14 @@ class ElimByName extends MiniPhase, InfoTransformer:
     case ExprType(rt) if exprBecomesFunction(sym) =>
       defn.ByNameFunction(rt)
     case tp: MethodType =>
-      def exprToFun(tp: Type) = tp match
-        case ExprType(rt) => defn.ByNameFunction(rt)
+      def exprToFun(tp: Type, name: Name) = tp match
+        case ExprType(rt) =>
+          if rt.hasAnnotation(defn.ErasedParamAnnot) then
+            report.error(em"By-name parameter cannot be erased: $name", sym.srcPos)
+          defn.ByNameFunction(rt)
         case tp => tp
       tp.derivedLambdaType(
-        paramInfos = tp.paramInfos.mapConserve(exprToFun),
+        paramInfos = tp.paramInfos.zipWithConserve(tp.paramNames)(exprToFun),
         resType = transformInfo(tp.resType, sym))
     case tp: PolyType =>
       tp.derivedLambdaType(resType = transformInfo(tp.resType, sym))

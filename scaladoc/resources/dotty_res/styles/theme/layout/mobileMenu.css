@@ -154,6 +154,8 @@
 
 #mobile-menu-close {
   margin-left: auto;
+  width: 48px;
+  height: 48px;
 }
 
 #mobile-menu-close:disabled {

@@ -20,6 +20,8 @@ import ast.{tpd, untpd}
 import util.Chars._
 import collection.mutable
 import ProtoTypes._
+import staging.StagingLevel
+import inlines.Inlines.inInlineMethod
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -141,7 +143,7 @@ class TreeChecker extends Phase with SymTransformer {
       override def apply(parent: Tree, tree: Tree)(using Context): Tree = {
         tree match {
           case tree: New if !parent.isInstanceOf[tpd.Select] =>
-            assert(assertion = false, i"`New` node must be wrapped in a `Select`:\n  parent = ${parent.show}\n  child = ${tree.show}")
+            assert(assertion = false, i"`New` node must be wrapped in a `Select` of the constructor:\n  parent = ${parent.show}\n  child = ${tree.show}")
           case _: Annotated =>
             // Don't check inside annotations, since they're allowed to contain
             // somewhat invalid trees.
@@ -445,10 +447,12 @@ object TreeChecker {
 
       // Polymorphic apply methods stay structural until Erasure
       val isPolyFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
+      // Erased functions stay structural until Erasure
+      val isErasedFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.ErasedFunctionClass)
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)
       val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
-      if !(tree.isType || isPolyFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
+      if !(tree.isType || isPolyFunctionApply || isErasedFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
         val denot = tree.denot
         assert(denot.exists, i"Selection $tree with type $tpe does not have a denotation")
         assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol, qualifier type = ${tree.qualifier.typeOpt}")
@@ -511,7 +515,7 @@ object TreeChecker {
             val inliningPhase = ctx.base.inliningPhase
             inliningPhase.exists && ctx.phase.id > inliningPhase.id
           if isAfterInlining then
-            // The staging phase destroys in PCPCheckAndHeal the property that
+            // The staging phase destroys in CrossStageSafety the property that
             // tree.expr.tpe <:< pt1. A test case where this arises is run-macros/enum-nat-macro.
             // We should follow up why this happens. If the problem is fixed, we can
             // drop the isAfterInlining special case. To reproduce the problem, just
@@ -531,11 +535,16 @@ object TreeChecker {
         i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
     }
 
+    override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
+      assert(sym.info.isInstanceOf[ClassInfo | TypeBounds], i"wrong type, expect a template or type bounds for ${sym.fullName}, but found: ${sym.info}")
+      super.typedTypeDef(tdef, sym)
+    }
+
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
       val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
-      assert(constr.symbol.owner == cls)
+      assert(constr.symbol.owner == cls, i"constr ${constr.symbol} in $cdef has wrong owner; should be $cls but is ${constr.symbol.owner}")
       assert(cls.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${cls.primaryConstructor}, in tree = ${constr.symbol}")
       checkOwner(impl)
       checkOwner(impl.constr)
@@ -650,12 +659,48 @@ object TreeChecker {
       else
         super.typedPackageDef(tree)
 
+    override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
+      if ctx.phase <= stagingPhase.prev then
+        assert(tree.tags.isEmpty, i"unexpected tags in Quote before staging phase: ${tree.tags}")
+      else
+        assert(!tree.body.isInstanceOf[untpd.Splice] || inInlineMethod, i"missed quote cancellation in $tree")
+        assert(!tree.body.isInstanceOf[untpd.Hole] || inInlineMethod, i"missed quote cancellation in $tree")
+        if StagingLevel.level != 0 then
+          assert(tree.tags.isEmpty, i"unexpected tags in Quote at staging level ${StagingLevel.level}: ${tree.tags}")
+
+      for tag <- tree.tags do
+        assert(tag.isInstanceOf[RefTree], i"expected RefTree in Quote but was: $tag")
+
+      val tree1 = super.typedQuote(tree, pt)
+      for tag <- tree.tags do
+        assert(tag.typeOpt.derivesFrom(defn.QuotedTypeClass), i"expected Quote tag to be of type `Type` but was: ${tag.tpe}")
+
+      tree1 match
+        case Quote(body, targ :: Nil) if body.isType =>
+          assert(!(body.tpe =:= targ.tpe.select(tpnme.Underlying)), i"missed quote cancellation in $tree1")
+        case _ =>
+
+      tree1
+
+    override def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree =
+      if stagingPhase <= ctx.phase then
+        assert(!tree.expr.isInstanceOf[untpd.Quote] || inInlineMethod, i"missed quote cancellation in $tree")
+      super.typedSplice(tree, pt)
+
     override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree = {
-      val tree1 @ Hole(isTermHole, _, args, content, tpt) = super.typedHole(tree, pt): @unchecked
+      val tree1 @ Hole(isTerm, idx, args, content) = super.typedHole(tree, pt): @unchecked
+
+      assert(idx >= 0, i"hole should not have negative index: $tree")
+      assert(isTerm || tree.args.isEmpty, i"type hole should not have arguments: $tree")
+
+      // Check that we only add the captured type `T` instead of a more complex type like `List[T]`.
+      // If we have `F[T]` with captured `F` and `T`, we should list `F` and `T` separately in the args.
+      for arg <- args do
+        assert(arg.isTerm || arg.tpe.isInstanceOf[TypeRef], "Expected TypeRef in Hole type args but got: " + arg.tpe)
 
       // Check result type of the hole
-      if isTermHole then assert(tpt.typeOpt <:< pt)
-      else assert(tpt.typeOpt =:= pt)
+      if isTerm then assert(tree1.typeOpt <:< pt)
+      else assert(tree1.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
       val argQuotedTypes = args.map { arg =>
@@ -667,16 +712,16 @@ object TreeChecker {
               defn.AnyType
             case tpe => tpe
           defn.QuotedExprClass.typeRef.appliedTo(tpe)
-        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt.widenTermRefExpr)
       }
       val expectedResultType =
-        if isTermHole then defn.QuotedExprClass.typeRef.appliedTo(tpt.typeOpt)
-        else defn.QuotedTypeClass.typeRef.appliedTo(tpt.typeOpt)
+        if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
+        else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
         defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionOf(argQuotedTypes, contextualResult)
-      assert(content.typeOpt =:= expectedContentType)
+      assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
 
       tree1
     }
@@ -729,6 +774,11 @@ object TreeChecker {
       try treeChecker.typed(expansion)(using checkingCtx)
       catch
         case err: java.lang.AssertionError =>
+          val stack =
+            if !ctx.settings.Ydebug.value then "\nstacktrace available when compiling with `-Ydebug`"
+            else if err.getStackTrace == null then "  no stacktrace"
+            else err.getStackTrace.nn.mkString("  ", "  \n", "")
+
           report.error(
             s"""Malformed tree was found while expanding macro with -Xcheck-macros.
                |The tree does not conform to the compiler's tree invariants.
@@ -741,7 +791,7 @@ object TreeChecker {
                |
                |Error:
                |${err.getMessage}
-               |
+               |$stack
                |""",
             original
           )

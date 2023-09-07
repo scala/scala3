@@ -15,7 +15,7 @@ import dotty.tools.dotc.transform.TreeMapWithStages._
 
 
 
-/** Checks that the Phase Consistency Principle (PCP) holds and heals types.
+/** Checks that staging level consistency holds and heals staged types.
  *
  *  Type healing consists in transforming a phase inconsistent type `T` into `${ implicitly[Type[T]] }`.
  */
@@ -32,12 +32,12 @@ class Staging extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     if (ctx.phase <= splicingPhase) {
-      // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
+      // Recheck that staging levels hold but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val stagingCtx = freshStagingContext
-          val checker = new PCPCheckAndHeal(stagingCtx) {
-            // !cc! type error is checker is defined as val checker = new PCPCheckAndHeal { ... }
+          val checker = new CrossStageSafety(stagingCtx) {
+            // !cc! type error is checker is defined as val checker = new CrossStageSafety { ... }
             override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
@@ -72,7 +72,7 @@ class Staging extends MacroTransform {
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      new PCPCheckAndHeal(ctx.detach).transform(tree)
+      new CrossStageSafety(ctx.detach).transform(tree)
   }
 }
 

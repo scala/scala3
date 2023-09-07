@@ -46,7 +46,7 @@ are offered under settings `-source 3.1-migration -rewrite`.
 
 ## Syntax
 
-```
+```ebnf
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::= SimpleRef {‘.’ id} ‘.’ ImportSpec
                     | SimpleRef `as` id

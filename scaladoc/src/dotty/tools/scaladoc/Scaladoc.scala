@@ -1,20 +1,15 @@
 package dotty.tools.scaladoc
 
-import java.util.ServiceLoader
 import java.io.File
 import java.io.FileWriter
-import java.util.jar._
-import scala.jdk.CollectionConverters._
-import collection.immutable.ArraySeq
+import java.nio.file.Paths
 
-import java.nio.file.{ Files, Paths }
+import collection.immutable.ArraySeq
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
-
-import dotty.tools.scaladoc.Inkuire
 import dotty.tools.scaladoc.Inkuire._
 
 object Scaladoc:

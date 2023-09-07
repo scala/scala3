@@ -1,0 +1,18 @@
+-- [E042] Type Error: tests/neg-custom-args/explain/i16601a.scala:1:27 -------------------------------------------------
+1 |@main def Test: Unit = new concurrent.ExecutionContext  // error
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                           ExecutionContext is a trait; it cannot be instantiated
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Abstract classes and traits need to be extended by a concrete class or object
+  | to make their functionality accessible.
+  |
+  | You may want to create an anonymous class extending ExecutionContext with
+  |   class ExecutionContext { }
+  |
+  | or add a companion object with
+  |   object ExecutionContext extends ExecutionContext
+  |
+  | You need to implement any abstract members in both cases.
+   ---------------------------------------------------------------------------------------------------------------------

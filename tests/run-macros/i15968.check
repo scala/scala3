@@ -1,0 +1,5 @@
+{
+  type Z = java.lang.String
+  "foo".toString()
+}
+"foo".toString()

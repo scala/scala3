@@ -255,10 +255,13 @@ object SymDenotations {
     def annotationsCarrying(meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): List[Annotation] =
       annotations.filterConserve(_.hasOneOfMetaAnnotation(meta, orNoneOf = orNoneOf))
 
-    def copyAndKeepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Unit =
-      if annotations.nonEmpty then
+    def keepAnnotationsCarrying(phase: DenotTransformer, meta: Set[Symbol], orNoneOf: Set[Symbol] = Set.empty)(using Context): Unit =
+      updateAnnotationsAfter(phase, annotationsCarrying(meta, orNoneOf = orNoneOf))
+
+    def updateAnnotationsAfter(phase: DenotTransformer, annots: List[Annotation])(using Context): Unit =
+      if annots ne annotations then
         val cpy = copySymDenotation()
-        cpy.annotations = annotationsCarrying(meta, orNoneOf = orNoneOf)
+        cpy.annotations = annots
         cpy.installAfter(phase)
 
     /** Optionally, the annotation matching the given class symbol */
@@ -296,7 +299,7 @@ object SymDenotations {
     }
 
     /** Add all given annotations to this symbol */
-    final def addAnnotations(annots: TraversableOnce[Annotation])(using Context): Unit =
+    final def addAnnotations(annots: IterableOnce[Annotation])(using Context): Unit =
       annots.iterator.foreach(addAnnotation)
 
     @tailrec
@@ -904,10 +907,13 @@ object SymDenotations {
           false
         val cls = owner.enclosingSubClass
         if !cls.exists then
-          val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
-          fail(i"""
-               | Access to protected $this not permitted because enclosing ${encl.showLocated}
-               | is not a subclass of ${owner.showLocated} where target is defined""")
+          if pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner) then
+            true
+          else
+            val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
+            fail(i"""
+                 | Access to protected $this not permitted because enclosing ${encl.showLocated}
+                 | is not a subclass of ${owner.showLocated} where target is defined""")
         else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
@@ -1190,6 +1196,7 @@ object SymDenotations {
       isOneOf(EffectivelyFinalFlags)
       || is(Inline, butNot = Deferred)
       || is(JavaDefinedVal, butNot = Method)
+      || isConstructor
       || !owner.isExtensibleClass
 
     /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
@@ -1404,9 +1411,9 @@ object SymDenotations {
         case Nil => Iterator.empty
       }
 
-    /** The symbol overriding this symbol in given subclass `ofclazz`.
+    /** The symbol overriding this symbol in given subclass `inClass`.
      *
-     *  @param ofclazz is a subclass of this symbol's owner
+     *  @pre `inClass` is a subclass of this symbol's owner
      */
     final def overridingSymbol(inClass: ClassSymbol)(using Context): Symbol =
       if (canMatchInheritedSymbols) matchingDecl(inClass, inClass.thisType)
@@ -2223,13 +2230,12 @@ object SymDenotations {
             def computeApplied = {
               btrCache(tp) = NoPrefix
               val baseTp =
-                if (tycon.typeSymbol eq symbol) tp
-                else (tycon.typeParams: @unchecked) match {
+                if (tycon.typeSymbol eq symbol) && !tycon.isLambdaSub then tp
+                else (tycon.typeParams: @unchecked) match
                   case LambdaParam(_, _) :: _ =>
                     recur(tp.superType)
                   case tparams: List[Symbol @unchecked] =>
                     recur(tycon).substApprox(tparams, args)
-                }
               record(tp, baseTp)
               baseTp
             }

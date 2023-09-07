@@ -12,7 +12,7 @@ import java.nio.file.{Files, NoSuchFileException, Path, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
-import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
+import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException, Executors => JExecutors}
 
 import scala.collection.mutable
 import scala.io.{Codec, Source}
@@ -494,6 +494,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
 
+      def waitForJudiciously(process: Process): Int =
+        try process.waitFor()
+        catch case _: InterruptedException =>
+          try if process.waitFor(5L, TimeUnit.MINUTES) then process.exitValue() else -2
+          finally Thread.currentThread.interrupt()
+
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
           "javac",
@@ -503,7 +509,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         val process = Runtime.getRuntime.exec(fullArgs)
         val output = Source.fromInputStream(process.getErrorStream).mkString
 
-        if (process.waitFor() != 0) Some(output)
+        if waitForJudiciously(process) != 0 then Some(output)
         else None
       } else None
 
@@ -676,7 +682,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
         for fut <- eventualResults do
           try fut.get()
-          catch case ex: Exception =>
+          catch
+          case ee: ExecutionException if ee.getCause.isInstanceOf[InterruptedException] =>
+            System.err.println("Interrupted (probably running after shutdown)")
+            ee.printStackTrace()
+          case ex: Exception =>
             System.err.println(ex.getMessage)
             ex.printStackTrace()
 
@@ -751,8 +761,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           case _ =>
         }
         case Failure(output) =>
-          echo(s"Test '${testSource.title}' failed with output:")
-          echo(output)
+          if output == "" then
+            echo(s"Test '${testSource.title}' failed with no output")
+          else
+            echo(s"Test '${testSource.title}' failed with output:")
+            echo(output)
           failTestSource(testSource)
         case Timeout =>
           echo("failed because test " + testSource.title + " timed out")

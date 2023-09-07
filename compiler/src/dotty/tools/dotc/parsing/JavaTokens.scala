@@ -41,6 +41,9 @@ object JavaTokens extends TokensCommon {
   inline val SWITCH = 133;           enter(SWITCH, "switch")
   inline val ASSERT = 134;           enter(ASSERT, "assert")
 
+  /** contextual keywords (turned into keywords in certain conditions, see JLS 3.9 of Java 9+) */
+  inline val RECORD = 135;           enter(RECORD, "record")
+
   /** special symbols */
   inline val EQEQ = 140
   inline val BANGEQ = 141

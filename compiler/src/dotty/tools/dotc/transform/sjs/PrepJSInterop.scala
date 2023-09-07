@@ -93,6 +93,24 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       }
     }
 
+    private var dynamicImportEnclosingClasses: Set[Symbol] = Set.empty
+
+    private def enterDynamicImportEnclosingClass[A](cls: Symbol)(body: => A): A = {
+      val saved = dynamicImportEnclosingClasses
+      dynamicImportEnclosingClasses = saved + cls
+      try
+        body
+      finally
+        dynamicImportEnclosingClasses = saved
+    }
+
+    private def hasImplicitThisPrefixToDynamicImportEnclosingClass(tpe: Type)(using Context): Boolean =
+      tpe match
+        case tpe: ThisType      => dynamicImportEnclosingClasses.contains(tpe.cls)
+        case TermRef(prefix, _) => hasImplicitThisPrefixToDynamicImportEnclosingClass(prefix)
+        case _                  => false
+    end hasImplicitThisPrefixToDynamicImportEnclosingClass
+
     /** DefDefs in class templates that export methods to JavaScript */
     private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
@@ -297,10 +315,15 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           assert(currentOwner.isTerm, s"unexpected owner: $currentOwner at ${tree.sourcePos}")
 
+          val enclosingClass = currentOwner.enclosingClass
+
           // new DynamicImportThunk { def apply(): Any = body }
           val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
             val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
-            val newBody = transform(body).changeOwnerAfter(currentOwner, applySym, thisPhase)
+            val transformedBody = enterDynamicImportEnclosingClass(enclosingClass) {
+              transform(body)
+            }
+            val newBody = transformedBody.changeOwnerAfter(currentOwner, applySym, thisPhase)
             val applyDefDef = DefDef(applySym, newBody)
             List(applyDefDef)
           }
@@ -309,6 +332,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           ref(jsdefn.Runtime_dynamicImport)
             .appliedToTypeTree(tpeArg)
             .appliedTo(dynamicImportThunkAnonClass)
+
+        // #17344 Make `ThisType`-based references to enclosing classes of `js.dynamicImport` explicit
+        case tree: Ident if hasImplicitThisPrefixToDynamicImportEnclosingClass(tree.tpe) =>
+          def rec(tpe: Type): Tree = (tpe: @unchecked) match // exhaustive because of the `if ... =>`
+            case tpe: ThisType            => This(tpe.cls)
+            case tpe @ TermRef(prefix, _) => rec(prefix).select(tpe.symbol)
+
+          rec(tree.tpe).withSpan(tree.span)
 
         // Compile-time errors and warnings for js.Dynamic.literal
         case Apply(Apply(fun, nameArgs), args)
@@ -888,6 +919,9 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
             report.error("A non-native JS trait cannot contain private members", tree)
           } else if (sym.is(Lazy)) {
             report.error("A non-native JS trait cannot contain lazy vals", tree)
+          } else if (sym.is(ParamAccessor)) {
+            // #12621
+            report.error("A non-native JS trait cannot have constructor parameters", tree)
           } else if (!sym.is(Deferred)) {
             /* Tell the back-end not to emit this thing. In fact, this only
              * matters for mixed-in members created from this member.

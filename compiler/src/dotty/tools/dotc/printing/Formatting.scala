@@ -71,6 +71,16 @@ object Formatting {
       given Show[TypeComparer.ApproxState] with
         def show(x: TypeComparer.ApproxState) = TypeComparer.ApproxState.Repr.show(x)
 
+      given Show[ast.TreeInfo.PurityLevel] with
+        def show(x: ast.TreeInfo.PurityLevel) = x match
+          case ast.TreeInfo.Path           => "PurityLevel.Path"
+          case ast.TreeInfo.Pure           => "PurityLevel.Pure"
+          case ast.TreeInfo.Idempotent     => "PurityLevel.Idempotent"
+          case ast.TreeInfo.Impure         => "PurityLevel.Impure"
+          case ast.TreeInfo.PurePath       => "PurityLevel.PurePath"
+          case ast.TreeInfo.IdempotentPath => "PurityLevel.IdempotentPath"
+          case _                           => s"PurityLevel(${x.x})"
+
       given Show[Showable]                            = ShowAny
       given Show[Shown]                               = ShowAny
       given Show[Int]                                 = ShowAny
@@ -90,6 +100,7 @@ object Formatting {
       given Show[util.SourceFile]                     = ShowAny
       given Show[util.Spans.Span]                     = ShowAny
       given Show[tasty.TreeUnpickler#OwnerTree]       = ShowAny
+      given Show[typer.ForceDegree.Value]             = ShowAny
 
       private def show1[A: Show](x: A)(using Context) = show2(Show[A].show(x).ctxShow)
       private def show2(x: Shown)(using Context): String = x match

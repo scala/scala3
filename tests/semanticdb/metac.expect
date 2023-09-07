@@ -48,8 +48,8 @@ Schema => SemanticDB v4
 Uri => Advanced.scala
 Text => empty
 Language => Scala
-Symbols => 60 entries
-Occurrences => 134 entries
+Symbols => 61 entries
+Occurrences => 138 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -57,10 +57,11 @@ advanced/C# => class C [typeparam T ] extends Object { self: C[T] => +3 decls }
 advanced/C#[T] => typeparam T 
 advanced/C#`<init>`(). => primary ctor <init> [typeparam T ](): C[T]
 advanced/C#t(). => method t => T
-advanced/HKClass# => class HKClass [typeparam F [typeparam T ] <: <?>] extends Object { self: HKClass[F] => +3 decls }
-advanced/HKClass#[F] => typeparam F [typeparam T ] <: <?>
+advanced/HKClass# => class HKClass [typeparam F [typeparam T ] <: [U] =>> Tuple2[U, T]] extends Object { self: HKClass[F] => +3 decls }
+advanced/HKClass#[F] => typeparam F [typeparam T ] <: [U] =>> Tuple2[U, T]
 advanced/HKClass#[F][T] => typeparam T 
-advanced/HKClass#`<init>`(). => primary ctor <init> [typeparam F [typeparam T ] <: <?>](): HKClass[F]
+advanced/HKClass#[F][U] => typeparam U 
+advanced/HKClass#`<init>`(). => primary ctor <init> [typeparam F [typeparam T ] <: [U] =>> Tuple2[U, T]](): HKClass[F]
 advanced/HKClass#`<init>`().[F][T] => typeparam T 
 advanced/HKClass#`<init>`().[F][U] => typeparam U 
 advanced/HKClass#foo(). => method foo [typeparam T , typeparam U ](param x: F[T, U]): String
@@ -187,18 +188,21 @@ Occurrences:
 [27:6..27:9): s1x <- advanced/Test.s1x.
 [27:12..27:13): s -> advanced/Test.s.
 [27:14..27:16): s1 -> advanced/Structural#s1().
+[27:16..27:18): .x -> scala/reflect/Selectable#selectDynamic().
 [28:6..28:8): s2 <- advanced/Test.s2.
 [28:11..28:12): s -> advanced/Test.s.
 [28:13..28:15): s2 -> advanced/Structural#s2().
 [29:6..29:9): s2x <- advanced/Test.s2x.
 [29:12..29:13): s -> advanced/Test.s.
 [29:14..29:16): s2 -> advanced/Structural#s2().
+[29:16..29:18): .x -> scala/reflect/Selectable#selectDynamic().
 [30:6..30:8): s3 <- advanced/Test.s3.
 [30:11..30:12): s -> advanced/Test.s.
 [30:13..30:15): s3 -> advanced/Structural#s3().
 [31:6..31:9): s3x <- advanced/Test.s3x.
 [31:12..31:13): s -> advanced/Test.s.
 [31:14..31:16): s3 -> advanced/Structural#s3().
+[31:16..31:18): .m -> scala/reflect/Selectable#applyDynamic().
 [31:19..31:22): ??? -> scala/Predef.`???`().
 [33:6..33:7): e <- advanced/Test.e.
 [33:14..33:23): Wildcards -> advanced/Wildcards#
@@ -233,6 +237,7 @@ Occurrences:
 [47:11..47:14): foo -> advanced/Test.foo.
 [47:15..47:16): A -> local17
 [47:19..47:22): foo -> advanced/Test.foo.
+[47:22..47:24): .a -> scala/reflect/Selectable#selectDynamic().
 [52:6..52:13): HKClass <- advanced/HKClass#
 [52:14..52:15): F <- advanced/HKClass#[F]
 [52:20..52:21): T <- advanced/HKClass#`<init>`().[F][T]
@@ -467,7 +472,7 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 109 entries
+Symbols => 108 entries
 Occurrences => 114 entries
 Synthetics => 2 entries
 
@@ -504,10 +509,9 @@ classes/C4#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
 classes/C4#copy(). => method copy (param x: Int): C4
 classes/C4#copy().(x) => param x: Int
 classes/C4#x. => val method x Int
-classes/C4. => final object C4 extends Object { self: C4.type => +4 decls }
+classes/C4. => final object C4 extends Object { self: C4.type => +3 decls }
 classes/C4.apply(). => method apply (param x: Int): C4
 classes/C4.apply().(x) => param x: Int
-classes/C4.toString(). => method toString => String <: scala/Any#toString().
 classes/C4.unapply(). => method unapply (param x$1: C4): C4
 classes/C4.unapply().(x$1) => param x$1: C4
 classes/C6# => case class C6 extends Object with Product with Serializable { self: C6 => +5 decls }
@@ -3967,6 +3971,103 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:6..2:24): FilenameWithSpaces <- example/FilenameWithSpaces#
 
+expect/hk.scala
+---------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => hk.scala
+Text => empty
+Language => Scala
+Symbols => 30 entries
+Occurrences => 52 entries
+
+Symbols:
+hk/EitherMonad# => class EitherMonad [typeparam T ] extends Object with Monad[[E] =>> Either[T, E]] { self: EitherMonad[T] => +2 decls }
+hk/EitherMonad#[E] => typeparam E 
+hk/EitherMonad#[T] => typeparam T 
+hk/EitherMonad#`<init>`(). => primary ctor <init> [typeparam T ](): EitherMonad[T]
+hk/EitherMonad#`<init>`().[E] => typeparam E 
+hk/Monad# => trait Monad [typeparam M [type _ ]] extends Object { self: Monad[M] => +4 decls }
+hk/Monad#[M] => typeparam M [type _ ]
+hk/Monad#[M][_] => type _ 
+hk/Monad#`<init>`(). => primary ctor <init> [typeparam M [type _ ]](): Monad[M]
+hk/Monad#flatMap(). => method flatMap [typeparam A , typeparam B ](param m: M[A])(param f: Function1[A, M[B]]): M[B]
+hk/Monad#flatMap().(f) => param f: Function1[A, M[B]]
+hk/Monad#flatMap().(m) => param m: M[A]
+hk/Monad#flatMap().[A] => typeparam A 
+hk/Monad#flatMap().[B] => typeparam B 
+hk/Monad#pure(). => method pure [typeparam A ](param a: A): M[A]
+hk/Monad#pure().(a) => param a: A
+hk/Monad#pure().[A] => typeparam A 
+hk/hk$package. => final package object hk extends Object { self: hk.type => +5 decls }
+hk/hk$package.Id# => type Id [typeparam A ] = A
+hk/hk$package.Id#[A] => typeparam A 
+hk/hk$package.MapEither# => type MapEither [typeparam K ] = [L] =>> [R] =>> Map[K, Either[L, R]]
+hk/hk$package.MapEither#[K] => typeparam K 
+hk/hk$package.MapEither#[L] => typeparam L 
+hk/hk$package.MapEither#[R] => typeparam R 
+hk/hk$package.MapKV# => type MapKV [typeparam K ] = [V] =>> Map[K, V]
+hk/hk$package.MapKV#[K] => typeparam K 
+hk/hk$package.MapKV#[V] => typeparam V 
+hk/hk$package.MapV# => type MapV [type _ ] = [V] =>> Map[String, V]
+hk/hk$package.MapV#[V] => typeparam V 
+hk/hk$package.MapV#[_] => type _ 
+
+Occurrences:
+[0:8..0:10): hk <- hk/
+[2:6..2:11): Monad <- hk/Monad#
+[2:12..2:13): M <- hk/Monad#[M]
+[3:6..3:10): pure <- hk/Monad#pure().
+[3:11..3:12): A <- hk/Monad#pure().[A]
+[3:14..3:15): a <- hk/Monad#pure().(a)
+[3:17..3:18): A -> hk/Monad#pure().[A]
+[3:21..3:22): M -> hk/Monad#[M]
+[3:23..3:24): A -> hk/Monad#pure().[A]
+[3:28..3:31): ??? -> scala/Predef.`???`().
+[4:6..4:13): flatMap <- hk/Monad#flatMap().
+[4:14..4:15): A <- hk/Monad#flatMap().[A]
+[4:17..4:18): B <- hk/Monad#flatMap().[B]
+[4:20..4:21): m <- hk/Monad#flatMap().(m)
+[4:23..4:24): M -> hk/Monad#[M]
+[4:25..4:26): A -> hk/Monad#flatMap().[A]
+[4:29..4:30): f <- hk/Monad#flatMap().(f)
+[4:32..4:33): A -> hk/Monad#flatMap().[A]
+[4:37..4:38): M -> hk/Monad#[M]
+[4:39..4:40): B -> hk/Monad#flatMap().[B]
+[4:44..4:45): M -> hk/Monad#[M]
+[4:46..4:47): B -> hk/Monad#flatMap().[B]
+[4:51..4:54): ??? -> scala/Predef.`???`().
+[7:6..7:17): EitherMonad <- hk/EitherMonad#
+[7:18..7:19): T <- hk/EitherMonad#[T]
+[7:29..7:34): Monad -> hk/Monad#
+[7:36..7:37): E <- hk/EitherMonad#`<init>`().[E]
+[7:43..7:49): Either -> scala/package.Either#
+[7:50..7:51): T -> hk/EitherMonad#[T]
+[10:5..10:10): MapKV <- hk/hk$package.MapKV#
+[10:14..10:15): K <- hk/hk$package.MapKV#[K]
+[10:22..10:23): V <- hk/hk$package.MapKV#[V]
+[10:29..10:32): Map -> scala/Predef.Map#
+[10:33..10:34): K -> hk/hk$package.MapKV#[K]
+[10:35..10:36): V -> hk/hk$package.MapKV#[V]
+[12:5..12:9): MapV <- hk/hk$package.MapV#
+[12:21..12:22): V <- hk/hk$package.MapV#[V]
+[12:28..12:31): Map -> scala/Predef.Map#
+[12:32..12:38): String -> scala/Predef.String#
+[12:40..12:41): V -> hk/hk$package.MapV#[V]
+[14:5..14:14): MapEither <- hk/hk$package.MapEither#
+[14:18..14:19): K <- hk/hk$package.MapEither#[K]
+[14:26..14:27): L <- hk/hk$package.MapEither#[L]
+[14:34..14:35): R <- hk/hk$package.MapEither#[R]
+[14:41..14:44): Map -> scala/Predef.Map#
+[14:45..14:46): K -> hk/hk$package.MapEither#[K]
+[14:48..14:54): Either -> scala/package.Either#
+[14:55..14:56): L -> hk/hk$package.MapEither#[L]
+[14:58..14:59): R -> hk/hk$package.MapEither#[R]
+[16:5..16:7): Id <- hk/hk$package.Id#
+[16:8..16:9): A <- hk/hk$package.Id#[A]
+[16:13..16:14): A -> hk/hk$package.Id#[A]
+
 expect/i5854.scala
 ------------------
 
@@ -4559,7 +4660,7 @@ Schema => SemanticDB v4
 Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
-Symbols => 144 entries
+Symbols => 143 entries
 Occurrences => 228 entries
 Synthetics => 1 entries
 
@@ -4585,10 +4686,9 @@ types/Foo#copy$default$1(). => method copy$default$1 => "abc" @uncheckedVariance
 types/Foo#copy(). => method copy (param s: "abc"): Foo
 types/Foo#copy().(s) => param s: "abc"
 types/Foo#s. => val method s "abc"
-types/Foo. => final object Foo extends Object { self: Foo.type => +6 decls }
+types/Foo. => final object Foo extends Object { self: Foo.type => +5 decls }
 types/Foo.apply(). => method apply (param s: "abc"): Foo
 types/Foo.apply().(s) => param s: "abc"
-types/Foo.toString(). => method toString => String <: scala/Any#toString().
 types/Foo.unapply(). => method unapply (param x$1: Foo): Foo
 types/Foo.unapply().(x$1) => param x$1: Foo
 types/Foo.x. => val method x "abc" @deprecated

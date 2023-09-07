@@ -17,7 +17,6 @@ import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
-import dotty.tools.dotc.transform.TreeMapWithStages._
 
 import scala.annotation.constructorOnly
 
@@ -76,8 +75,8 @@ trait ReifiedReflect:
       .select(defn.Quotes_reflect_TypeRepr_of)
       .appliedToType(tpe)
       .appliedTo(
-        ref(defn.QuotedTypeModule_of)
-          .appliedToType(tpe)
+        tpd.Quote(TypeTree(tpe), Nil)
+          .select(nme.apply)
           .appliedTo(quotesTree)
       )
 

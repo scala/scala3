@@ -6,6 +6,7 @@ import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
+import config.SourceVersion
 import config.Printers.capt
 import util.Property.Key
 import tpd.*
@@ -18,6 +19,9 @@ private val BoxedType: Key[BoxedTypeCache] = Key()
 private[cc] def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
   case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
   case _ => Nil
+
+def allowUniversalInBoxed(using Context) =
+  Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
@@ -146,7 +150,6 @@ extension (tp: Type)
       defn.FunctionType(
         fname.functionArity,
         isContextual = fname.isContextFunction,
-        isErased = fname.isErasedFunction,
         isImpure = true).appliedTo(args)
     case _ =>
       tp

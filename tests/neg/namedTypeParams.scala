@@ -5,7 +5,7 @@ object Test0:
   def f[X, Y](x: X, y: Y): Int = ???
   f[X = Int, Y = Int](1, 2) // error: experimental // error: experimental
 
-object Test {
+object Test:
   import language.experimental.namedTypeArguments
 
   val x: C[T = Int] = // error:  ']' expected, but `=` found // error
@@ -24,4 +24,11 @@ object Test {
 
   f[Y = String][X = Int](1, "") // error: illegal repeated type application
   f[Y = String][Int](1, "") // error: illegal repeated type application
-}
+
+object TestInterleaving:
+  import language.experimental.namedTypeArguments
+  import language.experimental.clauseInterleaving
+  def f2[X](using DummyImplicit)[Y](x: X, y: Y): Int = ???
+
+  f2[Y = String][X = Int](1, "") // error: Y is undefined
+  f2[Y = String](1, "") // error: Y is undefined

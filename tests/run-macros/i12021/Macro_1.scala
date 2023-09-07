@@ -14,5 +14,5 @@ def inspect2[A: Type](using Quotes): Expr[String] = {
 
   val names = ps.params.map(p => s"${p.name}: ${p.tpt.show}").mkString("(", ", ", ")")
 
-  Expr(s"${Type.show[A]}: $names isImplicit=${ps.isImplicit}, isGiven=${ps.isGiven}, isErased=${ps.isErased}")
+  Expr(s"${Type.show[A]}: $names isImplicit=${ps.isImplicit}, isGiven=${ps.isGiven}, erasedArgs=${ps.erasedArgs}")
 }

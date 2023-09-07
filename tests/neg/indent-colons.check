@@ -47,15 +47,31 @@
    |             Not found: file
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg/indent-colons.scala:5:2 ----------------------------------------------------------------------------
+-- [E178] Type Error: tests/neg/indent-colons.scala:5:2 ----------------------------------------------------------------
 5 |  tryEither:  // error
   |  ^^^^^^^^^
-  |  missing arguments for method tryEither
--- Error: tests/neg/indent-colons.scala:11:2 ---------------------------------------------------------------------------
+  |  missing argument list for method tryEither
+  |
+  |    def tryEither[T](x: T)(y: Int => T): T
+  |
+  |  where:    T is a type variable
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/indent-colons.scala:11:2 ---------------------------------------------------------------
 11 |  tryEither:  // error
    |  ^^^^^^^^^
-   |  missing arguments for method tryEither
--- Error: tests/neg/indent-colons.scala:18:2 ---------------------------------------------------------------------------
+   |  missing argument list for method tryEither
+   |
+   |    def tryEither[T](x: T)(y: Int => T): T
+   |
+   |  where:    T is a type variable
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E178] Type Error: tests/neg/indent-colons.scala:18:2 ---------------------------------------------------------------
 18 |  Some(3).fold:  // error
    |  ^^^^^^^^^^^^
-   |  missing arguments for method fold in class Option
+   |  missing argument list for method fold in class Option
+   |
+   |    final def fold[B](ifEmpty: => B)(f: A => B): B
+   |
+   | longer explanation available when compiling with `-explain`

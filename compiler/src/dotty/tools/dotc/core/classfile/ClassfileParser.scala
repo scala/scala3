@@ -758,10 +758,12 @@ class ClassfileParser(
         case tpnme.MethodParametersATTR =>
           val paramCount = in.nextByte
           for i <- 0 until paramCount do
-            val name = pool.getName(in.nextChar)
+            val index = in.nextChar
             val flags = in.nextChar
-            if (flags & JAVA_ACC_SYNTHETIC) == 0 then
-              res.namedParams += (i -> name.name)
+            if index != 0 then
+              val name = pool.getName(index)
+              if (flags & JAVA_ACC_SYNTHETIC) == 0 then
+                res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
@@ -1086,10 +1088,10 @@ class ClassfileParser(
           if (sym == classRoot.symbol)
             staticScope.lookup(name)
           else {
-            var module = sym.companionModule
-            if (!module.exists && sym.isAbsent())
-              module = sym.scalacLinkedClass
-            module.info.member(name).symbol
+            var moduleClass = sym.registeredCompanion
+            if (!moduleClass.exists && sym.isAbsent())
+              moduleClass = sym.scalacLinkedClass
+            moduleClass.info.member(name).symbol
           }
         else if (sym == classRoot.symbol)
           instanceScope.lookup(name)

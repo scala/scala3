@@ -31,6 +31,7 @@ val usageMessage = """
   |The optional <bisect-options> may be any combination of:
   |* --dry-run
   |    Don't try to bisect - just make sure the validation command works correctly
+  |
   |* --releases <releases-range>
   |    Bisect only releases from the given range (defaults to all releases).
   |    The range format is <first>...<last>, where both <first> and <last> are optional, e.g.
@@ -38,8 +39,12 @@ val usageMessage = """
   |    * 3.2.1-RC1-bin-20220620-de3a82c-NIGHTLY..
   |    * ..3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
   |    The ranges are treated as inclusive.
+  |
   |* --bootstrapped
-  |    Publish locally and test a bootstrapped compiler rather than a nonboostrapped one
+  |    Publish locally and test a bootstrapped compiler rather than a nonboostrapped one.
+  |
+  |* --should-fail
+  |    Expect the validation command to fail rather that succeed. This can be used e.g. to find out when some illegal code started to compile.
   |
   |Warning: The bisect script should not be run multiple times in parallel because of a potential race condition while publishing artifacts locally.
 
@@ -54,7 +59,7 @@ val usageMessage = """
 
   val validationScript = scriptOptions.validationCommand.validationScript
   val releases = Releases.fromRange(scriptOptions.releasesRange)
-  val releaseBisect = ReleaseBisect(validationScript, releases)
+  val releaseBisect = ReleaseBisect(validationScript, shouldFail = scriptOptions.shouldFail, releases)
 
   releaseBisect.verifyEdgeReleases()
 
@@ -64,18 +69,19 @@ val usageMessage = """
     println(s"First bad release: ${firstBadRelease.version}")
     println("\nFinished bisecting releases\n")
 
-    val commitBisect = CommitBisect(validationScript, bootstrapped = scriptOptions.bootstrapped, lastGoodRelease.hash, firstBadRelease.hash)
+    val commitBisect = CommitBisect(validationScript, shouldFail = scriptOptions.shouldFail, bootstrapped = scriptOptions.bootstrapped, lastGoodRelease.hash, firstBadRelease.hash)
     commitBisect.bisect()
 
 
-case class ScriptOptions(validationCommand: ValidationCommand, dryRun: Boolean, bootstrapped: Boolean, releasesRange: ReleasesRange)
+case class ScriptOptions(validationCommand: ValidationCommand, dryRun: Boolean, bootstrapped: Boolean, releasesRange: ReleasesRange, shouldFail: Boolean)
 object ScriptOptions:
   def fromArgs(args: Seq[String]) =
     val defaultOptions = ScriptOptions(
       validationCommand = null,
       dryRun = false,
       bootstrapped = false,
-      ReleasesRange(first = None, last = None)
+      ReleasesRange(first = None, last = None),
+      shouldFail = false
     )
     parseArgs(args, defaultOptions)
 
@@ -86,6 +92,7 @@ object ScriptOptions:
       case "--releases" :: argsRest =>
         val range = ReleasesRange.tryParse(argsRest.head).get
         parseArgs(argsRest.tail, options.copy(releasesRange = range))
+      case "--should-fail" :: argsRest => parseArgs(argsRest, options.copy(shouldFail = true))
       case _ =>
         val command = ValidationCommand.fromArgs(args)
         options.copy(validationCommand = command)
@@ -182,7 +189,7 @@ case class Release(version: String):
   override def toString: String = version
 
 
-class ReleaseBisect(validationScript: File, allReleases: Vector[Release]):
+class ReleaseBisect(validationScript: File, shouldFail: Boolean, allReleases: Vector[Release]):
   assert(allReleases.length > 1, "Need at least 2 releases to bisect")
 
   private val isGoodReleaseCache = collection.mutable.Map.empty[Release, Boolean]
@@ -217,21 +224,22 @@ class ReleaseBisect(validationScript: File, allReleases: Vector[Release]):
     isGoodReleaseCache.getOrElseUpdate(release, {
       println(s"Testing ${release.version}")
       val result = Seq(validationScript.getAbsolutePath, release.version).!
-      val isGood = result == 0
+      val isGood = if(shouldFail) result != 0 else result == 0 // invert the process status if failure was expected
       println(s"Test result: ${release.version} is a ${if isGood then "good" else "bad"} release\n")
       isGood
     })
 
-class CommitBisect(validationScript: File, bootstrapped: Boolean, lastGoodHash: String, fistBadHash: String):
+class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, fistBadHash: String):
   def bisect(): Unit =
     println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
     val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
     val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
+    val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
     val bisectRunScript = s"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -r out
       |sbt "clean; ${scala3Project}/publishLocal"
-      |${validationScript.getAbsolutePath} "$$scalaVersion"
+      |${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
     """.stripMargin
     "git bisect start".!
     s"git bisect bad $fistBadHash".!

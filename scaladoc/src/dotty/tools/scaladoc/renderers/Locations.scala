@@ -1,18 +1,10 @@
 package dotty.tools.scaladoc
 package renderers
 
-import util.HTML._
 import scala.jdk.CollectionConverters._
 import java.net.URI
-import java.net.URL
 import dotty.tools.scaladoc.site._
-import scala.util.Try
-import org.jsoup.Jsoup
 import java.nio.file.Paths
-import java.nio.file.Path
-import java.nio.file.Files
-import java.io.File
-import scala.util.matching._
 import dotty.tools.scaladoc.util.Escape._
 
 val UnresolvedLocationLink = "#"

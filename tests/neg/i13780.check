@@ -10,7 +10,7 @@
    |                         Note: a match type could not be fully reduced:
    |
    |                           trying to reduce  Head[X]
-   |                           failed since selector  X
+   |                           failed since selector X
    |                           does not uniquely determine parameters a, b in
    |                             case (a, b) => a
    |                           The computed bounds for the parameters are:
@@ -30,7 +30,7 @@
    |                               Note: a match type could not be fully reduced:
    |
    |                                 trying to reduce  Head[X]
-   |                                 failed since selector  X
+   |                                 failed since selector X
    |                                 does not uniquely determine parameters a, b in
    |                                   case (a, b) => a
    |                                 The computed bounds for the parameters are:

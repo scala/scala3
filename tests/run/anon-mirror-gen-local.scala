@@ -55,7 +55,7 @@ class Outer5 { self =>
     }
   }
 
-  lazy val o = new Outer5() // infinite init
+  final lazy val o = new Outer5() // infinite init
 
 }
 
@@ -142,7 +142,7 @@ def locally3 = {
   class Bar extends Foo {
 
     def hello =
-      val mQux = summon[Mirror.Of[Bar.super.foo.type]]
+      val mQux = summon[Mirror.Of[foo.type]]
       assert(mQux.fromProduct(EmptyTuple) == Qux)
   }
 

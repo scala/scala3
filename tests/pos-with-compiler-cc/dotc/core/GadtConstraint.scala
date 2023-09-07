@@ -225,7 +225,7 @@ sealed trait GadtConstraint (
 
   // ---- Private ----------------------------------------------------------
 
-  private def externalize(tp: Type, theMap: TypeMap @retains(caps.*) | Null = null)(using Context): Type = tp match
+  private def externalize(tp: Type, theMap: TypeMap @retains(caps.cap) | Null = null)(using Context): Type = tp match
     case param: TypeParamRef => reverseMapping(param) match
       case sym: Symbol => sym.typeRef
       case null        => param
@@ -238,7 +238,7 @@ sealed trait GadtConstraint (
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ != null, i"not a constrainable symbol: $sym").uncheckedNN
 
-  private def containsNoInternalTypes(tp: Type, theAcc: TypeAccumulator[Boolean] @retains(caps.*) | Null = null)(using Context): Boolean = tp match {
+  private def containsNoInternalTypes(tp: Type, theAcc: TypeAccumulator[Boolean] @retains(caps.cap) | Null = null)(using Context): Boolean = tp match {
     case tpr: TypeParamRef => !reverseMapping.contains(tpr)
     case tv: TypeVar => !reverseMapping.contains(tv.origin)
     case tp =>

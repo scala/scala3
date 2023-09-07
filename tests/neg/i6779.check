@@ -11,7 +11,7 @@
    |                             value f is not a member of T.
    |                             An extension method was tried, but could not be fully constructed:
    |
-   |                                 Test.f[G[T]](x)(given_Stuff)
+   |                                 Test.f[G[T]](x)
    |
    |                                 failed with:
    |

@@ -1,9 +1,9 @@
-class Foo(m: {*} String)
-class Bar(val m: {*} String):
+class Foo(m: String^)
+class Bar(val m: String^):
   val x = Foo(m)   // error
-trait Baz(val m: {*} String):
+trait Baz(val m: String^):
   val x = Foo(m)   // error
-class Bar1(m: {*} String):
+class Bar1(m: String^):
   val x = Foo(m)   // error
-trait Baz2(m: {*} String):
+trait Baz2(m: String^):
   val x = Foo(m)   // error

@@ -1,0 +1,15 @@
+
+-- Error: tests/neg-macros/i16582/Test_2.scala:5:27 --------------------------------------------------------------------
+5 |  val o2 = ownerDoesNotWork(2) // error
+  |           ^^^^^^^^^^^^^^^^^^^
+  |           Exception occurred while executing macro expansion.
+  |           dotty.tools.dotc.core.CyclicReference: Recursive value o2 needs type
+  |
+  |           See full stack trace using -Ydebug
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from Macro_1.scala:7
+7 |    ${ownerWorksImpl('in)}
+  |    ^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------------------------------------------------------------------------------------------------

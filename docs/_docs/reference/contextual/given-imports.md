@@ -103,7 +103,7 @@ given instances once their user base has migrated.
 
 ## Syntax
 
-```
+```ebnf
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec

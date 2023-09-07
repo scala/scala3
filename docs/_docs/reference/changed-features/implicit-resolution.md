@@ -67,7 +67,8 @@ Opaque type aliases count as anchors only outside the scope where their alias is
   1. If _T_ is a reference to a type parameter, the union of the anchors of both of its bounds.
   1. If _T_ is a singleton reference, the anchors of its underlying type, plus,
     if _T_ is of the form _(P#x).type_, the anchors of _P_.
-  1. If _T_ is the this-type _o.this_ of a static object _o_, the anchors of a term reference _o.type_ to that object.
+  1. If _T_ is the this-type _o.this_ of a static object _o_, the anchors of a term reference _o.type_ to that object,
+  1. If _T_ is some other this-type _P.this.type_, the anchors of _P_.
   1. If _T_ is some other type, the union of the anchors of each constituent type of _T_.
 
  **Definition:** The _implicit scope_ of a type _T_ is the smallest set _S_ of term references such that

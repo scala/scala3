@@ -1,0 +1,51 @@
+-- [E049] Reference Error: tests/neg/i12682.scala:6:12 -----------------------------------------------------------------
+6 |    val x = m(1)  // error
+  |            ^
+  |            Reference to m is ambiguous.
+  |            It is both defined in object C
+  |            and inherited subsequently in object T
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The identifier m is ambiguous because a name binding of lower precedence
+  | in an inner scope cannot shadow a binding with higher precedence in
+  | an outer scope.
+  |
+  | The precedence of the different kinds of name bindings, from highest to lowest, is:
+  |  - Definitions in an enclosing scope
+  |  - Inherited definitions and top-level definitions in packages
+  |  - Names introduced by import of a specific name
+  |  - Names introduced by wildcard import
+  |  - Definitions from packages in other files
+  | Note:
+  |  - As a rule, definitions take precedence over imports.
+  |  - Definitions in an enclosing scope take precedence over inherited definitions,
+  |    which can result in ambiguities in nested classes.
+  |  - When importing, you can avoid naming conflicts by renaming:
+  |    import scala.{m => mTick}
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E049] Reference Error: tests/neg/i12682.scala:13:10 ----------------------------------------------------------------
+13 |  def d = m(42) // error
+   |          ^
+   |          Reference to m is ambiguous.
+   |          It is both imported by import X._
+   |          and imported subsequently by import Y._
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   | The identifier m is ambiguous because two name bindings of equal precedence
+   | were introduced in the same scope.
+   |
+   | The precedence of the different kinds of name bindings, from highest to lowest, is:
+   |  - Definitions in an enclosing scope
+   |  - Inherited definitions and top-level definitions in packages
+   |  - Names introduced by import of a specific name
+   |  - Names introduced by wildcard import
+   |  - Definitions from packages in other files
+   | Note:
+   |  - As a rule, definitions take precedence over imports.
+   |  - Definitions in an enclosing scope take precedence over inherited definitions,
+   |    which can result in ambiguities in nested classes.
+   |  - When importing, you can avoid naming conflicts by renaming:
+   |    import scala.{m => mTick}
+    --------------------------------------------------------------------------------------------------------------------

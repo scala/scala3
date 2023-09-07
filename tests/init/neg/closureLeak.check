@@ -1,16 +1,14 @@
 -- Error: tests/init/neg/closureLeak.scala:11:14 -----------------------------------------------------------------------
 11 |    l.foreach(a => a.addX(this)) // error
    |              ^^^^^^^^^^^^^^^^^
-   |              Cannot prove the method argument is hot. Only hot values are safe to leak.
-   |              Found = Fun { this = ThisRef[class Outer], owner = class Outer }. Calling trace:
-   |              -> class Outer {	[ closureLeak.scala:1 ]
-   |                 ^
-   |              -> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
-   |                           ^^^^^^^^^^^^^^^^^
+   |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (class Outer) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
+   |-> class Outer {	[ closureLeak.scala:1 ]
+   |   ^
+   |-> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
+   |             ^^^^^^^^^^^^^^^^^
    |
-   |              Promoting the value to hot (transitively initialized) failed due to the following problem:
-   |              Cannot prove the method argument is hot. Only hot values are safe to leak.
-   |              Found = ThisRef[class Outer].
-   |              Non initialized field(s): value p. Promotion trace:
-   |              -> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
-   |                                       ^^^^
+   |Promoting the value to transitively initialized (Hot) failed due to the following problem:
+   |Could not verify that the method argument is transitively initialized (Hot). It was found to be the original object of type (class Outer) where initialization checking started. Only transitively initialized arguments may be passed to methods (except constructors).
+   |Non initialized field(s): value p. Promotion trace:
+   |-> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
+   |                         ^^^^

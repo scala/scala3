@@ -165,11 +165,18 @@ subsection:
     directory: docs/contributing
     index: contributing/index.md
     subsection:
-      - page: contributing/contribute-knowledge.md
       - page: contributing/getting-started.md
-      - page: contributing/workflow.md
-      - page: contributing/testing.md
-      - page: contributing/debugging.md
+      - index: contributing/workflow.md
+        subsection:
+          - page: contributing/issues/reproduce.md
+          - page: contributing/issues/cause.md
+          - page: contributing/issues/areas.md
+          - page: contributing/issues/debugging.md
+          - page: contributing/issues/other-debugging.md
+          - page: contributing/issues/inspection.md
+          - page: contributing/issues/efficiency.md
+          - page: contributing/issues/testing.md
+          - page: contributing/issues/checklist.md
       - title: IDEs and Tools
         directory: tools
         index: contributing/tools/index.md
@@ -178,17 +185,27 @@ subsection:
           - page: contributing/tools/mill.md
           - page: contributing/tools/scalafix.md
       - title: Procedures
+        directory: procedures
         index: contributing/procedures/index.md
         subsection:
           - page: contributing/procedures/release.md
           - page: contributing/procedures/vulpix.md
+      - title: High Level Architecture
+        directory: architecture
+        index: contributing/architecture/index.md
+        subsection:
+          - page: contributing/architecture/lifecycle.md
+          - page: contributing/architecture/context.md
+          - page: contributing/architecture/phases.md
+          - page: contributing/architecture/types.md
+          - page: contributing/architecture/time.md
+          - page: contributing/architecture/symbols.md
   - title: Internals
     directory: docs/internals
     index: internals/index.md
     subsection:
       - page: internals/backend.md
       - page: internals/classpaths.md
-      - page: internals/core-data-structures.md
       - page: internals/contexts.md
       - page: internals/dotc-scalac.md
       - page: internals/higher-kinded-v2.md

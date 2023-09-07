@@ -2,49 +2,91 @@
 
 val a = 1 // OK
 
+var cs = 3 // OK
+
 val b = // OK
+  var e3 = 2 // error
   val e1 = 1 // error
   def e2 = 2 // error
   1
 
 val c = // OK
-  val e1 = 1 // OK
+  var e1 = 1 // error not set
   def e2 = e1 // OK
-    e2
+  val e3 = e2 // OK
+    e3
+
+val g = // OK
+  var e1 = 1 // OK
+  def e2 = e1 // OK
+  val e3 = e2 // OK
+  e1 = e3 // OK
+    e3
 
 def d = 1 // OK
 
 def e = // OK
   val e1 = 1 // error
   def e2 = 2 // error
+  var e3 = 4 // error
   1
 
 def f = // OK
   val f1 = 1 // OK
-  def f2 = f1 // OK
+  var f2 = f1 // error not set
+  def f3 = f2 // OK
+  f3
+
+def h = // OK
+  val f1 = 1 // OK
+  var f2 = f1 // OK
+  def f3 = f2 // OK
+  f2 = f3 // OK
   f2
 
 class Foo {
+  val a = 1 // OK
+
+  var cs = 3 // OK
+
   val b = // OK
+    var e3 = 2 // error
     val e1 = 1 // error
     def e2 = 2 // error
     1
 
   val c = // OK
-    val e1 = 1 // OK
+    var e1 = 1 // error not set
     def e2 = e1 // OK
-      e2
+    val e3 = e2 // OK
+    e3
+
+  val g = // OK
+    var e1 = 1 // OK
+    def e2 = e1 // OK
+    val e3 = e2 // OK
+    e1 = e3 // OK
+    e3
 
   def d = 1 // OK
 
   def e = // OK
     val e1 = 1 // error
     def e2 = 2 // error
+    var e3 = 4 // error
     1
 
   def f = // OK
     val f1 = 1 // OK
-    def f2 = f1 // OK
+    var f2 = f1 // error not set
+    def f3 = f2 // OK
+    f3
+
+  def h = // OK
+    val f1 = 1 // OK
+    var f2 = f1 // OK
+    def f3 = f2 // OK
+    f2 = f3 // OK
     f2
 }
 
@@ -68,7 +110,7 @@ package foo.scala2.tests:
       new a.Inner
     }
     def f2 = {
-      var x = 100
+      var x = 100 // error not set
       x
     }
   }
@@ -89,7 +131,7 @@ package foo.scala2.tests:
   }
 
 package test.foo.twisted.i16682:
-  def myPackage = 
+  def myPackage =
     object IntExtractor: // OK
       def unapply(s: String): Option[Int] = s.toIntOption
 

@@ -2,4 +2,4 @@ object A {
   val x = "a"
 }
 
-class C 
+class C

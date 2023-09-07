@@ -1,7 +1,7 @@
 -- Error: tests/neg/matchtype-seq.scala:9:11 ---------------------------------------------------------------------------
 9 |  identity[T1[3]]("") // error
   |           ^
-  |           Match type reduction failed since selector  (3 : Int)
+  |           Match type reduction failed since selector (3 : Int)
   |           matches none of the cases
   |
   |               case (1 : Int) => Int
@@ -9,7 +9,7 @@
 -- Error: tests/neg/matchtype-seq.scala:10:11 --------------------------------------------------------------------------
 10 |  identity[T1[3]](1) // error
    |           ^
-   |           Match type reduction failed since selector  (3 : Int)
+   |           Match type reduction failed since selector (3 : Int)
    |           matches none of the cases
    |
    |               case (1 : Int) => Int
@@ -23,7 +23,7 @@
    |                    Note: a match type could not be fully reduced:
    |
    |                      trying to reduce  Test.T1[Int]
-   |                      failed since selector  Int
+   |                      failed since selector Int
    |                      does not match  case (1 : Int) => Int
    |                      and cannot be shown to be disjoint from it either.
    |                      Therefore, reduction cannot advance to the remaining case
@@ -40,7 +40,7 @@
    |                    Note: a match type could not be fully reduced:
    |
    |                      trying to reduce  Test.T1[Int]
-   |                      failed since selector  Int
+   |                      failed since selector Int
    |                      does not match  case (1 : Int) => Int
    |                      and cannot be shown to be disjoint from it either.
    |                      Therefore, reduction cannot advance to the remaining case
@@ -57,7 +57,7 @@
    |                    Note: a match type could not be fully reduced:
    |
    |                      trying to reduce  Test.T2[Int]
-   |                      failed since selector  Int
+   |                      failed since selector Int
    |                      does not match  case (1 : Int) => Int
    |                      and cannot be shown to be disjoint from it either.
    |                      Therefore, reduction cannot advance to the remaining case
@@ -81,7 +81,7 @@
    |                    Note: a match type could not be fully reduced:
    |
    |                      trying to reduce  Test.T2[Int]
-   |                      failed since selector  Int
+   |                      failed since selector Int
    |                      does not match  case (1 : Int) => Int
    |                      and cannot be shown to be disjoint from it either.
    |                      Therefore, reduction cannot advance to the remaining case
@@ -98,7 +98,7 @@
    |                  Note: a match type could not be fully reduced:
    |
    |                    trying to reduce  Test.T3[Test.A]
-   |                    failed since selector  Test.A
+   |                    failed since selector Test.A
    |                    does not match  case Test.B => Int
    |                    and cannot be shown to be disjoint from it either.
    |                    Therefore, reduction cannot advance to the remaining case
@@ -115,7 +115,7 @@
    |                  Note: a match type could not be fully reduced:
    |
    |                    trying to reduce  Test.T3[Test.A]
-   |                    failed since selector  Test.A
+   |                    failed since selector Test.A
    |                    does not match  case Test.B => Int
    |                    and cannot be shown to be disjoint from it either.
    |                    Therefore, reduction cannot advance to the remaining case
@@ -132,7 +132,7 @@
    |                  Note: a match type could not be fully reduced:
    |
    |                    trying to reduce  Test.T5[Test.A]
-   |                    failed since selector  Test.A
+   |                    failed since selector Test.A
    |                    does not match  case Test.C => String
    |                    and cannot be shown to be disjoint from it either.
    |                    Therefore, reduction cannot advance to the remaining case
@@ -149,7 +149,7 @@
    |                  Note: a match type could not be fully reduced:
    |
    |                    trying to reduce  Test.T5[Test.A]
-   |                    failed since selector  Test.A
+   |                    failed since selector Test.A
    |                    does not match  case Test.C => String
    |                    and cannot be shown to be disjoint from it either.
    |                    Therefore, reduction cannot advance to the remaining case
@@ -166,7 +166,7 @@
    |                  Note: a match type could not be fully reduced:
    |
    |                    trying to reduce  Test.T7[Test.D]
-   |                    failed since selector  Test.D
+   |                    failed since selector Test.D
    |                    does not match  case Test.A2 => Int
    |                    and cannot be shown to be disjoint from it either.
    |                    Therefore, reduction cannot advance to the remaining case
@@ -183,7 +183,7 @@
    |                  Note: a match type could not be fully reduced:
    |
    |                    trying to reduce  Test.T7[Test.D]
-   |                    failed since selector  Test.D
+   |                    failed since selector Test.D
    |                    does not match  case Test.A2 => Int
    |                    and cannot be shown to be disjoint from it either.
    |                    Therefore, reduction cannot advance to the remaining case
@@ -200,7 +200,7 @@
    |                   Note: a match type could not be fully reduced:
    |
    |                     trying to reduce  Test.T8[Test.E2]
-   |                     failed since selector  Test.E2
+   |                     failed since selector Test.E2
    |                     does not match  case Test.E1 => Int
    |                     and cannot be shown to be disjoint from it either.
    |                     Therefore, reduction cannot advance to the remaining case
@@ -224,7 +224,7 @@
    |                   Note: a match type could not be fully reduced:
    |
    |                     trying to reduce  Test.T8[Test.E2]
-   |                     failed since selector  Test.E2
+   |                     failed since selector Test.E2
    |                     does not match  case Test.E1 => Int
    |                     and cannot be shown to be disjoint from it either.
    |                     Therefore, reduction cannot advance to the remaining case
@@ -241,7 +241,7 @@
     |                                        Note: a match type could not be fully reduced:
     |
     |                                          trying to reduce  Test.T9[(Nothing, String)]
-    |                                          failed since selector  (Nothing, String)
+    |                                          failed since selector (Nothing, String)
     |                                          is uninhabited (there are no values of that type).
     |
     | longer explanation available when compiling with `-explain`
@@ -254,7 +254,7 @@
     |                                        Note: a match type could not be fully reduced:
     |
     |                                          trying to reduce  Test.T9[(String, Nothing)]
-    |                                          failed since selector  (String, Nothing)
+    |                                          failed since selector (String, Nothing)
     |                                          is uninhabited (there are no values of that type).
     |
     | longer explanation available when compiling with `-explain`
@@ -267,7 +267,7 @@
     |                                     Note: a match type could not be fully reduced:
     |
     |                                       trying to reduce  Test.T9[(Int, Nothing)]
-    |                                       failed since selector  (Int, Nothing)
+    |                                       failed since selector (Int, Nothing)
     |                                       is uninhabited (there are no values of that type).
     |
     | longer explanation available when compiling with `-explain`
@@ -280,7 +280,7 @@
     |                                     Note: a match type could not be fully reduced:
     |
     |                                       trying to reduce  Test.T9[(Nothing, Int)]
-    |                                       failed since selector  (Nothing, Int)
+    |                                       failed since selector (Nothing, Int)
     |                                       is uninhabited (there are no values of that type).
     |
     | longer explanation available when compiling with `-explain`
@@ -293,7 +293,7 @@
     |                             Note: a match type could not be fully reduced:
     |
     |                               trying to reduce  Test.T9[(?, ?)]
-    |                               failed since selector  (?, ?)
+    |                               failed since selector (?, ?)
     |                               does not match  case (Int, String) => Int
     |                               and cannot be shown to be disjoint from it either.
     |                               Therefore, reduction cannot advance to the remaining case
@@ -310,7 +310,7 @@
     |                             Note: a match type could not be fully reduced:
     |
     |                               trying to reduce  Test.T9[(?, ?)]
-    |                               failed since selector  (?, ?)
+    |                               failed since selector (?, ?)
     |                               does not match  case (Int, String) => Int
     |                               and cannot be shown to be disjoint from it either.
     |                               Therefore, reduction cannot advance to the remaining case
@@ -327,7 +327,7 @@
     |                                 Note: a match type could not be fully reduced:
     |
     |                                   trying to reduce  Test.T9[(Any, Any)]
-    |                                   failed since selector  (Any, Any)
+    |                                   failed since selector (Any, Any)
     |                                   does not match  case (Int, String) => Int
     |                                   and cannot be shown to be disjoint from it either.
     |                                   Therefore, reduction cannot advance to the remaining case
@@ -344,7 +344,7 @@
     |                                 Note: a match type could not be fully reduced:
     |
     |                                   trying to reduce  Test.T9[(Any, Any)]
-    |                                   failed since selector  (Any, Any)
+    |                                   failed since selector (Any, Any)
     |                                   does not match  case (Int, String) => Int
     |                                   and cannot be shown to be disjoint from it either.
     |                                   Therefore, reduction cannot advance to the remaining case
@@ -361,7 +361,7 @@
     |                                       Note: a match type could not be fully reduced:
     |
     |                                         trying to reduce  Test.TA[Test.Box2[Int, Int, String]]
-    |                                         failed since selector  Test.Box2[Int, Int, String]
+    |                                         failed since selector Test.Box2[Int, Int, String]
     |                                         does not match  case Test.Box2[Int, Int, Int] => Int
     |                                         and cannot be shown to be disjoint from it either.
     |                                         Therefore, reduction cannot advance to the remaining case
@@ -378,7 +378,7 @@
     |                                       Note: a match type could not be fully reduced:
     |
     |                                         trying to reduce  Test.TA[Test.Box2[Int, Int, String]]
-    |                                         failed since selector  Test.Box2[Int, Int, String]
+    |                                         failed since selector Test.Box2[Int, Int, String]
     |                                         does not match  case Test.Box2[Int, Int, Int] => Int
     |                                         and cannot be shown to be disjoint from it either.
     |                                         Therefore, reduction cannot advance to the remaining case
@@ -395,7 +395,7 @@
     |                                         Note: a match type could not be fully reduced:
     |
     |                                           trying to reduce  Test.TD[Test.Box2_C[Int, Int, String]]
-    |                                           failed since selector  Test.Box2_C[Int, Int, String]
+    |                                           failed since selector Test.Box2_C[Int, Int, String]
     |                                           does not match  case Test.Box2_C[Int, Int, Int] => Int
     |                                           and cannot be shown to be disjoint from it either.
     |                                           Therefore, reduction cannot advance to the remaining case
@@ -412,7 +412,7 @@
     |                         Note: a match type could not be fully reduced:
     |
     |                           trying to reduce  Test2.M[Some[A]]
-    |                           failed since selector  Some[A]
+    |                           failed since selector Some[A]
     |                           does not match  case Option[Int] => String
     |                           and cannot be shown to be disjoint from it either.
     |                           Therefore, reduction cannot advance to the remaining case
@@ -429,7 +429,7 @@
     |                         Note: a match type could not be fully reduced:
     |
     |                           trying to reduce  Test2.M[Some[A]]
-    |                           failed since selector  Some[A]
+    |                           failed since selector Some[A]
     |                           does not match  case Option[Int] => String
     |                           and cannot be shown to be disjoint from it either.
     |                           Therefore, reduction cannot advance to the remaining case
@@ -446,7 +446,7 @@
     |                       Note: a match type could not be fully reduced:
     |
     |                         trying to reduce  Test3.M[Test3.Inv[A]]
-    |                         failed since selector  Test3.Inv[A]
+    |                         failed since selector Test3.Inv[A]
     |                         does not match  case Test3.Inv[Int] => String
     |                         and cannot be shown to be disjoint from it either.
     |                         Therefore, reduction cannot advance to the remaining case
@@ -463,7 +463,7 @@
     |                         Note: a match type could not be fully reduced:
     |
     |                           trying to reduce  Test4.M[Test4.Inv[Foo.this.A]]
-    |                           failed since selector  Test4.Inv[Foo.this.A]
+    |                           failed since selector Test4.Inv[Foo.this.A]
     |                           does not match  case Test4.Inv[Int] => String
     |                           and cannot be shown to be disjoint from it either.
     |                           Therefore, reduction cannot advance to the remaining case

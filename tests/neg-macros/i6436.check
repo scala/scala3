@@ -2,6 +2,8 @@
 5 |    case '{ StringContext(${Varargs(parts)}*) } => // error
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |         No given instance of type scala.quoted.Quotes was found
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E006] Not Found Error: tests/neg-macros/i6436.scala:6:34 -----------------------------------------------------------
 6 |      val ps: Seq[Expr[String]] = parts // error
   |                                  ^^^^^

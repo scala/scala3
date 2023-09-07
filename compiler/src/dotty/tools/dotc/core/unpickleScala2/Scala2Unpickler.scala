@@ -133,9 +133,8 @@ object Scala2Unpickler {
 /** Unpickle symbol table information descending from a class and/or module root
  *  from an array of bytes.
  *  @param bytes      bytearray from which we unpickle
- *  @param classroot  the top-level class which is unpickled, or NoSymbol if inapplicable
- *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
- *  @param filename   filename associated with bytearray, only used for error messages
+ *  @param classRoot  the top-level class which is unpickled, or NoSymbol if inapplicable
+ *  @param moduleClassRoot the top-level module class which is unpickled, or NoSymbol if inapplicable
  */
 class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
   extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {

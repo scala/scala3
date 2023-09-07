@@ -12,7 +12,6 @@ import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
 import cc.CaptureSet
-import caps.unsafe.unsafeBoxFunArg
 
 trait TypeAssigner {
   import tpd.*
@@ -27,7 +26,7 @@ trait TypeAssigner {
           qual.isEmpty ||
           sym.name == qual ||
           sym.is(Module) && sym.name.stripModuleClassSuffix == qual)
-    ctx.outersIterator.map(((ctx: Context) => ctx.owner).unsafeBoxFunArg).find(qualifies) match {
+    ctx.outersIterator.map((ctx: Context) => ctx.owner).find(qualifies) match {
       case Some(c) if packageOK || !c.is(Package) =>
         c
       case _ =>

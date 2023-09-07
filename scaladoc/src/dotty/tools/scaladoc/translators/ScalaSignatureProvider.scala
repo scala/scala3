@@ -58,8 +58,8 @@ class ScalaSignatureProvider:
       builder.kind(showKind),
       builder.name(member.name, member.dri),
       builder
-        .generics(kind.typeParams)
-        .functionParameters(kind.argsLists)
+        .typeParamList(kind.typeParams)
+        .functionTermParameters(kind.argsLists)
         .parentsSignature(member)
     )
 
@@ -106,8 +106,7 @@ class ScalaSignatureProvider:
       builder.kind(showKind),
       builder.name(method.name, method.dri),
       builder
-        .generics(kind.typeParams)
-        .functionParameters(kind.argsLists)
+        .functionParameters(kind.paramLists)
         .pipe { builder =>
           instance.fold(builder)(i => builder.plain(": ").signature(i))
         }
@@ -151,7 +150,7 @@ class ScalaSignatureProvider:
       builder.modifiersAndVisibility(typeDef),
       builder.kind(tpe),
       builder.name(typeDef.name, typeDef.dri),
-      builder.generics(tpe.typeParams).pipe { bdr =>
+      builder.typeParamList(tpe.typeParams).pipe { bdr =>
         if (!tpe.opaque) {
           (if tpe.concreate then bdr.plain(" = ") else bdr)
             .signature(typeDef.signature)

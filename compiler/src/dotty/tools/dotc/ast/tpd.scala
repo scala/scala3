@@ -47,11 +47,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Apply(expr, args)
     case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
       ta.assignType(untpd.Apply(fn, args), fn, args)
+    case _ =>
+      assert(ctx.reporter.errorsReported)
+      ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
     case Block(Nil, expr) =>
       TypeApply(expr, args)
     case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
+    case _ =>
+      assert(ctx.reporter.errorsReported)
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
@@ -164,6 +170,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
+  def Quote(body: Tree, tags: List[Tree])(using Context): Quote =
+    untpd.Quote(body, tags).withBodyType(body.tpe)
+
+  def Splice(expr: Tree, tpe: Type)(using Context): Splice =
+    untpd.Splice(expr).withType(tpe)
+
+  def Hole(isTerm: Boolean, idx: Int, args: List[Tree], content: Tree, tpe: Type)(using Context): Hole =
+    untpd.Hole(isTerm, idx, args, content).withType(tpe)
+
   def TypeTree(tp: Type, inferred: Boolean = false)(using Context): TypeTree =
     (if inferred then untpd.InferredTypeTree() else untpd.TypeTree()).withType(tp)
 
@@ -254,12 +269,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
           if isParamDependent then mutable.ListBuffer[TermRef]() else (null: ListBuffer[TermRef] | Null).uncheckedNN
 
-        def valueParam(name: TermName, origInfo: Type): TermSymbol =
+        def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
             if tp.isContextualMethod then Given
             else if tp.isImplicitMethod then Implicit
             else EmptyFlags
-          val maybeErased = if tp.isErasedMethod then Erased else EmptyFlags
+          val maybeErased = if isErased then Erased else EmptyFlags
 
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
@@ -277,7 +292,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[List[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.erasedParams).map(valueParam), Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
@@ -385,9 +400,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Throw(expr: Tree)(using Context): Tree =
     ref(defn.throwMethod).appliedTo(expr)
 
-  def Hole(isTermHole: Boolean, idx: Int, args: List[Tree], content: Tree, tpt: Tree)(using Context): Hole =
-    ta.assignType(untpd.Hole(isTermHole, idx, args, content, tpt), tpt)
-
   // ------ Making references ------------------------------------------------------
 
   def prefixIsElidable(tp: NamedType)(using Context): Boolean = {
@@ -413,6 +425,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case tp: TermRef => !prefixIsElidable(tp)
     case _ => false
   }
+
+  def needsIdent(tp: Type)(using Context): Boolean = tp match
+    case tp: TermRef => tp.prefix eq NoPrefix
+    case _ => false
 
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType, needLoad: Boolean = true)(using Context): Tree =
@@ -1130,10 +1146,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
-        case defn.ContextFunctionType(argTypes, resType, isErased) =>
+        case defn.ContextFunctionType(argTypes, resType, _) =>
           val anonFun = newAnonFun(
             ctx.owner,
-            MethodType.companion(isContextual = true, isErased = isErased)(argTypes, resType),
+            MethodType.companion(isContextual = true)(argTypes, resType),
             coord = ctx.owner.coord)
           def lambdaBody(refss: List[List[Tree]]) =
             expand(target.select(nme.apply).appliedToArgss(refss), resType)(
@@ -1538,7 +1554,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *
    *  @param trees  the elements the list represented by
    *                the resulting tree should contain.
-   *  @param tpe    the type of the elements of the resulting list.
+   *  @param tpt    the type of the elements of the resulting list.
    *
    */
   def mkList(trees: List[Tree], tpt: Tree)(using Context): Tree =

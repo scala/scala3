@@ -13,6 +13,8 @@ import Decorators._
 import Uniques._
 import inlines.Inlines
 import config.Printers.typr
+import Inferencing.*
+import ErrorReporting.*
 import util.SourceFile
 import TypeComparer.necessarySubType
 
@@ -370,7 +372,7 @@ object ProtoTypes {
 
     private def isUndefined(tp: Type): Boolean = tp match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
 
@@ -492,7 +494,21 @@ object ProtoTypes {
       val targ = cacheTypedArg(arg,
         typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
         force = true)
-      typer.adapt(targ, wideFormal, locked)
+      val targ1 = typer.adapt(targ, wideFormal, locked)
+      if wideFormal eq formal then targ1
+      else checkNoWildcardCaptureForCBN(targ1)
+    }
+
+    def checkNoWildcardCaptureForCBN(targ1: Tree)(using Context): Tree = {
+      if hasCaptureConversionArg(targ1.tpe) then
+        val tp = stripCast(targ1).tpe
+        errorTree(targ1,
+          em"""argument for by-name parameter is not a value
+              |and contains wildcard arguments: $tp
+              |
+              |Assign it to a val and pass that instead.
+              |""")
+      else targ1
     }
 
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before
@@ -671,10 +687,12 @@ object ProtoTypes {
    *
    *    [] _
    */
-  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyFunctionProto extends UncachedGroundType with MatchAlways:
+    override def toString = "AnyFunctionProto"
 
   /** A prototype for type constructors that are followed by a type application */
-  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
+  @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways:
+    override def toString = "AnyTypeConstructorProto"
 
   extension (pt: Type)
     def isExtensionApplyProto: Boolean = pt match
@@ -824,7 +842,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.functionArgInfos.last, pt)
         else tp
     }
   }
@@ -946,8 +964,8 @@ object ProtoTypes {
   object dummyTreeOfType {
     def apply(tp: Type)(implicit src: SourceFile): Tree =
       untpd.Literal(Constant(null)) withTypeUnchecked tp
-    def unapply(tree: untpd.Tree): Option[Type] = tree match {
-      case Literal(Constant(null)) => Some(tree.typeOpt)
+    def unapply(tree: untpd.Tree): Option[Type] = untpd.unsplice(tree) match {
+      case tree @ Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None
     }
   }

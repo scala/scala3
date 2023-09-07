@@ -742,7 +742,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] {
-    self: UntypedTreeAccumulator[X] @retains(caps.*) =>
+    self: UntypedTreeAccumulator[X] @retains(caps.cap) =>
     override def foldMoreCases(x: X, tree: Tree)(using Context): X = tree match {
       case ModuleDef(name, impl) =>
         this(x, impl)

@@ -3,7 +3,7 @@ import scala.quoted.*
 class Foo {
   def f(using Quotes): Expr[Any] = {
     '{
-      trait X {
+      trait X extends A {
         type Y
         def y: Y = ???
       }
@@ -17,3 +17,7 @@ class Foo {
     }
   }
 }
+
+trait A:
+  type Y
+  def y: Y = ???

@@ -11,7 +11,7 @@ hexadecimal code:
 
 ```ebnf
 UnicodeEscape ::= ‘\’ ‘u’ {‘u’} hexDigit hexDigit hexDigit hexDigit
-hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | … | ‘f’
+hexDigit      ::= ‘0’ | ... | ‘9’ | ‘A’ | ... | ‘F’ | ‘a’ | ... | ‘f’
 ```
 
 Informal descriptions are typeset as `“some comment”`.
@@ -22,15 +22,15 @@ form.
 
 ```ebnf
 whiteSpace       ::=  ‘\u0020’ | ‘\u0009’ | ‘\u000D’ | ‘\u000A’
-upper            ::=  ‘A’ | … | ‘Z’ | ‘\$’ | ‘_’  “… and Unicode category Lu”
-lower            ::=  ‘a’ | … | ‘z’ “… and Unicode category Ll”
-letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Lm, Nl”
-digit            ::=  ‘0’ | … | ‘9’
+upper            ::=  ‘A’ | ... | ‘Z’ | ‘\$’ | ‘_’  “... and Unicode category Lu”
+lower            ::=  ‘a’ | ... | ‘z’ “... and Unicode category Ll”
+letter           ::=  upper | lower “... and Unicode categories Lo, Lt, Lm, Nl”
+digit            ::=  ‘0’ | ... | ‘9’
 paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ | ‘'(’ | ‘'[’ | ‘'{’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
 opchar           ::=  ‘!’ | ‘#’ | ‘%’ | ‘&’ | ‘*’ | ‘+’ | ‘-’ | ‘/’ | ‘:’ |
                       ‘<’ | ‘=’ | ‘>’ | ‘?’ | ‘@’ | ‘\’ | ‘^’ | ‘|’ | ‘~’
-                      “… and Unicode categories Sm, So”
+                      “... and Unicode categories Sm, So”
 printableChar    ::=  “all characters in [\u0020, \u007E] inclusive”
 charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 
@@ -49,7 +49,7 @@ integerLiteral   ::=  (decimalNumeral | hexNumeral) [‘L’ | ‘l’]
 decimalNumeral   ::=  ‘0’ | nonZeroDigit {digit}
 hexNumeral       ::=  ‘0’ (‘x’ | ‘X’) hexDigit {hexDigit}
 digit            ::=  ‘0’ | nonZeroDigit
-nonZeroDigit     ::=  ‘1’ | … | ‘9’
+nonZeroDigit     ::=  ‘1’ | ... | ‘9’
 
 floatingPointLiteral
                  ::=  digit {digit} ‘.’ {digit} [exponentPart] [floatType]

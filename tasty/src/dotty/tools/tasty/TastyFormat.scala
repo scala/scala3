@@ -122,7 +122,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCHtpt       Length bound_Term? sel_Term CaseDef*              -- sel match { CaseDef } where `bound` is optional upper bound of all rhs
                   BYNAMEtpt             underlying_Term                            -- => underlying
                   SHAREDterm            term_ASTRef                                -- Link to previously serialized term
-                  HOLE           Length idx_Nat arg_Tree*                          -- Hole where a splice goes with sequence number idx, splice is applied to arguments `arg`s
+                  HOLE           Length idx_Nat tpe_Type arg_Tree*                 -- Splice hole with index `idx`, the type of the hole `tpe`, type and term arguments of the hole `arg`s
+
 
   CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?              -- case pat if guard => rhs
   ImplicitArg   = IMPLICITARG           arg_Term                                   -- implicit unapply argument

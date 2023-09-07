@@ -3,7 +3,6 @@ package dotty.tools.scaladoc
 import java.util.stream.Stream // comment out - wrong error!
 import java.util.stream.Collectors
 import java.util.Collections
-import java.nio.file.Path
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import scala.jdk.CollectionConverters._

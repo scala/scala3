@@ -12,4 +12,9 @@ object Test {
     case x: C => x // error
     case _ =>
   }
+
+  def baz(x: A) = x match {
+    case x: (B | C) => x // error
+    case _          =>
+  }
 }

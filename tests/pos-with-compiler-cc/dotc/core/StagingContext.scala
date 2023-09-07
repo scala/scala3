@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.util.Property
-import dotty.tools.dotc.transform.PCPCheckAndHeal
+import dotty.tools.dotc.transform.CrossStageSafety
 
 object StagingContext {
 
@@ -16,7 +16,7 @@ object StagingContext {
    */
   private val QuotesStack = new Property.Key[List[tpd.Tree]]
 
-  private val TaggedTypes = new Property.Key[PCPCheckAndHeal.QuoteTypeTags]
+  private val TaggedTypes = new Property.Key[CrossStageSafety.QuoteTypeTags]
 
   /** All enclosing calls that are currently inlined, from innermost to outermost. */
   def level(using Context): Int =
@@ -36,10 +36,10 @@ object StagingContext {
   def spliceContext(using Context): Context =
     ctx.fresh.setProperty(QuotationLevel, level - 1)
 
-  def contextWithQuoteTypeTags(taggedTypes: PCPCheckAndHeal.QuoteTypeTags)(using Context) =
+  def contextWithQuoteTypeTags(taggedTypes: CrossStageSafety.QuoteTypeTags)(using Context) =
     ctx.fresh.setProperty(TaggedTypes, taggedTypes)
 
-  def getQuoteTypeTags(using Context): PCPCheckAndHeal.QuoteTypeTags =
+  def getQuoteTypeTags(using Context): CrossStageSafety.QuoteTypeTags =
     ctx.property(TaggedTypes).get
 
   /** Context with a decremented quotation level and pops the Some of top of the quote context stack or None if the stack is empty.

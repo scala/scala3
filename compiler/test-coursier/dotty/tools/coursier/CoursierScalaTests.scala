@@ -170,12 +170,16 @@ object CoursierScalaTests:
 
   /** Get coursier script */
   @BeforeClass def setup(): Unit =
-    val ver = execCmd("uname")._2.head.replace('L', 'l').replace('D', 'd')
+    val launcherLocation = "https://github.com/coursier/launchers/raw/master"
+    val launcherName = execCmd("uname")._2.head.toLowerCase match
+      case "linux" => "cs-x86_64-pc-linux"
+      case "darwin" => "cs-x86_64-apple-darwin"
+      case other => fail(s"Unsupported OS for coursier launcher: $other")
 
     def runAndCheckCmd(cmd: String, options: String*): Unit =
       val (code, out) = execCmd(cmd, options*)
       if code != 0 then
         fail(s"Failed to run $cmd ${options.mkString(" ")}, exit code: $code, output: ${out.mkString("\n")}")
 
-    runAndCheckCmd("curl", s"-fLo cs https://git.io/coursier-cli-$ver")
+    runAndCheckCmd("curl", s"-fLo cs $launcherLocation/$launcherName")
     runAndCheckCmd("chmod", "+x cs")

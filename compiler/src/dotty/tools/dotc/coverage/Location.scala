@@ -13,7 +13,7 @@ import dotty.tools.dotc.util.SourceFile
   * @param className      name of the closest enclosing class
   * @param fullClassName  fully qualified name of the closest enclosing class
   * @param classType      "type" of the closest enclosing class: Class, Trait or Object
-  * @param method         name of the closest enclosing method
+  * @param methodName     name of the closest enclosing method
   * @param sourcePath     absolute path of the source file
   */
 final case class Location(

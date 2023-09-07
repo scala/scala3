@@ -5,6 +5,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.{ Paths, Path }
 import scala.io._
+import dotty.tools.scaladoc.site.BlogParser
 
 class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSiteContext, CompilerContext):
   val ctx: StaticSiteContext = summon[StaticSiteContext]
@@ -114,10 +115,12 @@ class StaticSiteLoader(val root: File, val args: Scaladoc.Args)(using StaticSite
   }
 
   def loadBlog(): Option[LoadedTemplate] = {
+    val blogConfig = BlogParser.readYml(root)
+    val rootPath = Option(blogConfig.input).map(input => ctx.resolveNewBlogPath(input)).getOrElse(ctx.blogPath)
+    val defaultDirectory = Option(blogConfig.output).getOrElse("blog")
+
     type Date = (String, String, String)
-    val rootPath = ctx.blogPath
-    val defaultDirectory = "blog"
-    if (!Files.exists(rootPath)) None
+    if (!Files.exists(rootPath) || blogConfig.hidden) None
     else {
       val indexPageOpt = Seq(
           rootPath.resolve("index.md"),

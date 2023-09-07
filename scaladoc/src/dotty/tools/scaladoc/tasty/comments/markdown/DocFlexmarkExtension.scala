@@ -15,6 +15,9 @@ import com.vladsch.flexmark._
 
 import dotty.tools.scaladoc.snippets._
 import scala.jdk.CollectionConverters._
+import com.vladsch.flexmark.util.data.MutableDataHolder
+import com.vladsch.flexmark.util.data.DataHolder
+import com.vladsch.flexmark.html.renderer.NodeRenderingHandler.CustomNodeRenderer
 
 class DocLinkNode(
   val target: DocLink,
@@ -40,7 +43,7 @@ class DocFlexmarkParser(resolveLink: String => DocLink) extends Parser.ParserExt
   class Factory extends LinkRefProcessorFactory:
     override def getBracketNestingLevel(options: DataHolder) = 1
     override def getWantExclamationPrefix(options: DataHolder) = false
-    override def create(doc: Document): LinkRefProcessor =
+    override def apply(doc: Document): LinkRefProcessor =
       new WikiLinkLinkRefProcessor(doc):
         override def createNode(nodeChars: BasedSequence): Node =
           val chars = nodeChars.toString.substring(2, nodeChars.length - 2)
@@ -75,7 +78,7 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
         )
 
     object Factory extends NodeRendererFactory:
-      override def create(options: DataHolder): NodeRenderer = Render
+      override def apply(options: DataHolder): NodeRenderer = Render
 
     def extend(htmlRendererBuilder: HtmlRenderer.Builder, tpe: String): Unit =
       htmlRendererBuilder.nodeRendererFactory(Factory)

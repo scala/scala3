@@ -11,16 +11,16 @@ import vulpix.TestConfiguration, TestConfiguration.basicClasspath
 import org.junit, junit.Test, junit.Assert.*
 
 class SpaceEngineTest:
+  import SpaceEngine.*
+
   @Test def isSubspaceTest1: Unit = inCompilerContext(basicClasspath) {
     // Testing the property of `isSubspace` that:
     // isSubspace(a, b)  <=>  simplify(simplify(a) - simplify(a)) == Empty
     // Previously there were no simplify calls,
     // and this is a counter-example,
     // for which you need either to simplify(b) or simplify the minus result.
-    val engine = patmat.SpaceEngine()
-    import engine.*
 
-    val tp      = defn.ConsClass.typeRef.appliedTo(defn.AnyType)
+    val tp      = defn.ConsType.appliedTo(defn.AnyType)
     val unappTp = requiredMethod("scala.collection.immutable.::.unapply").termRef
     val params  = List(Empty, Typ(tp))
 

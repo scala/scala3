@@ -83,7 +83,7 @@ abstract class Ctx:
   def run: Run
   def detached: DetachedContext
 
-type Context = {*} Ctx
+type Context = Ctx^
 
 abstract class DetachedContext extends Ctx:
   def outer: DetachedContext
@@ -110,9 +110,9 @@ object NoContext extends FreshCtx(-1):
   owner = NoSymbol
   scope = EmptyScope
 
-type FreshContext = {*} FreshCtx
+type FreshContext = FreshCtx^
 
-inline def ctx(using c: Context): {c} Ctx = c
+inline def ctx(using c: Context): Ctx^{c} = c
 
 // !cc! it does not work if ctxStack is an Array[FreshContext] instead.
 var ctxStack = Array.tabulate(16)(new FreshCtx(_))

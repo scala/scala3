@@ -245,7 +245,7 @@ extends NotFoundMsg(MissingIdentID) {
   }
 }
 
-class TypeMismatch(found: Type,  expected: Type, inTree: Option[untpd.Tree],  addenda: => String*)(using Context)
+class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], addenda: => String*)(using Context)
   extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
   def msg(using Context) =
@@ -1305,6 +1305,37 @@ extends SyntaxMsg(VarArgsParamMustComeLastID) {
 
 import typer.Typer.BindingPrec
 
+class ConstrProxyShadows(proxy: TermRef, shadowed: Type, shadowedIsApply: Boolean)(using Context)
+  extends ReferenceMsg(ConstrProxyShadowsID), NoDisambiguation:
+
+  def clsString(using Context) = proxy.symbol.companionClass.showLocated
+  def shadowedString(using Context) = shadowed.termSymbol.showLocated
+  def appClause = if shadowedIsApply then " the apply method of" else ""
+  def appSuffix = if shadowedIsApply then ".apply" else ""
+
+  def msg(using Context) =
+    i"""Reference to constructor proxy for $clsString
+       |shadows outer reference to $shadowedString
+       |
+       |The instance needs to be created with an explicit `new`."""
+
+  def explain(using Context) =
+    i"""There is an ambiguity in the meaning of the call
+       |
+       |   ${proxy.symbol.name}(...)
+       |
+       |It could mean creating an instance of $clsString with
+       |
+       |   new ${proxy.symbol.companionClass.name}(...)
+       |
+       |Or it could mean calling$appClause $shadowedString as in
+       |
+       |   ${shadowed.termSymbol.name}$appSuffix(...)
+       |
+       |To disambiguate, use an explicit `new` if you mean the former,
+       |or use a full prefix for ${shadowed.termSymbol.name} if you mean the latter."""
+end ConstrProxyShadows
+
 class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(using Context)
   extends ReferenceMsg(AmbiguousReferenceID), NoDisambiguation {
 
@@ -1328,21 +1359,32 @@ class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec
   }
 
   def msg(using Context) =
-    i"""|Reference to $name is ambiguous,
-        |it is both ${bindingString(newPrec, ctx)}
+    i"""|Reference to $name is ambiguous.
+        |It is both ${bindingString(newPrec, ctx)}
         |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
 
   def explain(using Context) =
-    i"""|The compiler can't decide which of the possible choices you
-        |are referencing with $name: A definition of lower precedence
-        |in an inner scope, or a definition with higher precedence in
-        |an outer scope.
+    val precedent =
+      if newPrec == prevPrec then                 """two name bindings of equal precedence
+        |were introduced in the same scope.""".stripMargin
+      else                                        """a name binding of lower precedence
+        |in an inner scope cannot shadow a binding with higher precedence in
+        |an outer scope.""".stripMargin
+
+    i"""|The identifier $name is ambiguous because $precedent
+        |
+        |The precedence of the different kinds of name bindings, from highest to lowest, is:
+        | - Definitions in an enclosing scope
+        | - Inherited definitions and top-level definitions in packages
+        | - Names introduced by import of a specific name
+        | - Names introduced by wildcard import
+        | - Definitions from packages in other files
         |Note:
-        | - Definitions in an enclosing scope take precedence over inherited definitions
-        | - Definitions take precedence over imports
-        | - Named imports take precedence over wildcard imports
-        | - You may replace a name when imported using
-        |   ${hl("import")} scala.{ $name => ${name.show + "Tick"} }
+        | - As a rule, definitions take precedence over imports.
+        | - Definitions in an enclosing scope take precedence over inherited definitions,
+        |   which can result in ambiguities in nested classes.
+        | - When importing, you can avoid naming conflicts by renaming:
+        |   ${hl("import")} scala.{$name => ${name.show}Tick}
         |"""
 }
 
@@ -1391,6 +1433,15 @@ extends ReferenceMsg(AmbiguousOverloadID), NoDisambiguation {
         |- adding a type ascription as in ${hl("instance.myMethod: String => Int")}
         |"""
 }
+
+class AmbiguousExtensionMethod(tree: untpd.Tree, expansion1: tpd.Tree, expansion2: tpd.Tree)(using Context)
+  extends ReferenceMsg(AmbiguousExtensionMethodID), NoDisambiguation:
+  def msg(using Context) =
+    i"""Ambiguous extension methods:
+       |both $expansion1
+       |and  $expansion2
+       |are possible expansions of $tree"""
+  def explain(using Context) = ""
 
 class ReassignmentToVal(name: Name)(using Context)
   extends TypeMsg(ReassignmentToValID) {
@@ -1458,6 +1509,16 @@ class MissingArgument(pname: Name, methString: String)(using Context)
     if pname.firstPart contains '$' then s"not enough arguments for $methString"
     else s"missing argument for parameter $pname of $methString"
   def explain(using Context) = ""
+
+class MissingArgumentList(method: String, sym: Symbol)(using Context)
+  extends TypeMsg(MissingArgumentListID) {
+  def msg(using Context) =
+    val symDcl = if sym.exists then "\n\n  " + hl(sym.showDcl(using ctx.withoutColors)) else ""
+    i"missing argument list for $method$symDcl"
+  def explain(using Context) = {
+    i"""Unapplied methods are only converted to functions when a function type is expected."""
+  }
+}
 
 class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
   extends TypeMismatchMsg(
@@ -1920,7 +1981,11 @@ class UnapplyInvalidReturnType(unapplyResult: Type, unapplyName: Name)(using Con
         |To be used as an extractor, an unapply method has to return a type that either:
         | - has members ${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} (usually an ${Green("Option[S]")})
         | - is a ${Green("Boolean")}
-        | - is a ${Green("Product")} (like a ${Magenta("Tuple2[T1, T2]")})
+        | - is a ${Green("Product")} (like a ${Magenta("Tuple2[T1, T2]")}) of arity i with i >= 1, and has members _1 to _i
+        |
+        |See: https://docs.scala-lang.org/scala3/reference/changed-features/pattern-matching.html#fixed-arity-extractors
+        |
+        |Examples:
         |
         |class A(val i: Int)
         |
@@ -2221,6 +2286,16 @@ class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)
   def explain(using Context) =
     i"""The pure expression $stat doesn't have any side effect and its result is not assigned elsewhere.
         |It can be removed without changing the semantics of the program. This may indicate an error."""
+}
+
+class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Context)
+  extends Message(UnqualifiedCallToAnyRefMethodID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Suspicious top-level unqualified call to ${hl(method.name.toString)}"
+  def explain(using Context) =
+    i"""Top-level unqualified calls to ${hl("AnyRef")} or ${hl("Any")} methods such as ${hl(method.name.toString)} are
+       |resolved to calls on ${hl("Predef")} or on imported methods. This might not be what
+       |you intended."""
 }
 
 class TraitCompanionWithMutableStatic()(using Context)
@@ -2554,12 +2629,114 @@ class MissingImplicitArgument(
     pt: Type,
     where: String,
     paramSymWithMethodCallTree: Option[(Symbol, tpd.Tree)] = None,
-    ignoredInstanceNormalImport: => Option[SearchSuccess]
+    ignoredInstanceNormalImport: => Option[SearchSuccess],
+    ignoredConvertibleImplicits: => Iterable[TermRef]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
   arg.tpe match
     case ambi: AmbiguousImplicits => withoutDisambiguation()
     case _ =>
+
+  /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
+   *  all occurrences of `${X}` where `X` is in `paramNames` with the
+   *  corresponding shown type in `args`.
+   */
+  def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type])(using Context): String =
+    def translate(name: String): Option[String] =
+      val idx = paramNames.indexOf(name)
+      if (idx >= 0) Some(i"${args(idx)}") else None
+    """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match
+      case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
+    )
+
+  /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
+   *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
+   *  @param substituteType   Function substituting specific types for abstract types associated with variables, e.g A -> Int
+   */
+  def formatAnnotationMessage(rawMsg: String, sym: Symbol, substituteType: Type => Type)(using Context): String =
+    val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
+    userDefinedErrorString(
+      rawMsg,
+      paramNames = substitutableTypesSymbols.map(_.name.unexpandedName.toString),
+      args = substitutableTypesSymbols.map(_.typeRef).map(substituteType)
+    )
+
+  /** Extract a user defined error message from a symbol `sym`
+   *  with an annotation matching the given class symbol `cls`.
+   */
+  def userDefinedMsg(sym: Symbol, cls: Symbol)(using Context) =
+    for
+      ann <- sym.getAnnotation(cls)
+      msg <- ann.argumentConstantString(0)
+    yield msg
+
+  def userDefinedImplicitNotFoundTypeMessageFor(sym: Symbol)(using Context): Option[String] =
+    for
+      rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
+      if Feature.migrateTo3 || sym != defn.Function1
+        // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+    yield
+      val substituteType = (_: Type).asSeenFrom(pt, sym)
+      formatAnnotationMessage(rawMsg, sym, substituteType)
+
+  /** Extracting the message from a method parameter, e.g. in
+   *
+   *  trait Foo
+   *
+   *  def foo(implicit @annotation.implicitNotFound("Foo is missing") foo: Foo): Any = ???
+   */
+  def userDefinedImplicitNotFoundParamMessage(using Context): Option[String] =
+    paramSymWithMethodCallTree.flatMap: (sym, applTree) =>
+      userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map: rawMsg =>
+        val fn = tpd.funPart(applTree)
+        val targs = tpd.typeArgss(applTree).flatten
+        val methodOwner = fn.symbol.owner
+        val methodOwnerType = tpd.qualifier(fn).tpe
+        val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)
+        val methodTypeArgs = targs.map(_.tpe)
+        val substituteType = (_: Type).asSeenFrom(methodOwnerType, methodOwner).subst(methodTypeParams, methodTypeArgs)
+        formatAnnotationMessage(rawMsg, sym.owner, substituteType)
+
+  def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
+    def recur(tp: Type): Option[String] = tp match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        userDefinedImplicitNotFoundTypeMessageFor(sym).orElse(recur(tp.info))
+      case tp: ClassInfo =>
+        tp.baseClasses.iterator
+          .map(userDefinedImplicitNotFoundTypeMessageFor)
+          .find(_.isDefined).flatten
+      case tp: TypeProxy =>
+        recur(tp.superType)
+      case tp: AndType =>
+        recur(tp.tp1).orElse(recur(tp.tp2))
+      case _ =>
+        None
+    recur(pt)
+
+  /** The implicitNotFound annotation on the parameter, or else on the type.
+   *  implicitNotFound message strings starting with `explain=` are intended for
+   *  additional explanations, not the message proper. The leading `explain=` is
+   *  dropped in this case.
+   *  @param explain  The message is used for an additional explanation, not
+   *                  the message proper.
+   */
+  def userDefinedImplicitNotFoundMessage(explain: Boolean)(using Context): Option[String] =
+    val explainTag = "explain="
+    def filter(msg: Option[String]) = msg match
+      case Some(str) =>
+        if str.startsWith(explainTag) then
+          if explain then Some(str.drop(explainTag.length)) else None
+        else if explain then None
+        else msg
+      case None => None
+    filter(userDefinedImplicitNotFoundParamMessage)
+      .orElse(filter(userDefinedImplicitNotFoundTypeMessage))
+
+  object AmbiguousImplicitMsg {
+    def unapply(search: SearchSuccess): Option[String] =
+      userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
+  }
 
   def msg(using Context): String =
 
@@ -2583,29 +2760,6 @@ class MissingImplicitArgument(
               |
               |But ${tpe.explanation}."""
           case _ => headline
-
-    /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
-     *  all occurrences of `${X}` where `X` is in `paramNames` with the
-     *  corresponding shown type in `args`.
-     */
-    def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type]): String = {
-      def translate(name: String): Option[String] = {
-        val idx = paramNames.indexOf(name)
-        if (idx >= 0) Some(i"${args(idx)}") else None
-      }
-
-      """\$\{\s*([^}\s]+)\s*\}""".r.replaceAllIn(raw, (_: Regex.Match) match {
-        case Regex.Groups(v) => quoteReplacement(translate(v).getOrElse("")).nn
-      })
-    }
-
-    /** Extract a user defined error message from a symbol `sym`
-     *  with an annotation matching the given class symbol `cls`.
-     */
-    def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
-      ann <- sym.getAnnotation(cls)
-      msg <- ann.argumentConstantString(0)
-    } yield msg
 
     def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
 
@@ -2643,39 +2797,6 @@ class MissingImplicitArgument(
       userDefinedErrorString(raw, params, args)
     }
 
-    /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
-     *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
-     *  @param substituteType   Function substituting specific types for abstract types associated with variables, e.g A -> Int
-     */
-    def formatAnnotationMessage(rawMsg: String, sym: Symbol, substituteType: Type => Type): String = {
-      val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
-
-      userDefinedErrorString(
-        rawMsg,
-        paramNames = substitutableTypesSymbols.map(_.name.unexpandedName.toString),
-        args = substitutableTypesSymbols.map(_.typeRef).map(substituteType)
-      )
-    }
-
-    /** Extracting the message from a method parameter, e.g. in
-     *
-     *  trait Foo
-     *
-     *  def foo(implicit @annotation.implicitNotFound("Foo is missing") foo: Foo): Any = ???
-     */
-    def userDefinedImplicitNotFoundParamMessage: Option[String] = paramSymWithMethodCallTree.flatMap { (sym, applTree) =>
-      userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
-        val fn = tpd.funPart(applTree)
-        val targs = tpd.typeArgss(applTree).flatten
-        val methodOwner = fn.symbol.owner
-        val methodOwnerType = tpd.qualifier(fn).tpe
-        val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)
-        val methodTypeArgs = targs.map(_.tpe)
-        val substituteType = (_: Type).asSeenFrom(methodOwnerType, methodOwner).subst(methodTypeParams, methodTypeArgs)
-        formatAnnotationMessage(rawMsg, sym.owner, substituteType)
-      }
-    }
-
     /** Extracting the message from a type, e.g. in
      *
      *  @annotation.implicitNotFound("Foo is missing")
@@ -2683,37 +2804,6 @@ class MissingImplicitArgument(
      *
      *  def foo(implicit foo: Foo): Any = ???
      */
-    def userDefinedImplicitNotFoundTypeMessage: Option[String] =
-      def recur(tp: Type): Option[String] = tp match
-        case tp: TypeRef =>
-          val sym = tp.symbol
-          userDefinedImplicitNotFoundTypeMessageFor(sym).orElse(recur(tp.info))
-        case tp: ClassInfo =>
-          tp.baseClasses.iterator
-            .map(userDefinedImplicitNotFoundTypeMessageFor)
-            .find(_.isDefined).flatten
-        case tp: TypeProxy =>
-          recur(tp.superType)
-        case tp: AndType =>
-          recur(tp.tp1).orElse(recur(tp.tp2))
-        case _ =>
-          None
-      recur(pt)
-
-    def userDefinedImplicitNotFoundTypeMessageFor(sym: Symbol): Option[String] =
-      for
-        rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
-        if Feature.migrateTo3 || sym != defn.Function1
-          // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
-      yield
-        val substituteType = (_: Type).asSeenFrom(pt, sym)
-        formatAnnotationMessage(rawMsg, sym, substituteType)
-
-    object AmbiguousImplicitMsg {
-      def unapply(search: SearchSuccess): Option[String] =
-        userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
-    }
-
     arg.tpe match
       case ambi: AmbiguousImplicits =>
         (ambi.alt1, ambi.alt2) match
@@ -2727,8 +2817,7 @@ class MissingImplicitArgument(
         i"""No implicit search was attempted${location("for")}
             |since the expected type $target is not specific enough"""
       case _ =>
-        val shortMessage = userDefinedImplicitNotFoundParamMessage
-          .orElse(userDefinedImplicitNotFoundTypeMessage)
+        val shortMessage = userDefinedImplicitNotFoundMessage(explain = false)
           .getOrElse(defaultImplicitNotFoundMessage)
         formatMsg(shortMessage)()
   end msg
@@ -2743,11 +2832,22 @@ class MissingImplicitArgument(
         // show all available additional info
         def hiddenImplicitNote(s: SearchSuccess) =
           i"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+        def showImplicitAndConversions(imp: TermRef, convs: Iterable[TermRef]) =
+          i"\n- ${imp.symbol.showDcl}${convs.map(c => "\n    - " + c.symbol.showDcl).mkString}"
+        def noChainConversionsNote(ignoredConvertibleImplicits: Iterable[TermRef]): Option[String] =
+          Option.when(ignoredConvertibleImplicits.nonEmpty)(
+            i"\n\nNote: implicit conversions are not automatically applied to arguments of using clauses. " +
+            i"You will have to pass the argument explicitly.\n" +
+            i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
+            ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
+          )
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
+            .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(ctx.typer.importSuggestionAddendum(pt))
 
-  def explain(using Context) = ""
+  def explain(using Context) = userDefinedImplicitNotFoundMessage(explain = true)
+    .getOrElse("")
 end MissingImplicitArgument
 
 class CannotBeAccessed(tpe: NamedType, superAccess: Boolean)(using Context)
@@ -2794,4 +2894,15 @@ class ValueDiscarding(tp: Type)(using Context)
   extends Message(ValueDiscardingID):
     def kind = MessageKind.PotentialIssue
     def msg(using Context) = i"discarded non-Unit value of type $tp"
+    def explain(using Context) = ""
+
+class UnusedNonUnitValue(tp: Type)(using Context)
+  extends Message(UnusedNonUnitValueID):
+    def kind = MessageKind.PotentialIssue
+    def msg(using Context) = i"unused value of type $tp"
+    def explain(using Context) = ""
+
+class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
+  extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
+    def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
     def explain(using Context) = ""

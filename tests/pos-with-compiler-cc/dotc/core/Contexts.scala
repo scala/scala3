@@ -110,7 +110,7 @@ object Contexts {
   inline def inDetachedContext[T](inline op: DetachedContext ?-> T)(using ctx: Context): T =
     op(using ctx.detach)
 
-  type Context = ContextCls @retains(caps.*)
+  type Context = ContextCls @retains(caps.cap)
 
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in

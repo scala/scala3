@@ -30,18 +30,20 @@ class Driver {
 
   protected def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
     if files.nonEmpty then
+      var runOrNull = ctx.run
       try
         val run = compiler.newRun
+        runOrNull = run
         run.compile(files)
         finish(compiler, run)
       catch
         case ex: FatalError =>
           report.error(ex.getMessage.nn) // signals that we should fail compilation.
-        case ex: TypeError =>
-          println(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}")
+        case ex: TypeError if !runOrNull.enrichedErrorMessage =>
+          println(runOrNull.enrichErrorMessage(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
-        case ex: Throwable =>
-          println(s"$ex while compiling ${files.map(_.path).mkString(", ")}")
+        case ex: Throwable if !runOrNull.enrichedErrorMessage =>
+          println(runOrNull.enrichErrorMessage(s"Exception while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
     ctx.reporter
 

@@ -17,11 +17,12 @@ import NameKinds.{InlineAccessorName, UniqueInlineName}
 import inlines.Inlines
 import NameOps._
 import Annotations._
-import transform.{AccessProxies, PCPCheckAndHeal, Splicer}
+import transform.{AccessProxies, Splicer}
+import staging.CrossStageSafety
 import transform.SymUtils.*
 import config.Printers.inlining
 import util.Property
-import dotty.tools.dotc.transform.TreeMapWithStages._
+import staging.StagingLevel
 
 object PrepareInlineable {
   import tpd._
@@ -73,7 +74,7 @@ object PrepareInlineable {
         !sym.isContainedIn(inlineSym) &&
         !(sym.isStableMember && sym.info.widenTermRefExpr.isInstanceOf[ConstantType]) &&
         !sym.isInlineMethod &&
-        (Inlines.inInlineMethod || StagingContext.level > 0)
+        (Inlines.inInlineMethod || StagingLevel.level > 0)
 
       def preTransform(tree: Tree)(using Context): Tree
 
@@ -85,14 +86,7 @@ object PrepareInlineable {
       }
 
       override def transform(tree: Tree)(using Context): Tree =
-        inContext(stagingContext(tree)) {
-          postTransform(super.transform(preTransform(tree)))
-        }
-
-      private def stagingContext(tree: Tree)(using Context): Context = tree match
-        case tree: Apply if tree.symbol.isQuote => StagingContext.quoteContext
-        case tree: Apply if tree.symbol.isExprSplice => StagingContext.spliceContext
-        case _ => ctx
+        postTransform(super.transform(preTransform(tree)))
     }
 
     /** Direct approach: place the accessor with the accessed symbol. This has the
@@ -153,7 +147,7 @@ object PrepareInlineable {
           val qual = qualifier(refPart)
           inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, $argss%, %")
 
-          // Need to dealias in order to cagtch all possible references to abstracted over types in
+          // Need to dealias in order to catch all possible references to abstracted over types in
           // substitutions
           val dealiasMap = new TypeMap {
             def apply(t: Type) = mapOver(t.dealias)
@@ -255,7 +249,7 @@ object PrepareInlineable {
 
   /** Register inline info for given inlineable method `sym`.
    *
-   *  @param sym         The symbol denotation of the inlineable method for which info is registered
+   *  @param inlined     The symbol denotation of the inlineable method for which info is registered
    *  @param treeExpr    A function that computes the tree to be inlined, given a context
    *                     This tree may still refer to non-public members.
    *  @param ctx         The context to use for evaluating `treeExpr`. It needs
@@ -289,11 +283,11 @@ object PrepareInlineable {
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
-        case Spliced(code) =>
+        case Splice(code) =>
           if (code.symbol.flags.is(Inline))
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
-          new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
+          (new CrossStageSafety).transform(body) // Ignore output, only check cross-stage safety
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
         case Block(Nil, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)

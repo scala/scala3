@@ -18,6 +18,8 @@ import Annotations.Annotation
 import Phases._
 import ast.tpd.Literal
 
+import dotty.tools.dotc.transform.sjs.JSSymUtils.sjsNeedsField
+
 import scala.annotation.tailrec
 
 object SymUtils:
@@ -259,9 +261,29 @@ object SymUtils:
       self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
     }
 
+    /** Is this symbol a constant expression final val?
+     *
+     *  This is the case if all of the following are true:
+     *
+     *  - it is a `final val`,
+     *  - its result type is a `ConstantType`, and
+     *  - it does not need an explicit field because of Scala.js semantics (see `JSSymUtils.sjsNeedsField`).
+     *
+     *  Constant expression final vals do not need an explicit field to store
+     *  their value. See the Memoize-Mixin-Constructors phase trio.
+     */
     def isConstExprFinalVal(using Context): Boolean =
       atPhaseNoLater(erasurePhase) {
-        self.is(Final) && self.info.resultType.isInstanceOf[ConstantType]
+        self.is(Final, butNot = Mutable) && self.info.resultType.isInstanceOf[ConstantType]
+      } && !self.sjsNeedsField
+
+    /** The `ConstantType` of a val known to be `isConstrExprFinalVal`.
+     *
+     *  @pre `self.isConstantExprFinalVal` is true.
+     */
+    def constExprFinalValConstantType(using Context): ConstantType =
+      atPhaseNoLater(erasurePhase) {
+        self.info.resultType.asInstanceOf[ConstantType]
       }
 
     def isField(using Context): Boolean =
@@ -314,14 +336,6 @@ object SymUtils:
     /** The reachable typeRef with wildcard arguments for each type parameter */
     def reachableRawTypeRef(using Context) =
       self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
-
-    /** Is symbol a quote operation? */
-    def isQuote(using Context): Boolean =
-      self == defn.QuotedRuntime_exprQuote || self == defn.QuotedTypeModule_of
-
-    /** Is symbol a term splice operation? */
-    def isExprSplice(using Context): Boolean =
-      self == defn.QuotedRuntime_exprSplice || self == defn.QuotedRuntime_exprNestedSplice
 
     /** Is symbol a type splice operation? */
     def isTypeSplice(using Context): Boolean =

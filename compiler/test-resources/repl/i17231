@@ -1,0 +1,2 @@
+scala> summon[ValueOf["a"]]
+val res0: ValueOf["a"] = scala.ValueOf@61
