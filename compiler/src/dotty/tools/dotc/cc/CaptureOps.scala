@@ -42,6 +42,10 @@ class IllegalCaptureRef(tpe: Type) extends Exception
 /** Capture checking state, which is stored in a context property */
 class CCState:
 
+  val rhsClosure: mutable.HashSet[Symbol] = new mutable.HashSet
+
+  val levelOwners: mutable.HashSet[Symbol] = new mutable.HashSet
+
   /** Associates certain symbols (the nesting level owners) with their ccNestingLevel */
   val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
 
@@ -326,17 +330,7 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  def isLevelOwner(using Context): Boolean =
-    def isCaseClassSynthetic =
-      sym.owner.isClass && sym.owner.is(Case) && sym.is(Synthetic) && sym.info.firstParamNames.isEmpty
-    if sym.isClass then true
-    else if sym.is(Method) then
-      if sym.isAnonymousFunction then
-        // Setup added anonymous functions counting as level owners to nestingLevels
-        ccState.nestingLevels.contains(sym)
-      else
-        !sym.isConstructor && !isCaseClassSynthetic
-    else false
+  def isLevelOwner(using Context): Boolean = ccState.levelOwners.contains(sym)
 
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
@@ -365,9 +359,6 @@ extension (sym: Symbol)
    */
   def ccNestingLevelOpt(using Context): Option[Int] =
     if ctx.property(ccStateKey).isDefined then Some(ccNestingLevel) else None
-
-  def setNestingLevel(level: Int)(using Context): Unit =
-    ccState.nestingLevels(sym) = level
 
   /** The parameter with type caps.Cap in the leading term parameter section,
    *  or NoSymbol, if none exists.

@@ -206,13 +206,13 @@ extends tpd.TreeTraverser:
       else fntpe
     case _ => tp
 
-  def isCapabilityClassRef(tp: Type)(using Context) = tp match
+  extension (tp: Type) def isCapabilityClassRef(using Context) = tp match
     case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
     case _ => false
 
   /** Map references to capability classes C to C^ */
   private def expandCapabilityClass(tp: Type)(using Context): Type =
-    if isCapabilityClassRef(tp)
+    if tp.isCapabilityClassRef
     then CapturingType(tp, CaptureSet.universal, boxed = false)
     else tp
 
@@ -232,7 +232,7 @@ extends tpd.TreeTraverser:
         case t @ AnnotatedType(t1, ann) =>
           checkQualifiedRoots(ann.tree)
           val t3 =
-            if ann.symbol == defn.RetainsAnnot && isCapabilityClassRef(t1) then t1
+            if ann.symbol == defn.RetainsAnnot && t1.isCapabilityClassRef then t1
             else this(t1)
           // Don't map capture sets, since that would implicitly normalize sets that
           // are not well-formed.
@@ -317,21 +317,61 @@ extends tpd.TreeTraverser:
   private def updateOwner(sym: Symbol)(using Context) =
     if newOwnerFor(sym) != null then updateInfo(sym, sym.info)
 
+  extension (sym: Symbol) def takesCappedParam(using Context): Boolean =
+    def search = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, t: Type): Boolean = //reporting.trace.force(s"hasCapAt $v, $t"):
+        if x then true
+        else t match
+          case t @ AnnotatedType(t1, annot)
+          if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+            val elems = annot match
+              case CaptureAnnotation(refs, _) => refs.elems.toList
+              case _ => retainedElems(annot.tree).map(_.tpe)
+            if elems.exists(_.widen.isRef(defn.Caps_Cap)) then true
+            else !t1.isCapabilityClassRef && this(x, t1)
+          case t: PolyType =>
+            apply(x, t.resType)
+          case t: MethodType =>
+            t.paramInfos.exists(apply(false, _))
+          case _ =>
+            if t.isRef(defn.Caps_Cap) || t.isCapabilityClassRef then true
+            else
+              val t1 = t.dealiasKeepAnnots
+              if t1 ne t then this(x, t1)
+              else foldOver(x, t)
+    true || sym.info.stripPoly.match
+      case mt: MethodType =>
+        mt.paramInfos.exists(search(false, _))
+      case _ =>
+        false
+  end extension
+
   def traverse(tree: Tree)(using Context): Unit =
     tree match
       case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
-        if isExcluded(tree.symbol) then
+        val meth = tree.symbol
+        if isExcluded(meth) then
           return
-        inContext(ctx.withOwner(tree.symbol)):
-          if tree.symbol.isAnonymousFunction && tree.symbol.definedLocalRoot.exists then
-            // closures that define parameters of type caps.Cap count as level owners
-            tree.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
+
+        def isCaseClassSynthetic = // TODO drop
+          meth.owner.isClass && meth.owner.is(Case) && meth.is(Synthetic) && meth.info.firstParamNames.isEmpty
+
+        inContext(ctx.withOwner(meth)):
+          val canHaveLocalRoot =
+            if meth.isAnonymousFunction then
+              ccState.rhsClosure.remove(meth)
+              || meth.definedLocalRoot.exists  // TODO drop
+            else !meth.isConstructor && !isCaseClassSynthetic
+          if canHaveLocalRoot && meth.takesCappedParam then
+            //println(i"level owner: $meth")
+            ccState.levelOwners += meth
           paramss.foreach(traverse)
           transformTT(tpt, boxed = false,
               exact = tree.symbol.allOverriddenSymbols.hasNext,
               mapRoots = true)
           traverse(tree.rhs)
           //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
+
       case tree @ ValDef(_, tpt: TypeTree, _) =>
         def containsCap(tp: Type) = tp.existsPart:
           case CapturingType(_, refs) => refs.isUniversal
@@ -342,9 +382,12 @@ extends tpd.TreeTraverser:
           case _: InferredTypeTree => false
           case _: TypeTree => containsCap(expandAliases(tree.tpe))
           case _ => false
+
+        val sym = tree.symbol
         val mapRoots = tree.rhs match
           case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
-            ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
+            //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
+            ccState.rhsClosure += ddef.symbol
               // Toplevel closures bound to vals count as level owners
               // unless the closure is an implicit eta expansion over a type application
               // that mentions `cap`. In that case we prefer not to silently rebind
@@ -354,22 +397,29 @@ extends tpd.TreeTraverser:
               // in this case roots in inferred val type count as polymorphic
           case _ =>
             true
-        transformTT(tpt,
-          boxed = tree.symbol.is(Mutable),    // types of mutable variables are boxed
-          exact = tree.symbol.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
-          mapRoots
-        )
-        capt.println(i"mapped $tree = ${tpt.knownType}")
-        traverse(tree.rhs)
+          transformTT(tpt,
+            boxed = sym.is(Mutable),    // types of mutable variables are boxed
+            exact = sym.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
+            mapRoots
+          )
+          capt.println(i"mapped $tree = ${tpt.knownType}")
+          traverse(tree.rhs)
+
       case tree @ TypeApply(fn, args) =>
         traverse(fn)
         for case arg: TypeTree <- args do
           transformTT(arg, boxed = true, exact = false, mapRoots = true) // type arguments in type applications are boxed
+
       case tree: Template =>
-        inContext(ctx.withOwner(tree.symbol.owner)):
+        val cls = tree.symbol.owner
+        inContext(ctx.withOwner(cls)):
+          if cls.primaryConstructor.takesCappedParam then
+            //println(i"level owner $cls")
+            ccState.levelOwners += cls
           traverseChildren(tree)
       case tree: Try if Feature.enabled(Feature.saferExceptions) =>
         val tryOwner = newSymbol(ctx.owner, nme.TRY_BLOCK, SyntheticMethod, MethodType(Nil, defn.UnitType))
+        ccState.levelOwners += tryOwner
         ccState.tryBlockOwner(tree) = tryOwner
         inContext(ctx.withOwner(tryOwner)):
           traverseChildren(tree)

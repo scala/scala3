@@ -1265,15 +1265,16 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
       if !ctx.reporter.errorsReported then
-        // We dont report errors here if previous errors were reported, because other
-        // errors often result in bad applied types, but flagging these bad types gives
-        // often worse error messages than the original errors.
-        val checkApplied = new TreeTraverser:
-          def traverse(t: Tree)(using Context) = t match
-            case tree: InferredTypeTree =>
-            case tree: New =>
-            case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
-            case _ => traverseChildren(t)
-        checkApplied.traverse(unit)
+        //inContext(ctx.withProperty(LooseRootChecking, Some(()))):
+          // We dont report errors here if previous errors were reported, because other
+          // errors often result in bad applied types, but flagging these bad types gives
+          // often worse error messages than the original errors.
+          val checkApplied = new TreeTraverser:
+            def traverse(t: Tree)(using Context) = t match
+              case tree: InferredTypeTree =>
+              case tree: New =>
+              case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
+              case _ => traverseChildren(t)
+          checkApplied.traverse(unit)
   end CaptureChecker
 end CheckCaptures
