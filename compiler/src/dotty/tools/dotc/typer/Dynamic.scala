@@ -242,7 +242,7 @@ trait Dynamic {
 
     fun.tpe.widen match {
       case tpe: ValueType =>
-        structuralCall(nme.selectDynamic, Nil).maybeBoxingCast(fun.tpe)
+        structuralCall(nme.selectDynamic, Nil).maybeBoxingCast(fun.tpe.widenExpr)
 
       case tpe: MethodType =>
         def isDependentMethod(tpe: Type): Boolean = tpe match {
