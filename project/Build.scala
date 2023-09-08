@@ -896,6 +896,10 @@ object Build {
   lazy val `scala3-library` = project.in(file("library")).asDottyLibrary(NonBootstrapped)
   lazy val `scala3-library-bootstrapped`: Project = project.in(file("library")).asDottyLibrary(Bootstrapped)
 
+  lazy val `scala3-repl` = project.in(file("repl")).
+    asDottyLibrary(NonBootstrapped).
+    dependsOn(`scala3-compiler`)
+
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
     case Bootstrapped => `scala3-library-bootstrapped`
@@ -1164,7 +1168,7 @@ object Build {
   lazy val `scala3-sbt-bridge` = project.in(file("sbt-bridge/src")).
     // We cannot depend on any bootstrapped project to compile the bridge, since the
     // bridge is needed to compile these projects.
-    dependsOn(`scala3-compiler` % Provided).
+    dependsOn(`scala3-compiler` % Provided, `scala3-repl` % Provided).
     settings(commonJavaSettings).
     settings(
       description := "sbt compiler bridge for Dotty",
@@ -2076,7 +2080,7 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       withCommonSettings.
-      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
+      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, `scala3-repl`, scaladoc).
       settings(commonDistSettings).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings

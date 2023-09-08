@@ -6,7 +6,7 @@ import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
 import dotty.tools.dotc.quoted.QuotesCache
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import scala.quoted._

@@ -15,6 +15,8 @@ import dotty.tools.io.Jar
 import dotty.tools.runner.ScalaClassLoader
 import java.nio.file.Paths
 import dotty.tools.dotc.config.CommandLineParser
+import dotty.tools.repl
+import dotty.tools.scripting
 import dotty.tools.scripting.{StringDriver, StringDriverException, ScriptingException}
 
 enum ExecuteMode:

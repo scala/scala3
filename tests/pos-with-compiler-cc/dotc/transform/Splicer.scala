@@ -22,8 +22,8 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.quoted.Interpreter
 
 import scala.util.control.NonFatal
+import dotty.tools.AbstractFileClassLoader
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
