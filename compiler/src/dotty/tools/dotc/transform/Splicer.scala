@@ -23,7 +23,6 @@ import dotty.tools.dotc.quoted.Interpreter
 
 import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
