@@ -349,7 +349,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   protected def idString(sym: Symbol): String =
     (if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else "") +
-    (if (showNestingLevel) "%" + sym.nestingLevel else "")
+    (if showNestingLevel then
+      if ctx.phase == Phases.checkCapturesPhase then "%" + sym.ccNestingLevel
+      else "%" + sym.nestingLevel
+     else "")
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
