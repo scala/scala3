@@ -21,7 +21,7 @@ call :args %*
 
 call :compilerJavaClasspathArgs
 
-call "%_JAVACMD%" %_JAVA_ARGS% "-Dscala.home=%_PROG_HOME%" -classpath "%_JVM_CP_ARGS%" dotty.tools.MainGenericRunner -classpath "%_JVM_CP_ARGS%" %_SCALA_ARGS%
+call "%_JAVACMD%" %_JAVA_ARGS% "-Dscala.home=%_PROG_HOME%" -classpath "%_JVM_CP_ARGS%" dotty.dist.MainGenericRunner -classpath "%_JVM_CP_ARGS%" %_SCALA_ARGS%
 if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto end )
 
 goto end

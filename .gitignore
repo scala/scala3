@@ -7,7 +7,7 @@
 tags
 
 # sbt specific
-dist/*
+dist/target
 target/
 lib_managed/
 src_managed/
