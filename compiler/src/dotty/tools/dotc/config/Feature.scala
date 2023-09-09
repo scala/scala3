@@ -103,8 +103,8 @@ object Feature:
 
   /** Is captureChecking enabled for any of the currently compiled compilation units? */
   def ccEnabledSomewhere(using Context) =
-    enabledBySetting(captureChecking)
-    || ctx.run != null && ctx.run.nn.ccImportEncountered
+    if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
+    else enabledBySetting(captureChecking)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -174,7 +174,7 @@ object Feature:
       true
     else if fullFeatureName == captureChecking then
       ctx.compilationUnit.needsCaptureChecking = true
-      if ctx.run != null then ctx.run.nn.ccImportEncountered = true
+      if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
       true
     else
       false

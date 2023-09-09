@@ -168,10 +168,10 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   var pureFunsImportEncountered = false
 
-  /** Will be set to true if any of the compiled compilation units contains
-   *  a captureChecking language import.
+  /** Will be set to true if experimental.captureChecking is enabled
+   *  or any of the compiled compilation units contains a captureChecking language import.
    */
-  var ccImportEncountered = false
+  var ccEnabledSomewhere = Feature.enabledBySetting(Feature.captureChecking)(using ictx)
 
   private var myEnrichedErrorMessage = false
 
