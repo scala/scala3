@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun, ccNestingLevel}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -483,6 +483,11 @@ object Types {
      */
     def isDeclaredVarianceLambda: Boolean = false
 
+    /** Is this type a CaptureRef that can be tracked?
+     *  This is true for all ThisTypes or ParamRefs but only for some NamedTypes.
+     */
+    def isTrackableRef(using Context): Boolean = false
+
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
       existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false)
@@ -823,19 +828,26 @@ object Types {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else
-          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-          val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-            pre,
-            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-          joint match
-            case joint: SingleDenotation
-            if isRefinedMethod && rinfo <:< joint.info =>
-              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-            case _ =>
-              joint
+        else rinfo match
+          case CapturingType(_, cs: CaptureSet.RefiningVar) =>
+            // If `rinfo` is a capturing type added by `addCaptureRefinements` it
+            // already contains everything there is to know about the member type.
+            // On the other hand, the member in parent might belong to an outer nesting level,
+            // which should be ignored at the point where instances of the class are constructed.
+            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
+          case _ =>
+            val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
+            val joint = pdenot.meet(
+              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+              pre,
+              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+            joint match
+              case joint: SingleDenotation
+              if isRefinedMethod && rinfo <:< joint.info =>
+                // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+                joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+              case _ =>
+                joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
@@ -2157,18 +2169,27 @@ object Types {
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
-    /** Can the reference be tracked? This is true for all ThisTypes or ParamRefs
-     *  but only for some NamedTypes.
-     */
-    def canBeTracked(using Context): Boolean
-
     /** Is the reference tracked? This is true if it can be tracked and the capture
      *  set of the underlying type is not always empty.
      */
-    final def isTracked(using Context): Boolean = canBeTracked && !captureSetOfInfo.isAlwaysEmpty
+    final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
 
-    /** Is this reference the root capability `cap` ? */
-    def isRootCapability(using Context): Boolean = false
+    /** Is this reference the generic root capability `cap` ? */
+    def isGenericRootCapability(using Context): Boolean = false
+
+    /** Is this reference a local root capability `{<cap in owner>}`
+     *  for some level owner?
+     */
+    def isLocalRootCapability(using Context): Boolean =
+      localRootOwner.exists
+
+    /** If this is a local root capability, its owner, otherwise NoSymbol.
+     */
+    def localRootOwner(using Context): Symbol = NoSymbol
+
+    /** Is this reference the a (local or generic) root capability? */
+    def isRootCapability(using Context): Boolean =
+      isGenericRootCapability || isLocalRootCapability
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2198,7 +2219,8 @@ object Types {
 
     override def captureSet(using Context): CaptureSet =
       val cs = captureSetOfInfo
-      if canBeTracked && !cs.isAlwaysEmpty then singletonCaptureSet else cs
+      if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
+
   end CaptureRef
 
   /** A trait for types that bind other types that refer to them.
@@ -2895,17 +2917,26 @@ object Types {
      *  They are subsumed in the capture sets of the enclosing class.
      *  TODO: ^^^ What about call-by-name?
      */
-    def canBeTracked(using Context) =
+    override def isTrackableRef(using Context) =
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
-    override def isRootCapability(using Context): Boolean =
+    override def isGenericRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
+    override def localRootOwner(using Context): Symbol =
+      if name == nme.LOCAL_CAPTURE_ROOT then
+        if symbol.owner.isLocalDummy then symbol.owner.owner
+        else symbol.owner
+      else if info.isRef(defn.Caps_Cap) then
+        val owner = symbol.maybeOwner
+        if owner.isTerm then owner else NoSymbol
+      else NoSymbol
+
     override def normalizedRef(using Context): CaptureRef =
-      if canBeTracked then symbol.termRef else this
+      if isTrackableRef then symbol.termRef else this
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -3058,7 +3089,7 @@ object Types {
           // can happen in IDE if `cls` is stale
       }
 
-    def canBeTracked(using Context) = true
+    override def isTrackableRef(using Context) = true
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
@@ -4051,15 +4082,10 @@ object Types {
 
     protected def toPInfo(tp: Type)(using Context): PInfo
 
-    /** If `tparam` is a sealed type parameter symbol of a polymorphic method, add
-     *  a @caps.Sealed annotation to the upperbound in `tp`.
-     */
-    protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type = tp
-
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(using Context): Type =
       if (params.isEmpty) resultType
       else apply(params.map(_.paramName))(
-        tl => params.map(param => toPInfo(addSealed(param, tl.integrate(params, param.paramInfo)))),
+        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
         tl => tl.integrate(params, resultType))
   }
 
@@ -4381,16 +4407,6 @@ object Types {
         resultTypeExp: PolyType => Type)(using Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
 
-    override protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type =
-      tparam match
-        case tparam: Symbol if tparam.is(Sealed) =>
-          tp match
-            case tp @ TypeBounds(lo, hi) =>
-              tp.derivedTypeBounds(lo,
-                AnnotatedType(hi, Annotation(defn.Caps_SealedAnnot, tparam.span)))
-            case _ => tp
-        case _ => tp
-
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
   }
@@ -4672,9 +4688,9 @@ object Types {
    */
   abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef, CaptureRef {
     type BT = TermLambda
-    def canBeTracked(using Context) = true
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    override def isTrackableRef(using Context) = true
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -5727,23 +5743,16 @@ object Types {
   trait BiTypeMap extends TypeMap:
     thisMap =>
 
-    /** The inverse of the type map as a function */
-    def inverse(tp: Type): Type
-
-    /** The inverse of the type map as a BiTypeMap map, which
-     *  has the original type map as its own inverse.
-     */
-    def inverseTypeMap(using Context) = new BiTypeMap:
-      def apply(tp: Type) = thisMap.inverse(tp)
-      def inverse(tp: Type) = thisMap.apply(tp)
+    /** The inverse of the type map */
+    def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked CaptureRefs */
     def forward(ref: CaptureRef): CaptureRef = this(ref) match
-      case result: CaptureRef if result.canBeTracked => result
+      case result: CaptureRef if result.isTrackableRef => result
 
     /** A restriction of the inverse to a function on tracked CaptureRefs */
     def backward(ref: CaptureRef): CaptureRef = inverse(ref) match
-      case result: CaptureRef if result.canBeTracked => result
+      case result: CaptureRef if result.isTrackableRef => result
   end BiTypeMap
 
   abstract class TypeMap(implicit protected var mapCtx: Context)

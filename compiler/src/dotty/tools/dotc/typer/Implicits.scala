@@ -446,7 +446,7 @@ object Implicits:
     }
   }
 
-  abstract class SearchFailureType extends ErrorType {
+  abstract class SearchFailureType extends ErrorType, Addenda {
     def expectedType: Type
     def argument: Tree
 
@@ -463,11 +463,6 @@ object Implicits:
         if (argument.isEmpty) i"match type ${clarify(expectedType)}"
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
-
-    /** If search was for an implicit conversion, a note describing the failure
-     *  in more detail - this is either empty or starts with a '\n'
-     */
-    def whyNoConversion(using Context): String = ""
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
@@ -521,17 +516,21 @@ object Implicits:
 
   /** A failure value indicating that an implicit search for a conversion was not tried */
   case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
-    override def whyNoConversion(using Context): String =
+
+    override def toAdd(using Context) =
       i"""
          |Note that implicit conversions were not tried because the result of an implicit conversion
-         |must be more specific than $target"""
+         |must be more specific than $target""" :: Nil
 
     override def msg(using Context) =
       super.msg.append("\nThe expected type $target is not specific enough, so no search was attempted")
+
     override def toString = s"TooUnspecific"
+  end TooUnspecific
 
   /** An ambiguous implicits failure */
-  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
+  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType:
+
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
@@ -539,15 +538,16 @@ object Implicits:
         str1 = ctx.printer.toTextRef(alt1.ref).show
         str2 = ctx.printer.toTextRef(alt2.ref).show
       em"both $str1 and $str2 $qualify".withoutDisambiguation()
-    override def whyNoConversion(using Context): String =
+
+    override def toAdd(using Context) =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
-        ""
+        Nil
       else
         val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
         i"""
            |Note that implicit $what cannot be applied because they are ambiguous;
-           |$explanation"""
-  }
+           |$explanation""" :: Nil
+  end AmbiguousImplicits
 
   class MismatchedImplicit(ref: TermRef,
                            val expectedType: Type,

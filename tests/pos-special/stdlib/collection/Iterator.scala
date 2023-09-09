@@ -1202,7 +1202,7 @@ object Iterator extends IterableFactory[Iterator] {
       } else Iterator.empty.next()
 
     override def concat[B >: A](that: => IterableOnce[B]^): Iterator[B]^{this, that} = {
-      val c = new ConcatIteratorCell[B](that, null).asInstanceOf[ConcatIteratorCell[A]]
+      val c: ConcatIteratorCell[A] = new ConcatIteratorCell[B](that, null).asInstanceOf
       if (tail == null) {
         tail = c
         last = c

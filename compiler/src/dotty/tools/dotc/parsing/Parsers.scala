@@ -1423,13 +1423,23 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident | `this`
+    /** CaptureRef  ::=  ident | `this` | `cap` [`[` ident `]`]
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
       else termIdent() match
-        case Ident(nme.CAPTURE_ROOT) => captureRoot
-        case id => id
+        case id @ Ident(nme.CAPTURE_ROOT) =>
+          if in.token == LBRACKET then
+            val ref = atSpan(id.span.start)(captureRootIn)
+            val qual =
+              inBrackets:
+                atSpan(in.offset):
+                  Literal(Constant(ident().toString))
+            atSpan(id.span.start)(Apply(ref, qual :: Nil))
+          else
+            atSpan(id.span.start)(captureRoot)
+        case id =>
+          id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -3179,9 +3189,7 @@ object Parsers {
      *                         id [HkTypeParamClause] TypeParamBounds
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-     *  DefTypeParam      ::=  {Annotation}
-     *                         [`sealed`]                                    -- under captureChecking
-     *                         id [HkTypeParamClause] TypeParamBounds
+     *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
@@ -3191,25 +3199,24 @@ object Parsers {
      */
     def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBrackets {
 
-      def checkVarianceOK(): Boolean =
-        val ok = ownerKind != ParamOwner.Def && ownerKind != ParamOwner.TypeParam
-        if !ok then syntaxError(em"no `+/-` variance annotation allowed here")
-        in.nextToken()
-        ok
+      def variance(vflag: FlagSet): FlagSet =
+        if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
+          syntaxError(em"no `+/-` variance annotation allowed here")
+          in.nextToken()
+          EmptyFlags
+        else
+          in.nextToken()
+          vflag
 
       def typeParam(): TypeDef = {
         val isAbstractOwner = ownerKind == ParamOwner.Type || ownerKind == ParamOwner.TypeParam
         val start = in.offset
-        var mods = annotsAsMods() | Param
-        if ownerKind == ParamOwner.Class then mods |= PrivateLocal
-        if Feature.ccEnabled && in.token == SEALED then
-          if ownerKind == ParamOwner.Def then mods |= Sealed
-          else syntaxError(em"`sealed` modifier only allowed for method type parameters")
-          in.nextToken()
-        if isIdent(nme.raw.PLUS) && checkVarianceOK() then
-          mods |= Covariant
-        else if isIdent(nme.raw.MINUS) && checkVarianceOK() then
-          mods |= Contravariant
+        val mods =
+          annotsAsMods()
+          | (if (ownerKind == ParamOwner.Class) Param | PrivateLocal else Param)
+          | (if isIdent(nme.raw.PLUS) then variance(Covariant)
+             else if isIdent(nme.raw.MINUS) then variance(Contravariant)
+             else EmptyFlags)
         atSpan(start, nameStart) {
           val name =
             if (isAbstractOwner && in.token == USCORE) {

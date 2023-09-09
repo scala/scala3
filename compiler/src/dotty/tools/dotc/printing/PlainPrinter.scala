@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, isBoxed}
+import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel, levelOwner}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -47,6 +47,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
   protected def debugPos: Boolean = ctx.settings.YdebugPos.value
+
+  /** If true, shorten local roots of current owner tp `cap`,
+   *  TODO: we should drop this switch once we implemented disambiguation of capture roots.
+   */
+  private val shortenCap = true
 
   def homogenize(tp: Type): Type =
     if (homogenizedView)
@@ -150,11 +155,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
     + defn.FromJavaObjectSymbol
 
   def toTextCaptureSet(cs: CaptureSet): Text =
-    if printDebug && !cs.isConst then cs.toString
-    else if ctx.settings.YccDebug.value then cs.show
+    if printDebug && ctx.settings.YccDebug.value && !cs.isConst then cs.toString
     else if cs == CaptureSet.Fluid then "<fluid>"
-    else if !cs.isConst && cs.elems.isEmpty then "?"
-    else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+    else
+      val core: Text =
+        if !cs.isConst && cs.elems.isEmpty then "?"
+        else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+      core ~ cs.optionalInfo
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -164,15 +171,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
       boxText ~ toTextLocal(parent) ~ "^"
       ~ (refsText provided refsText != rootSetText)
 
-  final protected def rootSetText = Str("{cap}")
+  final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeType =>
         toTextRHS(tp)
       case tp: TermRef
-      if !tp.denotationIsCurrent && !homogenizedView || // always print underlying when testing picklers
-         tp.symbol.is(Module) || tp.symbol.name == nme.IMPORT =>
+      if !tp.denotationIsCurrent
+          && !homogenizedView // always print underlying when testing picklers
+          && !tp.isRootCapability
+          || tp.symbol.is(Module)
+          || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
@@ -222,7 +232,22 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ EventuallyCapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val refsText = if refs.isUniversal then rootSetText else toTextCaptureSet(refs)
+        val rootsInRefs = refs.elems.filter(_.isRootCapability).toList
+        val showAsCap = rootsInRefs match
+          case (tp: TermRef) :: Nil =>
+            if tp.symbol == defn.captureRoot then
+              refs.elems.size == 1 || !printDebug
+                // {caps.cap} gets printed as `{cap}` even under printDebug as long as there
+                // are no other elements in the set
+            else
+              tp.symbol.name == nme.LOCAL_CAPTURE_ROOT
+              && ctx.owner.levelOwner == tp.localRootOwner
+              && !printDebug
+              && shortenCap // !!!
+                // local roots get printed as themselves under printDebug
+          case _ =>
+            false
+        val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
@@ -324,7 +349,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   protected def idString(sym: Symbol): String =
     (if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else "") +
-    (if (showNestingLevel) "%" + sym.nestingLevel else "")
+    (if showNestingLevel then
+      if ctx.phase == Phases.checkCapturesPhase then "%" + sym.ccNestingLevel
+      else "%" + sym.nestingLevel
+     else "")
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
@@ -354,7 +382,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        toTextPrefixOf(tp) ~ selectionString(tp)
+        if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
+          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug && shortenCap then
+            Str("cap")
+          else
+            Str(s"cap[${tp.localRootOwner.name}]") ~
+              Str(s"%${tp.symbol.ccNestingLevel}").provided(showNestingLevel)
+        else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
@@ -373,6 +407,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (homogenizedView) toText(tp.info)
         else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
         else toText(tp.repr)
+      case tp: CaptureRoot.Var =>
+        if tp.followAlias ne tp then toTextRef(tp.followAlias)
+        else
+          def boundText(sym: Symbol): Text =
+            (toTextRef(sym.termRef)
+              ~ Str(s"/${sym.ccNestingLevel}").provided(showNestingLevel)
+            ).provided(sym.exists)
+          "'cap[" ~ boundText(tp.lowerBound) ~ ".." ~ boundText(tp.upperBound) ~ "]"
+          ~ ("(from instantiating " ~ nameString(tp.source) ~ ")").provided(tp.source.exists)
     }
   }
 

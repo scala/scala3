@@ -13,3 +13,12 @@
   class D(@constructorOnly op: Int => Int) extends C:
     val x = 1//op(1)
 
+// Demonstrates root mapping for self types
+class IM:
+  this: IM^ =>
+
+  def coll: IM^{this} = ???
+  foo(coll)
+
+def foo(im: IM^): Unit = ???
+

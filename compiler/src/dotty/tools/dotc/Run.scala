@@ -247,8 +247,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase))
               for (unit <- units)
-                lastPrintedTree =
-                  printTree(lastPrintedTree)(using ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+                def printCtx(unit: CompilationUnit) = phase.printingContext(
+                  ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+                lastPrintedTree = printTree(lastPrintedTree)(using printCtx(unit))
             report.informTime(s"$phase ", start)
             Stats.record(s"total trees at end of $phase", ast.Trees.ntrees)
             for (unit <- units)

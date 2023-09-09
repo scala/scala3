@@ -13,7 +13,7 @@ def test(c: Cap, other: String): Unit =
   val x3a: () -> String = s1
   val s2 = () => if x1 == null then "" else "abc"
   val x4: C^{s2} = ??? // OK
-  val x5: C^{c, c} = ??? // error: redundant
+  val x5: C^{c, c} = ??? // error: redundant // error: redundant
   // val x6: C^{c}^{c} = ??? // would be syntax error
   val x7: Cap^{c} = ??? // error: redundant
   // val x8: C^{c}^{cap} = ??? // would be syntax error

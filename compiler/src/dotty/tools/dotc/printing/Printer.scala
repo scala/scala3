@@ -10,6 +10,7 @@ import Types.{Type, SingletonType, LambdaParam, NamedType},
 import typer.Implicits.*
 import util.SourcePosition
 import typer.ImportInfo
+import cc.CaptureSet
 
 import scala.annotation.internal.sharable
 
@@ -105,6 +106,9 @@ abstract class Printer {
 
   /** Textual representation of a reference in a capture set */
   def toTextCaptureRef(tp: Type): Text
+
+  /** Textual representation of a reference in a capture set */
+  def toTextCaptureSet(cs: CaptureSet): Text
 
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text

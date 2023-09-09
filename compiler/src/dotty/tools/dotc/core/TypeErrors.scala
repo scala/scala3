@@ -177,7 +177,7 @@ object CyclicReference:
   def apply(denot: SymDenotation)(using Context): CyclicReference =
     val ex = new CyclicReference(denot)
     if ex.computeStackTrace then
-      cyclicErrors.println(s"Cyclic reference involving! $denot")
+      cyclicErrors.println(s"Cyclic reference involving $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
       for (elem <- sts take 200)
         cyclicErrors.println(elem.toString)

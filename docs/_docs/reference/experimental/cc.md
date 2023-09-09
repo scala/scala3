@@ -705,6 +705,8 @@ Generally, the string following the capture set consists of alternating numbers 
  - `F` : a variable resulting from _filtering_ the elements of the variable indicated by the string to the right,
  - `I` : a variable resulting from an _intersection_ of two capture sets,
  - `D` : a variable resulting from the set _difference_ of two capture sets.
+ - `R` : a regular variable that _refines_ a class parameter, so that the capture
+         set of a constructor argument is known in the class instance type.
 
 At the end of a compilation run, `-Ycc-debug` will print all variable dependencies of variables referred to in previous output. Here is an example:
 ```
@@ -722,4 +724,6 @@ This section lists all variables that appeared in previous diagnostics and their
  - variable `5` has two dependencies: variables `31` and `32` which both result from mapping variable `5`,
  - variable `31` has a constant fixed superset `{xs, f}`
  - variable `32` has no dependencies.
+
+
 

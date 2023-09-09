@@ -1,11 +1,11 @@
 trait Cap
 
 def main(io: Cap^, fs: Cap^): Unit = {
-  val test1: Unit -> Unit = _ => { // error
+  val test1: Unit -> Unit = _ => {
     type Op = [T] -> (T ->{io} Unit) -> Unit
     val f: (Cap^{io}) -> Unit = ???
     val op: Op = ???
-    op[Cap^{io}](f)
+    op[Cap^{io}](f)   // error
     // expected type of f: {io} (box {io} Cap) -> Unit
     // actual type: ({io} Cap) -> Unit
     // adapting f to the expected type will also

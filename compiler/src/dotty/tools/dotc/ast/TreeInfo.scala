@@ -376,6 +376,17 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
+
+  /** Under capture checking, an extractor for qualified roots `cap[Q]`.
+   */
+  object QualifiedRoot:
+
+    def unapply(tree: Apply)(using Context): Option[String] = tree match
+      case Apply(fn, Literal(lit) :: Nil) if fn.symbol == defn.Caps_capIn =>
+        Some(lit.value.asInstanceOf[String])
+      case _ =>
+        None
+  end QualifiedRoot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
@@ -799,11 +810,36 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  /** An extractor for def of a closure contained the block of the closure,
+   *  possibly with type ascriptions.
+   */
+  object possiblyTypedClosureDef:
+    def unapply(tree: Tree)(using Context): Option[DefDef] = tree match
+      case Typed(expr, _)  => unapply(expr)
+      case _ => closureDef.unapply(tree)
+
   /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: Tree)(using Context): Tree = tree match {
     case closureDef(meth) => meth.rhs
     case _ => tree
   }
+
+  /** Is `mdef` an eta-expansion of a method reference? To recognize this, we use
+   *  the following criterion: A method definition is an eta expansion, if
+   *  it contains at least one term paramter, the parameter has a zero extent span,
+   *  and the right hand side is either an application or a closure with'
+   *  an anonymous method that's itself characterized as an eta expansion.
+   */
+  def isEtaExpansion(mdef: DefDef)(using Context): Boolean =
+    !rhsOfEtaExpansion(mdef).isEmpty
+
+  def rhsOfEtaExpansion(mdef: DefDef)(using Context): Tree = mdef.paramss match
+    case (param :: _) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
+      mdef.rhs match
+        case rhs: Apply => rhs
+        case closureDef(mdef1) => rhsOfEtaExpansion(mdef1)
+        case _ => EmptyTree
+    case _ => EmptyTree
 
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
