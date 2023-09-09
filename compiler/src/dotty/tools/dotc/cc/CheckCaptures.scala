@@ -34,14 +34,17 @@ object CheckCaptures:
   	/**  - Reset `private` flags of parameter accessors so that we can refine them
      *     in Setup if they have non-empty capture sets.
      *   - Special handling of some symbols defined for case classes.
+     *  Enabled only until recheck is finished, and provided some compilation unit
+     *  is CC-enabled.
      */
     def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-      if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
-        sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
-      else if Synthetics.needsTransform(sym) then
-        Synthetics.transform(sym, toCC = true)
-      else
-        sym
+      if !pastRecheck && Feature.ccEnabledSomewhere then
+        if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
+          sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
+        else if Synthetics.needsTransform(sym) then
+          Synthetics.transform(sym, toCC = true)
+        else sym
+      else sym
   end Pre
 
   enum EnvKind:
