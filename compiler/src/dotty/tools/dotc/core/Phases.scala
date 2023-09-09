@@ -299,12 +299,23 @@ object Phases {
      */
     def phaseName: String
 
+    /** This property is queried when phases are first assembled.
+     *  If it is false, the phase will be dropped from the set of phases to traverse.
+     */
+    def isEnabled(using Context): Boolean = true
+
+    /** This property is queried before a phase is run.
+     *  If it is false, the phase is skipped.
+     */
     def isRunnable(using Context): Boolean =
       !ctx.reporter.hasErrors
         // TODO: This might test an unintended condition.
         // To find out whether any errors have been reported during this
         // run one calls `errorsReported`, not `hasErrors`.
         // But maybe changing this would prevent useful phases from running?
+
+    /** True for all phases except NoPhase */
+    def exists: Boolean = true
 
     /** If set, allow missing or superfluous arguments in applications
      *  and type applications.
@@ -359,10 +370,6 @@ object Phases {
 
     /** Can this transform change the base types of a type? */
     def changesBaseTypes: Boolean = changesParents
-
-    def isEnabled(using Context): Boolean = true
-
-    def exists: Boolean = true
 
     def initContext(ctx: FreshContext): Unit = ()
 
