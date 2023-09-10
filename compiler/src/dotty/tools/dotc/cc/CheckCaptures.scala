@@ -42,7 +42,7 @@ object CheckCaptures:
         if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
           sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
         else if Synthetics.needsTransform(sym) then
-          Synthetics.transform(sym, toCC = true)
+          Synthetics.transform(sym)
         else sym
       else sym
   end Pre
@@ -203,11 +203,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
-
-  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if Synthetics.needsTransform(sym) then Synthetics.transform(sym, toCC = false)
-    else super.transformSym(sym)
-
+      
   override def printingContext(ctx: Context) = ctx.withProperty(ccStateKey, Some(new CCState))
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
