@@ -470,7 +470,7 @@ object Objects:
 
     /** Store the heap as a mutable field to avoid threading it through the program. */
     class MutableData(private[Heap] var heap: Data):
-      private[Heap] def update(addr: Addr, value: Value): Unit =
+      private[Heap] def writeUnion(addr: Addr, value: Value): Unit =
         heap.get(addr) match
         case None =>
           heap = heap.updated(addr, value)
@@ -489,8 +489,8 @@ object Objects:
     def read(addr: Addr)(using mutable: MutableData): Value =
       mutable.heap(addr)
 
-    def write(addr: Addr, value: Value)(using mutable: MutableData): Unit =
-      mutable.update(addr, value)
+    def writeUnion(addr: Addr, value: Value)(using mutable: MutableData): Unit =
+      mutable.writeUnion(addr, value)
 
     def localVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
       LocalVarAddr(regions, sym, owner)
@@ -639,7 +639,7 @@ object Objects:
         if arr.addr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, arr.addr.owner)
         else
-          Heap.write(arr.addr, args.tail.head.value)
+          Heap.writeUnion(arr.addr, args.tail.head.value)
         Bottom
       else
         // Array.length is OK
@@ -660,7 +660,7 @@ object Objects:
       if target.isOneOf(Flags.Method) then
         if target.owner == defn.ArrayModuleClass && target.name == nme.apply then
           val arr = OfArray(State.currentObject, summon[Regions.Data])
-          Heap.write(arr.addr, args.map(_.value).join)
+          Heap.writeUnion(arr.addr, args.map(_.value).join)
           arr
         else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
@@ -846,7 +846,7 @@ object Objects:
         if addr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, addr.owner)
         else
-          Heap.write(addr, rhs)
+          Heap.writeUnion(addr, rhs)
       else
         report.warning("Mutating a field before its initialization: " + field.show + ". Calling trace:\n" + Trace.show, Trace.position)
     end match
@@ -871,7 +871,7 @@ object Objects:
     case outer: (Ref | Cold.type | Bottom.type) =>
       if klass == defn.ArrayClass then
         val arr = OfArray(State.currentObject, summon[Regions.Data])
-        Heap.write(arr.addr, Bottom)
+        Heap.writeUnion(arr.addr, Bottom)
         arr
       else
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
@@ -907,7 +907,7 @@ object Objects:
     if sym.is(Flags.Mutable) then
       val addr = Heap.localVarAddr(summon[Regions.Data], sym, State.currentObject)
       Env.setLocalVar(sym, addr)
-      Heap.write(addr, value)
+      Heap.writeUnion(addr, value)
     else
       Env.setLocalVal(sym, value)
   }
@@ -968,8 +968,8 @@ object Objects:
    * @param value        The value of the rhs of the assignment.
    */
   def writeLocal(thisV: ThisValue, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
-
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
+
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       given Env.Data = env
@@ -978,7 +978,7 @@ object Objects:
         if addr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, addr.owner)
         else
-          Heap.write(addr, value)
+          Heap.writeUnion(addr, value)
       case _ =>
         report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
 
@@ -1541,7 +1541,7 @@ object Objects:
       if acc.is(Flags.Mutable) then
         val addr = Heap.fieldVarAddr(summon[Regions.Data], acc, State.currentObject)
         thisV.initVar(acc, addr)
-        Heap.write(addr, value)
+        Heap.writeUnion(addr, value)
       else
         thisV.initVal(acc, value)
       printer.println(acc.show + " initialized with " + value)
@@ -1636,7 +1636,7 @@ object Objects:
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
           thisV.initVar(sym, addr)
-          Heap.write(addr, res)
+          Heap.writeUnion(addr, res)
         else
           thisV.initVal(sym, res)
 
