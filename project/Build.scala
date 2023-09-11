@@ -596,9 +596,6 @@ object Build {
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
-        "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
-        "org.jline" % "jline-terminal" % "3.19.0",
-        "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
         ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
@@ -898,7 +895,14 @@ object Build {
 
   lazy val `scala3-repl` = project.in(file("repl")).
     asDottyLibrary(NonBootstrapped).
-    dependsOn(`scala3-compiler`)
+    dependsOn(`scala3-compiler`).
+    settings(
+      libraryDependencies ++= Seq(
+        "org.jline" % "jline-reader" % "3.19.0",
+        "org.jline" % "jline-terminal" % "3.19.0",
+        "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
+      )
+    )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
     case NonBootstrapped => `scala3-library`
