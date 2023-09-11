@@ -51,6 +51,8 @@ for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*tasty-core*"')             do
 for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-asm*"')              do set "_SCALA_ASM=%_LIB_DIR%\%%f"
 for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*scala-library*"')          do set "_SCALA_LIB=%_LIB_DIR%\%%f"
 for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*compiler-interface*"')     do set "_SBT_INTF=%_LIB_DIR%\%%f"
+for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*scala3-dist*"')            do set "_SCALA3_DIST=%_LIB_DIR%\%%f"
+for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*scala3-repl*"')            do set "_SCALA3_REPL=%_LIB_DIR%\%%f"
 for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-reader-3*"')         do set "_JLINE_READER=%_LIB_DIR%\%%f"
 for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-terminal-3*"')       do set "_JLINE_TERMINAL=%_LIB_DIR%\%%f"
 for /f "delims=" %%f in ('dir /a-d /b "%_LIB_DIR%\*jline-terminal-jna-3*"')   do set "_JLINE_TERMINAL_JNA=%_LIB_DIR%\%%f"

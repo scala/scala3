@@ -60,6 +60,8 @@ classpathArgs () {
   CLASS_PATH+="$(find_lib "*scala3-library*")$PSEP"
   CLASS_PATH+="$(find_lib "*tasty-core*")$PSEP"
   CLASS_PATH+="$(find_lib "*scala3-tasty-inspector*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala3-repl*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala3-dist*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-0*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark*")$PSEP"
   CLASS_PATH+="$(find_lib "*flexmark-ext-anchorlink*")$PSEP"

@@ -1980,8 +1980,8 @@ object Build {
   )
 
   lazy val commonDistSettings = Seq(
+    name := "scala3-dist",
     packMain := Map(),
-    publishArtifact := false,
     packGenerateMakefile := false,
     packExpandedClasspath := true,
     packArchiveName := "scala3-" + dottyVersion

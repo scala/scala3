@@ -156,6 +156,8 @@ TASTY_CORE=$(find_lib "*tasty-core*")
 SCALA_ASM=$(find_lib "*scala-asm*")
 SCALA_LIB=$(find_lib "*scala-library*")
 SBT_INTF=$(find_lib "*compiler-interface*")
+DOTTY_DIST=$(find_lib "*scala3-dist*")
+DOTTY_REPL=$(find_lib "*scala3-repl*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
@@ -182,6 +184,8 @@ compilerJavaClasspathArgs () {
   toolchain+="$TASTY_CORE$PSEP"
   toolchain+="$DOTTY_STAGING$PSEP"
   toolchain+="$DOTTY_TASTY_INSPECTOR$PSEP"
+  toolchain+="$DOTTY_DIST$PSEP"
+  toolchain+="$DOTTY_REPL$PSEP"
 
   # jine
   toolchain+="$JLINE_READER$PSEP"
