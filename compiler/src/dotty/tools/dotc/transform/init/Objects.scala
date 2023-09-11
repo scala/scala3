@@ -616,7 +616,7 @@ object Objects:
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case Cold =>
       report.warning("Using cold alias. Calling trace:\n" + Trace.show, Trace.position)
@@ -658,7 +658,11 @@ object Objects:
           resolve(ref.klass, meth)
 
       if target.isOneOf(Flags.Method) then
-        if target.hasSource then
+        if target.owner == defn.ArrayModuleClass && target.name == nme.apply then
+          val arr = OfArray(State.currentObject, summon[Regions.Data])
+          Heap.write(arr.addr, args.map(_.value).join)
+          arr
+        else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
           val meth = ddef.symbol
