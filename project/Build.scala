@@ -639,8 +639,6 @@ object Build {
           "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
           "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
-          "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
-          "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader"),
         )
       },
 
@@ -901,7 +899,14 @@ object Build {
         "org.jline" % "jline-reader" % "3.19.0",
         "org.jline" % "jline-terminal" % "3.19.0",
         "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
-      )
+      ),
+      javaOptions ++= {
+        val externalDeps = externalCompilerClasspathTask.value
+        Seq(
+          "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
+          "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader"),
+        )
+      }
     )
 
   def dottyLibrary(implicit mode: Mode): Project = mode match {
