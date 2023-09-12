@@ -895,7 +895,7 @@ object Build {
 
   lazy val `scala3-repl` = project.in(file("repl")).
     asDottyLibrary(NonBootstrapped).
-    dependsOn(`scala3-compiler`).
+    dependsOn(`scala3-compiler` % "compile->compile;test->test").
     settings(
       libraryDependencies ++= Seq(
         "org.jline" % "jline-reader" % "3.19.0",
@@ -962,6 +962,7 @@ object Build {
     // when compiling a project that depends on scala3-staging (see sbt-test/sbt-dotty/quoted-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
+    dependsOn(`scala3-repl` % "test->test").
     settings(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
