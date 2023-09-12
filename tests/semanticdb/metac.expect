@@ -477,6 +477,60 @@ Occurrences:
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
 
+expect/CaseClass.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => CaseClass.scala
+Text => empty
+Language => Scala
+Symbols => 22 entries
+Occurrences => 17 entries
+
+Symbols:
+caseclass/CaseClass# => case class CaseClass extends Object with Product with Serializable { self: CaseClass => +8 decls }
+caseclass/CaseClass#_1(). => method _1 => Int
+caseclass/CaseClass#_2(). => method _2 => Int
+caseclass/CaseClass#`<init>`(). => primary ctor <init> (val param int1: Int, val param int2: Int): CaseClass
+caseclass/CaseClass#`<init>`().(int1) => val param int1: Int
+caseclass/CaseClass#`<init>`().(int2) => val param int2: Int
+caseclass/CaseClass#copy$default$1(). => method copy$default$1 => Int @uncheckedVariance
+caseclass/CaseClass#copy$default$2(). => method copy$default$2 => Int @uncheckedVariance
+caseclass/CaseClass#copy(). => method copy (param int1: Int, param int2: Int): CaseClass
+caseclass/CaseClass#copy().(int1) => param int1: Int
+caseclass/CaseClass#copy().(int2) => param int2: Int
+caseclass/CaseClass#int1. => val method int1 Int
+caseclass/CaseClass#int2. => val method int2 Int
+caseclass/CaseClass. => final object CaseClass extends Object { self: CaseClass.type => +5 decls }
+caseclass/CaseClass.apply(). => method apply (param int: Int): CaseClass
+caseclass/CaseClass.apply().(int) => param int: Int
+caseclass/CaseClass.apply(+1). => method apply (): CaseClass
+caseclass/CaseClass.apply(+2). => method apply (param int1: Int, param int2: Int): CaseClass
+caseclass/CaseClass.apply(+2).(int1) => param int1: Int
+caseclass/CaseClass.apply(+2).(int2) => param int2: Int
+caseclass/CaseClass.unapply(). => method unapply (param x$1: CaseClass): CaseClass
+caseclass/CaseClass.unapply().(x$1) => param x$1: CaseClass
+
+Occurrences:
+[0:8..0:17): caseclass <- caseclass/
+[2:11..2:20): CaseClass <- caseclass/CaseClass#
+[2:20..2:20): <- caseclass/CaseClass#`<init>`().
+[2:21..2:25): int1 <- caseclass/CaseClass#int1.
+[2:27..2:30): Int -> scala/Int#
+[2:32..2:36): int2 <- caseclass/CaseClass#int2.
+[2:38..2:41): Int -> scala/Int#
+[4:7..4:16): CaseClass <- caseclass/CaseClass.
+[5:6..5:11): apply <- caseclass/CaseClass.apply().
+[5:12..5:15): int <- caseclass/CaseClass.apply().(int)
+[5:17..5:20): Int -> scala/Int#
+[5:23..5:32): CaseClass -> caseclass/CaseClass#
+[5:35..5:44): CaseClass -> caseclass/CaseClass.
+[5:45..5:48): int -> caseclass/CaseClass.apply().(int)
+[6:6..6:11): apply <- caseclass/CaseClass.apply(+1).
+[6:15..6:24): CaseClass -> caseclass/CaseClass#
+[6:27..6:36): CaseClass -> caseclass/CaseClass.
+
 expect/Classes.scala
 --------------------
 
@@ -1232,7 +1286,7 @@ Occurrences:
 [46:28..46:29): C -> _empty_/Enums.`<:<`.Refl#[C]
 [46:30..46:33): <:< -> _empty_/Enums.`<:<`#
 [46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
-[48:9..48:12): <:< <- _empty_/Enums.`<:<`.
+[48:10..48:13): <:< <- _empty_/Enums.`<:<`.
 [49:11..49:12): T <- _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:16..49:17): T -> _empty_/Enums.`<:<`.`given_<:<_T_T`().[T]
 [49:18..49:21): <:< -> _empty_/Enums.`<:<`#
@@ -1583,12 +1637,12 @@ Schema => SemanticDB v4
 Uri => Givens.scala
 Text => empty
 Language => Scala
-Symbols => 29 entries
-Occurrences => 66 entries
+Symbols => 33 entries
+Occurrences => 72 entries
 Synthetics => 3 entries
 
 Symbols:
-a/b/Givens. => final object Givens extends Object { self: Givens.type => +12 decls }
+a/b/Givens. => final object Givens extends Object { self: Givens.type => +13 decls }
 a/b/Givens.Monoid# => trait Monoid [typeparam A ] extends Object { self: Monoid[A] => +4 decls }
 a/b/Givens.Monoid#[A] => typeparam A 
 a/b/Givens.Monoid#`<init>`(). => primary ctor <init> [typeparam A ](): Monoid[A]
@@ -1606,7 +1660,11 @@ a/b/Givens.given_Monoid_String.combine().(y) => param y: String
 a/b/Givens.given_Monoid_String.empty(). => method empty => String <: a/b/Givens.Monoid#empty().
 a/b/Givens.goodbye1. => val method goodbye1 String
 a/b/Givens.hello1. => val method hello1 String
-a/b/Givens.int2String(). => final implicit given inline macro int2String => Conversion[Int, String]
+a/b/Givens.int2String# => implicit given class int2String extends Conversion[Int, String] { self: int2String => +2 decls }
+a/b/Givens.int2String#`<init>`(). => primary ctor <init> (): int2String
+a/b/Givens.int2String#apply(). => method apply (param x: Int): String <: scala/Conversion#apply()., scala/Function1#apply().
+a/b/Givens.int2String#apply().(x) => param x: Int
+a/b/Givens.int2String(). => final implicit given inline macro int2String => int2String
 a/b/Givens.sayGoodbye(). => method sayGoodbye [typeparam B ](param any: B): String
 a/b/Givens.sayGoodbye().(any) => param any: B
 a/b/Givens.sayGoodbye().[B] => typeparam B 
@@ -1670,21 +1728,27 @@ Occurrences:
 [22:55..22:56): y -> a/b/Givens.given_Monoid_String.combine().(y)
 [24:15..24:25): int2String <- a/b/Givens.int2String().
 [24:27..24:37): Conversion -> scala/Conversion#
+[24:27..24:27): <- a/b/Givens.int2String#`<init>`().
 [24:38..24:41): Int -> scala/Int#
 [24:43..24:49): String -> scala/Predef.String#
-[24:55..24:63): toString -> scala/Any#toString().
-[26:6..26:9): foo <- a/b/Givens.foo().
-[26:10..26:11): A <- a/b/Givens.foo().[A]
-[26:19..26:20): A <- a/b/Givens.foo().(A)
-[26:22..26:28): Monoid -> a/b/Givens.Monoid#
-[26:29..26:30): A -> a/b/Givens.foo().[A]
-[26:34..26:35): A -> a/b/Givens.foo().[A]
-[26:38..26:39): A -> a/b/Givens.foo().(A)
-[26:40..26:47): combine -> a/b/Givens.Monoid#combine().
-[26:48..26:49): A -> a/b/Givens.foo().(A)
-[26:50..26:55): empty -> a/b/Givens.Monoid#empty().
-[26:57..26:58): A -> a/b/Givens.foo().(A)
-[26:59..26:64): empty -> a/b/Givens.Monoid#empty().
+[25:8..25:13): apply <- a/b/Givens.int2String#apply().
+[25:14..25:15): x <- a/b/Givens.int2String#apply().(x)
+[25:17..25:20): Int -> scala/Int#
+[25:23..25:29): String -> scala/Predef.String#
+[25:32..25:33): x -> a/b/Givens.int2String#apply().(x)
+[25:34..25:42): toString -> scala/Any#toString().
+[27:6..27:9): foo <- a/b/Givens.foo().
+[27:10..27:11): A <- a/b/Givens.foo().[A]
+[27:19..27:20): A <- a/b/Givens.foo().(A)
+[27:22..27:28): Monoid -> a/b/Givens.Monoid#
+[27:29..27:30): A -> a/b/Givens.foo().[A]
+[27:34..27:35): A -> a/b/Givens.foo().[A]
+[27:38..27:39): A -> a/b/Givens.foo().(A)
+[27:40..27:47): combine -> a/b/Givens.Monoid#combine().
+[27:48..27:49): A -> a/b/Givens.foo().(A)
+[27:50..27:55): empty -> a/b/Givens.Monoid#empty().
+[27:57..27:58): A -> a/b/Givens.foo().(A)
+[27:59..27:64): empty -> a/b/Givens.Monoid#empty().
 
 Synthetics:
 [12:17..12:25):sayHello => *[Int]
