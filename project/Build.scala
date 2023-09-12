@@ -1280,6 +1280,7 @@ object Build {
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
     dependsOn(dottyCompiler(Bootstrapped)).
+    dependsOn(`scala3-repl`).
     settings(commonBootstrappedSettings).
     settings(
       libraryDependencies ++= Seq(
