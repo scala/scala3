@@ -1238,7 +1238,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if !canUseInferred then
               val inferred = t.tpt.knownType
               def checkPure(tp: Type) = tp match
-                case CapturingType(_, refs)
+                case CapturingType(_, refs: CaptureSet.Var)
                 if !refs.elems.filter(isNotPureThis).isEmpty =>
                   val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
                   report.error(
