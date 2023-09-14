@@ -9,7 +9,6 @@ import scala.reflect.ClassTag
 import java.io.{PrintWriter, StringWriter}
 import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
-import dotty.tools.AbstractFileClassLoader
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 import dotty.tools.dotc.core.Annotations._
@@ -29,6 +28,7 @@ import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.core.CyclicReference
+import dotty.tools.io.AbstractFileClassLoader
 
 /** Tree interpreter for metaprogramming constructs */
 class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):

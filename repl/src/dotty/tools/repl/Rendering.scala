@@ -4,6 +4,7 @@ package repl
 import scala.language.unsafeNulls
 
 import dotc.*, core.*
+import dotty.tools.io.AbstractFileClassLoader
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import reporting.Diagnostic
