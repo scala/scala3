@@ -155,7 +155,7 @@ object CoursierScalaTests:
     (code, out.toList)
 
   def csScalaCmd(options: String*): List[String] =
-    csCmd("dotty.dist.MainGenericRunner", options*)
+    csCmd("dotty.tools.MainGenericRunner", options*)
 
   def csScalaCompilerCmd(options: String*): List[String] =
     csCmd("dotty.tools.dotc.Main", options*)
