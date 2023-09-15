@@ -1688,7 +1688,7 @@ object SymDenotations {
      */
     def children(using Context): List[Symbol] =
 
-      def completeChildrenIn(owner: Symbol)(using Context) =
+      def completeChildrenIn(owner: Symbol, recursively: Boolean)(using Context): Unit =
         // Possible children are: classes extending Scala classes and
         // Scala or Java enum values that are defined in owner.
         // If owner is a package, we complete only
@@ -1698,20 +1698,28 @@ object SymDenotations {
           && (!owner.is(Package)
              || sym.originDenotation.infoOrCompleter.match
                   case _: SymbolLoaders.SecondCompleter => sym.associatedFile == this.symbol.associatedFile
-                  case _ => false)
+                  case _: ClassInfo if recursively && sym.isValidInCurrentRun =>
+                    sym.is(Package) || sym.associatedFile == this.symbol.associatedFile
+                  case other => false)
 
         if owner.isClass then
           for c <- owner.info.decls.toList if maybeChild(c) do
             c.ensureCompleted()
+            if recursively then completeChildrenIn(c, recursively)
       end completeChildrenIn
 
       if is(Sealed) || isAllOf(JavaEnumTrait) then
         if !is(ChildrenQueried) then
-          // Make sure all visible children are completed, so that
-          // they show up in Child annotations. A possible child is visible if it
-          // is defined in the same scope as `cls` or in the companion object of `cls`.
-          completeChildrenIn(owner)
-          completeChildrenIn(companionClass)
+          if !is(Enum) then // non-enum sealed class
+            // Make sure all children are completed, so that
+            // they show up in Child annotations.
+            completeChildrenIn(defn.RootClass, recursively = true)
+          else
+            // Make sure all visible children are completed, so that
+            // they show up in Child annotations. A possible child is visible if it
+            // is defined in the same scope as `cls` or in the companion object of `cls`.
+            completeChildrenIn(owner, recursively = false)
+            completeChildrenIn(companionClass, recursively = false)
           setFlag(ChildrenQueried)
 
       annotations.collect { case Annotation.Child(child) => child }.reverse
