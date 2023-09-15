@@ -1143,3 +1143,34 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |  case MySome[<<AA>>](value: <<A@@A>>) extends MyOption[Int]
          |""".stripMargin,
     )
+
+  @Test def `implicit-extension` =
+    check(
+      """|class MyIntOut(val value: Int)
+         |object MyIntOut:
+         |  extension (i: MyIntOut) def <<uneven>> = i.value % 2 == 1
+         |
+         |val a = MyIntOut(1)
+         |val m = a.<<un@@even>>
+         |""".stripMargin,
+    )
+
+  @Test def `implicit-extension-2` =
+    check(
+      """|class MyIntOut(val value: Int)
+         |object MyIntOut:
+         |  extension (i: MyIntOut) def <<uneven>>(u: Int) = i.value % 2 == 1
+         |
+         |val a = MyIntOut(1).<<un@@even>>(3)
+         |""".stripMargin,
+    )
+
+  @Test def `implicit-extension-infix` =
+    check(
+      """|class MyIntOut(val value: Int)
+         |object MyIntOut:
+         |  extension (i: MyIntOut) def <<++>>(u: Int) = i.value + u
+         |
+         |val a = MyIntOut(1) <<+@@+>> 3
+         |""".stripMargin,
+    )

@@ -16,3 +16,12 @@ extension (s/*<-ext::Extension$package.readInto().(s)*/: String/*->scala::Predef
 
 trait Functor/*<-ext::Functor#*/[F/*<-ext::Functor#[F]*/[_]]:
   extension [T/*<-ext::Functor#map().[T]*/](t/*<-ext::Functor#map().(t)*/: F/*->ext::Functor#[F]*/[T/*->ext::Functor#map().[T]*/]) def map/*<-ext::Functor#map().*/[U/*<-ext::Functor#map().[U]*/](f/*<-ext::Functor#map().(f)*/: T/*->ext::Functor#map().[T]*/ => U/*->ext::Functor#map().[U]*/): F/*->ext::Functor#[F]*/[U/*->ext::Functor#map().[U]*/]
+
+opaque type Deck/*<-ext::Extension$package.Deck#*/ = Long/*->scala::Long#*/
+object Deck/*<-ext::Extension$package.Deck.*/:
+  extension (data/*<-ext::Extension$package.Deck.fooSize().(data)*/: Deck/*->ext::Extension$package.Deck#*/)
+    def fooSize/*<-ext::Extension$package.Deck.fooSize().*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/
+
+object DeckUsage/*<-ext::DeckUsage.*/:
+  val deck/*<-ext::DeckUsage.deck.*/: Deck/*->ext::Extension$package.Deck#*/ = ???/*->scala::Predef.`???`().*/
+  deck/*->ext::DeckUsage.deck.*/.fooSize/*->ext::Extension$package.Deck.fooSize().*/
