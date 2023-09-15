@@ -752,7 +752,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
-      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       typedSelect(tree, pt, qual).withSpan(tree.span).computeNullable()
 
     def javaSelectOnType(qual: Tree)(using Context) =
@@ -782,7 +782,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
-      val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       assignType(cpy.Select(tree)(qual1, tree.name), qual1)
     }
     else if (ctx.isJava && tree.name.isTypeName)
@@ -3442,7 +3442,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         then
           Some(adapt(tree, pt, locked))
         else
-          val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
+          val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false, tree.nameSpan)
           if selProto.isMatchedBy(qual.tpe) || tree.hasAttachment(InsertedImplicitOnQualifier) then
             None
           else
@@ -3467,7 +3467,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, inSelect: Boolean)
       (using Context): Tree =
 
-    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect)
+    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect, tree.nameSpan)
 
     def tryExtension(using Context): Tree =
       val altImports = new mutable.ListBuffer[TermRef]()
@@ -3897,7 +3897,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        *  function prototype `(...)R`. Otherwise `pt`.
        */
       def ptWithoutRedundantApply: Type = pt.revealIgnored match
-        case SelectionProto(nme.apply, mpt, _, _) =>
+        case SelectionProto(nme.apply, mpt, _, _, _) =>
           mpt.revealIgnored match
             case fpt: FunProto => fpt
             case _ => pt
