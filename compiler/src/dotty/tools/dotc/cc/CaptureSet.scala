@@ -200,7 +200,7 @@ sealed abstract class CaptureSet extends Showable:
       case Nil =>
         addDependent(that)
     recur(elems.toList)
-      .showing(i"subcaptures $this <:< $that = ${result.show}", capt)
+      //.showing(i"subcaptures $this <:< $that = ${result.show}", capt)
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -1035,10 +1035,7 @@ object CaptureSet:
 
   def levelErrors: Addenda = new Addenda:
     override def toAdd(using Context) =
-      for
-        state <- ctx.property(ccStateKey).toList
-        (ref, cs) <- state.levelError
-      yield
+      for (ref, cs) <- ccState.levelError.toList yield
         val levelStr = ref match
           case ref: (TermRef | ThisType) => i", defined at level ${ref.ccNestingLevel}"
           case _ => ""

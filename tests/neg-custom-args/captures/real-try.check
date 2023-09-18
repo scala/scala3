@@ -28,7 +28,7 @@
 31 |    Cell(() => foo(1))// // error
    |    ^^^^^^^^^^^^^^^^^^
    |    Found:    Cell[box () => Unit]^?
-   |    Required: Cell[() ->? Unit]^?
+   |    Required: Cell[box () ->? Unit]^?
    |
    |    Note that reference (cap : caps.Cap), defined at level 2
    |    cannot be included in outer capture set ?, defined at level 1 in method test

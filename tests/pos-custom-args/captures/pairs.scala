@@ -1,4 +1,5 @@
-
+//class CC
+//type Cap = CC^
 @annotation.capability class Cap
 
 object Generic:

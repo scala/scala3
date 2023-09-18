@@ -7,7 +7,7 @@ import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.SourceVersion
-import config.Printers.capt
+import config.Printers.{capt, ccSetup}
 import util.Property.Key
 import tpd.*
 import StdNames.nme
@@ -28,23 +28,22 @@ private val adaptUnpickledFunctionTypes = false
  */
 private val constrainRootsWhenMapping = true
 
-/** The arguments of a @retains or @retainsByName annotation */
-private[cc] def retainedElems(tree: Tree)(using Context): List[Tree] = tree match
-  case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
-  case _ => Nil
-
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception
 
-/** Capture checking state, which is stored in a context property */
+/** Capture checking state, which is known to other capture checking components */
 class CCState:
 
+  /** Temporary set indicating closures that are the rhs of a val or def.
+   *  An entry gets removed when we check isLevelOwner on it.
+   */
   val rhsClosure: mutable.HashSet[Symbol] = new mutable.HashSet
 
-  val levelOwners: mutable.HashSet[Symbol] = new mutable.HashSet
+  /** Cache for level ownership */
+  val isLevelOwner: mutable.HashMap[Symbol, Boolean] = new mutable.HashMap
 
   /** Associates certain symbols (the nesting level owners) with their ccNestingLevel */
   val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
@@ -61,13 +60,12 @@ class CCState:
    *  Installed by Setup, removed by CheckCaptures.
    */
   val tryBlockOwner: mutable.HashMap[Try, Symbol] = new mutable.HashMap
+
 end CCState
 
-/** Property key for capture checking state */
-val ccStateKey: Key[CCState] = Key()
-
 /** The currently valid CCState */
-def ccState(using Context) = ctx.property(ccStateKey).get
+def ccState(using Context) =
+  Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState
 
 trait FollowAliases extends TypeMap:
   def mapOverFollowingAliases(t: Type): Type = t match
@@ -98,6 +96,8 @@ class mapRoots(from: CaptureRoot, to: CaptureRoot)(using Context) extends BiType
             && CaptureRoot.isEnclosingRoot(t, from) => to
           case from: CaptureRoot.Var if from.followAlias eq t => to
           case _ => t
+      case t @ Setup.Box(t1) =>
+        t.derivedBox(this(t1))
       case _ =>
         mapOverFollowingAliases(t)
 
@@ -123,10 +123,15 @@ extension (tree: Tree)
     tree.getAttachment(Captures) match
       case Some(refs) => refs
       case None =>
-        val refs = CaptureSet(retainedElems(tree).map(_.toCaptureRef)*)
+        val refs = CaptureSet(tree.retainedElems.map(_.toCaptureRef)*)
           .showing(i"toCaptureSet $tree --> $result", capt)
         tree.putAttachment(Captures, refs)
         refs
+
+  /** The arguments of a @retains or @retainsByName annotation */
+  def retainedElems(using Context): List[Tree] = tree match
+    case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
+    case _ => Nil
 
   /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
    *  a by name parameter type, turning the latter into an impure by name parameter type.
@@ -176,8 +181,10 @@ extension (tp: Type)
     if sym.is(TypeParam) then tp.boxed else tp
 
   /** The boxed version of `tp`, unless `tycon` is a function symbol */
-  def boxedUnlessFun(tycon: Type)(using Context) =
-    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionSymbol(tycon.typeSymbol)
+  def boxedUnlessFun(tycon: Type)(using Context) = // TODO: drop
+    if ctx.phase != Phases.checkCapturesPhase
+        && ctx.phase != Phases.checkCapturesPhase.prev
+      || defn.isFunctionSymbol(tycon.typeSymbol)
     then tp
     else tp.boxed
 
@@ -247,16 +254,6 @@ extension (tp: Type)
     else
       tp
 
-  def isCapturingType(using Context): Boolean =
-    tp match
-      case CapturingType(_, _) => true
-      case _ => false
-
-  def isEventuallyCapturingType(using Context): Boolean =
-    tp match
-      case EventuallyCapturingType(_, _) => true
-      case _ => false
-
   /** Is type known to be always pure by its class structure,
    *  so that adding a capture set to it would not make sense?
    */
@@ -276,15 +273,20 @@ extension (tp: Type)
     case _ =>
       false
 
-extension (cls: ClassSymbol)
+  def isCapabilityClassRef(using Context) = tp match
+    case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
+    case _ => false
+
+extension (cls: Symbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
-    cls.baseClasses.find(bc =>
+    if cls.isClass then cls.asClass.baseClasses.find: bc =>
       defn.pureBaseClasses.contains(bc)
-      || {
-        val selfType = bc.givenSelfType
-        selfType.exists && selfType.captureSet.isAlwaysEmpty
-      })
+      || bc.givenSelfType.dealiasKeepAnnots.match
+          case CapturingType(_, refs) => refs.isAlwaysEmpty
+          case RetainingType(_, refs) => refs.isEmpty // TODO: Better: test at phase cc instead?
+          case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
+    else None
 
 extension (sym: Symbol)
 
@@ -330,7 +332,53 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  def isLevelOwner(using Context): Boolean = ccState.levelOwners.contains(sym)
+  // Not yet needed
+  def takesCappedParam(using Context): Boolean =
+    def search = new TypeAccumulator[Boolean]:
+      def apply(x: Boolean, t: Type): Boolean = //reporting.trace.force(s"hasCapAt $v, $t"):
+        if x then true
+        else t match
+          case t @ AnnotatedType(t1, annot)
+          if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
+            val elems = annot match
+              case CaptureAnnotation(refs, _) => refs.elems.toList
+              case _ => annot.tree.retainedElems.map(_.tpe)
+            if elems.exists(_.widen.isRef(defn.Caps_Cap)) then true
+            else !t1.isCapabilityClassRef && this(x, t1)
+          case t: PolyType =>
+            apply(x, t.resType)
+          case t: MethodType =>
+            t.paramInfos.exists(apply(false, _))
+          case _ =>
+            if t.isRef(defn.Caps_Cap) || t.isCapabilityClassRef then true
+            else
+              val t1 = t.dealiasKeepAnnots
+              if t1 ne t then this(x, t1)
+              else foldOver(x, t)
+    true || sym.info.stripPoly.match
+      case mt: MethodType =>
+        mt.paramInfos.exists(search(false, _))
+      case _ =>
+        false
+
+  def isLevelOwner(using Context): Boolean =
+    val symd = sym.denot
+    def isCaseClassSynthetic = // TODO drop
+      symd.maybeOwner.isClass && symd.owner.is(Case) && symd.is(Synthetic) && symd.info.firstParamNames.isEmpty
+    def compute =
+      if symd.isClass then
+        symd.is(CaptureChecked) || symd.isRoot
+      else
+        symd.is(Method)
+        && (!symd.owner.isClass || symd.owner.is(CaptureChecked))
+        && !Synthetics.isExcluded(sym)
+        && !isCaseClassSynthetic
+        && !symd.isConstructor
+        && (!symd.isAnonymousFunction
+            || ccState.rhsClosure.remove(sym)
+            || sym.definedLocalRoot.exists // TODO drop
+            )
+    ccState.isLevelOwner.getOrElseUpdate(sym, compute)
 
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
@@ -343,6 +391,24 @@ extension (sym: Symbol)
     if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
     else if sym.isLevelOwner then sym
     else sym.owner.levelOwner
+
+  /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
+   *  If name refers to a val that has a closure as rhs, we return the closure as level
+   *  owner.
+   */
+  def levelOwnerNamed(name: String)(using Context): Symbol =
+    def recur(owner: Symbol, prev: Symbol): Symbol =
+      if owner.name.toString == name then
+        if owner.isLevelOwner then owner
+        else if owner.isTerm && !owner.isOneOf(Method | Module) && prev.exists then prev
+        else NoSymbol
+      else if owner == defn.RootClass then
+        NoSymbol
+      else
+        val prev1 = if owner.isAnonymousFunction && owner.isLevelOwner then owner else NoSymbol
+        recur(owner.owner, prev1)
+    recur(sym, NoSymbol)
+      .showing(i"find outer $sym [ $name ] = $result", capt)
 
   /** The nesting level of `sym` for the purposes of `cc`,
    *  -1 for NoSymbol
@@ -358,7 +424,9 @@ extension (sym: Symbol)
    *  a capture checker is running.
    */
   def ccNestingLevelOpt(using Context): Option[Int] =
-    if ctx.property(ccStateKey).isDefined then Some(ccNestingLevel) else None
+    if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev
+    then Some(ccNestingLevel)
+    else None
 
   /** The parameter with type caps.Cap in the leading term parameter section,
    *  or NoSymbol, if none exists.
@@ -378,24 +446,6 @@ extension (sym: Symbol)
       if owner.isTerm then owner.definedLocalRoot.orElse(newRoot)
       else newRoot
     ccState.localRoots.getOrElseUpdate(owner, lclRoot)
-
-  /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
-   *  If name refers to a val that has a closure as rhs, we return the closure as level
-   *  owner.
-   */
-  def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(owner: Symbol, prev: Symbol): Symbol =
-      if owner.name.toString == name then
-        if owner.isLevelOwner then owner
-        else if owner.isTerm && !owner.isOneOf(Method | Module) && prev.exists then prev
-        else NoSymbol
-      else if owner == defn.RootClass then
-        NoSymbol
-      else
-        val prev1 = if owner.isAnonymousFunction && owner.isLevelOwner then owner else NoSymbol
-        recur(owner.owner, prev1)
-    recur(sym, NoSymbol)
-      .showing(i"find outer $sym [ $name ] = $result", capt)
 
   def maxNested(other: Symbol)(using Context): Symbol =
     if sym.ccNestingLevel < other.ccNestingLevel then other else sym
@@ -425,8 +475,10 @@ extension (ts: List[Type])
   /** Equivalent to ts.mapconserve(_.boxedUnlessFun(tycon)) but more efficient where
    *  it is the identity.
    */
-  def boxedUnlessFun(tycon: Type)(using Context) =
-    if ctx.phase != Phases.checkCapturesPhase || defn.isFunctionClass(tycon.typeSymbol)
+  def boxedUnlessFun(tycon: Type)(using Context) = // TODO drop
+    if ctx.phase != Phases.checkCapturesPhase
+        && ctx.phase != Phases.checkCapturesPhase.prev
+      || defn.isFunctionClass(tycon.typeSymbol)
     then ts
     else ts.mapconserve(_.boxed)
 

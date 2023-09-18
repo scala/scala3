@@ -27,26 +27,6 @@ import reporting.trace
 object CheckCaptures:
   import ast.tpd.*
 
-  class Pre extends PreRecheck, SymTransformer:
-
-    override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
-
-  	/**  - Reset `private` flags of parameter accessors so that we can refine them
-     *     in Setup if they have non-empty capture sets.
-     *   - Special handling of some symbols defined for case classes.
-     *  Enabled only until recheck is finished, and provided some compilation unit
-     *  is CC-enabled.
-     */
-    def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-      if !pastRecheck && Feature.ccEnabledSomewhere then
-        if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
-          sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
-        else if Synthetics.needsTransform(sym) then
-          Synthetics.transform(sym)
-        else sym
-      else sym
-  end Pre
-
   enum EnvKind:
     case Regular        // normal case
     case NestedInOwner  // environment is a temporary one nested in the owner's environment,
@@ -140,7 +120,7 @@ object CheckCaptures:
       case _: SingletonType =>
         report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
       case _ =>
-    for elem <- retainedElems(ann) do
+    for elem <- ann.retainedElems do
       elem match
         case QualifiedRoot(outer) =>
           // Will be checked by Setup's checkOuterRoots
@@ -152,36 +132,43 @@ object CheckCaptures:
             report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
   /** If `tp` is a capturing type, check that all references it mentions have non-empty
-   *  capture sets. Also: warn about redundant capture annotations.
+   *  capture sets.
+   *  Also: warn about redundant capture annotations.
    *  This check is performed after capture sets are computed in phase cc.
-   */
-  def checkWellformedPost(tp: Type, pos: SrcPos)(using Context): Unit = tp match
-    case CapturingType(parent, refs) =>
-      for ref <- refs.elems do
-        if ref.captureSetOfInfo.elems.isEmpty then
-          report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-        else if parent.captureSet.accountsFor(ref) then
-          report.warning(em"redundant capture: $parent already accounts for $ref in $tp", pos)
-    case _ =>
-
-  /** Warn if `ann`, which is the tree of a @retains annotation, defines some elements that
-   *  are already accounted for by other elements of the same annotation.
    *  Note: We need to perform the check on the original annotation rather than its
    *  capture set since the conversion to a capture set already eliminates redundant elements.
    */
-  def warnIfRedundantCaptureSet(ann: Tree, tpt: Tree)(using Context): Unit =
-    var retained = retainedElems(ann).toArray
+  def checkWellformedPost(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
+    val normCap = new TypeMap:
+      def apply(t: Type): Type = t match
+        case t: TermRef if t.isGenericRootCapability => ctx.owner.localRoot.termRef
+        case _ => t
+
+    var retained = ann.retainedElems.toArray
     for i <- 0 until retained.length do
       val refTree = retained(i)
       val ref = refTree.toCaptureRef
-      val others = for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
+
+      def pos =
+        if refTree.span.exists then refTree.srcPos
+        else if ann.span.exists then ann.srcPos
+        else tpt.srcPos
+
+      def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
+        val remaining = others.map(normCap)
+        if remaining.accountsFor(ref) then
+          report.warning(em"redundant capture: $dom already accounts for $ref", pos)
+
+      if ref.captureSetOfInfo.elems.isEmpty then
+        report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+      check(parent.captureSet, parent)
+
+      val others =
+        for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
       val remaining = CaptureSet(others*)
-      if remaining.accountsFor(ref) then
-        val srcTree =
-          if refTree.span.exists then refTree
-          else if ann.span.exists then ann
-          else tpt
-        report.warning(em"redundant capture: $remaining already accounts for $ref", srcTree.srcPos)
+      check(remaining, remaining)
+    end for
+  end checkWellformedPost
 
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
@@ -198,13 +185,11 @@ class CheckCaptures extends Recheck, SymTransformer:
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
-  private val state = new CCState
-
   override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
-      
-  override def printingContext(ctx: Context) = ctx.withProperty(ccStateKey, Some(new CCState))
+
+  val ccState = new CCState
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
     import ast.tpd.*
@@ -1050,20 +1035,24 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         traverseChildren(t)
 
-    private var setup: Setup = compiletime.uninitialized
+    private var setup: SetupAPI = compiletime.uninitialized
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      setup = Setup(preRecheckPhase, thisPhase, recheckDef)
-      inContext(ctx.withProperty(ccStateKey, Some(state))):
-        setup(ctx.compilationUnit.tpdTree)
-        //println(i"SETUP:\n${Recheck.addRecheckedTypes.transform(ctx.compilationUnit.tpdTree)}")
-        withCaptureSetsExplained:
-          super.checkUnit(unit)
-          checkOverrides.traverse(unit.tpdTree)
-          checkSelfTypes(unit.tpdTree)
-          postCheck(unit.tpdTree)
-          if ctx.settings.YccDebug.value then
-            show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
+      setup = thisPhase.prev.asInstanceOf[Setup]
+      setup.setupUnit(ctx.compilationUnit.tpdTree, recheckDef)
+
+      if ctx.settings.YccPrintSetup.value then
+        val echoHeader = "[[syntax tree at end of cc setup]]"
+        val treeString = show(ctx.compilationUnit.tpdTree)
+        report.echo(s"$echoHeader\n$treeString\n")
+
+      withCaptureSetsExplained:
+        super.checkUnit(unit)
+        checkOverrides.traverse(unit.tpdTree)
+        checkSelfTypes(unit.tpdTree)
+        postCheck(unit.tpdTree)
+        if ctx.settings.YccDebug.value then
+          show(unit.tpdTree) // this does not print tree, but makes its variables visible for dependency printing
 
     /** Check that self types of subclasses conform to self types of super classes.
      *  (See comment below how this is achieved). The check assumes that classes
@@ -1207,13 +1196,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         def check(tree: Tree)(using Context) = tree match
           case _: InferredTypeTree =>
           case tree: TypeTree if !tree.span.isZeroExtent =>
-            tree.knownType.foreachPart { tp =>
-              checkWellformedPost(tp, tree.srcPos)
-              tp match
-                case AnnotatedType(_, annot) if annot.symbol == defn.RetainsAnnot =>
-                  warnIfRedundantCaptureSet(annot.tree, tree)
-                case _ =>
-            }
+            tree.tpe.foreachPart:
+              case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
+                checkWellformedPost(parent, annot.tree, tree)
+              case _ =>
           case t: ValOrDefDef
           if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
             val sym = t.symbol

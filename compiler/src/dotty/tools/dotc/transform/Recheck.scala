@@ -17,7 +17,7 @@ import typer.TypeAssigner.seqLitType
 import typer.ConstFold
 import typer.ErrorReporting.{Addenda, NothingToAdd}
 import NamerOps.methodType
-import config.Printers.recheckr
+import config.Printers.{recheckr, ccSetup, noPrinter}
 import util.Property
 import StdNames.nme
 import reporting.trace
@@ -46,27 +46,23 @@ object Recheck:
         case Some(tpe) => tree1.withType(tpe)
         case None => tree1
 
-  extension (sym: Symbol)
+  extension (sym: Symbol)(using Context)
 
     /** Update symbol's info to newInfo after `prevPhase`.
      *  Also update owner to newOwnerOrNull if it is not null.
      *  The update is valid until after Recheck. After that the symbol's denotation
      *  is reset to what it was before PreRecheck.
      */
-    def updateInfo(prevPhase: DenotTransformer, newInfo: Type, newOwnerOrNull: Symbol | Null = null)(using Context): Unit =
-      val newOwner = if newOwnerOrNull == null then sym.owner else newOwnerOrNull
-      if (sym.info ne newInfo) || (sym.owner ne newOwner)  then
-        val flags = sym.flags
-        sym.copySymDenotation(
-            owner = newOwner,
-            info = newInfo,
-            initFlags = if newInfo.isInstanceOf[LazyType] then flags &~ Touched else flags
-          ).installAfter(prevPhase)
+    def updateInfo(prevPhase: DenotTransformer, newInfo: Type, newFlags: FlagSet = sym.flags, newOwner: Symbol = sym.owner): Unit =
+      if (sym.info ne newInfo) || sym.flags != newFlags || (sym.maybeOwner ne newOwner)  then
+        val flags = if newInfo.isInstanceOf[LazyType] then newFlags &~ Touched else newFlags
+        sym.copySymDenotation(owner = newOwner, info = newInfo, initFlags = flags)
+          .installAfter(prevPhase)
 
     /** Does symbol have a new denotation valid from phase.next that is different
      *  from the denotation it had before?
      */
-    def isUpdatedAfter(phase: Phase)(using Context) =
+    def isUpdatedAfter(phase: Phase) =
       val symd = sym.denot
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
 
@@ -526,12 +522,14 @@ abstract class Recheck extends Phase, SymTransformer:
       tpe
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      trace(i"rechecking $tree with pt = $pt", recheckr, show = true) {
+      def op =
         try recheckFinish(recheckStart(tree, pt), tree, pt)
         catch case ex: Exception =>
           println(i"error while rechecking $tree")
           throw ex
-      }
+      if ccSetup eq noPrinter then op
+      else trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
+        op
 
     /** Typing and previous transforms sometimes leaves skolem types in prefixes of
      *  NamedTypes in `expected` that do not match the `actual` Type. -Ycheck does
@@ -582,7 +580,7 @@ abstract class Recheck extends Phase, SymTransformer:
         err.typeMismatch(tree.withType(actual), expected, addenda)
       else if debugSuccesses then
         tree match
-          case _: Ident =>
+          case closureDef(_) =>
             println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
           case _ =>
     end checkConformsExpr
