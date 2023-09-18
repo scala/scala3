@@ -749,7 +749,7 @@ object TreeChecker {
         if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
         else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
-        defn.FunctionOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+        defn.FunctionOf(defn.QuotesClass.typeRef :: Nil, expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionOf(argQuotedTypes, contextualResult)
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")

@@ -528,17 +528,17 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
       val jsclassVal = myState.localClass2jsclassVal(sym)
       if (myState.notYetReferencedLocalClasses.remove(cls)) {
-        Thicket(List(tree, ValDef(jsclassVal, rhs)))
+        Thicket(tree :: ValDef(jsclassVal, rhs) :: Nil)
       } else {
         /* We are using `jsclassVal` inside the definition of the class.
          * We need to declare it as var before and initialize it after the class definition.
          */
         jsclassVal.setFlag(Mutable)
-        Thicket(List(
-            ValDef(jsclassVal, Literal(Constant(null))),
-            tree,
-            Assign(ref(jsclassVal), rhs)
-        ))
+        Thicket(
+            ValDef(jsclassVal, Literal(Constant(null))) ::
+            tree ::
+            Assign(ref(jsclassVal), rhs) :: Nil
+        )
       }
     } else {
       tree

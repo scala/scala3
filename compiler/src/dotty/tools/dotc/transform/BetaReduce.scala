@@ -91,13 +91,13 @@ object BetaReduce:
       case _ => None
     tree match
       case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
-        recur(fn, List(args)) match
+        recur(fn, args :: Nil) match
           case Some(reduced) =>
             seq(bindingsBuf.result(), reduced).withSpan(tree.span)
           case None =>
             tree
       case Apply(TypeApply(Select(fn, nme.apply), targs), args) if fn.tpe.typeSymbol eq dotc.core.Symbols.defn.PolyFunctionClass =>
-        recur(fn, List(targs, args)) match
+        recur(fn, targs :: args :: Nil) match
           case Some(reduced) =>
             seq(bindingsBuf.result(), reduced).withSpan(tree.span)
           case None =>

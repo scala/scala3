@@ -14,7 +14,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   val superCls: Symbol = cls.superClass
   val mixins: List[ClassSymbol] = cls.mixins
 
-  lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
+  lazy val JUnit4Annotations: List[Symbol] = ("Test" :: "Ignore" :: "Before" :: "After" :: "BeforeClass" :: "AfterClass" :: Nil).
     map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 

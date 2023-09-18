@@ -32,13 +32,13 @@ class MacroAnnotations:
    */
   def expandAnnotations(tree: MemberDef)(using Context): List[DefTree] =
     if !hasMacroAnnotation(tree.symbol) then
-      List(tree)
+      tree :: Nil
     else if tree.symbol.is(Module) && !tree.symbol.isClass then
       // only class is transformed
-      List(tree)
+      tree :: Nil
     else if tree.symbol.isType && !tree.symbol.isClass then
       report.error("macro annotations are not supported on type", tree)
-      List(tree)
+      tree :: Nil
     else
       debug.println(i"Expanding macro annotations of:\n$tree")
 
@@ -63,7 +63,7 @@ class MacroAnnotations:
                   case ex: scala.quoted.runtime.StopMacroExpansion =>
                     if !ctx.reporter.hasErrors then
                       report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users when aborting a macro expansion with StopMacroExpansion.", annot.tree)
-                    List(tree)
+                    tree :: Nil
                   case Interpreter.MissingClassDefinedInCurrentRun(sym) =>
                     Interpreter.suspendOnMissing(sym, annot.tree)
                   case NonFatal(ex) =>
@@ -75,7 +75,7 @@ class MacroAnnotations:
                           |    ${stack.mkString("\n    ")}
                           |"""
                     report.error(msg, annot.tree)
-                    List(tree)
+                    tree :: Nil
                   case _ =>
                     throw ex0
           transformedTrees.span(_.symbol != tree.symbol) match

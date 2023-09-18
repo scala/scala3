@@ -1042,10 +1042,9 @@ object PatternMatcher {
       case _ =>
     end checkSwitch
 
-    val optimizations: List[(String, Plan => Plan)] = List(
-      "mergeTests" -> mergeTests,
-      "inlineVars" -> inlineVars
-    )
+    val optimizations: List[(String, Plan => Plan)] =
+      "mergeTests" -> mergeTests ::
+      "inlineVars" -> inlineVars :: Nil
 
     /** Translate pattern match to sequence of tests. */
     def translateMatch(tree: Match): Tree = {

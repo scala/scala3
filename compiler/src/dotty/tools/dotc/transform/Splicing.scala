@@ -178,7 +178,7 @@ class Splicing extends MacroTransform:
       val bindingsTypes = bindings.map(_.termRef.widenTermRefExpr)
       val methType = MethodType(bindingsTypes, newTree.tpe)
       val meth = newSymbol(spliceOwner, nme.ANON_FUN, Synthetic | Method, methType)
-      val ddef = DefDef(meth, List(bindings), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
+      val ddef = DefDef(meth, bindings :: Nil, newTree.tpe, newTree.changeOwner(ctx.owner, meth))
       val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
       val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
       tpd.Hole(true, holeIdx, refs, closure, tpe)
@@ -348,7 +348,7 @@ class Splicing extends MacroTransform:
     private def spliced(tpe: Type)(body: Context ?=> Tree)(using Context): Tree =
       val exprTpe = defn.QuotedExprClass.typeRef.appliedTo(tpe)
       val closure =
-        val methTpe = ContextualMethodType(List(defn.QuotesClass.typeRef), exprTpe)
+        val methTpe = ContextualMethodType(defn.QuotesClass.typeRef :: Nil, exprTpe)
         val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, methTpe)
         Closure(meth, argss => {
           withCurrentQuote(argss.head.head) {

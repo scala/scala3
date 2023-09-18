@@ -58,8 +58,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
           tp.derivedLambdaType(resType = addConstrParams(restpe))
         case _ =>
           tp.derivedLambdaType(
-            paramNames = tp.paramNames ++ List(nameParamName, ordinalParamName),
-            paramInfos = tp.paramInfos ++ List(defn.StringType, defn.IntType))
+            paramNames = tp.paramNames ++ (nameParamName :: ordinalParamName :: Nil),
+            paramInfos = tp.paramInfos ++ (defn.StringType :: defn.IntType :: Nil))
       }
   }
 
@@ -70,7 +70,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
     val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
     val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
-    List(ValDef(nameParam), ValDef(ordinalParam))
+    ValDef(nameParam) :: ValDef(ordinalParam) :: Nil
   }
 
   /** Add arguments `args` to the parent constructor application in `parents` that invokes
@@ -173,9 +173,9 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         ref(cls.owner.paramSymss.head.find(_.name == name).get)
       val args =
         if cls.owner.isAllOf(EnumCase) then
-          List(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
+          Literal(Constant(cls.owner.name.toString)) :: Literal(Constant(ordinalFor(cls.owner))) :: Nil
         else
-          List(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
+          creatorParamRef(nme.nameDollar) :: creatorParamRef(nme.ordinalDollar_) :: Nil
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
       )

@@ -235,7 +235,7 @@ object PickleQuotes {
       val typeName = body.tpe.typeSymbol.name
       val literalValue =
         if lit.const.tag == Constants.NullTag || lit.const.tag == Constants.UnitTag then Nil
-        else List(body)
+        else body :: Nil
       val constModule = lit.const.tag match
         case Constants.BooleanTag => defn. Quotes_reflect_BooleanConstant
         case Constants.ByteTag => defn. Quotes_reflect_ByteConstant
@@ -321,8 +321,8 @@ object PickleQuotes {
         else
           Lambda(
             MethodType(
-              List(nme.idx, nme.contents, nme.quotes).map(name => UniqueName.fresh(name).toTermName),
-              List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuotesClass.typeRef),
+              (nme.idx :: nme.contents :: nme.quotes :: Nil).map(name => UniqueName.fresh(name).toTermName),
+              defn.IntType :: defn.SeqType.appliedTo(defn.AnyType) :: defn.QuotesClass.typeRef :: Nil,
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
@@ -352,8 +352,8 @@ object PickleQuotes {
         if quote.isTypeQuote then defn.QuoteUnpickler_unpickleTypeV2
         else defn.QuoteUnpickler_unpickleExprV2
       val unpickleArgs =
-        if quote.isTypeQuote then List(pickledQuoteStrings, types)
-        else List(pickledQuoteStrings, types, termHoles)
+        if quote.isTypeQuote then pickledQuoteStrings :: types :: Nil
+        else pickledQuoteStrings :: types :: termHoles :: Nil
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
         .select(unpickleMeth).appliedToType(bodyType)

@@ -1253,9 +1253,9 @@ object Objects:
   def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
     // expected member types for `unapplySeq`
     def lengthType = ExprType(defn.IntType)
-    def lengthCompareType = MethodType(List(defn.IntType), defn.IntType)
-    def applyType(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-    def dropType(elemTp: Type) = MethodType(List(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
+    def lengthCompareType = MethodType(defn.IntType :: Nil, defn.IntType)
+    def applyType(elemTp: Type) = MethodType(defn.IntType :: Nil, elemTp)
+    def dropType(elemTp: Type) = MethodType(defn.IntType :: Nil, defn.CollectionSeqType.appliedTo(elemTp))
     def toSeqType(elemTp: Type) = ExprType(defn.CollectionSeqType.appliedTo(elemTp))
 
     def getMemberMethod(receiver: Type, name: TermName, tp: Type): Denotation =

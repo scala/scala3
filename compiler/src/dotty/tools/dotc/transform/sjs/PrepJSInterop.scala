@@ -318,14 +318,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           val enclosingClass = currentOwner.enclosingClass
 
           // new DynamicImportThunk { def apply(): Any = body }
-          val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
+          val dynamicImportThunkAnonClass = AnonClass(currentOwner, jsdefn.DynamicImportThunkType :: Nil, span) { cls =>
             val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
             val transformedBody = enterDynamicImportEnclosingClass(enclosingClass) {
               transform(body)
             }
             val newBody = transformedBody.changeOwnerAfter(currentOwner, applySym, thisPhase)
             val applyDefDef = DefDef(applySym, newBody)
-            List(applyDefDef)
+            applyDefDef :: Nil
           }
 
           // runtime.DynamicImport[A](new ...)

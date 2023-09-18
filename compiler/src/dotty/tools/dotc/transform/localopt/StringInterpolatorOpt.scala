@@ -117,7 +117,7 @@ class StringInterpolatorOpt extends MiniPhase:
     // Perform format checking and normalization, then make it StringOps(fmt).format(args1) with tweaked args
     def transformF(fun: Tree, args: Tree): Tree =
       val (fmt, args1) = FormatInterpolatorTransform.checked(fun, args)
-      resolveConstructor(defn.StringOps.typeRef, List(fmt))
+      resolveConstructor(defn.StringOps.typeRef, fmt :: Nil)
         .select(nme.format)
         .appliedTo(args1)
     // Starting with Scala 2.13, s and raw are macros in the standard
@@ -135,7 +135,7 @@ class StringInterpolatorOpt extends MiniPhase:
       evalOnce(pre) { sc =>
         val parts = sc.select(defn.StringContext_parts)
         ref(defn.StringContextModule_standardInterpolator)
-          .appliedToTermArgs(List(process, args, parts))
+          .appliedToTermArgs(process :: args :: parts :: Nil)
       }
     end transformS
     // begin transformApply

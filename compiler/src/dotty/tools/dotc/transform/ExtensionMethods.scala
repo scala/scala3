@@ -87,9 +87,9 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
           val underlying = valueErasure(underlyingOfValueClass(valueClass))
           val evt = ErasedValueType(valueClass.typeRef, underlying)
           val u2evtSym = newSymbol(moduleSym, nme.U2EVT, Synthetic | Method,
-            MethodType(List(nme.x_0), List(underlying), evt))
+            MethodType(nme.x_0 :: Nil, underlying :: Nil, evt))
           val evt2uSym = newSymbol(moduleSym, nme.EVT2U, Synthetic | Method,
-            MethodType(List(nme.x_0), List(evt), underlying))
+            MethodType(nme.x_0 :: Nil, evt :: Nil, underlying))
           enterInModuleClass(u2evtSym)
           enterInModuleClass(evt2uSym)
 

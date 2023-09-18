@@ -64,10 +64,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def initSymbols(using Context) =
     if (myValueSymbols.isEmpty) {
-      myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
+      myValueSymbols = defn.Any_hashCode :: defn.Any_equals :: Nil
       myCaseSymbols = defn.caseClassSynthesized
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
-      myEnumValueSymbols = List(defn.Product_productPrefix)
+      myEnumValueSymbols = defn.Product_productPrefix :: Nil
       myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal
     }
 
@@ -258,7 +258,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       }
       val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
       val stringIndex = Apply(Select(index, nme.toString_), Nil)
-      val error = Throw(New(ioob, constructor, List(stringIndex)))
+      val error = Throw(New(ioob, constructor, stringIndex :: Nil))
 
       // case _ => throw new IndexOutOfBoundsException(i.toString)
       CaseDef(Underscore(defn.IntType), EmptyTree, error)
@@ -305,7 +305,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             .appliedTo(This(clazz)))
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
-      val matchExpr = Match(that, List(matchingCase, defaultCase))
+      val matchExpr = Match(that, matchingCase :: defaultCase :: Nil)
       if (isDerivedValueClass(clazz)) matchExpr
       else {
         val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
@@ -459,12 +459,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       && !hasWriteReplace(clazz)
       && ctx.platform.shouldReceiveJavaSerializationMethods(clazz)
     then
-      List(
-        DefDef(writeReplaceDef(clazz),
-          _ => New(defn.ModuleSerializationProxyClass.typeRef,
-                   defn.ModuleSerializationProxyConstructor,
-                   List(Literal(Constant(clazz.sourceModule.termRef)))))
-          .withSpan(ctx.owner.span.focus))
+      DefDef(writeReplaceDef(clazz),
+        _ => New(defn.ModuleSerializationProxyClass.typeRef,
+                  defn.ModuleSerializationProxyConstructor,
+                  Literal(Constant(clazz.sourceModule.termRef)) :: Nil))
+        .withSpan(ctx.owner.span.focus) :: Nil
     else
       Nil
 
@@ -487,12 +486,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       && !hasReadResolve(clazz)
       && ctx.platform.shouldReceiveJavaSerializationMethods(clazz)
     then
-      List(
-        DefDef(readResolveDef(clazz),
-          _ => ref(clazz.owner.owner.sourceModule)
-                .select(nme.fromOrdinal)
-                .appliedTo(This(clazz).select(nme.ordinal).ensureApplied))
-          .withSpan(ctx.owner.span.focus))
+      DefDef(readResolveDef(clazz),
+        _ => ref(clazz.owner.owner.sourceModule)
+              .select(nme.fromOrdinal)
+              .appliedTo(This(clazz).select(nme.ordinal).ensureApplied))
+        .withSpan(ctx.owner.span.focus) :: Nil
     else
       Nil
 

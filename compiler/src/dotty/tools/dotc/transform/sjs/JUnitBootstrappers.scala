@@ -155,7 +155,7 @@ class JUnitBootstrappers extends MiniPhase {
     val owner = testClass.owner
     val moduleSym = newCompleteModuleSymbol(owner, bootstrapperName,
       Synthetic, Synthetic,
-      List(defn.ObjectType, junitdefn.BootstrapperType), newScope,
+      defn.ObjectType :: junitdefn.BootstrapperType :: Nil, newScope,
       coord = testClass.span, assocFile = testClass.assocFile).entered
     val classSym = moduleSym.moduleClass.asClass
 
@@ -163,15 +163,14 @@ class JUnitBootstrappers extends MiniPhase {
 
     val testMethods = annotatedMethods(testClass, junitdefn.TestAnnotClass)
 
-    val defs = List(
-      genCallOnModule(classSym, junitNme.beforeClass, testClass.companionModule, junitdefn.BeforeClassAnnotClass),
-      genCallOnModule(classSym, junitNme.afterClass, testClass.companionModule, junitdefn.AfterClassAnnotClass),
-      genCallOnParam(classSym, junitNme.before, testClass, junitdefn.BeforeAnnotClass),
-      genCallOnParam(classSym, junitNme.after, testClass, junitdefn.AfterAnnotClass),
-      genTests(classSym, testMethods),
-      genInvokeTest(classSym, testClass, testMethods),
-      genNewInstance(classSym, testClass)
-    )
+    val defs =
+      genCallOnModule(classSym, junitNme.beforeClass, testClass.companionModule, junitdefn.BeforeClassAnnotClass) ::
+      genCallOnModule(classSym, junitNme.afterClass, testClass.companionModule, junitdefn.AfterClassAnnotClass) ::
+      genCallOnParam(classSym, junitNme.before, testClass, junitdefn.BeforeAnnotClass) ::
+      genCallOnParam(classSym, junitNme.after, testClass, junitdefn.AfterAnnotClass) ::
+      genTests(classSym, testMethods) ::
+      genInvokeTest(classSym, testClass, testMethods) ::
+      genNewInstance(classSym, testClass) :: Nil
 
     sbt.APIUtils.registerDummyClass(classSym)
 
@@ -245,7 +244,7 @@ class JUnitBootstrappers extends MiniPhase {
         }
 
         val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
-        New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
+        New(junitdefn.TestMetadataType, name :: ignored :: reifiedAnnot :: Nil)
       }
       JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))
     })
@@ -255,7 +254,7 @@ class JUnitBootstrappers extends MiniPhase {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
-      MethodType(List(junitNme.instance, junitNme.name), List(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
+      MethodType(junitNme.instance :: junitNme.name :: Nil, defn.ObjectType :: defn.StringType ::Nil, junitdefn.FutureType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
       val List(List(instanceParamRef, nameParamRef)) = paramRefss

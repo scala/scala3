@@ -273,7 +273,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             else if (getter.is(Lazy, butNot = Module))
               transformFollowing(superRef(getter).appliedToNone)
             else if (getter.is(Module))
-              New(getter.info.resultType, List(This(cls)))
+              New(getter.info.resultType, This(cls) :: Nil)
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run

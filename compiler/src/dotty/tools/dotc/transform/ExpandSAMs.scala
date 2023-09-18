@@ -69,8 +69,8 @@ class ExpandSAMs extends MiniPhase:
           val tpe1 = collectAndStripRefinements(tpe)
           val Seq(samDenot) = tpe1.possibleSamMethods
           cpy.Block(tree)(stats,
-            AnonClass(List(tpe1),
-              List(samDenot.symbol.asTerm.name -> fn.symbol.asTerm),
+            AnonClass(tpe1 :: Nil,
+              samDenot.symbol.asTerm.name -> fn.symbol.asTerm :: Nil,
               refinements.toList
             )
           )
@@ -134,9 +134,9 @@ class ExpandSAMs extends MiniPhase:
     val pfRHS = partialFunRHS(anon.rhs)
     val anonSym = anon.symbol
     val anonTpe = anon.tpe.widen
-    val parents = List(
-      defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
-      defn.SerializableType)
+    val parents =
+      defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType) ::
+      defn.SerializableType :: Nil
 
     AnonClass(anonSym.owner, parents, tree.span) { pfSym =>
       def overrideSym(sym: Symbol) = sym.copy(

@@ -171,7 +171,7 @@ object SpaceEngine {
       LazyList(spaces: _*).flatMap(flatten)
 
     case _ =>
-      List(space)
+      space :: Nil
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `simplify(simplify(a) - simplify(b)) == Empty`, but faster */
@@ -556,7 +556,7 @@ object SpaceEngine {
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
-        List()
+        Nil
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
@@ -619,8 +619,8 @@ object SpaceEngine {
           case tp if tpB <:< tp                              => tpB
           case tp if !TypeComparer.provablyDisjoint(tp, tpB) => AndType(tp, tpB)
 
-      case OrType(tp1, tp2)                            => List(tp1, tp2)
-      case tp if tp.isRef(defn.BooleanClass)           => List(ConstantType(Constant(true)), ConstantType(Constant(false)))
+      case OrType(tp1, tp2)                            => tp1 :: tp2 :: Nil
+      case tp if tp.isRef(defn.BooleanClass)           => ConstantType(Constant(true)) :: ConstantType(Constant(false)) :: Nil
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
       case tp @ NamedType(Parts(parts), _)             => parts.map(tp.derivedSelect)
       case _: SingletonType                            => ListOfNoType
@@ -637,11 +637,11 @@ object SpaceEngine {
       case tp if tp.isDecomposableToChildren =>
         def getChildren(sym: Symbol): List[Symbol] =
           sym.children.flatMap { child =>
-            if child eq sym then List(sym) // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
+            if child eq sym then sym :: Nil // i3145: sealed trait Baz, val x = new Baz {}, Baz.children returns Baz...
             else if tp.classSymbol == defn.TupleClass || tp.classSymbol == defn.NonEmptyTupleClass then
-              List(child) // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
+              child :: Nil // TupleN and TupleXXL classes are used for Tuple, but they aren't Tuple's children
             else if (child.is(Private) || child.is(Sealed)) && child.isOneOf(AbstractOrTrait) then getChildren(child)
-            else List(child)
+            else child :: Nil
           }
         val children = getChildren(tp.classSymbol)
         debug.println(i"candidates for $tp : $children")
@@ -683,7 +683,7 @@ object SpaceEngine {
       val cls = tp.classSymbol
       tp.hasSimpleKind && cls.is(Sealed) && cls.isOneOf(AbstractOrTrait) && !cls.hasAnonymousChild && cls.children.nonEmpty
 
-  val ListOfNoType    = List(NoType)
+  val ListOfNoType    = NoType :: Nil
   val ListOfTypNoType = ListOfNoType.map(Typ(_, decomposed = true))
 
   object Parts:

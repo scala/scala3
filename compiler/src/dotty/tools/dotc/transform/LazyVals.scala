@@ -227,7 +227,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       Block(stats.init, stats.last),
       unitLiteral
     )
-    DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
+    DefDef(sym.asTerm, Block(init :: Nil, targetRef.ensureApplied))
   }
 
   /** Create thread-unsafe lazy accessor for not-nullable types  equivalent to such code
@@ -249,7 +249,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       Block(stats.init, stats.last),
       unitLiteral
     )
-    DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
+    DefDef(sym.asTerm, Block(init :: Nil, targetRef.ensureApplied))
   }
 
   def transformMemberDefThreadUnsafe(x: ValOrDefDef)(using Context): Thicket = {
@@ -567,13 +567,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       CaseDef(
         Bind(caseSymbol, ref(caseSymbol)),
         EmptyTree,
-        Block(List(triggerRetry), Throw(ref(caseSymbol)))
+        Block(triggerRetry :: Nil, Throw(ref(caseSymbol)))
       )
     }
 
     val initialize = If(
       casFlag.appliedTo(thiz, offset, flagRef, computeState, fieldId),
-      Try(compute, List(retryCase), EmptyTree),
+      Try(compute, retryCase :: Nil, EmptyTree),
       unitLiteral
     )
 
@@ -587,7 +587,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       )
     )
 
-    val loop = WhileDo(EmptyTree, Block(List(flagDef, stateDef), condition))
+    val loop = WhileDo(EmptyTree, Block(flagDef :: stateDef :: Nil, condition))
     DefDef(methodSymbol, loop)
   }
 
@@ -634,7 +634,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
         val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
         val offsetTree = ValDef(offsetSymbol.nn, getOffsetStatic.appliedTo(fieldTree))
-        appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree), ord))
+        appendOffsetDefs += (claz -> new OffsetInfo(offsetTree :: Nil, ord))
     }
 
     val containerName = LazyLocalName.fresh(x.name.asTermName)

@@ -27,18 +27,17 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def isEnabled(using Context) =
     ctx.settings.Yinstrument.value
 
-  private val collectionNamesOfInterest = List(
-    "map", "flatMap", "filter", "filterNot", "withFilter", "collect", "flatten", "foldLeft", "foldRight", "take",
-    "reverse", "zip", "++", ":::", ":+", "distinct", "dropRight", "takeRight", "groupBy", "groupMap", "init", "inits",
-    "interect", "mkString", "partition", "reverse_:::", "scanLeft", "scanRight",
-    "sortBy", "sortWith", "sorted", "span", "splitAt", "takeWhile", "transpose", "unzip", "unzip3",
-    "updated", "zipAll", "zipWithIndex",
-    "mapConserve", "mapconserve", "filterConserve", "zipWithConserve", "mapWithIndexConserve"
-  )
+  private val collectionNamesOfInterest =
+    "map" :: "flatMap" :: "filter" :: "filterNot" :: "withFilter" :: "collect" :: "flatten" :: "foldLeft" :: "foldRight" :: "take" ::
+    "reverse" :: "zip" :: "++" :: ":::" :: ":+" :: "distinct" :: "dropRight" :: "takeRight" :: "groupBy" :: "groupMap" :: "init" :: "inits" ::
+    "interect" :: "mkString" :: "partition" :: "reverse_:::" :: "scanLeft" :: "scanRight" ::
+    "sortBy" :: "sortWith" :: "sorted" :: "span" :: "splitAt" :: "takeWhile" :: "transpose" :: "unzip" :: "unzip3" ::
+    "updated" :: "zipAll" :: "zipWithIndex" ::
+    "mapConserve" :: "mapconserve" :: "filterConserve" :: "zipWithConserve" :: "mapWithIndexConserve" :: Nil
 
-  private val namesOfInterest = collectionNamesOfInterest ++ List(
-    "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
-    "slice", "staticRef", "requiredClass")
+  private val namesOfInterest = collectionNamesOfInterest ++ (
+    "::" :: "+=" :: "toString" :: "newArray" :: "box" :: "toCharArray" :: "termName" :: "typeName" ::
+    "slice" :: "staticRef" :: "requiredClass" :: Nil)
 
   private var namesToRecord: Set[Name] = _
   private var collectionNamesToRecord: Set[Name] = _

@@ -187,7 +187,7 @@ object TypeTestsCasts {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
+          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), TypeTree(tp) :: Nil)
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme

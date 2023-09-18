@@ -561,11 +561,19 @@ object CheckUnused:
         else
           Nil
       val warnings =
-        List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams,
-                  sortedPrivateDefs, sortedPatVars, unsetLocalDefs, unsetPrivateDefs).flatten.sortBy { s =>
-        val pos = s.pos.sourcePos
-        (pos.line, pos.column)
-      }
+        val unsorted = sortedImp ++
+          sortedLocalDefs ++
+          sortedExplicitParams ++
+          sortedImplicitParams ++
+          sortedPrivateDefs ++
+          sortedPatVars ++
+          unsetLocalDefs ++
+          unsetPrivateDefs
+
+        unsorted.sortBy { s =>
+          val pos = s.pos.sourcePos
+          (pos.line, pos.column)
+        }
       UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
@@ -705,7 +713,7 @@ object CheckUnused:
         sym.everySymbol.exists(usedDef.apply)
 
       private def everySymbol(using Context): List[Symbol] =
-        List(sym, sym.companionClass, sym.companionModule, sym.moduleClass).filter(_.exists)
+        (sym :: sym.companionClass :: sym.companionModule :: sym.moduleClass :: Nil).filter(_.exists)
 
       /** A function is overriden. Either has `override flags` or parent has a matching member (type and name) */
       private def isOverriden(using Context): Boolean =
