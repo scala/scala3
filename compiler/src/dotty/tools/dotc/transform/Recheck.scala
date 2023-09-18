@@ -194,7 +194,6 @@ abstract class Recheck extends Phase, SymTransformer:
     def reset()(using Context): Unit =
       for (ref, mbr) <- prevSelDenots.iterator do
         ref.withDenot(mbr)
-      preRecheckPhase
 
     /** Constant-folded rechecked type `tp` of tree `tree` */
     protected def constFold(tree: Tree, tp: Type)(using Context): Type =
