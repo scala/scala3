@@ -1,12 +1,12 @@
 -- Error: tests/neg-custom-args/captures/capt1.scala:4:11 --------------------------------------------------------------
 4 |  () => if x == null then y else y  // error
   |           ^
-  |           (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
+  |           (x : C^{cap[f]}) cannot be referenced here; it is not included in the allowed capture set {}
   |           of an enclosing function literal with expected type () -> C
 -- Error: tests/neg-custom-args/captures/capt1.scala:7:11 --------------------------------------------------------------
 7 |  () => if x == null then y else y  // error
   |           ^
-  |           (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
+  |           (x : C^{cap[g]}) cannot be referenced here; it is not included in the allowed capture set {}
   |           of an enclosing function literal with expected type Matchable
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/capt1.scala:14:2 -----------------------------------------
 14 |  def f(y: Int) = if x == null then y else y  // error
@@ -36,5 +36,5 @@
 -- Error: tests/neg-custom-args/captures/capt1.scala:32:30 -------------------------------------------------------------
 32 |  val z2 = h[() -> Cap](() => x) // error
    |                              ^
-   |                            (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
-   |                            of an enclosing function literal with expected type () -> box C^
+   |                  (x : C^{cap[foo]}) cannot be referenced here; it is not included in the allowed capture set {}
+   |                  of an enclosing function literal with expected type () -> box C^{cap[foo]}

@@ -8,7 +8,7 @@
 -- Error: tests/neg-custom-args/captures/vars.scala:23:14 --------------------------------------------------------------
 23 |    a = x => g(x)      // error
    |             ^^^^
-   |             reference (cap3 : CC^) is not included in the allowed capture set {cap[test]}
+   |             reference (cap3 : CC^{cap[scope]}) is not included in the allowed capture set {cap[test]}
    |             of an enclosing function literal with expected type box String ->{cap[test]} String
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:24:8 ------------------------------------------
 24 |    a = g      // error
@@ -38,7 +38,7 @@
 31 |  val sc: String => String = scope // error (but should also be OK)
    |                             ^^^^^
    |                             Found:    (x$0: String) ->{cap[scope]} String
-   |                             Required: String => String
+   |                             Required: String ->{cap[test]} String
    |
    |                             Note that reference (cap[scope] : caps.Cap), defined at level 2
    |                             cannot be included in outer capture set ?, defined at level 1 in method test

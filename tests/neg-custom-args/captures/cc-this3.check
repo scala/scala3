@@ -1,7 +1,7 @@
 -- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this3.scala:8:6 ---------------------------------------
 8 |class B extends A: // error
   |      ^
-  |      illegal inheritance: self type B^ of class B does not conform to self type A^{}
+  |      illegal inheritance: self type B^{cap[B]} of class B does not conform to self type A^{}
   |      of parent class A
   |
   | longer explanation available when compiling with `-explain`

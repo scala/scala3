@@ -1,25 +1,25 @@
 -- Error: tests/neg-custom-args/captures/i15772.scala:19:26 ------------------------------------------------------------
 19 |    val c : C^{x} = new C(x)  // error
    |                          ^
-   |                          (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
-   |                          of an enclosing function literal with expected type () -> Int
+   |                (x : C^{cap[main1]}) cannot be referenced here; it is not included in the allowed capture set {}
+   |                of an enclosing function literal with expected type () -> Int
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:46 ---------------------------------------
 20 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
    |            Found:    (C{val arg: C^{cap[C]}}^{c} ->{'cap[..main1](from instantiating box1), c} Unit) ->{c} Unit
-   |            Required: (C^ => Unit) -> Unit
+   |            Required: (C^{cap[main1]} ->{cap[main1]} Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:26:26 ------------------------------------------------------------
 26 |    val c : C^{x} = new C(x) // error
    |                          ^
-   |                          (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
-   |                          of an enclosing function literal with expected type () -> Int
+   |                (x : C^{cap[main2]}) cannot be referenced here; it is not included in the allowed capture set {}
+   |                of an enclosing function literal with expected type () -> Int
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:35 ---------------------------------------
 27 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
    |            Found:    (C{val arg: C^{cap[C]}}^{c} ->{'cap[..main2](from instantiating box2), c} Unit) ->{c} Unit
-   |            Required: (C^ => Unit) -> Unit
+   |            Required: (C^{cap[main2]} ->{cap[main2]} Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:34 ---------------------------------------
