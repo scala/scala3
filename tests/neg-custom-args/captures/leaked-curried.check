@@ -6,6 +6,6 @@
 12 |      val get: () ->{} () ->{io} Cap^ = // error
    |          ^
    |          error overriding value get in trait Box of type () -> () ->{cap[Box]} Cap^{cap[Box]};
-   |            value get of type () -> () ->{io} Cap^ has incompatible type
+   |            value get of type () -> () ->{io} Cap^{cap[Foo]} has incompatible type
    |
    | longer explanation available when compiling with `-explain`

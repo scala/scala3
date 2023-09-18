@@ -49,9 +49,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def debugPos: Boolean = ctx.settings.YdebugPos.value
 
   /** If true, shorten local roots of current owner tp `cap`,
-   *  TODO: we should drop this switch once we implemented disambiguation of capture roots.
+   *  For now it is better to turn this off, so that we get the best info for diagnosis.
+   *  TODO: we should consider dropping this switch once we implemented disambiguation of capture roots.
    */
-  private val shortenCap = true
+  private val shortenCap = false
 
   def homogenize(tp: Type): Type =
     if (homogenizedView)
