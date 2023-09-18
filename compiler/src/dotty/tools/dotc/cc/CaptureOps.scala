@@ -37,11 +37,6 @@ class IllegalCaptureRef(tpe: Type) extends Exception
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
 
-  /** Temporary set indicating closures that are the rhs of a val or def.
-   *  An entry gets removed when we check isLevelOwner on it.
-   */
-  val rhsClosure: mutable.HashSet[Symbol] = new mutable.HashSet
-
   /** Cache for level ownership */
   val isLevelOwner: mutable.HashMap[Symbol, Boolean] = new mutable.HashMap
 
@@ -369,15 +364,12 @@ extension (sym: Symbol)
       if symd.isClass then
         symd.is(CaptureChecked) || symd.isRoot
       else
-        symd.is(Method)
+        symd.is(Method, butNot = Accessor)
         && (!symd.owner.isClass || symd.owner.is(CaptureChecked))
         && !Synthetics.isExcluded(sym)
         && !isCaseClassSynthetic
         && !symd.isConstructor
-        && (!symd.isAnonymousFunction
-            || ccState.rhsClosure.remove(sym)
-            || sym.definedLocalRoot.exists // TODO drop
-            )
+        && (!symd.isAnonymousFunction || sym.definedLocalRoot.exists)
     ccState.isLevelOwner.getOrElseUpdate(sym, compute)
 
   /** The owner of the current level. Qualifying owners are
