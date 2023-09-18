@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, EventuallyCapturingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel, levelOwner}
+import cc.{CapturingType, RetainingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel, levelOwner, retainedElems}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -161,7 +161,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
       val core: Text =
         if !cs.isConst && cs.elems.isEmpty then "?"
         else "{" ~ Text(cs.elems.toList.map(toTextCaptureRef), ", ") ~ "}"
+           //     ~ Str("?").provided(!cs.isConst)
       core ~ cs.optionalInfo
+
+  private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
+    case ref: RefTree[_] if ref.typeOpt.exists =>
+      toTextCaptureRef(ref.typeOpt)
+    case Apply(fn, Literal(str) :: Nil) if fn.symbol == defn.Caps_capIn =>
+      s"cap[${str.stringValue}]"
+    case _ =>
+      toText(ref)
+
+  private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
+    "{" ~ Text(refs.map(ref => toTextRetainedElem(ref))) ~ "}"
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -230,7 +242,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
           (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
-      case tp @ EventuallyCapturingType(parent, refs) =>
+      case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
         val rootsInRefs = refs.elems.filter(_.isRootCapability).toList
         val showAsCap = rootsInRefs match
@@ -249,6 +261,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
             false
         val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
+      case tp @ RetainingType(parent, refs) =>
+        val refsText = refs match
+          case ref :: Nil if ref.symbol == defn.captureRoot => rootSetText
+          case _ => toTextRetainedElems(refs)
+        toTextCapturing(parent, refsText, "") ~ Str("R").provided(printDebug)
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
@@ -271,8 +288,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       case ExprType(restp) =>
         def arrowText: Text = restp match
-          case ct @ EventuallyCapturingType(parent, refs) if ct.annot.symbol == defn.RetainsByNameAnnot =>
-            if refs.isUniversal then Str("=>") else Str("->") ~ toTextCaptureSet(refs)
+          case AnnotatedType(parent, ann) if ann.symbol == defn.RetainsByNameAnnot =>
+            val refs = ann.tree.retainedElems
+            if refs.exists(_.symbol == defn.captureRoot) then Str("=>")
+            else Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
         changePrec(GlobalPrec)(arrowText ~ " " ~ toText(restp))

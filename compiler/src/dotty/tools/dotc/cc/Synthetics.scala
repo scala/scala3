@@ -99,7 +99,7 @@ object Synthetics:
         info.derivedLambdaType(resType = transformDefaultGetterCaptures(info.resType, owner, idx))
       case info: ExprType =>
         info.derivedExprType(transformDefaultGetterCaptures(info.resType, owner, idx))
-      case EventuallyCapturingType(parent, _) =>
+      case RetainingType(parent, _) =>
         transformDefaultGetterCaptures(parent, owner, idx)
       case info @ AnnotatedType(parent, annot) =>
         info.derivedAnnotatedType(transformDefaultGetterCaptures(parent, owner, idx), annot)

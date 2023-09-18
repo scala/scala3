@@ -641,7 +641,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareRefined: Boolean =
           val tp1w = tp1.widen
 
-          if ctx.phase == Phases.checkCapturesPhase then
+          if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
 
             // A relaxed version of subtyping for dependent functions where method types
             // are treated as contravariant.
@@ -2096,7 +2096,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             ExprType(info1.resType)
           case info1 => info1
 
-        if ctx.phase == Phases.checkCapturesPhase then
+        if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
           // When comparing against a RefiningVar refinement, map the
           // localRoot of the corresponding class in `tp1` to the owner of the
           // refining capture set.
@@ -2220,7 +2220,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val paramsMatch =
               if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
-              else if ctx.phase == Phases.checkCapturesPhase then
+              else if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
                 // allow to constrain capture set variables
                 isSubType(formal2a, formal1)
               else

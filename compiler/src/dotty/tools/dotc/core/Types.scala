@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun, ccNestingLevel}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, boxedUnlessFun, ccNestingLevel}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -2933,12 +2933,10 @@ object Types {
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def localRootOwner(using Context): Symbol =
-      if name == nme.LOCAL_CAPTURE_ROOT then
-        if symbol.owner.isLocalDummy then symbol.owner.owner
-        else symbol.owner
-      else if info.isRef(defn.Caps_Cap) then
-        val owner = symbol.maybeOwner
-        if owner.isTerm then owner else NoSymbol
+      val owner = symbol.maybeOwner
+      def normOwner = if owner.isLocalDummy then owner.owner else owner
+      if name == nme.LOCAL_CAPTURE_ROOT then normOwner
+      else if info.isRef(defn.Caps_Cap) && owner.isTerm then normOwner
       else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
@@ -5124,7 +5122,9 @@ object Types {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf.dealiasKeepAnnots match
-            case givenSelf1 @ EventuallyCapturingType(tp, _) =>
+            case givenSelf1 @ CapturingType(tp, _) =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
+            case givenSelf1 @ RetainingType(tp, _) =>
               givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
             case _ =>
               AndType(givenSelf, appliedRef)

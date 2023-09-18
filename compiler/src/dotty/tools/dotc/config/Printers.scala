@@ -1,4 +1,6 @@
-package dotty.tools.dotc.config
+package dotty.tools.dotc
+package config
+import core.Contexts.{Context, ctx}
 
 object Printers {
 
@@ -13,6 +15,9 @@ object Printers {
   val default = new Printer
 
   val capt = noPrinter
+  val ccSetupOn = new Printer
+  def ccSetup(using Context): Printer = if ctx.settings.YccTest.value then ccSetupOn else noPrinter
+
   val constr = noPrinter
   val core = noPrinter
   val checks = noPrinter
