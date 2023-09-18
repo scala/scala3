@@ -463,7 +463,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             tree.rhs match
               case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
                 //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-                ccState.rhsClosure += ddef.symbol
+                //ccState.isLevelOwner(sym) = true
+                ccState.isLevelOwner(ddef.symbol) = true
                   // Toplevel closures bound to vals count as level owners
                   // unless the closure is an implicit eta expansion over a type application
                   // that mentions `cap`. In that case we prefer not to silently rebind
