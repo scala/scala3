@@ -27,8 +27,8 @@ def test(cap1: Cap, cap2: Cap) =
     val gc = g
     g
 
-  val s = scope // error (but should be OK, we need to allow poly-captures)
-  val sc: String => String = scope // error (but should also be OK)
+  val s = scope
+  val sc: String => String = scope
 
   def local[T](op: (local: caps.Cap) -> CC^{local} -> T): T = op(caps.cap)(CC())
 

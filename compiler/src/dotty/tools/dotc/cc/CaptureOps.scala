@@ -380,26 +380,28 @@ extension (sym: Symbol)
    *   - _root_
    */
   def levelOwner(using Context): Symbol =
-    if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
-    else if sym.isLevelOwner then sym
-    else sym.owner.levelOwner
+    def recur(sym: Symbol)(using Context): Symbol =
+      if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
+      else if sym.isLevelOwner then sym
+      else recur(sym.owner)
+    recur(sym)(using ctx.withPhase(Phases.checkCapturesPhase))
 
   /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
    *  If name refers to a val that has a closure as rhs, we return the closure as level
    *  owner.
    */
   def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(owner: Symbol, prev: Symbol): Symbol =
-      if owner.name.toString == name then
-        if owner.isLevelOwner then owner
-        else if owner.isTerm && !owner.isOneOf(Method | Module) && prev.exists then prev
+    def recur(sym: Symbol, prev: Symbol)(using Context): Symbol =
+      if sym.name.toString == name then
+        if sym.isLevelOwner then sym
+        else if sym.isTerm && !sym.isOneOf(Method | Module) && prev.exists then prev
         else NoSymbol
-      else if owner == defn.RootClass then
+      else if sym == defn.RootClass then
         NoSymbol
       else
-        val prev1 = if owner.isAnonymousFunction && owner.isLevelOwner then owner else NoSymbol
-        recur(owner.owner, prev1)
-    recur(sym, NoSymbol)
+        val prev1 = if sym.isAnonymousFunction && sym.isLevelOwner then sym else NoSymbol
+        recur(sym.owner, prev1)
+    recur(sym, NoSymbol)(using ctx.withPhase(Phases.checkCapturesPhase))
       .showing(i"find outer $sym [ $name ] = $result", capt)
 
   /** The nesting level of `sym` for the purposes of `cc`,
