@@ -18,7 +18,7 @@ import printing.{Printer, Texts}, Texts.{Text, Str}
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
-  type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Unit
+  type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Type
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
   def decorate(tp: Type, rootTarget: Symbol, addedSet: Type => CaptureSet)(using Context): Type
 
@@ -593,8 +593,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 else SubstParams(prevPsymss, prevLambdas)(resType))
 
         if sym.exists && signatureChanges then
-          val newInfo = integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
+          def absInfo(resType: Type): Type =
+            integrateRT(sym.info, sym.paramSymss, resType, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} = $result", ccSetup)
+          val newInfo = absInfo(localReturnType)
           if newInfo ne sym.info then
             updateInfo(sym,
               if sym.isAnonymousFunction || sym.is(Param) || sym.is(ParamAccessor) then

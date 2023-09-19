@@ -601,10 +601,10 @@ class CheckCaptures extends Recheck, SymTransformer:
         openClosures = openClosures.tail
     end recheckClosureBlock
 
-    override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
+    override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       try
-        if !sym.is(Module) then // Modules are checked by checking the module class
-          super.recheckValDef(tree, sym)
+        if sym.is(Module) then sym.info // Modules are checked by checking the module class
+        else super.recheckValDef(tree, sym)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
@@ -613,8 +613,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           // function is compiled since we do not propagate expected types into blocks.
           interpolateVarsIn(tree.tpt)
 
-    override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
-      if !Synthetics.isExcluded(sym) then
+    override def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
+      if Synthetics.isExcluded(sym) then sym.info
+      else
         val saved = curEnv
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
