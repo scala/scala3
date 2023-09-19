@@ -309,3 +309,9 @@ class MyExperimentalTests {
 ```
 
 </details>
+
+## `-experimental` compiler flag
+
+This flag enables the use of any experimental language feature in the project.
+It does this by adding an `@experimental` annotation to all top-level definitions.
+Hence, dependent projects also have to be experimental.
