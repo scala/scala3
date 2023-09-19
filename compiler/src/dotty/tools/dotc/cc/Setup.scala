@@ -354,7 +354,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       then cc.mapRoots(defn.captureRoot.termRef, ctx.owner.localRoot.termRef)(tp1)
             .showing(i"map roots $tp1, ${tp1.getClass} == $result", capt)
       else tp1
-    if tp2 ne tp then ccSetup.println(i"expanded: $tp  -->  $tp1  -->  $tp2")
+    if tp2 ne tp then ccSetup.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
     tp2
   end transformExplicitType
 
@@ -419,8 +419,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case ref: CaptureRef => ref.invalidateCaches() // TODO: needed?
       case _ =>
 
-  /** Update only the owner part fo info if necessary. A symbol should be updated
-   *  only once by either updateInfo or updateOwner.
+  /** Update the owner of `sym` to `newOwnerFor(sym)`.
+   *  This can happen because of inserted try block owners.
    */
   private def updateOwner(sym: Symbol)(using Context) =
     updateInfo(sym, sym.info)
@@ -437,6 +437,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if isExcluded(meth) then
             return
 
+          updateOwner(meth)
           inContext(ctx.withOwner(meth)):
             paramss.foreach(traverse)
             transformTT(tpt, boxed = false,
@@ -457,45 +458,56 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => false
 
           val sym = tree.symbol
-          val mapRoots =
-            // need to run before cc so that rhsClosure is defined without transforming
-            // symbols to cc, since rhsClosure is used in that transformation.
-            tree.rhs match
-              case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
-                //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-                //ccState.isLevelOwner(sym) = true
-                ccState.isLevelOwner(ddef.symbol) = true
-                  // Toplevel closures bound to vals count as level owners
-                  // unless the closure is an implicit eta expansion over a type application
-                  // that mentions `cap`. In that case we prefer not to silently rebind
-                  // the `cap` to a local root of an invisible closure. See
-                  // pos-custom-args/captures/eta-expansions.scala for examples of both cases.
-                !tpt.isInstanceOf[InferredTypeTree]
-                  // in this case roots in inferred val type count as polymorphic
-              case _ =>
-                true
-          transformTT(tpt,
-              boxed = sym.is(Mutable),    // types of mutable variables are boxed
-              exact = sym.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
-              mapRoots
-            )
-          ccSetup.println(i"mapped $tree = ${tpt.knownType}")
-          traverse(tree.rhs)
+          val newOwner =
+            if sym.isOneOf(TermParamOrAccessor) then ctx.owner
+            else
+              updateOwner(sym)
+              sym
+          inContext(ctx.withOwner(newOwner)):
+            val mapRoots =
+              // need to run before cc so that rhsClosure is defined without transforming
+              // symbols to cc, since rhsClosure is used in that transformation.
+              tree.rhs match
+                case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
+                  //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
+                  //ccState.isLevelOwner(sym) = true
+                  ccState.isLevelOwner(ddef.symbol) = true
+                    // Toplevel closures bound to vals count as level owners
+                    // unless the closure is an implicit eta expansion over a type application
+                    // that mentions `cap`. In that case we prefer not to silently rebind
+                    // the `cap` to a local root of an invisible closure. See
+                    // pos-custom-args/captures/eta-expansions.scala for examples of both cases.
+                  true && !tpt.isInstanceOf[InferredTypeTree]
+                    // in this case roots in inferred val type count as polymorphic
+                case _ =>
+                  true
+            transformTT(tpt,
+                boxed = sym.is(Mutable),    // types of mutable variables are boxed
+                exact = sym.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
+                mapRoots
+              )
+            ccSetup.println(i"mapped $tree = ${tpt.knownType}")
+            traverse(tree.rhs)
 
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
           for case arg: TypeTree <- args do
             transformTT(arg, boxed = true, exact = false, mapRoots = true) // type arguments in type applications are boxed
 
-        case tree: Template =>
-          inContext(ctx.withOwner(tree.symbol.owner)):
+        case tree: TypeDef if tree.symbol.isClass =>
+          val cls = tree.symbol
+          updateOwner(cls)
+          if cls.is(ModuleClass) then updateOwner(cls.sourceModule)
+          inContext(ctx.withOwner(cls)):
             traverseChildren(tree)
+
         case tree: Try if Feature.enabled(Feature.saferExceptions) =>
           val tryOwner = newSymbol(ctx.owner, nme.TRY_BLOCK, SyntheticMethod, MethodType(Nil, defn.UnitType))
           ccState.isLevelOwner(tryOwner) = true
           ccState.tryBlockOwner(tree) = tryOwner
           inContext(ctx.withOwner(tryOwner)):
             traverseChildren(tree)
+
         case _ =>
           traverseChildren(tree)
       postProcess(tree)
@@ -551,12 +563,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
             prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
           ): Type =
+          val mapr =
+            if sym.isLevelOwner then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
+            else identity[Type]
           info match
             case mt: MethodOrPoly =>
               val psyms = psymss.head
-              val mapr =
-                if sym.isLevelOwner then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
-                else identity[Type]
               mt.companion(mt.paramNames)(
                 mt1 =>
                   if !paramSignatureChanges && !mt.isParamDependent && prevLambdas.isEmpty then
@@ -569,10 +581,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               )
             case info: ExprType =>
               info.derivedExprType(resType =
-                integrateRT(info.resType, psymss, prevPsymss, prevLambdas))
+                mapr(integrateRT(info.resType, psymss, prevPsymss, prevLambdas)))
             case info =>
-              if prevLambdas.isEmpty then localReturnType
-              else SubstParams(prevPsymss, prevLambdas)(localReturnType)
+              mapr(
+                if prevLambdas.isEmpty then localReturnType
+                else SubstParams(prevPsymss, prevLambdas)(localReturnType))
 
         if sym.exists && signatureChanges then
           val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
@@ -592,9 +605,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   ccSetup.println(i"FORCING $sym")
                   denot.info = newInfo
                   recheckDef(tree, sym))
-          else updateOwner(sym)
-        else if !sym.is(Module) then
-          updateOwner(sym) // Modules are updated with their module classes
 
       case tree: Bind =>
         val sym = tree.symbol

@@ -22,24 +22,19 @@
    |            Required: (C^{cap[main2]} ->{cap[main2]} Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:34 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:33 ---------------------------------------
 33 |  val boxed2 : Observe[C]^ = box2(c) // error
-   |                                  ^
-   |                                  Found:    box C^{cap[c]}
-   |                                  Required: box C{val arg: C^?}^?
-   |
-   |                                  Note that reference (cap[c] : caps.Cap), defined at level 2
-   |                                  cannot be included in outer capture set ?, defined at level 1 in method main3
+   |                             ^^^^^^^
+   |Found:    (C{val arg: C^{cap[C]}}^{'cap[..main3](from instantiating box2)} ->{'cap[..main3](from instantiating box2)} Unit) ->?
+   |  Unit
+   |Required: (C ->{cap[main3]} Unit) ->{cap[main3]} Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:34:29 ---------------------------------------
 34 |  boxed2((cap: C^) => unsafe(c)) // error
    |                             ^
-   |                             Found:    C^{cap[c]}
+   |                             Found:    C^
    |                             Required: C^{'cap[..main3](from instantiating unsafe)}
-   |
-   |                             Note that reference (cap[c] : caps.Cap), defined at level 2
-   |                             cannot be included in outer capture set ?, defined at level 1 in method main3
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------
@@ -47,8 +42,5 @@
    |  ^
    |  Found:    () ->{x} Unit
    |  Required: () -> Unit
-   |
-   |  Note that reference (cap[c] : caps.Cap), defined at level 2
-   |  cannot be included in outer capture set ?, defined at level 1 in method main3
    |
    | longer explanation available when compiling with `-explain`
