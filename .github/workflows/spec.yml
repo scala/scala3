@@ -38,3 +38,18 @@ jobs:
       - name: Build the specification
         run: |
           bundle exec jekyll build
+
+      # Deploy
+      - name: Deployment
+        env:
+          USER_FOR_TEST: ${{ secrets.SPEC_DEPLOY_USER }}
+        if: ${{ env.USER_FOR_TEST != '' }}
+        uses: burnett01/rsync-deployments@6.0.0
+        with:
+          switches: -rzv
+          path: docs/_spec/_site/
+          remote_path: ${{ secrets.SPEC_DEPLOY_PATH }}
+          remote_host: ${{ secrets.SPEC_DEPLOY_HOST }}
+          remote_user: ${{ secrets.SPEC_DEPLOY_USER }}
+          remote_key: ${{ secrets.SPEC_DEPLOY_KEY }}
+          remote_key_pass: ${{ secrets.SPEC_DEPLOY_PASS }}
