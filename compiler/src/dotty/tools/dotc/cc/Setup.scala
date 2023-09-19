@@ -402,31 +402,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def inverse = thisMap
   end SubstParams
 
-  /** If the outer context directly enclosing the definition of `sym`
-   *  has a <try block> owner, that owner, otherwise null.
-   */
-  def newOwnerFor(sym: Symbol)(using Context): Symbol =
-    var octx = ctx
-    while octx.owner == sym do octx = octx.outer
-    if octx.owner.name == nme.TRY_BLOCK then octx.owner else sym.maybeOwner
-
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type)(using Context) =
-    sym.updateInfo(thisPhase, info, newFlagsFor(sym), newOwnerFor(sym))
+    sym.updateInfo(thisPhase, info, newFlagsFor(sym))
     sym.namedType match
       case ref: CaptureRef => ref.invalidateCaches() // TODO: needed?
       case _ =>
 
-  /** Update the owner of `sym` to `newOwnerFor(sym)`.
-   *  This can happen because of inserted try block owners.
-   */
-  private def updateOwner(sym: Symbol)(using Context) =
-    updateInfo(sym, sym.info)
-
   extension (sym: Symbol) def nextInfo(using Context): Type =
     atPhase(thisPhase.next)(sym.info)
 
-  def setupTraverser(recheckDef: DefRecheck) = new TreeTraverser:
+  def setupTraverser(recheckDef: DefRecheck) = new TreeTraverserWithPreciseImportContexts:
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
@@ -435,7 +421,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           if isExcluded(meth) then
             return
 
-          updateOwner(meth)
           inContext(ctx.withOwner(meth)):
             paramss.foreach(traverse)
             transformTT(tpt, boxed = false,
@@ -456,12 +441,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => false
 
           val sym = tree.symbol
-          val newOwner =
-            if sym.isOneOf(TermParamOrAccessor) then ctx.owner
-            else
-              updateOwner(sym)
-              sym
-          inContext(ctx.withOwner(newOwner)):
+          val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
+          inContext(defCtx):
             val rootsNeedMap =
               // need to run before cc so that rhsClosure is defined without transforming
               // symbols to cc, since rhsClosure is used in that transformation.
@@ -493,31 +474,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             transformTT(arg, boxed = true, exact = false, rootTarget = ctx.owner) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
-          val cls = tree.symbol
-          updateOwner(cls)
-          if cls.is(ModuleClass) then updateOwner(cls.sourceModule)
-          inContext(ctx.withOwner(cls)):
-            traverseChildren(tree)
-
-        case tree: Try if Feature.enabled(Feature.saferExceptions) =>
-          val tryOwner = newSymbol(ctx.owner, nme.TRY_BLOCK, SyntheticMethod, MethodType(Nil, defn.UnitType))
-          ccState.isLevelOwner(tryOwner) = true
-          ccState.tryBlockOwner(tree) = tryOwner
-          inContext(ctx.withOwner(tryOwner)):
+          inContext(ctx.withOwner(tree.symbol)):
             traverseChildren(tree)
 
         case _ =>
           traverseChildren(tree)
       postProcess(tree)
     end traverse
-
-    override def apply(x: Unit, trees: List[Tree])(using Context): Unit = trees match
-      case (imp: Import) :: rest =>
-        traverse(rest)(using ctx.importContext(imp, imp.symbol))
-      case tree :: rest =>
-        traverse(tree)
-        traverse(rest)
-      case Nil =>
 
     extension (sym: Symbol)(using Context) def unlessStatic =
       val owner = sym.levelOwner
@@ -644,9 +607,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 val modul = cls.sourceModule
                 updateInfo(modul, CapturingType(modul.info, newSelfType.captureSet))
                 modul.termRef.invalidateCaches()
-            else
-              updateOwner(cls)
-              if cls.is(ModuleClass) then updateOwner(cls.sourceModule)
           case _ =>
             val info = tree.symbol.info
             val newInfo = transformExplicitType(info, rootTarget = ctx.owner.unlessStatic)
