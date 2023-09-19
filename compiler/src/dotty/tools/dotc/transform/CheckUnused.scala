@@ -561,11 +561,19 @@ object CheckUnused:
         else
           Nil
       val warnings =
-        List(sortedImp, sortedLocalDefs, sortedExplicitParams, sortedImplicitParams,
-                  sortedPrivateDefs, sortedPatVars, unsetLocalDefs, unsetPrivateDefs).flatten.sortBy { s =>
-        val pos = s.pos.sourcePos
-        (pos.line, pos.column)
-      }
+        val unsorted =
+          sortedImp :::
+          sortedLocalDefs :::
+          sortedExplicitParams :::
+          sortedImplicitParams :::
+          sortedPrivateDefs :::
+          sortedPatVars :::
+          unsetLocalDefs :::
+          unsetPrivateDefs
+        unsorted.sortBy { s =>
+          val pos = s.pos.sourcePos
+          (pos.line, pos.column)
+        }
       UnusedResult(warnings.toSet)
     end getUnused
     //============================ HELPERS ====================================
