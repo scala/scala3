@@ -1523,10 +1523,7 @@ class CompletionTest {
           |object Test:
           |  def foo: ArrayBuffer[Fo${m1}] = ???
           """
-      .completion(m1, Set(
-          ("Foo",Class,"Foo")
-        )
-      )
+      .completion(m1, Set(("Foo",Class,"Foo")))
   }
 
   @Test def extensionDefinitionCompletions: Unit =
@@ -1534,7 +1531,21 @@ class CompletionTest {
            |object T:
            |  extension (x: Fo$m1)
            |"""
-      .completion(m1, Set(
-          ("Foo",Class,"Foo")
-      ))
+      .completion(m1, Set(("Foo",Class,"Foo")))
+
+  @Test def selectDynamic: Unit =
+    code"""|import scala.language.dynamics
+           |class Foo extends Dynamic {
+           |  def banana: Int = 42
+           |  def selectDynamic(field: String): Foo = this
+           |  def applyDynamicNamed(name: String)(arg: (String, Int)): Foo = this
+           |  def updateDynamic(name: String)(value: Int): Foo = this
+           |}
+           |object Test:
+           |  val x = new Foo()
+           |  x.sele$m1
+           |  x.bana$m2
+           |"""
+      .completion(m1, Set(("selectDynamic", Method, "(field: String): Foo")))
+      .completion(m2, Set(("banana", Method, "=> Int")))
 }

@@ -1,7 +1,5 @@
 package dotty.tools.dotc.interactive
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.config.Printers.interactiv
@@ -38,7 +36,7 @@ import scala.util.control.NonFatal
  */
 case class Completion(label: String, description: String, symbols: List[Symbol])
 
-object Completion {
+object Completion:
 
   import dotty.tools.dotc.ast.tpd._
 
@@ -46,10 +44,9 @@ object Completion {
    *
    *  @return offset and list of symbols for possible completions
    */
-  def completions(pos: SourcePosition)(using Context): (Int, List[Completion]) = {
-    val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
+  def completions(pos: SourcePosition)(using Context): (Int, List[Completion]) =
+    val path: List[Tree] = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
     computeCompletions(pos, path)(using Interactive.contextOfPath(path).withPhase(Phases.typerPhase))
-  }
 
   /**
    * Inspect `path` to determine what kinds of symbols should be considered.
@@ -61,10 +58,11 @@ object Completion {
    *
    * Otherwise, provide no completion suggestion.
    */
-  def completionMode(path: List[Tree], pos: SourcePosition): Mode =
-    path match {
-      case Ident(_) :: Import(_, _) :: _ => Mode.ImportOrExport
-      case (ref: RefTree) :: _ =>
+  def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode =
+    path match
+      case untpd.Ident(_) :: untpd.Import(_, _) :: _ => Mode.ImportOrExport
+      case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.ImportOrExport
+      case (ref: untpd.RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
         else if (ref.name.isTypeName) Mode.Type
         else Mode.None
@@ -73,9 +71,8 @@ object Completion {
         if sel.imported.span.contains(pos.span) then Mode.ImportOrExport
         else Mode.None // Can't help completing the renaming
 
-      case (_: ImportOrExport) :: _ => Mode.ImportOrExport
+      case (_: untpd.ImportOrExport) :: _ => Mode.ImportOrExport
       case _ => Mode.None
-    }
 
   /** When dealing with <errors> in varios palces we check to see if they are
    *  due to incomplete backticks. If so, we ensure we get the full prefix
@@ -97,15 +94,18 @@ object Completion {
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
+  def completionPrefix(path: List[untpd.Tree],  pos: SourcePosition)(using Context): String =
     path match
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
 
+      case untpd.Ident(_) :: (sel: untpd.ImportSelector) :: _ if !sel.isGiven =>
+        completionPrefix(sel.imported :: Nil, pos)
+
       case (tree: untpd.ImportOrExport) :: _ =>
-        tree.selectors.find(_.span.contains(pos.span)).map { selector =>
+        tree.selectors.find(_.span.contains(pos.span)).map: selector =>
           completionPrefix(selector :: Nil, pos)
-        }.getOrElse("")
+        .getOrElse("")
 
       // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
       case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
@@ -119,29 +119,34 @@ object Completion {
         if (ref.name == nme.ERROR) ""
         else ref.name.toString.take(pos.span.point - ref.span.point)
 
-      case _ =>
-        ""
+      case _ => ""
+
   end completionPrefix
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
-  def completionOffset(path: List[Tree]): Int =
-    path match {
-      case (ref: RefTree) :: _ => ref.span.point
+  def completionOffset(untpdPath: List[untpd.Tree]): Int =
+    untpdPath match {
+      case (ref: untpd.RefTree) :: _ => ref.span.point
       case _ => 0
     }
 
-  /**
-   * Inspect `path` to deterimine whether enclosing tree is a result of tree extension.
-   * If so, completion should use untyped path containing tree before extension to get proper results.
+  /** Some information about the trees is lost after Typer such as Extension method definitions
+   *  are expanded into methods. In order to support completions in those cases
+   *  we have to rely on untyped trees and only when types are necessary use typed trees.
    */
-  def pathBeforeDesugaring(path: List[Tree], pos: SourcePosition)(using Context): List[Tree] =
-    val hasUntypedTree = path.headOption.forall(NavigateAST.untypedPath(_, exactMatch = true).nonEmpty)
-    if hasUntypedTree then path
-    else NavigateAST.untypedPath(pos.span).collect:
-      case tree: untpd.Tree => tree
+  def resolveTypedOrUntypedPath(tpdPath: List[Tree], pos: SourcePosition)(using Context): List[untpd.Tree] =
+    lazy val untpdPath: List[untpd.Tree] = NavigateAST
+      .pathTo(pos.span, List(ctx.compilationUnit.untpdTree), true).collect:
+        case untpdTree: untpd.Tree => untpdTree
 
-  private def computeCompletions(pos: SourcePosition, path: List[Tree])(using Context): (Int, List[Completion]) = {
-    val path0 = pathBeforeDesugaring(path, pos)
+
+    tpdPath match
+      case (_: Bind) :: _ => tpdPath
+      case (_: untpd.TypTree) :: _ => tpdPath
+      case _ => untpdPath
+
+  private def computeCompletions(pos: SourcePosition, tpdPath: List[Tree])(using Context): (Int, List[Completion]) =
+    val path0 = resolveTypedOrUntypedPath(tpdPath, pos)
     val mode = completionMode(path0, pos)
     val rawPrefix = completionPrefix(path0, pos)
 
@@ -150,16 +155,15 @@ object Completion {
 
     val completer = new Completer(mode, prefix, pos)
 
-    val completions = path0 match {
-        // Ignore synthetic select from `This` because in code it was `Ident`
-        // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
-        case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
-        case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
-        case Select(qual, _) :: _                                     => Map.empty
-        case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
-        case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
-        case _                                                        => completer.scopeCompletions
-      }
+    val completions = tpdPath match
+      // Ignore synthetic select from `This` because in code it was `Ident`
+      // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
+      case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
+      case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
+      case Select(qual, _) :: _                                     => Map.empty
+      case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
+      case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
+      case _                                                        => completer.scopeCompletions
 
     val describedCompletions = describeCompletions(completions)
     val backtickedCompletions =
@@ -173,7 +177,6 @@ object Completion {
                           |                type    = ${completer.mode.is(Mode.Type)}
                           |                results = $backtickedCompletions%, %""")
     (offset, backtickedCompletions)
-  }
 
   def backtickCompletions(completion: Completion, hasBackTick: Boolean) =
     if hasBackTick || needsBacktick(completion.label) then
@@ -186,17 +189,17 @@ object Completion {
   // https://github.com/scalameta/metals/blob/main/mtags/src/main/scala/scala/meta/internal/mtags/KeywordWrapper.scala
   // https://github.com/com-lihaoyi/Ammonite/blob/73a874173cd337f953a3edc9fb8cb96556638fdd/amm/util/src/main/scala/ammonite/util/Model.scala
   private def needsBacktick(s: String) =
-    val chunks = s.split("_", -1)
+    val chunks = s.split("_", -1).nn
 
     val validChunks = chunks.zipWithIndex.forall { case (chunk, index) =>
-      chunk.forall(Chars.isIdentifierPart) ||
-      (chunk.forall(Chars.isOperatorPart) &&
+      chunk.nn.forall(Chars.isIdentifierPart) ||
+      (chunk.nn.forall(Chars.isOperatorPart) &&
         index == chunks.length - 1 &&
         !(chunks.lift(index - 1).contains("") && index - 1 == 0))
     }
 
     val validStart =
-      Chars.isIdentifierStart(s(0)) || chunks(0).forall(Chars.isOperatorPart)
+      Chars.isIdentifierStart(s(0)) || chunks(0).nn.forall(Chars.isOperatorPart)
 
     val valid = validChunks && validStart && !keywords.contains(s)
 
@@ -228,7 +231,7 @@ object Completion {
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  class Completer(val mode: Mode, val prefix: String, pos: SourcePosition) {
+  class Completer(val mode: Mode, val prefix: String, pos: SourcePosition):
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -242,7 +245,7 @@ object Completion {
      *    (even if the import follows it syntactically)
      *  - a more deeply nested import shadowing a member or a local definition causes an ambiguity
      */
-    def scopeCompletions(using context: Context): CompletionMap = {
+    def scopeCompletions(using context: Context): CompletionMap =
       val mappings = collection.mutable.Map.empty[Name, List[ScopedDenotations]].withDefaultValue(List.empty)
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
@@ -314,7 +317,7 @@ object Completion {
       }
 
       resultMappings
-    }
+    end scopeCompletions
 
     /** Widen only those types which are applied or are exactly nothing
      */
@@ -347,16 +350,16 @@ object Completion {
     /** Completions introduced by imports directly in this context.
      *  Completions from outer contexts are not included.
      */
-    private def importedCompletions(using Context): CompletionMap = {
+    private def importedCompletions(using Context): CompletionMap =
       val imp = ctx.importInfo
-
-      def fromImport(name: Name, nameInScope: Name): Seq[(Name, SingleDenotation)] =
-        imp.site.member(name).alternatives
-          .collect { case denot if include(denot, nameInScope) => nameInScope -> denot }
 
       if imp == null then
         Map.empty
       else
+        def fromImport(name: Name, nameInScope: Name): Seq[(Name, SingleDenotation)] =
+          imp.site.member(name).alternatives
+            .collect { case denot if include(denot, nameInScope) => nameInScope -> denot }
+
         val givenImports = imp.importedImplicits
           .map { ref => (ref.implicitName: Name, ref.underlyingRef.denot.asSingleDenotation) }
           .filter((name, denot) => include(denot, name))
@@ -382,7 +385,7 @@ object Completion {
             }.toSeq.groupByName
 
         givenImports ++ wildcardMembers ++ explicitMembers
-    }
+    end importedCompletions
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
@@ -544,7 +547,6 @@ object Completion {
     extension [N <: Name](namedDenotations: Seq[(N, SingleDenotation)])
       @annotation.targetName("groupByNameTupled")
       def groupByName: CompletionMap = namedDenotations.groupMap((name, denot) => name)((name, denot) => denot)
-  }
 
   private type CompletionMap = Map[Name, Seq[SingleDenotation]]
 
@@ -557,11 +559,11 @@ object Completion {
    * The completion mode: defines what kinds of symbols should be included in the completion
    * results.
    */
-  class Mode(val bits: Int) extends AnyVal {
+  class Mode(val bits: Int) extends AnyVal:
     def is(other: Mode): Boolean = (bits & other.bits) == other.bits
     def |(other: Mode): Mode = new Mode(bits | other.bits)
-  }
-  object Mode {
+
+  object Mode:
     /** No symbol should be included */
     val None: Mode = new Mode(0)
 
@@ -573,6 +575,4 @@ object Completion {
 
     /** Both term and type symbols are allowed */
     val ImportOrExport: Mode = new Mode(4) | Term | Type
-  }
-}
 

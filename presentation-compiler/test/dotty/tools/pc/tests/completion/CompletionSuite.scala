@@ -539,7 +539,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  new Foo().bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic2 =
@@ -549,7 +549,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val x = new Foo().foo.bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic3 =
@@ -560,7 +560,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  (foo.bar = 42).bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic4 =
@@ -570,7 +570,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val foo = new Foo().foo(x = 42).bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic5 =
