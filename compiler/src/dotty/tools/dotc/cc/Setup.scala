@@ -23,7 +23,7 @@ trait SetupAPI:
   def decorate(tp: Type, mapRoots: Boolean, addedSet: Type => CaptureSet)(using Context): Type
 
 object Setup:
-  def enabled(using Context) = true // ctx.settings.YccNew.value // if new impl is conditional
+  def newScheme(using Context) = ctx.settings.YccNew.value // if new impl is conditional
 
   private val IsDuringSetupKey = new Property.Key[Unit]
 
@@ -470,14 +470,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               tree.rhs match
                 case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
                   //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-                  //ccState.isLevelOwner(sym) = true
+                  if newScheme then ccState.isLevelOwner(sym) = true
                   ccState.isLevelOwner(ddef.symbol) = true
                     // Toplevel closures bound to vals count as level owners
                     // unless the closure is an implicit eta expansion over a type application
                     // that mentions `cap`. In that case we prefer not to silently rebind
                     // the `cap` to a local root of an invisible closure. See
                     // pos-custom-args/captures/eta-expansions.scala for examples of both cases.
-                  true && !tpt.isInstanceOf[InferredTypeTree]
+                  newScheme || !tpt.isInstanceOf[InferredTypeTree]
                     // in this case roots in inferred val type count as polymorphic
                 case _ =>
                   true
