@@ -379,6 +379,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             )
           }
         case tree: ValDef =>
+          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
@@ -386,6 +387,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           annotateContextResults(tree)
@@ -537,9 +539,14 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
-      if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
+      def isTopLevelDefinitionInSource(sym: Symbol) =
+        !sym.is(Package) && !sym.name.isPackageObjectName &&
+        (sym.owner.is(Package) || (sym.owner.name.isPackageObjectName && !sym.isConstructor))
+      if !sym.hasAnnotation(defn.ExperimentalAnnot)
+        && (ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym))
+        || (sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot))
+      then
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
-        sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
     private def scala2LibPatch(tree: TypeDef)(using Context) =
       val sym = tree.symbol

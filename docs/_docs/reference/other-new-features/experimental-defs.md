@@ -309,3 +309,7 @@ class MyExperimentalTests {
 ```
 
 </details>
+
+## `-experimental` compiler flag
+
+This flag will make all top-level definitions have the `@experimental` annotation. This effectively enables the use of any experimental definition or language feature in the project.
