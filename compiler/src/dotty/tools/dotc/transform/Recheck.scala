@@ -246,13 +246,16 @@ abstract class Recheck extends Phase, SymTransformer:
         val exprType = recheck(expr, defn.UnitType)
         bindType.symbol.info
 
-    def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
-      if !tree.rhs.isEmpty then recheck(tree.rhs, sym.info)
+    def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
+      if tree.rhs.isEmpty then sym.info
+      else recheck(tree.rhs, sym.info)
 
-    def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
-      val rhsCtx = linkConstructorParams(sym).withOwner(sym)
-      if !tree.rhs.isEmpty && !sym.isInlineMethod && !sym.isEffectivelyErased then
-        inContext(rhsCtx) { recheck(tree.rhs, recheck(tree.tpt)) }
+    def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
+      inContext(linkConstructorParams(sym).withOwner(sym)):
+        val resType = recheck(tree.tpt)
+        if tree.rhs.isEmpty || sym.isInlineMethod || sym.isEffectivelyErased
+        then resType
+        else recheck(tree.rhs, resType)
 
     def recheckTypeDef(tree: TypeDef, sym: Symbol)(using Context): Type =
       recheck(tree.rhs)
@@ -421,7 +424,7 @@ abstract class Recheck extends Phase, SymTransformer:
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
-      knownType(tree) // allows to install new types at Setup
+      tree.knownType  // allows to install new types at Setup
 
     def recheckAnnotated(tree: Annotated)(using Context): Type =
       tree.tpe match
@@ -447,7 +450,7 @@ abstract class Recheck extends Phase, SymTransformer:
         case _ =>
       traverse(stats)
 
-    def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Unit =
+    def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
       inContext(ctx.localContext(tree, sym)) {
         tree match
           case tree: ValDef => recheckValDef(tree, sym)
