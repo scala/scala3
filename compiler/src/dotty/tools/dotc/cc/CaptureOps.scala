@@ -380,18 +380,18 @@ extension (sym: Symbol)
    *   - _root_
    */
   def levelOwner(using Context): Symbol =
-    def recur(sym: Symbol)(using Context): Symbol =
+    def recur(sym: Symbol): Symbol =
       if !sym.exists || sym.isRoot || sym.isStaticOwner then defn.RootClass
       else if sym.isLevelOwner then sym
       else recur(sym.owner)
-    recur(sym)(using ctx.withPhase(Phases.checkCapturesPhase))
+    recur(sym)
 
   /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
    *  If name refers to a val that has a closure as rhs, we return the closure as level
    *  owner.
    */
   def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(sym: Symbol, prev: Symbol)(using Context): Symbol =
+    def recur(sym: Symbol, prev: Symbol): Symbol =
       if sym.name.toString == name then
         if sym.isLevelOwner then sym
         else if sym.isTerm && !sym.isOneOf(Method | Module) && prev.exists then prev
@@ -401,7 +401,7 @@ extension (sym: Symbol)
       else
         val prev1 = if sym.isAnonymousFunction && sym.isLevelOwner then sym else NoSymbol
         recur(sym.owner, prev1)
-    recur(sym, NoSymbol)(using ctx.withPhase(Phases.checkCapturesPhase))
+    recur(sym, NoSymbol)
       .showing(i"find outer $sym [ $name ] = $result", capt)
 
   /** The nesting level of `sym` for the purposes of `cc`,

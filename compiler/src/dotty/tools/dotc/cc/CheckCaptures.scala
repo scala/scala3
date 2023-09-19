@@ -182,6 +182,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   def phaseName: String = "cc"
 
   override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
+  override def firstPrepPhase = preRecheckPhase.prev.asInstanceOf[AddTryOwners]
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 

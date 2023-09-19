@@ -138,7 +138,14 @@ abstract class Recheck extends Phase, SymTransformer:
   import ast.tpd.*
   import Recheck.*
 
+  /** The phase before rechecking, used to setup symbol infos. */
   def preRecheckPhase = this.prev.asInstanceOf[PreRecheck]
+
+  /** The first phase that pepares for rechecking. This is usually preRecheckPhase
+   *  but could also be before. Updated symbols will snap back to their
+   *  denotations at firestPrepPhase after rechecking.
+   */
+  def firstPrepPhase: Phase = preRecheckPhase
 
   override def changesBaseTypes: Boolean = true
 
@@ -146,11 +153,12 @@ abstract class Recheck extends Phase, SymTransformer:
     // TODO: investigate what goes wrong we Ycheck directly after rechecking.
     // One failing test is pos/i583a.scala
 
-  /** Change any `ResetPrivate` flags back to `Private` */
+  /** Change denotation back to what it was before (pre-)rechecking` */
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
     val sym = symd.symbol
-    if sym.isUpdatedAfter(preRecheckPhase)
-    then atPhase(preRecheckPhase)(sym.denot.copySymDenotation())
+    def updatedAfter(p: Phase): Boolean =
+      sym.isUpdatedAfter(p) || p != preRecheckPhase && updatedAfter(p.next)
+    if updatedAfter(firstPrepPhase) then atPhase(firstPrepPhase)(sym.denot.copySymDenotation())
     else symd
 
   def run(using Context): Unit =
