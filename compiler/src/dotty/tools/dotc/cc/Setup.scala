@@ -563,6 +563,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def integrateRT(
             info: Type,                     // symbol info to replace
             psymss: List[List[Symbol]],     // the local (type and term) parameter symbols corresponding to `info`
+            resType: Type,                  // the locally computed return type
             prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
             prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
           ): Type =
@@ -581,18 +582,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
                     psyms.map(psym => mapr(subst(psym.nextInfo)).asInstanceOf[mt.PInfo]),
                 mt1 =>
-                  mapr(integrateRT(mt.resType, psymss.tail, psyms :: prevPsymss, mt1 :: prevLambdas))
+                  mapr(integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas))
               )
             case info: ExprType =>
               info.derivedExprType(resType =
-                mapr(integrateRT(info.resType, psymss, prevPsymss, prevLambdas)))
+                mapr(integrateRT(info.resType, psymss, resType, prevPsymss, prevLambdas)))
             case info =>
               mapr(
-                if prevLambdas.isEmpty then localReturnType
-                else SubstParams(prevPsymss, prevLambdas)(localReturnType))
+                if prevLambdas.isEmpty then resType
+                else SubstParams(prevPsymss, prevLambdas)(resType))
 
         if sym.exists && signatureChanges then
-          val newInfo = integrateRT(sym.info, sym.paramSymss, Nil, Nil)
+          val newInfo = integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
             .showing(i"update info $sym: ${sym.info} = $result", ccSetup)
           if newInfo ne sym.info then
             updateInfo(sym,
