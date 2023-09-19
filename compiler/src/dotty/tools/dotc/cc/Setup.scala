@@ -20,7 +20,7 @@ import printing.{Printer, Texts}, Texts.{Text, Str}
 trait SetupAPI:
   type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Unit
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
-  def decorate(tp: Type, mapRoots: Boolean, addedSet: Type => CaptureSet)(using Context): Type
+  def decorate(tp: Type, rootTarget: Symbol, addedSet: Type => CaptureSet)(using Context): Type
 
 object Setup:
   def newScheme(using Context) = ctx.settings.YccNew.value // if new impl is conditional
@@ -74,10 +74,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   override def isRunnable(using Context) =
     super.isRunnable && Feature.ccEnabledSomewhere
 
-  private def toCC(sym: Symbol)(using Context) = new FollowAliases:
-    def apply(t: Type): Type =
-      mapOverFollowingAliases(t)
-
   def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
     if symd.isAllOf(PrivateParamAccessor) && symd.owner.is(CaptureChecked) && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
     then symd.flags &~ Private | Recheck.ResetPrivate
@@ -90,26 +86,26 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  is CC-enabled.
    */
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
-    def needsTransform = symd.owner.isTerm || symd.owner.is(CaptureChecked)
-    def needsInfoTransform = symd.isGetter
+    def needsInfoTransform = newScheme || symd.isGetter
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
       atPhase(thisPhase.next)(symd.maybeOwner.info) // ensure owner is completed
       // if sym is class && level owner: add a capture root
       // translate cap/capIn to local roots
-      // what are local roots? should we add them in CCState?
       // create local roots if necessary
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd)
-      else
+      else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
         val newFlags = newFlagsFor(symd)
         val newInfo =
-          if needsInfoTransform then transformExplicitType(sym.info, mapRoots = false)
-          else /*toCC(sym)*/(sym.info)
+          if needsInfoTransform
+          then transformExplicitType(sym.info, rootTarget = if newScheme then sym else NoSymbol)
+          else sym.info
 
         if newFlags != symd.flags || (newInfo ne sym.info)
         then symd.copySymDenotation(initFlags = newFlags, info = newInfo)
         else symd
+      else symd
     else symd
 
   /** Create dependent function with underlying function class `tycon` and given
@@ -161,7 +157,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def mapInferred(mapRoots: Boolean)(using Context) = new TypeMap:
+  private def mapInferred(rootTarget: Symbol)(using Context) = new TypeMap:
     override def toString = "map inferred"
 
     /** Drop @retains annotations everywhere */
@@ -246,14 +242,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           box(this(tp1))
         case _ =>
           mapOver(tp)
-      addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner, mapRoots)
+      addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner, rootTarget)
     end apply
   end mapInferred
 
-  private def transformInferredType(tp: Type, mapRoots: Boolean)(using Context): Type =
-    mapInferred(mapRoots)(tp)
+  private def transformInferredType(tp: Type, rootTarget: Symbol)(using Context): Type =
+    mapInferred(rootTarget)(tp)
 
-  private def transformExplicitType(tp: Type, mapRoots: Boolean)(using Context): Type =
+  private def transformExplicitType(tp: Type, rootTarget: Symbol)(using Context): Type =
     val expandAliases = new TypeMap:
       override def toString = "expand aliases"
 
@@ -301,13 +297,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if t2 ne t then return t2
         t match
           case t: TypeRef =>
-            if t.symbol.isClass then t
+            val sym = t.symbol
+            if sym.isClass then t
             else t.info match
               case TypeAlias(alias) =>
                 val transformed =
-                  if t.symbol.isStatic then this(alias)
-                  else transformExplicitType(alias, mapRoots)(
-                    using ctx.withOwner(t.symbol.owner))
+                  if sym.isStatic then this(alias)
+                  else transformExplicitType(alias,
+                    if rootTarget.exists then sym else NoSymbol)(
+                    using ctx.withOwner(sym.owner))
                 if transformed ne alias then transformed else t
                     //.showing(i"EXPAND $t with ${t.info} to $result in ${t.symbol.owner}/${ctx.owner}")
               case _ =>
@@ -350,8 +348,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     val tp1 = expandAliases(tp)
     val tp2 =
-      if mapRoots
-      then cc.mapRoots(defn.captureRoot.termRef, ctx.owner.localRoot.termRef)(tp1)
+      if rootTarget.exists
+      then mapRoots(defn.captureRoot.termRef, rootTarget.localRoot.termRef)(tp1)
             .showing(i"map roots $tp1, ${tp1.getClass} == $result", capt)
       else tp1
     if tp2 ne tp then ccSetup.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
@@ -359,13 +357,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   end transformExplicitType
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
-  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean, mapRoots: Boolean)(using Context): Unit =
+  private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean, rootTarget: Symbol)(using Context): Unit =
     if !tree.hasRememberedType then
       val tp = if boxed then Box(tree.tpe) else tree.tpe
       tree.rememberType(
         if tree.isInstanceOf[InferredTypeTree] && !exact
-        then transformInferredType(tp, mapRoots)
-        else transformExplicitType(tp, mapRoots))
+        then transformInferredType(tp, rootTarget)
+        else transformExplicitType(tp, rootTarget))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
    *  method or poly types `to`. We use a single BiTypeMap to do everything.
@@ -442,7 +440,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             paramss.foreach(traverse)
             transformTT(tpt, boxed = false,
                 exact = tree.symbol.allOverriddenSymbols.hasNext,
-                mapRoots = true)
+                rootTarget = ctx.owner)
             traverse(tree.rhs)
             //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
 
@@ -454,7 +452,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case Apply(fn, _) => mentionsCap(fn)
             case TypeApply(fn, args) => args.exists(mentionsCap)
             case _: InferredTypeTree => false
-            case _: TypeTree => containsCap(transformExplicitType(tree.tpe, mapRoots = false))
+            case _: TypeTree => containsCap(transformExplicitType(tree.tpe, rootTarget = NoSymbol))
             case _ => false
 
           val sym = tree.symbol
@@ -464,7 +462,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               updateOwner(sym)
               sym
           inContext(ctx.withOwner(newOwner)):
-            val mapRoots =
+            val rootsNeedMap =
               // need to run before cc so that rhsClosure is defined without transforming
               // symbols to cc, since rhsClosure is used in that transformation.
               tree.rhs match
@@ -484,7 +482,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             transformTT(tpt,
                 boxed = sym.is(Mutable),    // types of mutable variables are boxed
                 exact = sym.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
-                mapRoots
+                rootTarget = if rootsNeedMap then ctx.owner else NoSymbol
               )
             ccSetup.println(i"mapped $tree = ${tpt.knownType}")
             traverse(tree.rhs)
@@ -492,7 +490,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
           for case arg: TypeTree <- args do
-            transformTT(arg, boxed = true, exact = false, mapRoots = true) // type arguments in type applications are boxed
+            transformTT(arg, boxed = true, exact = false, rootTarget = ctx.owner) // type arguments in type applications are boxed
 
         case tree: TypeDef if tree.symbol.isClass =>
           val cls = tree.symbol
@@ -521,10 +519,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         traverse(rest)
       case Nil =>
 
+    extension (sym: Symbol)(using Context) def unlessStatic =
+      val owner = sym.levelOwner
+      if sym.isStaticOwner then NoSymbol else owner
+
     def postProcess(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree =>
+        val lowner =
         transformTT(tree, boxed = false, exact = false,
-            mapRoots = !ctx.owner.levelOwner.isStaticOwner // other types in static locations are not boxed
+            rootTarget = ctx.owner.unlessStatic // other types in static locations are not boxed
           )
       case tree: ValOrDefDef =>
         val sym = tree.symbol
@@ -564,7 +567,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
           ): Type =
           val mapr =
-            if sym.isLevelOwner then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
+            if !newScheme && sym.isLevelOwner
+            then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
             else identity[Type]
           info match
             case mt: MethodOrPoly =>
@@ -608,7 +612,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       case tree: Bind =>
         val sym = tree.symbol
-        updateInfo(sym, transformInferredType(sym.info, mapRoots = true))
+        updateInfo(sym, transformInferredType(sym.info, rootTarget = ctx.owner))
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
@@ -624,7 +628,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               else selfInfo match
                 case selfInfo: Type =>
                   inContext(ctx.withOwner(cls)):
-                    transformExplicitType(selfInfo, mapRoots = true)
+                    transformExplicitType(selfInfo, rootTarget = ctx.owner)
                 case _ =>
                   NoType
             if newSelfType.exists then
@@ -642,7 +646,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               if cls.is(ModuleClass) then updateOwner(cls.sourceModule)
           case _ =>
             val info = tree.symbol.info
-            val newInfo = transformExplicitType(info, mapRoots = !ctx.owner.isStaticOwner)
+            val newInfo = transformExplicitType(info, rootTarget = ctx.owner.unlessStatic)
             updateInfo(tree.symbol, newInfo)
             if newInfo ne info then
               ccSetup.println(i"update info of ${tree.symbol} from $info to $newInfo")
@@ -733,7 +737,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def decorate(tp: Type, mapRoots: Boolean, addedSet: Type => CaptureSet)(using Context): Type =
+  def decorate(tp: Type, rootTarget: Symbol, addedSet: Type => CaptureSet)(using Context): Type =
     if tp.typeSymbol == defn.FromJavaObjectSymbol then
       // For capture checking, we assume Object from Java is the same as Any
       tp
@@ -743,7 +747,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fallback
       val dealiased = tp.dealiasKeepAnnots
       if dealiased ne tp then
-        val transformed = transformExplicitType(dealiased, mapRoots)
+        val transformed = transformExplicitType(dealiased, rootTarget)
           // !!! TODO: We should map roots to root vars here
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)
       else maybeAdd(tp, tp)
@@ -751,8 +755,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def addVar(tp: Type, owner: Symbol, mapRoots: Boolean)(using Context): Type =
-    decorate(tp, mapRoots,
+  def addVar(tp: Type, owner: Symbol, rootTarget: Symbol)(using Context): Type =
+    decorate(tp, rootTarget,
       addedSet = _.dealias.match
         case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems)
         case _ => CaptureSet.Var(owner))

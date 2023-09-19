@@ -358,7 +358,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ =>
                 mapOver(t)
             if variance > 0 then t1
-            else setup.decorate(t1, mapRoots = false, addedSet = Function.const(CaptureSet.Fluid))
+            else setup.decorate(t1, rootTarget = NoSymbol, addedSet = Function.const(CaptureSet.Fluid))
 
       def isPreCC(sym: Symbol): Boolean =
         sym.isTerm && sym.maybeOwner.isClass
