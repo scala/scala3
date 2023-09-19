@@ -148,7 +148,7 @@ object MainGenericRunner {
     case (o @ javaOption(striped)) :: tail =>
       processArgs(tail, settings.withJavaArgs(striped).withScalaArgs(o))
     case (o @ scalaOption(_*)) :: tail =>
-      val remainingArgs = (CommandLineParser.expandArg(o) ++ tail).toList
+      val remainingArgs = CommandLineParser.expandArg(o) ++ tail
       processArgs(remainingArgs, settings)
     case (o @ colorOption(_*)) :: tail =>
       processArgs(tail, settings.withScalaArgs(o))
