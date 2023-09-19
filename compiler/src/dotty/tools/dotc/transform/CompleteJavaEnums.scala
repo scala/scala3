@@ -58,8 +58,8 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
           tp.derivedLambdaType(resType = addConstrParams(restpe))
         case _ =>
           tp.derivedLambdaType(
-            paramNames = tp.paramNames ++ (nameParamName :: ordinalParamName :: Nil),
-            paramInfos = tp.paramInfos ++ (defn.StringType :: defn.IntType :: Nil))
+            paramNames = tp.paramNames ::: (nameParamName :: ordinalParamName :: Nil),
+            paramInfos = tp.paramInfos ::: (defn.StringType :: defn.IntType :: Nil))
       }
   }
 
@@ -81,7 +81,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
         if args0.nonEmpty && targetCls == defn.JavaEnumClass then
           report.error(em"the constructor of java.lang.Enum cannot be called explicitly", app.sourcePos)
-        cpy.Apply(app)(fn, args0 ++ args)
+        cpy.Apply(app)(fn, args0 ::: args)
       case p => p
     }
 
@@ -92,7 +92,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       val tree1 = cpy.DefDef(tree)(
         paramss = tree.paramss.init
           :+ (tree.paramss.last.asInstanceOf[List[ValDef]]
-              ++ addedParams(sym, isLocal=false, Param)))
+              ::: addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.paramss)
       tree1
     else tree
@@ -167,7 +167,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
-        body = params ++ addedDefs ++ addedForwarders ++ rest)
+        body = params ::: addedDefs ::: addedForwarders ::: rest)
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =
         ref(cls.owner.paramSymss.head.find(_.name == name).get)

@@ -76,7 +76,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       /** The parameter references defined by the constructor info */
       def allParamRefs(tp: Type): List[ParamRef] = tp match {
-        case tp: LambdaType => tp.paramRefs ++ allParamRefs(tp.resultType)
+        case tp: LambdaType => tp.paramRefs ::: allParamRefs(tp.resultType)
         case _              => Nil
       }
 
@@ -236,7 +236,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
               cpy.TypeDef(tdef)(
                   rhs = cpy.Template(impl)(
                       parents = hoistedSuperCall :: others,
-                      body = hoistedBody ++ staticSuperArgDefs)) ::
+                      body = hoistedBody ::: staticSuperArgDefs)) ::
               enclSuperArgDefs)
         }
       case _ =>

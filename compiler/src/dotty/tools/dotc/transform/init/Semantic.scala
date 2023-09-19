@@ -466,7 +466,7 @@ object Semantic:
 
       case (RefSet(refs1), RefSet(refs2)) =>
         val diff = refs2.filter(ref => refs1.forall(_ != ref))
-        RefSet(refs1 ++ diff)
+        RefSet(refs1 ::: diff)
 
     /** Conservatively approximate the value with `Cold` or `Hot` */
     def widenArg: Contextual[Value] =

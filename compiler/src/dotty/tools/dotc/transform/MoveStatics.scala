@@ -69,7 +69,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
             case _ => false
           }
 
-          rebuild(companion, companionTmpl.body ++ staticDefs) :: rebuild(module, remainingDefs) :: Nil
+          rebuild(companion, companionTmpl.body ::: staticDefs) :: rebuild(module, remainingDefs) :: Nil
         }
       }
       val newPairs =
@@ -81,7 +81,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
               rebuild(classDef, tmpl.body) :: Nil
             }
             else move(classes.head, classes.tail.head)
-      Trees.flatten(newPairs.toList.flatten ++ others)
+      Trees.flatten(newPairs.toList.flatten ::: others)
     }
     else trees
 }

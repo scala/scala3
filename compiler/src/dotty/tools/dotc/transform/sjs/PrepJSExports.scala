@@ -173,7 +173,7 @@ object PrepJSExports {
     }
 
     val allExportInfos = for {
-      annot <- directAnnots ++ unitAnnots
+      annot <- directAnnots ::: unitAnnots
     } yield {
       val isExportAll = annot.symbol == JSExportAllAnnot
       val isTopLevelExport = annot.symbol == JSExportTopLevelAnnot

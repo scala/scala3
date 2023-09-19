@@ -859,9 +859,9 @@ object Erasure {
             case Block(stats, expr) =>
               cpy.Block(fun1)(stats, app(expr))
             case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
-              mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+              mkApply(fun2, JavaSeqLiteral(prevArgs ::: args1, argTpt) :: Nil)
             case Apply(fun2, prevArgs) =>
-              mkApply(fun2, prevArgs ++ args1)
+              mkApply(fun2, prevArgs ::: args1)
             case _ if bunchArgs =>
               mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
             case _ =>

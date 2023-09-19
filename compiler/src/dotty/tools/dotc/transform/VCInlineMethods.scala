@@ -76,7 +76,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
               TypeTree(tparam.typeRef.asSeenFrom(ev.tpe, origCls)))
             transformFollowing(
               ref(extensionMeth)
-              .appliedToTypeTrees(mtArgs ++ ctArgs)
+              .appliedToTypeTrees(mtArgs ::: ctArgs)
               .appliedTo(ev)
               .appliedToArgss(mArgss))
           }

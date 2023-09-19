@@ -167,7 +167,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               if cls.isOneOf(GivenOrImplicit) then
                 sym.updateAnnotationsAfter(thisPhase,
                   atPhase(thisPhase)(cls.annotationsCarrying(Set(defn.CompanionMethodMetaAnnot)))
-                    ++ sym.annotations)
+                    ::: sym.annotations)
           else
             if sym.is(Param) then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.ParamMetaAnnot), orNoneOf = defn.NonBeanMetaAnnots)
@@ -220,7 +220,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match {
           case fun: TypeApply =>
             val (tycon, args) = decompose(fun)
-            (tycon, args ++ tree.args)
+            (tycon, args ::: tree.args)
           case _ =>
             (tree.fun, tree.args)
         }

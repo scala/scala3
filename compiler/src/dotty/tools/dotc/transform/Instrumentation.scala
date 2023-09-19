@@ -35,7 +35,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "updated" :: "zipAll" :: "zipWithIndex" ::
     "mapConserve" :: "mapconserve" :: "filterConserve" :: "zipWithConserve" :: "mapWithIndexConserve" :: Nil
 
-  private val namesOfInterest = collectionNamesOfInterest ++ (
+  private val namesOfInterest = collectionNamesOfInterest ::: (
     "::" :: "+=" :: "toString" :: "newArray" :: "box" :: "toCharArray" :: "termName" :: "typeName" ::
     "slice" :: "staticRef" :: "requiredClass" :: Nil)
 

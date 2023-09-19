@@ -561,13 +561,13 @@ object CheckUnused:
         else
           Nil
       val warnings =
-        val unsorted = sortedImp ++
-          sortedLocalDefs ++
-          sortedExplicitParams ++
-          sortedImplicitParams ++
-          sortedPrivateDefs ++
-          sortedPatVars ++
-          unsetLocalDefs ++
+        val unsorted = sortedImp :::
+          sortedLocalDefs :::
+          sortedExplicitParams :::
+          sortedImplicitParams :::
+          sortedPrivateDefs :::
+          sortedPatVars :::
+          unsetLocalDefs :::
           unsetPrivateDefs
 
         unsorted.sortBy { s =>

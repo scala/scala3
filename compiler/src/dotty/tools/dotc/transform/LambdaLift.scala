@@ -85,8 +85,8 @@ object LambdaLift:
       case MethodTpe(pnames, ptypes, restpe) =>
         val ps = proxies(local)
         MethodType(
-          ps.map(_.name.asTermName) ++ pnames,
-          ps.map(_.info) ++ ptypes,
+          ps.map(_.name.asTermName) ::: pnames,
+          ps.map(_.info) ::: ptypes,
           restpe)
       case info => info
     }
@@ -169,7 +169,7 @@ object LambdaLift:
 
     def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
       val fvs = deps.freeVars(sym)
-      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
+      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ::: args else args
 
     def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
       case Nil => tree
@@ -192,12 +192,12 @@ object LambdaLift:
         tree match {
           case tree: DefDef =>
             cpy.DefDef(tree)(
-                paramss = tree.termParamss.map(freeParamDefs ++ _),
+                paramss = tree.termParamss.map(freeParamDefs ::: _),
                 rhs =
                   if (sym.isPrimaryConstructor && !sym.owner.is(Trait)) copyParams(tree.rhs)
                   else tree.rhs)
           case tree: Template =>
-            cpy.Template(tree)(body = freeParamDefs ++ tree.body)
+            cpy.Template(tree)(body = freeParamDefs ::: tree.body)
         }
     }
 

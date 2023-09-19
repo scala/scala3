@@ -60,7 +60,7 @@ abstract class AccessProxies {
   def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = {
     val accDefs = accessorDefs(cls).toList
     transforms.println(i"add accessors for $cls: $accDefs%, %")
-    if (accDefs.isEmpty) body else body ++ accDefs
+    if (accDefs.isEmpty) body else body ::: accDefs
   }
 
   trait Insert {

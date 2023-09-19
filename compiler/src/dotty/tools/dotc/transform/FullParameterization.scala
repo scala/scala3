@@ -118,9 +118,9 @@ trait FullParameterization {
 
     info match {
       case info: PolyType =>
-        PolyType(info.paramNames ++ ctnames)(
+        PolyType(info.paramNames ::: ctnames)(
           pt =>
-            (info.paramInfos.map(mapClassParams(_, pt).bounds) ++
+            (info.paramInfos.map(mapClassParams(_, pt).bounds) :::
              mappedClassBounds(pt)).mapConserve(_.subst(info, pt).bounds),
           pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
@@ -164,7 +164,7 @@ trait FullParameterization {
             val base = thisArg.tpe.baseType(origClass)
             assert(base.exists)
             ref(rewired.termRef)
-              .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))
+              .appliedToTypeTrees(targs ::: base.argInfos.map(TypeTree(_)))
               .appliedTo(thisArg)
           } else EmptyTree
         }
@@ -204,7 +204,7 @@ trait FullParameterization {
 
       new TreeTypeMap(
         typeMap = rewireType(_)
-          .subst(origLeadingTypeParamSyms ++ origOtherParamSyms, (trefs ++ argRefs).tpes)
+          .subst(origLeadingTypeParamSyms ::: origOtherParamSyms, (trefs ::: argRefs).tpes)
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
