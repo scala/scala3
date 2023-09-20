@@ -127,7 +127,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val newInfo =
           if needsInfoTransform then
             atPhase(thisPhase.next)(symd.maybeOwner.info) // ensure owner is completed
-            transformExplicitType(sym.info, rootTarget = if newScheme then sym else NoSymbol)
+            transformExplicitType(sym.info, rootTarget = if newScheme && false then sym else NoSymbol)
           else sym.info
 
         if newFlags != symd.flags || (newInfo ne sym.info)
@@ -188,14 +188,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     */
   private def mapInferred(rootTarget: Symbol)(using Context) = new TypeMap:
     override def toString = "map inferred"
-
-    /** Drop @retains annotations everywhere */
-    object cleanup extends TypeMap:
-      def apply(t: Type) = t match
-        case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
-          apply(parent)
-        case _ =>
-          mapOver(t)
 
     /** Refine a possibly applied class type C where the class has tracked parameters
      *  x_1: T_1, ..., x_n: T_n to C { val x_1: CV_1 T_1, ..., val x_n: CV_n T_n }
@@ -265,7 +257,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           // Don't recurse into parameter bounds, just cleanup any stray retains annotations
           // !!! TODO we should also map roots to rootvars here
           tp.derivedLambdaType(
-            paramInfos = tp.paramInfos.mapConserve(cleanup(_).bounds),
+            paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
             resType = this(tp.resType))
         case Box(tp1) =>
           box(this(tp1))
@@ -480,14 +472,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               tree.rhs match
                 case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
                   //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-                  if newScheme then ccState.isLevelOwner(sym) = true
+                  if newScheme && false then ccState.isLevelOwner(sym) = true
                   ccState.isLevelOwner(ddef.symbol) = true
                     // Toplevel closures bound to vals count as level owners
                     // unless the closure is an implicit eta expansion over a type application
                     // that mentions `cap`. In that case we prefer not to silently rebind
                     // the `cap` to a local root of an invisible closure. See
                     // pos-custom-args/captures/eta-expansions.scala for examples of both cases.
-                  newScheme || !tpt.isInstanceOf[InferredTypeTree]
+                  (newScheme && false) || !tpt.isInstanceOf[InferredTypeTree]
                     // in this case roots in inferred val type count as polymorphic
                 case _ =>
                   true
@@ -564,7 +556,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
           ): Type =
           val mapr =
-            if !newScheme && sym.isLevelOwner
+            if !(newScheme && false) && sym.isLevelOwner
             then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
             else identity[Type]
           info match

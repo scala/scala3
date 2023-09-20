@@ -573,7 +573,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
-        else super.recheckValDef(tree, sym)
+        else checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait
@@ -589,10 +589,45 @@ class CheckCaptures extends Recheck, SymTransformer:
         val localSet = capturedVars(sym)
         if !localSet.isAlwaysEmpty then
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
-        try super.recheckDefDef(tree, sym)
+        try checkInferredResult(super.recheckDefDef(tree, sym), tree)
         finally
           interpolateVarsIn(tree.tpt)
           curEnv = saved
+
+    def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
+      val sym = tree.symbol
+
+      def isLocal =
+        sym.owner.ownersIterator.exists(_.isTerm)
+        || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
+
+      def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
+        sym.is(Private)                   // private symbols can always have inferred types
+        || sym.name.is(DefaultGetterName) // default getters are exempted since otherwise it would be
+                                          // too annoying. This is a hole since a defualt getter's result type
+                                          // might leak into a type variable.
+        ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
+          isLocal                         // local symbols still need explicit types if
+          && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
+
+      def addenda(expected: Type) = new Addenda:
+        override def toAdd(using Context) =
+          def result = if tree.isInstanceOf[ValDef] then"" else " result"
+          i"""
+           |
+           |Note that the expected type $expected
+           |is the previously inferred$result type of $sym
+           |which is also the type seen in separately compiled sources.
+           |The new inferred type $tp
+           |must conform to this type.""" :: Nil
+
+      tree.tpt match
+        case tpt: InferredTypeTree if !canUseInferred =>
+          val expected = tpt.tpe.dropAllRetains
+          checkConformsExpr(tp, expected, tree.rhs, addenda(expected))
+        case _ =>
+      tp
+    end checkInferredResult
 
     /** Class-specific capture set relations:
      *   1. The capture set of a class includes the capture sets of its parents.
@@ -1148,9 +1183,6 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Perform the following kinds of checks
      *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
-     *   - Check that externally visible `val`s or `def`s have empty capture sets. If not,
-     *     suggest an explicit type. This is so that separate compilation (where external
-     *     symbols have empty capture sets) gives the same results as joint compilation.
      *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
      *   - Heal ill-formed capture sets of type parameters. See `healTypeParam`.
      */
@@ -1169,41 +1201,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
                 checkWellformedPost(parent, annot.tree, tree)
               case _ =>
-          case t: ValOrDefDef
-          if t.tpt.isInstanceOf[InferredTypeTree] && !Synthetics.isExcluded(t.symbol) =>
-            val sym = t.symbol
-            val isLocal =
-              sym.owner.ownersIterator.exists(_.isTerm)
-              || sym.accessBoundary(defn.RootClass).isContainedIn(sym.topLevelClass)
-            def canUseInferred =    // If canUseInferred is false, all capturing types in the type of `sym` need to be given explicitly
-              sym.is(Private)                   // Private symbols can always have inferred types
-              || sym.name.is(DefaultGetterName) // Default getters are exempted since otherwise it would be
-                                                // too annoying. This is a hole since a defualt getter's result type
-                                                // might leak into a type variable.
-              ||                                // non-local symbols cannot have inferred types since external capture types are not inferred
-                isLocal                         // local symbols still need explicit types if
-                && !sym.owner.is(Trait)         // they are defined in a trait, since we do OverridingPairs checking before capture inference
-              ||                                // If there are overridden symbols, their types form an upper bound
-                sym.allOverriddenSymbols.nonEmpty // for the inferred type. In this case, separate compilation would
-                                                // not be a soundness issue.
-            def isNotPureThis(ref: CaptureRef) = ref match {
-              case ref: ThisType => !ref.cls.isPureClass
-              case _ => true
-            }
-            if !canUseInferred then
-              val inferred = t.tpt.knownType
-              def checkPure(tp: Type) = tp match
-                case CapturingType(_, refs: CaptureSet.Var)
-                if !refs.elems.filter(isNotPureThis).isEmpty =>
-                  val resultStr = if t.isInstanceOf[DefDef] then " result" else ""
-                  report.error(
-                    em"""Non-local $sym cannot have an inferred$resultStr type
-                        |$inferred
-                        |with non-empty capture set $refs.
-                        |The type needs to be declared explicitly.""".withoutDisambiguation(),
-                    t.srcPos)
-                case _ =>
-              inferred.foreachPart(checkPure, StopAt.Static)
           case t @ TypeApply(fun, args) =>
             fun.knownType.widen match
               case tl: PolyType =>
