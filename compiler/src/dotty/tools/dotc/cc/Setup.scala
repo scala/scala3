@@ -15,6 +15,7 @@ import CaptureSet.IdentityCaptRefMap
 import Synthetics.isExcluded
 import util.Property
 import printing.{Printer, Texts}, Texts.{Text, Str}
+import collection.mutable
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -74,7 +75,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   override def isRunnable(using Context) =
     super.isRunnable && Feature.ccEnabledSomewhere
 
-  def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
+  private val toBeUpdated = new mutable.HashSet[Symbol]
+
+  private def newFlagsFor(symd: SymDenotation)(using Context): FlagSet =
     if symd.isAllOf(PrivateParamAccessor) && symd.owner.is(CaptureChecked) && !symd.hasAnnotation(defn.ConstructorOnlyAnnot)
     then symd.flags &~ Private | Recheck.ResetPrivate
     else symd.flags
@@ -89,7 +92,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     def needsInfoTransform = newScheme || symd.isGetter
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
-      atPhase(thisPhase.next)(symd.maybeOwner.info) // ensure owner is completed
+      val needsInfoTransform = sym.isDefinedInCurrentRun && !toBeUpdated.contains(sym)
       // if sym is class && level owner: add a capture root
       // translate cap/capIn to local roots
       // create local roots if necessary
@@ -98,8 +101,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
         val newFlags = newFlagsFor(symd)
         val newInfo =
-          if needsInfoTransform
-          then transformExplicitType(sym.info, rootTarget = if newScheme then sym else NoSymbol)
+          if needsInfoTransform then
+            atPhase(thisPhase.next)(symd.maybeOwner.info) // ensure owner is completed
+            transformExplicitType(sym.info, rootTarget = if newScheme then sym else NoSymbol)
           else sym.info
 
         if newFlags != symd.flags || (newInfo ne sym.info)
@@ -107,6 +111,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else symd
       else symd
     else symd
+  end transformSym
 
   /** Create dependent function with underlying function class `tycon` and given
    *  arguments `argTypes` and result `resType`.
@@ -404,7 +409,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   /** Update info of `sym` for CheckCaptures phase only */
   private def updateInfo(sym: Symbol, info: Type)(using Context) =
+    toBeUpdated += sym
     sym.updateInfo(thisPhase, info, newFlagsFor(sym))
+    toBeUpdated -= sym
     sym.namedType match
       case ref: CaptureRef => ref.invalidateCaches() // TODO: needed?
       case _ =>
@@ -514,7 +521,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           else tree.tpt.knownType
 
         def paramSignatureChanges = tree.match
-          case tree: DefDef => tree.termParamss.nestedExists(_.tpt.hasRememberedType)
+          case tree: DefDef => tree.paramss.nestedExists:
+            case param: ValDef => param.tpt.hasRememberedType
+            case param: TypeDef => param.rhs.hasRememberedType
           case _ => false
 
         def signatureChanges =

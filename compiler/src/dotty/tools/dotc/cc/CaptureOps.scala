@@ -32,7 +32,7 @@ def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
-class IllegalCaptureRef(tpe: Type) extends Exception
+class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
 
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
