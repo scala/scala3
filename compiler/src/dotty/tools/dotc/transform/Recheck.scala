@@ -153,7 +153,8 @@ abstract class Recheck extends Phase, SymTransformer:
   /** Change any `ResetPrivate` flags back to `Private` */
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
     val sym = symd.symbol
-    if sym.isUpdatedAfter(preRecheckPhase) then atPhase(preRecheckPhase)(sym.denot)
+    if sym.isUpdatedAfter(preRecheckPhase)
+    then atPhase(preRecheckPhase)(sym.denot.copySymDenotation())
     else symd
 
   def run(using Context): Unit =
