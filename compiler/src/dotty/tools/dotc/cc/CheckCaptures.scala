@@ -342,38 +342,6 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
-    private def handleBackwardsCompat(tp: Type, sym: Symbol, initialVariance: Int = 1)(using Context): Type =
-      val fluidify = new TypeMap with IdempotentCaptRefMap:
-        variance = initialVariance
-        def apply(t: Type): Type = t match
-          case t: MethodType =>
-            mapOver(t)
-          case t: TypeLambda =>
-            t.derivedLambdaType(resType = this(t.resType))
-          case CapturingType(_, _) =>
-            t
-          case _ =>
-            val t1  = t match
-              case t @ defn.RefinedFunctionOf(rinfo: MethodType) =>
-                t.derivedRefinedType(refinedInfo = this(rinfo))
-              case _ =>
-                mapOver(t)
-            if variance > 0 then t1
-            else setup.decorate(t1, rootTarget = NoSymbol, addedSet = Function.const(CaptureSet.Fluid))
-
-      def isPreCC(sym: Symbol): Boolean =
-        sym.isTerm && sym.maybeOwner.isClass
-        && !sym.owner.is(CaptureChecked)
-        && !defn.isFunctionSymbol(sym.owner)
-
-      if isPreCC(sym) then
-        val tpw = tp.widen
-        val fluidTp = fluidify(tpw)
-        if fluidTp eq tpw then tp
-        else fluidTp.showing(i"fluid for ${sym.showLocated}, ${sym.is(JavaDefined)}: $tp --> $result", capt)
-      else tp
-    end handleBackwardsCompat
-
     override def recheckIdent(tree: Ident)(using Context): Type =
       if tree.symbol.is(Method) then
         if tree.symbol.info.isParameterless then
@@ -381,7 +349,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         markFree(tree.symbol, tree.srcPos)
-      handleBackwardsCompat(super.recheckIdent(tree), tree.symbol)
+      super.recheckIdent(tree)
 
     /** A specialized implementation of the selection rule.
      *
@@ -411,7 +379,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
       if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
-        handleBackwardsCompat(selType, tree.symbol)
+        selType
       else
         val qualCs = qualType.captureSet
         capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
@@ -1025,9 +993,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             finally curEnv = saved
           actual1 frozen_<:< expected1
 
-        override def adjustInfo(tp: Type, member: Symbol)(using Context): Type =
-          handleBackwardsCompat(tp, member, initialVariance = 0)
-            //.showing(i"adjust $other: $tp --> $result")
+        override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
+          !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
