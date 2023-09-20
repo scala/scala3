@@ -852,8 +852,8 @@ class CompletionSuite extends BaseCompletionSuite:
       """|dynamics scala.languageFeature
          |existentials scala.languageFeature
          |experimental scala.languageFeature
-         |higherKinds scala.languageFeature
          |implicitConversions scala.languageFeature
+         |postfixOps scala.languageFeature
          |""".stripMargin,
       topLines = Some(5)
     )
