@@ -14,21 +14,21 @@ Context functions are written using `?=>` as the "arrow" sign.
 They are applied to synthesized arguments, in
 the same way methods with context parameters are applied. For instance:
 ```scala
-  given ec: ExecutionContext = ...
+given ec: ExecutionContext = ...
 
-  def f(x: Int): ExecutionContext ?=> Int = ...
+def f(x: Int): ExecutionContext ?=> Int = ...
 
-  // could be written as follows with the type alias from above
-  // def f(x: Int): Executable[Int] = ...
+// could be written as follows with the type alias from above
+// def f(x: Int): Executable[Int] = ...
 
-  f(2)(using ec)   // explicit argument
-  f(2)             // argument is inferred
+f(2)(using ec)   // explicit argument
+f(2)             // argument is inferred
 ```
 Conversely, if the expected type of an expression `E` is a context function type
 `(T_1, ..., T_n) ?=> U` and `E` is not already an
 context function literal, `E` is converted to a context function literal by rewriting it to
 ```scala
-  (x_1: T1, ..., x_n: Tn) ?=> E
+(x_1: T1, ..., x_n: Tn) ?=> E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
@@ -38,14 +38,14 @@ Like their types, context function literals are written using `?=>` as the arrow
 
 For example, continuing with the previous definitions,
 ```scala
-  def g(arg: Executable[Int]) = ...
+def g(arg: Executable[Int]) = ...
 
-  g(22)      // is expanded to g((ev: ExecutionContext) ?=> 22)
+g(22)      // is expanded to g((ev: ExecutionContext) ?=> 22)
 
-  g(f(2))    // is expanded to g((ev: ExecutionContext) ?=> f(2)(using ev))
+g(f(2))    // is expanded to g((ev: ExecutionContext) ?=> f(2)(using ev))
 
-  g((ctx: ExecutionContext) ?=> f(3))  // is expanded to g((ctx: ExecutionContext) ?=> f(3)(using ctx))
-  g((ctx: ExecutionContext) ?=> f(3)(using ctx)) // is left as it is
+g((ctx: ExecutionContext) ?=> f(3))  // is expanded to g((ctx: ExecutionContext) ?=> f(3)(using ctx))
+g((ctx: ExecutionContext) ?=> f(3)(using ctx)) // is left as it is
 ```
 
 ## Example: Builder Pattern
@@ -68,49 +68,49 @@ the aim is to construct tables like this:
 The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
-  class Table:
-    val rows = new ArrayBuffer[Row]
-    def add(r: Row): Unit = rows += r
-    override def toString = rows.mkString("Table(", ", ", ")")
+class Table:
+  val rows = new ArrayBuffer[Row]
+  def add(r: Row): Unit = rows += r
+  override def toString = rows.mkString("Table(", ", ", ")")
 
-  class Row:
-    val cells = new ArrayBuffer[Cell]
-    def add(c: Cell): Unit = cells += c
-    override def toString = cells.mkString("Row(", ", ", ")")
+class Row:
+  val cells = new ArrayBuffer[Cell]
+  def add(c: Cell): Unit = cells += c
+  override def toString = cells.mkString("Row(", ", ", ")")
 
-  case class Cell(elem: String)
+case class Cell(elem: String)
 ```
 Then, the `table`, `row` and `cell` constructor methods can be defined
 with context function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
-  def table(init: Table ?=> Unit) =
-    given t: Table = Table()
-    init
-    t
+def table(init: Table ?=> Unit) =
+  given t: Table = Table()
+  init
+  t
 
-  def row(init: Row ?=> Unit)(using t: Table) =
-     given r: Row = Row()
-     init
-     t.add(r)
+def row(init: Row ?=> Unit)(using t: Table) =
+   given r: Row = Row()
+   init
+   t.add(r)
 
-  def cell(str: String)(using r: Row) =
-     r.add(new Cell(str))
+def cell(str: String)(using r: Row) =
+   r.add(new Cell(str))
 ```
 With that setup, the table construction code above compiles and expands to:
 ```scala
-  table { ($t: Table) ?=>
+table { ($t: Table) ?=>
 
-    row { ($r: Row) ?=>
-      cell("top left")(using $r)
-      cell("top right")(using $r)
-    }(using $t)
+  row { ($r: Row) ?=>
+    cell("top left")(using $r)
+    cell("top right")(using $r)
+  }(using $t)
 
-    row { ($r: Row) ?=>
-      cell("bottom left")(using $r)
-      cell("bottom right")(using $r)
-    }(using $t)
-  }
+  row { ($r: Row) ?=>
+    cell("bottom left")(using $r)
+    cell("bottom right")(using $r)
+  }(using $t)
+}
 ```
 ## Example: Postconditions
 
