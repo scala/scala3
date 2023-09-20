@@ -2121,6 +2121,7 @@ class Definitions {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       syntheticCoreClasses
       syntheticCoreMethods
+      ScalaValueClasses()
       JavaEnumClass
       // end force initialization
       isInitialized = true
