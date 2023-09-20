@@ -1,3 +1,16 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:23:27 ---------------------------------
+23 |  val later = usingLogFile { f => () => f.write(0) } // error
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              Found:    () ->{x$0, local} Unit
+   |              Required: () -> Unit
+   |
+   |              Note that the expected type () -> Unit
+   |              is the previously inferred type of value later
+   |              which is also the type seen in separately compiled sources.
+   |              The new inferred type box () ->{x$0, local} Unit
+   |              must conform to this type.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:32:37 ------------------------------------------------------
 32 |  usingLogFile { f => later3 = () => f.write(0) }  // error
    |                                     ^
@@ -10,18 +23,23 @@
    |                               Required: Test2.Cell[box () ->{cap[<root>]} Unit]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
-23 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:47:27 ---------------------------------
+47 |  val later = usingLogFile { f => () => f.write(0) } // error
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              Found:    () ->{x$0, local} Unit
+   |              Required: () -> Unit
+   |
+   |              Note that the expected type () -> Unit
+   |              is the previously inferred type of value later
+   |              which is also the type seen in separately compiled sources.
+   |              The new inferred type box (() ->{x$0, local} Unit)^?
+   |              must conform to this type.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:28:23 ------------------------------------------------------
 28 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                       ^^^^^^^^^^^^
    |                       escaping local reference local.type
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:14 ------------------------------------------------------
-47 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:16 ------------------------------------------------------
 62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^

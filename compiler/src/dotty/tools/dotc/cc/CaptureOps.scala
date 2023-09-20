@@ -272,6 +272,16 @@ extension (tp: Type)
     case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
     case _ => false
 
+  /** Drop @retains annotations everywhere */
+  def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
+    val tm = new TypeMap:
+      def apply(t: Type) = t match
+        case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
+          apply(parent)
+        case _ =>
+          mapOver(t)
+    tm(tp)
+
 extension (cls: Symbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
