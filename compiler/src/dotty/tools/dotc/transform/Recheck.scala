@@ -158,7 +158,8 @@ abstract class Recheck extends Phase, SymTransformer:
     val sym = symd.symbol
     def updatedAfter(p: Phase): Boolean =
       sym.isUpdatedAfter(p) || p != preRecheckPhase && updatedAfter(p.next)
-    if updatedAfter(firstPrepPhase) then atPhase(firstPrepPhase)(sym.denot.copySymDenotation())
+    if updatedAfter(firstPrepPhase)
+    then atPhase(firstPrepPhase)(sym.denot.copySymDenotation())
     else symd
 
   def run(using Context): Unit =
