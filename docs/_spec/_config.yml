@@ -9,3 +9,15 @@ markdown: redcarpet
 encoding: utf-8
 redcarpet:
   extensions: ["no_intra_emphasis", "fenced_code_blocks", "autolink", "tables", "with_toc_data", "strikethrough", "lax_spacing", "space_after_headers", "superscript", "footnotes", "disable_indented_code_blocks"]
+exclude:
+  - APPLIEDreference
+  - TODOreference
+  - docker-compose.yml
+  - Dockerfile
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - spec-toc.xslt
+  - package.json
+  - package-lock.json
+  - node_modules
