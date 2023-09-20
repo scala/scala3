@@ -2131,8 +2131,11 @@ class Definitions {
     this.initCtx = ctx
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced =
-        syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
+      syntheticCoreClasses
+      syntheticCoreMethods
+      ScalaValueClasses()
+      JavaEnumClass
+      // end force initialization
       isInitialized = true
     }
     addSyntheticSymbolsComments
