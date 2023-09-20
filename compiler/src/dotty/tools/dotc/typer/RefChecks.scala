@@ -223,36 +223,39 @@ object RefChecks {
           false
       precedesIn(parent.asClass.baseClasses)
 
-    // We can exclude pairs safely from checking only under three additional conditions
-    //   - their signatures also match in the parent class.
-    //     See neg/i12828.scala for an example where this matters.
-    //   - They overriding/overridden appear in linearization order.
-    //     See neg/i5094.scala for an example where this matters.
-    //   - The overridden symbol is not `abstract override`. For such symbols
-    //     we need a more extensive test since the virtual super chain depends
-    //     on the precise linearization order, which might be different for the
-    //     subclass. See neg/i14415.scala.
+    /** We can exclude pairs safely from checking only under three additional conditions
+     *   - their signatures also match in the parent class.
+     *     See neg/i12828.scala for an example where this matters.
+     *   - They overriding/overridden appear in linearization order.
+     *     See neg/i5094.scala for an example where this matters.
+     *   - The overridden symbol is not `abstract override`. For such symbols
+     *     we need a more extensive test since the virtual super chain depends
+     *     on the precise linearization order, which might be different for the
+     *     subclass. See neg/i14415.scala.
+     */
     override def canBeHandledByParent(sym1: Symbol, sym2: Symbol, parent: Symbol): Boolean =
       isOverridingPair(sym1, sym2, parent.thisType)
         .showing(i"already handled ${sym1.showLocated}: ${sym1.asSeenFrom(parent.thisType).signature}, ${sym2.showLocated}: ${sym2.asSeenFrom(parent.thisType).signature} = $result", refcheck)
       && inLinearizationOrder(sym1, sym2, parent)
       && !sym2.is(AbsOverride)
 
-    // Checks the subtype relationship tp1 <:< tp2.
-    // It is passed to the `checkOverride` operation in `checkAll`, to be used for
-    // compatibility checking.
+    /** Checks the subtype relationship tp1 <:< tp2.
+     *  It is passed to the `checkOverride` operation in `checkAll`, to be used for
+     *  compatibility checking.
+     */
     def checkSubType(tp1: Type, tp2: Type)(using Context): Boolean = tp1 frozen_<:< tp2
 
-    /** A hook that allows to adjust the type of `member` and `other` before checking conformance.
+    /** A hook that allows to omit override checks between `overriding` and `overridden`.
      *  Overridden in capture checking to handle non-capture checked classes leniently.
      */
-    def adjustInfo(tp: Type, member: Symbol)(using Context): Type = tp
+    def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean = true
 
     private val subtypeChecker: (Type, Type) => Context ?=> Boolean = this.checkSubType
 
     def checkAll(checkOverride: ((Type, Type) => Context ?=> Boolean, Symbol, Symbol) => Unit) =
       while hasNext do
-        checkOverride(subtypeChecker, overriding, overridden)
+        if needsCheck(overriding, overridden) then
+          checkOverride(subtypeChecker, overriding, overridden)
         next()
 
       // The OverridingPairs cursor does assume that concrete overrides abstract
@@ -371,8 +374,8 @@ object RefChecks {
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
-        else checker.adjustInfo(self.memberInfo(member), member)
-      def otherTp(self: Type) = checker.adjustInfo(self.memberInfo(other), other)
+        else self.memberInfo(member)
+      def otherTp(self: Type) = self.memberInfo(other)
 
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 

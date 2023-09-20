@@ -11,7 +11,7 @@ import config.Feature
 import config.Printers.{capt, ccSetup}
 import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
-import CaptureSet.IdentityCaptRefMap
+import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
 import Synthetics.isExcluded
 import util.Property
 import printing.{Printer, Texts}, Texts.{Text, Str}
@@ -21,7 +21,7 @@ import collection.mutable
 trait SetupAPI:
   type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Type
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
-  def decorate(tp: Type, rootTarget: Symbol, addedSet: Type => CaptureSet)(using Context): Type
+  def isPreCC(sym: Symbol)(using Context): Boolean
 
 object Setup:
   def newScheme(using Context) = ctx.settings.YccNew.value // if new impl is conditional
@@ -82,6 +82,29 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     then symd.flags &~ Private | Recheck.ResetPrivate
     else symd.flags
 
+  def isPreCC(sym: Symbol)(using Context): Boolean =
+    sym.isTerm && sym.maybeOwner.isClass
+    && !sym.is(Module)
+    && !sym.owner.is(CaptureChecked)
+    && !defn.isFunctionSymbol(sym.owner)
+
+  private def fluidify(using Context) = new TypeMap with IdempotentCaptRefMap:
+    def apply(t: Type): Type = t match
+      case t: MethodType =>
+        mapOver(t)
+      case t: TypeLambda =>
+        t.derivedLambdaType(resType = this(t.resType))
+      case CapturingType(_, _) =>
+        t
+      case _ =>
+        val t1  = t match
+          case t @ defn.RefinedFunctionOf(rinfo: MethodType) =>
+            t.derivedRefinedType(t.parent, t.refinedName, this(rinfo))
+          case _ =>
+            mapOver(t)
+        if variance > 0 then t1
+        else decorate(t1, rootTarget = NoSymbol, addedSet = Function.const(CaptureSet.Fluid))
+
   /**  - Reset `private` flags of parameter accessors so that we can refine them
    *     in Setup if they have non-empty capture sets.
    *   - Special handling of some symbols defined for case classes.
@@ -89,7 +112,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  is CC-enabled.
    */
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
-    def needsInfoTransform = newScheme || symd.isGetter
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
       val needsInfoTransform = sym.isDefinedInCurrentRun && !toBeUpdated.contains(sym)
@@ -98,6 +120,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       // create local roots if necessary
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd)
+      else if isPreCC(sym) then
+        symd.copySymDenotation(info = fluidify(sym.info))
       else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
         val newFlags = newFlagsFor(symd)
         val newInfo =
