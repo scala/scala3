@@ -771,7 +771,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val locked = ctx.typerState.ownedVars
-      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
       if reducedProjection.isType then

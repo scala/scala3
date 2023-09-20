@@ -401,3 +401,13 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |
          |""".stripMargin
     )
+
+  @Test def `implicit-extension` =
+    check(
+      """|class MyIntOut(val value: Int)
+         |object MyIntOut:
+         |  extension (i: MyIntOut) def <<uneven>> = i.value % 2 == 1
+         |
+         |val a = MyIntOut(1).un@@even
+         |""".stripMargin,
+    )

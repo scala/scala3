@@ -976,7 +976,7 @@ trait Applications extends Compatibility {
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
               else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
-                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _, _) => resTp
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
             val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)

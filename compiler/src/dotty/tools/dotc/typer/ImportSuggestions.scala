@@ -237,7 +237,7 @@ trait ImportSuggestions:
           // don't suggest things that are imported by default
 
       def extensionImports = pt match
-        case ViewProto(argType, SelectionProto(name: TermName, _, _, _)) =>
+        case ViewProto(argType, SelectionProto(name: TermName, _, _, _, _)) =>
           roots.flatMap(extensionMethod(_, name, argType))
         case _ =>
           Nil
