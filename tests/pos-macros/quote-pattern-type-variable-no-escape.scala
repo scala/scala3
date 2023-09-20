@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 
 def foo[T: Type](expr: Expr[Any])(using Quotes): Any =

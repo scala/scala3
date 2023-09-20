@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.collection.mutable.AbstractSet
 import scala.collection.mutable.BitSet
 import scala.language.experimental.clauseInterleaving

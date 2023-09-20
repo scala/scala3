@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 erased   enum Foo6 {} // error: only access modifiers allowed
 

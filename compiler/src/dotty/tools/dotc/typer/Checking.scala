@@ -805,7 +805,7 @@ object Checking {
         case Some(nme.experimental)
         if !ctx.owner.isInExperimentalScope && !selectors.forall(isAllowedImport) =>
           def check(stable: => String) =
-            Feature.checkExperimentalFeature("features", imp.srcPos,
+            Feature.checkExperimentalFeature("Experimental features", imp.srcPos,
               s"\n\nNote: the scope enclosing the import is not considered experimental because it contains the\nnon-experimental $stable")
           if ctx.owner.is(Package) then
             // allow top-level experimental imports if all definitions are @experimental
@@ -813,7 +813,7 @@ object Checking {
               case EmptyTree =>
               case tree: MemberDef => check(i"${tree.symbol}")
               case tree => check(i"expression ${tree}")
-          else Feature.checkExperimentalFeature("features", imp.srcPos)
+          else Feature.checkExperimentalFeature("Experimental features", imp.srcPos)
         case _ =>
   end checkExperimentalImports
 }

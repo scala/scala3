@@ -1,3 +1,5 @@
+//> using options -experimental
+
 package adts
 object t1:
 

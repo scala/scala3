@@ -1,3 +1,5 @@
+//> using options -experimental
+
 object Test extends App {
   import scala.language.experimental.clauseInterleaving
   trait Key { type Value }

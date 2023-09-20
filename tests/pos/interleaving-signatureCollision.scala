@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.language.experimental.clauseInterleaving
 import scala.annotation.targetName
 

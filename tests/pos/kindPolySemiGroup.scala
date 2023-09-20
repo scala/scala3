@@ -1,3 +1,5 @@
+//> using options -experimental
+
 // Adapted from github:mandubian/kind-polymorphic-semigroup.scala
 import language.experimental.namedTypeArguments
 sealed trait HList

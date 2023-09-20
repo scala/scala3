@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 import scala.quoted.*
 
 def foo(using Quotes): Unit =

@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 class Foo(erased x: Int) extends AnyVal // error
 

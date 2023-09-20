@@ -191,7 +191,7 @@ class BootstrappedOnlyCompilationTests {
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
         Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)
-        val flags = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+        val flags = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath).and("-experimental")
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)
       }
 

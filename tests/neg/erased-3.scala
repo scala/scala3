@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 object Test {
   def foo0(a: Int): Int = a

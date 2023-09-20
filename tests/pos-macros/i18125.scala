@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 
 final class Foo[T](ns: T)

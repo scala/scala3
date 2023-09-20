@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.saferExceptions
 
 trait Decoder[+T]:

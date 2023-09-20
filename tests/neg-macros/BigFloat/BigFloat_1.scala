@@ -1,3 +1,5 @@
+//> using options -experimental
+
 package test
 import language.experimental.genericNumberLiterals
 import scala.util.FromDigits

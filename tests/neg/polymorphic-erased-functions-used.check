@@ -1,8 +1,8 @@
--- Error: tests/neg/polymorphic-erased-functions-used.scala:3:33 -------------------------------------------------------
-3 |def t1 = [T] => (erased t: T) => t // error
+-- Error: tests/neg/polymorphic-erased-functions-used.scala:5:33 -------------------------------------------------------
+5 |def t1 = [T] => (erased t: T) => t // error
   |                                 ^
   |                                 parameter t is declared as `erased`, but is in fact used
--- Error: tests/neg/polymorphic-erased-functions-used.scala:4:42 -------------------------------------------------------
-4 |def t2 = [T, U] => (t: T, erased u: U) => u // error
+-- Error: tests/neg/polymorphic-erased-functions-used.scala:6:42 -------------------------------------------------------
+6 |def t2 = [T, U] => (t: T, erased u: U) => u // error
   |                                          ^
   |                                          parameter u is declared as `erased`, but is in fact used

@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.namedTypeArguments
 object i3666 {
   sealed trait Exp[T]

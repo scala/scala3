@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 import scala.quoted.*
 
 def empty[K <: AnyKind : Type](using Quotes): Type[?] =

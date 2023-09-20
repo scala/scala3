@@ -1,3 +1,5 @@
+//> using options -experimental
+
 trait Wrappable[T] { }
 given Wrappable[Float] with { }
 

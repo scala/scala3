@@ -1,4 +1,3 @@
-
 import language.experimental.erasedDefinitions
 trait A:
   erased def g = 1

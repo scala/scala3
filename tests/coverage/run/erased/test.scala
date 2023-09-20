@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.language.experimental.erasedDefinitions
 
 erased def parameterless: String = "y"

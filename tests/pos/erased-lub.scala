@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 // Verify that expressions below perform correct boxings in erasure.
 object Test {

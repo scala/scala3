@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.deriving.Mirror
 import scala.quoted.*
 

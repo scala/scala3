@@ -1,19 +1,19 @@
--- Warning: tests/neg-macros/quote-type-variable-no-inference-3.scala:5:22 ---------------------------------------------
-5 |    case '{ $_ : F[t, t]; () } => // warn // error
+-- Warning: tests/neg-macros/quote-type-variable-no-inference-3.scala:7:22 ---------------------------------------------
+7 |    case '{ $_ : F[t, t]; () } => // warn // error
   |                      ^
   |                      Ignored bound <: Comparable[U]
   |
   |                      Consider defining bounds explicitly:
   |                        '{ type t <: Comparable[U]; ... }
--- Warning: tests/neg-macros/quote-type-variable-no-inference-3.scala:6:49 ---------------------------------------------
-6 |    case '{ type u <: Comparable[`u`]; $_ : F[u, u] } =>
+-- Warning: tests/neg-macros/quote-type-variable-no-inference-3.scala:8:49 ---------------------------------------------
+8 |    case '{ type u <: Comparable[`u`]; $_ : F[u, u] } =>
   |                                                 ^
   |                                                 Ignored bound <: Comparable[Any]
   |
   |                                                 Consider defining bounds explicitly:
   |                                                   '{ type u <: Comparable[u] & Comparable[Any]; ... }
--- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-3.scala:5:20 --------------------------
-5 |    case '{ $_ : F[t, t]; () } => // warn // error
+-- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-3.scala:7:20 --------------------------
+7 |    case '{ $_ : F[t, t]; () } => // warn // error
   |                    ^
   |                    Type argument t does not conform to upper bound Comparable[t]
   |

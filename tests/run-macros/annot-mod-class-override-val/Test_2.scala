@@ -1,3 +1,5 @@
+//> using options -experimental
+
 class Foo:
   val val1: String = "?"
   def def1: String = "?"

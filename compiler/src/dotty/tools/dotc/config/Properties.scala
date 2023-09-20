@@ -84,14 +84,6 @@ trait PropertiesTrait {
    */
   val versionString: String = "version " + simpleVersionString
 
-  /** Whether the current version of compiler is experimental
-   *
-   *  1. Snapshot, nightly releases and non-bootstrapped compiler are experimental.
-   *  2. Features supported by experimental versions of the compiler:
-   *     - research plugins
-   */
-  val experimental: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY") || versionString.contains("nonbootstrapped")
-
   val copyrightString: String       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 
   /** This is the encoding to use reading in source files, overridden with -encoding

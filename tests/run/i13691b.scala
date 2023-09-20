@@ -1,3 +1,5 @@
+//> using options -experimental
+
 // https://github.com/lampepfl/dotty/issues/13691
 import language.experimental.saferExceptions
 

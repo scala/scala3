@@ -1,3 +1,5 @@
+//> using options -experimental
+
 @main
 def run =
   T.run[Int]

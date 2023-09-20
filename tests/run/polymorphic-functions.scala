@@ -1,3 +1,4 @@
+//> using options -experimental
 // scalajs: --skip --pending
 
 import language.experimental.namedTypeArguments

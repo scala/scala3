@@ -1,7 +1,9 @@
+//> using options -experimental
+
 import scala.language.experimental.clauseInterleaving
 
 object typeApply:
-    
+
     def f3[T <: Int](using DummyImplicit)[U <: String](): T => T = ???
     def f5[T <: Int](using DummyImplicit)[U <: String]: [X <: Unit] => X => X = ???
     def f7[T <: Int](using DummyImplicit)[U <: String]()[X <: Unit]: X => X = ???

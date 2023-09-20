@@ -1,3 +1,3 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 erased object Test // error

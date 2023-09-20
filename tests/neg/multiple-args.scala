@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 def foo(x: Int, erased y: Int): Int = x
 def bar(erased x: Int, y: Int): Int = y

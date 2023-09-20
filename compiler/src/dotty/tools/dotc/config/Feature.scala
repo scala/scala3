@@ -135,10 +135,9 @@ object Feature:
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
       report.error(
-        em"""Experimental $which may only be used under experimental mode:
+        em"""$which may only be used under experimental mode:
             |  1. In a definition marked as @experimental
-            |  2. Compiling with the -experimental compiler flag
-            |  3. With a nightly or snapshot version of the compiler$note
+            |  2. Compiling with the -experimental compiler flag$note
           """, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
@@ -153,18 +152,18 @@ object Feature:
       if !ccException(experimentalSym) then
         val symMsg =
           if experimentalSym.exists
-          then i"$experimentalSym is marked @experimental"
-          else i"$sym inherits @experimental"
-        report.error(em"$symMsg and therefore may only be used in an experimental scope.", srcPos)
+          then i"$experimentalSym is marked @experimental, it"
+          else i"$sym inherits @experimental, it"
+        checkExperimentalFeature(symMsg, srcPos)
 
-  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
+  /** Check that experimental compiler options are only set with `-experimental`. */
   def checkExperimentalSettings(using Context): Unit =
     for setting <- ctx.settings.language.value
         if setting.startsWith("experimental.") && setting != "experimental.macros"
-    do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
+    do checkExperimentalFeature(s"Experimental feature $setting", NoSourcePosition)
 
   def isExperimentalEnabled(using Context): Boolean =
-    (Properties.experimental || ctx.settings.experimental.value) && !ctx.settings.YnoExperimental.value
+    ctx.settings.experimental.value
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case

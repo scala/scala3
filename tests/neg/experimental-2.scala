@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 class Test7 {
   import scala.language.experimental
   import experimental.genericNumberLiterals // error: no aliases can be used to refer to a language import

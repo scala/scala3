@@ -1,4 +1,4 @@
-//> using options -language:experimental.erasedDefinitions
+//> using options -experimental -language:experimental.erasedDefinitions
 
 // See https://github.com/lampepfl/dotty/issues/4060#issuecomment-445808377
 

@@ -1,4 +1,4 @@
-//> using options -language:experimental.captureChecking -Xfatal-warnings
+//> using options -experimental -language:experimental.captureChecking -Xfatal-warnings
 
 class C
 type Cap = C^

@@ -1,3 +1,5 @@
+//> using options -experimental
+
 @print("foo")
 def foo(): Unit = ()
 

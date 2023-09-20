@@ -173,7 +173,7 @@ trait QuotesAndSplices {
     getQuotedPatternTypeVariable(tree.name.asTypeName) match
       case Some(typeSym) =>
         checkExperimentalFeature(
-          "support for multiple references to the same type (without backticks) in quoted type patterns (SIP-53)",
+          "Experimental support for multiple references to the same type (without backticks) in quoted type patterns (SIP-53)",
           tree.srcPos,
           "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
         warnOnInferredBounds(typeSym)
@@ -225,7 +225,7 @@ trait QuotesAndSplices {
 
     if quoted.isType && untpdTypeVariables.nonEmpty then
       checkExperimentalFeature(
-        "explicit type variable declarations quoted type patterns (SIP-53)",
+        "Experimental explicit type variable declarations quoted type patterns (SIP-53)",
         untpdTypeVariables.head.srcPos,
         "\n\nSIP-53: https://docs.scala-lang.org/sips/quote-pattern-type-variable-syntax.html")
 

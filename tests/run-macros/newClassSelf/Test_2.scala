@@ -1,3 +1,5 @@
+//> using options -experimental
+
 @main def Test: Unit = {
   val a: Bar = makeClass("A")
   a.bar()

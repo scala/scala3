@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.namedTypeArguments
 class C[X, Y] { def apply[Z](x: X, y: Y, z: Z) = (x, y, z) }
 

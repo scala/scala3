@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 
 def blah[A](using Quotes, Type[A]): Expr[Unit] =

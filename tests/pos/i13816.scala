@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.saferExceptions
 
 class Ex1 extends Exception("Ex1")

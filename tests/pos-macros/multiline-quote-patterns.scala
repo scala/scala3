@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 def types(t: Type[?])(using Quotes) = t match {
   case '[

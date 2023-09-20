@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted._
 
 case class T(t: Type[_])

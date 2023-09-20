@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 import scala.language.experimental.namedTypeArguments // error
 
 def namedTypeArgumentsFun[T, U]: Int =

@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.deriving._
 import scala.quoted._
 

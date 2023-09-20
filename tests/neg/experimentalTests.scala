@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 import scala.annotation.experimental
 
 @experimental def x = 2

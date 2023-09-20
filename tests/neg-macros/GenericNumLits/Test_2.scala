@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.genericNumberLiterals
 object Test extends App {
 

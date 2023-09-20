@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.language.experimental.erasedDefinitions
 
 erased class EC

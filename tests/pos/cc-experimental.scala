@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 package scala.runtime
 
 import language.experimental.captureChecking

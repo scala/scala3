@@ -1,5 +1,3 @@
-//> using options -Yno-experimental
-
 import annotation.experimental
 
 class Foo { @experimental type Bar = (Int, String) }

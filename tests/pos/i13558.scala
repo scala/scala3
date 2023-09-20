@@ -1,3 +1,5 @@
+//> using options -experimental
+
 package testcode
 import language.experimental.relaxedExtensionImports
 

@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.namedTypeArguments
 object GadtStlc {
   // creates type-level "strings" like M[M[M[W]]]

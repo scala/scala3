@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 import scala.quoted.staging.*
 import language.experimental.namedTypeArguments

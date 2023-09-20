@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.deriving.Mirror
 
 case class Foo[T](x: Int, y: Double, z: T)

@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import language.experimental.into
 
 type Input = List[String]

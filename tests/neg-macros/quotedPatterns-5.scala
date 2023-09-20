@@ -1,3 +1,5 @@
+//> using options -experimental
+
 import scala.quoted.*
 object Test {
   def test(x: quoted.Expr[Int])(using Quotes): Unit = x match {
