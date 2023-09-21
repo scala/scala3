@@ -186,6 +186,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
 
+  // Lazy version of isRootCapability; used to not force completers when printing
+  private def isRootCap(tp: CaptureRef): Boolean = tp match
+    case tp: TermRef => tp.symbol.isCompleted && tp.isRootCapability
+    case _ => tp.isRootCapability
+
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeType =>
@@ -193,7 +198,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef
       if !tp.denotationIsCurrent
           && !homogenizedView // always print underlying when testing picklers
-          && !tp.isRootCapability
+          && !isRootCap(tp)
           || tp.symbol.is(Module)
           || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
@@ -245,7 +250,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val rootsInRefs = refs.elems.filter(_.isRootCapability).toList
+        val rootsInRefs = refs.elems.filter(isRootCap(_)).toList
         val showAsCap = rootsInRefs match
           case (tp: TermRef) :: Nil =>
             if tp.symbol == defn.captureRoot then
