@@ -1442,3 +1442,14 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+
+  @Test def `no-square-brackets` =
+    checkEdit(
+      """|object O:
+         |  val a = List.appl@@
+         |""".stripMargin,
+      """|object O:
+         |  val a = List.apply($0)
+         |""".stripMargin,
+    )
+

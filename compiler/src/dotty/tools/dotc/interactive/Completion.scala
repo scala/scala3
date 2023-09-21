@@ -94,7 +94,7 @@ object Completion:
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  def completionPrefix(path: List[untpd.Tree],  pos: SourcePosition)(using Context): String =
+  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
     path match
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
