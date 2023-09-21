@@ -761,8 +761,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         // When testing whether `A <: B`, it could be that `B` uses a local capture root,
         // but a uses `cap`, i.e. is capture polymorphic. In this case, adaptation is allowed
         // to instantiate `A` to match the root in `B`.
-        val actual1 = mapRoots(defn.captureRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))(actual)
-        (actual1 ne actual) && {
+        val actualw = actual.widen
+        val actual1 = mapRoots(defn.captureRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))(actualw)
+        (actual1 ne actualw) && {
           val res = super.isCompatible(actual1, expected)
           if !res && ctx.settings.YccDebug.value then
             println(i"Failure under mapped roots:")

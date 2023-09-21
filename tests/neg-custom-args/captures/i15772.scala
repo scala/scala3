@@ -31,7 +31,7 @@ def main2(x: C^) : () -> Int =
 def main3(x: C^) =
   def c : C^ = new C(x)
   val boxed2 : Observe[C]^ = box2(c) // error
-  boxed2((cap: C^) => unsafe(c)) // error
+  boxed2((cap: C^) => unsafe(c))
   0
 
 trait File:
