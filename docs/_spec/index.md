@@ -11,6 +11,21 @@ Martin Odersky, Philippe Altherr, Vincent Cremet, Sébastien Doeraene, Gilles Du
 
 Markdown Conversion by Iain McGinniss.
 
+#### Disclaimer: Work in Progress
+
+This specification for Scala 3 is still a work in progress.
+Some features added in Scala 3 are missing.
+Here is a list of the most important missing aspects:
+
+* `extension` methods
+* `given` and `using` contextual abstractions
+* type-class derivation with `derives`
+* behavior of structural types based on `Selectable`
+* meta-programming with `inline def`s and quotes
+* match types (pending a [Scala Improvement Proposal](https://github.com/scala/improvement-proposals/pull/65) with a full specification)
+
+For those features, the best reference so far remains [the Scala 3 Reference](https://docs.scala-lang.org/scala3/reference/).
+
 #### Preface
 
 Scala is a Java-like programming language which unifies
