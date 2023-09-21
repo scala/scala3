@@ -154,12 +154,11 @@ object Completion:
 
     val completer = new Completer(mode, prefix, pos)
 
-    val completions = path0 match
-      case untpd.Select(qual, _) :: _ :: untpd.ExtMethods(_, _) :: _ =>
-        val tpdQual = ctx.typer.typedExpr(qual)
-        completer.selectionCompletions(tpdQual)
-      case _ => tpdPath match
+    val adjustedPath: List[Tree] = path0 match
+      case (sel: untpd.Select) :: _ :: untpd.ExtMethods(_, _) :: _ => List(ctx.typer.typedExpr(sel))
+      case _                                                       => tpdPath
 
+    val completions = adjustedPath match
         // Ignore synthetic select from `This` because in code it was `Ident`
         // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
         case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
