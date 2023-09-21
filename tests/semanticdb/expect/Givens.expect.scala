@@ -4,11 +4,11 @@ package b
 object Givens/*<-a::b::Givens.*/:
 
   extension [A/*<-a::b::Givens.sayHello().[A]*/](any/*<-a::b::Givens.sayHello().(any)*/: A/*->a::b::Givens.sayHello().[A]*/)
-    def sayHello/*<-a::b::Givens.sayHello().*/ = s"Hello, I am $any/*->a::b::Givens.sayHello().(any)*/"/*->scala::StringContext#s().*/
+    def sayHello/*<-a::b::Givens.sayHello().*/ = s/*->scala::StringContext#s().*/"Hello, I am $any/*->a::b::Givens.sayHello().(any)*/"
 
   extension [B/*<-a::b::Givens.sayGoodbye().[B]*//*<-a::b::Givens.saySoLong().[B]*/](any/*<-a::b::Givens.sayGoodbye().(any)*//*<-a::b::Givens.saySoLong().(any)*/: B/*->a::b::Givens.sayGoodbye().[B]*//*->a::b::Givens.saySoLong().[B]*/)
-    def sayGoodbye/*<-a::b::Givens.sayGoodbye().*/ = s"Goodbye, from $any/*->a::b::Givens.sayGoodbye().(any)*/"/*->scala::StringContext#s().*/
-    def saySoLong/*<-a::b::Givens.saySoLong().*/ = s"So Long, from $any/*->a::b::Givens.saySoLong().(any)*/"/*->scala::StringContext#s().*/
+    def sayGoodbye/*<-a::b::Givens.sayGoodbye().*/ = s/*->scala::StringContext#s().*/"Goodbye, from $any/*->a::b::Givens.sayGoodbye().(any)*/"
+    def saySoLong/*<-a::b::Givens.saySoLong().*/ = s/*->scala::StringContext#s().*/"So Long, from $any/*->a::b::Givens.saySoLong().(any)*/"
 
   val hello1/*<-a::b::Givens.hello1.*/ = 1.sayHello/*->a::b::Givens.sayHello().*/
   val goodbye1/*<-a::b::Givens.goodbye1.*/ = 1.sayGoodbye/*->a::b::Givens.sayGoodbye().*/
