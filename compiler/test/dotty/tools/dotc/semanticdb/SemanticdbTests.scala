@@ -71,7 +71,6 @@ class SemanticdbTests:
     def collectErrorOrUpdate(expectPath: Path, obtained: String) =
       if updateExpectFiles then
         Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
-        println("updated: " + expectPath)
       else
         val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
         val expectName = expectPath.getFileName
@@ -87,12 +86,8 @@ class SemanticdbTests:
         .resolve("semanticdb")
         .resolve(relpath)
         .resolveSibling(filename + ".semanticdb")
-      println(semanticdbPath)
       val expectPath = source.resolveSibling(filename.replace(".scala", ".expect.scala"))
       val doc = Tools.loadTextDocument(source, relpath, semanticdbPath)
-      println(semanticdbPath.getFileName().toString())
-      if (semanticdbPath.getFileName().toString() == "ValPattern.scala.semanticdb")
-      println(doc)
       Tools.metac(doc, rootSrc.relativize(source))(using metacSb)
       val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))
       collectErrorOrUpdate(expectPath, obtained)
