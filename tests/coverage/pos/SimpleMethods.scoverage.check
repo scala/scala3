@@ -195,6 +195,23 @@ C
 Class
 covtest.C
 partialCond
+273
+273
+18
+<none>
+Literal
+true
+0
+false
+
+
+11
+SimpleMethods.scala
+covtest
+C
+Class
+covtest.C
+partialCond
 229
 244
 17
@@ -205,7 +222,7 @@ false
 false
 def partialCond
 
-11
+12
 SimpleMethods.scala
 covtest
 C
@@ -222,7 +239,7 @@ false
 false
 def new1
 
-12
+13
 SimpleMethods.scala
 covtest
 C
@@ -239,24 +256,24 @@ true
 false
 ()
 
-13
+14
 SimpleMethods.scala
 covtest
 C
 Class
 covtest.C
 tryCatch
-349
-366
+367
+371
 25
 <none>
 Block
-false
+true
 0
 false
-case e: Exception
+=> 1
 
-14
+15
 SimpleMethods.scala
 covtest
 C

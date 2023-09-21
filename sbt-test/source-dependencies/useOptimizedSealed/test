@@ -1,0 +1,24 @@
+# Compile Sealed.scala and Test.scala
+> compile
+> recordPreviousIterations
+
+# Add an extra children to Sealed
+$ copy-file changes/Sealed1.scala Sealed.scala
+
+# Only Sealed.scala needs to be recompiled because Test.scala does not
+# match on a value of type `Sealed`.
+> compile
+> checkIterations 1
+
+> clean
+$ copy-file changes/Test1.scala Test.scala
+> compile
+> recordPreviousIterations
+
+# Add an extra children to Sealed again
+$ copy-file changes/Sealed2.scala Sealed.scala
+
+# Test.scala will be recompiled in a second round because it matches
+# on a value of type `Sealed`.
+> compile
+> checkIterations 2

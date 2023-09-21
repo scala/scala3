@@ -333,7 +333,7 @@ object Applications {
       // it's crucial that the type tree is not copied directly as argument to
       // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
       // when typing the default argument, which is too early.
-      spliceMeth(meth, fn).appliedToTypes(targs.tpes)
+      spliceMeth(meth, fn).appliedToTypeTrees(targs.map(targ => TypeTree(targ.tpe).withSpan(targ.span)))
     case _ => meth
   }
 
@@ -503,7 +503,21 @@ trait Applications extends Compatibility {
       def infoStr = if methType.isErroneous then "" else i": $methType"
       i"${err.refStr(methRef)}$infoStr"
 
-    /** Re-order arguments to correctly align named arguments */
+    /** Re-order arguments to correctly align named arguments
+     *  Issue errors in the following situations:
+     *
+     *    - "positional after named argument" if a positional argument follows a named
+     *      argument and one of the following is true:
+     *
+     *        - There is a formal argument before the argument position
+     *          that has not yet been instantiated with a previous actual argument,
+     *          (either named or positional), or
+     *        - The formal parameter at the argument position is also mentioned
+     *          in a subsequent named parameter.
+     *    - "parameter already instantiated" if a two named arguments have the same name.
+     *    - "does not have parameter" if a named parameter does not mention a formal
+     *      parameter name.
+     */
     def reorder[T <: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
 
       /** @param pnames    The list of parameter names that are missing arguments
@@ -517,18 +531,19 @@ trait Applications extends Compatibility {
        *  2. For every `(name -> arg)` in `nameToArg`, `arg` is an element of `args`
        */
       def handleNamed(pnames: List[Name], args: List[Trees.Tree[T]],
-                      nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name]): List[Trees.Tree[T]] = pnames match {
+                      nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
+                      missingArgs: Boolean): List[Trees.Tree[T]] = pnames match {
         case pname :: pnames1 if nameToArg contains pname =>
           // there is a named argument for this parameter; pick it
-          nameToArg(pname) :: handleNamed(pnames1, args, nameToArg - pname, toDrop + pname)
+          nameToArg(pname) :: handleNamed(pnames1, args, nameToArg - pname, toDrop + pname, missingArgs)
         case _ =>
           def pnamesRest = if (pnames.isEmpty) pnames else pnames.tail
           args match {
             case (arg @ NamedArg(aname, _)) :: args1 =>
               if (toDrop contains aname) // argument is already passed
-                handleNamed(pnames, args1, nameToArg, toDrop - aname)
+                handleNamed(pnames, args1, nameToArg, toDrop - aname, missingArgs)
               else if ((nameToArg contains aname) && pnames.nonEmpty) // argument is missing, pass an empty tree
-                genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop)
+                genericEmptyTree :: handleNamed(pnames.tail, args, nameToArg, toDrop, missingArgs = true)
               else { // name not (or no longer) available for named arg
                 def msg =
                   if (methodType.paramNames contains aname)
@@ -536,13 +551,15 @@ trait Applications extends Compatibility {
                   else
                     em"$methString does not have a parameter $aname"
                 fail(msg, arg.asInstanceOf[Arg])
-                arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop)
+                arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop, missingArgs)
               }
             case arg :: args1 =>
-              arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop) // unnamed argument; pick it
+              if toDrop.nonEmpty || missingArgs then
+                report.error(i"positional after named argument", arg.srcPos)
+              arg :: handleNamed(pnamesRest, args1, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
             case Nil => // no more args, continue to pick up any preceding named args
               if (pnames.isEmpty) Nil
-              else handleNamed(pnamesRest, args, nameToArg, toDrop)
+              else handleNamed(pnamesRest, args, nameToArg, toDrop, missingArgs)
           }
       }
 
@@ -550,7 +567,7 @@ trait Applications extends Compatibility {
         args match {
           case (arg: NamedArg @unchecked) :: _ =>
             val nameAssocs = for (case arg @ NamedArg(name, _) <- args) yield (name, arg)
-            handleNamed(pnames, args, nameAssocs.toMap, Set())
+            handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set(), missingArgs = false)
           case arg :: args1 =>
             arg :: handlePositional(if (pnames.isEmpty) Nil else pnames.tail, args1)
           case Nil => Nil
@@ -844,7 +861,7 @@ trait Applications extends Compatibility {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
-        if (!success) app0.withType(UnspecifiedErrorType)
+        if (!success || typedArgs.exists(_.tpe.isError)) app0.withType(UnspecifiedErrorType)
         else {
           if !sameSeq(args, orderedArgs)
              && !isJavaAnnotConstr(methRef.symbol)
@@ -959,7 +976,7 @@ trait Applications extends Compatibility {
             val resultType =
               if !originalResultType.isRef(defn.ObjectClass) then originalResultType
               else AvoidWildcardsMap()(proto.resultType.deepenProtoTrans) match
-                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _) => resTp
+                case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _, _) => resTp
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
             val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
@@ -2059,31 +2076,35 @@ trait Applications extends Compatibility {
           if isDetermined(alts2) then alts2
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
-      case defn.FunctionOf(args, resultType, _) =>
-        narrowByTypes(alts, args, resultType)
-
       case pt =>
-        val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
-        if (compat.isEmpty)
-          /*
-           * the case should not be moved to the enclosing match
-           * since SAM type must be considered only if there are no candidates
-           * For example, the second f should be chosen for the following code:
-           *   def f(x: String): Unit = ???
-           *   def f: java.io.OutputStream = ???
-           *   new java.io.ObjectOutputStream(f)
-           */
-          pt match {
-            case SAMType(mtp, _) =>
-              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
-            case _ =>
-              // pick any alternatives that are not methods since these might be convertible
-              // to the expected type, or be used as extension method arguments.
-              val convertible = alts.filterNot(alt =>
-                  normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
-              if convertible.length == 1 then convertible else compat
-          }
-        else compat
+        val compat0 = pt match
+          case defn.FunctionOf(args, resType, _) =>
+            narrowByTypes(alts, args, resType)
+          case _ =>
+            Nil
+        if (compat0.isEmpty) then
+          val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
+          if (compat.isEmpty)
+            /*
+            * the case should not be moved to the enclosing match
+            * since SAM type must be considered only if there are no candidates
+            * For example, the second f should be chosen for the following code:
+            *   def f(x: String): Unit = ???
+            *   def f: java.io.OutputStream = ???
+            *   new java.io.ObjectOutputStream(f)
+            */
+            pt match {
+              case SAMType(mtp, _) =>
+                narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+              case _ =>
+                // pick any alternatives that are not methods since these might be convertible
+                // to the expected type, or be used as extension method arguments.
+                val convertible = alts.filterNot(alt =>
+                    normalize(alt, IgnoredProto(pt)).widenSingleton.isInstanceOf[MethodType])
+                if convertible.length == 1 then convertible else compat
+            }
+          else compat
+        else compat0
     }
 
     /** The type of alternative `alt` after instantiating its first parameter

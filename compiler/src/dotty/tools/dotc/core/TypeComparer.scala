@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure, mapRoots, localRoot}
 import NameKinds.WildcardParamName
 
 /** Provides methods to compare types.
@@ -667,16 +667,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
-                // TODO should we handle ErasedFunction is this same way?
-                tp1.member(nme.apply).info match
-                  case info1: PolyType =>
-                    return isSubInfo(info1, tp2.refinedInfo)
-                  case _ =>
+                return isSubInfo(tp1.member(nme.apply).info, tp2.refinedInfo)
               else
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
                     return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)
                   case _ =>
+            else tp2.refinedInfo match
+              case rinfo2 @ CapturingType(_, refs: CaptureSet.RefiningVar) =>
+                tp1.widen match
+                  case RefinedType(parent1, tp2.refinedName, rinfo1) =>
+                    // When comparing against a Var in class instance refinement,
+                    // take the Var as the precise truth, don't also look in the parent.
+                    // The parent might have a capture root at the wrong level.
+                    // TODO: Generalize this to other refinement situations where the
+                    // lower type's refinement appears elsewhere?
+                    return isSubType(rinfo1, rinfo2) && recur(parent1, tp2.parent)
+                  case _ =>
+              case _ =>
+          end if
 
           val skipped2 = skipMatching(tp1w, tp2)
           if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
@@ -944,16 +953,27 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // However, `null` can always be a value of `T` for Java side.
             // So the best solution here is to let `Null` be a subtype of non-primitive
             // value types temporarily.
-            def isNullable(tp: Type): Boolean = tp.widenDealias match
+            def isNullable(tp: Type): Boolean = tp.dealias match
               case tp: TypeRef =>
                 val tpSym = tp.symbol
                 ctx.mode.is(Mode.RelaxedOverriding) && !tpSym.isPrimitiveValueClass ||
                 tpSym.isNullableClass
+              case tp: TermRef =>
+                // https://scala-lang.org/files/archive/spec/2.13/03-types.html#singleton-types
+                // A singleton type is of the form p.type. Where p is a path pointing to a value which conforms to
+                // scala.AnyRef [Scala 3: which scala.Null conforms to], the type denotes the set of values consisting
+                // of null and the value denoted by p (i.e., the value v for which v eq p). [Otherwise,] the type
+                // denotes the set consisting of only the value denoted by p.
+                !ctx.explicitNulls && isNullable(tp.underlying) && tp.isStable
+              case tp: ThisType =>
+                // Same as above; this.type is also a singleton type in spec language
+                !ctx.explicitNulls && isNullable(tp.underlying)
               case tp: RefinedOrRecType => isNullable(tp.parent)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
               case AnnotatedType(tp1, _) => isNullable(tp1)
+              case ConstantType(c) => c.tag == Constants.NullTag
               case _ => false
             val sym1 = tp1.symbol
             (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
@@ -2065,7 +2085,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       def qualifies(m: SingleDenotation): Boolean =
         val info2 = tp2.refinedInfo
         val isExpr2 = info2.isInstanceOf[ExprType]
-        val info1 = m.info match
+        var info1 = m.info match
           case info1: ValueType if isExpr2 || m.symbol.is(Mutable) =>
             // OK: { val x: T } <: { def x: T }
             // OK: { var x: T } <: { def x: T }
@@ -2075,9 +2095,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // OK{ { def x(): T } <: { def x: T} // if x is Java defined
             ExprType(info1.resType)
           case info1 => info1
+
+        if ctx.phase == Phases.checkCapturesPhase then
+          // When comparing against a RefiningVar refinement, map the
+          // localRoot of the corresponding class in `tp1` to the owner of the
+          // refining capture set.
+          tp2.refinedInfo match
+            case rinfo2 @ CapturingType(_, refs: CaptureSet.RefiningVar) =>
+              info1 = mapRoots(refs.getter.owner.localRoot.termRef, refs.owner.localRoot.termRef)(info1)
+            case _ =>
+
         isSubInfo(info1, info2, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
+      end qualifies
 
       tp1.member(name).hasAltWithInline(qualifies)
     }
@@ -2818,6 +2849,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(tp1, defn.AnyType)
       case _ if !ctx.erasedTypes && tp1.isFromJavaObject =>
         provablyDisjoint(defn.AnyType, tp2)
+      case (tp1: TypeRef, _) if tp1.symbol == defn.AnyKindClass =>
+        false
+      case (_, tp2: TypeRef) if tp2.symbol == defn.AnyKindClass =>
+        false
       case (tp1: TypeRef, _) if tp1.symbol == defn.SingletonClass =>
         false
       case (_, tp2: TypeRef) if tp2.symbol == defn.SingletonClass =>
@@ -3122,6 +3157,9 @@ object TypeComparer {
 
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     comparing(_.tracked(op))
+
+  def subCaptures(refs1: CaptureSet, refs2: CaptureSet, frozen: Boolean)(using Context): CaptureSet.CompareResult =
+    comparing(_.subCaptures(refs1, refs2, frozen))
 }
 
 object TrackingTypeComparer:

@@ -471,3 +471,16 @@ class PcRenameSuite extends BasePcRenameSuite:
          |} yield <<a@@bc>>
          |""".stripMargin
     )
+
+  @Test def `map-method` =
+    check(
+      """|case class Bar(x: List[Int]) {
+         |  def <<ma@@p>>(f: Int => Int): Bar = Bar(x.map(f))
+         |}
+         |
+         |val f = 
+         |  for {
+         |    b <- Bar(List(1,2,3))
+         |  } yield b
+         |""".stripMargin,
+    )

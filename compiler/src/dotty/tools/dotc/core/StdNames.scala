@@ -34,7 +34,6 @@ object StdNames {
     inline val MODULE_INSTANCE_FIELD      = "MODULE$"
 
     inline val Function                   = "Function"
-    inline val ErasedFunction             = "ErasedFunction"
     inline val ContextFunction            = "ContextFunction"
     inline val ErasedContextFunction      = "ErasedContextFunction"
     inline val AbstractFunction           = "AbstractFunction"
@@ -214,7 +213,6 @@ object StdNames {
     final val Throwable: N           = "Throwable"
     final val IOOBException: N       = "IndexOutOfBoundsException"
     final val FunctionXXL: N         = "FunctionXXL"
-    final val ErasedFunction: N      = "ErasedFunction"
 
     final val Abs: N                  = "Abs"
     final val And: N                  = "&&"
@@ -289,6 +287,7 @@ object StdNames {
 
     // Compiler-internal
     val CAPTURE_ROOT: N             = "cap"
+    val LOCAL_CAPTURE_ROOT: N       = "<local-cap>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val EVT2U: N                    = "evt2u$"
@@ -300,6 +299,7 @@ object StdNames {
     val SELF: N                     = "$this"
     val SKOLEM: N                   = "<skolem>"
     val TRAIT_CONSTRUCTOR: N        = "$init$"
+    val TRY_BLOCK: N                = "<try block>"
     val THROWS: N                   = "$throws"
     val U2EVT: N                    = "u2evt$"
     val ALLARGS: N                  = "$allArgs"
@@ -434,6 +434,7 @@ object StdNames {
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
     val canEqualAny : N         = "canEqualAny"
+    val capIn: N                = "capIn"
     val caps: N                 = "caps"
     val captureChecking: N      = "captureChecking"
     val checkInitialized: N     = "checkInitialized"

@@ -517,12 +517,7 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      val illegal = sym.flags & ClassOnlyFlags
-      if sym.is(TypeParam) && illegal == Sealed && Feature.ccEnabled && cc.allowUniversalInBoxed then
-        if !sym.owner.is(Method) then
-          fail(em"only method type parameters can be sealed")
-      else
-        fail(em"only classes can be ${illegal.flagsString}")
+      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -967,6 +962,11 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
+
+  /** Check that the definition name isn't root. */
+  def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =
+    if name == nme.ROOTPKG then
+      report.error(em"Illegal use of root package name.", ctx.source.atSpan(nameSpan))
 
   /** Check that module `sym` does not clash with a class of the same name
    *  that is concurrently compiled in another source file.

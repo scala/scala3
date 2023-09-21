@@ -366,6 +366,11 @@ object Phases {
 
     def initContext(ctx: FreshContext): Unit = ()
 
+    /** A hook that allows to transform the usual context passed to the function
+     *  that prints a compilation unit after a phase
+     */
+    def printingContext(ctx: Context): Context = ctx
+
     private var myPeriod: Period = Periods.InvalidPeriod
     private var myBase: ContextBase = _
     private var myErasedTypes = false

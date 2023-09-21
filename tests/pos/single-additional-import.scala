@@ -1,2 +1,2 @@
-// scalac: -Yimports:scala.annotation
+//> using options -Yimports:scala.annotation
 class annotation extends Annotation

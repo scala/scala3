@@ -250,7 +250,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(using Context): Tree = tree match {
-        case Inlined(call, _, expansion) =>
+        case tree @ Inlined(call, _, expansion) =>
           val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
           cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
@@ -492,17 +492,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
-        case _: Quote =>
+        case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
-          super.transform(tree)
-        case _: QuotePattern =>
-          if !ctx.reporter.errorsReported then
-            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
-          ctx.compilationUnit.needsStaging = true
-          super.transform(tree)
-        case tree: SplicePattern =>
-          if !ctx.reporter.errorsReported then
-            Checking.checkAppliedTypesIn(TypeTree(tree.tpe).withSpan(tree.span))
           super.transform(tree)
         case tree =>
           super.transform(tree)

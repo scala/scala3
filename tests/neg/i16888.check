@@ -1,0 +1,14 @@
+-- [E172] Type Error: tests/neg/i16888.scala:3:38 ----------------------------------------------------------------------
+3 |def test = summon[scala.quoted.Quotes] // error
+  |                                      ^
+  |         No given instance of type scala.quoted.Quotes was found for parameter x of method summon in object Predef
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | Maybe this method is missing a `(using Quotes)` parameter.
+  |
+  | Maybe that splice `$ { ... }` is missing?
+  | Given instances of `Quotes` are generated from an enclosing splice `$ { ... }` (or `scala.staging.run` call).
+  | A splice can be thought as a method with the following signature.
+  |   def $[T](body: Quotes ?=> Expr[T]): T
+   ---------------------------------------------------------------------------------------------------------------------

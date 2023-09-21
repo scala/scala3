@@ -149,7 +149,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case Floating
   }
 
-  /** {x1, ..., xN} T   (only relevant under captureChecking) */
+  /** {x1, ..., xN} T   (only relevant under captureChecking)
+   *  Created when parsing function types so that capture set and result type
+   *  is combined in a single node.
+   */
   case class CapturesAndResult(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
 
   /** A type tree appearing somewhere in the untyped DefDef of a lambda, it will be typed using `tpFun`.
@@ -511,6 +514,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
+
+  def captureRootIn(using Context): Select =
+    Select(scalaDot(nme.caps), nme.capIn)
 
   def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
     Annotated(parent, New(scalaAnnotationDot(annotName), List(refs)))

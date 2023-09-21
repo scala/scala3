@@ -1,18 +1,12 @@
 -- Warning: tests/neg-macros/quote-type-variable-no-inference.scala:5:17 -----------------------------------------------
-5 |    case '[ F[t, t] ] => // warn // error // error
+5 |    case '[ F[t, t] ] => // warn // error
   |                 ^
   |                 Ignored bound <: Double
   |
   |                 Consider defining bounds explicitly:
   |                   '[ type t <: Int & Double; ... ]
--- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference.scala:5:9 -----------------------------
-5 |    case '[ F[t, t] ] => // warn // error // error
-  |         ^
-  |Type argument t does not conform to upper bound Double in subpart F[t, t] of inferred type scala.quoted.Type[F[t, t]]
-  |
-  | longer explanation available when compiling with `-explain`
 -- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference.scala:5:15 ----------------------------
-5 |    case '[ F[t, t] ] => // warn // error // error
+5 |    case '[ F[t, t] ] => // warn // error
   |               ^
   |               Type argument t does not conform to upper bound Double
   |

@@ -1243,6 +1243,8 @@ class TreeUnpickler(reader: TastyReader,
           ByNameTypeTree(if withPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
         case NAMEDARG =>
           NamedArg(readName(), readTree())
+        case EXPLICITtpt =>
+          readTpt()
         case _ =>
           readPathTree()
       }
@@ -1461,17 +1463,29 @@ class TreeUnpickler(reader: TastyReader,
               val fst = readTpt()
               val (bound, scrut) =
                 if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readTpt())
-              MatchTypeTree(bound, scrut, readCases(end))
+              val tpt = MatchTypeTree(bound, scrut, readCases(end))
+              // If a match type definition can reduce (e.g. Id in i18261.min)
+              // then it's important to trigger that reduction
+              // before a TypeVar is added to the constraint,
+              // associated to the match type's type parameter.
+              // Otherwise, if the reduction is triggered with that constraint,
+              // the reduction will be simplified,
+              // at which point the TypeVar will replace the type parameter
+              // and then that TypeVar will be cached
+              // as the reduction of the match type definition!
+              //
+              // We also override the type, as that's what Typer does.
+              // The difference here is that a match type that reduces to a non-match type
+              // makes the TypeRef for that definition will have a TypeAlias info instead of a MatchAlias.
+              tpt.overwriteType(tpt.tpe.normalized)
+              tpt
             case TYPEBOUNDStpt =>
               val lo = readTpt()
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
               createNullableTypeBoundsTree(lo, hi, alias)
             case HOLE =>
-              val idx = readNat()
-              val tpe = readType()
-              val args = until(end)(readTree())
-              Hole(true, idx, args, EmptyTree, tpe)
+              readHole(end, isTerm = true)
             case _ =>
               readPathTree()
           }
@@ -1502,10 +1516,7 @@ class TreeUnpickler(reader: TastyReader,
         case HOLE =>
           readByte()
           val end = readEnd()
-          val idx = readNat()
-          val tpe = readType()
-          val args = until(end)(readTree())
-          Hole(false, idx, args, EmptyTree, tpe)
+          readHole(end, isTerm = false)
         case _ =>
           if (isTypeTreeTag(nextByte)) readTree()
           else {
@@ -1537,6 +1548,12 @@ class TreeUnpickler(reader: TastyReader,
       val guard = ifBefore(end)(readTree(), EmptyTree)
       setSpan(start, CaseDef(pat, guard, rhs))
     }
+
+    def readHole(end: Addr, isTerm: Boolean)(using Context): Tree =
+      val idx = readNat()
+      val tpe = readType()
+      val args = until(end)(readTree())
+      Hole(isTerm, idx, args, EmptyTree, tpe)
 
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
       readLaterWithOwner(end, op)(ctx.owner)

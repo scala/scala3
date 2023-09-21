@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed trait Coverage
 sealed abstract case class Range(min: Double, max: Double) extends Coverage
 case object Empty extends Coverage

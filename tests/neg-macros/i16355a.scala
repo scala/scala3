@@ -1,4 +1,3 @@
-//> using scala "3.2.1"
 import scala.quoted.Expr
 import scala.quoted.Type
 import scala.quoted.quotes

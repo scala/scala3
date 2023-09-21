@@ -81,6 +81,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
         }
       }
     else
+      val writeSemanticdbText = ctx.settings.semanticdbText.value
       units.foreach { unit =>
         val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
         val outputDir =
@@ -97,7 +98,8 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
           extractor.symbolInfos.toList,
           extractor.synthetics.toList,
           outputDir,
-          sourceRoot
+          sourceRoot,
+          writeSemanticdbText
         )
       }
     units
@@ -138,14 +140,15 @@ object ExtractSemanticDB:
     symbolInfos: List[SymbolInformation],
     synthetics: List[Synthetic],
     outpath: Path,
-    sourceRoot: String
+    sourceRoot: String,
+    semanticdbText: Boolean
   ): Unit =
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = Tools.mkURIstring(Paths.get(relPath(source, sourceRoot))),
-      text = "",
+      text = if semanticdbText then String(source.content) else "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
       occurrences = occurrences,

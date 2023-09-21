@@ -73,11 +73,20 @@ class CompilationUnit protected (val source: SourceFile) {
   /** List of all comments present in this compilation unit */
   var comments: List[Comment] = Nil
 
+  /** This is used to record dependencies to invalidate during incremental
+   *  compilation, but only if `ctx.runZincPhases` is true.
+   */
+  val depRecorder: sbt.DependencyRecorder = sbt.DependencyRecorder()
+
   /** Suspends the compilation unit by thowing a SuspendException
    *  and recording the suspended compilation unit
    */
   def suspend()(using Context): Nothing =
     assert(isSuspendable)
+    // Clear references to symbols that may become stale. No need to call
+    // `depRecorder.sendToZinc()` since all compilation phases will be rerun
+    // when this unit is unsuspended.
+    depRecorder.clear()
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
         report.echo(i"suspended: $this")

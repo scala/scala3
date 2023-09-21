@@ -7,9 +7,10 @@ import Texts._, ast.Trees._
 import Types.{Type, SingletonType, LambdaParam, NamedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
-import typer.Implicits.SearchResult
+import typer.Implicits.*
 import util.SourcePosition
 import typer.ImportInfo
+import cc.CaptureSet
 
 import scala.annotation.internal.sharable
 
@@ -106,6 +107,9 @@ abstract class Printer {
   /** Textual representation of a reference in a capture set */
   def toTextCaptureRef(tp: Type): Text
 
+  /** Textual representation of a reference in a capture set */
+  def toTextCaptureSet(cs: CaptureSet): Text
+
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text
 
@@ -152,6 +156,9 @@ abstract class Printer {
 
   /** Textual representation of source position */
   def toText(pos: SourcePosition): Text
+
+  /** Textual representation of implicit candidates. */
+  def toText(cand: Candidate): Text
 
   /** Textual representation of implicit search result */
   def toText(result: SearchResult): Text

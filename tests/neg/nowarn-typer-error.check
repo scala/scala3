@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg/nowarn-typer-error.scala:6:11 -----------------------------------------------------
+6 |  def t1 = / // error
+  |           ^
+  |           Not found: /
+  |
+  | longer explanation available when compiling with `-explain`

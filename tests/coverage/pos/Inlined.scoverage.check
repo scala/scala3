@@ -59,6 +59,23 @@ Inlined$package$
 Object
 covtest.Inlined$package$
 testInlined
+330
+330
+10
+<none>
+Literal
+true
+0
+false
+
+
+3
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
 155
 162
 6
@@ -69,7 +86,7 @@ false
 false
 List(l)
 
-3
+4
 Inlined.scala
 covtest
 Inlined$package$
@@ -86,7 +103,7 @@ false
 false
 List
 
-4
+5
 Inlined.scala
 covtest
 Inlined$package$
@@ -103,7 +120,7 @@ false
 false
 List(l).length
 
-5
+6
 Inlined.scala
 covtest
 Inlined$package$
@@ -120,7 +137,7 @@ false
 false
 scala.runtime.Scala3RunTime.assertFailed()
 
-6
+7
 Inlined.scala
 covtest
 Inlined$package$
@@ -137,7 +154,24 @@ true
 false
 scala.runtime.Scala3RunTime.assertFailed()
 
-7
+8
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+330
+330
+10
+<none>
+Literal
+true
+0
+false
+
+
+9
 Inlined.scala
 covtest
 Inlined$package$
@@ -154,7 +188,7 @@ false
 false
 List(l)
 
-8
+10
 Inlined.scala
 covtest
 Inlined$package$
@@ -171,7 +205,7 @@ false
 false
 List
 
-9
+11
 Inlined.scala
 covtest
 Inlined$package$
@@ -188,7 +222,7 @@ false
 false
 List(l).length
 
-10
+12
 Inlined.scala
 covtest
 Inlined$package$
@@ -205,7 +239,7 @@ false
 false
 scala.runtime.Scala3RunTime.assertFailed()
 
-11
+13
 Inlined.scala
 covtest
 Inlined$package$
@@ -222,7 +256,24 @@ true
 false
 scala.runtime.Scala3RunTime.assertFailed()
 
-12
+14
+Inlined.scala
+covtest
+Inlined$package$
+Object
+covtest.Inlined$package$
+testInlined
+330
+330
+10
+<none>
+Literal
+true
+0
+false
+
+
+15
 Inlined.scala
 covtest
 Inlined$package$

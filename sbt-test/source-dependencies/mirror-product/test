@@ -1,0 +1,7 @@
+> compile
+
+# change the case class constructor
+$ copy-file changes/MyProduct.scala MyProduct.scala
+
+# Both MyProduct.scala and Test.scala should be recompiled, otherwise the assertion will fail
+> run

@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 // like the original, but with a case body `a`
 // which caused type avoidance to infinitely recurse
 sealed trait Parent

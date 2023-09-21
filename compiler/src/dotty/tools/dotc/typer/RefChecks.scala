@@ -11,7 +11,7 @@ import util.Spans._
 import scala.collection.mutable
 import ast._
 import MegaPhase._
-import config.Printers.{checks, noPrinter}
+import config.Printers.{checks, noPrinter, capt}
 import Decorators._
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting._
@@ -20,6 +20,7 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
+import cc.{mapRoots, localRoot}
 
 object RefChecks {
   import tpd._
@@ -103,7 +104,10 @@ object RefChecks {
       val cinfo = cls.classInfo
 
       def checkSelfConforms(other: ClassSymbol) =
-        val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
+        var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
+        if ctx.phase == Phases.checkCapturesPhase then
+          otherSelf = mapRoots(other.localRoot.termRef, cls.localRoot.termRef)(otherSelf)
+            .showing(i"map self $otherSelf = $result", capt)
         if otherSelf.exists then
           if !(cinfo.selfType <:< otherSelf) then
             report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
@@ -982,7 +986,9 @@ object RefChecks {
     then
       val cls = sym.owner.asClass
       for bc <- cls.baseClasses.tail do
-        val other = sym.matchingDecl(bc, cls.thisType)
+        var other = sym.matchingDecl(bc, cls.thisType)
+        if !other.exists && sym.targetName != sym.name then
+          other = sym.matchingDecl(bc, cls.thisType, sym.targetName)
         if other.exists then
           report.error(em"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides

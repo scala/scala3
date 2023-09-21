@@ -197,7 +197,7 @@ class Splicing extends MacroTransform:
           if tree.isTerm then
             if isCaptured(tree.symbol) then
               val tpe = tree.tpe.widenTermRefExpr match {
-                case tpw: MethodicType => tpw.toFunctionType(isJava = false)
+                case tpw: MethodicType => tpw.toFunctionType()
                 case tpw => tpw
               }
               spliced(tpe)(capturedTerm(tree))
@@ -209,7 +209,7 @@ class Splicing extends MacroTransform:
                 // Dealias references to captured types
                 TypeTree(tree.tpe.dealias)
             else super.transform(tree)
-        case tree: TypeTree =>
+        case _: TypeTree | _: SingletonTypeTree =>
           if containsCapturedType(tree.tpe) && level >= 1 then getTagRefFor(tree)
           else tree
         case tree @ Assign(lhs: RefTree, rhs) =>
@@ -291,7 +291,7 @@ class Splicing extends MacroTransform:
 
     private def capturedTerm(tree: Tree)(using Context): Tree =
       val tpe = tree.tpe.widenTermRefExpr match
-        case tpw: MethodicType => tpw.toFunctionType(isJava = false)
+        case tpw: MethodicType => tpw.toFunctionType()
         case tpw => tpw
       capturedTerm(tree, tpe)
 
@@ -314,10 +314,7 @@ class Splicing extends MacroTransform:
       )
 
     private def capturedType(tree: Tree)(using Context): Symbol =
-      val tpe = tree.tpe.widenTermRefExpr
-      val bindingSym = refBindingMap
-        .getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tpe)))._2
-      bindingSym
+      refBindingMap.getOrElseUpdate(tree.symbol, (TypeTree(tree.tpe), newQuotedTypeClassBinding(tree.tpe)))._2
 
     private def capturedPartTypes(quote: Quote)(using Context): Tree =
       val (tags, body1) = inContextWithQuoteTypeTags {

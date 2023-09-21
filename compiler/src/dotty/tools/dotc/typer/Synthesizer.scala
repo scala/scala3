@@ -19,6 +19,9 @@ import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd._
 import Synthesizer._
+import sbt.ExtractDependencies.*
+import sbt.ClassDependency
+import xsbti.api.DependencyContext._
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -105,8 +108,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           expected =:= defn.FunctionOf(actualArgs, actualRet,
             defn.isContextFunctionType(baseFun))
         val arity: Int =
-          if fun.derivesFrom(defn.ErasedFunctionClass) then -1 // TODO support?
-          else if defn.isFunctionNType(fun) then
+          if defn.isFunctionNType(fun) then
             // TupledFunction[(...) => R, ?]
             fun.functionArgInfos match
               case funArgs :+ funRet
@@ -429,7 +431,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if cls.useCompanionAsProductMirror then companionPath(mirroredType, span)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size) // TODO: cls == defn.PairClass when > 22
         else anonymousMirror(monoType, MirrorImpl.OfProduct(pre), span)
-      withNoErrors(mirrorRef.cast(mirrorType))
+      withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
     end makeProductMirror
 
     MirrorSource.reduce(mirroredType) match
@@ -442,12 +444,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
             }
             val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
-            withNoErrors(mirrorRef.cast(mirrorType))
+            withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
           else
             val mirrorType = formal.constrained_& {
               mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, singleton.name)
             }
-            withNoErrors(singletonPath.cast(mirrorType))
+            withNoErrors(singletonPath.cast(mirrorType).withSpan(span))
         case MirrorSource.GenericTuple(tps) =>
           val maxArity = Definitions.MaxTupleArity
           val arity = tps.size
@@ -458,7 +460,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val reason = s"it reduces to a tuple with arity $arity, expected arity <= $maxArity"
             withErrors(i"${defn.PairClass} is not a generic product because $reason")
         case MirrorSource.ClassSymbol(pre, cls) =>
-          if cls.isGenericProduct then makeProductMirror(pre, cls, None)
+          if cls.isGenericProduct then
+            if ctx.runZincPhases then
+              // The mirror should be resynthesized if the constructor of the
+              // case class `cls` changes. See `sbt-test/source-dependencies/mirror-product`.
+              val rec = ctx.compilationUnit.depRecorder
+              rec.addClassDependency(cls, DependencyByMemberRef)
+              rec.addUsedName(cls.primaryConstructor)
+            makeProductMirror(pre, cls, None)
           else withErrors(i"$cls is not a generic product because ${cls.whyNotGenericProduct}")
       case Left(msg) =>
         withErrors(i"type `$mirroredType` is not a generic product because $msg")
@@ -478,6 +487,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val clsIsGenericSum = cls.isGenericSum(pre)
 
     if acceptableMsg.isEmpty && clsIsGenericSum then
+      if ctx.runZincPhases then
+        // The mirror should be resynthesized if any child of the sealed class
+        // `cls` changes. See `sbt-test/source-dependencies/mirror-sum`.
+        val rec = ctx.compilationUnit.depRecorder
+        rec.addClassDependency(cls, DependencyByMemberRef)
+        rec.addUsedName(cls, includeSealedChildren = true)
+
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def internalError(msg: => String)(using Context): Unit =

@@ -20,7 +20,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|assertion = : Boolean
-         |Main test
+         |message = : => Any
          |""".stripMargin,
       topLines = Option(2)
     )
@@ -587,6 +587,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |}
          |""".stripMargin,
       """|foo = : Int
+         |fooBar = : Int
          |""".stripMargin
     )
 
@@ -620,6 +621,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|foo = : Int
          |foo = a : Int
+         |fooBar = : Int
+         |fooBar = a : Int
          |""".stripMargin
     )
 
@@ -658,4 +661,275 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |fooBar = a : Int
          |""".stripMargin,
       topLines = Some(4)
+    )
+
+  @Test def `recursive` =
+    check(
+      """|
+         |object Main {
+         |   def foo(value: Int): Int = {
+         |     foo(valu@@)
+         |   }
+         |}
+         |""".stripMargin,
+      """|value = : Int
+         |value = value : Int
+         |value: Int
+         |""".stripMargin,
+      topLines = Some(4),
+    )
+
+  @Test def `overloaded-with-param` =
+    check(
+      """|def m(idd : String, abb: Int): Int = ???
+         |def m(inn : Int, uuu: Option[Int]): Int = ???
+         |def m(inn : Int, aaa: Int): Int = ???
+         |def k: Int = m(1, a@@)
+         |""".stripMargin,
+      """|aaa = : Int
+         |assert(assertion: Boolean): Unit
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `overloaded-with-named-param` =
+    check(
+      """|def m(idd : String, abb: Int): Int = ???
+         |def m(inn : Int, uuu: Option[Int]): Int = ???
+         |def m(inn : Int, aaa: Int): Int = ???
+         |def k: Int = m(inn = 1, a@@)
+         |""".stripMargin,
+      """|aaa = : Int
+         |assert(assertion: Boolean): Unit
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `overloaded-generic` =
+    check(
+      """|object M:
+         |  val g = 3
+         |  val l : List[Int] = List(1,2,3)
+         |  def m[T](inn : List[T], yy: Int, aaa: Int, abb: Option[Int]): Int = ???
+         |  def m[T](inn : List[T], yy: Int, aaa: Int, abb: Int): Int = ???
+         |  def k: Int = m(yy = 3, inn = l, a@@)
+         |""".stripMargin,
+      """|aaa = : Int
+         |aaa = g : Int
+         |abb = : Option[Int]
+         |abb = : Int
+         |abb = g : Int
+         |""".stripMargin,
+      topLines = Some(5),
+    )
+
+  @Test def `overloaded-methods` =
+    check(
+      """|class A():
+         |  def m(anInt : Int): Int = ???
+         |  def m(aString : String): String = ???
+         |
+         |object O:
+         |  def m(aaa: Int): Int = ???
+         |  val k = new A().m(a@@)
+         |""".stripMargin,
+      """|aString = : String
+         |anInt = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `overloaded-methods2` =
+    check(
+      """|class A():
+         |  def m(anInt : Int): Int = ???
+         |  def m(aString : String): String = ???
+         |  private def m(aBoolean: Boolean): Boolean = ???
+         |
+         |object O:
+         |  def m(aaa: Int): Int = ???
+         |  val myInstance = new A()
+         |  val k = myInstance.m(a@@)
+         |""".stripMargin,
+      """|aString = : String
+         |anInt = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `overloaded-select` =
+    check(
+      """|package a.b {
+         |  object A {
+         |    def m(anInt : Int): Int = ???
+         |    def m(aString : String): String = ???
+         |  }
+         |}
+         |object O {
+         |  def m(aaa: Int): Int = ???
+         |  val k = a.b.A.m(a@@)
+         |}
+         |""".stripMargin,
+      """|aString = : String
+         |anInt = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `overloaded-in-a-class` =
+    check(
+      """|trait Planet
+         |case class Venus() extends Planet
+         |class Main[T <: Planet](t : T) {
+         |  def m(inn: Planet, abb: Option[Int]): Int = ???
+         |  def m(inn: Planet, aaa: Int): Int = ???
+         |  def k = m(t, a@@)
+         |}
+         |""".stripMargin,
+      """|aaa = : Int
+         |abb = : Option[Int]
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `overloaded-function-param` =
+    check(
+      """|def m[T](i: Int)(inn: T => Int, abb: Option[Int]): Int = ???
+         |def m[T](i: Int)(inn: T => Int, aaa: Int): Int = ???
+         |def m[T](i: Int)(inn: T => String, acc: List[Int]): Int = ???
+         |def k = m(1)(inn = identity[Int], a@@)
+         |""".stripMargin,
+      """|aaa = : Int
+         |abb = : Option[Int]
+         |assert(assertion: Boolean): Unit
+         |""".stripMargin,
+      topLines = Some(3),
+    )
+
+  @Test def `overloaded-function-param2` =
+    check(
+      """|def m[T](i: Int)(inn: T => Int, abb: Option[Int]): Int = ???
+         |def m[T](i: Int)(inn: T => Int, aaa: Int): Int = ???
+         |def m[T](i: String)(inn: T => Int, acc: List[Int]): Int = ???
+         |def k = m(1)(inn = identity[Int], a@@)
+         |""".stripMargin,
+      """|aaa = : Int
+         |abb = : Option[Int]
+         |assert(assertion: Boolean): Unit
+         |""".stripMargin,
+      topLines = Some(3),
+    )
+
+  @Test def `overloaded-applied-type` =
+    check(
+      """|trait MyCollection[+T]
+         |case class IntCollection() extends MyCollection[Int]
+         |object Main {
+         |  def m[T](inn: MyCollection[T], abb: Option[Int]): Int = ???
+         |  def m[T](inn: MyCollection[T], aaa: Int): Int = ???
+         |  def m[T](inn: List[T], acc: Int): Int = ???
+         |  def k = m(IntCollection(), a@@)
+         |}
+         |""".stripMargin,
+      """|aaa = : Int
+         |abb = : Option[Int]
+         |assert(assertion: Boolean): Unit
+         |""".stripMargin,
+      topLines = Some(3),
+    )
+
+  @Test def `overloaded-bounds` =
+    check(
+      """|trait Planet
+         |case class Moon()
+         |object Main {
+         |  def m[M](inn: M, abb: Option[Int]): M = ???
+         |  def m[M](inn: M, acc: List[Int]): M = ???
+         |  def m[M <: Planet](inn: M, aaa: Int): M = ???
+         |  def k = m(Moon(), a@@)
+         |}
+         |""".stripMargin,
+      """|abb = : Option[Int]
+         |acc = : List[Int]
+         |assert(assertion: Boolean): Unit
+         |""".stripMargin,
+      topLines = Some(3),
+    )
+
+  @Test def `overloaded-or-type` =
+    check(
+      """|object Main:
+         |  val h : Int = 3
+         |  def m[T](inn: String | T, abb: Option[Int]): Int = ???
+         |  def m(inn: Int, aaa: Int): Int = ???
+         |  def k: Int = m(3, a@@)
+         |""".stripMargin,
+      """|aaa = : Int
+         |aaa = h : Int
+         |abb = : Option[Int]
+         |""".stripMargin,
+      topLines = Some(3),
+    )
+
+  @Test def `overloaded-function-param3` =
+    check(
+      """|def m[T](inn: Int => T, abb: Option[Int]): Int = ???
+         |def m[T](inn: String => T, aaa: Int): Int = ???
+         |def k = m(identity[Int], a@@)
+         |""".stripMargin,
+      """|abb = : Option[Int]
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+
+  @Test def `lambda` =
+    check(
+      """|val hello: (x: Int) => Unit = x => println(x)
+         |val k = hello(@@)
+         |""".stripMargin,
+      """|x = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda2` =
+    check(
+      """|object O:
+         |  val hello: (x: Int, y: Int) => Unit = (x, _) => println(x)
+         |val k = O.hello(x = 1, @@)
+         |""".stripMargin,
+      """|y = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda3` =
+    check(
+      """|val hello: (x: Int) => (j: Int) => Unit = x => j => println(x)
+         |val k = hello(@@)
+         |""".stripMargin,
+      """|x = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda4` =
+    check(
+      """|val hello: (x: Int) => (j: Int) => (str: String) => Unit = x => j => str => println(str)
+         |val k = hello(x = 1)(2)(@@)
+         |""".stripMargin,
+      """|str = : String
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda5` =
+    check(
+      """|val hello: (x: Int) => Int => (str: String) => Unit = x => j => str => println(str)
+         |val k = hello(x = 1)(2)(@@)
+         |""".stripMargin,
+      """|str = : String
+         |""".stripMargin,
+      topLines = Some(1),
     )

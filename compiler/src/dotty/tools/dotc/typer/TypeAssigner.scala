@@ -405,7 +405,17 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(using Context): Closure =
     tree.withType(
-      if (target.isEmpty) meth.tpe.widen.toFunctionType(isJava = meth.symbol.is(JavaDefined), tree.env.length)
+      if target.isEmpty then
+        def methTypeWithoutEnv(info: Type): Type = info match
+          case mt: MethodType =>
+            val dropLast = tree.env.length
+            val paramNames = mt.paramNames.dropRight(dropLast)
+            val paramInfos = mt.paramInfos.dropRight(dropLast)
+            mt.derivedLambdaType(paramNames, paramInfos)
+          case pt: PolyType =>
+            pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
+        val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
+        methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {

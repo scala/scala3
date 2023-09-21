@@ -844,10 +844,13 @@ extends Message(LossyWideningConstantConversionID):
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
+class PatternMatchExhaustivity(uncoveredCases: Seq[String], tree: untpd.Match)(using Context)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
-  lazy val uncovered = uncoveredFn
+
+  private val hasMore = uncoveredCases.lengthCompare(6) > 0
+  val uncovered = uncoveredCases.take(6).mkString(", ")
+
   def msg(using Context) =
     val addendum = if hasMore then "(More unmatched cases are elided)" else ""
     i"""|${hl("match")} may not be exhaustive.
@@ -862,11 +865,39 @@ extends Message(PatternMatchExhaustivityID) {
         | - If an extractor always return ${hl("Some(...)")}, write ${hl("Some[X]")} for its return type
         | - Add a ${hl("case _ => ...")} at the end to match all remaining cases
         |"""
+
+  override def actions(using Context) =
+    import scala.language.unsafeNulls
+    val endPos = tree.cases.lastOption.map(_.endPos)
+      .getOrElse(tree.selector.endPos)
+    val startColumn = tree.cases.lastOption
+      .map(_.startPos.startColumn)
+      .getOrElse(tree.selector.startPos.startColumn + 2)
+
+    val pathes = List(
+      ActionPatch(
+        srcPos = endPos, 
+        replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
+          .mkString("\n", "\n", "")
+      ),
+    )
+    List(
+      CodeAction(title = s"Insert missing cases (${uncoveredCases.size})",
+        description = None,
+        patches = pathes
+      )
+    )
+
+
+  private def indent(text:String, margin: Int): String = {
+    import scala.language.unsafeNulls
+    " " * margin + text
+  }
 }
 
-class UncheckedTypePattern(msgFn: => String)(using Context)
+class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
   extends PatternMatchMsg(UncheckedTypePatternID) {
-  def msg(using Context) = msgFn
+  def msg(using Context) = i"the type test for $argType cannot be checked at runtime because $whyNot"
   def explain(using Context) =
     i"""|Type arguments and type refinements are erased during compile time, thus it's
         |impossible to check them at run-time.

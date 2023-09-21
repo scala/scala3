@@ -58,5 +58,5 @@ object Test2:
   def foo5(x: Int) =
     foo2(foo2(,) // error // error
 
-  println(bam) // error
+  println(bam)
 // error

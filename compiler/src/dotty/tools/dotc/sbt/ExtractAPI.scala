@@ -676,11 +676,16 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
     // StaticAnnotation, but in Dotty we currently pickle all annotations so we
-    // extract everything (except annotations missing from the classpath which
-    // we simply skip over, and inline body annotations which are handled above).
+    // extract everything, except:
+    // - annotations missing from the classpath which we simply skip over
+    // - inline body annotations which are handled above
+    // - the Child annotation since we already extract children via
+    //   `api.ClassLike#childrenOfSealedClass` and adding this annotation would
+    //   lead to overcompilation when using zinc's
+    //   `IncOptions#useOptimizedSealed`.
     s.annotations.foreach { annot =>
       val sym = annot.symbol
-      if sym.exists && sym != defn.BodyAnnot then
+      if sym.exists && sym != defn.BodyAnnot && sym != defn.ChildAnnot then
         annots += apiAnnotation(annot)
     }
 

@@ -255,6 +255,11 @@ jobs:
         run: |
           ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues; stdlib-bootstrapped/mimaReportBinaryIssues"
 
+      - name: TASTy MiMa
+        run: |
+          # This script cleans the compiler and recompiles it from scratch (keep as last run)
+          ./project/scripts/stdlib-bootstrapped-tasty-mima.sh
+
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:

@@ -187,7 +187,11 @@ object Inferencing {
               // else hold off instantiating unbounded unconstrained variable
             else if direction != 0 then
               instantiate(tvar, fromBelow = direction < 0)
-            else if variance >= 0 && (force.ifBottom == IfBottom.ok && !tvar.hasUpperBound || tvar.hasLowerBound) then
+            else if variance >= 0 && tvar.hasLowerBound then
+              instantiate(tvar, fromBelow = true)
+            else if (variance > 0 || variance == 0 && !tvar.hasUpperBound)
+                && force.ifBottom == IfBottom.ok
+            then // if variance == 0, prefer upper bound if one is given
               instantiate(tvar, fromBelow = true)
             else if variance >= 0 && force.ifBottom == IfBottom.fail then
               fail = true

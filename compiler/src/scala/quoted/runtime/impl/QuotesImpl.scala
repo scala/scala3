@@ -268,6 +268,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end ClassDefMethods
 
+    type ValOrDefDef = tpd.ValOrDefDef
+
+    object ValOrDefDefTypeTest extends TypeTest[Tree, ValOrDefDef]:
+      def unapply(x: Tree): Option[ValOrDefDef & x.type] = x match
+        case x: (tpd.ValOrDefDef & x.type) => Some(x)
+        case _ => None
+    end ValOrDefDefTypeTest
+
+    given ValOrDefDefMethods: ValOrDefDefMethods with
+      extension (self: ValOrDefDef)
+        def tpt: TypeTree = self.tpt
+        def rhs: Option[Term] = optional(self.rhs)
+      end extension
+    end ValOrDefDefMethods
+
     type DefDef = tpd.DefDef
 
     object DefDefTypeTest extends TypeTest[Tree, DefDef]:
@@ -1009,7 +1024,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
         withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, xCheckMacroValidExpr(expansion)))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion))
+        tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion)).withSpan(original.span).withType(original.tpe)
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
         (optional(x.call), x.bindings, x.body)
     end Inlined
@@ -1792,7 +1807,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isContextFunctionType: Boolean =
           dotc.core.Symbols.defn.isContextFunctionType(self)
         def isErasedFunctionType: Boolean =
-          self.derivesFrom(dotc.core.Symbols.defn.ErasedFunctionClass)
+          self match
+            case dotc.core.Symbols.defn.PolyFunctionOf(mt) =>
+              mt match
+                case mt: MethodType => mt.hasErasedParams
+                case PolyType(_, _, mt1) => mt1.hasErasedParams
+            case _ => false
         def isDependentFunctionType: Boolean =
           val tpNoRefinement = self.dropDependentRefinement
           tpNoRefinement != self
@@ -2823,13 +2843,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
         if arity < 0 then throw IllegalArgumentException(s"arity: $arity")
         if isErased then
-          throw new Exception("Erased function classes are not supported. Use a refined `scala.runtime.ErasedFunction`")
+          throw new Exception("Erased function classes are not supported. Use a refined `scala.PolyFunction`")
         else dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit)
       def FunctionClass(arity: Int): Symbol =
         FunctionClass(arity, false, false)
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol =
         FunctionClass(arity, isContextual, false)
-      def ErasedFunctionClass = dotc.core.Symbols.defn.ErasedFunctionClass
+      def PolyFunctionClass = dotc.core.Symbols.defn.PolyFunctionClass
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
       def isTupleClass(sym: Symbol): Boolean =

@@ -1073,10 +1073,7 @@ object Parsers {
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
-      val t = makeIdent(in.token, in.offset, ident())
-      if t.name == nme.ROOTPKG then
-        syntaxError(em"Illegal use of root package name.")
-      t
+      makeIdent(in.token, in.offset, ident())
 
     /** Accept identifier and return Ident with its name as a type name. */
     def typeIdent(): Ident =
@@ -1426,13 +1423,23 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  ident | `this`
+    /** CaptureRef  ::=  ident | `this` | `cap` [`[` ident `]`]
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
       else termIdent() match
-        case Ident(nme.CAPTURE_ROOT) => captureRoot
-        case id => id
+        case id @ Ident(nme.CAPTURE_ROOT) =>
+          if in.token == LBRACKET then
+            val ref = atSpan(id.span.start)(captureRootIn)
+            val qual =
+              inBrackets:
+                atSpan(in.offset):
+                  Literal(Constant(ident().toString))
+            atSpan(id.span.start)(Apply(ref, qual :: Nil))
+          else
+            atSpan(id.span.start)(captureRoot)
+        case id =>
+          id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -1737,7 +1744,7 @@ object Parsers {
       while in.token == TYPE do tdefs += typeBlockStat()
       tdefs.toList
 
-    /**  TypeBlockStat ::= ‘type’ {nl} TypeDcl
+    /**  TypeBlockStat ::= ‘type’ {nl} TypeDef
      */
     def typeBlockStat(): Tree =
       val mods = defAnnotsMods(BitSet())
@@ -3182,9 +3189,7 @@ object Parsers {
      *                         id [HkTypeParamClause] TypeParamBounds
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-     *  DefTypeParam      ::=  {Annotation}
-     *                         [`sealed`]                                    -- under captureChecking
-     *                         id [HkTypeParamClause] TypeParamBounds
+     *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
@@ -3194,25 +3199,24 @@ object Parsers {
      */
     def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBrackets {
 
-      def checkVarianceOK(): Boolean =
-        val ok = ownerKind != ParamOwner.Def && ownerKind != ParamOwner.TypeParam
-        if !ok then syntaxError(em"no `+/-` variance annotation allowed here")
-        in.nextToken()
-        ok
+      def variance(vflag: FlagSet): FlagSet =
+        if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
+          syntaxError(em"no `+/-` variance annotation allowed here")
+          in.nextToken()
+          EmptyFlags
+        else
+          in.nextToken()
+          vflag
 
       def typeParam(): TypeDef = {
         val isAbstractOwner = ownerKind == ParamOwner.Type || ownerKind == ParamOwner.TypeParam
         val start = in.offset
-        var mods = annotsAsMods() | Param
-        if ownerKind == ParamOwner.Class then mods |= PrivateLocal
-        if Feature.ccEnabled && in.token == SEALED then
-          if ownerKind == ParamOwner.Def then mods |= Sealed
-          else syntaxError(em"`sealed` modifier only allowed for method type parameters")
-          in.nextToken()
-        if isIdent(nme.raw.PLUS) && checkVarianceOK() then
-          mods |= Covariant
-        else if isIdent(nme.raw.MINUS) && checkVarianceOK() then
-          mods |= Contravariant
+        val mods =
+          annotsAsMods()
+          | (if (ownerKind == ParamOwner.Class) Param | PrivateLocal else Param)
+          | (if isIdent(nme.raw.PLUS) then variance(Covariant)
+             else if isIdent(nme.raw.MINUS) then variance(Contravariant)
+             else EmptyFlags)
         atSpan(start, nameStart) {
           val name =
             if (isAbstractOwner && in.token == USCORE) {
@@ -3559,12 +3563,8 @@ object Parsers {
     /** Def      ::= val PatDef
      *             | var VarDef
      *             | def DefDef
-     *             | type {nl} TypeDcl
+     *             | type {nl} TypeDef
      *             | TmplDef
-     *  Dcl      ::= val ValDcl
-     *             | var ValDcl
-     *             | def DefDcl
-     *             | type {nl} TypeDcl
      *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
@@ -3585,12 +3585,10 @@ object Parsers {
         tmplDef(start, mods)
     }
 
-    /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
-     *            |  Pattern2 [‘:’ Type] ‘=’ Expr
+    /** PatDef  ::=  ids [‘:’ Type] [‘=’ Expr]
+     *            |  Pattern2 [‘:’ Type] [‘=’ Expr]
      *  VarDef  ::=  PatDef
-     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
-     *  ValDcl  ::=  id {`,' id} `:' Type
-     *  VarDcl  ::=  id {`,' id} `:' Type
+     *            |  id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       val first = pattern2(Location.InPattern)
@@ -3639,9 +3637,8 @@ object Parsers {
       }
     }
 
-    /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
+    /** DefDef  ::=  DefSig [‘:’ Type] [‘=’ Expr]
      *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
-     *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefTermParamClauses
      *
      * if clauseInterleaving is enabled:
@@ -3739,7 +3736,7 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
+    /** TypeDef ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
@@ -4228,7 +4225,6 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Export
      *                     | Annotations Modifiers Def
-     *                     | Annotations Modifiers Dcl
      *                     | Extension
      *                     | Expr1
      *                     |
@@ -4258,10 +4254,10 @@ object Parsers {
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
-     *  RefineStat       ::=  ‘val’ VarDcl
-     *                     |  ‘def’ DefDcl
-     *                     |  ‘type’ {nl} TypeDcl
-     *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
+     *  RefineStat       ::=  ‘val’ VarDef
+     *                     |  ‘def’ DefDef
+     *                     |  ‘type’ {nl} TypeDef
+     *  (in reality we admit class defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
       val stats = new ListBuffer[Tree]

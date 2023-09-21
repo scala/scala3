@@ -56,6 +56,11 @@ object Decorators {
     def indented(width: Int): String =
       val padding = " " * width
       padding + s.replace("\n", "\n" + padding)
+
+    def join(sep: String, other: String) =
+      if s.isEmpty then other
+      else if other.isEmpty then s
+      else s + sep + other
   end extension
 
   /** Convert lazy string to message. To be with caution, since no message-defined
@@ -234,6 +239,9 @@ object Decorators {
     def nestedExists(p: T => Boolean): Boolean = xss match
       case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
       case nil => false
+    def nestedFind(p: T => Boolean): Option[T] = xss match
+      case xs :: xss1 => xs.find(p).orElse(xss1.nestedFind(p))
+      case nil => None
   end extension
 
   extension (text: Text)
@@ -279,7 +287,7 @@ object Decorators {
         catch
           case ex: CyclicReference => "... (caught cyclic reference) ..."
           case NonFatal(ex)
-          if !ctx.mode.is(Mode.PrintShowExceptions) && !ctx.settings.YshowPrintErrors.value =>
+          if !ctx.settings.YshowPrintErrors.value =>
             s"... (cannot display due to ${ex.className} ${ex.getMessage}) ..."
       case _ => String.valueOf(x).nn
 

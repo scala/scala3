@@ -560,14 +560,14 @@ object TypeErasure {
     case _ => false
   }
 
-  /** The erasure of `(PolyFunction | ErasedFunction) { def apply: $applyInfo }` */
+  /** The erasure of `PolyFunction { def apply: $applyInfo }` */
   def eraseRefinedFunctionApply(applyInfo: Type)(using Context): Type =
     def functionType(info: Type): Type = info match {
       case info: PolyType =>
         functionType(info.resultType)
       case info: MethodType =>
         assert(!info.resultType.isInstanceOf[MethodicType])
-        defn.FunctionType(n = info.erasedParams.count(_ == false))
+        defn.FunctionType(n = info.nonErasedParamCount)
     }
     erasure(functionType(applyInfo))
 }
@@ -654,7 +654,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else SuperType(eThis, eSuper)
       case ExprType(rt) =>
         defn.FunctionType(0)
-      case defn.PolyOrErasedFunctionOf(mt) =>
+      case defn.PolyFunctionOf(mt) =>
         eraseRefinedFunctionApply(mt)
       case tp: TypeVar if !tp.isInstantiated =>
         assert(inSigName, i"Cannot erase uninstantiated type variable $tp")
@@ -936,7 +936,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(defn.FunctionOf(Nil, rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
-      case tp @ defn.PolyOrErasedFunctionOf(_) =>
+      case tp @ defn.PolyFunctionOf(_) =>
         // we need this case rather than falling through to the default
         // because RefinedTypes <: TypeProxy and it would be caught by
         // the case immediately below

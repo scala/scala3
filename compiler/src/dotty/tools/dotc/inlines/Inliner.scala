@@ -771,7 +771,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       val locked = ctx.typerState.ownedVars
-      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this, tree.nameSpan))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val reducedProjection = reducer.reduceProjection(resNoReduce)
       if reducedProjection.isType then
@@ -877,8 +877,12 @@ class Inliner(val call: tpd.Tree)(using Context):
                 }
               case _ => rhs0
             }
-            val (usedBindings, rhs2) = dropUnusedDefs(caseBindings, rhs1)
-            val rhs = seq(usedBindings, rhs2)
+            val rhs2 = rhs1 match {
+              case Typed(expr, tpt) if rhs1.span.isSynthetic => constToLiteral(expr)
+              case _ => constToLiteral(rhs1)
+            }
+            val (usedBindings, rhs3) = dropUnusedDefs(caseBindings, rhs2)
+            val rhs = seq(usedBindings, rhs3)
             inlining.println(i"""--- reduce:
                                 |$tree
                                 |--- to:
@@ -1067,6 +1071,8 @@ class Inliner(val call: tpd.Tree)(using Context):
         tree match {
           case tree: RefTree if tree.isTerm && level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
+          case _: This if level == -1 && tree.symbol.isDefinedInCurrentRun =>
+            tree.symbol :: syms
           case _: TypTree => syms
           case _ => foldOver(syms, tree)
         }

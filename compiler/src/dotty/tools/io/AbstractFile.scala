@@ -97,8 +97,10 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns the path of this abstract file in a canonical form. */
   def canonicalPath: String = if (jpath == null) path else jpath.normalize.toString
 
-  /** Checks extension case insensitively. */
+  /** Checks extension case insensitively. TODO: change to enum */
   def hasExtension(other: String): Boolean = extension == other.toLowerCase
+
+  /** Returns the extension of this abstract file. TODO: store as an enum to avoid costly comparisons */
   val extension: String = Path.extension(name)
 
   /** The absolute file, if this is a relative file. */
@@ -253,7 +255,7 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns the sibling abstract file in the parent of this abstract file or directory.
    *  If there is no such file, returns `null`.
    */
-  def resolveSibling(name: String): AbstractFile | Null =
+  final def resolveSibling(name: String): AbstractFile | Null =
     container.lookupName(name, directory = false)
 
   private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile =

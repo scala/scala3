@@ -1,0 +1,207 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+$anonfun
+263
+276
+10
+!
+Apply
+false
+0
+false
+"if 1" ! "xd"
+
+1
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+$anonfun
+263
+269
+10
+StringOpssssss
+Apply
+false
+0
+false
+"if 1"
+
+2
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+$anonfun
+263
+276
+10
+!
+Apply
+true
+0
+false
+"if 1" ! "xd"
+
+3
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+$anonfun
+286
+303
+11
+println
+Apply
+false
+0
+false
+println("else 1")
+
+4
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+$anonfun
+286
+303
+11
+println
+Apply
+true
+0
+false
+println("else 1")
+
+5
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+CreditEngine
+Class
+org.scoverage.samples.CreditEngine
+receive
+201
+212
+8
+receive
+DefDef
+false
+0
+false
+def receive
+
+6
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+StringOpssssss
+Class
+org.scoverage.samples.StringOpssssss
+!
+152
+174
+4
+println
+Apply
+false
+0
+false
+println(s + "!" + str)
+
+7
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+StringOpssssss
+Class
+org.scoverage.samples.StringOpssssss
+!
+160
+173
+4
++
+Apply
+false
+0
+false
+s + "!" + str
+
+8
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+StringOpssssss
+Class
+org.scoverage.samples.StringOpssssss
+!
+160
+167
+4
++
+Apply
+false
+0
+false
+s + "!"
+
+9
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+StringOpssssss
+Class
+org.scoverage.samples.StringOpssssss
+!
+124
+129
+4
+!
+DefDef
+false
+0
+false
+def !
+
+10
+scoverage-samples-implicit-class.scala
+org.scoverage.samples
+scoverage-samples-implicit-class$package$
+Object
+org.scoverage.samples.scoverage-samples-implicit-class$package$
+StringOpssssss
+79
+108
+3
+StringOpssssss
+DefDef
+false
+0
+false
+implicit class StringOpssssss
+

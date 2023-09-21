@@ -12,9 +12,9 @@
   |
   |                                                 Consider defining bounds explicitly:
   |                                                   '{ type u <: Comparable[u] & Comparable[Any]; ... }
--- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-3.scala:5:12 --------------------------
+-- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-3.scala:5:20 --------------------------
 5 |    case '{ $_ : F[t, t]; () } => // warn // error
-  |            ^
-  |            Type argument t does not conform to upper bound Comparable[t] in inferred type F[t, t]
+  |                    ^
+  |                    Type argument t does not conform to upper bound Comparable[t]
   |
   | longer explanation available when compiling with `-explain`

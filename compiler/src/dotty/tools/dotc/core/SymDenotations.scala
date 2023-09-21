@@ -1353,7 +1353,7 @@ object SymDenotations {
      *
      *                   site: Subtype of both inClass and C
      */
-    final def matchingDecl(inClass: Symbol, site: Type)(using Context): Symbol = {
+    final def matchingDecl(inClass: Symbol, site: Type, name: Name = this.name)(using Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
       if (denot.isTerm) // types of the same name always match
         denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.targetName)

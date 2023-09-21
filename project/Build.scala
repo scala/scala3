@@ -83,7 +83,7 @@ object DottyJSPlugin extends AutoPlugin {
 object Build {
   import ScaladocConfigs._
 
-  val referenceVersion = "3.3.1-RC4"
+  val referenceVersion = "3.3.1-RC7"
 
   val baseVersion = "3.4.0-RC1"
 
@@ -1217,8 +1217,9 @@ object Build {
         dottyLib :: scalaLib
         // Nil
       },
-      Compile / buildInfoPackage := "dotty.tools.pc.util",
+      Compile / buildInfoPackage := "dotty.tools.pc.buildinfo",
       Compile / buildInfoKeys := Seq(scalaVersion),
+      Test / buildInfoPackage := "dotty.tools.pc.tests.buildinfo",
       Test / buildInfoKeys := Seq(scalaVersion, ideTestsDependencyClasspath)
     ) ++ BuildInfoPlugin.buildInfoScopedSettings(Compile) ++
       BuildInfoPlugin.buildInfoScopedSettings(Test) ++
@@ -2206,8 +2207,7 @@ object ScaladocConfigs {
     val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
     val docRootFile = stdLibRoot.resolve("rootdoc.txt")
 
-    val dottyManagesSources =
-      (`scala3-library-bootstrapped`/Compile/sourceDirectory).value
+    val dottyManagesSources = (`scala3-library-bootstrapped`/Compile/baseDirectory).value
 
     val tastyCoreSources = projectRoot.relativize((`tasty-core-bootstrapped`/Compile/scalaSource).value.toPath().normalize())
 
