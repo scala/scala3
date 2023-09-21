@@ -1533,6 +1533,16 @@ class CompletionTest {
            |"""
       .completion(m1, Set(("Foo",Class,"Foo")))
 
+  @Test def extensionDefinitionCompletionsSelect: Unit =
+    code"""|object Test:
+           |  class TestSelect()
+           |object T:
+           |  extension (x: Test.TestSel$m1)
+           |"""
+      .completion(m1, Set(
+        ("TestSelect", Module, "Test.TestSelect"), ("TestSelect", Class, "Test.TestSelect")
+      ))
+
   @Test def selectDynamic: Unit =
     code"""|import scala.language.dynamics
            |class Foo extends Dynamic {

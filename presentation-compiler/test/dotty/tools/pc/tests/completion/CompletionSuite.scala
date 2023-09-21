@@ -1442,6 +1442,39 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def `extension-definition-select` =
+    check(
+      """|object Test:
+         |  class TestSelect()
+         |object T:
+         |  extension (x: Test.TestSel@@)
+         |""".stripMargin,
+      """|TestSelect test.Test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-select-mix-1` =
+    check(
+      """|object Test:
+         |  class TestSelect()
+         |object T:
+         |  extension (using Int)(x: Test.TestSel@@)
+         |""".stripMargin,
+      """|TestSelect test.Test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-select-mix-2` =
+    check(
+      """|object Test:
+         |  class TestSelect[T]()
+         |object T:
+         |  extension [T](x: Test.TestSel@@)
+         |""".stripMargin,
+      """|TestSelect[T] test.Test
+         |TestSelect test.Test
+         |""".stripMargin
+    )
 
   @Test def `no-square-brackets` =
     checkEdit(

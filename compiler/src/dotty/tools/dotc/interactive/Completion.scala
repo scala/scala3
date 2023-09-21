@@ -139,7 +139,6 @@ object Completion:
       .pathTo(pos.span, List(ctx.compilationUnit.untpdTree), true).collect:
         case untpdTree: untpd.Tree => untpdTree
 
-
     tpdPath match
       case (_: Bind) :: _ => tpdPath
       case (_: untpd.TypTree) :: _ => tpdPath
@@ -155,15 +154,20 @@ object Completion:
 
     val completer = new Completer(mode, prefix, pos)
 
-    val completions = tpdPath match
-      // Ignore synthetic select from `This` because in code it was `Ident`
-      // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
-      case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
-      case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
-      case Select(qual, _) :: _                                     => Map.empty
-      case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
-      case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
-      case _                                                        => completer.scopeCompletions
+    val completions = path0 match
+      case untpd.Select(qual, _) :: _ :: untpd.ExtMethods(_, _) :: _ =>
+        val tpdQual = ctx.typer.typedExpr(qual)
+        completer.selectionCompletions(tpdQual)
+      case _ => tpdPath match
+
+        // Ignore synthetic select from `This` because in code it was `Ident`
+        // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
+        case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic  => completer.scopeCompletions
+        case Select(qual, _) :: _           if qual.tpe.hasSimpleKind => completer.selectionCompletions(qual)
+        case Select(qual, _) :: _                                     => Map.empty
+        case (tree: ImportOrExport) :: _                              => completer.directMemberCompletions(tree.expr)
+        case (_: untpd.ImportSelector) :: Import(expr, _) :: _        => completer.directMemberCompletions(expr)
+        case _                                                        => completer.scopeCompletions
 
     val describedCompletions = describeCompletions(completions)
     val backtickedCompletions =

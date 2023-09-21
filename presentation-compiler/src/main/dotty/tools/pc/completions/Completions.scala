@@ -106,10 +106,8 @@ class Completions(
       else false
 
     if generalExclude then false
-    else if completionMode.is(Mode.ImportOrExport) then true
-    else if completionMode.is(Mode.Term) && isWildcardParam(sym) then false
-    else if completionMode.is(Mode.Term) && (sym.isTerm || sym.is(Package)) then true
-    else !completionMode.is(Mode.Term)
+    else if completionMode.is(Mode.Type) then true
+    else !isWildcardParam(sym) && (sym.isTerm || sym.is(Package))
     end if
   end includeSymbol
 
