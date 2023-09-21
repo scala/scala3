@@ -685,8 +685,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(tp.tp1) || needsVariable(tp.tp2)
       case CapturingType(parent, refs) =>
         needsVariable(parent)
-        && refs.isConst      // if refs is a variable, no need to add another
-        && !refs.isUniversal // if refs is {cap}, an added variable would not change anything
+        && refs.isConst       // if refs is a variable, no need to add another
+        && !refs.containsRoot // if refs is {cap}, an added variable would not change anything
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>

@@ -61,6 +61,10 @@ sealed abstract class CaptureSet extends Showable:
    */
   def owner: Symbol
 
+  def rootSet(using Context): CaptureSet =
+    if Setup.newScheme then owner.localRoot.termRef.singletonCaptureSet
+    else universal
+
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
@@ -82,6 +86,12 @@ sealed abstract class CaptureSet extends Showable:
       case ref: TermRef => ref.symbol == defn.captureRoot
       case _ => false
     }
+
+  /** Does this capture set contain the root reference `cap` as element? */
+  final def containsRoot(using Context) =
+    elems.exists:
+      case ref: TermRef => ref.isRootCapability
+      case _ => false
 
   /** Add new elements to this capture set if allowed.
    *  @pre `newElems` is not empty and does not overlap with `this.elems`.
@@ -539,13 +549,14 @@ object CaptureSet:
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The universal set {cap} is a sound fallback.
+     *  of this set. The associated root set {cap[owner]} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if isConst then this
       else if elems.exists(_.isRootCapability) then
         CaptureSet(elems.filter(_.isRootCapability).toList*)
-      else if computingApprox then universal
+      else if computingApprox then
+        rootSet
       else
         computingApprox = true
         try computeApprox(origin).ensuring(_.isConst)
@@ -553,7 +564,7 @@ object CaptureSet:
 
     /** The intersection of all upper approximations of dependent sets */
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      (universal /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
+      (rootSet /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
 
     /** Widen the variable's elements to its upper approximation and
      *  mark it as constant from now on. This is used for contra-variant type variables
@@ -694,7 +705,7 @@ object CaptureSet:
       if source eq origin then
         // it's a mapping of origin, so not a superset of `origin`,
         // therefore don't contribute to the intersection.
-        universal
+        rootSet
       else
         source.upperApprox(this).map(tm)
 
@@ -758,7 +769,7 @@ object CaptureSet:
       if source eq origin then
         // it's a filter of origin, so not a superset of `origin`,
         // therefore don't contribute to the intersection.
-        universal
+        rootSet
       else
         source.upperApprox(this).filter(p)
 
@@ -789,7 +800,7 @@ object CaptureSet:
       if (origin eq cs1) || (origin eq cs2) then
         // it's a combination of origin with some other set, so not a superset of `origin`,
         // therefore don't contribute to the intersection.
-        universal
+        rootSet
       else
         CaptureSet(elemIntersection(cs1.upperApprox(this), cs2.upperApprox(this)))
 
