@@ -970,8 +970,8 @@ enum Option[+T]:
 An enum class is represented as a `sealed abstract` class that extends the `scala.reflect.Enum` trait.
 
 Enum cases are represented as follows:
-- a class enum case is mapped to a `case class` member of enum class' companion object,
-- a singleton enum case is mapped to a `val` member of the enum class' companion object, implemented by a local class definition which may be shared between cases.
+- a class enum case is mapped to a `case class` member of the enum class' companion object,
+- a singleton enum case is mapped to a `val` member of the enum class' companion object, implemented by a local class definition. Whether that local class is shared with other singleton cases, and which ones, is left as an implementation detail.
 
 ###### Precise rules
 The `scala.reflect.Enum` trait defines a single public method, `ordinal`:
@@ -994,7 +994,7 @@ Explicit `extends` clauses must be provided in the following cases, where rules 
 
 1.  An `enum` definition
     ```scala
-    enum ´E´ <type-params> <value-params> { <defs> <cases> }
+    enum ´E´ <type-params> <value-params> extends <parents> { <defs> <cases> }
     ```
     expands to a `sealed abstract` class that extends the `scala.reflect.Enum` trait and an associated companion object that contains the defined cases, expanded according to rules (2 - 8).
     The enum class starts with a compiler-generated import that imports the names `<caseIds>` of all cases so that they can be used without prefix in the class.
