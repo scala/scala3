@@ -36,8 +36,7 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
 
   private def roundToPower(n: Int) =
     if n < 4 then 4
-    else if Integer.bitCount(n) == 1 then n
-    else 1 << (32 - Integer.numberOfLeadingZeros(n))
+    else 1 << (32 - Integer.numberOfLeadingZeros(n - 1))
 
   def clear(resetToInitial: Boolean): Unit =
     used = 0
@@ -49,10 +48,10 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
 
   protected def isDense = limit < DenseLimit
 
-  /** Hashcode, by default a processed `x.hashCode`, can be overridden */
+  /** Hashcode, to be implemented in subclass */
   protected def hash(key: T): Int
 
-  /** Hashcode, by default `equals`, can be overridden */
+  /** Equality, to be implemented in subclass */
   protected def isEqual(x: T, y: T): Boolean
 
   /** Turn hashcode `x` into a table index */

@@ -15,7 +15,7 @@ object EqHashSet:
  *                           initial size of the table will be the smallest power of two
  *                           that is equal or greater than the given `initialCapacity`.
  *                           Minimum value is 4.
-*  @param  capacityMultiple The minimum multiple of capacity relative to used elements.
+ *  @param  capacityMultiple The minimum multiple of capacity relative to used elements.
  *                           The hash table will be re-sized once the number of elements
  *                           multiplied by capacityMultiple exceeds the current size of the hash table.
  *                           However, a table of size up to DenseLimit will be re-sized only
