@@ -26,6 +26,8 @@ import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext._
 
+import scala.jdk.CollectionConverters.*
+
 import scala.collection.{Set, mutable}
 
 
@@ -74,8 +76,8 @@ class ExtractDependencies extends Phase {
     collector.traverse(unit.tpdTree)
 
     if (ctx.settings.YdumpSbtInc.value) {
-      val deps = rec.classDependencies.map(_.toString).toArray[Object]
-      val names = rec.usedNames.map { case (clazz, names) => s"$clazz: $names" }.toArray[Object]
+      val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
+      val names = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
       Arrays.sort(deps)
       Arrays.sort(names)
 
@@ -162,7 +164,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
 
 
   /** Traverse the tree of a source file and record the dependencies and used names which
-   *  can be retrieved using `dependencies` and`usedNames`.
+   *  can be retrieved using `foundDeps`.
    */
   override def traverse(tree: Tree)(using Context): Unit = try {
     tree match {
@@ -226,6 +228,13 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
       throw ex
   }
 
+  /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
+   * Avoid cycles by remembering both the types (testcase:
+   * tests/run/enum-values.scala) and the symbols of named types (testcase:
+   * tests/pos-java-interop/i13575) we've seen before.
+   */
+  private val scratchSeen = new util.EqHashSet[Symbol | Type](128)
+
   /** Traverse a used type and record all the dependencies we need to keep track
    *  of for incremental recompilation.
    *
@@ -262,17 +271,13 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   private abstract class TypeDependencyTraverser(using Context) extends TypeTraverser() {
     protected def addDependency(symbol: Symbol): Unit
 
-    // Avoid cycles by remembering both the types (testcase:
-    // tests/run/enum-values.scala) and the symbols of named types (testcase:
-    // tests/pos-java-interop/i13575) we've seen before.
-    val seen = new mutable.HashSet[Symbol | Type]
-    def traverse(tp: Type): Unit = if (!seen.contains(tp)) {
-      seen += tp
+    scratchSeen.clear(resetToInitial = false)
+
+    def traverse(tp: Type): Unit = if scratchSeen.add(tp) then {
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
-          if !seen.contains(sym) && !sym.is(Package) then
-            seen += sym
+          if !sym.is(Package) && scratchSeen.add(sym) then
             addDependency(sym)
             if !sym.isClass then traverse(tp.info)
             traverse(tp.prefix)
@@ -306,8 +311,6 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   }
 }
 
-case class ClassDependency(fromClass: Symbol, toClass: Symbol, context: DependencyContext)
-
 /** Record dependencies using `addUsedName`/`addClassDependency` and inform Zinc using `sendToZinc()`.
  *
  *  Note: As an alternative design choice, we could directly call the appropriate
@@ -319,10 +322,10 @@ case class ClassDependency(fromClass: Symbol, toClass: Symbol, context: Dependen
 class DependencyRecorder {
   import ExtractDependencies.*
 
-  /** A map from a non-local class to the names it uses, this does not include
+  /** A map from a non-local class to the names and classes it uses, this does not include
    *  names which are only defined and not referenced.
    */
-  def usedNames: collection.Map[Symbol, UsedNamesInClass] = _usedNames
+  def foundDeps: util.ReadOnlyMap[Symbol, FoundDepsInClass] = _foundDeps
 
   /** Record a reference to the name of `sym` from the current non-local
    *  enclosing class.
@@ -355,10 +358,9 @@ class DependencyRecorder {
    *  safely.
    */
   def addUsedRawName(name: Name, includeSealedChildren: Boolean = false)(using Context): Unit = {
-    val fromClass = resolveDependencySource
+    val fromClass = resolveDependencyFromClass
     if (fromClass.exists) {
-      val usedName = _usedNames.getOrElseUpdate(fromClass, new UsedNamesInClass)
-      usedName.update(name, includeSealedChildren)
+      lastFoundCache.recordName(name, includeSealedChildren)
     }
   }
 
@@ -367,24 +369,34 @@ class DependencyRecorder {
   private val DefaultScopes = EnumSet.of(UseScope.Default)
   private val PatMatScopes = EnumSet.of(UseScope.Default, UseScope.PatMatTarget)
 
-  /** An object that maintain the set of used names from within a class */
-  final class UsedNamesInClass {
+  /** An object that maintain the set of used names and class dependencies from within a class */
+  final class FoundDepsInClass {
     /** Each key corresponds to a name used in the class. To understand the meaning
      *  of the associated value, see the documentation of parameter `includeSealedChildren`
      *  of `addUsedRawName`.
      */
-    private val _names = new mutable.HashMap[Name, DefaultScopes.type | PatMatScopes.type]
+    private val _names = new util.HashMap[Name, DefaultScopes.type | PatMatScopes.type]
 
-    def names: collection.Map[Name, EnumSet[UseScope]] = _names
+    /** Each key corresponds to a class dependency used in the class.
+     */
+    private val _classes = util.EqHashMap[Symbol, EnumSet[DependencyContext]]()
 
-    private[DependencyRecorder] def update(name: Name, includeSealedChildren: Boolean): Unit = {
+    def addDependency(fromClass: Symbol, context: DependencyContext): Unit =
+      val set = _classes.getOrElseUpdate(fromClass, EnumSet.noneOf(classOf[DependencyContext]))
+      set.add(context)
+
+    def classes: Iterator[(Symbol, EnumSet[DependencyContext])] = _classes.iterator
+
+    def names: Iterator[(Name, EnumSet[UseScope])] = _names.iterator
+
+    private[DependencyRecorder] def recordName(name: Name, includeSealedChildren: Boolean): Unit = {
       if (includeSealedChildren)
         _names(name) = PatMatScopes
       else
         _names.getOrElseUpdate(name, DefaultScopes)
     }
 
-    override def toString(): String = {
+    def namesString: String = {
       val builder = new StringBuilder
       names.foreach { case (name, scopes) =>
         builder.append(name.mangledString)
@@ -395,51 +407,59 @@ class DependencyRecorder {
       }
       builder.toString()
     }
+
+    def classesString: String = {
+      val builder = new StringBuilder
+      classes.foreach { case (clazz, scopes) =>
+        builder.append(clazz.toString)
+        builder.append(" in [")
+        scopes.forEach(scope => builder.append(scope.toString))
+        builder.append("]")
+        builder.append(", ")
+      }
+      builder.toString()
+    }
   }
-
-
-  private val _classDependencies = new mutable.HashSet[ClassDependency]
-
-  def classDependencies: Set[ClassDependency] = _classDependencies
 
   /** Record a dependency to the class `to` in a given `context`
    *  from the current non-local enclosing class.
   */
   def addClassDependency(toClass: Symbol, context: DependencyContext)(using Context): Unit =
-    val fromClass = resolveDependencySource
+    val fromClass = resolveDependencyFromClass
     if (fromClass.exists)
-      _classDependencies += ClassDependency(fromClass, toClass, context)
+      lastFoundCache.addDependency(toClass, context)
 
-  private val _usedNames = new mutable.HashMap[Symbol, UsedNamesInClass]
+  private val _foundDeps = new util.EqHashMap[Symbol, FoundDepsInClass]
 
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
     ctx.withIncCallback: cb =>
-      usedNames.foreach:
-        case (clazz, usedNames) =>
-          val className = classNameAsString(clazz)
-          usedNames.names.foreach:
-            case (usedName, scopes) =>
-              cb.usedName(className, usedName.toString, scopes)
       val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
-      classDependencies.foreach(recordClassDependency(cb, _, siblingClassfiles))
+      _foundDeps.iterator.foreach:
+        case (clazz, foundDeps) =>
+          val className = classNameAsString(clazz)
+          foundDeps.names.foreach: (usedName, scopes) =>
+            cb.usedName(className, usedName.toString, scopes)
+          for (toClass, deps) <- foundDeps.classes do
+            for dep <- deps.asScala do
+              recordClassDependency(cb, clazz, toClass, dep, siblingClassfiles)
     clear()
 
    /** Clear all state. */
   def clear(): Unit =
-    _usedNames.clear()
-    _classDependencies.clear()
+    _foundDeps.clear()
     lastOwner = NoSymbol
     lastDepSource = NoSymbol
+    lastFoundCache = null
     _responsibleForImports = NoSymbol
 
   /** Handles dependency on given symbol by trying to figure out if represents a term
    *  that is coming from either source code (not necessarily compiled in this compilation
    *  run) or from class file and calls respective callback method.
    */
-  private def recordClassDependency(cb: interfaces.IncrementalCallback, dep: ClassDependency,
-      siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
-    val fromClassName = classNameAsString(dep.fromClass)
+  private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
+    val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
     /**For a `.tasty` file, constructs a sibling class to the `jpath`.
@@ -465,13 +485,13 @@ class DependencyRecorder {
       })
 
     def binaryDependency(path: Path, binaryClassName: String) =
-      cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, dep.context)
+      cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, depCtx)
 
-    val depClass = dep.toClass
+    val depClass = toClass
     val depFile = depClass.associatedFile
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
-      def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
+      def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
       val isTasty = depFile.hasTastyExtension
 
       def processExternalDependency() = {
@@ -485,7 +505,7 @@ class DependencyRecorder {
           case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
             binaryDependency(if isTasty then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
           case _ =>
-            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.fromClass.srcPos)
+            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", fromClass.srcPos)
         }
       }
 
@@ -495,23 +515,28 @@ class DependencyRecorder {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(depClass)
-        cb.classDependency(toClassName, fromClassName, dep.context)
+        cb.classDependency(toClassName, fromClassName, depCtx)
     }
   }
 
   private var lastOwner: Symbol = _
   private var lastDepSource: Symbol = _
+  private var lastFoundCache: FoundDepsInClass | Null = _
 
   /** The source of the dependency according to `nonLocalEnclosingClass`
    *  if it exists, otherwise fall back to `responsibleForImports`.
    *
    *  This is backed by a cache which is invalidated when `ctx.owner` changes.
    */
-  private def resolveDependencySource(using Context): Symbol = {
+  private def resolveDependencyFromClass(using Context): Symbol = {
+    import dotty.tools.uncheckedNN
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
       val source = nonLocalEnclosingClass
-      lastDepSource = if (source.is(PackageClass)) responsibleForImports else source
+      val fromClass = if (source.is(PackageClass)) responsibleForImports else source
+      if lastDepSource != fromClass then
+        lastDepSource = fromClass
+        lastFoundCache = _foundDeps.getOrElseUpdate(fromClass, new FoundDepsInClass)
     }
 
     lastDepSource

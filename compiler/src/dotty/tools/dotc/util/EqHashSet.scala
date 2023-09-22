@@ -2,10 +2,10 @@ package dotty.tools.dotc.util
 
 import dotty.tools.uncheckedNN
 
-object HashSet:
+object EqHashSet:
 
-  def from[T](xs: IterableOnce[T]): HashSet[T] =
-    val set = new HashSet[T]()
+  def from[T](xs: IterableOnce[T]): EqHashSet[T] =
+    val set = new EqHashSet[T]()
     set ++= xs
     set
 
@@ -15,36 +15,32 @@ object HashSet:
  *                           initial size of the table will be the smallest power of two
  *                           that is equal or greater than the given `initialCapacity`.
  *                           Minimum value is 4.
-*  @param  capacityMultiple The minimum multiple of capacity relative to used elements.
+ *  @param  capacityMultiple The minimum multiple of capacity relative to used elements.
  *                           The hash table will be re-sized once the number of elements
  *                           multiplied by capacityMultiple exceeds the current size of the hash table.
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
+class EqHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends GenericHashSet[T](initialCapacity, capacityMultiple) {
   import GenericHashSet.DenseLimit
 
-  /** Hashcode, by default a processed `x.hashCode`, can be overridden */
-  protected def hash(key: T): Int =
-    val h = key.hashCode
-    // Part of the MurmurHash3 32 bit finalizer
-    val i = (h ^ (h >>> 16)) * 0x85EBCA6B
-    val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
-    if j==0 then 0x41081989 else j
+  /** System's identity hashcode left shifted by 1 */
+  final def hash(key: T): Int =
+    System.identityHashCode(key) << 1
 
-  /** Hashcode, by default `equals`, can be overridden */
-  protected def isEqual(x: T, y: T): Boolean = x.equals(y)
+  /** reference equality */
+  final def isEqual(x: T, y: T): Boolean = x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
 
   /** Turn hashcode `x` into a table index */
-  protected def index(x: Int): Int = x & (table.length - 1)
+  private def index(x: Int): Int = x & (table.length - 1)
 
-  protected def firstIndex(x: T) = if isDense then 0 else index(hash(x))
-  protected def nextIndex(idx: Int) =
+  private def firstIndex(x: T) = if isDense then 0 else index(hash(x))
+  private def nextIndex(idx: Int) =
     Stats.record(statsItem("miss"))
     index(idx + 1)
 
-  protected def entryAt(idx: Int): T | Null = table(idx).asInstanceOf[T | Null]
-  protected def setEntry(idx: Int, x: T) = table(idx) = x.asInstanceOf[AnyRef | Null]
+  private def entryAt(idx: Int): T | Null = table(idx).asInstanceOf[T | Null]
+  private def setEntry(idx: Int, x: T) = table(idx) = x.asInstanceOf[AnyRef | Null]
 
   override def lookup(x: T): T | Null =
     Stats.record(statsItem("lookup"))
@@ -57,13 +53,14 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Ge
     null
 
   /** Add entry at `x` at index `idx` */
-  protected def addEntryAt(idx: Int, x: T): T =
+  private def addEntryAt(idx: Int, x: T): T =
     Stats.record(statsItem("addEntryAt"))
     setEntry(idx, x)
     used += 1
     if used > limit then growTable()
     x
 
+  /** attempts to put `x` in the Set, if it was not entered before, return true, else return false. */
   override def add(x: T): Boolean =
     Stats.record(statsItem("enter"))
     var idx = firstIndex(x)
