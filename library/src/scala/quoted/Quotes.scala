@@ -2652,6 +2652,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Follow aliases, annotated types until type is no longer alias type, annotated type. */
         def dealias: TypeRepr
 
+        /** Follow non-opaque aliases, annotated types until type is no longer alias type, annotated type. */
+        def dealiasKeepOpaques: TypeRepr
+
         /** A simplified version of this type which is equivalent wrt =:= to this type.
         *  Reduces typerefs, applied match types, and and or types.
         */
