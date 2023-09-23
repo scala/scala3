@@ -114,37 +114,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
-      val needsInfoTransform = sym.isDefinedInCurrentRun && !toBeUpdated.contains(sym)
-      // if sym is class && level owner: add a capture root
-      // translate cap/capIn to local roots
-      // create local roots if necessary
+      def mappedInfo =
+        if toBeUpdated.contains(sym) then symd.info
+        else transformExplicitType(symd.info, rootTarget = sym)
+      // TODO if sym is class && level owner: add a capture root
       if Synthetics.needsTransform(symd) then
-        Synthetics.transform(symd)
+        Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
         symd.copySymDenotation(info = fluidify(sym.info))
       else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
         val newFlags = newFlagsFor(symd)
-        val newInfo =
-          if needsInfoTransform then
-            atPhase(thisPhase.next)(symd.maybeOwner.info) // ensure owner is completed
-            transformExplicitType(sym.info, rootTarget = if newScheme && false then sym else NoSymbol)
-          else sym.info
-
+        val newInfo = mappedInfo
         if newFlags != symd.flags || (newInfo ne sym.info)
         then symd.copySymDenotation(initFlags = newFlags, info = newInfo)
         else symd
       else symd
     else symd
   end transformSym
-
-  /** Create dependent function with underlying function class `tycon` and given
-   *  arguments `argTypes` and result `resType`.
-   */
-  private def depFun(tycon: Type, argTypes: List[Type], resType: Type)(using Context): Type =
-    MethodType.companion(
-        isContextual = defn.isContextFunctionClass(tycon.classSymbol),
-      )(argTypes, resType)
-      .toFunctionType(alwaysDependent = true)
 
   /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
    *  convert it to be boxed.
@@ -237,7 +223,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               val args1 = mapNested(args0)
               val res1 = this(res0)
               if isTopLevel then
-                depFun(tycon1, args1, res1)
+                depFun(args1, res1,
+                    isContextual = defn.isContextFunctionClass(tycon1.classSymbol))
                   .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", ccSetup)
               else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
                 tp
@@ -466,27 +453,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val sym = tree.symbol
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
-            val rootsNeedMap =
-              // need to run before cc so that rhsClosure is defined without transforming
-              // symbols to cc, since rhsClosure is used in that transformation.
-              tree.rhs match
-                case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
-                  //ddef.symbol.setNestingLevel(ctx.owner.nestingLevel + 1)
-                  if newScheme && false then ccState.isLevelOwner(sym) = true
-                  ccState.isLevelOwner(ddef.symbol) = true
-                    // Toplevel closures bound to vals count as level owners
-                    // unless the closure is an implicit eta expansion over a type application
-                    // that mentions `cap`. In that case we prefer not to silently rebind
-                    // the `cap` to a local root of an invisible closure. See
-                    // pos-custom-args/captures/eta-expansions.scala for examples of both cases.
-                  (newScheme && false) || !tpt.isInstanceOf[InferredTypeTree]
-                    // in this case roots in inferred val type count as polymorphic
-                case _ =>
-                  true
+            tree.rhs match
+              case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
+                if !sym.is(Mutable) then ccState.isLevelOwner(sym) = true
+                  // TODO Drop the possibleyTypedClosureDef condition anc replace by the
+                  // condition that the val takes a cap parameter
+              case _ =>
             transformTT(tpt,
                 boxed = sym.is(Mutable),    // types of mutable variables are boxed
                 exact = sym.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
-                rootTarget = if rootsNeedMap then ctx.owner else NoSymbol
+                rootTarget = ctx.owner
               )
             ccSetup.println(i"mapped $tree = ${tpt.knownType}")
             traverse(tree.rhs)
@@ -555,10 +531,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             prevPsymss: List[List[Symbol]], // the local parameter symbols seen previously in reverse order
             prevLambdas: List[LambdaType]   // the outer method and polytypes generated previously in reverse order
           ): Type =
-          val mapr =
-            if !(newScheme && false) && sym.isLevelOwner
-            then mapRoots(sym.localRoot.termRef, defn.captureRoot.termRef)
-            else identity[Type]
           info match
             case mt: MethodOrPoly =>
               val psyms = psymss.head
@@ -568,17 +540,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     mt.paramInfos
                   else
                     val subst = SubstParams(psyms :: prevPsymss, mt1 :: prevLambdas)
-                    psyms.map(psym => mapr(subst(psym.nextInfo)).asInstanceOf[mt.PInfo]),
+                    psyms.map(psym => subst(psym.nextInfo).asInstanceOf[mt.PInfo]),
                 mt1 =>
-                  mapr(integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas))
+                  integrateRT(mt.resType, psymss.tail, resType, psyms :: prevPsymss, mt1 :: prevLambdas)
               )
             case info: ExprType =>
               info.derivedExprType(resType =
-                mapr(integrateRT(info.resType, psymss, resType, prevPsymss, prevLambdas)))
+                integrateRT(info.resType, psymss, resType, prevPsymss, prevLambdas))
             case info =>
-              mapr(
-                if prevLambdas.isEmpty then resType
-                else SubstParams(prevPsymss, prevLambdas)(resType))
+              if prevLambdas.isEmpty then resType
+              else SubstParams(prevPsymss, prevLambdas)(resType)
 
         if sym.exists && signatureChanges then
           def absInfo(resType: Type): Type =
@@ -597,7 +568,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // are checked on demand
                   assert(!isDuringSetup, i"$sym")
                   assert(ctx.phase == thisPhase.next, i"$sym")
-                  ccSetup.println(i"FORCING $sym")
+                  ccSetup.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
+                  //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
                   denot.info = newInfo
                   recheckDef(tree, sym))
 

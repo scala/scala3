@@ -23,7 +23,7 @@ import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
 import annotation.constructorOnly
-import cc.{CapturingType, derivedCapturingType, CaptureSet, stripCapturing, isBoxedCapturing, boxed, boxedUnlessFun, boxedIfTypeParam, isAlwaysPure, mapRoots, localRoot}
+import cc.*
 import NameKinds.WildcardParamName
 
 /** Provides methods to compare types.
@@ -542,7 +542,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if tp2.isAny then true
         else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
           || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
-        then recur(parent1, tp2)
+        then
+          val tp2a =
+            if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
+            then tp2.unboxed
+            else tp2
+          recur(parent1, tp2a)
         else thirdTry
       case tp1: AnnotatedType if !tp1.isRefining =>
         recur(tp1.parent, tp2)
@@ -995,7 +1000,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
           tp1 match
-            case tp1: CaptureRef if tp1.isTracked =>
+            case tp1: CaptureRef
+            if (ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev)
+                && tp1.isTracked
+            =>
               CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
             case _ =>
               tp1w

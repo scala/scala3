@@ -207,7 +207,7 @@ abstract class Recheck extends Phase, SymTransformer:
       val tree2 = ConstFold(tree1)
       if tree2 ne tree1 then tree2.tpe else tp
 
-    def recheckIdent(tree: Ident)(using Context): Type =
+    def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       tree.tpe
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
@@ -295,6 +295,7 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
+    /** A hook to massage the type of an applied method; currently not overridden */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
@@ -476,7 +477,7 @@ abstract class Recheck extends Phase, SymTransformer:
       def recheckNamed(tree: NameTree, pt: Type)(using Context): Type =
         val sym = tree.symbol
         tree match
-          case tree: Ident => recheckIdent(tree)
+          case tree: Ident => recheckIdent(tree, pt)
           case tree: Select => recheckSelect(tree, pt)
           case tree: Bind => recheckBind(tree, pt)
           case tree: ValOrDefDef =>

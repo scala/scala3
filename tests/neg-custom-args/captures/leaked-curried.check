@@ -2,10 +2,3 @@
 13 |        () => () => io // error
    |                    ^^
    |(io : Cap^{cap[main]}) cannot be referenced here; it is not included in the allowed capture set {} of pure base class trait Pure
--- [E164] Declaration Error: tests/neg-custom-args/captures/leaked-curried.scala:12:10 ---------------------------------
-12 |      val get: () ->{} () ->{io} Cap^ = // error
-   |          ^
-   |          error overriding value get in trait Box of type () -> () ->{cap[Box]} Cap^{cap[Box]};
-   |            value get of type () -> () ->{io} Cap^{cap[Foo]} has incompatible type
-   |
-   | longer explanation available when compiling with `-explain`

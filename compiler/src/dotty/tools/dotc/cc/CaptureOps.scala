@@ -31,6 +31,13 @@ private val constrainRootsWhenMapping = true
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
+/** A dependent function type with given arguments and result type
+ *  TODO Move somewhere else where we treat all function type related ops together.
+ */
+def depFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
+  MethodType.companion(isContextual = isContextual)(args, resultType)
+    .toFunctionType(alwaysDependent = true)
+
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
 
@@ -152,6 +159,7 @@ extension (tp: Type)
       if (parent eq p) && (refs eq r) then tp
       else CapturingType(parent, refs, tp.isBoxed)
 
+  // TODO Move boxed/unboxed to CaapturingType?
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
    *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
    *  The identity for all other types.
@@ -160,14 +168,26 @@ extension (tp: Type)
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
         case ann: CaptureAnnotation =>
-          ann.boxedType(tp)
+          AnnotatedType(parent, ann.boxedAnnot)
         case ann =>
-          ann.tree.getAttachment(BoxedType) match
+          ann.tree.getAttachment(BoxedType) match // TODO drop
             case None => ann.tree.putAttachment(BoxedType, BoxedTypeCache())
             case _ =>
           ann.tree.attachment(BoxedType)(tp)
     case tp: RealTypeBounds =>
       tp.derivedTypeBounds(tp.lo.boxed, tp.hi.boxed)
+    case _ =>
+      tp
+
+  /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
+   *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
+   *  The identity for all other types.
+   */
+  def unboxed(using Context): Type = tp.dealias match
+    case tp @ CapturingType(parent, refs) if tp.isBoxed && !refs.isAlwaysEmpty =>
+      CapturingType(parent, refs)
+    case tp: RealTypeBounds =>
+      tp.derivedTypeBounds(tp.lo.unboxed, tp.hi.unboxed)
     case _ =>
       tp
 
@@ -366,6 +386,7 @@ extension (sym: Symbol)
       case _ =>
         false
 
+  // TODO Also include vals (right now they are manually entered in levelOwners by Setup)
   def isLevelOwner(using Context): Boolean =
     val symd = sym.denot
     def isCaseClassSynthetic = // TODO drop
@@ -375,8 +396,11 @@ extension (sym: Symbol)
         symd.is(CaptureChecked) || symd.isRoot
       else
         symd.is(Method, butNot = Accessor)
-        && (!symd.owner.isClass || symd.owner.is(CaptureChecked))
-        && !Synthetics.isExcluded(sym)
+        && (!symd.owner.isClass
+            || symd.owner.is(CaptureChecked)
+            || Synthetics.needsTransform(symd)
+            )
+        //&& !Synthetics.isExcluded(sym)
         && !isCaseClassSynthetic
         && !symd.isConstructor
         && (!symd.isAnonymousFunction || sym.definedLocalRoot.exists)

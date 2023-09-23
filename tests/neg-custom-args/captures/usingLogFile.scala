@@ -67,6 +67,6 @@ object Test4:
     op(logger)
 
   def test =
-    val later = usingFile("logfile",
-      usingLogger(_, l => () => l.log("test"))) // ok, since we can widen `l` to `file` instead of to `cap`
+    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
+      usingLogger(_, l => () => l.log("test")))
     later()
