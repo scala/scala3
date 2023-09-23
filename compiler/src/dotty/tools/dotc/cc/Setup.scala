@@ -22,15 +22,14 @@ trait SetupAPI:
   type DefRecheck = (tpd.ValOrDefDef, Symbol) => Context ?=> Type
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit
   def isPreCC(sym: Symbol)(using Context): Boolean
+  def postCheck()(using Context): Unit
 
 object Setup:
   def newScheme(using Context) = ctx.settings.YccNew.value // if new impl is conditional
 
   private val IsDuringSetupKey = new Property.Key[Unit]
 
-  def isDuringSetup(using Context): Boolean =
-    ctx.property(IsDuringSetupKey).isDefined
-    //|| ctx.phase == Phases.checkCapturesPhase.prev
+  def isDuringSetup(using Context): Boolean = ctx.property(IsDuringSetupKey).isDefined
 
   case class Box(t: Type) extends UncachedGroundType, TermType:
     override def fallbackToText(printer: Printer): Text =
@@ -257,7 +256,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   private def transformInferredType(tp: Type, rootTarget: Symbol)(using Context): Type =
     mapInferred(rootTarget)(tp)
 
-  private def transformExplicitType(tp: Type, rootTarget: Symbol)(using Context): Type =
+  private def transformExplicitType(tp: Type, rootTarget: Symbol, tptToCheck: Option[Tree] = None)(using Context): Type =
     val expandAliases = new TypeMap:
       override def toString = "expand aliases"
 
@@ -339,8 +338,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             t.derivedCapturingType(this(parent), refs)
           case t @ AnnotatedType(parent, ann) =>
             if ann.symbol == defn.RetainsAnnot then
-              checkQualifiedRoots(ann.tree)
-              CapturingType(this(parent), ann.tree.toCaptureSet)
+              val parent1 = this(parent)
+              for tpt <- tptToCheck do
+                checkQualifiedRoots(ann.tree)
+                checkWellformedLater(parent1, ann.tree, tpt)
+              CapturingType(parent1, ann.tree.toCaptureSet)
             else
               t.derivedAnnotatedType(this(parent), ann)
           case Box(t1) =>
@@ -371,7 +373,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       tree.rememberType(
         if tree.isInstanceOf[InferredTypeTree] && !exact
         then transformInferredType(tp, rootTarget)
-        else transformExplicitType(tp, rootTarget))
+        else transformExplicitType(tp, rootTarget, tptToCheck = Some(tree)))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
    *  method or poly types `to`. We use a single BiTypeMap to do everything.
@@ -725,4 +727,57 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     setupTraverser(recheckDef).traverse(tree)(
       using ctx.withPhase(thisPhase).withProperty(IsDuringSetupKey, Some(())))
 
+  // ------ Checks to run after main capture checking --------------------------
+
+  /** A list of actions to perform at postCheck */
+  private val todoAtPostCheck = new mutable.ListBuffer[Context => Unit]
+
+  /** If `tp` is a capturing type, check that all references it mentions have non-empty
+   *  capture sets.
+   *  Also: warn about redundant capture annotations.
+   *  This check is performed after capture sets are computed in phase cc.
+   *  Note: We need to perform the check on the original annotation rather than its
+   *  capture set since the conversion to a capture set already eliminates redundant elements.
+   */
+  private def checkWellformedPost(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
+    capt.println(i"checkWF post $parent ${ann.retainedElems} in $tpt")
+    val normCap = new TypeMap:
+      def apply(t: Type): Type = t match
+        case t: TermRef if t.isGenericRootCapability => ctx.owner.localRoot.termRef
+        case _ => t
+
+    var retained = ann.retainedElems.toArray
+    for i <- 0 until retained.length do
+      val refTree = retained(i)
+      val ref = refTree.toCaptureRef
+
+      def pos =
+        if refTree.span.exists then refTree.srcPos
+        else if ann.span.exists then ann.srcPos
+        else tpt.srcPos
+
+      def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
+        val remaining = others.map(normCap)
+        if remaining.accountsFor(ref) then
+          report.warning(em"redundant capture: $dom already accounts for $ref", pos)
+
+      if ref.captureSetOfInfo.elems.isEmpty then
+        report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+      check(parent.captureSet, parent)
+
+      val others =
+        for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
+      val remaining = CaptureSet(others*)
+      check(remaining, remaining)
+    end for
+  end checkWellformedPost
+
+  /** Check well formed at post check time */
+  private def checkWellformedLater(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
+    if !tpt.span.isZeroExtent then
+      todoAtPostCheck += (ctx1 =>
+        checkWellformedPost(parent, ann, tpt)(using ctx1.withOwner(ctx.owner)))
+
+  def postCheck()(using Context): Unit =
+    for chk <- todoAtPostCheck do chk(ctx)
 end Setup
