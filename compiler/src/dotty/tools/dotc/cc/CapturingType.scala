@@ -4,6 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*
+import Decorators.i
 
 /** A (possibly boxed) capturing type. This is internally represented as an annotated type with a @retains
  *  or @retainsByName annotation, but the extractor will succeed only at phase CheckCaptures.
@@ -59,6 +60,17 @@ object CapturingType:
       Some((parent, ann.refs))
     case AnnotatedType(parent, ann)
     if ann.symbol == defn.RetainsAnnot && ctx.phase == Phases.checkCapturesPhase =>
+      // There are some circumstances where we cannot map annotated types
+      // with retains annotations to capturing types, so this second recognizer
+      // path still has to exist. One example is when checking capture sets
+      // of dependent function type results for well-formedness. E.g. in
+      // `(x: C^{f}) -> () ->{x} Unit` we need to check that the capture set of
+      // `x` is not empty. We use the original, untransformed type for that
+      // since the transformed type already normalizes capture sets which would
+      // drop subsumed references. But the original type refers to the untransfomed
+      // type `C^{f}` which does not have a capture annotation yet. The transformed
+      // type would be in a copy of the dependent function type, but it is useless
+      // since we need to check the original reference.
       try Some((parent, ann.tree.toCaptureSet))
       catch case ex: IllegalCaptureRef => None
     case _ =>

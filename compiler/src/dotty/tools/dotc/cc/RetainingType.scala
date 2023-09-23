@@ -26,9 +26,10 @@ object RetainingType:
     if sym == defn.RetainsAnnot || sym == defn.RetainsByNameAnnot then
       tp.annot match
         case _: CaptureAnnotation =>
-          new Error(i"bad retains $tp").printStackTrace
-          assert(false)
-        case ann => Some((tp.parent, ann.tree.retainedElems))
+          assert(ctx.mode.is(Mode.IgnoreCaptures), s"bad retains $tp at ${ctx.phase}")
+          None
+        case ann =>
+          Some((tp.parent, ann.tree.retainedElems))
     else
       None
 end RetainingType

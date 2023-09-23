@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, boxedUnlessFun, ccNestingLevel}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, ccNestingLevel}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -1456,12 +1456,12 @@ object Types {
         if (tp1.exists) tp1.dealias1(keep, keepOpaques) else tp
       case tp: AnnotatedType =>
         val parent1 = tp.parent.dealias1(keep, keepOpaques)
-        tp match
+        if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
+        else tp match
           case tp @ CapturingType(parent, refs) =>
             tp.derivedCapturingType(parent1, refs)
           case _ =>
-            if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
-            else parent1
+            parent1
       case tp: LazyRef =>
         tp.ref.dealias1(keep, keepOpaques)
       case _ => this
@@ -2714,7 +2714,7 @@ object Types {
             if (tparams.head.eq(tparam))
               return args.head match {
                 case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
-                case arg => arg.boxedUnlessFun(tycon)
+                case arg => arg
               }
             tparams = tparams.tail
             args = args.tail

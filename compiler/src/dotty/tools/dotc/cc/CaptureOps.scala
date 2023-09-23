@@ -191,18 +191,6 @@ extension (tp: Type)
     case _ =>
       tp
 
-  /** If `sym` is a type parameter, the boxed version of `tp`, otherwise `tp` */
-  def boxedIfTypeParam(sym: Symbol)(using Context) =
-    if sym.is(TypeParam) then tp.boxed else tp
-
-  /** The boxed version of `tp`, unless `tycon` is a function symbol */
-  def boxedUnlessFun(tycon: Type)(using Context) = // TODO: drop
-    if ctx.phase != Phases.checkCapturesPhase
-        && ctx.phase != Phases.checkCapturesPhase.prev
-      || defn.isFunctionSymbol(tycon.typeSymbol)
-    then tp
-    else tp.boxed
-
   /** The capture set consisting of all top-level captures of `tp` that appear under a box.
    *  Unlike for `boxed` this also considers parents of capture types, unions and
    *  intersections, and type proxies other than abstract types.
@@ -498,15 +486,3 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
-
-extension (ts: List[Type])
-  /** Equivalent to ts.mapconserve(_.boxedUnlessFun(tycon)) but more efficient where
-   *  it is the identity.
-   */
-  def boxedUnlessFun(tycon: Type)(using Context) = // TODO drop
-    if ctx.phase != Phases.checkCapturesPhase
-        && ctx.phase != Phases.checkCapturesPhase.prev
-      || defn.isFunctionClass(tycon.typeSymbol)
-    then ts
-    else ts.mapconserve(_.boxed)
-
