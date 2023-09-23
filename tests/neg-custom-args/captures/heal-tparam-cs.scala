@@ -11,7 +11,7 @@ def main(io: Cap^{cap}, net: Cap^{cap}): Unit = {
   }
 
   val test2: (c: Cap^{cap}) -> () ->{cap} Unit =
-    localCap { c =>  // error, was: should work
+    localCap { c =>  // should work (was error)
       (c1: Cap^{cap}) => () => { c1.use() }
     }
 

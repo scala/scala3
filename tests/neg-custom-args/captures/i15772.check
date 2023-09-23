@@ -25,8 +25,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:33 ---------------------------------------
 33 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                             ^^^^^^^
-   |Found:    (C{val arg: C^{cap[C]}}^{'cap[..main3](from instantiating box2)} ->{'cap[..main3](from instantiating box2)} Unit) ->?
-   |  Unit
+   |Found:    (C{val arg: C^{cap[C]}}^{'cap[..main3](from instantiating c)} ->{'cap[..main3](from instantiating box2)} Unit) ->? Unit
    |Required: (C ->{cap[main3]} Unit) ->{cap[main3]} Unit
    |
    | longer explanation available when compiling with `-explain`

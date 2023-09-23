@@ -4,7 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Flags.*, Contexts.*, Decorators.*
-import config.Printers.capt
+import config.Printers.{capt, ccSetup}
 import Annotations.Annotation
 import annotation.threadUnsafe
 import annotation.constructorOnly
@@ -62,8 +62,7 @@ sealed abstract class CaptureSet extends Showable:
   def owner: Symbol
 
   def rootSet(using Context): CaptureSet =
-    if Setup.newScheme then owner.localRoot.termRef.singletonCaptureSet
-    else universal
+    owner.localRoot.termRef.singletonCaptureSet
 
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
@@ -142,7 +141,7 @@ sealed abstract class CaptureSet extends Showable:
           case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
           case y: CaptureRoot.Var => x.isRootIncluding(y)
           case _ => false
-      || (x.isGenericRootCapability || y.isGenericRootCapability && x.isRootCapability)
+      || (x.isGenericRootCapability || y.isRootCapability && x.isRootCapability)
           && ctx.property(LooseRootChecking).isDefined
 
     private def isRootIncluding(y: CaptureRoot) =
@@ -504,9 +503,11 @@ object CaptureSet:
 
     private def recordLevelError()(using Context): Unit =
       for elem <- triedElem do
+        capt.println(i"level error for $elem, $this")
         ccState.levelError = Some((elem, this))
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
+      case elem: TermRef if elem.symbol.isLevelOwner => elem.ccNestingLevel - 1 <= ownLevel
       case elem: (TermRef | ThisType) => elem.ccNestingLevel <= ownLevel
       case elem: CaptureRoot.Var => CaptureRoot.isEnclosingRoot(elem, owner.localRoot.termRef)
       case _ => true
@@ -965,10 +966,16 @@ object CaptureSet:
       css.foldLeft(empty)(_ ++ _)
   */
 
-  /** The capture set of the type underlying a CaptureRef */
+  /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
-    case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
-    case _ => ofType(ref.underlying, followResult = true)
+    case ref: TermRef if ref.isRootCapability =>
+      ref.singletonCaptureSet
+    case ref: TermRef if ref.symbol.isLevelOwner =>
+      ofType(ref.underlying, followResult = true).filter(
+        ref.symbol.localRoot.termRef != _)
+      // TODO: Can replace filter with - ref.symbol.localRoot.termRef when we drop level nesting
+    case _ =>
+      ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =

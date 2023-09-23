@@ -31,5 +31,4 @@ object CollectionStrawMan5 {
     val left: Partitioned^{self} = Partitioned(true)
     val right: Partitioned^{self} = Partitioned(false)
   }
-
 }

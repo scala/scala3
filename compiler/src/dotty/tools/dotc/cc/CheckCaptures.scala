@@ -6,13 +6,14 @@ import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*, Denotations.*
-import config.Printers.{capt, recheckr}
+import config.Printers.{capt, recheckr, ccSetup}
 import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
-import typer.ErrorReporting.Addenda
+import typer.ErrorReporting.{Addenda, err}
+import typer.ProtoTypes.AnySelectionProto
 import util.{SimpleIdentitySet, EqHashMap, SrcPos, Property}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
@@ -193,7 +194,6 @@ class CheckCaptures extends Recheck, SymTransformer:
   val ccState = new CCState
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
-    import ast.tpd.*
 
     override def keepType(tree: Tree) =
       super.keepType(tree)
@@ -273,13 +273,19 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     private val myCapturedVars: util.EqHashMap[Symbol, CaptureSet] = EqHashMap()
 
+    /** A list of actions to perform at postCheck. The reason to defer these actions
+     *  is that it is sometimes better for type inference to not constrain too early
+     *  with a checkConformsExpr.
+     */
+    private var todoAtPostCheck = new mutable.ListBuffer[() => Unit]
+
     /** If `sym` is a class or method nested inside a term, a capture set variable representing
      *  the captured variables of the environment associated with `sym`.
      */
     def capturedVars(sym: Symbol)(using Context) =
       myCapturedVars.getOrElseUpdate(sym,
-        if sym.ownersIterator.exists(_.isTerm) then
-          CaptureSet.Var(if sym.isConstructor then sym.owner.owner else sym.owner)
+        if sym.ownersIterator.exists(_.isTerm)
+        then CaptureSet.Var(sym.skipConstructor.owner)
         else CaptureSet.empty)
 
     /** For all nested environments up to `limit` or a closed environment perform `op`,
@@ -342,14 +348,15 @@ class CheckCaptures extends Recheck, SymTransformer:
     def includeCallCaptures(sym: Symbol, pos: SrcPos)(using Context): Unit =
       if sym.exists && curEnv.isOpen then markFree(capturedVars(sym), pos)
 
-    override def recheckIdent(tree: Ident)(using Context): Type =
+    override def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       if tree.symbol.is(Method) then
         if tree.symbol.info.isParameterless then
           // there won't be an apply; need to include call captures now
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         markFree(tree.symbol, tree.srcPos)
-      super.recheckIdent(tree)
+      instantiateLocalRoots(tree.symbol, pt):
+        super.recheckIdent(tree, pt)
 
     /** A specialized implementation of the selection rule.
      *
@@ -378,30 +385,38 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
-      if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
-        selType
-      else
-        val qualCs = qualType.captureSet
-        capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
-        if qualCs.mightSubcapture(selCs)
-            && !selCs.mightSubcapture(qualCs)
-            && !pt.stripCapturing.isInstanceOf[SingletonType]
-        then
-          selType.widen.stripCapturing.capturing(qualCs)
-            .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
-        else
+      instantiateLocalRoots(tree.symbol, pt):
+        if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
           selType
+        else
+          val qualCs = qualType.captureSet
+          capt.println(i"pick one of $qualType, ${selType.widen}, $qualCs, $selCs in $tree")
+          if qualCs.mightSubcapture(selCs)
+              && !selCs.mightSubcapture(qualCs)
+              && !pt.stripCapturing.isInstanceOf[SingletonType]
+          then
+            selType.widen.stripCapturing.capturing(qualCs)
+              .showing(i"alternate type for select $tree: $selType --> $result, $qualCs / $selCs", capt)
+          else
+            selType
     }//.showing(i"recheck sel $tree, $qualType = $result")
 
-    override def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType =
-      val srcRoot =
-        if meth.isConstructor && meth.owner.source == ctx.compilationUnit.source
-        then meth.owner.localRoot
-        else defn.captureRoot
-      val mapr = mapRoots(srcRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner, meth))
-      funtpe.derivedLambdaType(
-        paramInfos = funtpe.paramInfos.mapConserve(mapr),
-        resType = mapr(funtpe.resType)).asInstanceOf[MethodType]
+    /** Instantiate local roots of `sym` in type `tp` to root variables, provided
+     *   - `sym` is a level owner, and
+     *   - `tp` is the type of a function that gets applied, either as a method
+     *     or as a function value that gets applied.
+     */
+    def instantiateLocalRoots(sym: Symbol, pt: Type)(tp: Type)(using Context): Type =
+      def canInstantiate =
+        sym.is(Method, butNot = Accessor)
+        || sym.isTerm && defn.isFunctionType(sym.info) && pt == AnySelectionProto
+      if sym.skipConstructor.isLevelOwner && canInstantiate then
+        val tpw = tp.widen
+        val tp1 = mapRoots(sym.localRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner, sym))(tpw)
+          .showing(i"INST $sym: $tp, ${sym.localRoot} = $result", ccSetup)
+        if tpw eq tp1 then tp else tp1
+      else
+        tp
 
     /** A specialized implementation of the apply rule.
      *
@@ -431,7 +446,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing
-        capt.println(i"rechecking $arg with ${pt.capturing(CaptureSet.universal)}: $argType")
+        capt.println(i"rechecking $arg with $pt: $argType")
         super.recheckFinish(argType, tree, pt)
       else if meth == defn.Caps_unsafeBox then
         mapArgUsing(_.forceBoxStatus(true))
@@ -591,7 +606,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           curEnv = Env(sym, EnvKind.Regular, localSet, curEnv)
         try checkInferredResult(super.recheckDefDef(tree, sym), tree)
         finally
-          interpolateVarsIn(tree.tpt)
+          if !sym.isAnonymousFunction then
+            // Anonymous functions propagate their type to the enclosing environment
+            // so it is not in general sound to interpolate their types.
+            interpolateVarsIn(tree.tpt)
           curEnv = saved
 
     def checkInferredResult(tp: Type, tree: ValOrDefDef)(using Context): Type =
@@ -624,7 +642,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt match
         case tpt: InferredTypeTree if !canUseInferred =>
           val expected = tpt.tpe.dropAllRetains
-          checkConformsExpr(tp, expected, tree.rhs, addenda(expected))
+          todoAtPostCheck += (() => checkConformsExpr(tp, expected, tree.rhs, addenda(expected)))
         case _ =>
       tp
     end checkInferredResult
@@ -755,33 +773,33 @@ class CheckCaptures extends Recheck, SymTransformer:
     //   - Adapt box status and environment capture sets by simulating box/unbox operations.
     //   - Instantiate `cap` in actual as needed to a local root.
 
-    override def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
-      super.isCompatible(actual, expected)
-      || {
-        // When testing whether `A <: B`, it could be that `B` uses a local capture root,
-        // but a uses `cap`, i.e. is capture polymorphic. In this case, adaptation is allowed
-        // to instantiate `A` to match the root in `B`.
-        val actualw = actual.widen
-        val actual1 = mapRoots(defn.captureRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))(actualw)
-        (actual1 ne actualw) && {
-          val res = super.isCompatible(actual1, expected)
-          if !res && ctx.settings.YccDebug.value then
-            println(i"Failure under mapped roots:")
-            println(i"${TypeComparer.explained(_.isSubType(actual, expected))}")
-          res
-        }
-      }
-
-    /** Massage `actual` and `expected` types using the methods below before checking conformance */
+    /** Massage `actual` and `expected` types before checking conformance.
+     *  Massaging is done by the methods following this one:
+     *   - align dependent function types and add outer references in the expected type
+     *   - adapt boxing in the actual type
+     *  If the resulting types are not compatible, try again with an actual type
+     *  where local capture roots are instantiated to root variables.
+     */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda)(using Context): Unit =
       val expected1 = alignDependentFunction(addOuterRefs(expected, actual), actual.stripCapturing)
-      val actual1 = adaptBoxed(actual, expected1, tree.srcPos)
-      //println(i"check conforms $actual1 <<< $expected1")
-      super.checkConformsExpr(actual1, expected1, tree, addenda ++ CaptureSet.levelErrors)
-
-    private def toDepFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
-      MethodType.companion(isContextual = isContextual)(args, resultType)
-        .toFunctionType(alwaysDependent = true)
+      val actualBoxed = adaptBoxed(actual, expected1, tree.srcPos)
+      //println(i"check conforms $actualBoxed <<< $expected1")
+      var ok = isCompatible(actualBoxed, expected1)
+      if !ok then stripTyped(tree) match
+        case tree: RefTree if tree.symbol.isLevelOwner =>
+          // When testing whether `A <: B`, it could be that `B` uses a local capture root,
+          // but a uses `cap`, i.e. is capture polymorphic. In this case, adaptation is allowed
+          // to instantiate `A` to match the root in `B`.
+          val actualWide = actual.widen
+          val actualInst = mapRoots(tree.symbol.localRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))(actualWide)
+          capt.println(i"fallBack from $actualWide to $actualInst to match $expected1")
+          ok = (actualInst ne actualWide)
+            && isCompatible(adaptBoxed(actualInst, expected1, tree.srcPos), expected1)
+        case _ =>
+      if !ok then
+        capt.println(i"conforms failed for ${tree}: $actual vs $expected")
+        err.typeMismatch(tree.withType(actualBoxed), expected, addenda ++ CaptureSet.levelErrors)
+    end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */
     private def alignDependentFunction(expected: Type, actual: Type)(using Context): Type =
@@ -792,7 +810,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
         case expected @ defn.FunctionOf(args, resultType, isContextual)
           if defn.isNonRefinedFunction(expected) && defn.isFunctionNType(actual) && !defn.isNonRefinedFunction(actual) =>
-          val expected1 = toDepFun(args, resultType, isContextual)
+          val expected1 = depFun(args, resultType, isContextual)
           expected1
         case _ =>
           expected
@@ -1036,7 +1054,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       def traverse(t: Tree)(using Context) =
         t match
           case t: Template =>
-            checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
+            checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))(
+              using ctx.withProperty(LooseRootChecking, Some(())))
           case _ =>
         traverseChildren(t)
 
@@ -1217,6 +1236,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         end check
       end checker
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
+      for chk <- todoAtPostCheck do chk()
+
       if !ctx.reporter.errorsReported then
         //inContext(ctx.withProperty(LooseRootChecking, Some(()))):
           // We dont report errors here if previous errors were reported, because other
