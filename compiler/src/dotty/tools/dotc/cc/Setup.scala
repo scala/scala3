@@ -257,7 +257,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     mapInferred(rootTarget)(tp)
 
   private def transformExplicitType(tp: Type, rootTarget: Symbol, tptToCheck: Option[Tree] = None)(using Context): Type =
-    val expandAliases = new TypeMap:
+    val expandAliases = new DeepTypeMap:
       override def toString = "expand aliases"
 
       /** Expand $throws aliases. This is hard-coded here since $throws aliases in stdlib
@@ -478,6 +478,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           inContext(ctx.withOwner(tree.symbol)):
             traverseChildren(tree)
 
+        case tree @ SeqLiteral(elems, tpt: TypeTree) =>
+          traverse(elems)
+          transformTT(tpt, boxed = true, exact = false, rootTarget = ctx.owner)
+
         case _ =>
           traverseChildren(tree)
       postProcess(tree)
@@ -491,7 +495,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: TypeTree =>
         val lowner =
         transformTT(tree, boxed = false, exact = false,
-            rootTarget = ctx.owner.unlessStatic // other types in static locations are not boxed
+            rootTarget = ctx.owner.unlessStatic // roots of other types in static locations are not mapped
           )
       case tree: ValOrDefDef =>
         val sym = tree.symbol
@@ -592,13 +596,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 CapturingType(cinfo.selfType, CaptureSet.Var(cls))
               else selfInfo match
                 case selfInfo: Type =>
-                  inContext(ctx.withOwner(cls)):
+                  val selfInfo1 = inContext(ctx.withOwner(cls)):
                     transformExplicitType(selfInfo, rootTarget = ctx.owner)
+                  if selfInfo1 eq selfInfo then NoType else selfInfo1
                 case _ =>
                   NoType
             if newSelfType.exists then
               ccSetup.println(i"mapped self type for $cls: $newSelfType, was $selfInfo")
-              val newInfo = ClassInfo(prefix, cls, ps, decls, newSelfType)
+              val ps1 = ps.mapConserve(transformExplicitType(_, rootTarget = ctx.owner))
+              val newInfo = ClassInfo(prefix, cls, ps1, decls, newSelfType)
               updateInfo(cls, newInfo)
               cls.thisType.asInstanceOf[ThisType].invalidateCaches()
               if cls.is(ModuleClass) then
@@ -691,6 +697,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       CapturingType(OrType(tp1, parent2, tp.isSoft), refs2, tp2.isBoxed)
     case tp @ AppliedType(tycon, args) if !defn.isFunctionClass(tp.dealias.typeSymbol) =>
       tp.derivedAppliedType(tycon, args.mapConserve(box))
+    case tp: RealTypeBounds =>
+      tp.derivedTypeBounds(tp.lo, box(tp.hi))
     case tp: LazyRef =>
       normalizeCaptures(tp.ref)
     case _ =>

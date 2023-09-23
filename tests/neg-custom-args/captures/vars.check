@@ -17,11 +17,11 @@
    |        Required: box String ->{cap[test]} String
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:26:12 -----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:26:13 -----------------------------------------
 26 |    b = List(g) // error
-   |        ^^^^^^^
-   |        Found:    List[box (x$0: String) ->{cap3} String]
-   |        Required: List[box String ->{cap[test]} String]
+   |             ^
+   |             Found:    Seq[(x: String) ->{cap3} String]
+   |             Required: Seq[box (x$0: String) ->{cap3} String]
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:35:2 ---------------------------------------------------------------

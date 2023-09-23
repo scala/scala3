@@ -579,7 +579,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
           && (isBottom(tp1) || GADTusage(tp2.symbol))
 
-        isSubApproxHi(tp1, info2.lo.boxedIfTypeParam(tp2.symbol)) && (trustBounds || isSubApproxHi(tp1, info2.hi))
+        isSubApproxHi(tp1, info2.lo) && (trustBounds || isSubApproxHi(tp1, info2.hi))
         || compareGADT
         || tryLiftedToThis2
         || fourthTry
@@ -913,7 +913,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       canWidenAbstract && acc(true, tp)
 
     def tryBaseType(cls2: Symbol) =
-      val base = nonExprBaseType(tp1, cls2).boxedIfTypeParam(tp1.typeSymbol)
+      val base = nonExprBaseType(tp1, cls2)
       if base.exists && (base ne tp1)
           && (!caseLambda.exists
               || widenAbstractOKFor(tp2)
@@ -947,7 +947,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               && (tp2.isAny || GADTusage(tp1.symbol))
 
             (!caseLambda.exists || widenAbstractOKFor(tp2))
-              && isSubType(hi1.boxedIfTypeParam(tp1.symbol), tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
+              && isSubType(hi1, tp2, approx.addLow) && (trustBounds || isSubType(lo1, tp2, approx.addLow))
             || compareGADT
             || tryLiftedToThis1
           case _ =>
@@ -1800,7 +1800,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 else if v > 0 then isSubType(arg1, arg2)
                 else isSameType(arg2, arg1)
 
-        isSubArg(args1.head.boxedUnlessFun(tp1), args2.head.boxedUnlessFun(tp1))
+        isSubArg(args1.head, args2.head)
       } && recurArgs(args1.tail, args2.tail, tparams2.tail)
 
     recurArgs(args1, args2, tparams2)
