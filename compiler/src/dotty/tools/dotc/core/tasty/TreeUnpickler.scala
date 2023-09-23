@@ -654,6 +654,7 @@ class TreeUnpickler(reader: TastyReader,
       if (isClass) {
         if sym.owner.is(Package) then
           if annots.exists(_.hasSymbol(defn.CaptureCheckedAnnot)) then
+            sym.setFlag(CaptureChecked)
             withCaptureChecks = true
             withPureFuns = true
           else if annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
