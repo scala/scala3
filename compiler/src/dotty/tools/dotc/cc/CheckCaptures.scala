@@ -132,45 +132,6 @@ object CheckCaptures:
           case tpe =>
             report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
-  /** If `tp` is a capturing type, check that all references it mentions have non-empty
-   *  capture sets.
-   *  Also: warn about redundant capture annotations.
-   *  This check is performed after capture sets are computed in phase cc.
-   *  Note: We need to perform the check on the original annotation rather than its
-   *  capture set since the conversion to a capture set already eliminates redundant elements.
-   */
-  def checkWellformedPost(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
-    val normCap = new TypeMap:
-      def apply(t: Type): Type = t match
-        case t: TermRef if t.isGenericRootCapability => ctx.owner.localRoot.termRef
-        case _ => t
-
-    var retained = ann.retainedElems.toArray
-    for i <- 0 until retained.length do
-      val refTree = retained(i)
-      val ref = refTree.toCaptureRef
-
-      def pos =
-        if refTree.span.exists then refTree.srcPos
-        else if ann.span.exists then ann.srcPos
-        else tpt.srcPos
-
-      def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
-        val remaining = others.map(normCap)
-        if remaining.accountsFor(ref) then
-          report.warning(em"redundant capture: $dom already accounts for $ref", pos)
-
-      if ref.captureSetOfInfo.elems.isEmpty then
-        report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-      check(parent.captureSet, parent)
-
-      val others =
-        for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef
-      val remaining = CaptureSet(others*)
-      check(remaining, remaining)
-    end for
-  end checkWellformedPost
-
   /** Attachment key for bodies of closures, provided they are values */
   val ClosureBodyValue = Property.Key[Unit]
 
@@ -1059,10 +1020,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         traverseChildren(t)
 
-    private var setup: SetupAPI = compiletime.uninitialized
+    private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      setup = thisPhase.prev.asInstanceOf[Setup]
       setup.setupUnit(ctx.compilationUnit.tpdTree, recheckDef)
 
       if ctx.settings.YccPrintSetup.value then
@@ -1215,12 +1175,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           traverseChildren(tree)(using lctx)
           check(tree)
         def check(tree: Tree)(using Context) = tree match
-          case _: InferredTypeTree =>
-          case tree: TypeTree if !tree.span.isZeroExtent =>
-            tree.tpe.foreachPart:
-              case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
-                checkWellformedPost(parent, annot.tree, tree)
-              case _ =>
           case t @ TypeApply(fun, args) =>
             fun.knownType.widen match
               case tl: PolyType =>
@@ -1237,6 +1191,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       end checker
       checker.traverse(unit)(using ctx.withOwner(defn.RootClass))
       for chk <- todoAtPostCheck do chk()
+      setup.postCheck()
 
       if !ctx.reporter.errorsReported then
         //inContext(ctx.withProperty(LooseRootChecking, Some(()))):
