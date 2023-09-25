@@ -108,6 +108,12 @@ class Pickler extends Phase {
                 pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
                 scratch.commentBuffer)
 
+          val attributes = Attributes(
+            scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
+            explicitNulls = ctx.settings.YexplicitNulls.value,
+          )
+          AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
+
           val pickled = pickler.assembleParts()
 
           def rawBytes = // not needed right now, but useful to print raw format.

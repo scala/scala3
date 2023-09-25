@@ -308,8 +308,8 @@ object Flags {
    */
   val (_, StableRealizable @ _, _) = newFlags(24, "<stable>")
 
-  /** A case parameter accessor */
-  val (_, CaseAccessor @ _, _) = newFlags(25, "<caseaccessor>")
+  /** A case parameter accessor / an unpickled Scala 2 TASTy (only for Scala 2 stdlib) */
+  val (_, CaseAccessor @ _, Scala2Tasty @ _) = newFlags(25, "<caseaccessor>", "<scala-2-tasty>")
 
   /** A Scala 2x super accessor / an unpickled Scala 2.x class */
   val (SuperParamAliasOrScala2x @ _, SuperParamAlias @ _, Scala2x @ _) = newFlags(26, "<super-param-alias>", "<scala-2.x>")

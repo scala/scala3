@@ -52,11 +52,13 @@ import scala.compiletime.uninitialized
  *  @param reader              the reader from which to unpickle
  *  @param posUnpicklerOpt     the unpickler for positions, if it exists
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
+ *  @param attributeUnpicklerOpt the unpickler for attributes, if it exists
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameTable,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    commentUnpicklerOpt: Option[CommentUnpickler]) {
+                    commentUnpicklerOpt: Option[CommentUnpickler],
+                    attributeUnpicklerOpt: Option[AttributeUnpickler]) {
   import TreeUnpickler.*
   import tpd.*
 
@@ -96,6 +98,14 @@ class TreeUnpickler(reader: TastyReader,
 
   /** Was unpickled class compiled with capture checks? */
   private var withCaptureChecks: Boolean = false
+
+  private val unpicklingScala2Library =
+    attributeUnpicklerOpt.exists(_.attributes.scala2StandardLibrary)
+
+  /** This dependency was compiled with explicit nulls enabled */
+  // TODO Use this to tag the symbols of this dependency as compiled with explicit nulls (see use of unpicklingScala2Library).
+  private val explicitNulls =
+    attributeUnpicklerOpt.exists(_.attributes.explicitNulls)
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -601,7 +611,8 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
+      val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
+      val givenFlags = if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty else givenFlags0
       pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =

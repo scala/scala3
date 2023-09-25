@@ -265,8 +265,15 @@ All elements of a position section are serialized as Ints
 
 Standard Section: "Comments" Comment*
 ```none
-  Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
+  Comment       = UTF8 LongInt              // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 ```
+
+Standard Section: "Attributes" Attribute*
+```none
+  Attribute     = SCALA2STANDARDLIBRARYattr
+                  EXPLICITNULLSattr
+```
+
 **************************************************************************************/
 
 object TastyFormat {
@@ -361,6 +368,7 @@ object TastyFormat {
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
   final val CommentsSection = "Comments"
+  final val AttributesSection = "Attributes"
 
   /** Tags used to serialize names, should update [[TastyFormat$.nameTagToString]] if a new constant is added */
   class NameTags {
@@ -597,6 +605,12 @@ object TastyFormat {
   final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
 
+
+  // Attributes tags
+
+  final val SCALA2STANDARDLIBRARYattr = 1
+  final val EXPLICITNULLSattr = 2
+
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
     firstSimpleTreeTag <= tag && tag <= SPLITCLAUSE ||
@@ -810,6 +824,11 @@ object TastyFormat {
     case PROTECTEDqualified => "PROTECTEDqualified"
     case EXPLICITtpt => "EXPLICITtpt"
     case HOLE => "HOLE"
+  }
+
+  def attributeTagToString(tag: Int): String = tag match {
+    case SCALA2STANDARDLIBRARYattr => "SCALA2STANDARDLIBRARYattr"
+    case EXPLICITNULLSattr => "EXPLICITNULLSattr"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
