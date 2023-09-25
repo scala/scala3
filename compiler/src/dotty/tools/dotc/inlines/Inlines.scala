@@ -413,7 +413,7 @@ object Inlines:
             return Intrinsics.codeOf(arg, call.srcPos)
         case _ =>
 
-      // Special handling of `constValue[T]`, `constValueOpt[T]`, `constValueTuple[T]`, and `summonInline[T]`
+      // Special handling of `constValue[T]`, `constValueOpt[T]`, `constValueTuple[T]`, `summonInline[T]` and `summonAll[T]`
       if callTypeArgs.length == 1 then
 
         def constValueOrError(tpe: Type): Tree =

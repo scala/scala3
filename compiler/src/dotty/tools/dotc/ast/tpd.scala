@@ -1520,7 +1520,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  /** Creates the tuple containing the elemets */
+  /** Creates the tuple containing the given elements */
   def tupleTree(elems: List[Tree])(using Context): Tree = {
     val arity = elems.length
     if arity == 0 then
