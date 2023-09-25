@@ -33,7 +33,7 @@ object CaptureRoot:
 
     def followAlias: CaptureRoot = alias match
       case alias: Var if alias ne this => alias.followAlias
-      case _ => this
+      case _ => alias
 
     def locallyConsistent =
       lowerLevel <= upperLevel
