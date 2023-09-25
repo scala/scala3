@@ -68,7 +68,7 @@ object Bench {
     println()
     println("Usage:")
     println()
-    println("dotty-bench-run/jmh:run [<warmup>] [<iterations>] [<forks>] <regexp> [<input>|--] [<output>]")
+    println("scala3-bench-run/jmh:run [<warmup>] [<iterations>] [<forks>] <regexp> [<input>|--] [<output>]")
     println()
     println("warmup: warmup iterations. defaults to 20.")
     println("iterations: benchmark iterations. defaults to 20.")
