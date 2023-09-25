@@ -267,6 +267,9 @@ Standard Section: "Comments" Comment*
 ```none
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 ```
+
+Standard Section: "Attributes" UTF8*
+
 **************************************************************************************/
 
 object TastyFormat {
@@ -361,6 +364,7 @@ object TastyFormat {
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
   final val CommentsSection = "Comments"
+  final val AttributesSection = "Attributes"
 
   /** Tags used to serialize names, should update [[TastyFormat$.nameTagToString]] if a new constant is added */
   class NameTags {

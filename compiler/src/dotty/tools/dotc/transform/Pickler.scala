@@ -108,6 +108,9 @@ class Pickler extends Phase {
                 pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
                 scratch.commentBuffer)
 
+          val attributes = Nil // TODO add attributes here
+          AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
+
           val pickled = pickler.assembleParts()
 
           def rawBytes = // not needed right now, but useful to print raw format.
