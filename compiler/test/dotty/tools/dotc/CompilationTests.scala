@@ -34,6 +34,7 @@ class CompilationTests {
       compileFile("tests/pos-special/utf8encoded.scala", explicitUTF8),
       compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16),
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Xlint:private-shadow", "-Xlint:type-parameter-shadow")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-deprecation", "-feature")),
       compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions),
