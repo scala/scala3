@@ -26,11 +26,13 @@ object TestConfiguration {
   )
 
   val basicClasspath = mkClasspath(List(
+    Properties.scalaLibraryTasty,
     Properties.scalaLibrary,
     Properties.dottyLibrary
   ))
 
   val withCompilerClasspath = mkClasspath(List(
+    Properties.scalaLibraryTasty,
     Properties.scalaLibrary,
     Properties.scalaAsm,
     Properties.jlineTerminal,

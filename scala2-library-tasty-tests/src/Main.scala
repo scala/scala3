@@ -19,6 +19,8 @@ object HelloWorld:
     testScalaNumberUnderlying()
     testArrayOps()
     scala.collection.mutable.UnrolledBufferTest.test()
+
+    assert(scala.StdlibBootstrappedDummy.thisMethodMustNotBePublished == "This method must not be published in a stable release of the library.")
   }
 
   def testScala2UnapplySignatures() = {
