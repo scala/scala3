@@ -1087,8 +1087,9 @@ object Build {
           case Seq(cmd @ ("clone" | "overwrite"), files*) =>
             log.info("Cloning scala-library sources: " + files.mkString(", "))
             for (file <- files) {
-              val referenceStdlibPaths = reference / file
-              val destination = srcDir / file
+              val fileRootedAtInLibraryFolder = file.stripPrefix("src/library/")
+              val referenceStdlibPaths = reference / fileRootedAtInLibraryFolder
+              val destination = srcDir / fileRootedAtInLibraryFolder
               if (!referenceStdlibPaths.exists) {
                 log.error("Not found " + referenceStdlibPaths)
               } else if (destination.exists && cmd == "clone") {
