@@ -116,13 +116,15 @@ class CheckShadowing extends MiniPhase:
     tree
 
   override def transformTypeDef(tree: tpd.TypeDef)(using Context): tpd.Tree =
-    if tree.symbol.is(Param) && !tree.symbol.owner.isConstructor then // Do not register for constructors the work is done for the Class owned equivalent TypeDef
+    if tree.symbol.is(Param) &&  isValidTypeParamOwner(tree.symbol.owner) then // Do not register for constructors the work is done for the Class owned equivalent TypeDef
       shadowingDataApply(sd => sd.computeTypeParamShadowsFor(tree.symbol.owner)(using ctx.outer))
     if tree.symbol.isAliasType then // No need to start outer here, because the TypeDef reached here it's already the parent
       shadowingDataApply(sd => sd.computeTypeParamShadowsFor(tree.symbol)(using ctx))
     tree
 
   // Helpers :
+  private def isValidTypeParamOwner(owner: Symbol)(using Context): Boolean =
+    !owner.isConstructor && !owner.is(Synthetic) && !owner.is(Exported)
 
   private def reportShadowing(res: ShadowingData.ShadowResult)(using Context): Unit =
     res.warnings.sortBy(w => (w.pos.line, w.pos.startPos.column))(using Ordering[(Int, Int)]).foreach { s =>
@@ -211,7 +213,7 @@ object CheckShadowing:
       val actual = typeParamCandidates.getOrElseUpdate(parent, Seq())
       typeParamCandidates.update(parent, actual.+:(typeDef))
 
-    /** Compute if there is some TypeParam shadowing and register if it is the case*/
+    /** Compute if there is some TypeParam shadowing and register if it is the case */
     def computeTypeParamShadowsFor(parent: Symbol)(using Context): Unit =
         typeParamCandidates(parent).foreach(typeDef => {
           val sym = typeDef.symbol
@@ -230,7 +232,7 @@ object CheckShadowing:
 
     private def lookForImportedShadowedType(symbol: Symbol)(using Context): Option[Symbol] =
       explicitsImports
-        .flatMap(_.flatMap(imp => symbol.isInImport(imp)))
+        .flatMap(_.flatMap(imp => symbol.isAnImportedType(imp)))
         .headOption
 
     private def lookForUnitShadowedType(symbol: Symbol)(using Context): Option[Symbol] =
@@ -278,8 +280,8 @@ object CheckShadowing:
       ShadowResult(privateWarnings ++ typeParamWarnings)
 
     extension (sym: Symbol)
-      /** Given an import and accessibility, return the import's symbol that matches import<->this symbol */
-      private def isInImport(imp: tpd.Import)(using Context): Option[Symbol] =
+      /** Looks after any type import symbol in the given import that matches this symbol */
+      private def isAnImportedType(imp: tpd.Import)(using Context): Option[Symbol] =
         val tpd.Import(qual, sels) = imp
         val simpleSelections = qual.tpe.member(sym.name).alternatives
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
