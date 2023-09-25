@@ -27,7 +27,7 @@ object Test extends App {
   val t2a: F2 = t2
   assert(t2(23, "foo") == Left(23))
 
-  // Polymorphic idenity
+  // Polymorphic identity
   val pid = [T] => (t: T) => t
 
   // Method with poly function argument
@@ -50,7 +50,7 @@ object Test extends App {
   val pf2 = [T] => (f: [U] => U => U, t: Int) => f(t)
   val pf20 = pf2(pid, 23)
 
-  // Implment/override
+  // Implement/override
   val phd = [T] => (ts: List[T]) => ts.headOption
 
   trait A {
@@ -85,6 +85,13 @@ object Test extends App {
   val v0a: String = v0
   assert(v0 == "foo")
 
+  // Used to fail with:    Found: ... => List[T]
+  //                    Expected: ... => List[x.type]
+  val md2: [T] => (x: T) => List[x.type] = [T] => (x: T) => List(x)
+  val x = 1
+  val v1 = md2(x)
+  val v1a: List[x.type] = v1
+
   // Contextual
   trait Show[T] { def show(t: T): String }
   implicit val si: Show[Int] =
@@ -99,4 +106,16 @@ object Test extends App {
   val tt2: [T] =>  T => T =  [T] => ((x: T) => x)
   val tt3: [T] =>  T => T =  [T] => { (x: T) => x }
   val tt4: [T] =>  T => T =  [T] => (x: T) => { x }
+
+  // Inferred parameter type
+  val i1a: [T] => T => T = [T] => x => x
+  val i2b: [T] => T => T = [S] => x => x
+  /// This does not work currently because subtyping of polymorphic functions is not implemented.
+  /// val i2c: [T <: Int] => T => T = [T] => x => x
+  val i3a: [T, S <: List[T]] => (T, S) => List[T] =
+    [T, S <: List[T]] => (x, y) => x :: y
+  val i3b: [T, S <: List[T]] => (T, S) => List[T] =
+    [S, T <: List[S]] => (x, y) => x :: y
+  val i4: [T, S <: List[T]] => (T, S) => List[T] =
+    [T, S <: List[T]] => (x, y: S) => x :: y
 }

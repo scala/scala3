@@ -276,7 +276,7 @@ SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ �
 ```
 
 A _pattern sequence_ ´p_1, ..., p_n´ appears in two contexts.
-First, in a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters) of type `S*`.
+First, in a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*`.
 Second, in an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ if the extractor object ´x´ does not have an `unapply` method, but it does define an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])` (if `m = 0`, an extractor type for the type `Seq[S]` is also accepted). The expected type for the patterns ´p_i´ is ´S´.
 
 The last pattern in a pattern sequence may be a _sequence wildcard_ `_*`.
@@ -484,9 +484,12 @@ Therefore, the right hand side of the case clause, `y.n`, of type `Int`, is foun
 ## Pattern Matching Expressions
 
 ```ebnf
+  InfixExpr       ::=  InfixExpr MatchClause
+  SimpleExpr      ::=  SimpleExpr ‘.’ MatchClause
   Expr            ::=  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
   CaseClauses     ::=  CaseClause {CaseClause}
   CaseClause      ::=  ‘case’ Pattern [Guard] ‘=>’ Block
+  ExprCaseClause  ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
 ```
 
 A _pattern matching expression_

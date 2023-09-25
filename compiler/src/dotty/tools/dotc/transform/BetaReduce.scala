@@ -82,7 +82,7 @@ object BetaReduce:
           case _ => None
       case Block(stats, expr) if stats.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Block(fn)(stats, _))
-      case Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
+      case fn @ Inlined(call, bindings, expr) if bindings.forall(isPureBinding) =>
         recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
       case Typed(expr, tpt) =>
         recur(expr, argss)
@@ -90,7 +90,7 @@ object BetaReduce:
         recur(expr, argss)
       case _ => None
     tree match
-      case Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
+      case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
         recur(fn, List(args)) match
           case Some(reduced) =>
             seq(bindingsBuf.result(), reduced).withSpan(tree.span)

@@ -54,8 +54,7 @@ import config.Config
 import language.experimental.pureFunctions
 
 import scala.annotation.constructorOnly
-import annotation.unchecked.uncheckedCaptures
-
+import caps.unsafe.{unsafeBox, unsafeUnbox}
 
 object Typer {
 
@@ -1674,11 +1673,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  and the patterns of the Match tree and the MatchType correspond.
    */
   def typedDependentMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: MatchType)(using Context): Tree = {
-    @uncheckedCaptures var caseCtx = ctx
+    var caseCtx = ctx.unsafeBox
     val cases1 = tree.cases.zip(pt.cases)
       .map { case (cas, tpe) =>
-        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
-        caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx.unsafeUnbox)
+        caseCtx = Nullables.afterPatternContext(sel, case1.pat).unsafeBox
         case1
       }
       .asInstanceOf[List[CaseDef]]
@@ -1693,10 +1692,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(using Context): List[CaseDef] =
-    @uncheckedCaptures var caseCtx = ctx
+    var caseCtx = ctx.unsafeBox
     cases.mapconserve { cas =>
-      val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
-      caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+      val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx.unsafeUnbox)
+      caseCtx = Nullables.afterPatternContext(sel, case1.pat).unsafeBox
       case1
     }
 

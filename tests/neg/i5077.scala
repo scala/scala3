@@ -1,3 +1,4 @@
+//> using options -Xfatal-warnings -Wimplausible-patterns
 trait Is[A]
 case object IsInt extends Is[Int]
 case object IsString extends Is[String]

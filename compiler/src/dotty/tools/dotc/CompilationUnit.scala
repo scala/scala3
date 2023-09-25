@@ -5,6 +5,7 @@ import core._
 import Contexts._
 import SymDenotations.ClassDenotation
 import Symbols._
+import Comments.Comment
 import util.{FreshNameCreator, SourceFile, NoSource}
 import util.Spans.Span
 import ast.{tpd, untpd}
@@ -69,11 +70,23 @@ class CompilationUnit protected (val source: SourceFile) {
   /** Can this compilation unit be suspended */
   def isSuspendable: Boolean = true
 
+  /** List of all comments present in this compilation unit */
+  var comments: List[Comment] = Nil
+
+  /** This is used to record dependencies to invalidate during incremental
+   *  compilation, but only if `ctx.runZincPhases` is true.
+   */
+  val depRecorder: sbt.DependencyRecorder = sbt.DependencyRecorder()
+
   /** Suspends the compilation unit by thowing a SuspendException
    *  and recording the suspended compilation unit
    */
   def suspend()(using Context): Nothing =
     assert(isSuspendable)
+    // Clear references to symbols that may become stale. No need to call
+    // `depRecorder.sendToZinc()` since all compilation phases will be rerun
+    // when this unit is unsuspended.
+    depRecorder.clear()
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
         report.echo(i"suspended: $this")

@@ -13,7 +13,7 @@ import Contexts._
 import Types._
 import Flags._
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, EvidenceParamName}
+import NameKinds.{LazyImplicitName, ContextBoundParamName}
 import Symbols._
 import Types._
 import Decorators._
@@ -23,6 +23,7 @@ import ProtoTypes._
 import ErrorReporting._
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
+import Typer.BindingPrec, BindingPrec.*
 import transform.TypeUtils._
 import Hashable._
 import util.{EqHashMap, Stats}
@@ -49,17 +50,19 @@ object Implicits:
   }
 
   /** Both search candidates and successes are references with a specific nesting level. */
-  sealed trait RefAndLevel {
+  sealed trait RefAndLevel extends Showable {
     def ref: TermRef
     def level: Int
   }
 
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
-  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel {
+  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel with Showable {
     def ref: TermRef = implicitRef.underlyingRef
 
     def isExtension = (kind & Candidate.Extension) != 0
     def isConversion = (kind & Candidate.Conversion) != 0
+
+    def toText(printer: Printer): Text = printer.toText(this)
   }
   object Candidate {
     type Kind = Int
@@ -73,7 +76,7 @@ object Implicits:
    *  method with the selecting name? False otherwise.
    */
   def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
-    case selProto @ SelectionProto(selName: TermName, _, _, _) =>
+    case selProto @ SelectionProto(selName: TermName, _, _, _, _) =>
       tp.memberBasedOnFlags(selName, required = ExtensionMethod).exists
     case _ =>
       false
@@ -220,7 +223,7 @@ object Implicits:
             case pt: ViewProto =>
               viewCandidateKind(ref.widen, pt.argType, pt.resType)
             case _: ValueTypeOrProto =>
-              if (defn.isFunctionType(pt)) Candidate.Value
+              if (defn.isFunctionNType(pt)) Candidate.Value
               else valueTypeCandidateKind(ref.widen)
             case _ =>
               Candidate.Value
@@ -299,7 +302,7 @@ object Implicits:
   class ContextualImplicits(
       val refs: List[ImplicitRef],
       val outerImplicits: ContextualImplicits | Null,
-      isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
+      val isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -326,12 +329,28 @@ object Implicits:
       (this eq finalImplicits) || (outerImplicits eqn finalImplicits)
     }
 
+    def bindingPrec: BindingPrec =
+      if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
+
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
-        val shadowed = ownEligible.map(_.ref.implicitName).toSet
-        ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+        val ownNames = mutable.Set(ownEligible.map(_.ref.implicitName)*)
+        val outer = outerImplicits.uncheckedNN
+        if !migrateTo3(using irefCtx) && level == outer.level && outer.bindingPrec.beats(bindingPrec) then
+          val keptOuters = outerEligible.filterConserve: cand =>
+            if ownNames.contains(cand.ref.implicitName) then
+              val keepOuter = cand.level == level
+              if keepOuter then ownNames -= cand.ref.implicitName
+              keepOuter
+            else true
+          val keptOwn = ownEligible.filterConserve: cand =>
+            ownNames.contains(cand.ref.implicitName)
+          keptOwn ::: keptOuters
+        else
+          ownEligible ::: outerEligible.filterConserve: cand =>
+            !ownNames.contains(cand.ref.implicitName)
 
     def uncachedEligible(tp: Type)(using Context): List[Candidate] =
       Stats.record("uncached eligible")
@@ -427,7 +446,7 @@ object Implicits:
     }
   }
 
-  abstract class SearchFailureType extends ErrorType {
+  abstract class SearchFailureType extends ErrorType, Addenda {
     def expectedType: Type
     def argument: Tree
 
@@ -435,7 +454,7 @@ object Implicits:
     def clarify(tp: Type)(using Context): Type = tp
 
     final protected def qualify(using Context): String = expectedType match {
-      case SelectionProto(name, mproto, _, _) if !argument.isEmpty =>
+      case SelectionProto(name, mproto, _, _, _) if !argument.isEmpty =>
         i"provide an extension method `$name` on ${argument.tpe}"
       case NoType =>
         if (argument.isEmpty) i"match expected type"
@@ -444,11 +463,6 @@ object Implicits:
         if (argument.isEmpty) i"match type ${clarify(expectedType)}"
         else i"convert from ${argument.tpe} to ${clarify(expectedType)}"
     }
-
-    /** If search was for an implicit conversion, a note describing the failure
-     *  in more detail - this is either empty or starts with a '\n'
-     */
-    def whyNoConversion(using Context): String = ""
   }
 
   class NoMatchingImplicits(val expectedType: Type, val argument: Tree, constraint: Constraint = OrderingConstraint.empty)
@@ -502,17 +516,21 @@ object Implicits:
 
   /** A failure value indicating that an implicit search for a conversion was not tried */
   case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
-    override def whyNoConversion(using Context): String =
+
+    override def toAdd(using Context) =
       i"""
          |Note that implicit conversions were not tried because the result of an implicit conversion
-         |must be more specific than $target"""
+         |must be more specific than $target""" :: Nil
 
     override def msg(using Context) =
       super.msg.append("\nThe expected type $target is not specific enough, so no search was attempted")
+
     override def toString = s"TooUnspecific"
+  end TooUnspecific
 
   /** An ambiguous implicits failure */
-  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
+  class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType:
+
     def msg(using Context): Message =
       var str1 = err.refStr(alt1.ref)
       var str2 = err.refStr(alt2.ref)
@@ -520,15 +538,16 @@ object Implicits:
         str1 = ctx.printer.toTextRef(alt1.ref).show
         str2 = ctx.printer.toTextRef(alt2.ref).show
       em"both $str1 and $str2 $qualify".withoutDisambiguation()
-    override def whyNoConversion(using Context): String =
+
+    override def toAdd(using Context) =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
-        ""
+        Nil
       else
         val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
         i"""
            |Note that implicit $what cannot be applied because they are ambiguous;
-           |$explanation"""
-  }
+           |$explanation""" :: Nil
+  end AmbiguousImplicits
 
   class MismatchedImplicit(ref: TermRef,
                            val expectedType: Type,
@@ -604,7 +623,7 @@ trait ImplicitRunInfo:
       private var parts: mutable.LinkedHashSet[Type] = _
       private val partSeen = util.HashSet[Type]()
 
-      def traverse(t: Type) =
+      def traverse(t: Type) = try
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
@@ -636,13 +655,14 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t: MatchType =>
               traverseChildren(t)
-              traverse(try t.normalized catch case _: MatchTypeReductionError => t)
+              traverse(t.normalized)
             case MatchType.InDisguise(mt)
                 if !t.isInstanceOf[LazyRef] // skip recursive applications (eg. Tuple.Map)
             =>
               traverse(mt)
             case t =>
               traverseChildren(t)
+      catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()
@@ -846,8 +866,8 @@ trait Implicits:
       NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
-        case SelectionProto(name, memberProto, compat, true) =>
-          SelectionProto(name, memberProto, compat, privateOK = false)
+        case SelectionProto(name, memberProto, compat, true, nameSpan) =>
+          SelectionProto(name, memberProto, compat, privateOK = false, nameSpan)
         case tp => tp
       }
 
@@ -973,13 +993,13 @@ trait Implicits:
   /** A string indicating the formal parameter corresponding to a  missing argument */
   def implicitParamString(paramName: TermName, methodStr: String, tree: Tree)(using Context): String =
     tree match {
-      case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
+      case Select(qual, nme.apply) if defn.isFunctionNType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
         def addendum = if (qt1 eq qt) "" else (i"\nWhere $qt is an alias of: $qt1")
         i"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        i"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+        i"${ if paramName.is(ContextBoundParamName) then "a context parameter"
              else s"parameter $paramName" } of $methodStr"
     }
 
@@ -1122,33 +1142,17 @@ trait Implicits:
             adapt(generated, pt.widenExpr, locked)
         else {
           def untpdGenerated = untpd.TypedSplice(generated)
-          def conversionResultType(info: Type): Type = info match
-            case info: PolyType => conversionResultType(info.resType)
-            case info: MethodType if info.isImplicitMethod => conversionResultType(info.resType)
-            case _ =>
-              if info.derivesFrom(defn.ConversionClass) then
-                pt match
-                  case selProto: SelectionProto =>
-                    // we want to avoid embedding a SelectionProto in a Conversion, as the result type
-                    // as it might end up within a GADT cast type, e.g. tests/pos/i15867.scala
-                    // so, if we can find the target result type - as in,
-                    // if it matches the selection prototype, then let's adapt to that instead
-                    // otherwise just skip adapting with a prototype (by returning NoType)
-                    info.baseType(defn.ConversionClass) match
-                      case AppliedType(_, List(_, restpe)) if selProto.isMatchedBy(restpe) =>
-                        restpe
-                      case _ => NoType // can't find conversion result type, avoid adapting with SelectionProto
-                  case _: ProtoType => NoType // avoid adapting with ProtoType
-                  case _            => pt     // not a ProtoType, so use it for adapting
-              else NoType // not a Conversion, don't adapt
+          def producesConversion(info: Type): Boolean = info match
+            case info: PolyType => producesConversion(info.resType)
+            case info: MethodType if info.isImplicitMethod => producesConversion(info.resType)
+            case _ => info.derivesFrom(defn.ConversionClass)
           def tryConversion(using Context) = {
-            val restpeConv = if ref.symbol.is(Given) then conversionResultType(ref.widenTermRefExpr) else NoType
             val untpdConv =
-              if restpeConv.exists then
+              if ref.symbol.is(Given) && producesConversion(ref.symbol.info) then
                 untpd.Select(
                   untpd.TypedSplice(
                     adapt(generated,
-                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, restpeConv),
+                      defn.ConversionClass.typeRef.appliedTo(argument.tpe, pt),
                       locked)),
                   nme.apply)
               else untpdGenerated
@@ -1157,10 +1161,10 @@ trait Implicits:
               pt, locked)
           }
           pt match
-            case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+            case selProto @ SelectionProto(selName: TermName, mbrType, _, _, nameSpan) =>
 
               def tryExtension(using Context) =
-                extMethodApply(untpd.Select(untpdGenerated, selName), argument, mbrType)
+                extMethodApply(untpd.Select(untpdGenerated, selName).withSpan(nameSpan), argument, mbrType)
 
               def tryConversionForSelection(using Context) =
                 val converted = tryConversion

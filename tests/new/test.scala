@@ -1,2 +1,2 @@
 object Test:
-  def test = 0
+  def f: Any = 1

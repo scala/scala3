@@ -12,7 +12,8 @@ import annotation.internal.sharable
 import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property}
+import util.{SimpleIdentitySet, Property, optional}, optional.{break, ?}
+import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
 import config.Config.ccAllowUnsoundMaps
@@ -54,6 +55,11 @@ sealed abstract class CaptureSet extends Showable:
    *  always false.
    */
   def isAlwaysEmpty: Boolean
+
+  /** The level owner in which the set is defined. Sets can only take
+   *  elements with nesting level up to the cc-nestinglevel of owner.
+   */
+  def owner: Symbol
 
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
@@ -112,21 +118,40 @@ sealed abstract class CaptureSet extends Showable:
     if accountsFor(elem) then CompareResult.OK
     else addNewElems(elem.singletonCaptureSet.elems, origin)
 
-  /* x subsumes y if x is the same as y, or x is a this reference and y refers to a field of x */
-  extension (x: CaptureRef) private def subsumes(y: CaptureRef) =
-    (x eq y)
-    || y.match
-        case y: TermRef => y.prefix eq x
-        case _ => false
+  /* x subsumes y if one of the following is true:
+   *   - x is the same as y,
+   *   - x is a this reference and y refers to a field of x
+   *   - x and y are local roots and y is an enclosing root of x
+   *   - the LooseRootChecking property is asserted, and either `x` is `cap`
+   *     or `x` is a local root and y is `cap`.
+   */
+  extension (x: CaptureRef)(using Context)
+    private def subsumes(y: CaptureRef) =
+      (x eq y)
+      || y.match
+          case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
+          case y: CaptureRoot.Var => x.isRootIncluding(y)
+          case _ => false
+      || (x.isGenericRootCapability || y.isGenericRootCapability && x.isRootCapability)
+          && ctx.property(LooseRootChecking).isDefined
+
+    private def isRootIncluding(y: CaptureRoot) =
+      x.isLocalRootCapability && y.isLocalRootCapability
+      && CaptureRoot.isEnclosingRoot(y, x.asInstanceOf[CaptureRoot])
+  end extension
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
    */
   def accountsFor(x: CaptureRef)(using Context): Boolean =
-    reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true) {
-      elems.exists(_.subsumes(x))
-      || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
-    }
+    if comparer.isInstanceOf[ExplainingTypeComparer] then // !!! DEBUG
+      reporting.trace.force(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
+        elems.exists(_.subsumes(x))
+        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
+    else
+      reporting.trace(i"$this accountsFor $x, ${x.captureSetOfInfo}?", show = true):
+        elems.exists(_.subsumes(x))
+        || !x.isRootCapability && x.captureSetOfInfo.subCaptures(this, frozen = true).isOK
 
   /** A more optimistic version of accountsFor, which does not take variable supersets
    *  of the `x` reference into account. A set might account for `x` if it accounts
@@ -191,7 +216,8 @@ sealed abstract class CaptureSet extends Showable:
     if this.subCaptures(that, frozen = true).isOK then that
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
-    else Var(this.elems ++ that.elems).addAsDependentTo(this).addAsDependentTo(that)
+    else Var(this.owner.maxNested(that.owner), this.elems ++ that.elems)
+      .addAsDependentTo(this).addAsDependentTo(that)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
    */
@@ -210,10 +236,11 @@ sealed abstract class CaptureSet extends Showable:
    *  any of the elements in the constant capture set `that`
    */
   def -- (that: CaptureSet.Const)(using Context): CaptureSet =
-    val elems1 = elems.filter(!that.accountsFor(_))
-    if elems1.size == elems.size then this
-    else if this.isConst then Const(elems1)
-    else Diff(asVar, that)
+    if this.isConst then
+      val elems1 = elems.filter(!that.accountsFor(_))
+      if elems1.size == elems.size then this else Const(elems1)
+    else
+      if that.isAlwaysEmpty then this else Diff(asVar, that)
 
   /** The largest subset (via <:<) of this capture set that does not account for `ref` */
   def - (ref: CaptureRef)(using Context): CaptureSet =
@@ -275,7 +302,9 @@ sealed abstract class CaptureSet extends Showable:
     if isUniversal then handler()
     this
 
-  /** Invoke handler on the elements to check wellformedness of the capture set */
+  /** Invoke handler on the elements to ensure wellformedness of the capture set.
+   *  The handler might add additional elements to the capture set.
+   */
   def ensureWellformed(handler: List[CaptureRef] => Context ?=> Unit)(using Context): this.type =
     handler(elems.toList)
     this
@@ -299,15 +328,18 @@ sealed abstract class CaptureSet extends Showable:
   /** This capture set with a description that tells where it comes from */
   def withDescription(description: String): CaptureSet
 
-  /** The provided description (using `withDescription`) for this capture set or else "" */
+  /** The provided description (set via `withDescription`) for this capture set or else "" */
   def description: String
+
+  /** More info enabled by -Y flags */
+  def optionalInfo(using Context): String = ""
 
   /** A regular @retains or @retainsByName annotation with the elements of this set as arguments. */
   def toRegularAnnotation(cls: Symbol)(using Context): Annotation =
     Annotation(CaptureAnnotation(this, boxed = false)(cls).tree)
 
   override def toText(printer: Printer): Text =
-    Str("{") ~ Text(elems.toList.map(printer.toTextCaptureRef), ", ") ~ Str("}") ~~ description
+    printer.toTextCaptureSet(this) ~~ description
 
 object CaptureSet:
   type Refs = SimpleIdentitySet[CaptureRef]
@@ -338,6 +370,13 @@ object CaptureSet:
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
 
+  /** If this context property is asserted, we conflate capture roots in subCapture
+   *  tests. Specifically, `cap` then subsumes everything and all local roots subsume `cap`.
+   *  This generally not sound. We currently use loose root checking only in self type
+   *  conformance tests in CheckCaptures.checkSelfTypes.
+   */
+  val LooseRootChecking: Property.Key[Unit] = Property.Key()
+
   /** The subclass of constant capture sets with given elements `elems` */
   class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
     def isConst = true
@@ -352,19 +391,42 @@ object CaptureSet:
 
     def withDescription(description: String): Const = Const(elems, description)
 
+    def owner = NoSymbol
+
     override def toString = elems.toString
   end Const
 
+  /** A special capture set that gets added to the types of symbols that were not
+   *  themselves capture checked, in order to admit arbitrary corresponding capture
+   *  sets in subcapturing comparisons. Similar to platform types for explicit
+   *  nulls, this provides more lenient checking against compilation units that
+   *  were not yet compiled with capture checking on.
+   */
+  object Fluid extends Const(emptySet):
+    override def isAlwaysEmpty = false
+    override def addNewElems(elems: Refs, origin: CaptureSet)(using Context, VarState) = CompareResult.OK
+    override def accountsFor(x: CaptureRef)(using Context): Boolean = true
+    override def mightAccountFor(x: CaptureRef)(using Context): Boolean = true
+    override def toString = "<fluid>"
+  end Fluid
+
   /** The subclass of captureset variables with given initial elements */
-  class Var(initialElems: Refs = emptySet) extends CaptureSet:
+  class Var(directOwner: Symbol, initialElems: Refs = emptySet)(using @constructorOnly ictx: Context) extends CaptureSet:
 
     /** A unique identification number for diagnostics */
     val id =
       varId += 1
       varId
 
+    override val owner = directOwner.levelOwner
+
     /** A variable is solved if it is aproximated to a from-then-on constant set. */
     private var isSolved: Boolean = false
+
+    private var ownLevelCache = -1
+    private def ownLevel(using Context) =
+      if ownLevelCache == -1 then ownLevelCache = owner.ccNestingLevel
+      ownLevelCache
 
     /** The elements currently known to be in the set */
     var elems: Refs = initialElems
@@ -384,6 +446,8 @@ object CaptureSet:
     var newElemAddedHandler: List[CaptureRef] => Context ?=> Unit = _ => ()
 
     var description: String = ""
+
+    private var triedElem: Option[CaptureRef] = None
 
     /** Record current elements in given VarState provided it does not yet
      *  contain an entry for this variable.
@@ -410,7 +474,16 @@ object CaptureSet:
       deps = state.deps(this)
 
     def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      if !isConst && recordElemsState() then
+      if isConst || !recordElemsState() then
+        CompareResult.fail(this) // fail if variable is solved or given VarState is frozen
+      else if newElems.exists(!levelOK(_)) then
+        val res = widenCaptures(newElems) match
+          case Some(newElems1) => tryInclude(newElems1, origin)
+          case None => CompareResult.fail(this)
+        if !res.isOK then recordLevelError()
+        res
+      else
+        //assert(id != 2, newElems)
         elems ++= newElems
         if isUniversal then rootAddedHandler()
         newElemAddedHandler(newElems.toList)
@@ -418,8 +491,32 @@ object CaptureSet:
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(newElems, this))
         }
-      else // fail if variable is solved or given VarState is frozen
-        CompareResult.fail(this)
+
+    private def recordLevelError()(using Context): Unit =
+      for elem <- triedElem do
+        ccState.levelError = Some((elem, this))
+
+    private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
+      case elem: (TermRef | ThisType) => elem.ccNestingLevel <= ownLevel
+      case elem: CaptureRoot.Var => CaptureRoot.isEnclosingRoot(elem, owner.localRoot.termRef)
+      case _ => true
+
+    private def widenCaptures(elems: Refs)(using Context): Option[Refs] =
+      val res = optional:
+        (SimpleIdentitySet[CaptureRef]() /: elems): (acc, elem) =>
+          if levelOK(elem) then acc + elem
+          else
+            val saved = triedElem
+            triedElem = triedElem.orElse(Some(elem))
+            if elem.isRootCapability then break()
+            val res = acc ++ widenCaptures(elem.captureSetOfInfo.elems).?
+            triedElem = saved  // reset only in case of success, leave as is on error
+            res
+      def resStr = res match
+        case Some(refs) => i"${refs.toList}"
+        case None => "FAIL"
+      capt.println(i"widen captures ${elems.toList} for $this at $owner = $resStr")
+      res
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -445,8 +542,10 @@ object CaptureSet:
      *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
-      if computingApprox then universal
-      else if isConst then this
+      if isConst then this
+      else if elems.exists(_.isRootCapability) then
+        CaptureSet(elems.filter(_.isRootCapability).toList*)
+      else if computingApprox then universal
       else
         computingApprox = true
         try computeApprox(origin).ensuring(_.isConst)
@@ -463,6 +562,7 @@ object CaptureSet:
     def solve()(using Context): Unit =
       if !isConst then
         val approx = upperApprox(empty)
+          .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
         if newElems.isEmpty || addNewElems(newElems, empty)(using ctx, VarState()).isOK then
@@ -474,10 +574,23 @@ object CaptureSet:
       deps.foreach(_.propagateSolved())
 
     def withDescription(description: String): this.type =
-      this.description =
-        if this.description.isEmpty then description
-        else s"${this.description} and $description"
+      this.description = this.description.join(" and ", description)
       this
+
+    /** Adds variables to the ShownVars context property if that exists, which
+     *  establishes a record of all variables printed in an error message.
+     *  Returns variable `ids` under -Ycc-debug, and owner/nesting level info
+     *  under -Yprint-level.
+     */
+    override def optionalInfo(using Context): String =
+      for vars <- ctx.property(ShownVars) do vars += this
+      val debugInfo =
+        if !isConst && ctx.settings.YccDebug.value then ids else ""
+      val nestingInfo =
+        if ctx.settings.YprintLevel.value
+        then s"<in ${owner.show}/${owner.ccNestingLevel}>"
+        else ""
+      debugInfo ++ nestingInfo
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -491,21 +604,20 @@ object CaptureSet:
         case _ => ""
       s"$id${getClass.getSimpleName.nn.take(1)}$trail"
 
-    /** Adds variables to the ShownVars context property if that exists, which
-     *  establishes a record of all variables printed in an error message.
-     *  Prints variables wih ids under -Ycc-debug.
-     */
-    override def toText(printer: Printer): Text = inContext(printer.printerContext) {
-      for vars <- ctx.property(ShownVars) do vars += this
-      super.toText(printer) ~ (Str(ids) provided !isConst && ctx.settings.YccDebug.value)
-    }
-
     override def toString = s"Var$id$elems"
   end Var
 
+  /** A variable used in refinements of class parameters. See `addCaptureRefinements`.
+   */
+  class RefiningVar(owner: Symbol, val getter: Symbol)(using @constructorOnly ictx: Context) extends Var(owner):
+    description = i"of parameter ${getter.name} of ${getter.owner}"
+    override def optionalInfo(using Context): String =
+      super.optionalInfo + (
+        if ctx.settings.YprintDebug.value then "(refining)" else "")
+
   /** A variable that is derived from some other variable via a map or filter. */
-  abstract class DerivedVar(initialElems: Refs)(using @constructorOnly ctx: Context)
-  extends Var(initialElems):
+  abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
+  extends Var(owner, initialElems):
 
     // For debugging: A trace where a set was created. Note that logically it would make more
     // sense to place this variable in Mapped, but that runs afoul of the initializatuon checker.
@@ -531,7 +643,7 @@ object CaptureSet:
    */
   class Mapped private[CaptureSet]
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
-  extends DerivedVar(initial.elems):
+  extends DerivedVar(source.owner, initial.elems):
     addAsDependentTo(initial)  // initial mappings could change by propagation
 
     private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
@@ -597,7 +709,7 @@ object CaptureSet:
    */
   final class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
-  extends DerivedVar(initialElems):
+  extends DerivedVar(source.owner, initialElems):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if origin eq source then
@@ -618,7 +730,7 @@ object CaptureSet:
      */
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       val supApprox = super.computeApprox(this)
-      if source eq origin then supApprox.map(bimap.inverseTypeMap)
+      if source eq origin then supApprox.map(bimap.inverse)
       else source.upperApprox(this).map(bimap) ** supApprox
 
     override def toString = s"BiMapped$id($source, elems = $elems)"
@@ -627,7 +739,7 @@ object CaptureSet:
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
     (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.elems.filter(p)):
+  extends DerivedVar(source.owner, source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       val filtered = newElems.filter(p)
@@ -658,7 +770,7 @@ object CaptureSet:
   extends Filtered(source, !other.accountsFor(_))
 
   class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
-  extends Var(elemIntersection(cs1, cs2)):
+  extends Var(cs1.owner.minNested(cs2.owner), elemIntersection(cs1, cs2)):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
     deps += cs1
@@ -845,34 +957,46 @@ object CaptureSet:
   /** The capture set of the type underlying a CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
     case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
-    case _ => ofType(ref.underlying)
+    case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
-  def ofType(tp: Type)(using Context): CaptureSet =
-    def recur(tp: Type): CaptureSet = tp.dealias match
-      case tp: TermRef =>
-        tp.captureSet
-      case tp: TermParamRef =>
-        tp.captureSet
-      case _: TypeRef =>
-        if tp.classSymbol.hasAnnotation(defn.CapabilityAnnot) then universal else empty
-      case _: TypeParamRef =>
-        empty
-      case CapturingType(parent, refs) =>
-        recur(parent) ++ refs
-      case AppliedType(tycon, args) =>
-        val cs = recur(tycon)
-        tycon.typeParams match
-          case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, args)
-          case _ => cs
-      case tp: TypeProxy =>
-        recur(tp.underlying)
-      case AndType(tp1, tp2) =>
-        recur(tp1) ** recur(tp2)
-      case OrType(tp1, tp2) =>
-        recur(tp1) ++ recur(tp2)
-      case _ =>
-        empty
+  def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
+    def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):
+      tp.dealias match
+        case tp: TermRef =>
+          tp.captureSet
+        case tp: TermParamRef =>
+          tp.captureSet
+        case tp: TypeRef =>
+          if tp.typeSymbol == defn.Caps_Cap then universal else empty
+        case _: TypeParamRef =>
+          empty
+        case CapturingType(parent, refs: RefiningVar) =>
+          refs
+        case CapturingType(parent, refs) =>
+          recur(parent) ++ refs
+        case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
+          ofType(tpd.parent, followResult = false)             // pick up capture set from parent type
+          ++ (recur(rinfo.resType)                             // add capture set of result
+          -- CaptureSet(rinfo.paramRefs.filter(_.isTracked)*)) // but disregard bound parameters
+        case tpd @ AppliedType(tycon, args) =>
+          if followResult && defn.isNonRefinedFunction(tpd) then
+            recur(args.last)
+              // must be (pure) FunctionN type since ImpureFunctions have already
+              // been eliminated in selector's dealias. Use capture set of result.
+          else
+            val cs = recur(tycon)
+            tycon.typeParams match
+              case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, args)
+              case _ => cs
+        case tp: TypeProxy =>
+          recur(tp.underlying)
+        case AndType(tp1, tp2) =>
+          recur(tp1) ** recur(tp2)
+        case OrType(tp1, tp2) =>
+          recur(tp1) ++ recur(tp2)
+        case _ =>
+          empty
     recur(tp)
       .showing(i"capture set of $tp = $result", capt)
 
@@ -908,4 +1032,19 @@ object CaptureSet:
             println(i"  ${cv.show.padTo(20, ' ')} :: ${cv.deps.toList}%, %")
       }
     else op
+
+  def levelErrors: Addenda = new Addenda:
+    override def toAdd(using Context) =
+      for
+        state <- ctx.property(ccStateKey).toList
+        (ref, cs) <- state.levelError
+      yield
+        val levelStr = ref match
+          case ref: (TermRef | ThisType) => i", defined at level ${ref.ccNestingLevel}"
+          case _ => ""
+        i"""
+           |
+           |Note that reference ${ref}$levelStr
+           |cannot be included in outer capture set $cs, defined at level ${cs.owner.nestingLevel} in ${cs.owner}"""
+
 end CaptureSet

@@ -169,6 +169,62 @@ class ReplCompilerTests extends ReplTest:
       )
     }
 
+  @Test def i16596 =
+    initially {
+      run("""
+        |import scala.compiletime.{error, ops, requireConst}, ops.int.*
+        |import scala.quoted.*
+        |
+        |sealed trait Nat
+        |object Nat:
+        |  case object Zero extends Nat
+        |  case class Succ[N <: Nat](prev: N) extends Nat
+        |
+        |  given zero: Zero.type = Zero
+        |  given buildSucc[N <: Nat](using n: N): Succ[N] = Succ(n)
+        |
+        |  def value[N <: Nat](using n: N): N = n
+        |
+        |  def prevImpl[I <: Int: Type](expr: Expr[I])(using Quotes): Expr[I - 1] =
+        |    val prev = expr.valueOrAbort - 1
+        |    // this compiles, but fails at use time
+        |    //Expr(prev).asExprOf[ops.int.-[I, 1]]
+        |    Expr(prev).asInstanceOf[Expr[I - 1]]
+        |
+        |  inline def prevOf[I <: Int](inline i: I): I - 1 = ${prevImpl('i)}
+        |
+        |  type FromInt[I <: Int] <: Nat = I match
+        |     case 0 => Zero.type
+        |     case _ => Succ[FromInt[I - 1]]
+        |
+        |  inline def fromInt[I <: Int & Singleton](i: I): FromInt[i.type] =
+        |    requireConst(i)
+        |    inline i match
+        |      case _: 0 => Zero
+        |      case _ =>
+        |        inline if i < 0
+        |        then error("cannot convert negative to Nat")
+        |        else Succ(fromInt(prevOf[i.type](i)))
+      """.stripMargin)
+    }.andThen {
+      assertMultiLineEquals(
+        """// defined trait Nat
+          |// defined object Nat
+          |""".stripMargin, storedOutput())
+      run("Nat.fromInt(2)")
+    }.andThen {
+      assertEquals("val res0: Nat.Succ[Nat.Succ[Nat.Zero.type]] = Succ(Succ(Zero))", storedOutput().trim)
+      run("summon[Nat.FromInt[2]]")
+    }.andThen {
+      assertEquals("val res1: Nat.Succ[Nat.Succ[Nat.Zero.type]] = Succ(Succ(Zero))", storedOutput().trim)
+      run("Nat.fromInt(3)")
+    }.andThen {
+      assertEquals("val res2: Nat.Succ[Nat.Succ[Nat.Succ[Nat.Zero.type]]] = Succ(Succ(Succ(Zero)))", storedOutput().trim)
+      run("summon[Nat.FromInt[3]]")
+    }.andThen {
+      assertEquals("val res3: Nat.Succ[Nat.Succ[Nat.Succ[Nat.Zero.type]]] = Succ(Succ(Succ(Zero)))", storedOutput().trim)
+    }
+
   @Test def i6200 =
     initially {
       run("""

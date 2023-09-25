@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 class Test:
   def pmat(xs: java.util.Vector[_]): String = xs.get(0) match
     case d: Double => d.toString() // was: error: unreachable case, which is spurious

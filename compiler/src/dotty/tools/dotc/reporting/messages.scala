@@ -29,6 +29,11 @@ import transform.SymUtils._
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
+import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
+import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.util.SourcePosition
+import scala.jdk.CollectionConverters.*
+import dotty.tools.dotc.util.SourceFile
 
 /**  Messages
   *  ========
@@ -155,23 +160,27 @@ extends SyntaxMsg(CaseClassMissingParamListID) {
 
 class AnonymousFunctionMissingParamType(param: untpd.ValDef,
                                         tree: untpd.Function,
-                                        pt: Type)
+                                        inferredType: Type,
+                                        expectedType: Type,
+                                        )
                                         (using Context)
 extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
   def msg(using Context) = {
     val ofFun =
       if param.name.is(WildcardParamName)
           || (MethodType.syntheticParamNames(tree.args.length + 1) contains param.name)
-      then i" of expanded function:\n$tree"
+      then i"\n\nIn expanded function:\n$tree"
       else ""
 
     val inferred =
-      if (pt == WildcardType) ""
-      else i"\nWhat I could infer was: $pt"
+      if (inferredType == WildcardType) ""
+      else i"\n\nPartially inferred type for the parameter: $inferredType"
 
-    i"""Missing parameter type
-        |
-        |I could not infer the type of the parameter ${param.name}$ofFun.$inferred"""
+    val expected =
+      if (expectedType == WildcardType) ""
+      else i"\n\nExpected type for the whole anonymous function: $expectedType"
+
+    i"Could not infer type for parameter ${param.name} of anonymous function$ofFun$inferred$expected"
   }
 
   def explain(using Context) = ""
@@ -493,7 +502,7 @@ extends SyntaxMsg(ObjectMayNotHaveSelfTypeID) {
   }
 }
 
-class RepeatedModifier(modifier: String)(implicit ctx:Context)
+class RepeatedModifier(modifier: String, source: SourceFile, span: Span)(implicit ctx:Context)
 extends SyntaxMsg(RepeatedModifierID) {
   def msg(using Context) = i"""Repeated modifier $modifier"""
 
@@ -512,6 +521,17 @@ extends SyntaxMsg(RepeatedModifierID) {
         |
         |"""
   }
+
+  override def actions(using Context) =
+    import scala.language.unsafeNulls
+    List(
+      CodeAction(title = s"""Remove repeated modifier: "$modifier"""",
+        description = None,
+        patches = List(
+          ActionPatch(SourcePosition(source, span), "")
+        )
+      )
+    )
 }
 
 class InterpolatedStringError()(implicit ctx:Context)
@@ -824,10 +844,13 @@ extends Message(LossyWideningConstantConversionID):
                 |Write `.to$targetType` instead."""
   def explain(using Context) = ""
 
-class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
+class PatternMatchExhaustivity(uncoveredCases: Seq[String], tree: untpd.Match)(using Context)
 extends Message(PatternMatchExhaustivityID) {
   def kind = MessageKind.PatternMatchExhaustivity
-  lazy val uncovered = uncoveredFn
+
+  private val hasMore = uncoveredCases.lengthCompare(6) > 0
+  val uncovered = uncoveredCases.take(6).mkString(", ")
+
   def msg(using Context) =
     val addendum = if hasMore then "(More unmatched cases are elided)" else ""
     i"""|${hl("match")} may not be exhaustive.
@@ -842,11 +865,39 @@ extends Message(PatternMatchExhaustivityID) {
         | - If an extractor always return ${hl("Some(...)")}, write ${hl("Some[X]")} for its return type
         | - Add a ${hl("case _ => ...")} at the end to match all remaining cases
         |"""
+
+  override def actions(using Context) =
+    import scala.language.unsafeNulls
+    val endPos = tree.cases.lastOption.map(_.endPos)
+      .getOrElse(tree.selector.endPos)
+    val startColumn = tree.cases.lastOption
+      .map(_.startPos.startColumn)
+      .getOrElse(tree.selector.startPos.startColumn + 2)
+
+    val pathes = List(
+      ActionPatch(
+        srcPos = endPos, 
+        replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
+          .mkString("\n", "\n", "")
+      ),
+    )
+    List(
+      CodeAction(title = s"Insert missing cases (${uncoveredCases.size})",
+        description = None,
+        patches = pathes
+      )
+    )
+
+
+  private def indent(text:String, margin: Int): String = {
+    import scala.language.unsafeNulls
+    " " * margin + text
+  }
 }
 
-class UncheckedTypePattern(msgFn: => String)(using Context)
+class UncheckedTypePattern(argType: Type, whyNot: String)(using Context)
   extends PatternMatchMsg(UncheckedTypePatternID) {
-  def msg(using Context) = msgFn
+  def msg(using Context) = i"the type test for $argType cannot be checked at runtime because $whyNot"
   def explain(using Context) =
     i"""|Type arguments and type refinements are erased during compile time, thus it's
         |impossible to check them at run-time.
@@ -1302,6 +1353,14 @@ extends SyntaxMsg(VarArgsParamMustComeLastID) {
         |Attempting to define a field in a method signature after a ${hl("varargs")} field is an error.
         |"""
 }
+
+class VarArgsParamCannotBeGiven(isGiven: Boolean)(using Context)
+extends SyntaxMsg(VarArgsParamCannotBeGivenID) {
+  def msg(using Context) = i"repeated parameters are not allowed in a ${if isGiven then "using" else "implicit"} clause"
+  def explain(using Context) =
+    "It is not possible to define a given with a repeated parameter type. This hypothetical given parameter could always be satisfied by providing 0 arguments, which defeats the purpose of a given argument."
+}
+
 
 import typer.Typer.BindingPrec
 
@@ -1846,15 +1905,28 @@ class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: L
         |are only approximated in a best-effort way."""
 }
 
-class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type)(using Context)
+class OnlyFunctionsCanBeFollowedByUnderscore(tp: Type, tree: untpd.PostfixOp)(using Context)
   extends SyntaxMsg(OnlyFunctionsCanBeFollowedByUnderscoreID) {
   def msg(using Context) = i"Only function types can be followed by ${hl("_")} but the current expression has type $tp"
   def explain(using Context) =
     i"""The syntax ${hl("x _")} is no longer supported if ${hl("x")} is not a function.
         |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
+
+  override def actions(using Context) =
+    import scala.language.unsafeNulls
+    val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
+    List(
+      CodeAction(title = "Rewrite to function value",
+        description = None,
+        patches = List(
+          ActionPatch(SourcePosition(tree.source, Span(tree.span.start)), "(() => "),
+          ActionPatch(SourcePosition(tree.source, Span(qual.span.end, tree.span.end)), ")")
+        )
+      )
+    )
 }
 
-class MissingEmptyArgumentList(method: String)(using Context)
+class MissingEmptyArgumentList(method: String, tree: tpd.Tree)(using Context)
   extends SyntaxMsg(MissingEmptyArgumentListID) {
   def msg(using Context) = i"$method must be called with ${hl("()")} argument"
   def explain(using Context) = {
@@ -1869,6 +1941,17 @@ class MissingEmptyArgumentList(method: String)(using Context)
         |In Dotty, this idiom is an error. The application syntax has to follow exactly the parameter syntax.
         |Excluded from this rule are methods that are defined in Java or that override methods defined in Java."""
   }
+
+  override def actions(using Context) =
+    import scala.language.unsafeNulls
+    List(
+      CodeAction(title = "Insert ()",
+        description = None,
+        patches = List(
+          ActionPatch(SourcePosition(tree.source, tree.span.endPos), "()"),
+        )
+      )
+    )
 }
 
 class DuplicateNamedTypeParameter(name: Name)(using Context)
@@ -2234,8 +2317,15 @@ extends NamingMsg(DoubleDefinitionID) {
   def explain(using Context) = ""
 }
 
-class ImportRenamedTwice(ident: untpd.Ident)(using Context) extends SyntaxMsg(ImportRenamedTwiceID) {
-  def msg(using Context) = s"${ident.show} is renamed twice on the same import line."
+class ImportedTwice(sel: Name)(using Context) extends SyntaxMsg(ImportedTwiceID) {
+  def msg(using Context) = s"${sel.show} is imported twice on the same import line."
+  def explain(using Context) = ""
+}
+
+class UnimportedAndImported(sel: Name, isImport: Boolean)(using Context) extends SyntaxMsg(UnimportedAndImportedID) {
+  def msg(using Context) =
+    val otherStr = if isImport then "and imported" else "twice"
+    s"${sel.show} is unimported $otherStr on the same import line."
   def explain(using Context) = ""
 }
 
@@ -2296,6 +2386,15 @@ class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Cont
     i"""Top-level unqualified calls to ${hl("AnyRef")} or ${hl("Any")} methods such as ${hl(method.name.toString)} are
        |resolved to calls on ${hl("Predef")} or on imported methods. This might not be what
        |you intended."""
+}
+
+class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
+  extends Message(SynchronizedCallOnBoxedClassID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Suspicious ${hl("synchronized")} call on boxed class"
+  def explain(using Context) =
+    i"""|You called the ${hl("synchronized")} method on a boxed primitive. This might not be what
+        |you intended."""
 }
 
 class TraitCompanionWithMutableStatic()(using Context)
@@ -2544,10 +2643,10 @@ class AnonymousInstanceCannotBeEmpty(impl:  untpd.Template)(using Context)
         |"""
 }
 
-class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
+class ModifierNotAllowedForDefinition(flag: Flag, explanation: String = "")(using Context)
   extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
   def msg(using Context) = i"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
-  def explain(using Context) = ""
+  def explain(using Context) = explanation
 }
 
 class RedundantModifier(flag: Flag)(using Context)
@@ -2848,10 +2947,17 @@ class MissingImplicitArgument(
             i"The following implicits in scope can be implicitly converted to ${pt.show}:" +
             ignoredConvertibleImplicits.map { imp => s"\n- ${imp.symbol.showDcl}"}.mkString
           )
+        def importSuggestionAddendum: String =
+          arg.tpe match
+            // If the failure was caused by an underlying NoMatchingImplicits, compute the addendum for its expected type
+            case noMatching: NoMatchingImplicits => // FIXME also handle SynthesisFailure
+              ctx.typer.importSuggestionAddendum(noMatching.expectedType)
+            case _ =>
+              ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
         ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
-            .getOrElse(ctx.typer.importSuggestionAddendum(pt))
+            .getOrElse(importSuggestionAddendum)
 
   def explain(using Context) = userDefinedImplicitNotFoundMessage(explain = true)
     .getOrElse("")
@@ -2909,7 +3015,26 @@ class UnusedNonUnitValue(tp: Type)(using Context)
     def msg(using Context) = i"unused value of type $tp"
     def explain(using Context) = ""
 
+class MatchTypeNoCases(casesText: String)(using Context) extends TypeMsg(MatchTypeNoCasesID):
+  def msg(using Context) = i"Match type reduction $casesText"
+  def explain(using Context) = ""
+
 class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
   extends TypeMsg(MatchTypeScrutineeCannotBeHigherKindedID) :
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
+    def explain(using Context) = ""
+
+class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
+  extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
+    def msg(using Context) =
+      i"""cannot turn method type $mt into closure
+         |because it has internal parameter dependencies"""
+    def explain(using Context) = ""
+
+class ImplausiblePatternWarning(pat: tpd.Tree, selType: Type)(using Context)
+  extends TypeMsg(ImplausiblePatternWarningID):
+    def msg(using Context) =
+      i"""|Implausible pattern:
+          |$pat  could match selector of type  $selType
+          |only if there is an `equals` method identifying elements of the two types."""
     def explain(using Context) = ""

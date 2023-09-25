@@ -26,7 +26,7 @@ object MegaPhase {
    *
    *   - Stats: to prepare/transform a statement sequence in a block, template, or package def,
    *   - Unit : to prepare/transform a whole compilation unit
-   *   - Other: to prepape/transform a tree that does not have a specific prepare/transform
+   *   - Other: to prepare/transform a tree that does not have a specific prepare/transform
    *     method pair.
    */
   abstract class MiniPhase extends Phase {
@@ -396,7 +396,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: Inlined =>
         inContext(prepInlined(tree, start)(using outerCtx)) {
           val bindings = transformSpecificTrees(tree.bindings, start)
-          val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
+          val expansion = transformTree(tree.expansion, start)(using inlineContext(tree))
           goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
         }
       case tree: Quote =>

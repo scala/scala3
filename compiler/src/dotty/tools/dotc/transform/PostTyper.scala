@@ -60,7 +60,7 @@ object PostTyper {
  *  mini-phase or subfunction of a macro phase equally well. But taken by themselves
  *  they do not warrant their own group of miniphases before pickling.
  */
-class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase =>
+class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
   import tpd._
 
   override def phaseName: String = PostTyper.name
@@ -79,6 +79,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   def newTransformer(using Context): Transformer =
     new PostTyperTransformer
+
+  private var compilingScala2StdLib = false
+  override def initContext(ctx: FreshContext): Unit =
+    compilingScala2StdLib = ctx.settings.Yscala2Stdlib.value(using ctx)
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
@@ -246,7 +250,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(using Context): Tree = tree match {
-        case Inlined(call, _, expansion) =>
+        case tree @ Inlined(call, _, expansion) =>
           val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
           cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
@@ -359,12 +363,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
               super.transform(tree1)
           }
-        case Inlined(call, bindings, expansion) if !call.isEmpty =>
+        case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
           withMode(Mode.InlinedCall)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
+          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             forwardParamAccessors(templ)
@@ -414,8 +418,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
-              if Feature.pureFunsEnabled && sym != defn.WithPureFunsAnnot then
-                sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
+              if sym != defn.WithPureFunsAnnot && sym != defn.CaptureCheckedAnnot then
+                if Feature.ccEnabled then
+                  sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot, tree.span))
+                else if Feature.pureFunsEnabled then
+                  sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
@@ -425,7 +432,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                 if sym.isOpaqueAlias then
                   VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
               case _ =>
-          processMemberDef(super.transform(tree))
+          processMemberDef(super.transform(scala2LibPatch(tree)))
         case tree: Bind =>
           if tree.symbol.isType && !tree.symbol.name.is(WildcardParamName) then
             Checking.checkGoodBounds(tree.symbol)
@@ -485,7 +492,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))
-        case _: Quote =>
+        case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)
         case tree =>
@@ -534,5 +541,56 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
         sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
+    private def scala2LibPatch(tree: TypeDef)(using Context) =
+      val sym = tree.symbol
+      if compilingScala2StdLib && sym.is(ModuleClass) then
+        // Add Serializable to companion objects of serializable classes,
+        // and add AbstractFunction1 to companion objects of case classes with 1 parameter.
+        tree.rhs match
+          case impl: Template =>
+            var parents1 = impl.parents
+            val companionClass = sym.companionClass
+            if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
+              parents1 = parents1 :+ TypeTree(defn.SerializableType)
+            argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
+              case Some(args) if parents1.head.symbol.owner == defn.ObjectClass =>
+                parents1 = New(defn.AbstractFunctionClass(1).typeRef).select(nme.CONSTRUCTOR).appliedToTypes(args).ensureApplied :: parents1.tail
+              case _ =>
+            val impl1 = cpy.Template(impl)(parents = parents1)
+            cpy.TypeDef(tree)(rhs = impl1)
+      else tree
   }
+
+  protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
+    compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
+
+  def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
+    case info: ClassInfo =>
+      var parents1 = info.parents
+      val companionClass = sym.companionClass
+      if !sym.derivesFrom(defn.SerializableClass) && companionClass.derivesFrom(defn.SerializableClass) then
+        parents1 = parents1 :+ defn.SerializableType
+      argTypeOfCaseClassThatNeedsAbstractFunction1(sym) match
+        case Some(args) if parents1.head.typeSymbol == defn.ObjectClass =>
+          parents1 = defn.AbstractFunctionClass(1).typeRef.appliedTo(args) :: parents1.tail
+        case _ =>
+      if parents1 ne info.parents then info.derivedClassInfo(declaredParents = parents1)
+      else tp
+    case _ => tp
+
+  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
+    val companionClass = sym.companionClass
+    if companionClass.is(CaseClass)
+      && !companionClass.primaryConstructor.is(Private)
+      && !companionClass.primaryConstructor.info.isVarArgsMethod
+    then
+      sym.info.decl(nme.apply).info match
+        case info: MethodType =>
+          info.paramInfos match
+            case arg :: Nil =>
+              Some(arg :: info.resultType :: Nil)
+            case args => None
+        case _ => None
+    else
+      None
 }

@@ -9,9 +9,9 @@ def test(cap1: Cap, cap2: Cap) =
   val zc: () ->{cap1} String = z
   val z2 = () => { x = identity }
   val z2c: () -> Unit = z2  // error
+  var a: String => String = f
 
-  var a: String => String = f // error
-  var b: List[String => String] = Nil // error
+  var b: List[String => String] = Nil
   val u = a  // was error, now ok
   a("")  // was error, now ok
   b.head // was error, now ok
@@ -19,17 +19,20 @@ def test(cap1: Cap, cap2: Cap) =
   def scope =
     val cap3: Cap = CC()
     def g(x: String): String = if cap3 == cap3 then "" else "a"
-    a = g
-    b = List(g)
+    def h(): String = ""
+    a = x => g(x)      // error
+    a = g      // error
+
+    b = List(g) // error
     val gc = g
     g
 
-  val s = scope
-  val sc: String => String = scope
+  val s = scope // error (but should be OK, we need to allow poly-captures)
+  val sc: String => String = scope // error (but should also be OK)
 
-  def local[sealed T](op: Cap -> T): T = op(CC())
+  def local[T](op: (local: caps.Cap) -> CC^{local} -> T): T = op(caps.cap)(CC())
 
-  local { cap3 => // error
+  local { root => cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     g
   }

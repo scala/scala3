@@ -140,7 +140,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.8.2",
+      "-sbt-version", "1.9.3",
       "-Dsbt.supershell=false",
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
@@ -366,13 +366,11 @@ object projects:
     // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
 
-
-  lazy val shapeless = SbtCommunityProject(
-    project       = "shapeless",
-    sbtTestCommand = """set deriving/scalacOptions -= "-Xfatal-warnings"; set typeable/scalacOptions -= "-Xfatal-warnings"; test""",
-      // selectively disable -Xfatal-warnings due to deprecations
-    sbtDocCommand = forceDoc("typeable", "deriving", "data"),
-    scalacOptions = Nil // disable -Ysafe-init, due to -Xfatal-warnings
+  lazy val shapeless3 = SbtCommunityProject(
+    project = "shapeless-3",
+    sbtTestCommand = "testJVM; testJS",
+    sbtDocCommand = forceDoc("typeable", "deriving"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -682,7 +680,7 @@ object projects:
     sbtTestCommand = "runCommunityBuild",
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalatest),
-    scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") :+ "-language:implicitConversions", // disabled -Xcheck-macros, due to bug in macro
   )
 
   lazy val onnxScala = SbtCommunityProject(
@@ -796,7 +794,7 @@ def allProjects = List(
   projects.minitest,
   projects.fastparse,
   projects.stdLib213,
-  projects.shapeless,
+  projects.shapeless3,
   projects.xmlInterpolator,
   projects.effpi,
   projects.sconfig,

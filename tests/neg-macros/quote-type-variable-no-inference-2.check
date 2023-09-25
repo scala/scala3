@@ -1,0 +1,13 @@
+-- Warning: tests/neg-macros/quote-type-variable-no-inference-2.scala:5:22 ---------------------------------------------
+5 |    case '{ $_ : F[t, t]; () } => // warn // error
+  |                      ^
+  |                      Ignored bound <: Double
+  |
+  |                      Consider defining bounds explicitly:
+  |                        '{ type t <: Int & Double; ... }
+-- [E057] Type Mismatch Error: tests/neg-macros/quote-type-variable-no-inference-2.scala:5:20 --------------------------
+5 |    case '{ $_ : F[t, t]; () } => // warn // error
+  |                    ^
+  |                    Type argument t does not conform to upper bound Double
+  |
+  | longer explanation available when compiling with `-explain`

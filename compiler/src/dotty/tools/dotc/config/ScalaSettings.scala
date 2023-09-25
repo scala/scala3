@@ -55,6 +55,7 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
 
   /* Path related settings */
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
+  val semanticdbText: Setting[Boolean] = BooleanSetting("-semanticdb-text", "Specifies whether to include source code in SemanticDB files or not.")
 
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", ScalaSettings.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
@@ -71,8 +72,8 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   val printLines: Setting[Boolean] = BooleanSetting("-print-lines", "Show source code line numbers.", aliases = List("--print-lines"))
 
   /* Scala.js-related settings */
-  val scalajsGenStaticForwardersForNonTopLevelObjects: Setting[Boolean] = BooleanSetting("-scalajs-genStaticForwardersForNonTopLevelObjects", "Generate static forwarders even for non-top-level objects (Scala.js only)")
-  val scalajsMapSourceURI: Setting[List[String]] = MultiStringSetting("-scalajs-mapSourceURI", "uri1[->uri2]", "rebases source URIs from uri1 to uri2 (or to a relative URI) for source maps (Scala.js only)")
+  val scalajsGenStaticForwardersForNonTopLevelObjects: Setting[Boolean] = BooleanSetting("-scalajs-genStaticForwardersForNonTopLevelObjects", "Generate static forwarders even for non-top-level objects (Scala.js only).")
+  val scalajsMapSourceURI: Setting[List[String]] = MultiStringSetting("-scalajs-mapSourceURI", "uri1[->uri2]", "rebases source URIs from uri1 to uri2 (or to a relative URI) for source maps (Scala.js only).")
 
   val projectUrl: Setting[String] = StringSetting (
     "-project-url",
@@ -161,7 +162,7 @@ private sealed trait WarningSettings:
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
   val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
   val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
-
+  val WimplausiblePatterns = BooleanSetting("-Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",
@@ -374,6 +375,7 @@ private sealed trait YSettings:
   val YprintDebugOwners: Setting[Boolean] = BooleanSetting("-Yprint-debug-owners", "When printing trees, print owners of definitions.")
   val YprintLevel: Setting[Boolean] = BooleanSetting("-Yprint-level", "print nesting levels of symbols and type variables.")
   val YshowPrintErrors: Setting[Boolean] = BooleanSetting("-Yshow-print-errors", "Don't suppress exceptions thrown during tree printing.")
+  val YprintTasty: Setting[Boolean] = BooleanSetting("-Yprint-tasty", "Prints the generated TASTY to stdout.")
   val YtestPickler: Setting[Boolean] = BooleanSetting("-Ytest-pickler", "Self-test for pickling functionality; should be used with -Ystop-after:pickler.")
   val YcheckReentrant: Setting[Boolean] = BooleanSetting("-Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")
   val YdropComments: Setting[Boolean] = BooleanSetting("-Ydrop-docs", "Drop documentation when scanning source files.", aliases = List("-Ydrop-comments"))
@@ -385,10 +387,11 @@ private sealed trait YSettings:
   val YcheckConstraintDeps: Setting[Boolean] = BooleanSetting("-Ycheck-constraint-deps", "Check dependency tracking in constraints (used for testing the algorithm).")
   val YretainTrees: Setting[Boolean] = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds: Setting[Boolean] = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
-  val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty")
-  val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features")
-  val YlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals")
-  val Yscala2Stdlib: Setting[Boolean] = BooleanSetting("-Yscala2-stdlib", "Used when compiling the Scala 2 standard library")
+  val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty.")
+  val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features.")
+  val YlegacyLazyVals: Setting[Boolean] = BooleanSetting("-Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals.")
+  val Yscala2Stdlib: Setting[Boolean] = BooleanSetting("-Yscala2-stdlib", "Used when compiling the Scala 2 standard library.")
+  val YoutputOnlyTasty: Setting[Boolean] = BooleanSetting("-Youtput-only-tasty", "Used to only generate the TASTy file without the classfiles")
 
   val YprofileEnabled: Setting[Boolean] = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
   val YprofileDestination: Setting[String] = StringSetting("-Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "")
@@ -401,12 +404,11 @@ private sealed trait YSettings:
   // Experimental language features
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
-  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
-  val YcheckInitGlobal: Setting[Boolean] = BooleanSetting("-Ysafe-init-global", "Check safe initialization of global objects")
-  val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
-  val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only)")
-  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references")
-  val YccNoAbbrev: Setting[Boolean] = BooleanSetting("-Ycc-no-abbrev", "Used in conjunction with captureChecking language import, suppress type abbreviations")
+  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects.")
+  val YcheckInitGlobal: Setting[Boolean] = BooleanSetting("-Ysafe-init-global", "Check safe initialization of global objects.")
+  val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
+  val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only).")
+  val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
@@ -419,4 +421,6 @@ private sealed trait YSettings:
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
 
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
+
+  val YdebugMacros: Setting[Boolean] = BooleanSetting("-Ydebug-macros", "Show debug info when quote pattern match fails")
 end YSettings

@@ -376,6 +376,17 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
+
+  /** Under capture checking, an extractor for qualified roots `cap[Q]`.
+   */
+  object QualifiedRoot:
+
+    def unapply(tree: Apply)(using Context): Option[String] = tree match
+      case Apply(fn, Literal(lit) :: Nil) if fn.symbol == defn.Caps_capIn =>
+        Some(lit.value.asInstanceOf[String])
+      case _ =>
+        None
+  end QualifiedRoot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
@@ -420,10 +431,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Closure(_, meth, _) => true
     case Block(Nil, expr) => isContextualClosure(expr)
     case Block(DefDef(nme.ANON_FUN, params :: _, _, _) :: Nil, cl: Closure) =>
-      if params.isEmpty then
-        cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
-      else
-        isUsingClause(params)
+      isUsingClause(params)
     case _ => false
   }
 
@@ -802,19 +810,51 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  /** An extractor for def of a closure contained the block of the closure,
+   *  possibly with type ascriptions.
+   */
+  object possiblyTypedClosureDef:
+    def unapply(tree: Tree)(using Context): Option[DefDef] = tree match
+      case Typed(expr, _)  => unapply(expr)
+      case _ => closureDef.unapply(tree)
+
   /** If tree is a closure, its body, otherwise tree itself */
   def closureBody(tree: Tree)(using Context): Tree = tree match {
     case closureDef(meth) => meth.rhs
     case _ => tree
   }
 
+  /** Is `mdef` an eta-expansion of a method reference? To recognize this, we use
+   *  the following criterion: A method definition is an eta expansion, if
+   *  it contains at least one term paramter, the parameter has a zero extent span,
+   *  and the right hand side is either an application or a closure with'
+   *  an anonymous method that's itself characterized as an eta expansion.
+   */
+  def isEtaExpansion(mdef: DefDef)(using Context): Boolean =
+    !rhsOfEtaExpansion(mdef).isEmpty
+
+  def rhsOfEtaExpansion(mdef: DefDef)(using Context): Tree = mdef.paramss match
+    case (param :: _) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
+      mdef.rhs match
+        case rhs: Apply => rhs
+        case closureDef(mdef1) => rhsOfEtaExpansion(mdef1)
+        case _ => EmptyTree
+    case _ => EmptyTree
+
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(using Context): List[Symbol] = {
-    val acc = new TreeAccumulator[List[Symbol]] {
+    val acc = new TreeAccumulator[List[Symbol]] { outer =>
       def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
         case Annotated(tree, id @ Ident(tpnme.BOUNDTYPE_ANNOT)) => apply(id.symbol :: syms, tree)
+        case QuotePattern(bindings, body, _) => quotePatVars(bindings.map(_.symbol) ::: syms, body)
         case _ => foldOver(syms, tree)
+      }
+      private object quotePatVars extends TreeAccumulator[List[Symbol]] {
+        def apply(syms: List[Symbol], tree: Tree)(using Context) = tree match {
+          case SplicePattern(pat, _) => outer.apply(syms, pat)
+          case _ => foldOver(syms, tree)
+        }
       }
     }
     acc(Nil, tree)
@@ -950,6 +990,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
     def isStructuralTermSelect(tree: Select) =
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
+        case defn.PolyFunctionOf(_) =>
+          false
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
@@ -962,10 +1004,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           false
       !tree.symbol.exists
       && tree.isTerm
-      && {
-        val qualType = tree.qualifier.tpe
-        hasRefinement(qualType) && !defn.isRefinedFunctionType(qualType)
-      }
+      && hasRefinement(tree.qualifier.tpe)
     def loop(tree: Tree): Boolean = tree match
       case TypeApply(fun, _) =>
         loop(fun)
@@ -1050,6 +1089,21 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: tpd.Select)(using Context): Option[tpd.Tree] =
       if tree.symbol.isTypeSplice then Some(tree.qualifier) else None
   }
+
+  extension (tree: tpd.Quote)
+    /** Type of the quoted expression as seen from outside the quote */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Quotes ?=> Expr[T]` or `Quotes ?=> Type[T]`
+      val exprType = quoteType.argInfos.last // `Expr[T]` or `Type[T]`
+      exprType.argInfos.head // T
+  end extension
+
+  extension (tree: tpd.QuotePattern)
+    /** Type of the quoted pattern */
+    def bodyType(using Context): Type =
+      val quoteType = tree.tpe // `Expr[T]` or `Type[T]`
+      quoteType.argInfos.head // T
+  end extension
 
   /** Extractor for not-null assertions.
    *  A not-null assertion for reference `x` has the form `x.$asInstanceOf$[x.type & T]`.

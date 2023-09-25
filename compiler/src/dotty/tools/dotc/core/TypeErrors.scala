@@ -46,9 +46,6 @@ object TypeError:
     def toMessage(using Context) = msg
 end TypeError
 
-class MatchTypeReductionError(msg: Message)(using Context) extends TypeError:
-  def toMessage(using Context) = msg
-
 class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])(using Context) extends TypeError:
   def toMessage(using Context) = em"malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"
 
@@ -180,7 +177,7 @@ object CyclicReference:
   def apply(denot: SymDenotation)(using Context): CyclicReference =
     val ex = new CyclicReference(denot)
     if ex.computeStackTrace then
-      cyclicErrors.println(s"Cyclic reference involving! $denot")
+      cyclicErrors.println(s"Cyclic reference involving $denot")
       val sts = ex.getStackTrace.asInstanceOf[Array[StackTraceElement]]
       for (elem <- sts take 200)
         cyclicErrors.println(elem.toString)

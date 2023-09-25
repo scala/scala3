@@ -221,6 +221,8 @@ class Namer { typer: Typer =>
         else NoSymbol
 
       var flags1 = flags
+      if name.isTypeName && Feature.ccEnabled then
+        flags1 |= CaptureChecked
       var privateWithin = privateWithinClass(tree.mods)
       val effectiveOwner = owner.skipWeakOwner
       if (flags.is(Private) && effectiveOwner.is(Package)) {
@@ -1309,7 +1311,7 @@ class Namer { typer: Typer =>
           if sel.isWildcard then
             addWildcardForwarders(seen, sel.span)
           else
-            if sel.rename != nme.WILDCARD then
+            if !sel.isUnimport then
               addForwardersNamed(sel.name, sel.rename, sel.span)
             addForwarders(sels1, sel.name :: seen)
         case _ =>
@@ -1692,17 +1694,22 @@ class Namer { typer: Typer =>
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
-    lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
         checkMembersOK(inferredType, mdef.srcPos)
-      case DependentTypeTree(tpFun) =>
-        val tpe = tpFun(termParamss.head)
+
+      // We cannot rely on `typedInLambdaTypeTree` since the computed type might not be fully-defined.
+      case InLambdaTypeTree(/*isResult =*/ true, tpFun) =>
+        // A lambda has at most one type parameter list followed by exactly one term parameter list.
+        val tpe = (paramss: @unchecked) match
+          case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
+          case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
+
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
@@ -1724,7 +1731,8 @@ class Namer { typer: Typer =>
             // So fixing levels at instantiation avoids the soundness problem but apparently leads
             // to type inference problems since it comes too late.
             if !Config.checkLevelsOnConstraints then
-              val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
+              val termParams = paramss.collect { case TermSymbols(vparams) => vparams }.flatten
+              val hygienicType = TypeOps.avoid(rhsType, termParams)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
                 report.error(
                   em"""return type ${tpt.tpe} of lambda cannot be made hygienic
@@ -1885,7 +1893,7 @@ class Namer { typer: Typer =>
       val originalTp = defaultParamType
       val approxTp = wildApprox(originalTp)
       approxTp.stripPoly match
-        case atp @ defn.ContextFunctionType(_, resType, _)
+        case atp @ defn.ContextFunctionType(_, resType)
         if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
             || resType.existsPart(_.isInstanceOf[WildcardType], StopAt.Static, forceLazy = false) =>
           originalTp

@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed trait Get[X, +X2 <: X]
 case class Bar[Y, Y2 <: Y](value: Y2) extends Get[Y, Y2]
 

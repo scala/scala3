@@ -27,8 +27,6 @@ The principle of optional braces is that any keyword that can be followed by `{`
 
 The lexical analyzer inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](./other-new-features/indentation.md).
 
-´\color{red}{\text{TODO SCALA3: Port soft-modifier.md and link it here.}}´
-
 In the context-free productions below we use the notation `<<< ts >>>` to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`.
 Analogously, the notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows a `colon` token.
 
@@ -121,11 +119,34 @@ type      val       var       while     with      yield
 
 Additionally, the following soft keywords are reserved only in some situations.
 
-´\color{red}{\text{TODO SCALA3: Port soft-modifier.md and link it here.}}´
+```
+as      derives      end      extension   infix   inline   opaque
+open    transparent  using
+|       *            +        -
+```
 
-```
-as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
-```
+A soft modifier is one of the identifiers `infix`, `inline`, `opaque`, `open` and `transparent`.
+
+A soft keyword is a soft modifier, or one of `as`, `derives`, `end`, `extension`, `using`, `|`, `+`, `-`, `*`.
+
+A soft modifier is treated as an actual modifier of a definition if it is followed by a hard modifier or a keyword combination starting a definition (`def`, `val`, `var`, `type`, `given`, `class`, `trait`, `object`, `enum`, `case class`, `case object`).
+Between the two words, there may be a sequence of newline tokens and/or other soft modifiers.
+
+Otherwise, soft keywords are treated as actual keywords in the following situations:
+
+ - `as`, if it appears in a renaming import clause.
+ - `derives`, if it appears after an extension clause or after the name and possibly parameters of a class, trait, object, or enum definition.
+ - `end`, if it appears at the start of a line following a statement (i.e. definition or toplevel expression) and is followed on the same line by a single non-comment token that is:
+   - one of the keywords `for`, `given`, `if`, `match`, `new`, `this`, `throw`, `try`, `val`, `while`, or
+   - an identifier.
+ - `extension`, if it appears at the start of a statement and is followed by `(` or `[`.
+ - `inline`, if it is followed by any token that can start an expression.
+ - `using`, if it appears at the start of a parameter or argument list.
+ - `|`, if it separates two patterns in an alternative.
+ - `+`, `-`, if they appear in front of a type parameter.
+ - `*`, if it appears in a wildcard import, or if it follows the type of a parameter, or if it appears in a vararg splice `x*`.
+
+Everywhere else, a soft keyword is treated as a normal identifier.
 
 <!-- -->
 
@@ -143,7 +164,7 @@ Scala is a line-oriented language where statements may be terminated by semi-col
 A newline in a Scala source text is treated as the special token “nl” if the three following criteria are satisfied:
 
 1. The token immediately preceding the newline can terminate a statement.
-1. The token immediately following the newline can begin a statement.
+1. The token immediately following the newline can begin a statement and is not a _leading infix operator_.
 1. The token appears in a region where newlines are enabled.
 
 The tokens that can terminate a statement are: literals, identifiers and the following delimiters and reserved words:
@@ -163,6 +184,14 @@ with    yield    ,    .    ;    :    =    =>    <-    <:    <%
 
 A `case` token can begin a statement only if followed by a
 `class` or `object` token.
+
+A _leading infix operator_ is a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks that:
+
+- starts a new line, and
+- is not following a blank line, and
+- is followed by at least one whitespace character (including new lines) and a token that can start an expression.
+
+Furthermore, if the operator appears on its own line, the next line must have at least the same indentation width as the operator.
 
 Newlines are enabled in:
 
@@ -189,13 +218,13 @@ Multiple newline tokens are accepted in the following places (note that a semico
 
 - between the condition of a [conditional expression](06-expressions.html#conditional-expressions) or [while loop](06-expressions.html#while-loop-expressions) and the next following expression,
 - between the enumerators of a [for-comprehension](06-expressions.html#for-comprehensions-and-for-loops) and the next following expression, and
-- after the initial `type` keyword in a [type definition or declaration](04-basic-declarations-and-definitions.html#type-declarations-and-type-aliases).
+- after the initial `type` keyword in a [type definition](04-basic-definitions.html#type-member-definitions).
 
 A single new line token is accepted
 
 - in front of an opening brace ‘{’, if that brace is a legal continuation of the current statement or expression,
 - after an [infix operator](06-expressions.html#prefix,-infix,-and-postfix-operations), if the first token on the next line can start an expression,
-- in front of a [parameter clause](04-basic-declarations-and-definitions.html#function-declarations-and-definitions), and
+- in front of a [parameter clause](04-basic-definitions.html#method-definitions), and
 - after an [annotation](11-annotations.html#user-defined-annotations).
 
 > The newline tokens between the two lines are not treated as statement separators.

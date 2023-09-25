@@ -237,7 +237,7 @@ trait ImportSuggestions:
           // don't suggest things that are imported by default
 
       def extensionImports = pt match
-        case ViewProto(argType, SelectionProto(name: TermName, _, _, _)) =>
+        case ViewProto(argType, SelectionProto(name: TermName, _, _, _, _)) =>
           roots.flatMap(extensionMethod(_, name, argType))
         case _ =>
           Nil
@@ -330,7 +330,7 @@ trait ImportSuggestions:
     def importString(ref: TermRef): String =
       val imported =
         if ref.symbol.is(ExtensionMethod) then
-          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name}"
+          s"${ctx.printer.toTextPrefixOf(ref).show}${ref.symbol.name}"
         else
           ctx.printer.toTextRef(ref).show
       s"  import $imported"

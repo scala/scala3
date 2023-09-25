@@ -1,14 +1,16 @@
 -- [E081] Type Error: tests/neg/i11350.scala:1:39 ----------------------------------------------------------------------
 1 |class A1[T](action: A1[T] ?=> String = "") // error
   |                                       ^
-  |                                       Missing parameter type
+  |                                       Could not infer type for parameter contextual$1 of anonymous function
   |
-  |                                       I could not infer the type of the parameter evidence$1.
-  |                                       What I could infer was: A1[<?>]
+  |                                       Partially inferred type for the parameter: A1[<?>]
+  |
+  |                                       Expected type for the whole anonymous function: (A1[<?>]) ?=> String
 -- [E081] Type Error: tests/neg/i11350.scala:2:39 ----------------------------------------------------------------------
 2 |class A2[T](action: A1[T] ?=> String = summon[A1[T]]) // error
   |                                       ^
-  |                                       Missing parameter type
+  |                                       Could not infer type for parameter contextual$2 of anonymous function
   |
-  |                                       I could not infer the type of the parameter evidence$2.
-  |                                       What I could infer was: A1[<?>]
+  |                                       Partially inferred type for the parameter: A1[<?>]
+  |
+  |                                       Expected type for the whole anonymous function: (A1[<?>]) ?=> String

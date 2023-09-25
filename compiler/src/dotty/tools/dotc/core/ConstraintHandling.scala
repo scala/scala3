@@ -110,7 +110,7 @@ trait ConstraintHandling {
    *
    *  If we trust bounds, then the lower bound of `X` is `x.M` since `x.M >: 1`.
    *  Then even if we correct levels on instantiation to eliminate the local `x`,
-   *  it is alreay too late, we'd get `Int & String` as instance, which does not
+   *  it is already too late, we'd get `Int & String` as instance, which does not
    *  satisfy the original constraint `X >: 1`.
    *
    *  But if `trustBounds` is false, we do not conclude the `x.M >: 1` since
@@ -716,8 +716,8 @@ trait ConstraintHandling {
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
       // cannot be used as an instantiation of `param` without creating a loop.
-      // If that happens, we run `instanceType` again to find a new instantation.
-      // (we do not check for non-toplevel occurences: those should never occur
+      // If that happens, we run `instanceType` again to find a new instantiation.
+      // (we do not check for non-toplevel occurrences: those should never occur
       // since `addOneBound` disallows recursive lower bounds).
       if constraint.occursAtToplevel(param, widened) then
         instanceType(param, fromBelow, widenUnions, maxLevel)

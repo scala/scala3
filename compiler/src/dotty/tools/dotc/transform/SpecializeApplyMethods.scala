@@ -25,7 +25,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def description: String = SpecializeApplyMethods.description
 
   override def isEnabled(using Context): Boolean =
-    !ctx.settings.scalajs.value
+    !ctx.settings.scalajs.value && !ctx.settings.Yscala2Stdlib.value
 
   private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
     val name = nme.apply.specializedFunction(ret, args)
@@ -90,7 +90,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def transformTemplate(tree: Template)(using Context) = {
     val cls = tree.symbol.owner.asClass
 
-    def synthesizeApply(names: collection.Set[TermName]): Tree = {
+    def synthesizeApply(names: List[TermName]): Tree = {
       val applyBuf = new mutable.ListBuffer[DefDef]
       names.foreach { name =>
         val applySym = cls.info.decls.lookup(name)

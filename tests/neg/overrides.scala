@@ -120,3 +120,24 @@ class C extends A {
   override def m: Int = 42 // error: has incompatible type
 }
 }
+
+package p6 {
+  class A { def apply(xs: Int*) = 42 }
+  class B extends A { override def apply(xs: Seq[Int]) = 42 } // error
+}
+package p7 {
+  class A { def apply(xs: Int*) = 42 }
+  class B extends A { def apply(xs: Seq[Int]) = 42 } // error
+}
+package p8 {
+  class A { def apply(xs: Seq[Int]) = 42 }
+  class B extends A { override def apply(xs: Int*) = 42 } // error
+}
+package p9 {
+  class A { def apply(xs: Seq[Int]) = 42 }
+  class B extends A { def apply(xs: Int*) = 42 } // error
+}
+package p10 {
+  class A { def apply(s: String)(xs: Int*) = 42 }
+  class B extends A { def apply(s: String)(xs: Seq[Int]) = 42 } // error
+}

@@ -208,7 +208,7 @@ ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  [‘into’] ExactParamType                                  Into(t)
 ExactParamType    ::=  ParamValueType [‘*’]                                     PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>                  ds
+Refinement        ::=  :<<< [RefineDef] {semi [RefineDef]} >>>                  ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
@@ -317,7 +317,7 @@ Pattern1          ::=  PatVar ‘:’ RefinedType                               
                     |  [‘-’] integerLiteral ‘:’ RefinedType                     Typed(pat, tpe)
                     |  [‘-’] floatingPointLiteral ‘:’ RefinedType               Typed(pat, tpe)
                     |  Pattern2
-Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]                              Bind(name, pat)
+Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
@@ -412,29 +412,24 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
                     |  ‘new’ | ‘this’ | ‘given’ | ‘extension’ | ‘val’
 ```
 
-### Declarations and Definitions
+### Definitions
 ```ebnf
-RefineDcl         ::=  ‘val’ ValDcl
-                    |  ‘def’ DefDcl
-                    |  ‘type’ {nl} TypeDcl
-Dcl               ::=  RefineDcl
-                    |  ‘var’ VarDcl
-ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
-VarDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
-DefDcl            ::=  DefSig ‘:’ Type                                          DefDef(_, name, paramss, tpe, EmptyTree)
-DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
-TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
-                       [‘=’ Type]
+RefineDef         ::=  ‘val’ ValDef
+                    |  ‘def’ DefDef
+                    |  ‘type’ {nl} TypeDef
 
 Def               ::=  ‘val’ PatDef
                     |  ‘var’ PatDef
                     |  ‘def’ DefDef
-                    |  ‘type’ {nl} TypeDcl
+                    |  ‘type’ {nl} TypeDef
                     |  TmplDef
-PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
-                    |  Pattern2 [‘:’ Type] ‘=’ Expr                             PatDef(_, pats, tpe?, expr)
-DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, paramss, tpe, expr)
+PatDef            ::=  ids [‘:’ Type] [‘=’ Expr]
+                    |  Pattern2 [‘:’ Type] [‘=’ Expr]                           PatDef(_, pats, tpe?, expr)
+DefDef            ::=  DefSig [‘:’ Type] [‘=’ Expr]                             DefDef(_, name, paramss, tpe, expr)
                     |  ‘this’ TypelessClauses [DefImplicitClause] ‘=’ ConstrExpr     DefDef(_, <init>, vparamss, EmptyTree, expr | Block)
+DefSig            ::=  id [DefParamClauses] [DefImplicitClause]
+TypeDef           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         TypeDefTree(_, name, tparams, bound
+                       [‘=’ Type]
 
 TmplDef           ::=  ([‘case’] ‘class’ | ‘trait’) ClassDef
                     |  [‘case’] ‘object’ ObjectDef

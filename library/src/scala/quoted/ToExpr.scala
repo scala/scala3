@@ -422,7 +422,8 @@ object ToExpr {
   /** Default implementation of `ToExpr[BigDecimal using the default MathContext]` */
   given BigDecimalToExpr: ToExpr[BigDecimal] with {
     def apply(x: BigDecimal)(using Quotes): Expr[BigDecimal] =
-      '{ BigDecimal(${Expr(x.toString)}) }
+      val bigDecimal: String = "" + x // workaround "method toString in class BigDecimal does not take parameters" in scaladoc/generateScalaDocumentation
+      '{ BigDecimal(${Expr(bigDecimal)}) }
   }
 
   /** Default implementation of `ToExpr[StringContext]` */

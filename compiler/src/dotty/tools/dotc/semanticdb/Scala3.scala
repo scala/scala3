@@ -47,7 +47,8 @@ object Scala3:
       // for secondary constructors `this`
       desig match
         case sym: Symbol =>
-          if sym.isConstructor && nameInSource == nme.THISkw.toString then
+          if sym.isConstructor
+          && (sym.isPrimaryConstructor || nameInSource == nme.THISkw.toString) then
             true
           else
             val target =
@@ -216,7 +217,8 @@ object Scala3:
 
       def isEmptyNumbered: Boolean =
         !name.is(NameKinds.WildcardParamName)
-        && !name.is(NameKinds.EvidenceParamName)
+        && !name.is(NameKinds.ContextBoundParamName)
+        && !name.is(NameKinds.ContextFunctionParamName)
         && { name match
           case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
           case _                                       => false

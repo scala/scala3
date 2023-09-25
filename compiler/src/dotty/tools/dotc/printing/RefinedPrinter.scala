@@ -29,7 +29,7 @@ import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, toCaptureSet, IllegalCaptureRef}
+import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, ccNestingLevelOpt}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -117,21 +117,22 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  override def toTextPrefix(tp: Type): Text = controlled {
+  override def toTextPrefixOf(tp: NamedType): Text = controlled {
     def isOmittable(sym: Symbol) =
       if printDebug then false
       else if homogenizedView then isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
       else if sym.isPackageObject then isOmittablePrefix(sym.owner)
       else isOmittablePrefix(sym)
-    tp match {
-      case tp: ThisType if isOmittable(tp.cls) =>
+
+    tp.prefix match {
+      case thisType: ThisType if isOmittable(thisType.cls) =>
         ""
-      case tp @ TermRef(pre, _) =>
-        val sym = tp.symbol
-        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefix(pre)
+      case termRef @ TermRef(pre, _) =>
+        val sym = termRef.symbol
+        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefixOf(termRef)
         else if (isOmittable(sym)) ""
-        else super.toTextPrefix(tp)
-      case _ => super.toTextPrefix(tp)
+        else super.toTextPrefixOf(tp)
+      case _ => super.toTextPrefixOf(tp)
     }
   }
 
@@ -174,7 +175,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       ~ " " ~ argText(args.last)
     }
 
-  private def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
+  protected def toTextMethodAsFunction(info: Type, isPure: Boolean, refs: Text = Str("")): Text = info match
     case info: MethodType =>
       val capturesRoot = refs == rootSetText
       changePrec(GlobalPrec) {
@@ -265,9 +266,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially
         toText(tycon)
-      case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
+      case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextMethodAsFunction(tp.refinedInfo,
-          isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction)
+          isPure = Feature.pureFunsEnabled && !tp.typeSymbol.name.isImpureFunction,
+          refs = tp.parent match
+            case CapturingType(_, cs) => toTextCaptureSet(cs)
+            case _ => "")
       case tp: TypeRef =>
         if (tp.symbol.isAnonymousClass && !showUniqueIds)
           toText(tp.info)
@@ -427,8 +431,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id @ Ident(name) =>
         val txt = tree.typeOpt match {
           case tp: NamedType if name != nme.WILDCARD =>
-            val pre = if (tp.symbol.is(JavaStatic)) tp.prefix.widen else tp.prefix
-            toTextPrefix(pre) ~ withPos(selectionString(tp), tree.sourcePos)
+            toTextPrefixOf(tp) ~ withPos(selectionString(tp), tree.sourcePos)
           case _ =>
             toText(name)
         }
@@ -535,7 +538,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ Inlined(call, bindings, body) =>
         val bodyText = if bindings.isEmpty then toText(body) else blockText(bindings :+ body)
         if homogenizedView || !ctx.settings.XprintInline.value then bodyText
-        else if call.isEmpty then stringText("{{") ~ stringText("/* inlined from outside */") ~ bodyText ~ stringText("}}")
+        else if tree.inlinedFromOuterScope then stringText("{{") ~ stringText("/* inlined from outside */") ~ bodyText ~ stringText("}}")
         else keywordText("{{") ~ keywordText("/* inlined from ") ~ toText(call) ~ keywordText(" */") ~ bodyText ~ keywordText("}}")
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
@@ -734,13 +737,21 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordStr("macro ") ~ toTextGlobal(call)
       case tree @ Quote(body, tags) =>
         val tagsText = (keywordStr("<") ~ toTextGlobal(tags, ", ") ~ keywordStr(">")).provided(tree.tags.nonEmpty)
-        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tree.bodyType) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
+        val exprTypeText = (keywordStr("[") ~ toTextGlobal(tpd.bodyType(tree.asInstanceOf[tpd.Quote])) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
         val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
         keywordStr("'") ~ tagsText ~ exprTypeText ~ open ~ toTextGlobal(body) ~ close
       case Splice(expr) =>
         val spliceTypeText = (keywordStr("[") ~ toTextGlobal(tree.typeOpt) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         keywordStr("$") ~ spliceTypeText ~ keywordStr("{") ~ toTextGlobal(expr) ~ keywordStr("}")
+      case tree @ QuotePattern(bindings, body, quotes) =>
+        val quotesText = (keywordStr("<") ~ toText(quotes) ~ keywordStr(">")).provided(printDebug)
+        val bindingsText = bindings.map(binding => {
+          keywordStr("type ") ~ toText(binding.symbol.name) ~ toText(binding.symbol.info) ~ "; "
+        }).reduceLeft(_ ~~ _).provided(bindings.nonEmpty)
+        val open = if (body.isTerm) keywordStr("{") else keywordStr("[")
+        val close = if (body.isTerm) keywordStr("}") else keywordStr("]")
+        keywordStr("'") ~ quotesText ~ open ~ bindingsText ~ toTextGlobal(body) ~ close
       case SplicePattern(pattern, args) =>
         val spliceTypeText = (keywordStr("[") ~ toTextGlobal(tree.typeOpt) ~ keywordStr("]")).provided(printDebug && tree.typeOpt.exists)
         keywordStr("$") ~ spliceTypeText ~ {
@@ -763,7 +774,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def toTextCapturing(tp: Type, refsText: Text, boxText: Text): Text = tp match
     case tp: AppliedType if defn.isFunctionSymbol(tp.typeSymbol) && !printDebug =>
       boxText ~ toTextFunction(tp, refsText)
-    case tp: RefinedType if defn.isFunctionOrPolyType(tp) && !printDebug =>
+    case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
       boxText ~ toTextMethodAsFunction(tp.refinedInfo, isPure = !tp.typeSymbol.name.isImpureFunction, refsText)
     case _ =>
       super.toTextCapturing(tp, refsText, boxText)
@@ -857,10 +868,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def optAscription[T <: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
+  private def nestingLevel(sym: Symbol): Int =
+    sym.ccNestingLevelOpt.getOrElse(sym.nestingLevel)
+
   private def idText(tree: untpd.Tree): Text =
     (if showUniqueIds && tree.hasType && tree.symbol.exists then s"#${tree.symbol.id}" else "") ~
     (if showNestingLevel then tree.typeOpt match
-      case tp: NamedType if !tp.symbol.isStatic => s"%${tp.symbol.nestingLevel}"
+      case tp: NamedType if !tp.symbol.isStatic => s"%${nestingLevel(tp.symbol)}"
       case tp: TypeVar => s"%${tp.nestingLevel}"
       case tp: TypeParamRef => ctx.typerState.constraint.typeVarOfParam(tp) match
         case tvar: TypeVar => s"%${tvar.nestingLevel}"

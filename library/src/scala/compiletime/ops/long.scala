@@ -15,6 +15,7 @@ object long:
    *  ```
    *  @syntax markdown
    */
+  @deprecated("The Successor feature for `Long` never worked, and after careful consideration it was decided to not support it at all.", "3.3.1")
   type S[N <: Long] <: Long
 
   /** Addition of two `Long` singleton types.

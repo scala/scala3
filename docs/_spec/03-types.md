@@ -35,7 +35,7 @@ SimpleRef             ::=  id
 ParamType             ::=  [‘=>’] ParamValueType
 ParamValueType        ::=  ParamValueType [‘*’]
 TypeArgs              ::=  ‘[’ TypesOrWildcards ‘]’
-Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+Refinement            ::=  :<<< [RefineDef] {semi [RefineDef]} >>>
 
 FunTypeArgs           ::=  InfixType
                         |  ‘(’ [ FunArgTypes ] ‘)’
@@ -51,9 +51,9 @@ TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBou
 TypeParamClause       ::=  ‘[’ VariantTypeParam {‘,’ VariantTypeParam} ‘]’
 VariantTypeParam      ::=  {Annotation} [‘+’ | ‘-’] (id | ‘_’) [TypeParamClause] TypeBounds
 
-RefineDcl             ::=  ‘val’ ValDcl
-                        |  ‘def’ DefDcl
-                        |  ‘type’ {nl} TypeDcl
+RefineDef             ::=  ‘val’ ValDef
+                        |  ‘def’ DefDef
+                        |  ‘type’ {nl} TypeDef
 
 TypeBounds            ::=  [‘>:’ Type] [‘<:’ Type]
 
@@ -172,8 +172,10 @@ Type operators ending in a colon ‘:’ are right-associative; all other operat
 In a sequence of consecutive type infix operations ´t_0 \, \mathit{op} \, t_1 \, \mathit{op_2} \, ... \, \mathit{op_n} \, t_n´, all operators ´\mathit{op}\_1, ..., \mathit{op}\_n´ must have the same associativity.
 If they are all left-associative, the sequence is interpreted as ´(... (t_0 \mathit{op_1} t_1) \mathit{op_2} ...) \mathit{op_n} t_n´, otherwise it is interpreted as ´t_0 \mathit{op_1} (t_1 \mathit{op_2} ( ... \mathit{op_n} t_n) ...)´.
 
+Under `-source:future`, if the type name is alphanumeric and the target type is not marked [`infix`](./05-classes-and-objects.html#infix), a deprecation warning is emitted.
+
 The type operators `|` and `&` are not really special.
-Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
+Nevertheless, unless shadowed, they resolve to [the fundamental type aliases `scala.|` and `scala.&`](./12-the-scala-standard-library.html#fundamental-type-aliases), which represent [union and intersection types](#union-and-intersection-types), respectively.
 
 ### Function Types
 
@@ -191,11 +193,11 @@ TypedFunParam     ::=  id ‘:’ Type
 
 The concrete function type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
 The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
-An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters) of type ´T´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-definitions.html#by-name-parameters) of type ´T´.
 
 Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
 
-Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
+Function types are [covariant](04-basic-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-definitions.md#variance-annotations) in their argument types.
 
 Function types translate into internal class types that define an `apply` method.
 Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ translates to the internal class type `scala.Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
@@ -230,29 +232,45 @@ scala.PolyFunction {
 }
 ```
 
+### Tuple Types
+
+```ebnf
+SimpleType1           ::=  ...
+                        |  ‘(’ TypesOrWildcards ‘)’
+```
+
+A _tuple type_ ´(T_1, ..., T_n)´ where ´n \geq 2´ is sugar for the type `´T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`, which is itself a series of nested infix types which are sugar for `*:[´T_1´, *:[´T_2´, ... *:[´T_n´, scala.EmptyTuple]]]`.
+The ´T_i´ can be wildcard type arguments.
+
+Notes:
+
+- `(´T_1´)` is the type ´T_1´, and not `´T_1´ *: scala.EmptyTuple` (´T_1´ cannot be a wildcard type argument in that case).
+- `()` is not a valid type (i.e. it is not desugared to `scala.EmptyTuple`).
+
 ### Concrete Refined Types
 
 ```ebnf
 RefinedType           ::=  AnnotType {[nl] Refinement}
 SimpleType1           ::=  ...
                         |  Refinement
-Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+Refinement            ::=  :<<< [RefineDef] {semi [RefineDef]} >>>
 
-RefineDcl             ::=  ‘val’ ValDcl
-                        |  ‘def’ DefDcl
-                        |  ‘type’ {nl} TypeDcl
+RefineDef             ::=  ‘val’ ValDef
+                        |  ‘def’ DefDef
+                        |  ‘type’ {nl} TypeDef
 ```
 
-In the concrete syntax of types, refinements can contain several refined declarations.
-Moreover, the refined declarations can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
+In the concrete syntax of types, refinements can contain several refined definitions.
+They must all be abstract.
+Moreover, the refined definitions can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
 
-In the internal types, each refinement defines exactly one refined declaration, and references to `this` must be made explicit in a recursive type.
+In the internal types, each refinement defines exactly one refined definition, and references to `this` must be made explicit in a recursive type.
 
 The conversion from the concrete syntax to the abstract syntax works as follows:
 
 1. Create a fresh recursive this name ´\alpha´.
-2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
-3. Create nested [refined types](#refined-types), one for every refined declaration.
+2. Replace every implicit or explicit reference to `this` in the refinement definitions by ´\alpha´.
+3. Create nested [refined types](#refined-types), one for every refined definition.
 4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
 
 ### Concrete Type Lambdas
@@ -285,7 +303,7 @@ _Types_ are either _proper types_, _type constructors_ or _poly-kinded types_.
 
 All types live in a single lattice with respect to a [_conformance_](#conformance) relationship ´<:´.
 The _top type_ is `AnyKind` and the _bottom type_ is `Nothing`: all types conform to `AnyKind`, and `Nothing` conforms to all types.
-They can be referred to as the standard library entities `scala.AnyKind` and `scala.Nothing`, respectively.
+They can be referred to with [the fundamental type aliases `scala.AnyKind` and `scala.Nothing`](./12-the-scala-standard-library.html#fundamental-type-aliases), respectively.
 
 Types can be _concrete_ or _abstract_.
 An abstract type ´T´ always has lower and upper bounds ´L´ and ´H´ such that ´L >: T´ and ´T <: H´.
@@ -344,7 +362,7 @@ To each type constructor corresponds an _inferred type parameter clause_ which i
 
 ### Type Definitions
 
-A _type definition_ ´D´ represents the right-hand-side of a `type` declaration or the bounds of a type parameter.
+A _type definition_ ´D´ represents the right-hand-side of a `type` member definition or the bounds of a type parameter.
 It is either:
 
 - a type alias of the form ´= U´, or
@@ -448,7 +466,7 @@ If the class is monomorphic, the type designator is a value type denoting the se
 Otherwise it is a type constructor with the same type parameters as the class definition.
 All class types are concrete, non-stable types.
 
-If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` declaration) and has an _underlying [type definition](#type-definitions)_.
+If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` member definition) and has an _underlying [type definition](#type-definitions)_.
 If ´p = \epsilon´ or ´p´ is a package ref, the underlying type definition is the _declared type definition_ of `T`.
 Otherwise, it is determined by [`memberType`](#member-type)`(´p´, ´T´)`.
 A non-class type designator is concrete (resp. stable) if and only if its underlying type definition is an alias ´U´ and ´U´ is itself concrete (resp. stable).
@@ -477,6 +495,9 @@ All parameterized class types are value types.
 
 In the concrete syntax of wildcard type arguments, if both bounds are omitted, the real bounds are inferred from the bounds of the corresponding type parameter in the target type constructor (which must be concrete).
 If only one bound is omitted, `Nothing` or `Any` is used, as usual.
+
+Also in the concrete syntax, `_` can be used instead of `?` for compatibility reasons, with the same meaning.
+This alternative will be deprecated in the future, and is already deprecated under `-source:future`.
 
 #### Simplification Rules
 
@@ -840,7 +861,7 @@ If a method name is used as a value, its type is [implicitly converted](06-expre
 
 ###### Example
 
-The declarations
+The definitions
 
 ```scala
 def a: Int
@@ -869,7 +890,7 @@ This type represents named methods that take type arguments `´S_1, ..., S_n´` 
 
 ###### Example
 
-The declarations
+The definitions
 
 ```scala
 def empty[A]: List[A]
@@ -1010,9 +1031,13 @@ We define `memberType(´T´, ´id´, ´p´)` as follows:
 - If ´T´ is a possibly parameterized class type of the form ´q.C[T_1, ..., T_n]´ (with ´n \geq 0´):
   - Let ´m´ be the [class member](05-classes-and-objects.html#class-members) of ´C´ with name ´id´.
   - If ´m´ is not defined, the result is undefined.
-  - If ´m´ is a class declaration, the result is a class result with class ´m´.
+  - If ´m´ is a class definition, the result is a class result with class ´m´.
   - If ´m´ is a term definition in class ´D´ with declared type ´U´, the result is a term result with underlying type [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)` and stable flag true if and only if ´m´ is stable.
-  - If ´m´ is a type member definition in class ´D´ with declared type definition ´U´, the result is a type result with underlying type definition [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)`.
+  - If ´m´ is a type member definition in class ´D´, the result is a type result with underlying type definition [`asSeenFrom`](#as-seen-from)`(´U´, ´D´, ´p´)` where ´U´ is defined as follows:
+      - If ´m´ is an opaque type alias member definition with declared definition ´>: L <: H = V´, then
+          - ´U´ is ´= V´ if `´p = D.´this` or if we are computing `memberType` in a [_transparent mode_](#type-erasure),
+          - ´U´ is ´>: L <: H´ otherwise.
+      - ´U´ is the declared type definition of ´m´ otherwise.
 - If ´T´ is another monomorphic type designator of the form ´q.X´:
   - Let ´U´ be `memberType(´q´, ´X´)`
   - Let ´H´ be the upper bound of ´U´
@@ -1082,7 +1107,7 @@ Note that the conditions are not all mutually exclusive.
           - ´S_i´ and ´T_i´ are types and ´S_i =:= T_i´, or
           - ´S_i´ is a type and ´T_i´ is a wildcard type argument of the form ´? >: L_2 <: H_2´ and ´L_2 <: S_i´ and ´S_i <: H_2´, or
           - ´S_i´ is a wildcard type argument of the form ´? >: L_1 <: H_1´ and ´T_i´ is a wildcard type argument of the form ´? >: L_2 <: H_2´ and ´L_2 <: L_1´ and ´H_1 <: H_2´ (i.e., the ´S_i´ "interval" is contained in the ´T_i´ "interval").
-- ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and `baseType(´S´, ´C´)` is defined and `baseType(´S´, ´C´) ´<: T´.
+- ´T = q.C[T_1, ..., T_n]´ with ´n \geq 0´ and `baseType(´S´, ´C´)` is defined and `baseType(´S´, ´C´) ´<: T´`.
 - ´S = p.X[S_1, ..., S_n]´ and ´p.X´ is non-class type designator and ´H <: T´ where ´H´ is the upper bound of the underlying type definition of ´p.X´.
 - ´S = p.C´ and `´T = C´.this` and ´C´ is the hidden class of an `object` and:
   - ´p = \epsilon´ or ´p´ is a package ref, or
@@ -1125,6 +1150,7 @@ Note that the conditions are not all mutually exclusive.
 - ´S´ is a stable type and ´T = q.x´ is a term designator with underlying type ´T_1´ and ´T_1´ is a stable type and ´S <: T_1´.
 - `´S = S_1´ { ´R´ }` and ´S_1 <: T´.
 - `´S =´ { ´\alpha´ => ´S_1´ }` and ´S_1 <: T´.
+- `´T =´ scala.Tuple´_n[T_1, ..., T_n]´` with ´1 \leq n \leq 22´, and `´S <: T_1´ *: ... *: ´T_n´ *: scala.EmptyTuple`.
 
 We define `isSubPrefix(´p´, ´q´)` where ´p´ and ´q´ are prefixes as:
 
@@ -1228,6 +1254,7 @@ A type is called _generic_ if it contains type arguments or type variables.
 _Type erasure_ is a mapping from (possibly generic) types to non-generic types.
 We write ´|T|´ for the erasure of type ´T´.
 The erasure mapping is defined as follows.
+Internal computations are performed in a _transparent mode_, which has an effect on how [`memberType`](#member-type) behaves for opaque type aliases.
 
 - The erasure of `AnyKind` is `Object`.
 - The erasure of a non-class type designator is the erasure of its underlying upper bound.

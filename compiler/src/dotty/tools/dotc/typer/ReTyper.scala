@@ -95,9 +95,16 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree =
     typedApply(tree, selType)
 
+  override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree = {
+    val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
+    val expansion1 = typed(tree.expansion, pt)(using inlineContext(promote(tree))(using exprCtx))
+    untpd.cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1)
+      .withType(avoidingType(expansion1, bindings1))
+  }
+
   override def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree =
     assertTyped(tree)
-    val body1 = typed(tree.body, tree.bodyType)(using quoteContext)
+    val body1 = typed(tree.body, promote(tree).bodyType)(using quoteContext)
     for tag <- tree.tags do assertTyped(tag)
     untpd.cpy.Quote(tree)(body1, tree.tags).withType(tree.typeOpt)
 
@@ -110,6 +117,27 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
         .appliedTo(defn.QuotesClass.typeRef, exprType)
     val expr1 = typed(tree.expr, quoteType)(using spliceContext)
     untpd.cpy.Splice(tree)(expr1).withType(tree.typeOpt)
+
+  override def typedQuotePattern(tree: untpd.QuotePattern, pt: Type)(using Context): Tree =
+    assertTyped(tree)
+    val bindings1 = tree.bindings.map(typed(_))
+    val bodyCtx = quoteContext
+      .retractMode(Mode.Pattern)
+      .addMode(if tree.body.isType then Mode.QuotedTypePattern else Mode.QuotedExprPattern)
+    val body1 = typed(tree.body, promote(tree).bodyType)(using bodyCtx)
+    val quotes1 = typed(tree.quotes, defn.QuotesClass.typeRef)
+    untpd.cpy.QuotePattern(tree)(bindings1, body1, quotes1).withType(tree.typeOpt)
+
+  override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
+    assertTyped(tree)
+    val args1 = tree.args.mapconserve(typedExpr(_))
+    val patternTpe =
+      if args1.isEmpty then tree.typeOpt
+      else defn.FunctionType(args1.size).appliedTo(args1.map(_.tpe) :+ tree.typeOpt)
+    val bodyCtx = spliceContext.addMode(Mode.Pattern).retractMode(Mode.QuotedPatternBits)
+    val body1 = typed(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patternTpe))(using bodyCtx)
+    val args = tree.args.mapconserve(typedExpr(_))
+    untpd.cpy.SplicePattern(tree)(body1, args1).withType(tree.typeOpt)
 
   override def typedHole(tree: untpd.Hole, pt: Type)(using Context): Tree =
     promote(tree)
@@ -145,7 +173,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
   override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
     try super.typedUnadapted(tree, pt, locked)
     catch case NonFatal(ex) if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase && !ctx.run.enrichedErrorMessage =>
-      val treeStr = tree.show(using ctx.withPhase(ctx.phase.prevMega))
+      val treeStr = tree.show(using ctx.withPhase(ctx.phase.prev.megaPhase))
       println(ctx.run.enrichErrorMessage(s"exception while retyping $treeStr of class ${tree.className} # ${tree.uniqueId}"))
       throw ex
 

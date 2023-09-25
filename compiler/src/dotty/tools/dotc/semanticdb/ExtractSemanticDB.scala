@@ -392,15 +392,12 @@ class ExtractSemanticDB extends Phase:
         }).toMap
     end findGetters
 
-    private def selectSpan(tree: Select) =
+    private def selectSpan(tree: Select)(using Context) =
       val end = tree.span.end
       val limit = tree.qualifier.span.end
-      val start =
-        if limit < end then
-          val len = tree.name.toString.length
-          if tree.source.content()(end - 1) == '`' then end - len - 2 else end - len
-        else limit
-      Span(start max limit, end)
+      if limit < end then
+        tree.nameSpan
+      else Span(limit, end)
 
     extension (span: Span)
       private def hasLength: Boolean = span.exists && !span.isZeroExtent
@@ -483,6 +480,9 @@ object ExtractSemanticDB:
       .filterNot(_.isEmpty)
       .map(Paths.get(_))
 
+  private def semanticdbText(using Context): Boolean =
+    ctx.settings.semanticdbText.value
+
   private def outputDirectory(using Context): AbstractFile = ctx.settings.outputDir.value
 
   def write(
@@ -503,7 +503,7 @@ object ExtractSemanticDB:
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = Tools.mkURIstring(Paths.get(relPath)),
-      text = "",
+      text = if semanticdbText then String(source.content) else "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
       occurrences = occurrences,

@@ -1,0 +1,8 @@
+case single: [1st case] arg1 outside
+case no-param-method (will be eta-expanded): [1st case] placeholder 2
+case curried: [2nd case] arg1, arg2 outside
+case methods from outer scope: [1st case] arg1 outer-method
+case refinement: Hoe got 1
+case dependent: 1
+case dependent2: 1
+case dependent3: 1

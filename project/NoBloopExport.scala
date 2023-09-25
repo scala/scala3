@@ -3,7 +3,7 @@ import Keys._
 
 /* With <3 from scala-js */
 object NoBloopExport {
-  private lazy val bloopGenerateKey: Option[TaskKey[Option[File]]] = {
+  private lazy val bloopGenerateKey: Option[TaskKey[Result[Option[File]]]] = {
     val optBloopKeysClass: Option[Class[_]] = try {
       Some(Class.forName("bloop.integrations.sbt.BloopKeys"))
     } catch {
@@ -12,7 +12,7 @@ object NoBloopExport {
 
     optBloopKeysClass.map { bloopKeysClass =>
       val bloopGenerateGetter = bloopKeysClass.getMethod("bloopGenerate")
-      bloopGenerateGetter.invoke(null).asInstanceOf[TaskKey[Option[File]]]
+      bloopGenerateGetter.invoke(null).asInstanceOf[TaskKey[Result[Option[File]]]]
     }
   }
 
@@ -23,8 +23,8 @@ object NoBloopExport {
         Nil
       case Some(key) =>
         Seq(
-            Compile / key := None,
-            Test / key := None,
+            Compile / key := Value(None),
+            Test / key := Value(None),
         )
     }
   }

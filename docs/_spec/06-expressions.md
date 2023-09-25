@@ -10,22 +10,26 @@ chapter: 6
 Expr         ::=  (Bindings | id | ‘_’) ‘=>’ Expr
                |  Expr1
 Expr1        ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
+               |  ‘if‘ Expr ‘then‘ Expr [[semi] ‘else‘ Expr]
                |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
-               |  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
-               |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
+               |  ‘while’ Expr ‘do’ Expr
+               |  ‘try’ Expr [Catches] [‘finally’ Expr]
+               |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘do‘ | ‘yield’] Expr
+               |  ‘for’ Enumerators (‘do‘ | ‘yield’) Expr
                |  ‘throw’ Expr
                |  ‘return’ [Expr]
                |  [SimpleExpr ‘.’] id ‘=’ Expr
                |  SimpleExpr1 ArgumentExprs ‘=’ Expr
                |  PostfixExpr
                |  PostfixExpr Ascription
-               |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
 PostfixExpr  ::=  InfixExpr [id [nl]]
 InfixExpr    ::=  PrefixExpr
                |  InfixExpr id [nl] InfixExpr
+               |  InfixExpr MatchClause
 PrefixExpr   ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr
 SimpleExpr   ::=  ‘new’ (ClassTemplate | TemplateBody)
                |  BlockExpr
+               |  SimpleExpr ‘.’ MatchClause
                |  SimpleExpr1 [‘_’]
 SimpleExpr1  ::=  Literal
                |  Path
@@ -36,6 +40,7 @@ SimpleExpr1  ::=  Literal
                |  SimpleExpr1 ArgumentExprs
                |  XmlExpr
 Exprs        ::=  Expr {‘,’ Expr}
+MatchClause  ::=  ‘match’ ‘{’ CaseClauses ‘}’
 BlockExpr    ::=  ‘{’ CaseClauses ‘}’
                |  ‘{’ Block ‘}’
 Block        ::=  BlockStat {semi BlockStat} [ResultExpr]
@@ -44,6 +49,7 @@ ResultExpr   ::=  Expr1
 Ascription   ::=  ‘:’ InfixType
                |  ‘:’ Annotation {Annotation}
                |  ‘:’ ‘_’ ‘*’
+Catches      ::=  ‘catch‘ (Expr | ExprCaseClause)
 ```
 
 Expressions are composed of operators and operands.
@@ -85,7 +91,7 @@ This object implements methods in class `scala.AnyRef` as follows:
 - `eq(´x\,´)` and `==(´x\,´)` return `true` iff the argument ´x´ is also the "null" object.
 - `ne(´x\,´)` and `!=(´x\,´)` return true iff the argument x is not also the "null" object.
 - `isInstanceOf[´T\,´]` always returns `false`.
-- `asInstanceOf[´T\,´]` returns the [default value](04-basic-declarations-and-definitions.html#value-declarations-and-definitions) of type ´T´.
+- `asInstanceOf[´T\,´]` returns the [default value](04-basic-definitions.html#value-definitions) of type ´T´.
 - `##` returns ``0``.
 
 A reference to any other member of the "null" object causes a `NullPointerException` to be thrown.
@@ -100,7 +106,7 @@ SimpleExpr  ::=  Path
 A designator refers to a named term. It can be a _simple name_ or a _selection_.
 
 A simple name ´x´ refers to a value as specified [here](02-identifiers-names-and-scopes.html#identifiers,-names-and-scopes).
-If ´x´ is bound by a definition or declaration in an enclosing class or object ´C´, it is taken to be equivalent to the selection `´C´.this.´x´` where ´C´ is taken to refer to the class containing ´x´ even if the type name ´C´ is [shadowed](02-identifiers-names-and-scopes.html#identifiers,-names-and-scopes) at the occurrence of ´x´.
+If ´x´ is bound by a definition in an enclosing class or object ´C´, it is taken to be equivalent to the selection `´C´.this.´x´` where ´C´ is taken to refer to the class containing ´x´ even if the type name ´C´ is [shadowed](02-identifiers-names-and-scopes.html#identifiers,-names-and-scopes) at the occurrence of ´x´.
 
 If ´r´ is a [stable identifier](03-types.html#paths) of type ´T´, the selection ´r.x´ refers statically to a term member ´m´ of ´r´ that is identified in ´T´ by the name ´x´.
 
@@ -207,7 +213,7 @@ For this expression to be well-typed, the method must be *applicable* to its arg
 If ´f´ has a method type `(´p_1´:´T_1, ..., p_n´:´T_n´)´U´`, each argument expression ´e_i´ is typed with the corresponding parameter type ´T_i´ as expected type.
 Let ´S_i´ be the type of argument ´e_i´ ´(i = 1, ..., n)´.
 The method ´f´ must be _applicable_ to its arguments ´e_1, ..., e_n´ of types ´S_1, ..., S_n´.
-If the last parameter type of ´f´ is [repeated](04-basic-declarations-and-definitions.html#repeated-parameters), [harmonization](#harmonization) is attempted on the suffix ´e_m, ..., e_n´ of the expression list that match the repeated parameter.
+If the last parameter type of ´f´ is [repeated](04-basic-definitions.html#repeated-parameters), [harmonization](#harmonization) is attempted on the suffix ´e_m, ..., e_n´ of the expression list that match the repeated parameter.
 We say that an argument expression ´e_i´ is a _named_ argument if it has the form `´x_i=e'_i´` and `´x_i´` is one of the parameter names `´p_1, ..., p_n´`.
 
 Once the types ´S_i´ have been determined, the method ´f´ of the above method type is said to be applicable if all of the following conditions hold:
@@ -236,7 +242,7 @@ The behavior of by-name parameters is preserved if the application is transforme
 In this case, the local value for that parameter has the form `val ´y_i´ = () => ´e´` and the argument passed to the method is `´y_i´()`.
 
 The last argument in an application may be marked as a sequence argument, e.g. `´e´: _*`.
-Such an argument must correspond to a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters) of type `´S´*` and it must be the only argument matching this parameter (i.e. the number of formal parameters and actual arguments must be the same).
+Such an argument must correspond to a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `´S´*` and it must be the only argument matching this parameter (i.e. the number of formal parameters and actual arguments must be the same).
 Furthermore, the type of ´e´ must conform to `scala.Seq[´T´]`, for some type ´T´ which conforms to ´S´.
 In this case, the argument list is transformed by replacing the sequence ´e´ with its elements.
 When the application uses named arguments, the vararg parameter has to be specified exactly once.
@@ -305,7 +311,7 @@ The result of transforming ´f´ is a block of the form
 
 where every argument in ´(\mathit{args}\_1), ..., (\mathit{args}\_l)´ is a reference to one of the values ´x_1, ..., x_k´.
 To integrate the current application into the block, first a value definition using a fresh name ´y_i´ is created for every argument in ´e_1, ..., e_m´, which is initialised to ´e_i´ for positional arguments and to ´e'_i´ for named arguments of the form `´x_i=e'_i´`.
-Then, for every parameter which is not specified by the argument list, a value definition using a fresh name ´z_i´ is created, which is initialized using the method computing the [default argument](04-basic-declarations-and-definitions.html#method-declarations-and-definitions) of this parameter.
+Then, for every parameter which is not specified by the argument list, a value definition using a fresh name ´z_i´ is created, which is initialized using the method computing the [default argument](04-basic-definitions.html#method-definitions) of this parameter.
 
 Let ´\mathit{args}´ be a permutation of the generated names ´y_i´ and ´z_i´ such such that the position of each name matches the position of its corresponding parameter in the method type `(´p_1:T_1, ..., p_n:T_n´)´U´`.
 The final result of the transformation is a block of the form
@@ -454,7 +460,7 @@ Block      ::=  BlockStat {semi BlockStat} [ResultExpr]
 ```
 
 A _block expression_ `{´s_1´; ...; ´s_n´; ´e\,´}` is constructed from a sequence of block statements ´s_1, ..., s_n´ and a final expression ´e´.
-The statement sequence may not contain two definitions or declarations that bind the same name in the same namespace.
+The statement sequence may not contain two definitions that bind the same name in the same namespace.
 The final expression can be omitted, in which case the unit value `()` is assumed.
 
 The expected type of the final expression ´e´ is the expected type of the block.
@@ -544,6 +550,8 @@ This expression is then interpreted as ´e.\mathit{op}(e_1,...,e_n)´.
 
 A left-associative binary operation ´e_1;\mathit{op};e_2´ is interpreted as ´e_1.\mathit{op}(e_2)´. If ´\mathit{op}´ is right-associative and its parameter is passed by name, the same operation is interpreted as ´e_2.\mathit{op}(e_1)´.
 If ´\mathit{op}´ is right-associative and its parameter is passed by value, it is interpreted as `{ val ´x´=´e_1´; ´e_2´.´\mathit{op}´(´x\,´) }`, where ´x´ is a fresh name.
+
+Under `-source:future`, if the method name is alphanumeric and the target method is not marked [`infix`](./05-classes-and-objects.html#infix), a deprecation warning is emitted.
 
 ### Assignment Operators
 
@@ -677,6 +685,7 @@ def matmul(xss: Array[Array[Double]], yss: Array[Array[Double]]) = {
 
 ```ebnf
 Expr1          ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
+                 |  ‘if‘ Expr ‘then‘ Expr [[semi] ‘else‘ Expr]
 ```
 
 The _conditional expression_ `if (´e_1´) ´e_2´ else ´e_3´` chooses one of the values of ´e_2´ and ´e_3´, depending on the value of ´e_1´.
@@ -696,6 +705,7 @@ The conditional expression `if (´e_1´) ´e_2´` is evaluated as if it was `if 
 
 ```ebnf
 Expr1          ::=  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
+                 |  ‘while’ Expr ‘do’ Expr
 ```
 
 The _while loop expression_ `while (´e_1´) ´e_2´` is typed and evaluated as if it was an application of `whileLoop (´e_1´) (´e_2´)` where the hypothetical method `whileLoop` is defined as follows.
@@ -843,7 +853,11 @@ The type of a return expression is `scala.Nothing`.
 The expression ´e´ may be omitted.
 The return expression `return` is type-checked and evaluated as if it were `return ()`.
 
-Returning from the method from within a nested function may be implemented by throwing and catching a `scala.runtime.NonLocalReturnControl`.
+### Non-Local Returns (deprecated)
+
+Returning from a method from within a nested function is deprecated.
+
+It is implemented by throwing and catching a `scala.runtime.NonLocalReturnControl`.
 Any exception catches between the point of return and the enclosing methods might see and catch that exception.
 A key comparison makes sure that this exception is only caught by the method instance which is terminated by the return.
 
@@ -866,14 +880,18 @@ The type of a throw expression is `scala.Nothing`.
 ## Try Expressions
 
 ```ebnf
-Expr1 ::=  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
+Expr1    ::=  ‘try’ Expr [Catches] [‘finally’ Expr]
+
+Catches  ::=  ‘catch‘ (Expr | ExprCaseClause)
 ```
 
-A _try expression_ is of the form `try { ´b´ } catch ´h´` where the handler ´h´ is usually a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions)
+A _try expression_ is of the form `try ´b´ catch ´h´` where the handler ´h´ is usually a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions)
 
 ```scala
 { case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´ }
 ```
+
+If the handler is a single `ExprCaseClause`, it is a shorthand for that `ExprCaseClause` wrapped in a pattern matching anonymous function.
 
 This expression is evaluated by evaluating the block ´b´.
 If evaluation of ´b´ does not cause an exception to be thrown, the result of ´b´ is returned.
@@ -883,11 +901,11 @@ If the handler contains no case matching the thrown exception, the exception is 
 More generally, if the handler is a `PartialFunction`, it is applied only if it is defined at the given exception.
 
 Let ´\mathit{pt}´ be the expected type of the try expression.
-The block ´b´ is expected to conform to ´\mathit{pt}´.
+The expression ´b´ is expected to conform to ´\mathit{pt}´.
 The handler ´h´ is expected conform to type `scala.Function[scala.Throwable, ´\mathit{pt}\,´]`.
 The type of the try expression is the [least upper bound](03-types.html#least-upper-bounds-and-greatest-lower-bounds) of the type of ´b´ and the result type of ´h´.
 
-A try expression `try { ´b´ } finally ´e´` evaluates the block ´b´.
+A try expression `try ´b´ finally ´e´` evaluates the expression ´b´.
 If evaluation of ´b´ does not cause an exception to be thrown, the expression ´e´ is evaluated.
 If an exception is thrown during evaluation of ´e´, the evaluation of the try expression is aborted with the thrown exception.
 If no exception is thrown during evaluation of ´e´, the result of ´b´ is returned as the result of the try expression.
@@ -895,10 +913,10 @@ If no exception is thrown during evaluation of ´e´, the result of ´b´ is ret
 If an exception is thrown during evaluation of ´b´, the finally block ´e´ is also evaluated.
 If another exception ´e´ is thrown during evaluation of ´e´, evaluation of the try expression is aborted with the thrown exception.
 If no exception is thrown during evaluation of ´e´, the original exception thrown in ´b´ is re-thrown once evaluation of ´e´ has completed.
-The block ´b´ is expected to conform to the expected type of the try expression.
+The expression ´b´ is expected to conform to the expected type of the try expression.
 The finally expression ´e´ is expected to conform to type `Unit`.
 
-A try expression `try { ´b´ } catch ´e_1´ finally ´e_2´` is a shorthand for  `try { try { ´b´ } catch ´e_1´ } finally ´e_2´`.
+A try expression `try ´b´ catch ´e_1´ finally ´e_2´` is a shorthand for  `try { try ´b´ catch ´e_1´ } finally ´e_2´`.
 
 ## Anonymous Functions
 
@@ -1013,7 +1031,7 @@ The definition of "constant expression" depends on the platform, but they includ
 - A class constructed with [`Predef.classOf`](12-the-scala-standard-library.html#the-predef-object)
 - An element of an enumeration from the underlying platform
 - A literal array, of the form `Array´(c_1, ..., c_n)´`, where all of the ´c_i´'s are themselves constant expressions
-- An identifier defined by a [constant value definition](04-basic-declarations-and-definitions.html#value-declarations-and-definitions).
+- An identifier defined by a [constant value definition](04-basic-definitions.html#value-definitions).
 
 ## Statements
 
@@ -1032,7 +1050,6 @@ TemplateStat ::=  Import
 
 Statements occur as parts of blocks and templates.
 A _statement_ can be an import, a definition or an expression, or it can be empty.
-Statements used in the template of a class definition can also be declarations.
 An expression that is used as a statement can have an arbitrary value type.
 An expression statement ´e´ is evaluated by evaluating ´e´ and discarding the result of the evaluation.
 
@@ -1276,7 +1293,7 @@ Solving means finding a substitution ´\sigma´ of types ´T_i´ for the type pa
 
 It is a compile time error if no such substitution exists.
 If several substitutions exist, local-type inference will choose for each type variable ´a_i´ a minimal or maximal type ´T_i´ of the solution space.
-A _maximal_ type ´T_i´ will be chosen if the type parameter ´a_i´ appears [contravariantly](04-basic-declarations-and-definitions.html#variance-annotations) in the type ´T´ of the expression.
+A _maximal_ type ´T_i´ will be chosen if the type parameter ´a_i´ appears [contravariantly](04-basic-definitions.html#variance-annotations) in the type ´T´ of the expression.
 A _minimal_ type ´T_i´ will be chosen in all other situations, i.e. if the variable appears covariantly, non-variantly or not at all in the type ´T´.
 We call such a substitution an _optimal solution_ of the given constraint system for the type ´T´.
 

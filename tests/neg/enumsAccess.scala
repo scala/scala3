@@ -63,7 +63,7 @@ object test5 {
   enum E5[T](x: T) {
     case C3() extends E5[INT](defaultX)// error: illegal reference  // error: illegal reference
     case C4 extends E5[INT](defaultX) // error: illegal reference  // error: illegal reference
-    case C5 extends E5[E5[_]](E5.this) // error: type mismatch
+    case C5 extends E5[E5[_]](E5.this) // error: cannot be instantiated // error: conflicting base types // error: type mismatch
   }
 
   object E5 {

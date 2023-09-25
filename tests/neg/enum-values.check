@@ -24,8 +24,8 @@
    |
    |                                             failed with:
    |
-   |                                                 Found:    Array[example.Tag[?]]
-   |                                                 Required: Array[example.ListLike[?]]
+   |                                                 Found:    example.ListLike.type
+   |                                                 Required: Nothing
 -- [E008] Not Found Error: tests/neg/enum-values.scala:34:52 -----------------------------------------------------------
 34 |  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
    |                                         ^^^^^^^^^^^^^^^^^
@@ -38,8 +38,8 @@
    |
    |                                             failed with:
    |
-   |                                                 Found:    Array[example.Tag[?]]
-   |                                                 Required: Array[example.TypeCtorsK[?[_$1]]]
+   |                                                 Found:    example.TypeCtorsK.type
+   |                                                 Required: Nothing
 -- [E008] Not Found Error: tests/neg/enum-values.scala:36:6 ------------------------------------------------------------
 36 |  Tag.valueOf("Int") // error
    |  ^^^^^^^^^^^

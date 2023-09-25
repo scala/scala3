@@ -907,10 +907,13 @@ object SymDenotations {
           false
         val cls = owner.enclosingSubClass
         if !cls.exists then
-          val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
-          fail(i"""
-               | Access to protected $this not permitted because enclosing ${encl.showLocated}
-               | is not a subclass of ${owner.showLocated} where target is defined""")
+          if pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner) then
+            true
+          else
+            val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
+            fail(i"""
+                 | Access to protected $this not permitted because enclosing ${encl.showLocated}
+                 | is not a subclass of ${owner.showLocated} where target is defined""")
         else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
@@ -1193,6 +1196,7 @@ object SymDenotations {
       isOneOf(EffectivelyFinalFlags)
       || is(Inline, butNot = Deferred)
       || is(JavaDefinedVal, butNot = Method)
+      || isConstructor
       || !owner.isExtensibleClass
 
     /** A class is effectively sealed if has the `final` or `sealed` modifier, or it
@@ -1349,7 +1353,7 @@ object SymDenotations {
      *
      *                   site: Subtype of both inClass and C
      */
-    final def matchingDecl(inClass: Symbol, site: Type)(using Context): Symbol = {
+    final def matchingDecl(inClass: Symbol, site: Type, name: Name = this.name)(using Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
       if (denot.isTerm) // types of the same name always match
         denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.targetName)
@@ -2020,8 +2024,10 @@ object SymDenotations {
      *  @return The result may contain false positives, but never false negatives.
      */
     final def mayHaveCommonChild(that: ClassSymbol)(using Context): Boolean =
-      !this.is(Final) && !that.is(Final) && (this.is(Trait) || that.is(Trait)) ||
-        this.derivesFrom(that) || that.derivesFrom(this.symbol)
+         this.is(Trait) && !that.isEffectivelyFinal
+      || that.is(Trait) && !this.isEffectivelyFinal
+      || this.derivesFrom(that)
+      || that.derivesFrom(this.symbol)
 
     final override def typeParamCreationFlags: FlagSet = ClassTypeParamCreationFlags
 

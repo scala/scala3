@@ -135,8 +135,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |             +- Export
    *           |             +- Definition --+- ClassDef
    *           |             |               +- TypeDef
-   *           |             |               +- DefDef
-   *           |             |               +- ValDef
+   *           |             |               +- ValOrDefDef -+- DefDef
+   *           |             |                               +- ValDef
    *           |             |
    *           |             +- Term --------+- Ref -+- Ident -+- Wildcard
    *           |                             |       +- Select
@@ -551,10 +551,33 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ClassDefMethods
 
+    // ValOrDefDef
+
+    /** Tree representing a value or method definition in the source code.
+     *  This includes `def`, `val`, `lazy val`, `var`, `object` and parameter definitions.
+     */
+    type ValOrDefDef <: Definition
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValOrDefDef` */
+    given ValOrDefDefTypeTest: TypeTest[Tree, ValOrDefDef]
+
+    /** Makes extension methods on `ValOrDefDef` available without any imports */
+    given ValOrDefDefMethods: ValOrDefDefMethods
+
+    /** Extension methods of `ValOrDefDef` */
+    trait ValOrDefDefMethods:
+      extension (self: ValOrDefDef)
+        /** The type tree of this `val` or `def` definition */
+        def tpt: TypeTree
+        /** The right-hand side of this `val` or `def` definition */
+        def rhs: Option[Term]
+      end extension
+    end ValOrDefDefMethods
+
     // DefDef
 
     /** Tree representing a method definition in the source code */
-    type DefDef <: Definition
+    type DefDef <: ValOrDefDef
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `DefDef` */
     given DefDefTypeTest: TypeTest[Tree, DefDef]
@@ -630,8 +653,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ValDef
 
-    /** Tree representing a value definition in the source code This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
-    type ValDef <: Definition
+    /** Tree representing a value definition in the source code. This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
+    type ValDef <: ValOrDefDef
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef` */
     given ValDefTypeTest: TypeTest[Tree, ValDef]
@@ -4295,8 +4318,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *   -  ...
       *   -  Nth element is `FunctionN`
       */
-      // TODO: deprecate in 3.4 and stabilize FunctionClass(Int)/FunctionClass(Int,Boolean)
-      // @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
+      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
       /** Class symbol of a function class `scala.FunctionN`.
@@ -4304,7 +4326,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param arity the arity of the function where `0 <= arity`
        *  @return class symbol of `scala.FunctionN` where `N == arity`
        */
-      @experimental
       def FunctionClass(arity: Int): Symbol
 
       /** Class symbol of a context function class `scala.FunctionN` or `scala.ContextFunctionN`.
@@ -4313,12 +4334,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param isContextual if it is a `scala.ContextFunctionN`
        *  @return class symbol of `scala.FunctionN` or `scala.ContextFunctionN` where `N == arity`
        */
-      @experimental
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol
 
-      /** The `scala.runtime.ErasedFunction` built-in trait. */
+      /** The `scala.PolyFunction` built-in trait. */
       @experimental
-      def ErasedFunctionClass: Symbol
+      def PolyFunctionClass: Symbol
 
       /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
       *   -  0th element is `NoSymbol`

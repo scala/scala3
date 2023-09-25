@@ -1,3 +1,4 @@
+//> using options -Xfatal-warnings -Wimplausible-patterns
 sealed trait Exp[T]
 case class IntExp(x: Int) extends Exp[Int]
 case class StrExp(x: String) extends Exp[String]

@@ -1,0 +1,6 @@
+-- Error: tests/neg-macros/i15413.scala:4:22 ---------------------------------------------------------------------------
+4 |  inline def foo = ${ Macro.fooImpl } // error
+  |                      ^^^^^^^^^^^^^
+  |                      Macro implementation is not statically accessible.
+  |
+  |                      Non-static inline accessor was generated in class Macro

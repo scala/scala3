@@ -22,6 +22,7 @@ object Givens:
     def empty = ""
     extension (x: String) def combine(y: String) = x + y
 
-  inline given int2String: Conversion[Int, String] = _.toString
+  inline given int2String: Conversion[Int, String] with
+    def apply(x: Int): String = x.toString
 
   def foo[A](using A: Monoid[A]): A = A.combine(A.empty)(A.empty)

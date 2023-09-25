@@ -1229,7 +1229,20 @@ object Semantic:
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe: @unchecked
-          val thisValue2 = extendTrace(ref) { resolveThis(thisTp.classSymbol.asClass, thisV, klass) }
+          val thisValue2 = extendTrace(ref) {
+            thisTp match
+            case thisTp: ThisType             =>
+              cases(thisTp, thisV, klass)
+
+            case AndType(thisTp: ThisType, _) =>
+              // Self-type annotation will generate an intersection type for `this`.
+              // See examples/i17997.scala
+              cases(thisTp, thisV, klass)
+
+            case _ =>
+              report.warning("[Internal error] Unexpected type " + thisTp.show + ", trace:\n" + Trace.show, ref)
+              Hot
+          }
           withTrace(trace2) { thisValue2.call(ref.symbol, args, thisTp, superTp) }
 
         case Select(qual, _) =>

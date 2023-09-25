@@ -1,7 +1,7 @@
 object A {             // error
   val n: Int = B.m
   class Inner {
-    println(n)
+    println(n)         // error
   }
 }
 

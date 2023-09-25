@@ -64,7 +64,7 @@
     display: none;
   }
 
-  #footer.mobile-footer  .text-mobile {
+  #footer.mobile-footer .text-mobile {
     display: flex;
     width: 100%;
     justify-content: center;
@@ -78,5 +78,5 @@
   #footer.mobile-footer > .text-mobile {
     display: flex;
   }
-  
+
 }

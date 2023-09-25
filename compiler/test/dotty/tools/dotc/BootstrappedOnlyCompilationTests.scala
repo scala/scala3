@@ -29,14 +29,11 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
       compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
-      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
-      compileDir("tests/pos-special/i7592", defaultOptions.and("-Yretain-trees")),
-      compileDir("tests/pos-special/i11331.1", defaultOptions),
-      compileDir("tests/pos-custom-args/i13405", defaultOptions.and("-Xfatal-warnings")),
     ).checkCompile()
   }
 
-  @Test def posWithCompilerCC: Unit =
+  // @Test
+  def posWithCompilerCC: Unit =
     implicit val testGroup: TestGroup = TestGroup("compilePosWithCompilerCC")
     aggregateTests(
       compileDir("tests/pos-with-compiler-cc/dotc", withCompilerOptions.and("-language:experimental.captureChecking"))
@@ -107,12 +104,8 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    aggregateTests(
-      compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros")),
-      compileFile("tests/pos-macros/i9570.scala", defaultOptions.and("-Xfatal-warnings")),
-      compileFile("tests/pos-macros/macro-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
-      compileFile("tests/pos-macros/macro-experimental.scala", defaultOptions.and("-Yno-experimental")),
-    ).checkExpectedErrors()
+    compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros"))
+      .checkExpectedErrors()
   }
 
   @Test def negWithCompiler: Unit = {
@@ -127,26 +120,20 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    aggregateTests(
-      compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros")),
-      compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
-      compileFilesInDir("tests/run-custom-args/Yread-comments", defaultOptions and "-Yread-docs"),
-      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions.and("-language:experimental.erasedDefinitions").and("-Xcheck-macros")),
-      compileDir("tests/run-custom-args/Xmacro-settings/simple", defaultOptions.and("-Xmacro-settings:one,two,three")),
-      compileDir("tests/run-custom-args/Xmacro-settings/compileTimeEnv", defaultOptions.and("-Xmacro-settings:a,b=1,c.b.a=x.y.z=1,myLogger.level=INFO")),
-    )
-  }.checkRuns()
+    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"))
+      .checkRuns()
+  }
 
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/run-staging", withStagingOptions),
-      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
+      compileFilesInDir("tests/run-tasty-inspector", withTastyInspectorOptions)
     )
     val tests =
       if scala.util.Properties.isWin then basicTests
-      else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+      else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
     aggregateTests(tests: _*).checkRuns()
   }

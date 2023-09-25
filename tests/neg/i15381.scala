@@ -1,4 +1,4 @@
-// scalac: -Vprint:parser
+//> using options -Vprint:parser
 
 case class $[A](value: A)
 

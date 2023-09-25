@@ -33,7 +33,7 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
-import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotedPattern}
+import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion._
@@ -145,7 +145,18 @@ object Checking {
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
         tp match
-          case AppliedType(tycon, argTypes) =>
+          case AppliedType(tycon, argTypes)
+          if !(tycon.typeSymbol.is(JavaDefined) && ctx.compilationUnit.isJava)
+            // Don't check bounds in Java units that refer to Java type constructors.
+            // Scala is not obliged to do Java type checking and in fact i17763 goes wrong
+            // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
+            // Do check all bounds in Scala units and those bounds in Java units that
+            // occur in applications of Scala type constructors.
+            && !(ctx.phase == Phases.checkCapturesPhase && !tycon.typeSymbol.is(CaptureChecked))
+            // Don't check bounds when capture checking type constructors that were not
+            // themselves capture checked. Since the type constructor could not foresee
+            // possible capture sets, it's better to be lenient for backwards compatibility.
+          =>
             checkAppliedType(
               untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
                 .withType(tp).withSpan(tpt.span.toSynthetic),
@@ -371,7 +382,7 @@ object Checking {
 
   /** Check that `info` of symbol `sym` is not cyclic.
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
-   *  @return  `info` where every legal F-bounded reference is proctected
+   *  @return  `info` where every legal F-bounded reference is protected
    *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(using Context): Type = {
@@ -412,7 +423,7 @@ object Checking {
         case tree: RefTree =>
           checkRef(tree, tree.symbol)
           foldOver(x, tree)
-        case tree: This =>
+        case tree: This if tree.tpe.classSymbol == refineCls =>
           selfRef(tree)
         case tree: TypeTree =>
           val checkType = new TypeAccumulator[Unit] {
@@ -506,12 +517,7 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      val illegal = sym.flags & ClassOnlyFlags
-      if sym.is(TypeParam) && illegal == Sealed && Feature.ccEnabled && cc.allowUniversalInBoxed then
-        if !sym.owner.is(Method) then
-          fail(em"only method type parameters can be sealed")
-      else
-        fail(em"only classes can be ${illegal.flagsString}")
+      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -555,6 +561,8 @@ object Checking {
         fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
+    if sym.isWrappedToplevelDef && !sym.isType && sym.flags.is(Infix, butNot = Extension) then
+      fail(ModifierNotAllowedForDefinition(Flags.Infix, s"A top-level ${sym.showKind} cannot be infix."))
     checkApplicable(Erased,
       !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
     checkCombination(Final, Open)
@@ -750,13 +758,16 @@ object Checking {
     if sym.isNoValue && !ctx.isJava then
       report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
+  /** Check that `tree` refers to a value, unless `tree` is selected or applied
+   *  (singleton types x.type don't count as selections).
+   */
   def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
     tree match
-      case tree: RefTree
-      if tree.name.isTermName
-         && !proto.isInstanceOf[SelectionProto]
-         && !proto.isInstanceOf[FunOrPolyProto] =>
-        checkValue(tree)
+      case tree: RefTree if tree.name.isTermName =>
+        proto match
+          case _: SelectionProto if proto ne SingletonTypeProto => // no value check
+          case _: FunOrPolyProto => // no value check
+          case _ => checkValue(tree)
       case _ =>
     tree
 
@@ -848,19 +859,15 @@ trait Checking {
           val problem = if pat.tpe <:< reportedPt then "is more specialized than" else "does not match"
           em"pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt"
         case RefutableExtractor =>
-          val extractor =
-            val UnApply(fn, _, _) = pat: @unchecked
-            tpd.funPart(fn) match
-              case Select(id, _) => id
-              case _ => EmptyTree
-          if extractor.isEmpty then
-            em"pattern binding uses refutable extractor"
-          else if extractor.symbol eq defn.QuoteMatching_ExprMatch then
-            em"pattern binding uses refutable extractor `'{...}`"
-          else if extractor.symbol eq defn.QuoteMatching_TypeMatch then
-            em"pattern binding uses refutable extractor `'[...]`"
-          else
-            em"pattern binding uses refutable extractor `$extractor`"
+          val extractor = pat match
+            case UnApply(fn, _, _) =>
+              tpd.funPart(fn) match
+                case Select(id, _) if !id.isEmpty => id.show
+                case _ => ""
+            case QuotePattern(_, body, _) =>
+              if body.isTerm then "'{...}" else "'[...]"
+          if extractor.isEmpty then em"pattern binding uses refutable extractor"
+          else em"pattern binding uses refutable extractor `$extractor`"
 
       val fix =
         if isPatDef then "adding `: @unchecked` after the expression"
@@ -899,7 +906,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, implicits, pats) =>
             check(pat, pt) &&
-            (isIrrefutable(fn, pats.length) || isIrrefutableQuotedPattern(fn, implicits, pt) || fail(pat, pt, Reason.RefutableExtractor)) && {
+            (isIrrefutable(fn, pats.length) || fail(pat, pt, Reason.RefutableExtractor)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -909,6 +916,8 @@ trait Checking {
             check(pat, pt) && recur(arg, pt)
           case Ident(nme.WILDCARD) =>
             true
+          case pat: QuotePattern =>
+            isIrrefutableQuotePattern(pat, pt) || fail(pat, pt, Reason.RefutableExtractor)
           case _ =>
             check(pat, pt)
         }
@@ -953,6 +962,11 @@ trait Checking {
       report.error(
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix for a wildcard export, as it is a package",
         path.srcPos)
+
+  /** Check that the definition name isn't root. */
+  def checkNonRootName(name: Name, nameSpan: Span)(using Context): Unit =
+    if name == nme.ROOTPKG then
+      report.error(em"Illegal use of root package name.", ctx.source.atSpan(nameSpan))
 
   /** Check that module `sym` does not clash with a class of the same name
    *  that is concurrently compiled in another source file.
@@ -1507,7 +1521,8 @@ trait Checking {
    *  (2) Check that no import selector is renamed more than once.
    */
   def checkImportSelectors(qualType: Type, selectors: List[untpd.ImportSelector])(using Context): Unit =
-    val seen = mutable.Set.empty[Name]
+    val originals = mutable.Set.empty[Name]
+    val targets = mutable.Set.empty[Name]
 
     def checkIdent(sel: untpd.ImportSelector): Unit =
       if sel.name != nme.ERROR
@@ -1515,9 +1530,14 @@ trait Checking {
           && !qualType.member(sel.name.toTypeName).exists
       then
         report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
-      if seen.contains(sel.name) then
-        report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
-      seen += sel.name
+      if sel.isUnimport then
+        if originals.contains(sel.name) then
+          report.error(UnimportedAndImported(sel.name, targets.contains(sel.name)), sel.imported.srcPos)
+      else
+        if targets.contains(sel.rename) then
+          report.error(ImportedTwice(sel.rename), sel.renamed.orElse(sel.imported).srcPos)
+        targets += sel.rename
+      originals += sel.name
 
     if !ctx.compilationUnit.isJava then
       for sel <- selectors do

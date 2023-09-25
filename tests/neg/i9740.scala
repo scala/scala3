@@ -1,3 +1,4 @@
+//> using options -Xfatal-warnings -Wimplausible-patterns
 abstract class RecoveryCompleted
 object RecoveryCompleted extends RecoveryCompleted
 

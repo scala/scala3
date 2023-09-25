@@ -236,10 +236,12 @@ object NameOps {
      */
     def isPlainFunction(using Context): Boolean = functionArity >= 0
 
-    /** Is a function name that contains `mustHave` as a substring */
-    private def isSpecificFunction(mustHave: String)(using Context): Boolean =
+    /** Is a function name that contains `mustHave` as a substring
+     *  and has arity `minArity` or greater.
+     */
+    private def isSpecificFunction(mustHave: String, minArity: Int = 0)(using Context): Boolean =
       val suffixStart = functionSuffixStart
-      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= 0
+      isFunctionPrefix(suffixStart, mustHave) && funArity(suffixStart) >= minArity
 
     def isContextFunction(using Context): Boolean = isSpecificFunction("Context")
     def isImpureFunction(using Context): Boolean = isSpecificFunction("Impure")

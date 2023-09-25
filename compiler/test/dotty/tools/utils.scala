@@ -80,13 +80,15 @@ def toolArgsFor(tool: ToolName)(lines: List[String]): List[String] =
 // scalac: arg1 arg2, with alternative opening, optional space, alt names, text that is not */ up to end.
 // groups are (name, args)
 private val toolArg = raw"(?://|/\*| \*) ?(?i:(${ToolName.values.mkString("|")})):((?:[^*]|\*(?!/))*)".r.unanchored
+private val directiveOptionsArg = raw"//> using options (.*)".r.unanchored
 
 // Inspect the lines for compiler options of the form
 // `// scalac: args`, `/* scalac: args`, ` * scalac: args`.
 // If args string ends in close comment, stop at the `*` `/`.
 // Returns all the matches by the regex.
 def toolArgsParse(lines: List[String]): List[(String,String)] =
-  lines.flatMap { case toolArg(name, args) => List((name, args)) case _ => Nil }
+  lines.flatMap { case toolArg(name, args) => List((name, args)) case _ => Nil } ++
+  lines.flatMap { case directiveOptionsArg(args) => List(("scalac", args)) case _ => Nil }
 
 import org.junit.Test
 import org.junit.Assert._

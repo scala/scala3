@@ -73,28 +73,31 @@ class GadtConstraint private (
 
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
     val self = externalize(param)
-    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) { (acc, p) =>
-      externalize(p) match
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) { (acc, loParam) =>
+      externalize(loParam) match
         // drop any lower param that is a GADT symbol
-        // and is upper-bounded by a non-Any super-type of the original parameter
-        // e.g. in pos/i14287.min
+        // and is upper-bounded by the original parameter
+        // e.g. in pos/i14287.min:
+        //   case Foo.Bar[B$1](Foo.Bar[B$2](x)) => Foo.Bar(x)
+        // after pattern type constraining:
         // B$1 had info <: X   and fullBounds >: B$2 <: X, and
         // B$2 had info <: B$1 and fullBounds <: B$1
-        // We can use the info of B$2 to drop the lower-bound of B$1
+        // If we keep these fullBounds, it would be a bidirectional definition.
+        // So instead we can use the info of B$2 to drop the lower-bound of B$1
         // and return non-bidirectional bounds B$1 <: X and B$2 <: B$1.
-        case tp: TypeRef if tp.symbol.isPatternBound && self =:= tp.info.hiBound => acc
-        case tp => acc | tp
+        case lo: TypeRef if lo.symbol.isPatternBound && lo.info.hiBound.frozen_<:<(self) => acc
+        case lo => acc | lo
     }
 
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
     val self = externalize(param)
-    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (acc, u) =>
-      externalize(u) match
-        case tp: TypeRef if tp.symbol.isPatternBound && self =:= tp.info.loBound => acc // like fullLowerBound
-        case tp =>
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (acc, hiParam) =>
+      externalize(hiParam) match
+        case hi: TypeRef if hi.symbol.isPatternBound && self.frozen_<:<(hi.info.loBound) => acc // like fullLowerBound
+        case hi =>
           // Any as the upper bound means "no bound", but if F is higher-kinded,
           // Any & F = F[_]; this is wrong for us so we need to short-circuit
-          if acc.isAny then tp else acc & tp
+          if acc.isAny then hi else acc & hi
     }
 
   def externalize(tp: Type, theMap: TypeMap | Null = null)(using Context): Type = tp match

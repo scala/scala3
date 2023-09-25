@@ -134,7 +134,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped-tasty-tests/run ;stdlib-bootstrapped-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -254,6 +254,11 @@ jobs:
       - name: MiMa
         run: |
           ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues; tasty-core-bootstrapped/mimaReportBinaryIssues; stdlib-bootstrapped/mimaReportBinaryIssues"
+
+      - name: TASTy MiMa
+        run: |
+          # This script cleans the compiler and recompiles it from scratch (keep as last run)
+          ./project/scripts/stdlib-bootstrapped-tasty-mima.sh
 
   community_build_a:
     runs-on: [self-hosted, Linux]
@@ -488,7 +493,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;stdlib-bootstrapped-tasty-tests/run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 

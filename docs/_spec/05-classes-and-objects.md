@@ -46,8 +46,8 @@ It is forbidden for a template's superclass constructor ´sc´ to be an [enum cl
 The _least proper supertype_ of a template is the class type or [compound type](03-types.html#compound-types) consisting of all its parent class types.
 
 The statement sequence ´\mathit{stats}´ contains member definitions that define new members or overwrite members in the parent classes.
-If the template forms part of an abstract class or trait definition, the statement part ´\mathit{stats}´ may also contain declarations of abstract members.
-If the template forms part of a concrete class definition, ´\mathit{stats}´ may still contain declarations of abstract type members, but not of abstract term members.
+If the template forms part of an abstract class or trait definition, the statement part ´\mathit{stats}´ may also contain definitions of abstract members.
+If the template forms part of a concrete class definition, ´\mathit{stats}´ may still contain definitions of abstract type members, but not of abstract term members.
 Furthermore, ´\mathit{stats}´ may in any case also contain expressions; these are executed in the order they are given as part of the initialization of a template.
 
 The sequence of template statements may be prefixed with a formal parameter definition and an arrow, e.g. `´x´ =>`, or `´x´:´T´ =>`.
@@ -310,6 +310,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
+                    |  ‘infix’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 ```
@@ -320,7 +321,7 @@ Modifiers preceding a repeated definition apply to all constituent definitions.
 The rules governing the validity and meaning of a modifier are as follows.
 
 ### `private`
-The `private` modifier can be used with any definition or declaration in a template.
+The `private` modifier can be used with any definition in a template.
 Private members of a template can be accessed only from within the directly enclosing template and its companion module or [companion class](#object-definitions).
 
 The `private` modifier is also valid for [top-level](09-top-level-definitions.html#packagings) templates.
@@ -358,18 +359,17 @@ A different form of qualification is `protected[this]`.
 A member ´M´ marked with this modifier is called _object-protected_; it can be accessed only from within the object in which it is defined. That is, a selection ´p.M´ is only legal if the prefix is `this` or `´O´.this`, for some class ´O´ enclosing the reference. In addition, the restrictions for unqualified `protected` apply.
 
 ### `override`
-The `override` modifier applies to class member definitions or declarations.
-It is mandatory for member definitions or declarations that override some other concrete member definition in a parent class.
-If an `override` modifier is given, there must be at least one overridden member definition or declaration (either concrete or abstract).
+The `override` modifier applies to class member definitions.
+It is mandatory for member definitions that override some other concrete member definition in a parent class.
+If an `override` modifier is given, there must be at least one overridden member definition (either concrete or abstract).
 
 ### `abstract override`
 The `override` modifier has an additional significance when combined with the `abstract` modifier.
 That modifier combination is only allowed for value members of traits.
 
-We call a member ´M´ of a template _incomplete_ if it is either abstract (i.e. defined by a declaration), or it is labeled `abstract` and `override` and every member overridden by ´M´ is again incomplete.
+We call a member ´M´ of a template _incomplete_ if it is either abstract, or it is labeled `abstract` and `override` and every member overridden by ´M´ is again incomplete.
 
 Note that the `abstract override` modifier combination does not influence the concept whether a member is concrete or abstract.
-A member is _abstract_ if only a declaration is given for it; it is _concrete_ if a full definition is given.
 
 ### `abstract`
 The `abstract` modifier is used in class definitions.
@@ -386,7 +386,7 @@ A `final` class member definition may not be overridden in subclasses.
 A `final` class may not be inherited by a template.
 `final` is redundant for object definitions.
 Members of final classes or objects are implicitly also final, so the `final` modifier is generally redundant for them, too.
-Note, however, that [constant value definitions](04-basic-declarations-and-definitions.html#value-declarations-and-definitions) do require an explicit `final` modifier, even if they are defined in a final class or object.
+Note, however, that [constant value definitions](04-basic-definitions.html#value-definitions) do require an explicit `final` modifier, even if they are defined in a final class or object.
 `final` is permitted for abstract classes but it may not be applied to traits or incomplete members, and it may not be combined in one modifier list with `sealed`.
 
 ### `sealed`
@@ -400,6 +400,31 @@ A `lazy` value is initialized the first time it is accessed (which might never
 happen at all).
 Attempting to access a lazy value during its initialization might lead to looping behavior.
 If an exception is thrown during initialization, the value is considered uninitialized, and a later access will retry to evaluate its right hand side.
+
+### `infix`
+The `infix` modifier applies to method definitions and type definitions.
+It signals that the method or type is intended for use in infix position, even if it has an alphanumeric name.
+
+If a method overrides another, their `infix` annotations must agree. Either both are annotated with `infix`, or none of them are.
+
+The first non-receiver parameter list of an `infix` method must define exactly one parameter. Examples:
+
+```scala
+infix def op1(x: S): R             // ok
+infix def op2[T](x: T)(y: S): R    // ok
+infix def op3[T](x: T, y: S): R    // error: two parameters
+extension (x: A)
+  infix def op4(y: B): R          // ok
+  infix def op5(y1: B, y2: B): R  // error: two parameters
+```
+
+`infix` modifiers can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
+
+```scala
+infix type op[X, Y]
+```
+
+can be applied using infix syntax, i.e., `A op B`.
 
 ###### Example
 The following code illustrates the use of qualified private:
@@ -481,15 +506,15 @@ Here,
 
     If a class has no formal parameter section that is not implicit, an empty parameter section `()` is assumed.
 
-    If a formal parameter declaration ´x: T´ is preceded by a `val` or `var` keyword, an accessor (getter) [definition](04-basic-declarations-and-definitions.html#variable-declarations-and-definitions) for this parameter is implicitly added to the class.
+    If a formal parameter definition ´x: T´ is preceded by a `val` or `var` keyword, an accessor [definition](04-basic-definitions.html#value-definitions) for this parameter is implicitly added to the class.
 
-    The getter introduces a value member ´x´ of class ´c´ that is defined as an alias of the parameter.
-    If the introducing keyword is `var`, a setter accessor [`´x´_=`](04-basic-declarations-and-definitions.html#variable-declarations-and-definitions) is also implicitly added to the class.
-    In invocation of that setter  `´x´_=(´e´)` changes the value of the parameter to the result of evaluating ´e´.
+    The accessor introduces a value member ´x´ of class ´c´ that is defined as an alias of the parameter.
+    If the introducing keyword is `var`, a setter accessor [`´x´_=`](04-basic-definitions.html#variable-definitions) is also implicitly added to the class.
+    An invocation of that setter `´x´_=(´e´)` changes the value of the parameter to the result of evaluating ´e´.
 
-    The formal parameter declaration may contain modifiers, which then carry over to the accessor definition(s).
+    The formal parameter definition may contain modifiers, which then carry over to the accessor definition(s).
     When access modifiers are given for a parameter, but no `val` or `var` keyword, `val` is assumed.
-    A formal parameter prefixed by `val` or `var` may not at the same time be a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters).
+    A formal parameter prefixed by `val` or `var` may not at the same time be a [call-by-name parameter](04-basic-definitions.html#by-name-parameters).
 
   - ´t´ is a [template](#templates) of the form
 
@@ -607,7 +632,7 @@ If the case class definition contains an empty value parameter list, the `unappl
 def unapply[´\mathit{tps}\,´](´x´: ´c´[´\mathit{tps}\,´]) = x ne null
 ```
 
-The name of the `unapply` method is changed to `unapplySeq` if the first parameter section ´\mathit{ps}_1´ of ´c´ ends in a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters).
+The name of the `unapply` method is changed to `unapplySeq` if the first parameter section ´\mathit{ps}_1´ of ´c´ ends in a [repeated parameter](04-basic-definitions.html#repeated-parameters).
 
 A method named `copy` is implicitly added to every case class unless the class already has a member (directly defined or inherited) with that name, or the class has a repeated parameter.
 The method is defined as follows:
@@ -872,14 +897,14 @@ Such a class ´C´ is conceptually seen as a pair of a Scala class that contains
 Generally, a _companion module_ of a class is an object which has the same name as the class and is defined in the same scope and compilation unit.
 Conversely, the class is called the _companion class_ of the module.
 
-Very much like a concrete class definition, an object definition may still contain declarations of abstract type members, but not of abstract term members.
+Very much like a concrete class definition, an object definition may still contain definitions of abstract type members, but not of abstract term members.
 
 ## Enum Definitions
 
 <!-- TODO: Agree with NTs of rest of spec -->
 ```ebnf
 TmplDef   ::=  ‘enum’ EnumDef
-EnumDef   ::=  id ClassConstr [‘extends’ [ConstrApps]] EnumBody
+EnumDef   ::=  id ClassConstr [‘extends’ ConstrApps] EnumBody
 EnumBody  ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat  ::=  TemplateStat
             |  {Annotation [nl]} {Modifier} EnumCase
@@ -900,18 +925,15 @@ First, some terminology and notational conventions:
 - We use `<...>` for syntactic constructs that in some circumstances might be empty.
 For instance, `<value-params>` represents one or more parameter lists `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` or nothing at all.
 - Enum classes fall into two categories:
-  - _parameterized_ enum classes have at least one of the following:
-     - a type parameter section, denoted as `[´\mathit{tps}\,´]`;
-     - one or more (possibly empty) parameter sections, denoted as `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
-  - _unparameterized_ enum classes have no type parameter sections and no parameter sections.
+  - _parameterized_ enum classes have at least one or more (possibly empty) term parameter clauses, denoted as `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
+  - _unparameterized_ enum classes have no term parameter clauses, but may optionally have a type parameter clause, denoted as `[´\mathit{tps}\,´]`.
 - Enum cases fall into three categories:
-
-  - _Class cases_ are those cases that are parameterized, either with a type parameter section `[´\mathit{tps}\,´]` or with one or more (possibly empty) parameter sections `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
-  - _Simple cases_ are cases of an unparameterized enum that have neither parameters nor an extends clause or body.
+  - _Class enum cases_ are those cases that possibly have a type parameter clause `[´\mathit{tps}\,´]`, and necessarily have one or more (possibly empty) parameter clauses `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)`.
+  - _Simple enum cases_ are those cases that have no parameter clauses and no extends clause.
   That is, they consist of a name only.
-  - _Value cases_ are all cases that do not have a parameter section but that do have a (possibly generated) `extends` clause and/or a body.
+  - _Value enum cases_ are those cases that have no parameter clauses but that do have a (possibly generated) `extends` clause.
 
-- Simple cases and value cases are collectively called _singleton cases_.
+- Simple enum cases and value enum cases are collectively called _singleton enum cases_.
 
 ###### Example
 
@@ -945,13 +967,11 @@ enum Option[+T]:
 ### Lowering of Enum Definitions
 
 ###### Summary
-An enum class is represented as a `sealed` class that extends the `scala.reflect.Enum` trait.
+An enum class is represented as a `sealed abstract` class that extends the `scala.reflect.Enum` trait.
 
 Enum cases are represented as follows:
-- a class case is mapped to a `case class`,
-- a singleton case is mapped to a `val` definition, where
-  - Simple cases all share a single implementation class.
-  - Value cases will each be implemented by a unique class.
+- a class enum case is mapped to a `case class` member of the enum class' companion object,
+- a singleton enum case is mapped to a `val` member of the enum class' companion object, implemented by a local class definition. Whether that local class is shared with other singleton cases, and which ones, is left as an implementation detail.
 
 ###### Precise rules
 The `scala.reflect.Enum` trait defines a single public method, `ordinal`:
@@ -964,106 +984,119 @@ transparent trait Enum extends Any, Product, Serializable:
 ```
 There are nine desugaring rules.
 Rule (1) desugars enum definitions.
-Rules (2) and (3) desugar simple cases.
-Rules (4) to (6) define `extends` clauses for cases that are missing them.
-Rules (7) to (9) define how such cases with `extends` clauses map into `case class`es or `val`s.
+Rule (2) desugars cases of comma-separated names to simple enum cases.
+Rules (3) to (7) desugar inferrable details of enum cases.
+Rules (8) and (9) define how fully-desugared enum cases map into `case class`es or `val`s.
+Explicit `extends` clauses must be provided in the following cases, where rules (2) to (6) do not apply:
+- any enum case of a parameterized enum,
+- any singleton enum case of an unparameterized enum with non-variant type parameters,
+- any class enum case of an enum with type parameters, where the case also has type parameters.
 
 1.  An `enum` definition
     ```scala
-    enum ´E´ ... { <defs> <cases> }
+    enum ´E´ <type-params> <value-params> extends <parents> { <defs> <cases> }
     ```
     expands to a `sealed abstract` class that extends the `scala.reflect.Enum` trait and an associated companion object that contains the defined cases, expanded according to rules (2 - 8).
     The enum class starts with a compiler-generated import that imports the names `<caseIds>` of all cases so that they can be used without prefix in the class.
     ```scala
-    sealed abstract class ´E´ ... extends <parents> with scala.reflect.Enum {
-        import ´E´.{ <caseIds> }
-        <defs>
+    sealed abstract class ´E´ <type-params> <value-params>
+        extends <parents> with scala.reflect.Enum {
+      import ´E´.{ <caseIds> }
+      <defs>
     }
     object ´E´ { <cases> }
     ```
 
-2. A singleton case consisting of a comma-separated list of enum names
+2. A simple enum case consisting of a comma-separated list of names
    ```scala
    case ´C_1´, ..., ´C_n´
    ```
-   expands to
+   expands to the following simple enum cases
    ```scala
    case ´C_1´; ...; case ´C_n´
    ```
    Any modifiers or annotations on the original case extend to all expanded cases.
-   This result is then further rewritten by either (3 or 4).
+   <p>This result is then further rewritten by either (3 or 4).</p>
 
-3. A singleton case without an extends clause
+3. A simple enum case `´C´` of an unparameterized enum `´E´` without type parameters
    ```scala
    case ´C´
    ```
-   of an unparameterized enum `´E´` expands to the following simple enum case in `´E´`'s companion object:
+  expands to the following value enum case:
    ```scala
-   val ´C´ = $new(n, "C")
+   case ´C´ extends ´E´
    ```
-   Here, `$new` is a private method that creates an instance of ´E´ (see below).
+   This result is then further rewritten with rule (8).
 
-4. A singleton case without an extends clause
+4. A simple enum case  `´C´` of an unparameterized enum `´E´[´\mathit{tps}´]` with type parameters
    ```scala
    case ´C´
    ```
-   of an enum `´E´` with type parameters
+   where `´\mathit{tps}´` are of the following form
    ```scala
    ´\mathit{v}_1´ ´T_1´ >: ´L_1´ <: ´U_1´ ,   ... ,   ´\mathit{v}_n´ ´T_n´ >: ´L_n´ <: ´U_n´      (n > 0)
    ```
-   where each of the variances `´\mathit{v}_i´` is either `'+'` or `'-'`, expands to the following value enum case:
+   and where each of the variances `´\mathit{v}_i´` is either `'+'` or `'-'`, expands to the following value enum case:
    ```scala
    case ´C´ extends ´E´[´B_1´, ..., ´B_n´]
    ```
    where `´B_i´` is `´L_i´` if `´\mathit{v}_i´ = '+'` and `´U_i´` if `´\mathit{v}_i´ = '-'`.
-   This result is then further rewritten with rule (8).
-   **NOTE:** It is not permitted for enums with non-variant type parameters to have singleton cases without an extends clause.
+   <p>This result is then further rewritten with rule (8).</p>
 
-5. A class case without an extends clause
+5. A class enum case with type parameters, but without an extends clause
    ```scala
-   case ´C´ <type-params> <value-params>
+   case ´C´[´\mathit{tps}´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)
    ```
-   of an enum `´E´` that does not take type parameters expands to
+   of an unparameterized enum `´E´` without type parameters expands to
    ```scala
-   case ´C´ <type-params> <value-params> extends ´E´
+   case ´C´[´\mathit{tps}´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´) extends ´E´
    ```
    This result is then further rewritten with rule (9).
 
-6. If `´E´` is an enum with type parameters `´\mathit{tps}´`, a class case with neither type parameters nor an extends clause
+6. A class enum case without type parameters or an extends clause
    ```scala
-   case ´C´ <value-params>
+   case ´C´(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)
    ```
-   expands to
+   of an unparameterized enum `´E´[´\mathit{tps}´]` with type parameters expands to
    ```scala
-   case ´C´[´\mathit{tps}´] <value-params> extends ´E´[´\mathit{tps}´]
+   case ´C´(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´) extends ´E´[´\mathit{tps}´]
    ```
+   This result is then further rewritten with rule (7).
+
+7. A class enum case without type parameters, but has an extends clause
+   ```scala
+   case ´C´(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´) extends <parents>
+   ```
+   of an enum `´E´[´\mathit{tps}´]` with type parameters expands to
+   ```scala
+   case ´C´[´\mathit{tps}´](´\mathit{ps}_1\,´)...(´\mathit{ps}_n´) extends <parents>
+   ```
+   provided at least one of the parameters `´\mathit{tps}´` is mentioned in a parameter type in `(´\mathit{ps}_1\,´)...(´\mathit{ps}_n´)` or in a type argument in `<parents>`.
+   <br/><br/>
    This result is then further rewritten with rule (9).
-   For class cases that have type parameters themselves, an extends clause needs to be given explicitly.
 
-
-7. If `´E´` is an enum with type parameters `´\mathit{tps}´`, a class case without type parameters but with an extends clause
-   ```scala
-   case ´C´ <value-params> extends <parents>
-   ```
-   expands to
-   ```scala
-   case ´C´[´\mathit{tps}´] <value-params> extends <parents>
-   ```
-   provided at least one of the parameters `´\mathit{tps}´` is mentioned in a parameter type in `<value-params>` or in a type argument in `<parents>`.
-
-8. A value case
+8. A singleton enum case
    ```scala
    case ´C´ extends <parents>
    ```
    expands to the following `val` definition in `´E´`'s companion object:
    ```scala
-   val ´C´ = new <parents> { <body>; def ordinal = ´\mathit{n}´ }
+   val ´C´ = $factory(_$ordinal = ´\mathit{n}´, $name = "C")
    ```
    where `´\mathit{n}´` is the ordinal number of the case in the companion object, starting from 0.
+   `$factory` is a placeholder that expands its arguments into an expression that produces something equivalent to
+   a new instance of the following (possibly shared) anonymous class:
+   ```scala
+   new <parents> {
+      def ordinal: Int = _$ordinal
+      override def toString: String = $name
+   }
+   ```
    The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
+   <br/><br/>
    **NOTE:** It is an error if a value case refers to a type parameter of `´E´` in a type argument within `<parents>`.
 
-9. A class case
+9. A class enum case
    ```scala
    case ´C´ <type-params> <value-params> extends <parents>
    ```
@@ -1074,6 +1107,7 @@ Rules (7) to (9) define how such cases with `extends` clauses map into `case cla
    }
    ```
    where `´\mathit{n}´` is the ordinal number of the case in the companion object, starting from 0.
+   <br/><br/>
    **NOTE:** It is an error if a class case refers to a type parameter of `´E´` in a parameter type in `<type-params>` or `<value-params>` or in a type argument of `<parents>`, unless that parameter is already a type parameter of the case, i.e. the parameter name is defined in `<type-params>`.
 
 ###### Superclass of an enum case
@@ -1106,34 +1140,6 @@ private def $new(_$ordinal: Int, $name: String) =
     override def toString = $name
 ```
 
-
-###### Example
-
-Consider the more complex enumeration `Color`, consisting of value enum cases:
-```scala
-enum Color(val rgb: Int):
-  case Red   extends Color(0xFF0000)
-  case Green extends Color(0x00FF00)
-  case Blue  extends Color(0x0000FF)
-```
-
-The three value cases will expand as follows in the companion of `Color`:
-
-```scala
-val Red = new Color(0xFF0000):
-  def ordinal: Int = 0
-  override def productPrefix: String = "Red"
-  override def toString: String = "Red"
-val Green = new Color(0x00FF00):
-  def ordinal: Int = 1
-  override def productPrefix: String = "Green"
-  override def toString: String = "Green"
-val Blue = new Color(0x0000FF):
-  def ordinal: Int = 2
-  override def productPrefix: String = "Blue"
-  override def toString: String = "Blue"
-```
-
 ### Widening of enum cases post-construction
 The compiler-generated `apply` and `copy` methods of an class enum case
 ```scala
@@ -1150,20 +1156,6 @@ An enum `´E´` (possibly generic) that defines one or more singleton cases, and
    - A method `valueOf(name: String): ´E'´`.
    It returns the singleton case value whose identifier is `name`.
    - A method `values` which returns an `Array[´E'´]` of all singleton case values defined by `E`, in the order of their definitions.
-
-### Factory method for simple enum cases
-
-If an enum `´E´` contains at least one simple case, its companion object will define in addition:
-
-  - A private method `$new` which defines a new simple case value with given ordinal number and name.
-  This method can be thought as being defined as follows.
-
-  ```scala
-  private def $new(_$ordinal: Int, $name: String): ´E´ with runtime.EnumValue
-  ```
-  - `$new` returns a new instance of an anonymous class which implements the abstract `Product` methods that it inherits from `Enum`.
-  - if `´E´` inherits from `java.lang.Enum` the anonymous class does not override the `ordinal` or `toString` methods, as these are final in `java.lang.Enum`.
-  Additionally `productPrefix` will delegate to `this.name`.
 
 ### Translation of Java-compatible enums
 

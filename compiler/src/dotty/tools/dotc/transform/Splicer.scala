@@ -31,6 +31,7 @@ import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
+import dotty.tools.dotc.core.NameKinds
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -214,6 +215,13 @@ object Splicer {
             report.error("Macro cannot be implemented with an `inline` method", fn.srcPos)
           args.flatten.foreach(checkIfValidArgument)
 
+        case Call(fn, args) if fn.symbol.name.is(NameKinds.InlineAccessorName) =>
+          // TODO suggest use of @binaryAPI once we have the annotation
+          report.error(
+            i"""Macro implementation is not statically accessible.
+              |
+              |Non-static inline accessor was generated in ${fn.symbol.owner}
+              |""".stripMargin, tree.srcPos)
         case _ =>
           report.error(
             """Malformed macro.
@@ -245,7 +253,7 @@ object Splicer {
           case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             expr.symbol.defTree.asInstanceOf[DefDef].rhs
-          case Inlined(EmptyTree, _, body1) => body1
+          case tree: Inlined if tree.inlinedFromOuterScope => tree.expansion
           case _ => body
         }
         new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)

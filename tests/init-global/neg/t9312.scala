@@ -8,7 +8,7 @@ object DeadLockTest {
 
   }
 
-  object Parent {
+  object Parent {                    // error
     trait Child {
       Thread.sleep(2000) // ensure concurrent behavior
       val parent = Parent

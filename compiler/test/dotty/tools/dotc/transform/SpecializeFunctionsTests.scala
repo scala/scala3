@@ -36,6 +36,10 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
       )
       assert(applys.contains("apply"), "Foo did not contain `apply` forwarder method")
       assert(applys.contains("apply$mcII$sp"), "Foo did not contain specialized apply")
+
+      // It's not essential they are in this particular order,
+      // but they should be in deterministic order
+      assert(applys == List("apply", "apply$mcII$sp", "apply"))
     }
   }
 
@@ -48,20 +52,84 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
     checkBCode(source) { dir =>
       val apps =
         findClass("Func2", dir).methods.asScala.collect {
-          case m if m.name == "apply$mcIII$sp" =>
-            assert(!hasInvokeStatic(m)) // should not call super specialized method
-            m
           case m if m.name == "apply" => m
+          case m if m.name == "apply$mcIII$sp" =>
+            assert(!hasInvokeStatic(m), s"${m.name} should not call super specialized method")
+            m
+          case m if m.name.startsWith("apply") => m
         }
         .map(_.name)
         .toList
 
       assert(
-        apps.length == 3,
+        apps.length == 56,
         s"Wrong number of specialized applys, actual length: ${apps.length} - $apps"
       )
       assert(apps.contains("apply"), "Func2 did not contain `apply` forwarder method")
       assert(apps.contains("apply$mcIII$sp"), "Func2 did not contain specialized apply")
+
+      // It's not essential they are in this particular order,
+      // but they should be in some deterministic order:
+      assert(
+        apps == List(
+          "apply$mcVII$sp",
+          "apply$mcVIJ$sp",
+          "apply$mcVID$sp",
+          "apply$mcVJI$sp",
+          "apply$mcVJJ$sp",
+          "apply$mcVJD$sp",
+          "apply$mcVDI$sp",
+          "apply$mcVDJ$sp",
+          "apply$mcVDD$sp",
+          "apply$mcZII$sp",
+          "apply$mcZIJ$sp",
+          "apply$mcZID$sp",
+          "apply$mcZJI$sp",
+          "apply$mcZJJ$sp",
+          "apply$mcZJD$sp",
+          "apply$mcZDI$sp",
+          "apply$mcZDJ$sp",
+          "apply$mcZDD$sp",
+          "apply$mcIIJ$sp",
+          "apply$mcIID$sp",
+          "apply$mcIJI$sp",
+          "apply$mcIJJ$sp",
+          "apply$mcIJD$sp",
+          "apply$mcIDI$sp",
+          "apply$mcIDJ$sp",
+          "apply$mcIDD$sp",
+          "apply$mcFII$sp",
+          "apply$mcFIJ$sp",
+          "apply$mcFID$sp",
+          "apply$mcFJI$sp",
+          "apply$mcFJJ$sp",
+          "apply$mcFJD$sp",
+          "apply$mcFDI$sp",
+          "apply$mcFDJ$sp",
+          "apply$mcFDD$sp",
+          "apply$mcJII$sp",
+          "apply$mcJIJ$sp",
+          "apply$mcJID$sp",
+          "apply$mcJJI$sp",
+          "apply$mcJJJ$sp",
+          "apply$mcJJD$sp",
+          "apply$mcJDI$sp",
+          "apply$mcJDJ$sp",
+          "apply$mcJDD$sp",
+          "apply$mcDII$sp",
+          "apply$mcDIJ$sp",
+          "apply$mcDID$sp",
+          "apply$mcDJI$sp",
+          "apply$mcDJJ$sp",
+          "apply$mcDJD$sp",
+          "apply$mcDDI$sp",
+          "apply$mcDDJ$sp",
+          "apply$mcDDD$sp",
+          "apply",
+          "apply$mcIII$sp",
+          "apply"),
+        s"Apply methods were not in the expected order: $apps"
+      )
     }
   }
 

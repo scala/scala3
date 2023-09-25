@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
 import dotty.tools.dotc.quoted.MacroExpansion
 import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.quoted.reflect._
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
@@ -37,15 +38,17 @@ object QuotesImpl {
 }
 
 class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler, QuoteMatching:
+  import tpd.*
 
   private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
+  private val yDebugMacro: Boolean = ctx.settings.YdebugMacros.value
 
   extension [T](self: scala.quoted.Expr[T])
     def show: String =
       reflect.Printer.TreeCode.show(reflect.asTerm(self))
 
     def matches(that: scala.quoted.Expr[Any]): Boolean =
-      QuoteMatcher.treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
+      QuoteMatcher(yDebugMacro).treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
     def valueOrAbort(using fromExpr: FromExpr[T]): T =
       def reportError =
@@ -264,6 +267,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.rhs.asInstanceOf[tpd.Template].body
       end extension
     end ClassDefMethods
+
+    type ValOrDefDef = tpd.ValOrDefDef
+
+    object ValOrDefDefTypeTest extends TypeTest[Tree, ValOrDefDef]:
+      def unapply(x: Tree): Option[ValOrDefDef & x.type] = x match
+        case x: (tpd.ValOrDefDef & x.type) => Some(x)
+        case _ => None
+    end ValOrDefDefTypeTest
+
+    given ValOrDefDefMethods: ValOrDefDefMethods with
+      extension (self: ValOrDefDef)
+        def tpt: TypeTree = self.tpt
+        def rhs: Option[Term] = optional(self.rhs)
+      end extension
+    end ValOrDefDefMethods
 
     type DefDef = tpd.DefDef
 
@@ -622,9 +640,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
         tpd.cpy.Apply(original)(fun, args)
       def unapply(x: Apply): (Term, List[Term]) =
@@ -663,8 +683,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeApply extends TypeApplyModule:
       def apply(fun: Term, args: List[TypeTree]): TypeApply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
         withDefaultPos(tpd.TypeApply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
+        xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
         tpd.cpy.TypeApply(original)(fun, args)
       def unapply(x: TypeApply): (Term, List[TypeTree]) =
         (x.fun, x.args)
@@ -788,7 +810,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
-        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats, expr)))
+        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats, xCheckMacroValidExpr(expr))))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
         xCheckMacroBlockOwners(tpd.cpy.Block(original)(stats, expr))
       def unapply(x: Block): (List[Statement], Term) =
@@ -1002,7 +1024,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
         withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, xCheckMacroValidExpr(expansion)))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion))
+        tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion)).withSpan(original.span).withType(original.tpe)
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
         (optional(x.call), x.bindings, x.body)
     end Inlined
@@ -1515,11 +1537,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end BindMethods
 
-    type Unapply = tpd.UnApply
+    type Unapply = tpd.UnApply | tpd.QuotePattern // TODO expose QuotePattern AST in Quotes
 
     object UnapplyTypeTest extends TypeTest[Tree, Unapply]:
       def unapply(x: Tree): Option[Unapply & x.type] = x match
         case x: (tpd.UnApply & x.type) => Some(x)
+        case x: (tpd.QuotePattern & x.type) => Some(x) // TODO expose QuotePattern AST in Quotes
         case _ => None
     end UnapplyTypeTest
 
@@ -1534,9 +1557,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given UnapplyMethods: UnapplyMethods with
       extension (self: Unapply)
-        def fun: Term = self.fun
-        def implicits: List[Term] = self.implicits
-        def patterns: List[Tree] = effectivePatterns(self.patterns)
+        def fun: Term = self match
+          case self: tpd.UnApply => self.fun
+          case self: tpd.QuotePattern => QuotePatterns.encode(self).fun // TODO expose QuotePattern AST in Quotes
+        def implicits: List[Term] = self match
+          case self: tpd.UnApply => self.implicits
+          case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits // TODO expose QuotePattern AST in Quotes
+        def patterns: List[Tree] = self match
+          case self: tpd.UnApply => effectivePatterns(self.patterns)
+          case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns) // TODO expose QuotePattern AST in Quotes
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
@@ -1774,11 +1803,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)
         def isFunctionType: Boolean =
-          dotc.core.Symbols.defn.isFunctionType(self)
+          dotc.core.Symbols.defn.isFunctionNType(self)
         def isContextFunctionType: Boolean =
           dotc.core.Symbols.defn.isContextFunctionType(self)
         def isErasedFunctionType: Boolean =
-          dotc.core.Symbols.defn.isErasedFunctionType(self)
+          self match
+            case dotc.core.Symbols.defn.PolyFunctionOf(mt) =>
+              mt match
+                case mt: MethodType => mt.hasErasedParams
+                case PolyType(_, _, mt1) => mt1.hasErasedParams
+            case _ => false
         def isDependentFunctionType: Boolean =
           val tpNoRefinement = self.dropDependentRefinement
           tpNoRefinement != self
@@ -2809,13 +2843,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
         if arity < 0 then throw IllegalArgumentException(s"arity: $arity")
         if isErased then
-          throw new Exception("Erased function classes are not supported. Use a refined `scala.runtime.ErasedFunction`")
+          throw new Exception("Erased function classes are not supported. Use a refined `scala.PolyFunction`")
         else dotc.core.Symbols.defn.FunctionSymbol(arity, isImplicit)
       def FunctionClass(arity: Int): Symbol =
         FunctionClass(arity, false, false)
       def FunctionClass(arity: Int, isContextual: Boolean): Symbol =
         FunctionClass(arity, isContextual, false)
-      def ErasedFunctionClass = dotc.core.Symbols.defn.ErasedFunctionClass
+      def PolyFunctionClass = dotc.core.Symbols.defn.PolyFunctionClass
       def TupleClass(arity: Int): Symbol =
         dotc.core.Symbols.defn.TupleType(arity).nn.classSymbol.asClass
       def isTupleClass(sym: Symbol): Boolean =
@@ -3085,13 +3119,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       if xCheckMacro then termOpt.foreach(xCheckMacroValidExpr)
       termOpt
     private def xCheckMacroValidExpr(term: Term): term.type =
-      if xCheckMacro then
-        assert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
+      xCheckMacroAssert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
           "Reference to a method must be eta-expanded before it is used as an expression: " + term.show)
       term
 
     private inline def xCheckMacroAssert(inline cond: Boolean, inline msg: String): Unit =
-      assert(!xCheckMacro || cond, msg)
+      if xCheckMacro && !cond then
+        xCheckMacroAssertFail(msg)
+
+    private def xCheckMacroAssertFail(msg: String): Unit =
+      val error = new AssertionError(msg)
+      if !yDebugMacro then
+        // start stack trace at the place where the user called the reflection method
+        error.setStackTrace(
+          error.getStackTrace
+            .dropWhile(_.getClassName().startsWith("scala.quoted.runtime.impl")))
+      throw error
 
     object Printer extends PrinterModule:
 
@@ -3159,14 +3202,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     def unapply[TypeBindings, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
       val scrutineeTree = reflect.asTerm(scrutinee)
       val patternTree = reflect.asTerm(pattern)
-      QuoteMatcher.treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
+      QuoteMatcher(yDebugMacro).treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 
   object TypeMatch extends TypeMatchModule:
     def unapply[TypeBindings, Tup <: Tuple](scrutinee: scala.quoted.Type[?])(using pattern: scala.quoted.Type[?]): Option[Tup] =
       val scrutineeTree = reflect.TypeTree.of(using scrutinee)
       val patternTree = reflect.TypeTree.of(using pattern)
-      QuoteMatcher.treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
+      QuoteMatcher(yDebugMacro).treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end TypeMatch
 
 end QuotesImpl

@@ -46,7 +46,7 @@ object Enums:
   enum <:<[-A, B]:
     case Refl[C]() extends (C <:< C)
 
-  object <:< :
+  object `<:<`:
     given [T]: (T <:< T) = Refl()
 
   extension [A, B](opt: Option[A]) def unwrap(using ev: A <:< Option[B]): Option[B] = ev match

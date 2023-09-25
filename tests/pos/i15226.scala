@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 class Proj { type State = String }
 
 sealed trait ProjState:

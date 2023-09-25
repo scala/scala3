@@ -130,8 +130,6 @@ class VarianceChecker(using Context) {
               case TypeAlias(alias) => this(status, alias)
               case _ => foldOver(status, tp)
             }
-          case tp: MethodOrPoly =>
-            this(status, tp.resultType) // params will be checked in their TypeDef or ValDef nodes.
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
           case tp: ClassInfo =>
@@ -144,10 +142,16 @@ class VarianceChecker(using Context) {
       }
     }
 
+    def checkInfo(info: Type): Option[VarianceError] = info match
+      case info: MethodOrPoly =>
+        checkInfo(info.resultType) // params will be checked in their TypeDef or ValDef nodes.
+      case _ =>
+        apply(None, info)
+
     def validateDefinition(base: Symbol): Option[VarianceError] = {
       val saved = this.base
       this.base = base
-      try apply(None, base.info)
+      try checkInfo(base.info)
       finally this.base = saved
     }
   }

@@ -7,6 +7,6 @@ def test(c: Any^) =
     val x = c  // error
   class Err3(c: Any^) extends Exception // error
 
-class Err4(c: Any^) extends AnyVal // error
+class Err4(c: Any^) extends AnyVal // was error, now ok
 
 

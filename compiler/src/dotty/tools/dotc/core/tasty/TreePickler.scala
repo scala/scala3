@@ -19,6 +19,7 @@ import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
+import quoted.QuotePatterns
 
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
@@ -527,12 +528,12 @@ class TreePickler(pickler: TastyPickler) {
         case SeqLiteral(elems, elemtpt) =>
           writeByte(REPEATED)
           withLength { pickleTree(elemtpt); elems.foreach(pickleTree) }
-        case Inlined(call, bindings, expansion) =>
+        case tree @ Inlined(call, bindings, expansion) =>
           writeByte(INLINED)
           bindings.foreach(preRegister)
           withLength {
             pickleTree(expansion)
-            if (!call.isEmpty) pickleTree(call)
+            if (!tree.inlinedFromOuterScope) pickleTree(call)
             bindings.foreach { b =>
               assert(b.isInstanceOf[DefDef] || b.isInstanceOf[ValDef])
               pickleTree(b)
@@ -685,18 +686,29 @@ class TreePickler(pickler: TastyPickler) {
               .appliedTo(expr)
               .withSpan(tree.span)
           )
+        case tree: QuotePattern =>
+          // TODO: Add QUOTEPATTERN tag to TASTy
+          pickleTree(QuotePatterns.encode(tree))
         case Hole(_, idx, args, _) =>
           writeByte(HOLE)
           withLength {
             writeNat(idx)
             pickleType(tree.tpe, richTypes = true)
-            args.foreach(pickleTree)
+            args.foreach { arg =>
+              arg.tpe match
+                case _: TermRef if arg.isType => writeByte(EXPLICITtpt)
+                case _ =>
+              pickleTree(arg)
+            }
           }
       }
       catch {
         case ex: TypeError =>
           report.error(ex.toMessage, tree.srcPos.focus)
         case ex: AssertionError =>
+          println(i"error when pickling tree $tree")
+          throw ex
+        case ex: MatchError =>
           println(i"error when pickling tree $tree")
           throw ex
       }

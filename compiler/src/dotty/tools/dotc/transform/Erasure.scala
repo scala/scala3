@@ -680,9 +680,7 @@ object Erasure {
           inContext(preErasureCtx) {
             val qualTp = tree.qualifier.typeOpt.widen
             if qualTp.derivesFrom(defn.PolyFunctionClass) then
-              erasePolyFunctionApply(qualTp.select(nme.apply).widen).classSymbol
-            else if defn.isErasedFunctionType(qualTp) then
-              eraseErasedFunctionApply(qualTp.select(nme.apply).widen.asInstanceOf[MethodType]).classSymbol
+              eraseRefinedFunctionApply(qualTp.select(nme.apply).widen).classSymbol
             else
               NoSymbol
           }
@@ -764,7 +762,9 @@ object Erasure {
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
 
         def originalQual: Type =
-          erasure(tree.qualifier.typeOpt.widen.finalResultType)
+          erasure(
+            inContext(preErasureCtx):
+              tree.qualifier.typeOpt.widen.finalResultType)
 
         if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
           recur(box(qual))
@@ -869,7 +869,7 @@ object Erasure {
 
           app(fun1)
         case t =>
-          if ownArgs.isEmpty then fun1
+          if ownArgs.isEmpty || t.isError then fun1
           else throw new MatchError(i"tree $tree has unexpected type of function $fun/$fun1: $t, was $origFunType, args = $ownArgs")
     end typedApply
 

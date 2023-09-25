@@ -47,7 +47,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
   /** Returns the result of interpreting the code in the tree.
    *  Return Some of the result or None if the result type is not consistent with the expected type.
-   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
+   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception occurred.
    */
   final def interpret[T](tree: Tree)(using ct: ClassTag[T]): Option[T] =
     interpretTree(tree)(using emptyEnv) match {
@@ -59,7 +59,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
 
   /** Returns the result of interpreting the code in the tree.
-   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception ocurred.
+   *  Throws a StopInterpretation if the tree could not be interpreted or a runtime exception occurred.
    */
   protected def interpretTree(tree: Tree)(using Env): Object = tree match {
     case Literal(Constant(value)) =>
@@ -126,11 +126,13 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       view.toList
 
     fnType.dealias match
-      case fnType: MethodType if fnType.hasErasedParams => interpretArgs(argss, fnType.resType)
       case fnType: MethodType =>
         val argTypes = fnType.paramInfos
         assert(argss.head.size == argTypes.size)
-        interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        val nonErasedArgs = argss.head.lazyZip(fnType.erasedParams).collect { case (arg, false) => arg }.toList
+        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.erasedParams).collect { case (arg, false) => arg }.toList
+        assert(nonErasedArgs.size == nonErasedArgTypes.size)
+        interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ::: interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
         val argTypes :+ resType = fnType.args: @unchecked
         interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
@@ -328,8 +330,8 @@ object Interpreter:
   object Call:
     import tpd._
     /** Matches an expression that is either a field access or an application
-    *  It retruns a TermRef containing field accessed or a method reference and the arguments passed to it.
-    */
+     *  It returns a TermRef containing field accessed or a method reference and the arguments passed to it.
+     */
     def unapply(arg: Tree)(using Context): Option[(RefTree, List[List[Tree]])] =
       Call0.unapply(arg).map((fn, args) => (fn, args.reverse))
 
@@ -339,10 +341,8 @@ object Interpreter:
           Some((fn, args))
         case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
         case fn: Select => Some((fn, Nil))
-        case Apply(f @ Call0(fn, args1), args2) =>
-          if (f.tpe.widenDealias.hasErasedParams) Some((fn, args1))
-          else Some((fn, args2 :: args1))
-        case TypeApply(Call0(fn, args), _) => Some((fn, args))
+        case Apply(f @ Call0(fn, argss), args) => Some((fn, args :: argss))
+        case TypeApply(Call0(fn, argss), _) => Some((fn, argss))
         case _ => None
       }
     }

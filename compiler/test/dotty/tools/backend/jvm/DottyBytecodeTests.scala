@@ -874,7 +874,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
     }
   }
 
-  @Test def freshNames = {
+  @Test def stableNames = {
     val sourceA =
       """|class A {
          |  def a1[T: Ordering]: Unit = {}
@@ -902,11 +902,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
           s"Method ${mn.name} has parameter $actualName but expected $expectedName")
       }
 
-      // The fresh name counter should be reset for every compilation unit
+      // Each definition should get the same names since there's no possible clashes.
       assertParamName(a1, "evidence$1")
-      assertParamName(a2, "evidence$2")
+      assertParamName(a2, "evidence$1")
       assertParamName(b1, "evidence$1")
-      assertParamName(b2, "evidence$2")
+      assertParamName(b2, "evidence$1")
     }
   }
 
