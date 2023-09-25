@@ -702,3 +702,58 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |                       ^^^^^^^^^^^
          |""".stripMargin
     )
+
+  @Test def `local-method` = 
+    check(
+      """
+        |object Main {
+        |  def foo() = {
+        |    def deployment(
+        |      fst: String,
+        |      snd: Int = 1,
+        |    ): Option[Int] = ???
+        |    val abc = deployment(@@)
+        |  }
+        |}
+        |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |           ^^^^^^^^^^^
+         |""".stripMargin,
+    )
+
+  @Test def `local-method2` = 
+      check(
+        """
+          |object Main {
+          |  val foo = {
+          |    def deployment(
+          |      fst: String,
+          |      snd: Int = 1,
+          |    ): Option[Int] = ???
+          |    deployment(@@)
+          |  }
+          |}
+          |""".stripMargin,
+        """|deployment(fst: String, snd: Int): Option[Int]
+           |           ^^^^^^^^^^^
+           |""".stripMargin,
+      )
+
+  @Test def `local-method3` = 
+    check(
+      """
+        |object Main {
+        |  def foo = {
+        |    object a {
+        |      def apply(a: Int): Int = a
+        |      def apply(b: String): String = b
+        |      a(""@@)
+        |    }
+        |  }
+        |}
+        |""".stripMargin,
+      """|apply(b: String): String
+         |      ^^^^^^^^^
+         |apply(a: Int): Int
+         |""".stripMargin
+    )
