@@ -124,6 +124,7 @@ class ScalaCompilerForUnitTesting {
   def compileSrcs(groupedSrcs: List[List[String]]): (Seq[VirtualFile], TestCallback) = {
       val temp = IO.createTemporaryDirectory
       val analysisCallback = new TestCallback
+      val testProgress = new TestCompileProgress
       val classesDir = new File(temp, "classes")
       classesDir.mkdir()
 
@@ -148,7 +149,7 @@ class ScalaCompilerForUnitTesting {
           output,
           analysisCallback,
           new TestReporter,
-          new CompileProgress {},
+          testProgress,
           new TestLogger
         )
 
