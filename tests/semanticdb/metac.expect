@@ -122,11 +122,11 @@ local8 => method m (param x: Int): Int
 local9 => final class $anon extends Object { self: $anon => +2 decls }
 local11 => abstract val method x Int
 local12 => type B  = A
-local13 => val local e3: List[local14]
-local15 => val local e3x: local14
-local16 => type A  = Int
-local17 => type A  = Int
-local18 => abstract val method a A
+local16 => val local e3: List[local17]
+local18 => val local e3x: local17
+local19 => type A  = Int
+local20 => type A  = Int
+local21 => abstract val method a A
 
 Occurrences:
 [0:8..0:16): advanced <- advanced/
@@ -205,21 +205,21 @@ Occurrences:
 [27:6..27:9): s1x <- advanced/Test.s1x.
 [27:12..27:13): s -> advanced/Test.s.
 [27:14..27:16): s1 -> advanced/Structural#s1().
-[27:17..27:18): x -> scala/reflect/Selectable#selectDynamic().
+[27:17..27:18): x -> local13
 [28:6..28:8): s2 <- advanced/Test.s2.
 [28:11..28:12): s -> advanced/Test.s.
 [28:13..28:15): s2 -> advanced/Structural#s2().
 [29:6..29:9): s2x <- advanced/Test.s2x.
 [29:12..29:13): s -> advanced/Test.s.
 [29:14..29:16): s2 -> advanced/Structural#s2().
-[29:17..29:18): x -> scala/reflect/Selectable#selectDynamic().
+[29:17..29:18): x -> local14
 [30:6..30:8): s3 <- advanced/Test.s3.
 [30:11..30:12): s -> advanced/Test.s.
 [30:13..30:15): s3 -> advanced/Structural#s3().
 [31:6..31:9): s3x <- advanced/Test.s3x.
 [31:12..31:13): s -> advanced/Test.s.
 [31:14..31:16): s3 -> advanced/Structural#s3().
-[31:17..31:18): m -> scala/reflect/Selectable#applyDynamic().
+[31:17..31:18): m -> local15
 [31:19..31:22): ??? -> scala/Predef.`???`().
 [33:6..33:7): e <- advanced/Test.e.
 [33:14..33:23): Wildcards -> advanced/Wildcards#
@@ -232,27 +232,27 @@ Occurrences:
 [35:17..35:21): head -> scala/collection/IterableOps#head().
 [38:5..38:8): ??? -> scala/Predef.`???`().
 [38:11..38:14): Any -> scala/Any#
-[39:11..39:13): e3 <- local13
+[39:11..39:13): e3 <- local16
 [39:15..39:19): List -> scala/package.List#
-[40:12..40:15): e3x <- local15
-[40:18..40:20): e3 -> local13
+[40:12..40:15): e3x <- local18
+[40:18..40:20): e3 -> local16
 [40:21..40:25): head -> scala/collection/IterableOps#head().
 [46:11..46:14): foo <- advanced/Test.foo.
 [46:17..46:24): reflect -> scala/reflect/
 [46:25..46:35): Selectable -> scala/reflect/Selectable#
-[46:43..46:44): A <- local16
+[46:43..46:44): A <- local19
 [46:47..46:50): Int -> scala/Int#
 [46:54..46:55): & -> scala/`&`#
 [46:57..46:64): reflect -> scala/reflect/
 [46:65..46:75): Selectable -> scala/reflect/Selectable#
-[46:83..46:84): A <- local17
+[46:83..46:84): A <- local20
 [46:87..46:90): Int -> scala/Int#
-[46:96..46:97): a <- local18
-[46:99..46:100): A -> local17
+[46:96..46:97): a <- local21
+[46:99..46:100): A -> local20
 [46:106..46:109): ??? -> scala/Predef.`???`().
 [47:6..47:9): bar <- advanced/Test.bar().
 [47:11..47:14): foo -> advanced/Test.foo.
-[47:15..47:16): A -> local17
+[47:15..47:16): A -> local20
 [47:19..47:22): foo -> advanced/Test.foo.
 [47:23..47:24): a -> scala/reflect/Selectable#selectDynamic().
 [52:6..52:13): HKClass <- advanced/HKClass#
@@ -3388,6 +3388,9 @@ example/PickOneRefinement_1#[S] => typeparam S  <: SpecialRefinement { abstract 
 example/PickOneRefinement_1#[S](as) => param as: T*
 example/PickOneRefinement_1#[S][T] => typeparam T 
 example/PickOneRefinement_1#`<init>`(). => primary ctor <init> [typeparam S  <: SpecialRefinement { abstract method pickOne [typeparam T ](param as: T*): Option[String] }](): PickOneRefinement_1[S]
+example/PickOneRefinement_1#`<init>`().[S]pickOne(). => abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne().
+example/PickOneRefinement_1#`<init>`().[S]pickOne().(as) => param as: T*
+example/PickOneRefinement_1#`<init>`().[S]pickOne().[T] => typeparam T 
 example/PickOneRefinement_1#run(). => method run (param s: S, param as: String*): Option[String]
 example/PickOneRefinement_1#run().(as) => param as: String*
 example/PickOneRefinement_1#run().(s) => param s: S
@@ -3398,7 +3401,11 @@ example/PolyHolder#foo().(t) => param t: T
 example/PolyHolder#foo().[T] => typeparam T 
 example/RecOrRefined$package. => final package object example extends Object { self: example.type => +9 decls }
 example/RecOrRefined$package.C2# => type C2  = C { type T2  = T1 <: example/C#T2#; type T1  <: example/C#T1# }
+example/RecOrRefined$package.C2#T1# => type T1  <: example/C#T1#
+example/RecOrRefined$package.C2#T2# => type T2  = T1 <: example/C#T2#
 example/RecOrRefined$package.Person# => type Person  = Record { abstract val method age Int; abstract val method name String }
+example/RecOrRefined$package.Person#age. => abstract val method age Int
+example/RecOrRefined$package.Person#name. => abstract val method name String
 example/RecOrRefined$package.m1(). => method m1 (param a: Int { abstract val method x Int }): Nothing
 example/RecOrRefined$package.m1().(a) => param a: Int { abstract val method x Int }
 example/RecOrRefined$package.m2(). => method m2 (param x: Object { abstract method y => Int; abstract val method x Int }): Nothing
@@ -3412,6 +3419,9 @@ example/RecOrRefined$package.m5().(x) => param x: Int
 example/RecOrRefined$package.m5().[Z] => typeparam Z 
 example/RecOrRefined$package.m6# => type m6 [typeparam X ] = PolyHolder { abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo(). }
 example/RecOrRefined$package.m6#[X] => typeparam X 
+example/RecOrRefined$package.m6#foo(). => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
+example/RecOrRefined$package.m6#foo().(t) => param t: T
+example/RecOrRefined$package.m6#foo().[T] => typeparam T 
 example/Record# => class Record extends Object with Selectable { self: Record => +4 decls }
 example/Record#`<init>`(). => primary ctor <init> (param elems: Tuple2[String, Any]*): Record
 example/Record#`<init>`().(elems) => param elems: Tuple2[String, Any]*
@@ -3425,51 +3435,41 @@ example/SpecialRefinement#pickOne(). => abstract method pickOne [typeparam T ](p
 example/SpecialRefinement#pickOne().(as) => param as: T*
 example/SpecialRefinement#pickOne().[T] => typeparam T 
 local0 => abstract method pickOne [typeparam T ](param as: T*): Option[String]
-local1 => typeparam T 
-local2 => param as: T*
-local3 => abstract method pickOne [typeparam T ](param as: T*): Option[String] <: example/SpecialRefinement#pickOne().
+local1 => abstract val method x Int
+local2 => abstract val method x Int
+local3 => abstract method y => Int
 local4 => abstract val method x Int
-local5 => abstract val method x Int
-local6 => abstract method y => Int
-local7 => abstract val method x Int
-local8 => abstract method y => Int
-local9 => type z 
+local5 => abstract method y => Int
+local6 => type z 
+local7 => typeparam T 
+local8 => param t: T
+local9 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
 local10 => typeparam T 
 local11 => param t: T
 local12 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local13 => typeparam T 
-local14 => param t: T
-local15 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local16 => typeparam T 
-local17 => param t: T
-local18 => abstract method foo [typeparam T ](param t: T): T <: example/PolyHolder#foo().
-local19 => abstract val method name String
-local20 => abstract val method age Int
-local21 => type T1  <: example/C#T1#
-local22 => type T2  = T1 <: example/C#T2#
 
 Occurrences:
 [0:8..0:15): example <- example/
 [2:4..2:6): m1 <- example/RecOrRefined$package.m1().
 [2:7..2:8): a <- example/RecOrRefined$package.m1().(a)
 [2:10..2:13): Int -> scala/Int#
-[2:20..2:21): x <- local4
+[2:20..2:21): x <- local1
 [2:23..2:26): Int -> scala/Int#
 [2:32..2:35): ??? -> scala/Predef.`???`().
 [3:4..3:6): m2 <- example/RecOrRefined$package.m2().
 [3:7..3:8): x <- example/RecOrRefined$package.m2().(x)
-[3:16..3:17): x <- local5
+[3:16..3:17): x <- local2
 [3:19..3:22): Int -> scala/Int#
-[3:28..3:29): y <- local6
+[3:28..3:29): y <- local3
 [3:31..3:34): Int -> scala/Int#
 [3:40..3:43): ??? -> scala/Predef.`???`().
 [4:4..4:6): m3 <- example/RecOrRefined$package.m3().
 [4:7..4:8): x <- example/RecOrRefined$package.m3().(x)
-[4:16..4:17): x <- local7
+[4:16..4:17): x <- local4
 [4:19..4:22): Int -> scala/Int#
-[4:28..4:29): y <- local8
+[4:28..4:29): y <- local5
 [4:31..4:34): Int -> scala/Int#
-[4:41..4:42): z <- local9
+[4:41..4:42): z <- local6
 [4:48..4:51): ??? -> scala/Predef.`???`().
 [5:6..5:16): PolyHolder <- example/PolyHolder#
 [6:2..6:2): <- example/PolyHolder#`<init>`().
@@ -3481,31 +3481,31 @@ Occurrences:
 [9:4..9:6): m4 <- example/RecOrRefined$package.m4().
 [9:7..9:8): x <- example/RecOrRefined$package.m4().(x)
 [9:10..9:20): PolyHolder -> example/PolyHolder#
-[9:27..9:30): foo <- local12
-[9:31..9:32): T <- local10
-[9:34..9:35): t <- local11
-[9:37..9:38): T -> local10
-[9:41..9:42): T -> local10
+[9:27..9:30): foo <- local9
+[9:31..9:32): T <- local7
+[9:34..9:35): t <- local8
+[9:37..9:38): T -> local7
+[9:41..9:42): T -> local7
 [9:48..9:51): ??? -> scala/Predef.`???`().
 [10:4..10:6): m5 <- example/RecOrRefined$package.m5().
 [10:7..10:8): Z <- example/RecOrRefined$package.m5().[Z]
 [10:10..10:11): x <- example/RecOrRefined$package.m5().(x)
 [10:13..10:16): Int -> scala/Int#
 [10:19..10:29): PolyHolder -> example/PolyHolder#
-[10:36..10:39): foo <- local15
-[10:40..10:41): T <- local13
-[10:43..10:44): t <- local14
-[10:46..10:47): T -> local13
-[10:50..10:51): T -> local13
+[10:36..10:39): foo <- local12
+[10:40..10:41): T <- local10
+[10:43..10:44): t <- local11
+[10:46..10:47): T -> local10
+[10:50..10:51): T -> local10
 [10:56..10:59): ??? -> scala/Predef.`???`().
 [12:5..12:7): m6 <- example/RecOrRefined$package.m6#
 [12:11..12:12): X <- example/RecOrRefined$package.m6#[X]
 [12:18..12:28): PolyHolder -> example/PolyHolder#
-[12:35..12:38): foo <- local18
-[12:39..12:40): T <- local16
-[12:42..12:43): t <- local17
-[12:45..12:46): T -> local16
-[12:49..12:50): T -> local16
+[12:35..12:38): foo <- example/RecOrRefined$package.m6#foo().
+[12:39..12:40): T <- example/RecOrRefined$package.m6#foo().[T]
+[12:42..12:43): t <- example/RecOrRefined$package.m6#foo().(t)
+[12:45..12:46): T -> example/RecOrRefined$package.m6#foo().[T]
+[12:49..12:50): T -> example/RecOrRefined$package.m6#foo().[T]
 [14:6..14:12): Record <- example/Record#
 [14:12..14:12): <- example/Record#`<init>`().
 [14:13..14:18): elems <- example/Record#elems.
@@ -3523,9 +3523,9 @@ Occurrences:
 [16:48..16:52): name -> example/Record#selectDynamic().(name)
 [18:5..18:11): Person <- example/RecOrRefined$package.Person#
 [18:14..18:20): Record -> example/Record#
-[19:6..19:10): name <- local19
+[19:6..19:10): name <- example/RecOrRefined$package.Person#name.
 [19:12..19:18): String -> scala/Predef.String#
-[20:6..20:9): age <- local20
+[20:6..20:9): age <- example/RecOrRefined$package.Person#age.
 [20:11..20:14): Int -> scala/Int#
 [24:6..24:7): C <- example/C#
 [24:10..24:10): <- example/C#`<init>`().
@@ -3533,9 +3533,9 @@ Occurrences:
 [24:24..24:26): T2 <- example/C#T2#
 [25:5..25:7): C2 <- example/RecOrRefined$package.C2#
 [25:10..25:11): C -> example/C#
-[25:19..25:21): T1 <- local21
-[25:28..25:30): T2 <- local22
-[25:33..25:35): T1 -> local21
+[25:19..25:21): T1 <- example/RecOrRefined$package.C2#T1#
+[25:28..25:30): T2 <- example/RecOrRefined$package.C2#T2#
+[25:33..25:35): T1 -> example/RecOrRefined$package.C2#T1#
 [27:6..27:23): SpecialRefinement <- example/SpecialRefinement#
 [28:2..28:2): <- example/SpecialRefinement#`<init>`().
 [28:6..28:13): pickOne <- example/SpecialRefinement#pickOne().
@@ -3548,10 +3548,10 @@ Occurrences:
 [31:25..31:25): <- example/PickOneRefinement_1#`<init>`().
 [31:26..31:27): S <- example/PickOneRefinement_1#[S]
 [31:31..31:48): SpecialRefinement -> example/SpecialRefinement#
-[31:55..31:62): pickOne <- local3
-[31:63..31:64): T <- local1
-[31:66..31:68): as <- local2
-[31:70..31:71): T -> local1
+[31:55..31:62): pickOne <- example/PickOneRefinement_1#`<init>`().[S]pickOne().
+[31:63..31:64): T <- example/PickOneRefinement_1#`<init>`().[S]pickOne().[T]
+[31:66..31:68): as <- example/PickOneRefinement_1#`<init>`().[S]pickOne().(as)
+[31:70..31:71): T -> example/PickOneRefinement_1#`<init>`().[S]pickOne().[T]
 [31:75..31:81): Option -> scala/Option#
 [31:82..31:88): String -> scala/Predef.String#
 [32:6..32:9): run <- example/PickOneRefinement_1#run().
@@ -3762,24 +3762,25 @@ Schema => SemanticDB v4
 Uri => StructuralTypes.scala
 Text => empty
 Language => Scala
-Symbols => 12 entries
-Occurrences => 33 entries
+Symbols => 13 entries
+Occurrences => 35 entries
 Diagnostics => 1 entries
 Synthetics => 4 entries
 
 Symbols:
-example/StructuralTypes. => final object StructuralTypes extends Object { self: StructuralTypes.type => +5 decls }
-example/StructuralTypes.User# => type User  = Object { abstract method foo (param x: Int): Int; abstract method age => Int; abstract method name => String }
+example/StructuralTypes. => final object StructuralTypes extends Object { self: StructuralTypes.type => +6 decls }
+example/StructuralTypes.FooUser# => type FooUser  = User { abstract method foo (param x: Int): Int }
+example/StructuralTypes.FooUser#foo(). => abstract method foo (param x: Int): Int
+example/StructuralTypes.FooUser#foo().(x) => param x: Int
+example/StructuralTypes.User# => type User  = Object { abstract method age => Int; abstract method name => String }
+example/StructuralTypes.User#age(). => abstract method age => Int
+example/StructuralTypes.User#name(). => abstract method name => String
 example/StructuralTypes.V. => val method V Object { abstract method scalameta => String }
 example/StructuralTypes.fooBar. => val method fooBar Int
-example/StructuralTypes.user. => val method user User
-local0 => abstract method name => String
-local1 => abstract method age => Int
-local2 => param x: Int
-local3 => abstract method foo (param x: Int): Int
-local4 => abstract method scalameta => String
-local5 => method scalameta => String
-local6 => final class $anon extends Object { self: $anon => +2 decls }
+example/StructuralTypes.user. => val method user FooUser
+local0 => abstract method scalameta => String
+local1 => method scalameta => String
+local2 => final class $anon extends Object { self: $anon => +2 decls }
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -3788,44 +3789,112 @@ Occurrences:
 [2:26..2:46): reflectiveSelectable -> scala/reflect/Selectable.reflectiveSelectable().
 [4:7..4:22): StructuralTypes <- example/StructuralTypes.
 [5:7..5:11): User <- example/StructuralTypes.User#
-[6:8..6:12): name <- local0
+[6:8..6:12): name <- example/StructuralTypes.User#name().
 [6:14..6:20): String -> scala/Predef.String#
-[7:8..7:11): age <- local1
+[7:8..7:11): age <- example/StructuralTypes.User#age().
 [7:13..7:16): Int -> scala/Int#
-[8:8..8:11): foo <- local3
-[8:12..8:13): x <- local2
-[8:15..8:18): Int -> scala/Int#
-[8:21..8:24): Int -> scala/Int#
-[11:6..11:10): user <- example/StructuralTypes.user.
-[11:18..11:30): asInstanceOf -> scala/Any#asInstanceOf().
-[11:31..11:35): User -> example/StructuralTypes.User#
-[12:2..12:6): user -> example/StructuralTypes.user.
-[12:7..12:11): name -> scala/reflect/Selectable#selectDynamic().
-[13:2..13:6): user -> example/StructuralTypes.user.
-[13:7..13:10): age -> scala/reflect/Selectable#selectDynamic().
-[14:6..14:12): fooBar <- example/StructuralTypes.fooBar.
-[14:15..14:19): user -> example/StructuralTypes.user.
-[14:20..14:23): foo -> scala/reflect/Selectable#applyDynamic().
-[16:6..16:7): V <- example/StructuralTypes.V.
-[16:9..16:15): Object -> java/lang/Object#
-[17:8..17:17): scalameta <- local4
-[17:19..17:25): String -> scala/Predef.String#
-[18:6..18:6): <- local6
-[19:8..19:17): scalameta <- local5
-[20:2..20:3): V -> example/StructuralTypes.V.
-[20:4..20:13): scalameta -> scala/reflect/Selectable#selectDynamic().
-[21:4..21:19): StructuralTypes -> example/StructuralTypes.
+[10:7..10:14): FooUser <- example/StructuralTypes.FooUser#
+[10:17..10:21): User -> example/StructuralTypes.User#
+[11:8..11:11): foo <- example/StructuralTypes.FooUser#foo().
+[11:12..11:13): x <- example/StructuralTypes.FooUser#foo().(x)
+[11:15..11:18): Int -> scala/Int#
+[11:21..11:24): Int -> scala/Int#
+[14:6..14:10): user <- example/StructuralTypes.user.
+[14:18..14:30): asInstanceOf -> scala/Any#asInstanceOf().
+[14:31..14:38): FooUser -> example/StructuralTypes.FooUser#
+[15:2..15:6): user -> example/StructuralTypes.user.
+[15:7..15:11): name -> example/StructuralTypes.User#name().
+[16:2..16:6): user -> example/StructuralTypes.user.
+[16:7..16:10): age -> example/StructuralTypes.User#age().
+[17:6..17:12): fooBar <- example/StructuralTypes.fooBar.
+[17:15..17:19): user -> example/StructuralTypes.user.
+[17:20..17:23): foo -> example/StructuralTypes.FooUser#foo().
+[18:6..18:7): V <- example/StructuralTypes.V.
+[18:9..18:15): Object -> java/lang/Object#
+[19:8..19:17): scalameta <- local0
+[19:19..19:25): String -> scala/Predef.String#
+[20:6..20:6): <- local2
+[21:8..21:17): scalameta <- local1
+[22:2..22:3): V -> example/StructuralTypes.V.
+[22:4..22:13): scalameta -> local4
+[23:4..23:19): StructuralTypes -> example/StructuralTypes.
 
 Diagnostics:
-[14:20..14:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
+[17:20..17:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
 Instead, use method syntax .foo(...) or backticked identifier `foo`.
 The latter can be rewritten automatically under -rewrite -source 3.4-migration.
 
 Synthetics:
-[12:2..12:6):user => reflectiveSelectable(*)
-[13:2..13:6):user => reflectiveSelectable(*)
+[15:2..15:6):user => reflectiveSelectable(*)
+[16:2..16:6):user => reflectiveSelectable(*)
+[17:15..17:19):user => reflectiveSelectable(*)
+[22:2..22:3):V => reflectiveSelectable(*)
+
+expect/StructuralTypesParams.scala
+----------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => StructuralTypesParams.scala
+Text => empty
+Language => Scala
+Symbols => 12 entries
+Occurrences => 33 entries
+Synthetics => 3 entries
+
+Symbols:
+example/StructuralTypesParams. => final object StructuralTypesParams extends Object { self: StructuralTypesParams.type => +8 decls }
+example/StructuralTypesParams.User# => type User  = Object { abstract method age => Int; abstract method foo (param arg1: Int, param arg2: String): String }
+example/StructuralTypesParams.User#age(). => abstract method age => Int
+example/StructuralTypesParams.User#foo(). => abstract method foo (param arg1: Int, param arg2: String): String
+example/StructuralTypesParams.User#foo().(arg1) => param arg1: Int
+example/StructuralTypesParams.User#foo().(arg2) => param arg2: String
+example/StructuralTypesParams.age. => val method age Int
+example/StructuralTypesParams.fooBar. => val method fooBar String
+example/StructuralTypesParams.fooBaz. => val method fooBaz String
+example/StructuralTypesParams.num. => val method num Int
+example/StructuralTypesParams.str. => val method str String
+example/StructuralTypesParams.user. => val method user User
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:14): reflect -> scala/reflect/
+[2:15..2:25): Selectable -> scala/reflect/Selectable.
+[2:26..2:46): reflectiveSelectable -> scala/reflect/Selectable.reflectiveSelectable().
+[4:7..4:28): StructuralTypesParams <- example/StructuralTypesParams.
+[5:7..5:11): User <- example/StructuralTypesParams.User#
+[6:8..6:11): foo <- example/StructuralTypesParams.User#foo().
+[6:12..6:16): arg1 <- example/StructuralTypesParams.User#foo().(arg1)
+[6:18..6:21): Int -> scala/Int#
+[6:23..6:27): arg2 <- example/StructuralTypesParams.User#foo().(arg2)
+[6:29..6:35): String -> scala/Predef.String#
+[6:38..6:44): String -> scala/Predef.String#
+[7:8..7:11): age <- example/StructuralTypesParams.User#age().
+[7:13..7:16): Int -> scala/Int#
+[10:6..10:10): user <- example/StructuralTypesParams.user.
+[10:18..10:30): asInstanceOf -> scala/Any#asInstanceOf().
+[10:31..10:35): User -> example/StructuralTypesParams.User#
+[11:6..11:9): num <- example/StructuralTypesParams.num.
+[12:6..12:9): str <- example/StructuralTypesParams.str.
+[13:6..13:12): fooBar <- example/StructuralTypesParams.fooBar.
+[13:15..13:19): user -> example/StructuralTypesParams.user.
+[13:20..13:23): foo -> example/StructuralTypesParams.User#foo().
+[13:24..13:27): num -> example/StructuralTypesParams.num.
+[13:29..13:32): str -> example/StructuralTypesParams.str.
+[14:6..14:12): fooBaz <- example/StructuralTypesParams.fooBaz.
+[14:15..14:19): user -> example/StructuralTypesParams.user.
+[14:20..14:23): foo -> example/StructuralTypesParams.User#foo().
+[14:31..14:34): num -> example/StructuralTypesParams.num.
+[14:43..14:46): str -> example/StructuralTypesParams.str.
+[15:6..15:9): age <- example/StructuralTypesParams.age.
+[15:12..15:16): user -> example/StructuralTypesParams.user.
+[15:17..15:20): age -> example/StructuralTypesParams.User#age().
+[17:4..17:25): StructuralTypesParams -> example/StructuralTypesParams.
+
+Synthetics:
+[13:15..13:19):user => reflectiveSelectable(*)
 [14:15..14:19):user => reflectiveSelectable(*)
-[20:2..20:3):V => reflectiveSelectable(*)
+[15:12..15:16):user => reflectiveSelectable(*)
 
 expect/Synthetic.scala
 ----------------------
@@ -4618,16 +4687,16 @@ _empty_/Test_depmatch. => final object Test_depmatch extends Object { self: Test
 _empty_/Test_depmatch.Bar# => type Bar [typeparam T ] = T match { Unit => Unit }
 _empty_/Test_depmatch.Bar#[T] => typeparam T 
 _empty_/Test_depmatch.Foo# => type Foo  = Int { type U  }
+_empty_/Test_depmatch.Foo#U# => type U 
 _empty_/Test_depmatch.baz(). => inline macro baz (param foo: Foo): Unit
 _empty_/Test_depmatch.baz().(foo) => param foo: Foo
-local0 => type U 
-local1 => val local v: Bar[foo.U]
+local0 => val local v: Bar[foo.U]
 
 Occurrences:
 [0:7..0:20): Test_depmatch <- _empty_/Test_depmatch.
 [1:7..1:10): Foo <- _empty_/Test_depmatch.Foo#
 [1:13..1:16): Int -> scala/Int#
-[1:24..1:25): U <- local0
+[1:24..1:25): U <- _empty_/Test_depmatch.Foo#U#
 [2:7..2:10): Bar <- _empty_/Test_depmatch.Bar#
 [2:11..2:12): T <- _empty_/Test_depmatch.Bar#[T]
 [2:16..2:17): T -> _empty_/Test_depmatch.Bar#[T]
@@ -4637,10 +4706,10 @@ Occurrences:
 [5:17..5:20): foo <- _empty_/Test_depmatch.baz().(foo)
 [5:22..5:25): Foo -> _empty_/Test_depmatch.Foo#
 [5:28..5:32): Unit -> scala/Unit#
-[6:8..6:9): v <- local1
+[6:8..6:9): v <- local0
 [6:11..6:14): Bar -> _empty_/Test_depmatch.Bar#
 [6:15..6:18): foo -> _empty_/Test_depmatch.baz().(foo)
-[6:19..6:20): U -> local0
+[6:19..6:20): U -> _empty_/Test_depmatch.Foo#U#
 [6:24..6:27): ??? -> scala/Predef.`???`().
 
 expect/example-dir/FileInDir.scala

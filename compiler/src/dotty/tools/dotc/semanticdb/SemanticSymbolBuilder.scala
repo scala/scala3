@@ -7,6 +7,7 @@ import Contexts.*
 import Symbols.*
 import Flags.*
 import Names.Name
+import StdNames.tpnme
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -71,7 +72,11 @@ class SemanticSymbolBuilder:
   private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 
     def addOwner(owner: Symbol): Unit =
-      if !owner.isRoot then addSymName(b, owner)
+      if !owner.isRoot then
+        // Skip synthetic refinement class so refinement members get the type alias as owner
+        // e.g. User#name(). instead of User#`<refinement>`#name().
+        if owner.name == tpnme.REFINE_CLASS then addOwner(owner.owner)
+        else addSymName(b, owner)
 
     def addOverloadIdx(initSym: Symbol): Unit =
       // revert from the compiler-generated overload of the signature polymorphic method
