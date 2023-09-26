@@ -165,30 +165,24 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     private def interpolator(startingVariance: Int = 1)(using Context) = new TypeTraverser:
       variance = startingVariance
-      override def traverse(t: Type) =
-        t match
-          case CapturingType(parent, refs: CaptureSet.Var) =>
-            if variance < 0 then
-              capt.println(i"solving $t")
-              refs.solve()
-            if ctx.owner.isLevelOwner then
-              // instantiate root vars with upper bound ctx.owner to its local root
-              for ref <- refs.elems do ref match
-                case ref: CaptureRoot.Var => ref.followAlias match
-                  case rv: CaptureRoot.Var if rv.upperBound == ctx.owner =>
-                    val inst = ctx.owner.localRoot.termRef
-                    capt.println(i"instantiate $rv to $inst")
-                    rv.setAlias(inst)
+      override def traverse(t: Type) = t match
+        case t @ CapturingType(parent, refs) =>
+          refs match
+            case refs: CaptureSet.Var if variance < 0 => refs.solve()
+            case _ =>
+          for ref <- refs.elems do
+            ref match
+              case ref: CaptureRoot.Var =>
+                ref.followAlias match
+                  case rv: CaptureRoot.Var if rv.upperBound == ctx.owner.levelOwner =>
+                    rv.setAlias(ctx.owner.localRoot.termRef)
                   case _ =>
-                case _ =>
-            traverse(parent)
-          case t @ defn.RefinedFunctionOf(rinfo) =>
-            traverse(rinfo)
-          case tp: TypeVar =>
-          case tp: TypeRef =>
-            traverse(tp.prefix)
-          case _ =>
-            traverseChildren(t)
+              case _ =>
+          traverse(parent)
+        case t @ defn.RefinedFunctionOf(rinfo) =>
+          traverse(rinfo)
+        case _ =>
+          traverseChildren(t)
 
     /** If `tpt` is an inferred type, interpolate capture set variables appearing contra-
      *  variantly in it.
