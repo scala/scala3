@@ -1,4 +1,4 @@
-// scalac: -Xlint:private-shadow
+//> using options -Xfatal-warnings -Xlint:private-shadow
 
 object i17612a:
 	class Base(var x: Int, val y: Int, var z: Int):
