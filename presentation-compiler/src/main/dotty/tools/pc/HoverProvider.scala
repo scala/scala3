@@ -181,7 +181,7 @@ object HoverProvider:
             findRefinement(parent)
           case _ => None
 
-      val refTpe = sel.tpe.metalsDealias match
+      val refTpe = sel.tpe.widen.metalsDealias match
         case r: RefinedType => Some(r)
         case t: (TermRef | TypeProxy) => Some(t.termSymbol.info.metalsDealias)
         case _ => None
