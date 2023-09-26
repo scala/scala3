@@ -1,4 +1,4 @@
-// scalac: -Xlint:type-parameter-shadow
+//> using options -Xfatal-warnings -Xlint:type-parameter-shadow
 
 object i17613b:
 	import importTry._
