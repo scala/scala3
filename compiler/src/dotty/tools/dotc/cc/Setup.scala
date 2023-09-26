@@ -426,6 +426,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   def setupTraverser(recheckDef: DefRecheck) = new TreeTraverserWithPreciseImportContexts:
 
+    def transformResultType(tpt: TypeTree, sym: Symbol)(using Context) =
+      transformTT(tpt,
+        boxed = sym.is(Mutable, butNot = Method),     // types of mutable variables are boxed
+        exact = sym.allOverriddenSymbols.hasNext,     // types of symbols that override a parent don't get a capture set TODO drop
+        rootTarget = ctx.owner)
+
     def traverse(tree: Tree)(using Context): Unit =
       tree match
         case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
@@ -435,9 +441,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
           inContext(ctx.withOwner(meth)):
             paramss.foreach(traverse)
-            transformTT(tpt, boxed = false,
-                exact = tree.symbol.allOverriddenSymbols.hasNext,
-                rootTarget = ctx.owner)
+            transformResultType(tpt, meth)
             traverse(tree.rhs)
             //println(i"TYPE of ${tree.symbol.showLocated} = ${tpt.knownType}")
 
@@ -461,11 +465,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // TODO Drop the possibleyTypedClosureDef condition anc replace by the
                   // condition that the val takes a cap parameter
               case _ =>
-            transformTT(tpt,
-                boxed = sym.is(Mutable),    // types of mutable variables are boxed
-                exact = sym.allOverriddenSymbols.hasNext, // types of symbols that override a parent don't get a capture set
-                rootTarget = ctx.owner
-              )
+            transformResultType(tpt, sym)
             ccSetup.println(i"mapped $tree = ${tpt.knownType}")
             traverse(tree.rhs)
 
@@ -563,7 +563,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             .showing(i"update info $sym: ${sym.info} = $result", ccSetup)
           val newInfo = absInfo(localReturnType)
           if newInfo ne sym.info then
-            updateInfo(sym,
+            val updatedInfo =
               if sym.isAnonymousFunction || sym.is(Param) || sym.is(ParamAccessor) then
                 // closures are handled specially; the newInfo is constrained from
                 // the expected type and only afterwards we recheck the definition
@@ -577,7 +577,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   ccSetup.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
                   //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
                   denot.info = newInfo
-                  recheckDef(tree, sym))
+                  recheckDef(tree, sym)
+            updateInfo(sym, updatedInfo)
 
       case tree: Bind =>
         val sym = tree.symbol
