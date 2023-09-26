@@ -1,3 +1,9 @@
+// scalajs: --skip
+
+// Under JVM 8,
+// this sometimes blows a StackOverflowError
+// in PrepJSInterop
+
 @main def Test() = {
 
   // This should generally obey 15.18.1. of the JLS (String Concatenation Operator +)
