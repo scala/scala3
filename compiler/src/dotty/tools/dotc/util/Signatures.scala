@@ -13,6 +13,7 @@ import core.NameKinds
 import core.Types._
 import core.Symbols.NoSymbol
 import interactive.Interactive
+import transform.SymUtils.isLocalToBlock
 import util.Spans.Span
 import reporting._
 
@@ -178,7 +179,8 @@ object Signatures {
         (alternativeIndex, alternatives)
       case _ =>
         val funSymbol = fun.symbol
-        val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
+        val alternatives = if funSymbol.isLocalToBlock then List(funSymbol.denot) else
+          funSymbol.owner.info.member(funSymbol.name).alternatives
         val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
         (alternativeIndex, alternatives)
 
