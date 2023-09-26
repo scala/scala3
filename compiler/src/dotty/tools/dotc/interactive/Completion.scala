@@ -24,6 +24,10 @@ import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import dotty.tools.dotc.core.ContextOps.localContext
+import dotty.tools.dotc.core.Names
+import dotty.tools.dotc.core.Types
+import dotty.tools.dotc.core.Symbols
 
 /**
  * One of the results of a completion query.
@@ -130,8 +134,8 @@ object Completion:
       case _ => 0
     }
 
-  /** Some information about the trees is lost after Typer such as Extension method definitions
-   *  are expanded into methods. In order to support completions in those cases
+  /** Some information about the trees is lost after Typer such as Extension method construct
+   *  is expanded into methods. In order to support completions in those cases
    *  we have to rely on untyped trees and only when types are necessary use typed trees.
    */
   def resolveTypedOrUntypedPath(tpdPath: List[Tree], pos: SourcePosition)(using Context): List[untpd.Tree] =
@@ -144,6 +148,28 @@ object Completion:
       case (_: untpd.TypTree) :: _ => tpdPath
       case _ => untpdPath
 
+  /** Handle case when cursor position is inside extension method construct.
+   *  The extension method construct is then desugared into methods, and consturct parameters
+   *  are no longer a part of a typed tree, but instead are prepended to method parameters.
+   *
+   *  @param untpdPath The typed or untyped path to the tree that is being completed
+   *  @param tpdPath The typed path that will be returned if no extension method construct is found
+   *  @param pos The cursor position
+   *
+   *  @return Typed path to the parameter of the extension construct if found or tpdPath
+   */
+  private def typeCheckExtensionConstructPath(
+    untpdPath: List[untpd.Tree], tpdPath: List[Tree], pos: SourcePosition
+  )(using Context): List[Tree] =
+    untpdPath.collectFirst:
+      case untpd.ExtMethods(paramss, _) =>
+        val enclosingParam = paramss.flatten.find(_.span.contains(pos.span))
+        enclosingParam.map: param =>
+          ctx.typer.index(paramss.flatten)
+          val typedEnclosingParam = ctx.typer.typed(param)
+          Interactive.pathTo(typedEnclosingParam, pos.span)
+    .flatten.getOrElse(tpdPath)
+
   private def computeCompletions(pos: SourcePosition, tpdPath: List[Tree])(using Context): (Int, List[Completion]) =
     val path0 = resolveTypedOrUntypedPath(tpdPath, pos)
     val mode = completionMode(path0, pos)
@@ -154,10 +180,7 @@ object Completion:
 
     val completer = new Completer(mode, prefix, pos)
 
-    val adjustedPath: List[Tree] = path0 match
-      case (sel: untpd.Select) :: _ :: untpd.ExtMethods(_, _) :: _ => List(ctx.typer.typedExpr(sel))
-      case _                                                       => tpdPath
-
+    val adjustedPath = typeCheckExtensionConstructPath(path0, tpdPath, pos)
     val completions = adjustedPath match
         // Ignore synthetic select from `This` because in code it was `Ident`
         // See example in dotty.tools.languageserver.CompletionTest.syntheticThis

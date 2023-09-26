@@ -1543,6 +1543,39 @@ class CompletionTest {
         ("TestSelect", Module, "Test.TestSelect"), ("TestSelect", Class, "Test.TestSelect")
       ))
 
+  @Test def extensionDefinitionCompletionsSelectNested: Unit =
+    code"""|object Test:
+           |  object Test2:
+           |    class TestSelect()
+           |object T:
+           |  extension (x: Test.Test2.TestSel$m1)
+           |"""
+      .completion(m1, Set(
+        ("TestSelect", Module, "Test.Test2.TestSelect"), ("TestSelect", Class, "Test.Test2.TestSelect")
+      ))
+
+  @Test def extensionDefinitionCompletionsSelectInside: Unit =
+    code"""|object Test:
+           |  object Test2:
+           |    class TestSelect()
+           |object T:
+           |  extension (x: Test.Te$m1.TestSelect)
+           |"""
+      .completion(m1, Set(("Test2", Module, "Test.Test2")))
+
+  @Test def extensionDefinitionCompletionsTypeParam: Unit =
+    code"""|object T:
+           |  extension [TypeParam](x: TypePar$m1)
+           |"""
+      .completion(m1, Set(("TypeParam", Field, "T.TypeParam")))
+
+
+  @Test def typeParamCompletions: Unit =
+    code"""|object T:
+           |  def xxx[TTT](x: TT$m1)
+           |"""
+      .completion(m1, Set(("TTT", Field, "T.TTT")))
+
   @Test def selectDynamic: Unit =
     code"""|import scala.language.dynamics
            |class Foo extends Dynamic {
