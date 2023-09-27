@@ -127,16 +127,15 @@ class CheckShadowing extends MiniPhase:
     !owner.isConstructor && !owner.is(Synthetic) && !owner.is(Exported)
 
   private def reportShadowing(res: ShadowingData.ShadowResult)(using Context): Unit =
-    res.warnings.sortBy(w => (w.pos.line, w.pos.startPos.column))(using Ordering[(Int, Int)]).foreach { s =>
-      s match
-        case PrivateShadowWarning(pos, shadow, shadowed) =>
-          report.warning(s"${shadow.showLocated} shadows field ${shadowed.name} inherited from ${shadowed.owner}", pos)
-        case TypeParamShadowWarning(pos, shadow, parent, shadowed) =>
-          if shadowed.exists then
-            report.warning(s"Type parameter ${shadow.name} for $parent shadows the type defined by ${shadowed.showLocated}", pos)
-          else
-            report.warning(s"Type parameter ${shadow.name} for $parent shadows an explicitly renamed type : ${shadow.name}", pos)
-      }
+    res.warnings.sortBy(w => (w.pos.line, w.pos.startPos.column))(using Ordering[(Int, Int)]).foreach {
+      case PrivateShadowWarning(pos, shadow, shadowed) =>
+        report.warning(s"${shadow.showLocated} shadows field ${shadowed.name} inherited from ${shadowed.owner}", pos)
+      case TypeParamShadowWarning(pos, shadow, parent, shadowed) =>
+        if shadowed.exists then
+          report.warning(s"Type parameter ${shadow.name} for $parent shadows the type defined by ${shadowed.showLocated}", pos)
+        else
+          report.warning(s"Type parameter ${shadow.name} for $parent shadows an explicitly renamed type : ${shadow.name}", pos)
+    }
 
   private def nestedTypeTraverser(parent: Symbol) = new TreeTraverser:
     import tpd._
@@ -312,3 +311,4 @@ object CheckShadowing:
       case class ShadowResult(warnings: List[ShadowWarning])
 
 end CheckShadowing
+
