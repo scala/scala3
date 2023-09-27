@@ -645,17 +645,6 @@ object CheckUnused:
         imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
       )
 
-    /** Returns some inherited symbol with the same type and name as the given "symDecl" */
-    private def lookForInheritedDecl(symDecl: Symbol)(using Context): Option[Symbol] =
-      val symDeclType = symDecl.info
-      val bClasses = symDecl.owner.info.baseClasses
-      bClasses match
-        case _ :: inherited =>
-          inherited
-            .map(classSymbol => symDecl.denot.matchingDecl(classSymbol, symDeclType))
-            .find(sym => sym.name == symDecl.name)
-        case Nil =>
-          None
 
 
     extension (tree: ImportSelector)
@@ -730,7 +719,7 @@ object CheckUnused:
 
       /** A function is overriden. Either has `override flags` or parent has a matching member (type and name) */
       private def isOverriden(using Context): Boolean =
-        sym.is(Flags.Override) || lookForInheritedDecl(sym).isDefined
+        sym.is(Flags.Override) || (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
 
     end extension
 
