@@ -1,3 +1,255 @@
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:4:25 ---------------------------------------------
+4 |    new StringContext().f() // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^
+  |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:5:52 ---------------------------------------------
+5 |    new StringContext("", " is ", "%2d years old").f(s) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:6:52 ---------------------------------------------
+6 |    new StringContext("", " is ", "%2d years old").f(s, d, d) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:11:4 ---------------------------------------------
+11 |    f"$s%b" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:12:4 ---------------------------------------------
+12 |    f"$s%c" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:13:4 ---------------------------------------------
+13 |    f"$f%c" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:14:4 ---------------------------------------------
+14 |    f"$s%x" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:15:4 ---------------------------------------------
+15 |    f"$b%d" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:16:4 ---------------------------------------------
+16 |    f"$s%d" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:17:4 ---------------------------------------------
+17 |    f"$f%o" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:18:4 ---------------------------------------------
+18 |    f"$s%e" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:19:4 ---------------------------------------------
+19 |    f"$b%f" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:24:4 ---------------------------------------------
+24 |    f"$s%+ 0,(s" // error
+   |    ^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:25:4 ---------------------------------------------
+25 |    f"$c%#+ 0,(c" // error
+   |    ^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:26:4 ---------------------------------------------
+26 |    f"$d%#d" // error
+   |    ^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:27:4 ---------------------------------------------
+27 |    f"$d%,x" // error
+   |    ^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:28:4 ---------------------------------------------
+28 |    f"$d%+ (x" // error
+   |    ^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:29:4 ---------------------------------------------
+29 |    f"$f%,(a" // error
+   |    ^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:30:4 ---------------------------------------------
+30 |    f"$t%#+ 0,(tT" // error
+   |    ^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:31:4 ---------------------------------------------
+31 |    f"%-#+ 0,(n" // error
+   |    ^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:36:4 ---------------------------------------------
+36 |    f"$c%.2c" // error
+   |    ^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:37:4 ---------------------------------------------
+37 |    f"$d%.2d" // error
+   |    ^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:38:4 ---------------------------------------------
+38 |    f"%.2%" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:39:4 ---------------------------------------------
+39 |    f"%.2n" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:40:4 ---------------------------------------------
+40 |    f"$f%.2a" // error
+   |    ^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:45:4 ---------------------------------------------
+45 |    f"%<s" // error
+   |    ^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:46:4 ---------------------------------------------
+46 |    f"%<c" // error
+   |    ^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:47:4 ---------------------------------------------
+47 |    f"%<tT" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:48:4 ---------------------------------------------
+48 |    f"${8}%d ${9}%d %3$$d" // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:53:4 ---------------------------------------------
+53 |    f"${8}%d ${9}%1$$d"
+   |    ^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:54:4 ---------------------------------------------
+54 |    f"$s%s $s%s %1$$<s"
+   |    ^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:63:4 ---------------------------------------------
+63 |    f"$t%tG" // error
+   |    ^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:64:4 ---------------------------------------------
+64 |    f"$t%t" // error
+   |    ^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:69:4 ---------------------------------------------
+69 |    f"${d}random-leading-junk%d" // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:70:4 ---------------------------------------------
+70 |    f"%1$$n"
+   |    ^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:71:4 ---------------------------------------------
+71 |    f"%1$$d" // error
+   |    ^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:72:4 ---------------------------------------------
+72 |    f"blablablabla %% %.2d" // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:73:4 ---------------------------------------------
+73 |    f"blablablabla %.2b %%" // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:75:4 ---------------------------------------------
+75 |    f"ana${3}%.2f%2${true}%bb" // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:76:4 ---------------------------------------------
+76 |    f"ac{2c{2{c.ca "
+   |    ^^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:78:4 ---------------------------------------------
+78 |    f"b%c.%2ii%iin" // error // error // error
+   |    ^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/f-interpolator-neg.scala:79:4 ---------------------------------------------
+79 |    f"b}22%2.c<{%{"  // error // error
+   |    ^^^^^^^^^^^^^^^
+   |    A pure expression does nothing in statement position; you may be omitting necessary parentheses
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg/f-interpolator-neg.scala:4:4 -----------------------------------------------------------------------
 4 |    new StringContext().f() // error
   |    ^^^^^^^^^^^^^^^^^^^^^
@@ -134,10 +386,6 @@
 49 |    f"${8}%d ${9}%d%0$$d" // error
    |                    ^
    |                    Argument index out of range
--- Warning: tests/neg/f-interpolator-neg.scala:54:17 -------------------------------------------------------------------
-54 |    f"$s%s $s%s %1$$<s"
-   |                 ^
-   |                 Argument index ignored if '<' flag is present
 -- Error: tests/neg/f-interpolator-neg.scala:59:7 ----------------------------------------------------------------------
 59 |    f"$s%#s" // error
    |       ^

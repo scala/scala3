@@ -1,3 +1,13 @@
+-- [E129] Potential Issue Warning: tests/neg/i16601a.scala:3:23 --------------------------------------------------------
+3 |@main def Test: Unit = new concurrent.ExecutionContext  // error
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                   A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  | The pure expression new concurrent.ExecutionContext() doesn't have any side effect and its result is not assigned elsewhere.
+  | It can be removed without changing the semantics of the program. This may indicate an error.
+   ---------------------------------------------------------------------------------------------------------------------
 -- [E042] Type Error: tests/neg/i16601a.scala:3:27 ---------------------------------------------------------------------
 3 |@main def Test: Unit = new concurrent.ExecutionContext  // error
   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^

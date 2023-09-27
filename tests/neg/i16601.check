@@ -1,3 +1,9 @@
+-- [E129] Potential Issue Warning: tests/neg/i16601.scala:1:23 ---------------------------------------------------------
+1 |@main def Test: Unit = new concurrent.ExecutionContext  // error
+  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                   A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |
+  | longer explanation available when compiling with `-explain`
 -- [E042] Type Error: tests/neg/i16601.scala:1:27 ----------------------------------------------------------------------
 1 |@main def Test: Unit = new concurrent.ExecutionContext  // error
   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^

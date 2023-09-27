@@ -17,7 +17,7 @@ Inlined(None, Nil, Literal(StringConstant("abc")))
 ConstantType(StringConstant("abc"))
 
 Inlined(None, Nil, Apply(Ident("println"), List(Literal(StringConstant("abc")))))
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Unit")
 
 Inlined(None, Nil, Typed(Literal(IntConstant(8)), TypeIdent("Int")))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
@@ -80,10 +80,10 @@ Inlined(None, Nil, Apply(Select(New(TypeIdent("Object")), "<init>"), Nil))
 TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")
 
 Inlined(None, Nil, Apply(Select(Ident("Int"), "box"), List(NamedArg("x", Literal(IntConstant(9))))))
-TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Integer")
+TypeRef(TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "java"), "lang"), "Integer")
 
 Inlined(None, Nil, Apply(TypeApply(Select(Ident("Ordering"), "apply"), List(TypeIdent("Int"))), List(Ident("Int"))))
-AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "math")), "Ordering"), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
+AppliedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "math"), "Ordering"), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
 
 Inlined(None, Nil, Block(List(ValDef("a", TypeIdent("Int"), Some(Literal(IntConstant(3))))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
