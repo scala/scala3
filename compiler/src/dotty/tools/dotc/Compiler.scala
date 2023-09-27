@@ -35,10 +35,11 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new Parser) ::             // Compiler frontend: scanner, parser
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
+    List(new CheckUnused.PostTyper) :: // Check for unused elements
+    List(new CheckShadowing) :: // Check shadowing elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
-    List(new CheckUnused.PostTyper, new CheckShadowing) :: // Check for unused elements and shadowing elements
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
