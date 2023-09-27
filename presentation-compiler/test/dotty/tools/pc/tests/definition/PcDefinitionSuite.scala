@@ -478,6 +478,33 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
+  @Test def `enum-class-type-param` =
+    check(
+      """|
+         |enum Options[<<AA>>]:
+         |  case Some(x: A@@A)
+         |  case None extends Options[Nothing]
+         |""".stripMargin
+    )
+
+  @Test def `enum-class-type-param-covariant` =
+    check(
+      """|
+         |enum Options[+<<AA>>]:
+         |  case Some(x: A@@A)
+         |  case None extends Options[Nothing]
+         |""".stripMargin
+    )
+
+  @Test def `enum-class-type-param-duplicate` =
+    check(
+      """|
+         |enum Testing[AA]:
+         |  case Some[<<AA>>](x: A@@A) extends Testing[AA]
+         |  case None extends Testing[Nothing]
+         |""".stripMargin
+    )
+
   @Test def `derives-def` =
     check(
       """|
