@@ -62,6 +62,7 @@ private class QuoteCompiler extends Compiler:
     def phaseName: String = "quotedFrontend"
 
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+      // NOTE: although this is a phase, there is no need to track xsbti.CompileProgress here.
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
           val ctx1 = ctx.fresh.setPhase(this.start).setCompilationUnit(exprUnit)

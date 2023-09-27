@@ -12,7 +12,9 @@ import typer.Typer
 import typer.ImportInfo.withRootImports
 import Decorators._
 import io.AbstractFile
-import Phases.unfusedPhases
+import Phases.{unfusedPhases, Phase}
+
+import sbt.interfaces.ProgressCallback
 
 import util._
 import reporting.{Suppression, Action, Profile, ActiveProfile, NoProfile}
@@ -31,6 +33,9 @@ import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.io.Codec
+
+import Run.Progress
+import scala.compiletime.uninitialized
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -155,13 +160,50 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
 
   /** The source files of all late entered symbols, as a set */
-  private var lateFiles = mutable.Set[AbstractFile]()
+  private val lateFiles = mutable.Set[AbstractFile]()
 
   /** A cache for static references to packages and classes */
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
+
+  private var _progress: Progress | Null = null // Set if progress reporting is enabled
+
+  /** Only safe to call if progress is being tracked. */
+  private inline def trackProgress(using Context)(inline op: Context ?=> Progress => Unit): Unit =
+    val local = _progress
+    if local != null then
+      op(using ctx)(local)
+
+  def doBeginUnit(unit: CompilationUnit)(using Context): Unit =
+    trackProgress: progress =>
+      progress.informUnitStarting(unit)
+
+  def doAdvanceUnit()(using Context): Unit =
+    trackProgress: progress =>
+      progress.unitc += 1 // trace that we completed a unit in the current phase
+      progress.refreshProgress()
+
+  def doAdvanceLate()(using Context): Unit =
+    trackProgress: progress =>
+      progress.latec += 1 // trace that we completed a late compilation
+      progress.refreshProgress()
+
+  private def doEnterPhase(currentPhase: Phase)(using Context): Unit =
+    trackProgress: progress =>
+      progress.enterPhase(currentPhase)
+
+  private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
+    trackProgress: progress =>
+      progress.unitc = 0 // reset unit count in current phase
+      progress.seen += 1 // trace that we've seen a phase
+      if wasRan then
+        // add an extra traversal now that we completed a phase
+        progress.traversalc += 1
+      else
+        // no phase was ran, remove a traversal from expected total
+        progress.runnablePhases -= 1
 
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
@@ -233,13 +275,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if ctx.settings.YnoDoubleBindings.value then
       ctx.base.checkNoDoubleBindings = true
 
-    def runPhases(using Context) = {
+    def runPhases(allPhases: Array[Phase])(using Context) = {
       var lastPrintedTree: PrintedTree = NoPrintedTree
       val profiler = ctx.profiler
       var phasesWereAdjusted = false
 
-      for (phase <- ctx.base.allPhases)
-        if (phase.isRunnable)
+      for phase <- allPhases do
+        doEnterPhase(phase)
+        val phaseWillRun = phase.isRunnable
+        if phaseWillRun then
           Stats.trackTime(s"phase time ms/$phase") {
             val start = System.currentTimeMillis
             val profileBefore = profiler.beforePhase(phase)
@@ -261,14 +305,21 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             if !Feature.ccEnabledSomewhere then
               ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase.prev)
               ctx.base.unlinkPhaseAsDenotTransformer(Phases.checkCapturesPhase)
-
+            end if
+          end if
+        end if
+        doAdvancePhase(phase, wasRan = phaseWillRun)
+      end for
       profiler.finished()
     }
 
     val runCtx = ctx.fresh
     runCtx.setProfiler(Profiler())
     unfusedPhases.foreach(_.initContext(runCtx))
-    runPhases(using runCtx)
+    val fusedPhases = runCtx.base.allPhases
+    runCtx.withProgressCallback: cb =>
+      _progress = Progress(cb, this, fusedPhases.length)
+    runPhases(allPhases = fusedPhases)(using runCtx)
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
@@ -294,10 +345,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         .withRootImports
 
       def process()(using Context) =
-        ctx.typer.lateEnterUnit(doTypeCheck =>
-          if typeCheck then
-            if compiling then finalizeActions += doTypeCheck
-            else doTypeCheck()
+        ctx.typer.lateEnterUnit(typeCheck)(doTypeCheck =>
+          if compiling then finalizeActions += doTypeCheck
+          else doTypeCheck()
         )
 
       process()(using unitCtx)
@@ -400,7 +450,66 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 }
 
 object Run {
+
+  /**Computes the next MegaPhase for the given phase.*/
+  def nextMegaPhase(phase: Phase)(using Context): Phase = phase.megaPhase.next.megaPhase
+
+  private class Progress(cb: ProgressCallback, private val run: Run, val initialPhases: Int):
+    private[Run] var runnablePhases: Int = initialPhases // track how many phases we expect to run
+    private[Run] var unitc: Int = 0 // current unit count in the current phase
+    private[Run] var latec: Int = 0 // current late unit count
+    private[Run] var traversalc: Int = 0 // completed traversals over all files
+    private[Run] var seen: Int = 0 // how many phases we've seen so far
+
+    private var currPhase: Phase = uninitialized  // initialized by enterPhase
+    private var currPhaseName: String = uninitialized // initialized by enterPhase
+    private var nextPhaseName: String = uninitialized // initialized by enterPhase
+
+    private def phaseNameFor(phase: Phase): String =
+      if phase.exists then phase.phaseName
+      else "<end>"
+
+    private[Run] def enterPhase(newPhase: Phase)(using Context): Unit =
+      if newPhase ne currPhase then
+        currPhase = newPhase
+        currPhaseName = phaseNameFor(newPhase)
+        nextPhaseName = phaseNameFor(Run.nextMegaPhase(newPhase))
+        if seen > 0 then
+          refreshProgress()
+
+
+    /** Counts the number of completed full traversals over files, plus the number of units in the current phase */
+    private def currentProgress()(using Context): Int =
+      traversalc * run.files.size + unitc + latec
+
+    /**Total progress is computed as the sum of
+     * - the number of traversals we expect to make over all files
+     * - the number of late compilations
+     */
+    private def totalProgress()(using Context): Int =
+      runnablePhases * run.files.size + run.lateFiles.size
+
+    private def requireInitialized(): Unit =
+      require((currPhase: Phase | Null) != null, "enterPhase was not called")
+
+    private[Run] def informUnitStarting(unit: CompilationUnit)(using Context): Unit =
+      requireInitialized()
+      cb.informUnitStarting(currPhaseName, unit)
+
+    private[Run] def refreshProgress()(using Context): Unit =
+      requireInitialized()
+      cb.progress(currentProgress(), totalProgress(), currPhaseName, nextPhaseName)
+
   extension (run: Run | Null)
+    def beginUnit(unit: CompilationUnit)(using Context): Unit =
+      if run != null then run.doBeginUnit(unit)
+
+    def advanceUnit()(using Context): Unit =
+      if run != null then run.doAdvanceUnit()
+
+    def advanceLate()(using Context): Unit =
+      if run != null then run.doAdvanceLate()
+
     def enrichedErrorMessage: Boolean = if run == null then false else run.myEnrichedErrorMessage
     def enrichErrorMessage(errorMessage: String)(using Context): String =
       if run == null then

@@ -43,10 +43,13 @@ class Parser extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val unitContexts =
       for unit <- units yield
+        ctx.run.beginUnit(unit)
         report.inform(s"parsing ${unit.source}")
         ctx.fresh.setCompilationUnit(unit).withRootImports
 
-    unitContexts.foreach(parse(using _))
+    for given Context <- unitContexts do
+      try parse
+      finally ctx.run.advanceUnit()
     record("parsedTrees", ast.Trees.ntrees)
 
     unitContexts.map(_.compilationUnit)
