@@ -99,6 +99,9 @@ class TreeUnpickler(reader: TastyReader,
   /** Was unpickled class compiled with capture checks? */
   private var withCaptureChecks: Boolean = false
 
+  private val unpicklingScala2Lib =
+    attributeUnpicklerOpt.exists(_.scala2Stdlib)
+
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
 
@@ -610,7 +613,8 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
+      val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
+      val givenFlags = if isClass && unpicklingScala2Lib then givenFlags0 | Scala2x | Scala2Tasty else givenFlags0
       pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =

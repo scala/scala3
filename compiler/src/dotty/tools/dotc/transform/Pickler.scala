@@ -16,6 +16,7 @@ import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
 import util.concurrent.{Executor, Future}
 import compiletime.uninitialized
+import dotty.tools.tasty.TastyFormat.Scala2StandardLibraryAttribute
 
 object Pickler {
   val name: String = "pickler"
@@ -108,7 +109,9 @@ class Pickler extends Phase {
                 pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
                 scratch.commentBuffer)
 
-          val attributes = Nil // TODO add attributes here
+          val attributes =
+            if ctx.settings.Yscala2Stdlib.value then List(Scala2StandardLibraryAttribute)
+            else Nil
           AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
 
           val pickled = pickler.assembleParts()

@@ -77,7 +77,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
 
           // Create extension methods, except if the class comes from Scala 2
           // because it adds extension methods before pickling.
-          if (!(valueClass.is(Scala2x)))
+          if !valueClass.is(Scala2x, butNot = Scala2Tasty) then
             for (decl <- valueClass.classInfo.decls)
               if isMethodWithExtension(decl) then
                 enterInModuleClass(createExtensionMethod(decl, moduleClassSym.symbol))

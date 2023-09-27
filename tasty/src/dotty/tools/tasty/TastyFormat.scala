@@ -366,6 +366,8 @@ object TastyFormat {
   final val CommentsSection = "Comments"
   final val AttributesSection = "Attributes"
 
+  final val Scala2StandardLibraryAttribute = "Scala2StandardLibrary"
+
   /** Tags used to serialize names, should update [[TastyFormat$.nameTagToString]] if a new constant is added */
   class NameTags {
     final val UTF8 = 1               // A simple name in UTF8 encoding.

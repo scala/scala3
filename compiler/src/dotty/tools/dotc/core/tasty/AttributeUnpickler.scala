@@ -3,7 +3,7 @@ package core.tasty
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.{TastyReader, TastyBuffer}
+import dotty.tools.tasty.{TastyFormat, TastyReader, TastyBuffer}
 
 import java.nio.charset.StandardCharsets
 
@@ -22,5 +22,7 @@ class AttributeUnpickler(reader: TastyReader):
     }
     attributesBuilder.result()
   }
+
+  def scala2Stdlib: Boolean = attributes.contains(TastyFormat.Scala2StandardLibraryAttribute)
 
 end AttributeUnpickler
