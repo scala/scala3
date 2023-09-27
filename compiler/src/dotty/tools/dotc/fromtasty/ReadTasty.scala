@@ -22,7 +22,12 @@ class ReadTasty extends Phase {
     ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    withMode(Mode.ReadPositions)(units.flatMap(readTASTY(_)))
+    withMode(Mode.ReadPositions)(units.flatMap(applyPhase(_)))
+
+  private def applyPhase(unit: CompilationUnit)(using Context): Option[CompilationUnit] =
+    ctx.run.beginUnit(unit)
+    try readTASTY(unit)
+    finally ctx.run.advanceUnit()
 
   def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>

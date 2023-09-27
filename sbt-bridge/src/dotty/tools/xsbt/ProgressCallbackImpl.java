@@ -6,7 +6,7 @@ import dotty.tools.dotc.CompilationUnit;
 import xsbti.compile.CompileProgress;
 
 public final class ProgressCallbackImpl implements ProgressCallback {
-  private boolean _cancelled = false;
+  private boolean _cancelled = false; // TODO: atomic boolean?
   private final CompileProgress _progress;
 
   public ProgressCallbackImpl(CompileProgress progress) {

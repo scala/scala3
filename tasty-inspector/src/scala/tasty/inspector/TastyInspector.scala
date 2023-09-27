@@ -66,6 +66,7 @@ object TastyInspector:
       override def phaseName: String = "tastyInspector"
 
       override def runOn(units: List[CompilationUnit])(using ctx0: Context): List[CompilationUnit] =
+        // NOTE: although this is a phase, do not expect this to be ran with an xsbti.CompileProgress
         val ctx = QuotesCache.init(ctx0.fresh)
         runOnImpl(units)(using ctx)
 

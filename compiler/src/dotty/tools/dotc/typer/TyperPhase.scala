@@ -63,13 +63,15 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       for unit <- units yield
         val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         val newCtx = PrepareInlineable.initContext(newCtx0)
+        newCtx.run.beginUnit(unit)
         report.inform(s"typing ${unit.source}")
         if (addRootImports)
           newCtx.withRootImports
         else
           newCtx
 
-    unitContexts.foreach(enterSyms(using _))
+    for given Context <- unitContexts do
+      enterSyms
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
@@ -81,9 +83,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       case _ =>
     }
 
-    unitContexts.foreach(typeCheck(using _))
+    for given Context <- unitContexts do
+      typeCheck
+
     record("total trees after typer", ast.Trees.ntrees)
-    unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
+    for given Context <- unitContexts do
+      try javaCheck // after typechecking to avoid cycles
+      finally ctx.run.advanceUnit()
 
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)

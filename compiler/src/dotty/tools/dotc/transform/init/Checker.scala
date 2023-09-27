@@ -18,6 +18,7 @@ import Phases._
 import scala.collection.mutable
 
 import Semantic._
+import dotty.tools.unsupported
 
 class Checker extends Phase:
 
@@ -33,16 +34,17 @@ class Checker extends Phase:
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)
     val traverser = new InitTreeTraverser()
-    units.foreach { unit => traverser.traverse(unit.tpdTree) }
+    for unit <- units do
+      checkCtx.run.beginUnit(unit)
+      try traverser.traverse(unit.tpdTree)
+      finally ctx.run.advanceUnit()
     val classes = traverser.getClasses()
 
     Semantic.checkClasses(classes)(using checkCtx)
 
     units
 
-  def run(using Context): Unit =
-    // ignore, we already called `Semantic.check()` in `runOn`
-    ()
+  def run(using Context): Unit = unsupported("run")
 
   class InitTreeTraverser extends TreeTraverser:
     private val classes: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer
