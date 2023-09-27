@@ -101,7 +101,12 @@ sealed abstract class CaptureSet extends Showable:
    *  @return CompareResult.OK if elements were added, or a conflicting
    *          capture set that prevents addition otherwise.
    */
-  protected def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult
+  protected def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+    (CompareResult.OK /: newElems): (r, elem) =>
+      r.andAlso(addNewElem(elem, origin))
+
+  /** Add a single element, with the same meaning as in `addNewElems` */
+  protected def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult
 
   /** If this is a variable, add `cs` as a dependent set */
   protected def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult
@@ -314,8 +319,8 @@ sealed abstract class CaptureSet extends Showable:
   /** Invoke handler on the elements to ensure wellformedness of the capture set.
    *  The handler might add additional elements to the capture set.
    */
-  def ensureWellformed(handler: List[CaptureRef] => Context ?=> Unit)(using Context): this.type =
-    handler(elems.toList)
+  def ensureWellformed(handler: CaptureRef => Context ?=> Unit)(using Context): this.type =
+    elems.foreach(handler(_))
     this
 
   /** An upper approximation of this capture set, i.e. a constant set that is
@@ -391,7 +396,7 @@ object CaptureSet:
     def isConst = true
     def isAlwaysEmpty = elems.isEmpty
 
-    def addNewElems(elems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+    def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       CompareResult.fail(this)
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
@@ -413,7 +418,7 @@ object CaptureSet:
    */
   object Fluid extends Const(emptySet):
     override def isAlwaysEmpty = false
-    override def addNewElems(elems: Refs, origin: CaptureSet)(using Context, VarState) = CompareResult.OK
+    override def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState) = CompareResult.OK
     override def accountsFor(x: CaptureRef)(using Context): Boolean = true
     override def mightAccountFor(x: CaptureRef)(using Context): Boolean = true
     override def toString = "<fluid>"
@@ -452,7 +457,7 @@ object CaptureSet:
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
     /** A handler to be invoked when new elems are added to this set */
-    var newElemAddedHandler: List[CaptureRef] => Context ?=> Unit = _ => ()
+    var newElemAddedHandler: CaptureRef => Context ?=> Unit = _ => ()
 
     var description: String = ""
 
@@ -482,23 +487,26 @@ object CaptureSet:
     def resetDeps()(using state: VarState): Unit =
       deps = state.deps(this)
 
-    def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+    final def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then
         CompareResult.fail(this) // fail if variable is solved or given VarState is frozen
-      else if newElems.exists(!levelOK(_)) then
-        val res = widenCaptures(newElems) match
-          case Some(newElems1) => tryInclude(newElems1, origin)
-          case None => CompareResult.fail(this)
-        if !res.isOK then recordLevelError()
+      else if !levelOK(elem) then
+        val saved = triedElem
+        triedElem = triedElem.orElse(Some(elem))
+        val res =
+          if elem.isRootCapability then CompareResult.fail(this)
+          else addNewElems(elem.captureSetOfInfo.elems, origin)
+        if res.isOK then triedElem = saved  // reset only in case of success, leave as is on error
+        else recordLevelError()
         res
       else
         //assert(id != 2, newElems)
-        elems ++= newElems
-        if isUniversal then rootAddedHandler()
-        newElemAddedHandler(newElems.toList)
+        elems += elem
+        if elem.isGenericRootCapability then rootAddedHandler()
+        newElemAddedHandler(elem)
         // assert(id != 5 || elems.size != 3, this)
         (CompareResult.OK /: deps) { (r, dep) =>
-          r.andAlso(dep.tryInclude(newElems, this))
+          r.andAlso(dep.tryInclude(elem, this))
         }
 
     private def recordLevelError()(using Context): Unit =
@@ -511,23 +519,6 @@ object CaptureSet:
       case elem: (TermRef | ThisType) => elem.ccNestingLevel <= ownLevel
       case elem: CaptureRoot.Var => CaptureRoot.isEnclosingRoot(elem, owner.localRoot.termRef)
       case _ => true
-
-    private def widenCaptures(elems: Refs)(using Context): Option[Refs] =
-      val res = optional:
-        (SimpleIdentitySet[CaptureRef]() /: elems): (acc, elem) =>
-          if levelOK(elem) then acc + elem
-          else
-            val saved = triedElem
-            triedElem = triedElem.orElse(Some(elem))
-            if elem.isRootCapability then break()
-            val res = acc ++ widenCaptures(elem.captureSetOfInfo.elems).?
-            triedElem = saved  // reset only in case of success, leave as is on error
-            res
-      def resStr = res match
-        case Some(refs) => i"${refs.toList}"
-        case None => "FAIL"
-      capt.println(i"widen captures ${elems.toList} for $this at $owner = $resStr")
-      res
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -542,7 +533,7 @@ object CaptureSet:
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
 
-    override def ensureWellformed(handler: List[CaptureRef] => (Context) ?=> Unit)(using Context): this.type =
+    override def ensureWellformed(handler: CaptureRef => (Context) ?=> Unit)(using Context): this.type =
       newElemAddedHandler = handler
       super.ensureWellformed(handler)
 
