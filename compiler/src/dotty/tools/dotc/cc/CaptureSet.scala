@@ -205,7 +205,8 @@ sealed abstract class CaptureSet extends Showable:
       case elem :: elems1 =>
         var result = that.tryInclude(elem, this)
         if !result.isOK && !elem.isRootCapability && summon[VarState] != FrozenState then
-          result = elem.captureSetOfInfo.subCaptures(that)
+          ccState.levelError = ccState.levelError.orElse(result.levelError)
+          result = result.orElse(elem.captureSetOfInfo.subCaptures(that))
         if result.isOK then
           recur(elems1)
         else
@@ -461,8 +462,6 @@ object CaptureSet:
 
     var description: String = ""
 
-    private var triedElem: Option[CaptureRef] = None
-
     /** Record current elements in given VarState provided it does not yet
      *  contain an entry for this variable.
      */
@@ -491,14 +490,9 @@ object CaptureSet:
       if isConst || !recordElemsState() then
         CompareResult.fail(this) // fail if variable is solved or given VarState is frozen
       else if !levelOK(elem) then
-        val saved = triedElem
-        triedElem = triedElem.orElse(Some(elem))
-        val res =
-          if elem.isRootCapability then CompareResult.fail(this)
-          else addNewElems(elem.captureSetOfInfo.elems, origin)
-        if res.isOK then triedElem = saved  // reset only in case of success, leave as is on error
-        else recordLevelError()
-        res
+        val res = CompareResult.levelError(this, elem)
+        if elem.isRootCapability then res
+        else res.orElse(addNewElems(elem.captureSetOfInfo.elems, origin))
       else
         //assert(id != 2, newElems)
         elems += elem
@@ -508,11 +502,6 @@ object CaptureSet:
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(elem, this))
         }
-
-    private def recordLevelError()(using Context): Unit =
-      for elem <- triedElem do
-        capt.println(i"level error for $elem, $this")
-        ccState.levelError = Some((elem, this))
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
       case elem: TermRef if elem.symbol.isLevelOwner => elem.ccNestingLevel - 1 <= ownLevel
@@ -853,23 +842,44 @@ object CaptureSet:
 
   type CompareResult = CompareResult.TYPE
 
+  case class LevelError(cs: CaptureSet, elem: CaptureRef)
+
   /** The result of subcapturing comparisons is an opaque type CompareResult.TYPE.
    *  This is either OK, indicating success, or
    *  another capture set, indicating failure. The failure capture set
    *  is the one that did not allow propagaton of elements into it.
    */
   object CompareResult:
-    opaque type TYPE = CaptureSet
-    val OK: TYPE = Const(emptySet)
+    opaque type TYPE =
+        Unit          // Success
+      | CaptureSet    // Failure with blocking set
+      | LevelError    // Failure due to level error
+    val OK: TYPE = ()
     def fail(cs: CaptureSet): TYPE = cs
+    def levelError(cs: CaptureSet, ref: CaptureRef): TYPE = LevelError(cs, ref)
 
     extension (result: TYPE)
       /** The result is OK */
-      def isOK: Boolean = result eq OK
+      def isOK: Boolean = result == ()
       /** If not isOK, the blocking capture set */
-      def blocking: CaptureSet = result
-      inline def andAlso(op: Context ?=> TYPE)(using Context): TYPE = if result.isOK then op else result
-      def show(using Context): String = if result.isOK then "OK" else i"$result"
+      def blocking: CaptureSet = (result: @unchecked) match
+        case cs: CaptureSet => cs
+        case LevelError(cs, _) => cs
+      def levelError: Option[LevelError] = result match
+        case result: LevelError => Some(result)
+        case _ => None
+      inline def andAlso(op: Context ?=> TYPE)(using Context): TYPE =
+        if result.isOK then op else result
+      inline def orElse(op: Context ?=> TYPE)(using Context): TYPE =
+        if result.isOK then result
+        else
+          val alt = op
+          if alt.isOK then alt
+          else result
+      def show(using Context): String = result match
+        case () => "OK"
+        case cs: CaptureSet => cs.show
+        case LevelError(cs, ref) => i"($ref at wrong level for $cs)"
   end CompareResult
 
   /** A VarState serves as a snapshot mechanism that can undo
@@ -1044,7 +1054,8 @@ object CaptureSet:
 
   def levelErrors: Addenda = new Addenda:
     override def toAdd(using Context) =
-      for (ref, cs) <- ccState.levelError.toList yield
+      for LevelError(cs, ref) <- ccState.levelError.toList yield
+        ccState.levelError = None
         val levelStr = ref match
           case ref: (TermRef | ThisType) => i", defined at level ${ref.ccNestingLevel}"
           case _ => ""

@@ -3,9 +3,6 @@
    |    ^
    |    Found:    LazyList[Int]^{cap[<try block>]}
    |    Required: LazyList[Int]^?
-   |
-   |    Note that reference (cap[<try block>] : caps.Cap), defined at level 2
-   |    cannot be included in outer capture set ?, defined at level 1 in method problem
 38 |      if i > 9 then throw Ex1()
 39 |      i * i
 40 |    }

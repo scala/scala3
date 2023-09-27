@@ -56,7 +56,7 @@ class CCState:
   /** The last pair of capture reference and capture set where
    *  the reference could not be added to the set due to a level conflict.
    */
-  var levelError: Option[(CaptureRef, CaptureSet)] = None
+  var levelError: Option[CaptureSet.LevelError] = None
 
   /** Under saferExceptions: The <try block> symbol generated  for a try.
    *  Installed by Setup, removed by CheckCaptures.
