@@ -19,8 +19,7 @@ class ConstraintsTest:
   @Test def mergeParamsTransitivity: Unit =
     inCompilerContext(TestConfiguration.basicClasspath,
         scalaSources = "trait A { def foo[S, T, R]: Any  }") {
-      val tvars = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
-      val List(s, t, r) = tvars.tpes
+      val List(s, t, r) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
 
       val innerCtx = ctx.fresh.setExploreTyperState()
       inContext(innerCtx) {
@@ -38,8 +37,7 @@ class ConstraintsTest:
   @Test def mergeBoundsTransitivity: Unit =
     inCompilerContext(TestConfiguration.basicClasspath,
         scalaSources = "trait A { def foo[S, T]: Any  }") {
-      val tvars = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
-      val List(s, t) = tvars.tpes
+      val List(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
 
       val innerCtx = ctx.fresh.setExploreTyperState()
       inContext(innerCtx) {
@@ -57,10 +55,9 @@ class ConstraintsTest:
   @Test def validBoundsInit: Unit = inCompilerContext(
     TestConfiguration.basicClasspath,
     scalaSources = "trait A { def foo[S >: T <: T | Int, T <: String]: Any  }") {
-      val tvars = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
-      val List(s, t) = tvars.tpes
+      val List(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
 
-      val TypeBounds(lo, hi) = ctx.typerState.constraint.entry(t.asInstanceOf[TypeVar].origin): @unchecked
+      val TypeBounds(lo, hi) = ctx.typerState.constraint.entry(t.origin): @unchecked
       assert(lo =:= defn.NothingType, i"Unexpected lower bound $lo for $t: ${ctx.typerState.constraint}")
       assert(hi =:= defn.StringType, i"Unexpected upper bound $hi for $t: ${ctx.typerState.constraint}") // used to be Any
   }
@@ -68,12 +65,11 @@ class ConstraintsTest:
   @Test def validBoundsUnify: Unit = inCompilerContext(
     TestConfiguration.basicClasspath,
     scalaSources = "trait A { def foo[S >: T <: T | Int, T <: String | Int]: Any  }") {
-      val tvars = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
-      val List(s, t) = tvars.tpes
+      val List(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
 
       s <:< t
 
-      val TypeBounds(lo, hi) = ctx.typerState.constraint.entry(t.asInstanceOf[TypeVar].origin): @unchecked
+      val TypeBounds(lo, hi) = ctx.typerState.constraint.entry(t.origin): @unchecked
       assert(lo =:= defn.NothingType, i"Unexpected lower bound $lo for $t: ${ctx.typerState.constraint}")
       assert(hi =:= (defn.StringType | defn.IntType), i"Unexpected upper bound $hi for $t: ${ctx.typerState.constraint}")
   }
@@ -81,8 +77,7 @@ class ConstraintsTest:
   @Test def validBoundsReplace: Unit = inCompilerContext(
     TestConfiguration.basicClasspath,
     scalaSources = "trait X; trait A { def foo[S <: U | X, T, U]: Any }") {
-      val tvarTrees = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda], EmptyTree, alwaysAddTypeVars = true)._2
-      val tvars @ List(s, t, u) = tvarTrees.tpes.asInstanceOf[List[TypeVar]]
+      val tvars @ List(s, t, u) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda])
       s =:= t
       t =:= u
 

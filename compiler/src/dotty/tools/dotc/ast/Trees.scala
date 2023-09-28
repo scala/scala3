@@ -770,7 +770,7 @@ object Trees {
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[+T <: Untyped]()(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] with TypTree[T] {
-    type ThisTree[+T <: Untyped] = TypeTree[T]
+    type ThisTree[+T <: Untyped] <: TypeTree[T]
     override def isEmpty: Boolean = !hasType
     override def toString: String =
       s"TypeTree${if (hasType) s"[$typeOpt]" else ""}"
@@ -794,7 +794,8 @@ object Trees {
    *    - as a (result-)type of an inferred ValDef or DefDef.
    *  Every TypeVar is created as the type of one InferredTypeTree.
    */
-  class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]
+  class InferredTypeTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends TypeTree[T]:
+    type ThisTree[+T <: Untyped] <: InferredTypeTree[T]
 
   /** ref.type */
   case class SingletonTypeTree[+T <: Untyped] private[ast] (ref: Tree[T])(implicit @constructorOnly src: SourceFile)
