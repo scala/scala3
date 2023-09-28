@@ -4260,7 +4260,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             var typeArgs = tree match
               case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree(_))
               case _ => Nil
-            if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
+            if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2.map(_.wrapInTypeTree(tree))
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
         case wtp =>
           val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)

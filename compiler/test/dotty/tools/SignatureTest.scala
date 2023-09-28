@@ -63,7 +63,7 @@ class SignatureTest:
         |  def tuple2(x: Foo *: (T | Tuple) & Foo): Unit = {}
         |""".stripMargin):
       val cls = requiredClass("A")
-      val tvar = constrained(cls.requiredMethod(nme.CONSTRUCTOR).info.asInstanceOf[TypeLambda], untpd.EmptyTree, alwaysAddTypeVars = true)._2.head.tpe
+      val tvar = constrained(cls.requiredMethod(nme.CONSTRUCTOR).info.asInstanceOf[TypeLambda]).head
       tvar <:< defn.TupleTypeRef
       val prefix = cls.typeRef.appliedTo(tvar)
 
@@ -89,7 +89,7 @@ class SignatureTest:
         |  def and(x: T & Foo): Unit = {}
         |""".stripMargin):
       val cls = requiredClass("A")
-      val tvar = constrained(cls.requiredMethod(nme.CONSTRUCTOR).info.asInstanceOf[TypeLambda], untpd.EmptyTree, alwaysAddTypeVars = true)._2.head.tpe
+      val tvar = constrained(cls.requiredMethod(nme.CONSTRUCTOR).info.asInstanceOf[TypeLambda]).head
       val prefix = cls.typeRef.appliedTo(tvar)
       val ref = prefix.select(cls.requiredMethod("and")).asInstanceOf[TermRef]
 
