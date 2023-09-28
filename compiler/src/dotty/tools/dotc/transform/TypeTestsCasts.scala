@@ -82,7 +82,7 @@ object TypeTestsCasts {
         case tp: TypeProxy => underlyingLambda(tp.superType)
       }
       val typeLambda = underlyingLambda(tycon)
-      val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
+      val tvars = constrained(typeLambda)
       val P1 = tycon.appliedTo(tvars)
 
       debug.println("before " + ctx.typerState.constraint.show)

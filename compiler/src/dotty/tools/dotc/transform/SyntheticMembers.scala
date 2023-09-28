@@ -530,12 +530,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             (rawRef, rawInfo)
       baseInfo match
         case tl: PolyType =>
-          val (tl1, tpts) = constrained(tl, untpd.EmptyTree, alwaysAddTypeVars = true)
-          val targs =
-            for (tpt <- tpts) yield
-              tpt.tpe match {
-                case tvar: TypeVar => tvar.instantiate(fromBelow = false)
-              }
+          val tvars = constrained(tl)
+          val targs = for tvar <- tvars yield
+            tvar.instantiate(fromBelow = false)
           (baseRef.appliedTo(targs), extractParams(tl.instantiate(targs)))
         case methTpe =>
           (baseRef, extractParams(methTpe))
