@@ -25,8 +25,10 @@ class YCheckPositions extends Phase {
         val checker = new TreeTraverser {
           private var sources: List[SourceFile] = ctx.source :: Nil
           def traverse(tree: tpd.Tree)(using Context): Unit = {
-          if tree.source.toString != "library/src/scala/runtime/stdLibPatches/Predef.scala" then // FIXME: remove this workaround
-
+          // FIXME: remove this workaround
+          if !(tree.source.toString == "library/src/scala/runtime/stdLibPatches/Predef.scala"
+            && sources.head.toString.endsWith("src_managed/main/scala-library-src/scala/Predef.scala")) // TODO should this be library/src/scala/runtime/stdLibPatches/Predef.scala or library/src/scala/Predef.scala?
+          then
             // Check current context is correct
             assert(ctx.source == sources.head)
             if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && !tree.isInstanceOf[Inlined] && ctx.typerState.isGlobalCommittable)
