@@ -10,6 +10,7 @@ enum SourceVersion:
   case `3.2-migration`, `3.2`
   case `3.3-migration`, `3.3`
   case `3.4-migration`, `3.4`
+  // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
   case `future-migration`, `future`
 
   val isMigrating: Boolean = toString.endsWith("-migration")
