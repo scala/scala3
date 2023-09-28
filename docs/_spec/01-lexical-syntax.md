@@ -170,19 +170,18 @@ A newline in a Scala source text is treated as the special token “nl” if the
 The tokens that can terminate a statement are: literals, identifiers and the following delimiters and reserved words:
 
 ```
-this    null    true    false    return    type    <xml-start>
-_       )       ]       }
+this    null    true    false    return    type    given    <xml-start>
+_       )       ]       }        outdent
 ```
 
 The tokens that can begin a statement are all Scala tokens _except_ the following delimiters and reserved words:
 
 ```
-catch    else    extends    finally    forSome    match    with    yield
-,    .    ;    :    =    =>    <-    <:    <%    >:    #    [    )    ]    }
+catch    do      else    extends    finally    forSome    macro
+match    then    with    yield
+,    .    ;    :    =    =>    <-    <:    <%    >:    #    =>>    ?=>
+)    ]    }    outdent
 ```
-
-A `case` token can begin a statement only if followed by a
-`class` or `object` token.
 
 A _leading infix operator_ is a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks that:
 
