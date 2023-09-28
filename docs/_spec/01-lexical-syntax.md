@@ -83,7 +83,7 @@ For this purpose, lower case letters include not only a-z, but also all characte
 
 The following are examples of variable identifiers:
 
-> ```scala
+> ```
 >     x         maxIndex   p2p   empty_?
 >     `yield`   αρετη      _y    dot_product_*
 >     __system  _MAX_LEN_
@@ -92,7 +92,7 @@ The following are examples of variable identifiers:
 
 Some examples of constant identifiers are
 
-> ```scala
+> ```
 >     +    Object  $reserved  ǅul    ǂnûm
 >     ⅰ_ⅲ  Ⅰ_Ⅲ     ↁelerious  ǃqhàà  ʹthatsaletter
 > ```
@@ -104,7 +104,7 @@ User programs should not define identifiers that contain ‘$’ characters.
 
 The following names are reserved words instead of being members of the syntactic class `id` of lexical identifiers.
 
-```scala
+```
 abstract  case      catch     class     def       do        else
 enum      export    extends   false     final     finally   for
 given     if        implicit  import    lazy      match     new
@@ -169,14 +169,14 @@ A newline in a Scala source text is treated as the special token “nl” if the
 
 The tokens that can terminate a statement are: literals, identifiers and the following delimiters and reserved words:
 
-```scala
+```
 this    null    true    false    return    type    <xml-start>
 _       )       ]       }
 ```
 
 The tokens that can begin a statement are all Scala tokens _except_ the following delimiters and reserved words:
 
-```scala
+```
 catch    else    extends    finally    forSome    match
 with    yield    ,    .    ;    :    =    =>    <-    <:    <%
 >:    #    [    )    ]    }
@@ -452,7 +452,7 @@ Characters must not necessarily be printable; newlines or other control characte
 >
 > This would produce the string:
 >
-> ```scala
+> ```
 > the present string
 >      spans three
 >      lines.
@@ -469,7 +469,7 @@ Characters must not necessarily be printable; newlines or other control characte
 >
 > evaluates to
 >
-> ```scala
+> ```
 > the present string
 > spans three
 > lines.
