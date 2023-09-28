@@ -1,3 +1,3 @@
 8: Pattern Match Exhaustivity: _: String
-18: Pattern Match Exhaustivity: None, Some(_: String)
+18: Pattern Match Exhaustivity: Some(_: String), None
 36: Pattern Match Exhaustivity: Some(_: String)

@@ -1,6 +1,6 @@
 object Test {
   def printList(in: List[String]): Unit = in match {
-    case Nil => Unit
+    case Nil => ()
 
     case (s: String) :: Nil =>
       println(s)

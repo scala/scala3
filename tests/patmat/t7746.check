@@ -1,1 +1,1 @@
-2: Pattern Match Exhaustivity: None, Some(_)
+2: Pattern Match Exhaustivity: Some(_), None
