@@ -28,6 +28,16 @@ private val adaptUnpickledFunctionTypes = false
  */
 private val constrainRootsWhenMapping = true
 
+/** If true, most vals can be level owners. If false, only vals defined by a
+ *  closure as RHS can be level owners
+ */
+private val valsCanBeLevelOwners = false
+
+/** If true, only vals, defs, and classes with a universal capability in a parameter
+ *  or self type are considered as level owners.
+ */
+private val levelOwnersNeedCapParam = false
+
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
@@ -345,54 +355,71 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  // Not yet needed
-  def takesCappedParam(using Context): Boolean =
-    def search = new TypeAccumulator[Boolean]:
-      def apply(x: Boolean, t: Type): Boolean = //reporting.trace.force(s"hasCapAt $v, $t"):
-        if x then true
-        else t match
-          case t @ AnnotatedType(t1, annot)
-          if annot.symbol == defn.RetainsAnnot || annot.symbol == defn.RetainsByNameAnnot =>
-            val elems = annot match
-              case CaptureAnnotation(refs, _) => refs.elems.toList
-              case _ => annot.tree.retainedElems.map(_.tpe)
-            if elems.exists(_.widen.isRef(defn.Caps_Cap)) then true
-            else !t1.isCapabilityClassRef && this(x, t1)
-          case t: PolyType =>
-            apply(x, t.resType)
-          case t: MethodType =>
-            t.paramInfos.exists(apply(false, _))
-          case _ =>
-            if t.isRef(defn.Caps_Cap) || t.isCapabilityClassRef then true
-            else
-              val t1 = t.dealiasKeepAnnots
-              if t1 ne t then this(x, t1)
-              else foldOver(x, t)
-    true || sym.info.stripPoly.match
+  def takesCappedParamIn(info: Type)(using Context): Boolean =
+
+    def isOwnRoot(tp: Type): Boolean =
+      tp.isCapabilityClassRef
+      || tp.dealias.match
+        case tp: CaptureRef =>
+          tp.isGenericRootCapability || tp.localRootOwner == sym
+        case _ =>
+          false
+
+    def hasUniversalCap(tp: Type): Boolean = tp.dealiasKeepAnnots match
+      case tp @ AnnotatedType(parent, annot) =>
+        val found = annot match
+          case CaptureAnnotation(refs, _) => refs.elems.exists(isOwnRoot)
+          case _ => annot.tree.retainedElems.exists(tree => isOwnRoot(tree.tpe))
+        found || hasUniversalCap(parent)
+      case tp: TypeRef =>
+        tp.isRef(defn.Caps_Cap) || tp.isCapabilityClassRef
+      case tp: LazyRef =>
+        hasUniversalCap(tp.ref)
+      case tp: TypeVar =>
+        hasUniversalCap(tp.underlying)
+      case _ =>
+        tp.isCapabilityClassRef
+
+    info.dealias.stripPoly match
       case mt: MethodType =>
-        mt.paramInfos.exists(search(false, _))
+        (mt.paramInfos.exists(hasUniversalCap) || takesCappedParamIn(mt.resType))
+          //.showing(i"takes capped param1 $sym: $mt = $result")
+      case AppliedType(fn, args) if defn.isFunctionClass(fn.typeSymbol) =>
+        args.init.exists(hasUniversalCap) || takesCappedParamIn(args.last)
+      case defn.RefinedFunctionOf(rinfo) =>
+        takesCappedParamIn(rinfo)
+          //.showing(i"takes capped param2 $sym: $rinfo = $result")
       case _ =>
         false
+  end takesCappedParamIn
 
   // TODO Also include vals (right now they are manually entered in levelOwners by Setup)
   def isLevelOwner(using Context): Boolean =
     val symd = sym.denot
     def isCaseClassSynthetic = // TODO drop
       symd.maybeOwner.isClass && symd.owner.is(Case) && symd.is(Synthetic) && symd.info.firstParamNames.isEmpty
+    def classQualifies =
+      !levelOwnersNeedCapParam || takesCappedParamIn(symd.primaryConstructor.info)
+    def termQualifies =
+      !levelOwnersNeedCapParam || takesCappedParamIn(symd.info)
     def compute =
       if symd.isClass then
-        symd.is(CaptureChecked) || symd.isRoot
+        symd.is(CaptureChecked) && classQualifies || symd.isRoot
       else
-        symd.is(Method, butNot = Accessor)
+        (symd.is(Method, butNot = Accessor)
+          || valsCanBeLevelOwners && symd.isTerm && !symd.isOneOf(TermParamOrAccessor | Mutable))
         && (!symd.owner.isClass
             || symd.owner.is(CaptureChecked)
             || Synthetics.needsTransform(symd)
             )
-        //&& !Synthetics.isExcluded(sym)
         && !isCaseClassSynthetic
         && !symd.isConstructor
         && (!symd.isAnonymousFunction || sym.definedLocalRoot.exists)
+        && termQualifies
+        && { ccSetup.println(i"Level owner $sym"); true }
+
     ccState.isLevelOwner.getOrElseUpdate(sym, compute)
+  end isLevelOwner
 
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
