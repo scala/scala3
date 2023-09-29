@@ -460,10 +460,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             tree.rhs match
-              case possiblyTypedClosureDef(ddef) if !mentionsCap(rhsOfEtaExpansion(ddef)) =>
-                if !sym.is(Mutable) then ccState.isLevelOwner(sym) = true
-                  // TODO Drop the possibleyTypedClosureDef condition anc replace by the
-                  // condition that the val takes a cap parameter
+              case possiblyTypedClosureDef(ddef)
+              if !mentionsCap(rhsOfEtaExpansion(ddef))
+                  && !sym.is(Mutable)
+                  && (!levelOwnersNeedCapParam
+                      || ddef.symbol.takesCappedParamIn(ddef.symbol.info)) =>
+                ccSetup.println(i"Level owner at setup $sym / ${ddef.symbol.info}")
+                ccState.isLevelOwner(sym) = true
               case _ =>
             transformResultType(tpt, sym)
             ccSetup.println(i"mapped $tree = ${tpt.knownType}")
@@ -772,7 +775,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       if ref.captureSetOfInfo.elems.isEmpty then
         report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-      check(parent.captureSet, parent)
+      if parent.captureSet ne defn.expandedUniversalSet then
+        check(parent.captureSet, parent)
 
       val others =
         for j <- 0 until retained.length if j != i yield retained(j).toCaptureRef

@@ -741,7 +741,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       //println(i"check conforms $actualBoxed <<< $expected1")
       var ok = isCompatible(actualBoxed, expected1)
       if !ok then stripTyped(tree) match
-        case tree: RefTree if tree.symbol.isLevelOwner =>
+        case tree: RefTree if !ctx.owner.isContainedIn(tree.symbol.levelOwner) =>
           // When testing whether `A <: B`, it could be that `B` uses a local capture root,
           // but a uses `cap`, i.e. is capture polymorphic. In this case, adaptation is allowed
           // to instantiate `A` to match the root in `B`.
