@@ -11,6 +11,7 @@ object ClassfileConstants {
   inline val JAVA_MINOR_VERSION = 3
 
   inline val JAVA8_MAJOR_VERSION = 52
+  inline val JAVA_LATEST_MAJOR_VERSION = 65
 
   /** (see http://java.sun.com/docs/books/jvms/second_edition/jvms-clarify.html)
    *
