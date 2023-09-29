@@ -723,22 +723,31 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
         val scalaLib = findArtifactPath(externalDeps, "scala-library")
+        val scalaLibTastyOpt = jars.get("stdlib-bootstrapped-tasty")
         val dottyLib = jars("scala3-library")
         val dottyCompiler = jars("scala3-compiler")
         val args0: List[String] = spaceDelimited("<arg>").parsed.toList
         val decompile = args0.contains("-decompile")
         val printTasty = args0.contains("-print-tasty")
+        val useScala2LibraryTasty = args0.contains("-Yscala2-library-tasty")
         val debugFromTasty = args0.contains("-Ythrough-tasty")
         val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
-
+            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty"
+            && arg != "-Yscala2-library-tasty")
         val main =
           if (decompile) "dotty.tools.dotc.decompiler.Main"
           else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
           else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
           else "dotty.tools.dotc.Main"
 
-        var extraClasspath = Seq(scalaLib, dottyLib)
+        var extraClasspath =
+          scalaLibTastyOpt match {
+            case Some(scalaLibTasty) if useScala2LibraryTasty =>
+              Seq(scalaLibTasty, scalaLib, dottyLib)
+            case _ =>
+              if (useScala2LibraryTasty) log.error("-Yscala2-library-tasty can only be used with a bootstrapped compiler")
+              Seq(scalaLib, dottyLib)
+          }
 
         if (decompile && !args.contains("-classpath"))
           extraClasspath ++= Seq(".")
@@ -848,6 +857,7 @@ object Build {
         "scala3-staging"  -> (LocalProject("scala3-staging") / Compile / packageBin).value.getAbsolutePath,
         "scala3-tasty-inspector"  -> (LocalProject("scala3-tasty-inspector") / Compile / packageBin).value.getAbsolutePath,
         "tasty-core"     -> (LocalProject("tasty-core-bootstrapped") / Compile / packageBin).value.getAbsolutePath,
+        "stdlib-bootstrapped-tasty" -> (LocalProject("stdlib-bootstrapped-tasty") / Compile / packageBin).value.getAbsolutePath,
       )
     },
 
