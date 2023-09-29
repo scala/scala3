@@ -20,8 +20,8 @@ def handle[E <: Exception, R <: Top](op: (lcap: caps.Cap) ?-> CT[E]^{lcap} => R)
   catch case ex: E => handler(ex)
 
 def test =
-  val a = handle[Exception, CanThrow[Exception]] { // error
-    (x: CanThrow[Exception]) => x
+  val a = handle[Exception, CanThrow[Exception]] {
+    (x: CanThrow[Exception]) => x  // error
   }{
     (ex: Exception) => ???
   }
@@ -49,6 +49,6 @@ val global: () -> Int = handle {
     () =>
       raise(new Exception)(using x)
       22
-} { // error
+} {  // error
   (ex: Exception) => () => 22
 }
