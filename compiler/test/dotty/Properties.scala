@@ -83,7 +83,7 @@ object Properties {
   def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
 
   /** scala-library TASTy jar */
-  def scalaLibraryTasty: String = sys.props("dotty.tests.tasties.scalaLibrary")
+  def scalaLibraryTasty: Option[String] = sys.props.get("dotty.tests.tasties.scalaLibrary")
 
   /** scala-asm jar */
   def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")

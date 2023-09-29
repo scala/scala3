@@ -641,11 +641,11 @@ object Build {
           "-Ddotty.tests.classes.tastyCore=" + jars("tasty-core"),
           "-Ddotty.tests.classes.compilerInterface=" + findArtifactPath(externalDeps, "compiler-interface"),
           "-Ddotty.tests.classes.scalaLibrary=" + findArtifactPath(externalDeps, "scala-library"),
-          "-Ddotty.tests.tasties.scalaLibrary=" + jars("scala2-library-tasty"),
           "-Ddotty.tests.classes.scalaAsm=" + findArtifactPath(externalDeps, "scala-asm"),
           "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
           "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader"),
-        )
+        ) ++
+          jars.get("stdlib-bootstrapped-tasty").map("-Ddotty.tests.tasties.scalaLibrary=" + _)
       },
 
       javaOptions ++= Seq(
@@ -831,7 +831,6 @@ object Build {
           // library on the compiler classpath since the non-bootstrapped one
           // may not be binary-compatible.
           "scala3-library"       -> (`scala3-library-bootstrapped` / Compile / packageBin).value,
-          "scala2-library-tasty" -> (`scala2-library-tasty` / Compile / packageBin).value,
         ).mapValues(_.getAbsolutePath)
       }
     }.value,
