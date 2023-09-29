@@ -26,11 +26,11 @@ trait Bing
 trait Accessors {
   private var v1: Int = 0 // error warn
   private var v2: Int = 0 // error warn, never set
-  private var v3: Int = 0 // warn, never got /Dotty: no warn even if not used
+  private var v3: Int = 0
   private var v4: Int = 0 // no warn
 
   private[this] var v5 = 0 // error warn, never set
-  private[this] var v6 = 0 // warn, never got /Dotty: no warn even if not used
+  private[this] var v6 = 0
   private[this] var v7 = 0 // no warn
 
   def bippy(): Int = {

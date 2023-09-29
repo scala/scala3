@@ -295,9 +295,9 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
         case UnusedSymbol(t, _, WarnTypes.PatVars) =>
           report.warning(s"unused pattern variable", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetLocals) =>
-          report.warning(s"unset local variable", t)
+          report.warning(s"unset local variable, consider using an immutable val instead", t)
         case UnusedSymbol(t, _, WarnTypes.UnsetPrivates) =>
-          report.warning(s"unset private variable", t)
+          report.warning(s"unset private variable, consider using an immutable val instead", t)
     }
 
 end CheckUnused
@@ -645,6 +645,8 @@ object CheckUnused:
         imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
       )
 
+
+
     extension (tree: ImportSelector)
       def boundTpe: Type = tree.bound match {
         case untpd.TypedSplice(tree1) => tree1.tpe
@@ -717,8 +719,7 @@ object CheckUnused:
 
       /** A function is overriden. Either has `override flags` or parent has a matching member (type and name) */
       private def isOverriden(using Context): Boolean =
-        sym.is(Flags.Override) ||
-          (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
+        sym.is(Flags.Override) || (sym.exists && sym.owner.thisType.parents.exists(p => sym.matchingMember(p).exists))
 
     end extension
 
