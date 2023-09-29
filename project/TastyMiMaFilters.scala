@@ -11,12 +11,12 @@ object TastyMiMaFilters {
 
     // Probably OK: ConstantType for `null` versus `scala.Null`
     // Calls to the default getter seem to link correctly.
-    // Tested in stdlib-bootstrapped/test/scala/collection/UnrolledBufferTest.scala
+    // Tested in scala2-library-bootstrapped/test/scala/collection/UnrolledBufferTest.scala
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.mutable.UnrolledBuffer.Unrolled.<init>$default$4"),
 
     // Probably OK: Overriding java method (`public abstract Object underlying();` with `def underlying: Object`)
     // Calls to the underlying seem to link correctly.
-    // Tested in stdlib-bootstrapped/test/Main.scala
+    // Tested in scala2-library-bootstrapped/test/Main.scala
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.math.Big*.underlying"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.math.ScalaNumericConversions.underlying"),
 

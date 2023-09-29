@@ -14,9 +14,9 @@ setTastyVersion() {
 
 setTastyVersion $MINOR_TASTY_VERSION_SUPPORTED_BY_TASTY_MIMA 0
 
-# Run stdlib-bootstrapped/tastyMiMaReportIssues using a custom TASTy version.
+# Run scala2-library-bootstrapped/tastyMiMaReportIssues using a custom TASTy version.
 # We clean before to make sure all sources are recompiled using the new TASTY version.
 # We clean after to make sure no other test will use the TASTy generated with this version.
-"$SBT" "clean; stdlib-bootstrapped/clean; reload; stdlib-bootstrapped/tastyMiMaReportIssues; clean; stdlib-bootstrapped/clean"
+"$SBT" "clean; scala2-library-bootstrapped/clean; reload; scala2-library-bootstrapped/tastyMiMaReportIssues; clean; scala2-library-bootstrapped/clean"
 
 setTastyVersion $MINOR_TASTY_VERSION $EXPERIMENTAL_TASTY_VERSION

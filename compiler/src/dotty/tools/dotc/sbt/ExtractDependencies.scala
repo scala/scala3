@@ -476,7 +476,7 @@ class DependencyRecorder {
      * we should have called `cb.generatedNonLocalClass` with the same class file name.
      *
      * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
-     * different outputs (e.g. stdlib-bootstrapped).
+     * different outputs (e.g. scala2-library-bootstrapped).
      */
     def cachedSiblingClass(pf: PlainFile): Path =
       siblingClassfiles.getOrElseUpdate(pf, {
