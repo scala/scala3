@@ -1,10 +1,8 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:23:49 ------------------------------------------
-23 |  val a = handle[Exception, CanThrow[Exception]] { // error
-   |                                                 ^
-   |Found:    (lcap: caps.Cap) ?->? (x$0: CT[Exception]^{lcap}) ->? box CT[Exception]^{lcap}
-   |Required: (lcap: caps.Cap) ?-> CT[Exception]^{lcap} ->{'cap[..test](from instantiating handle)} box CT[Exception]^{cap[test]}
-24 |    (x: CanThrow[Exception]) => x
-25 |  }{
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:24:32 ------------------------------------------
+24 |    (x: CanThrow[Exception]) => x  // error
+   |                                ^
+   |                                Found:    (x : CT[Exception]^{lcap})
+   |                                Required: CT[Exception]^?
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/try.scala:30:65 ---------------------------------------------------------------
@@ -18,7 +16,7 @@
 49 |    () =>
 50 |      raise(new Exception)(using x)
 51 |      22
-52 |} { // error
+52 |} {  // error
    |                        ^
    |                        Found:    () ->{x$0, lcap} Int
    |                        Required: () -> Int

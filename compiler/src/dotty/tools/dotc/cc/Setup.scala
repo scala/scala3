@@ -102,7 +102,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           case _ =>
             mapOver(t)
         if variance > 0 then t1
-        else decorate(t1, rootTarget = NoSymbol, addedSet = Function.const(CaptureSet.Fluid))
+        else decorate(t1, addedSet = Function.const(CaptureSet.Fluid))
 
   /**  - Reset `private` flags of parameter accessors so that we can refine them
    *     in Setup if they have non-empty capture sets.
@@ -171,7 +171,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def mapInferred(rootTarget: Symbol)(using Context) = new TypeMap:
+  private def mapInferred(using Context) = new TypeMap:
     override def toString = "map inferred"
 
     /** Refine a possibly applied class type C where the class has tracked parameters
@@ -249,12 +249,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           box(this(tp1))
         case _ =>
           mapOver(tp)
-      addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner, rootTarget)
+      addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
     end apply
   end mapInferred
 
-  private def transformInferredType(tp: Type, rootTarget: Symbol)(using Context): Type =
-    mapInferred(rootTarget)(tp)
+  private def transformInferredType(tp: Type)(using Context): Type =
+    mapInferred(tp)
 
   private def transformExplicitType(tp: Type, rootTarget: Symbol, tptToCheck: Option[Tree] = None)(using Context): Type =
     val expandAliases = new DeepTypeMap:
@@ -372,7 +372,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val tp = if boxed then Box(tree.tpe) else tree.tpe
       tree.rememberType(
         if tree.isInstanceOf[InferredTypeTree] && !exact
-        then transformInferredType(tp, rootTarget)
+        then transformInferredType(tp)
         else transformExplicitType(tp, rootTarget, tptToCheck = Some(tree)))
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
@@ -585,7 +585,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       case tree: Bind =>
         val sym = tree.symbol
-        updateInfo(sym, transformInferredType(sym.info, rootTarget = ctx.owner))
+        updateInfo(sym, transformInferredType(sym.info))
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
@@ -711,7 +711,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def decorate(tp: Type, rootTarget: Symbol, addedSet: Type => CaptureSet)(using Context): Type =
+  def decorate(tp: Type, addedSet: Type => CaptureSet)(using Context): Type =
     if tp.typeSymbol == defn.FromJavaObjectSymbol then
       // For capture checking, we assume Object from Java is the same as Any
       tp
@@ -721,16 +721,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fallback
       val dealiased = tp.dealiasKeepAnnots
       if dealiased ne tp then
-        val transformed = transformExplicitType(dealiased, rootTarget)
-          // !!! TODO: We should map roots to root vars here
+        val transformed = transformInferredType(dealiased)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)
       else maybeAdd(tp, tp)
 
   /** Add a capture set variable to `tp` if necessary, or maybe pull out
    *  an embedded capture set variable from a part of `tp`.
    */
-  def addVar(tp: Type, owner: Symbol, rootTarget: Symbol)(using Context): Type =
-    decorate(tp, rootTarget,
+  def addVar(tp: Type, owner: Symbol)(using Context): Type =
+    decorate(tp,
       addedSet = _.dealias.match
         case CapturingType(_, refs) => CaptureSet.Var(owner, refs.elems)
         case _ => CaptureSet.Var(owner))
