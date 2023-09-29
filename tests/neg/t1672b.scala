@@ -41,7 +41,6 @@ object Test1772B {
     }
   }
 
-  // the `liftedTree` local method will prevent a tail call here.
   @tailrec
   def bar(i : Int) : Int = {
     if (i == 0) 0

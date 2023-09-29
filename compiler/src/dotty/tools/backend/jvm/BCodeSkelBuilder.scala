@@ -45,6 +45,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private var stack = new Array[BType](32)
     private var size = 0
 
+    def isEmpty: Boolean = size == 0
+
     def push(btype: BType): Unit =
       if size == stack.length then
         stack = java.util.Arrays.copyOf(stack, stack.length * 2)
@@ -81,6 +83,16 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def clear(): Unit =
       size = 0
+
+    def acquireFullStack(): IArray[BType] =
+      val res = IArray.unsafeFromArray(stack.slice(0, size))
+      size = 0
+      res
+
+    def restoreFullStack(fullStack: IArray[BType]): Unit =
+      assert(size == 0 && stack.length >= fullStack.length)
+      fullStack.copyToArray(stack)
+      size = fullStack.length
   end BTypesStack
 
   object BTypesStack:

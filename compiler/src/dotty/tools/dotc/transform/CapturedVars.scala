@@ -25,9 +25,6 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 
   override def description: String = CapturedVars.description
 
-  override def runsAfterGroupsOf: Set[String] = Set(LiftTry.name)
-    // lifting tries changes what variables are considered to be captured
-
   private[this] var Captured: Store.Location[util.ReadOnlySet[Symbol]] = _
   private def captured(using Context) = ctx.store(Captured)
 
@@ -131,42 +128,15 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
    *
    *      intRef.elem = expr
    *
-   *  rewrite using a temporary var to
-   *
-   *      val ev$n = expr
-   *      intRef.elem = ev$n
-   *
-   *  That way, we avoid the problem that `expr` might contain a `try` that would
-   *  run on a non-empty stack (which is illegal under JVM rules). Note that LiftTry
-   *  has already run before, so such `try`s would not be eliminated.
-   *
-   *  If the ref type lhs is followed by a cast (can be an artifact of nested translation),
-   *  drop the cast.
-   *
-   *  If the ref type is `ObjectRef` or `VolatileObjectRef`, immediately assign `null`
-   *  to the temporary to make the underlying target of the reference available for
-   *  garbage collection. Nullification is omitted if the `expr` is already `null`.
-   *
-   *      var ev$n: RHS = expr
-   *      objRef.elem = ev$n
-   *      ev$n = null.asInstanceOf[RHS]
+   *  the lhs can be followed by a cast as an artifact of nested translation.
+   *  In that case, drop the cast.
    */
   override def transformAssign(tree: Assign)(using Context): Tree =
-    def absolved: Boolean = tree.rhs match
-      case Literal(Constant(null)) | Typed(Literal(Constant(null)), _) => true
-      case _ => false
-    def recur(lhs: Tree): Tree = lhs match
+    tree.lhs match
       case TypeApply(Select(qual@Select(_, nme.elem), nme.asInstanceOf_), _) =>
-        recur(qual)
-      case Select(_, nme.elem) if refInfo.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
-        val tempDef = transformFollowing(SyntheticValDef(TempResultName.fresh(), tree.rhs, flags = Mutable))
-        val update  = cpy.Assign(tree)(lhs, ref(tempDef.symbol))
-        def reset   = cpy.Assign(tree)(ref(tempDef.symbol), nullLiteral.cast(tempDef.symbol.info))
-        val res     = if refInfo.objectRefClasses(lhs.symbol.maybeOwner) && !absolved then reset else unitLiteral
-        transformFollowing(Block(tempDef :: update :: Nil, res))
+        cpy.Assign(tree)(qual, tree.rhs)
       case _ =>
         tree
-    recur(tree.lhs)
 
 object CapturedVars:
   val name: String = "capturedVars"
