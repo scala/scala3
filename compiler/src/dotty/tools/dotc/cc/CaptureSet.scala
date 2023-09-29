@@ -398,7 +398,7 @@ object CaptureSet:
     def isAlwaysEmpty = elems.isEmpty
 
     def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
-      CompareResult.fail(this)
+      CompareResult.Fail(this)
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
 
@@ -488,9 +488,9 @@ object CaptureSet:
 
     final def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then
-        CompareResult.fail(this) // fail if variable is solved or given VarState is frozen
+        CompareResult.Fail(this) // fail if variable is solved or given VarState is frozen
       else if !levelOK(elem) then
-        val res = CompareResult.levelError(this, elem)
+        val res = CompareResult.LevelError(this, elem)
         if elem.isRootCapability then res
         else res.orElse(addNewElems(elem.captureSetOfInfo.elems, origin))
       else
@@ -516,7 +516,7 @@ object CaptureSet:
         deps += cs
         CompareResult.OK
       else
-        CompareResult.fail(this)
+        CompareResult.Fail(this)
 
     override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
       rootAddedHandler = handler
@@ -660,7 +660,7 @@ object CaptureSet:
         .andAlso {
           if added.isConst then CompareResult.OK
           else if added.asVar.recordDepsState() then { addAsDependentTo(added); CompareResult.OK }
-          else CompareResult.fail(this)
+          else CompareResult.Fail(this)
         }
         .andAlso {
           if (origin ne source) && (origin ne initial) && mapIsIdempotent then
@@ -677,7 +677,7 @@ object CaptureSet:
             // we approximate types resulting from such maps by returning a possible super type
             // from the actual type. But this is neither sound nor complete.
             report.warning(em"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
-            CompareResult.fail(this)
+            CompareResult.Fail(this)
           else
             CompareResult.OK
         }
@@ -743,7 +743,7 @@ object CaptureSet:
         super.addNewElems(newElems, origin)
           .andAlso {
             if filtered.size == newElems.size then source.tryInclude(newElems, this)
-            else CompareResult.fail(this)
+            else CompareResult.Fail(this)
           }
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
@@ -840,46 +840,41 @@ object CaptureSet:
   /** A TypeMap that is the identity on capture references */
   trait IdentityCaptRefMap extends TypeMap
 
-  type CompareResult = CompareResult.TYPE
+  enum CompareResult extends Showable:
+    case OK
+    case Fail(cs: CaptureSet)
+    case LevelError(cs: CaptureSet, elem: CaptureRef)
 
-  case class LevelError(cs: CaptureSet, elem: CaptureRef)
+    override def toText(printer: Printer): Text =
+      inContext(printer.printerContext):
+        this match
+          case OK => Str("OK")
+          case Fail(blocking: CaptureSet) => blocking.show
+          case LevelError(cs: CaptureSet, elem: CaptureRef) =>
+            Str(i"($elem at wrong level for $cs in ${cs.owner})")
 
-  /** The result of subcapturing comparisons is an opaque type CompareResult.TYPE.
-   *  This is either OK, indicating success, or
-   *  another capture set, indicating failure. The failure capture set
-   *  is the one that did not allow propagaton of elements into it.
-   */
-  object CompareResult:
-    opaque type TYPE =
-        Unit          // Success
-      | CaptureSet    // Failure with blocking set
-      | LevelError    // Failure due to level error
-    val OK: TYPE = ()
-    def fail(cs: CaptureSet): TYPE = cs
-    def levelError(cs: CaptureSet, ref: CaptureRef): TYPE = LevelError(cs, ref)
+    /** The result is OK */
+    def isOK: Boolean = this == OK
 
-    extension (result: TYPE)
-      /** The result is OK */
-      def isOK: Boolean = result == ()
-      /** If not isOK, the blocking capture set */
-      def blocking: CaptureSet = (result: @unchecked) match
-        case cs: CaptureSet => cs
-        case LevelError(cs, _) => cs
-      def levelError: Option[LevelError] = result match
-        case result: LevelError => Some(result)
-        case _ => None
-      inline def andAlso(op: Context ?=> TYPE)(using Context): TYPE =
-        if result.isOK then op else result
-      inline def orElse(op: Context ?=> TYPE)(using Context): TYPE =
-        if result.isOK then result
-        else
-          val alt = op
-          if alt.isOK then alt
-          else result
-      def show(using Context): String = result match
-        case () => "OK"
-        case cs: CaptureSet => cs.show
-        case LevelError(cs, ref) => i"($ref at wrong level for $cs)"
+    /** If not isOK, the blocking capture set */
+    def blocking: CaptureSet = (this: @unchecked) match
+      case Fail(cs) => cs
+      case LevelError(cs, _) => cs
+
+    /** Optionally, this result if it is a level error */
+    def levelError: Option[LevelError] = this match
+      case result: LevelError => Some(result)
+      case _ => None
+
+    inline def andAlso(op: Context ?=> CompareResult)(using Context): CompareResult =
+      if isOK then op else this
+
+    inline def orElse(op: Context ?=> CompareResult)(using Context): CompareResult =
+      if isOK then this
+      else
+        val alt = op
+        if alt.isOK then alt
+        else this
   end CompareResult
 
   /** A VarState serves as a snapshot mechanism that can undo
@@ -1054,7 +1049,7 @@ object CaptureSet:
 
   def levelErrors: Addenda = new Addenda:
     override def toAdd(using Context) =
-      for LevelError(cs, ref) <- ccState.levelError.toList yield
+      for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
         val levelStr = ref match
           case ref: (TermRef | ThisType) => i", defined at level ${ref.ccNestingLevel}"
