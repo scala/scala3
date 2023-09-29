@@ -24,7 +24,7 @@ class LazyNullable(a: => Int) {
   @threadUnsafe lazy val l4Inf = try eInf finally () // null out e, since private[this] is inferred
 
   private[this] val i = "I"
-  // null out i even though the try ends up lifted, because the LazyVals phase runs before the LiftTry phase
+  // null out i even though the try needs stack stashing
   @threadUnsafe lazy val l5 = try i catch { case e: Exception => () }
 }
 
