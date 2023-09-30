@@ -766,8 +766,11 @@ object Objects:
       val target = if needResolve then resolve(ref.klass, field) else field
       if target.is(Flags.Lazy) then
         given Env.Data = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
-        val rhs = target.defTree.asInstanceOf[ValDef].rhs
-        eval(rhs, ref, target.owner.asClass, cacheResult = true)
+        if target.hasSource then
+          val rhs = target.defTree.asInstanceOf[ValDef].rhs
+          eval(rhs, ref, target.owner.asClass, cacheResult = true)
+        else
+          Bottom
       else if target.exists then
         if target.isOneOf(Flags.Mutable) then
           if ref.hasVar(target) then
