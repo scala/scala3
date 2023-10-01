@@ -187,7 +187,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               if atPhase(thisPhase.next)(getter.termRef.isTracked) then
                 val getterType = tp.memberInfo(getter).strippedDealias
                 RefinedType(core, getter.name,
-                    CapturingType(getterType, CaptureSet.RefiningVar(ctx.owner, getter)))
+                    CapturingType(getterType, CaptureSet.RefiningVar(NoSymbol, getter)))
                   .showing(i"add capture refinement $tp --> $result", ccSetup)
               else
                 core
