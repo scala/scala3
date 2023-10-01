@@ -376,7 +376,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         || sym.isTerm && defn.isFunctionType(sym.info) && pt == AnySelectionProto
       if sym.skipConstructor.isLevelOwner && canInstantiate then
         val tpw = tp.widen
-        var tp1 = mapRoots(sym.localRoot.termRef, CaptureRoot.Var(ctx.owner, sym))(tpw)
+        val tp1 = mapRoots(sym.localRoot.termRef, CaptureRoot.Var(ctx.owner, sym))(tpw)
           .showing(i"INST $sym: $tp, ${sym.localRoot} = $result", ccSetup)
         if tpw eq tp1 then tp else tp1
       else
@@ -760,8 +760,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           capt.println(i"fallBack from $actualWide to $actualInst to match $expected1")
           ok = (actualInst ne actualWide)
             && isCompatible(adaptBoxed(actualInst, expected1, tree.srcPos), expected1)
-          // Useful for debugging:  
-          // if !ok then err.typeMismatch(tree.withType(actualInst), expected1, addenda ++ CaptureSet.levelErrors)
         case _ =>
       if !ok then
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
@@ -1233,6 +1231,6 @@ class CheckCaptures extends Recheck, SymTransformer:
               case tree: New =>
               case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
               case _ => traverseChildren(t)
-          checkApplied.traverse(unit)(using ctx.withProperty(LooseRootChecking, Some(())))
+          checkApplied.traverse(unit)
   end CaptureChecker
 end CheckCaptures
