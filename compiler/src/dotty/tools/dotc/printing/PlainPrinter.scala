@@ -439,7 +439,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
             (toTextRef(sym.termRef)
               ~ Str(s"/${sym.ccNestingLevel}").provided(showNestingLevel)
             ).provided(sym.exists)
-          "'cap[" ~ boundText(tp.lowerBound) ~ ".." ~ boundText(tp.upperBound) ~ "]"
+          "'cap["
+          ~ toTextRef(tp.outerLimit.termRef).provided(!tp.outerLimit.isRoot)
+          ~ ".."
+          ~ toTextRef(tp.innerLimit.termRef)
+          ~ "]"
           ~ ("(from instantiating " ~ nameString(tp.source) ~ ")").provided(tp.source.exists)
     }
   }

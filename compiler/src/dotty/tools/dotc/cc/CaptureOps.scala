@@ -91,23 +91,18 @@ trait FollowAliases extends TypeMap:
         if t2 ne t1 then return t2
       mapOver(t)
 
-class mapRoots(from: CaptureRoot, to: CaptureRoot)(using Context) extends BiTypeMap, FollowAliases:
+class mapRoots(from0: CaptureRoot, to: CaptureRoot)(using Context) extends BiTypeMap, FollowAliases:
   thisMap =>
+
+  val from = from0.followAlias
+
+  //override val toString = i"mapRoots($from, $to)"
 
   def apply(t: Type): Type =
     if t eq from then to
     else t match
-      case t: CaptureRoot.Var =>
-        val ta = t.followAlias
-        if ta ne t then apply(ta)
-        else from match
-          case from: TermRef
-          if t.upperLevel >= from.symbol.ccNestingLevel
-            && constrainRootsWhenMapping   // next two lines do the constraining
-            && CaptureRoot.isEnclosingRoot(from, t)
-            && CaptureRoot.isEnclosingRoot(t, from) => to
-          case from: CaptureRoot.Var if from.followAlias eq t => to
-          case _ => t
+      case t: CaptureRoot.Var if constrainRootsWhenMapping && t.unifiesWith(from) =>
+        to
       case t @ Setup.Box(t1) =>
         t.derivedBox(this(t1))
       case _ =>
@@ -382,30 +377,6 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeUnbox
 
   def takesCappedParamIn(info: Type)(using Context): Boolean =
-
-    def isOwnRoot(tp: Type): Boolean =
-      tp.isCapabilityClassRef
-      || tp.dealias.match
-        case tp: CaptureRef =>
-          tp.isGenericRootCapability || tp.localRootOwner == sym
-        case _ =>
-          false
-
-    def hasUniversalCap(tp: Type): Boolean = tp.dealiasKeepAnnots match
-      case tp @ AnnotatedType(parent, annot) =>
-        val found = annot match
-          case CaptureAnnotation(refs, _) => refs.elems.exists(isOwnRoot)
-          case _ => annot.tree.retainedElems.exists(tree => isOwnRoot(tree.tpe))
-        found || hasUniversalCap(parent)
-      case tp: TypeRef =>
-        tp.isRef(defn.Caps_Cap) || tp.isCapabilityClassRef
-      case tp: LazyRef =>
-        hasUniversalCap(tp.ref)
-      case tp: TypeVar =>
-        hasUniversalCap(tp.underlying)
-      case _ =>
-        tp.isCapabilityClassRef
-
     info.dealias.stripPoly match
       case mt: MethodType =>
         (mt.paramInfos.exists(_.hasUniversalRootOf(sym)) || takesCappedParamIn(mt.resType))
@@ -517,17 +488,17 @@ extension (sym: Symbol)
       else newRoot
     ccState.localRoots.getOrElseUpdate(owner, lclRoot)
 
-  def maxNested(other: Symbol)(using Context): Symbol =
-    if sym.ccNestingLevel < other.ccNestingLevel then other else sym
-    /* does not work yet, we do mix sets with different levels, for instance in cc-this.scala.
-    else if sym.ccNestingLevel > other.ccNestingLevel then sym
+  def maxNested(other: Symbol, pickFirstOnConflict: Boolean = false)(using Context): Symbol =
+    if !sym.exists || other.isContainedIn(sym) then other
+    else if !other.exists || sym.isContainedIn(other) then sym
     else
-      assert(sym == other, i"conflicting symbols at same nesting level: $sym, $other")
+      assert(pickFirstOnConflict, i"incomparable nesting: $sym and $other")
       sym
-    */
 
   def minNested(other: Symbol)(using Context): Symbol =
-    if sym.ccNestingLevel > other.ccNestingLevel then other else sym
+    if !other.exists || other.isContainedIn(sym) then sym
+    else if !sym.exists || sym.isContainedIn(other) then other
+    else sym.owner.minNested(other.owner)
 
 extension (tp: TermRef | ThisType)
   /** The nesting level of this reference as defined by capture checking */

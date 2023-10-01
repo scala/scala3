@@ -2110,7 +2110,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // refining capture set.
           tp2.refinedInfo match
             case rinfo2 @ CapturingType(_, refs: CaptureSet.RefiningVar) =>
-              info1 = mapRoots(refs.getter.owner.localRoot.termRef, refs.owner.localRoot.termRef)(info1)
+              info1 = mapRoots(refs.getter.owner.localRoot.termRef, refs.levelLimit.localRoot.termRef)(info1)
             case _ =>
 
         isSubInfo(info1, info2, m.symbol.info.orElse(info1))
