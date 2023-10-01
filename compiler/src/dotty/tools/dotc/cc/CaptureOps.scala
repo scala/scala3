@@ -300,6 +300,32 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
+  def hasUniversalRootOf(sym: Symbol)(using Context): Boolean =
+
+    def isOwnRoot(tp: Type)(using Context): Boolean =
+      tp.isCapabilityClassRef
+      || tp.dealias.match
+        case tp: TermRef =>
+          tp.isGenericRootCapability || tp.localRootOwner == sym
+        case _ =>
+          false
+
+    tp.dealiasKeepAnnots match
+      case tp @ AnnotatedType(parent, annot) =>
+        val found = annot match
+          case CaptureAnnotation(refs, _) => refs.elems.exists(isOwnRoot(_))
+          case _ => annot.tree.retainedElems.exists(tree => isOwnRoot(tree.tpe))
+        found || parent.hasUniversalRootOf(sym)
+      case tp: TypeRef =>
+        tp.isRef(defn.Caps_Cap) || tp.isCapabilityClassRef
+      case tp: LazyRef =>
+        tp.ref.hasUniversalRootOf(sym)
+      case tp: TypeVar =>
+        tp.underlying.hasUniversalRootOf(sym)
+      case _ =>
+        tp.isCapabilityClassRef
+  end hasUniversalRootOf
+
 extension (cls: Symbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
@@ -382,16 +408,15 @@ extension (sym: Symbol)
 
     info.dealias.stripPoly match
       case mt: MethodType =>
-        (mt.paramInfos.exists(hasUniversalCap) || takesCappedParamIn(mt.resType))
+        (mt.paramInfos.exists(_.hasUniversalRootOf(sym)) || takesCappedParamIn(mt.resType))
           //.showing(i"takes capped param1 $sym: $mt = $result")
       case AppliedType(fn, args) if defn.isFunctionClass(fn.typeSymbol) =>
-        args.init.exists(hasUniversalCap) || takesCappedParamIn(args.last)
+        args.init.exists(_.hasUniversalRootOf(sym)) || takesCappedParamIn(args.last)
       case defn.RefinedFunctionOf(rinfo) =>
         takesCappedParamIn(rinfo)
           //.showing(i"takes capped param2 $sym: $rinfo = $result")
       case _ =>
         false
-  end takesCappedParamIn
 
   // TODO Also include vals (right now they are manually entered in levelOwners by Setup)
   def isLevelOwner(using Context): Boolean =
@@ -399,7 +424,9 @@ extension (sym: Symbol)
     def isCaseClassSynthetic = // TODO drop
       symd.maybeOwner.isClass && symd.owner.is(Case) && symd.is(Synthetic) && symd.info.firstParamNames.isEmpty
     def classQualifies =
-      !levelOwnersNeedCapParam || takesCappedParamIn(symd.primaryConstructor.info)
+      !levelOwnersNeedCapParam
+      || takesCappedParamIn(symd.primaryConstructor.info)
+      || symd.asClass.givenSelfType.hasUniversalRootOf(sym)
     def termQualifies =
       !levelOwnersNeedCapParam || takesCappedParamIn(symd.info)
     def compute =
