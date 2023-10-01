@@ -13,7 +13,7 @@ def test2() =
   z: (() -> Unit) @retains(x)
   def z2: (() -> Unit) @retains(y) = y
   z2: (() -> Unit) @retains(y)
-  val p: () ->{cap[test2]} String = () => "abc"
+  val p: () => String = () => "abc"
   val q: C^{p} = ???
   val _ = p: (() ->{p} String)
 

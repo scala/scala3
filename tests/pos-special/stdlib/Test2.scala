@@ -8,7 +8,7 @@ object Test {
   def seqOps(xs: Seq[Int]) = { // try with Seq[Int]^{cap}
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
-    val isEven: Int ->{cap[seqOps]} Boolean = _ % 2 == 0
+    val isEven: Int => Boolean = _ % 2 == 0
     val isNonNeg: Int => Boolean = _ > 0
     val flips: Int => List[Int] = x => x :: -x :: Nil
     val x1 = xs.foldLeft("")(strPlusInt)

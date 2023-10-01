@@ -16,8 +16,7 @@ def test(cap1: Cap, cap2: Cap) =
   a("")  // was error, now ok
   b.head // was error, now ok
 
-  def scope =
-    val cap3: Cap = CC()
+  def scope(cap3: Cap) =
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     def h(): String = ""
     a = x => g(x)      // error
@@ -27,8 +26,8 @@ def test(cap1: Cap, cap2: Cap) =
     val gc = g
     g
 
-  val s = scope
-  val sc: String => String = scope
+  val s = scope(new CC)
+  val sc: String => String = scope(new CC)
 
   def local[T](op: (local: caps.Cap) -> CC^{local} -> T): T = op(caps.cap)(CC())
 

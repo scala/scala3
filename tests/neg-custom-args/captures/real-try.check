@@ -24,5 +24,5 @@
    |(canThrow$4 : CanThrow[Ex1 | Ex2]^{cap[<try block>]}) cannot be referenced here; it is not included in the allowed capture set ?
    |of an enclosing function literal with expected type box () ->? Unit
    |
-   |Note that reference (canThrow$4 : CanThrow[Ex1 | Ex2]^{cap[<try block>]}), defined at level 2
-   |cannot be included in outer capture set ?, defined at level 1 in method test
+   |Note that reference (canThrow$4 : CanThrow[Ex1 | Ex2]^{cap[<try block>]}), defined in method <try block>
+   |cannot be included in outer capture set ? which is associated with package <root>
