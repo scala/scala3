@@ -734,8 +734,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             val info1 = info.symbol.info
             assert(info1.derivesFrom(defn.SingletonClass))
             RefinedType(parent1, name, info1.mapReduceAnd(removeSingleton)(_ & _))
-          case info =>
-            tp.derivedRefinedType(parent1, name, info)
+          case _ =>
+            tp.derivedRefinedType(parent = parent1)
         }
       case tp @ AppliedType(tycon, args) =>
         val tycon1 = tycon.safeDealias

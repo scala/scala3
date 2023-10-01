@@ -689,7 +689,7 @@ trait ConstraintHandling {
     case tp: AndType =>
       tp.derivedAndType(tp.tp1.hardenUnions, tp.tp2.hardenUnions)
     case tp: RefinedType =>
-      tp.derivedRefinedType(tp.parent.hardenUnions, tp.refinedName, tp.refinedInfo)
+      tp.derivedRefinedType(parent = tp.parent.hardenUnions)
     case tp: RecType =>
       tp.rebind(tp.parent.hardenUnions)
     case tp: HKTypeLambda =>

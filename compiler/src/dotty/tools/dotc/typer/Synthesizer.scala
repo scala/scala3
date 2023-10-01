@@ -742,8 +742,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def recur(handlers: SpecialHandlers): TreeWithErrors = handlers match
       case (cls, handler) :: rest =>
         def baseWithRefinements(tp: Type): Type = tp.dealias match
-          case tp @ RefinedType(parent, rname, rinfo) =>
-            tp.derivedRefinedType(baseWithRefinements(parent), rname, rinfo)
+          case tp: RefinedType =>
+            tp.derivedRefinedType(parent = baseWithRefinements(tp.parent))
           case _ =>
             tp.baseType(cls)
         val base = baseWithRefinements(formal)
