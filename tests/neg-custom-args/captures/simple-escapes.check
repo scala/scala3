@@ -2,7 +2,7 @@
 16 |    foo = f      // error
    |          ^
    |          Found:    box FileOutputStream^{f}
-   |          Required: box FileOutputStream^{cap[Test1]}
+   |          Required: box FileOutputStream^{cap[<root>]}
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/simple-escapes.scala:19:15 ----------------------------------------------------

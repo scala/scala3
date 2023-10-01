@@ -1,10 +1,10 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:15:11 ---------------------------------------
-15 |    r.setV(g) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:14:11 ---------------------------------------
+14 |    r.setV(g) // error
    |           ^
    |           Found:    box (x: String) ->{cap3} String
    |           Required: box (x$0: String) ->? String
    |
-   |           Note that reference (cap3 : CC^{cap[scope]}), defined at level 2
-   |           cannot be included in outer capture set ?, defined at level 1 in method test
+   |           Note that reference (cap3 : CC^{cap[scope]}), defined in method scope
+   |           cannot be included in outer capture set ? which is associated with method test
    |
    | longer explanation available when compiling with `-explain`

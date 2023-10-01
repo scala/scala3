@@ -9,8 +9,7 @@ def test(cap1: CC^) =
 
   val r = Ref((x: String) => x)
 
-  def scope =
-    val cap3: CC^ = ???
+  def scope(cap3: CC^) =
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     r.setV(g) // error
   ()

@@ -13,9 +13,9 @@ object Generic:
     def g(x: Cap): Unit = if d == x then ()
     val p = Pair(f, g)
     val x1 = p.fst
-    val x1c: Cap ->{c} Unit = x1
+    val x1c: Cap^{cap[test]} ->{c} Unit = x1
     val y1 = p.snd
-    val y1c: Cap ->{d} Unit = y1
+    val y1c: Cap^{cap[test]} ->{d} Unit = y1
 
 object Monomorphic:
 

@@ -31,5 +31,5 @@
    |                ^^^^^^^^^
    |          reference (_$1 : java.io.OutputStream^{local}) is not included in the allowed capture set {x$0, local}
    |
-   |          Note that reference (_$1 : java.io.OutputStream^{local}), defined at level 2
-   |          cannot be included in outer capture set {x$0, local}, defined at level 1 in method test
+   |          Note that reference (_$1 : java.io.OutputStream^{local}), defined in method $anonfun
+   |          cannot be included in outer capture set {x$0, local} which is associated with package <root>

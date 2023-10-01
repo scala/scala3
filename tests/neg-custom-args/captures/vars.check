@@ -5,26 +5,26 @@
    |                        Required: () -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:23:14 --------------------------------------------------------------
-23 |    a = x => g(x)      // error
+-- Error: tests/neg-custom-args/captures/vars.scala:22:14 --------------------------------------------------------------
+22 |    a = x => g(x)      // error
    |             ^^^^
    |             reference (cap3 : CC^{cap[scope]}) is not included in the allowed capture set {cap[test]}
    |             of an enclosing function literal with expected type box String ->{cap[test]} String
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:24:8 ------------------------------------------
-24 |    a = g      // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:23:8 ------------------------------------------
+23 |    a = g      // error
    |        ^
    |        Found:    box (x: String) ->{cap3} String
-   |        Required: box String ->{cap[test]} String
+   |        Required: box (x$0: String) ->{cap[test]} String
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:26:13 -----------------------------------------
-26 |    b = List(g) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:13 -----------------------------------------
+25 |    b = List(g) // error
    |             ^
    |             Found:    Seq[(x: String) ->{cap3} String]
    |             Required: Seq[box (x$0: String) ->{cap3} String]
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:35:2 ---------------------------------------------------------------
-35 |  local { root => cap3 => // error
+-- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------
+34 |  local { root => cap3 => // error
    |  ^^^^^
    |  escaping local reference root.type

@@ -3,8 +3,8 @@
    |  ^^^^^^^^^
    |  reference (file : java.io.OutputStream^{lcap}) is not included in the allowed capture set {x$0, x$0²}
    |
-   |  Note that reference (file : java.io.OutputStream^{lcap}), defined at level 1
-   |  cannot be included in outer capture set {x$0, x$0}, defined at level 0 in package <root>
+   |  Note that reference (file : java.io.OutputStream^{lcap}), defined in method $anonfun
+   |  cannot be included in outer capture set {x$0, x$0} which is associated with package <root>
    |
    |  where:    x$0  is a reference to a value parameter
    |            x$0² is a reference to a value parameter

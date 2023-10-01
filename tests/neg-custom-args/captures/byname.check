@@ -2,7 +2,7 @@
 10 |  h(f2()) // error
    |    ^^^^
    |    Found:    (x$0: Int) ->{cap1} Int
-   |    Required: Int ->{cap2} Int
+   |    Required: (x$0: Int) ->{cap2} Int
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/byname.scala:19:5 -------------------------------------------------------------
