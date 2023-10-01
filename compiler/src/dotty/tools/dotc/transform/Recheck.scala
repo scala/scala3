@@ -48,26 +48,19 @@ object Recheck:
 
   extension (sym: Symbol)
 
-    /** Update symbol's info to newInfo from prevPhase.next to lastPhase.
+    /** Update symbol's info to newInfo after `prevPhase`.
      *  Also update owner to newOwnerOrNull if it is not null.
-     *  Reset to previous info and owner for phases after lastPhase.
+     *  The update is valid until after Recheck. After that the symbol's denotation
+     *  is reset to what it was before PreRecheck.
      */
-    def updateInfoBetween(prevPhase: DenotTransformer, lastPhase: DenotTransformer, newInfo: Type, newOwnerOrNull: Symbol | Null = null)(using Context): Unit =
+    def updateInfo(prevPhase: DenotTransformer, newInfo: Type, newOwnerOrNull: Symbol | Null = null)(using Context): Unit =
       val newOwner = if newOwnerOrNull == null then sym.owner else newOwnerOrNull
       if (sym.info ne newInfo) || (sym.owner ne newOwner)  then
         val flags = sym.flags
         sym.copySymDenotation(
-            initFlags =
-              if flags.isAllOf(ResetPrivateParamAccessor)
-              then flags &~ ResetPrivate | Private
-              else flags
-          ).installAfter(lastPhase) // reset
-        sym.copySymDenotation(
             owner = newOwner,
             info = newInfo,
-            initFlags =
-              if newInfo.isInstanceOf[LazyType] then flags &~ Touched
-              else flags
+            initFlags = if newInfo.isInstanceOf[LazyType] then flags &~ Touched else flags
           ).installAfter(prevPhase)
 
     /** Does symbol have a new denotation valid from phase.next that is different
@@ -158,15 +151,20 @@ abstract class Recheck extends Phase, SymTransformer:
     // One failing test is pos/i583a.scala
 
   /** Change any `ResetPrivate` flags back to `Private` */
-  def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if sym.isAllOf(Recheck.ResetPrivateParamAccessor) then
-      sym.copySymDenotation(initFlags = sym.flags &~ Recheck.ResetPrivate | Private)
-    else sym
+  def transformSym(symd: SymDenotation)(using Context): SymDenotation =
+    val sym = symd.symbol
+    if sym.isUpdatedAfter(preRecheckPhase)
+    then atPhase(preRecheckPhase)(sym.denot.copySymDenotation())
+    else symd
 
   def run(using Context): Unit =
     val rechecker = newRechecker()
     rechecker.checkUnit(ctx.compilationUnit)
     rechecker.reset()
+
+  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+    try super.runOn(units)
+    finally preRecheckPhase.pastRecheck = true
 
   def newRechecker()(using Context): Rechecker
 

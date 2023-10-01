@@ -22,7 +22,10 @@ abstract class TypeError(using creationContext: Context) extends Exception(""):
    *  This is expensive and only useful for debugging purposes.
    */
   def computeStackTrace: Boolean =
-    ctx.debug || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+    ctx.debug
+    || (cyclicErrors != noPrinter && this.isInstanceOf[CyclicReference] && !(ctx.mode is Mode.CheckCyclic))
+    || ctx.settings.YdebugTypeError.value
+    || ctx.settings.YdebugError.value
 
   override def fillInStackTrace(): Throwable =
     if computeStackTrace then super.fillInStackTrace().nn
