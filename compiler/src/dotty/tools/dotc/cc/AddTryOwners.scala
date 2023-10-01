@@ -33,6 +33,7 @@ class AddTryOwners extends Phase, IdentityDenotTransformer:
         case tree @ Try(expr, cases, finalizer) if Feature.enabled(Feature.saferExceptions) =>
           val tryOwner = newSymbol(ctx.owner, nme.TRY_BLOCK, SyntheticMethod, MethodType(Nil, defn.UnitType))
           ccState.tryBlockOwner(tree) = tryOwner
+          ccState.isLevelOwner(tryOwner) = true
           expr.changeOwnerAfter(ctx.owner, tryOwner, thisPhase)
           inContext(ctx.withOwner(tryOwner)):
             traverse(expr)

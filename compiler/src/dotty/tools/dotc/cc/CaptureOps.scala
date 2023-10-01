@@ -31,12 +31,12 @@ private val constrainRootsWhenMapping = true
 /** If true, most vals can be level owners. If false, only vals defined by a
  *  closure as RHS can be level owners
  */
-private val valsCanBeLevelOwners = false
+private val valsCanBeLevelOwners = true
 
 /** If true, only vals, defs, and classes with a universal capability in a parameter
  *  or self type are considered as level owners.
  */
-private val levelOwnersNeedCapParam = false
+private val levelOwnersNeedCapParam = true
 
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
