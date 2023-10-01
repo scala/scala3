@@ -57,9 +57,6 @@ class CCState:
   /** Cache for level ownership */
   val isLevelOwner: mutable.HashMap[Symbol, Boolean] = new mutable.HashMap
 
-  /** Associates certain symbols (the nesting level owners) with their ccNestingLevel */
-  val nestingLevels: mutable.HashMap[Symbol, Int] = new mutable.HashMap
-
   /** Associates nesting level owners with the local roots valid in their scopes. */
   val localRoots: mutable.HashMap[Symbol, Symbol] = new mutable.HashMap
 
@@ -451,24 +448,6 @@ extension (sym: Symbol)
     recur(sym, NoSymbol)
       .showing(i"find outer $sym [ $name ] = $result", capt)
 
-  /** The nesting level of `sym` for the purposes of `cc`,
-   *  -1 for NoSymbol
-   */
-  def ccNestingLevel(using Context): Int =
-    if sym.exists then
-      val lowner = sym.levelOwner
-      ccState.nestingLevels.getOrElseUpdate(lowner,
-        if lowner.isRoot then 0 else lowner.owner.ccNestingLevel + 1)
-    else -1
-
-  /** Optionally, the nesting level of `sym` for the purposes of `cc`, provided
-   *  a capture checker is running.
-   */
-  def ccNestingLevelOpt(using Context): Option[Int] =
-    if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev
-    then Some(ccNestingLevel)
-    else None
-
   /** The parameter with type caps.Cap in the leading term parameter section,
    *  or NoSymbol, if none exists.
    */
@@ -482,7 +461,7 @@ extension (sym: Symbol)
     val owner = sym.levelOwner
     assert(owner.exists)
     def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
-      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef, nestingLevel = owner.ccNestingLevel)
+      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef)
     def lclRoot =
       if owner.isTerm then owner.definedLocalRoot.orElse(newRoot)
       else newRoot
@@ -499,12 +478,6 @@ extension (sym: Symbol)
     if !other.exists || other.isContainedIn(sym) then sym
     else if !sym.exists || sym.isContainedIn(other) then other
     else sym.owner.minNested(other.owner)
-
-extension (tp: TermRef | ThisType)
-  /** The nesting level of this reference as defined by capture checking */
-  def ccNestingLevel(using Context): Int = tp match
-    case tp: TermRef => tp.symbol.ccNestingLevel
-    case tp: ThisType => tp.cls.ccNestingLevel
 
 extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */

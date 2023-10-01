@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, CaptureRoot, isBoxed, ccNestingLevel, levelOwner, retainedElems}
+import cc.{CapturingType, RetainingType, CaptureSet, CaptureRoot, isBoxed, levelOwner, retainedElems}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -374,10 +374,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   protected def idString(sym: Symbol): String =
     (if (showUniqueIds || Printer.debugPrintUnique) "#" + sym.id else "") +
-    (if showNestingLevel then
-      if ctx.phase == Phases.checkCapturesPhase then "%" + sym.ccNestingLevel
-      else "%" + sym.nestingLevel
-     else "")
+    (if showNestingLevel then "%" + sym.nestingLevel else "")
 
   def nameString(sym: Symbol): String =
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
@@ -408,11 +405,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TermRef =>
         if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
-          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug && shortenCap then
-            Str("cap")
-          else
-            Str(s"cap[${tp.localRootOwner.name}]") ~
-              Str(s"%${tp.symbol.ccNestingLevel}").provided(showNestingLevel)
+          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug && shortenCap
+          then Str("cap")
+          else Str(s"cap[${tp.localRootOwner.name}]")
         else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
@@ -436,9 +431,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if tp.followAlias ne tp then toTextRef(tp.followAlias)
         else
           def boundText(sym: Symbol): Text =
-            (toTextRef(sym.termRef)
-              ~ Str(s"/${sym.ccNestingLevel}").provided(showNestingLevel)
-            ).provided(sym.exists)
+            toTextRef(sym.termRef).provided(sym.exists)
           "'cap["
           ~ toTextRef(tp.outerLimit.termRef).provided(!tp.outerLimit.isRoot)
           ~ ".."
