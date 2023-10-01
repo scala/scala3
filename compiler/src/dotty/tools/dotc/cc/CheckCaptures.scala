@@ -54,6 +54,14 @@ object CheckCaptures:
 
     /** If an environment is open it tracks free references */
     def isOpen = !captured.isAlwaysEmpty && kind != EnvKind.Boxed
+
+    def outersIterator: Iterator[Env] = new:
+      private var cur = Env.this
+      def hasNext = !cur.isOutermost
+      def next(): Env =
+        val res = cur
+        cur = cur.outer
+        res
   end Env
 
   /** Similar normal substParams, but this is an approximating type map that
@@ -220,8 +228,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           pos, provenance)
 
     /** The current environment */
-    private var curEnv: Env = inContext(ictx):
+    private val rootEnv: Env = inContext(ictx):
       Env(defn.RootClass, EnvKind.Regular, CaptureSet.empty, null)
+    private var curEnv = rootEnv
 
     /** Currently checked closures and their expected types, used for error reporting */
     private var openClosures: List[(Symbol, Type)] = Nil
@@ -615,7 +624,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       for parent <- impl.parents do // (1)
         checkSubset(capturedVars(parent.tpe.classSymbol), localSet, parent.srcPos,
           i"\nof the references allowed to be captured by $cls")
-      if !localSet.isAlwaysEmpty then curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
+      if !localSet.isAlwaysEmpty then
+        curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
         val thisSet = cls.classInfo.selfType.captureSet.withDescription(i"of the self type of $cls")
         checkSubset(localSet, thisSet, tree.srcPos) // (2)
@@ -1014,10 +1024,32 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
         traverseChildren(t)
 
+    /** Check a ValDef or DefDef as an action performed in a completer.
+     */
+    def completeDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
+      val saved = curEnv
+      try
+        // Setup environment to reflect the new owner.
+        val envForOwner = curEnv.outersIterator
+          .takeWhile(e => !capturedVars(e.owner).isAlwaysEmpty)
+          .map(e => (e.owner, e))
+          .toMap
+        def restoreEnvFor(sym: Symbol): Env =
+          val localSet = capturedVars(sym)
+          if localSet.isAlwaysEmpty then rootEnv
+          else envForOwner.get(sym) match
+            case Some(e) => e
+            case None => Env(sym, EnvKind.Regular, localSet, restoreEnvFor(sym.owner))
+        curEnv = restoreEnvFor(sym.owner)
+        capt.println(i"Complete $sym in ${curEnv.outersIterator.toList.map(_.owner)}")
+        recheckDef(tree, sym)
+      finally
+        curEnv = saved
+
     private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      setup.setupUnit(ctx.compilationUnit.tpdTree, recheckDef)
+      setup.setupUnit(ctx.compilationUnit.tpdTree, completeDef)
 
       if ctx.settings.YccPrintSetup.value then
         val echoHeader = "[[syntax tree at end of cc setup]]"
