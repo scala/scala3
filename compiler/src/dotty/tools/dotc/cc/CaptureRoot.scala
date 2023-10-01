@@ -9,12 +9,13 @@ import printing.Showable
 import util.SimpleIdentitySet
 import Decorators.i
 import scala.annotation.constructorOnly
+import scala.annotation.internal.sharable
 
 type CaptureRoot = TermRef | CaptureRoot.Var
 
 object CaptureRoot:
 
-  private var nextId = 0
+  @sharable private var nextId = 0
 
   case class Var(owner: Symbol, source: Symbol)(using @constructorOnly ictx: Context) extends CaptureRef, Showable:
 
