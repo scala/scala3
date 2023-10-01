@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, ccNestingLevel}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, ccNestingLevel, CaptureRoot}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -2180,12 +2180,10 @@ object Types {
     /** Is this reference a local root capability `{<cap in owner>}`
      *  for some level owner?
      */
-    def isLocalRootCapability(using Context): Boolean =
-      localRootOwner.exists
-
-    /** If this is a local root capability, its owner, otherwise NoSymbol.
-     */
-    def localRootOwner(using Context): Symbol = NoSymbol
+    def isLocalRootCapability(using Context): Boolean = this match
+      case tp: TermRef => tp.localRootOwner.exists
+      case tp: CaptureRoot.Var => true
+      case _ => false
 
     /** Is this reference the a (local or generic) root capability? */
     def isRootCapability(using Context): Boolean =
@@ -2926,7 +2924,7 @@ object Types {
     override def isGenericRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
-    override def localRootOwner(using Context): Symbol =
+    def localRootOwner(using Context): Symbol =
       val owner = symbol.maybeOwner
       def normOwner = if owner.isLocalDummy then owner.owner else owner
       if name == nme.LOCAL_CAPTURE_ROOT then normOwner

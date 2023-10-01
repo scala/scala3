@@ -56,13 +56,14 @@ sealed abstract class CaptureSet extends Showable:
    */
   def isAlwaysEmpty: Boolean
 
-  /** The level owner in which the set is defined. Sets can only take
-   *  elements with nesting level up to the cc-nestinglevel of owner.
+  /** An optinal level limit, or NoSymbol if none exists. All elements of the set
+   *  must be in scopes visible from the level limit.
    */
-  def owner: Symbol
+  def levelLimit: Symbol
 
   def rootSet(using Context): CaptureSet =
-    owner.localRoot.termRef.singletonCaptureSet
+    assert(levelLimit.exists, this)
+    levelLimit.localRoot.termRef.singletonCaptureSet
 
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
@@ -143,15 +144,15 @@ sealed abstract class CaptureSet extends Showable:
     private def subsumes(y: CaptureRef) =
       (x eq y)
       || y.match
-          case y: TermRef => (y.prefix eq x) || x.isRootIncluding(y)
-          case y: CaptureRoot.Var => x.isRootIncluding(y)
+          case y: TermRef => (y.prefix eq x) || y.isLocalRootCapability && x.isSuperRootOf(y)
+          case y: CaptureRoot.Var => x.isSuperRootOf(y)
           case _ => false
       || (x.isGenericRootCapability || y.isRootCapability && x.isRootCapability)
           && ctx.property(LooseRootChecking).isDefined
 
-    private def isRootIncluding(y: CaptureRoot) =
-      x.isLocalRootCapability && y.isLocalRootCapability
-      && CaptureRoot.isEnclosingRoot(y, x.asInstanceOf[CaptureRoot])
+    private def isSuperRootOf(y: CaptureRoot) = x match
+      case x: CaptureRoot if x.isLocalRootCapability => y.encloses(x)
+      case _ => false
   end extension
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
@@ -231,7 +232,9 @@ sealed abstract class CaptureSet extends Showable:
     if this.subCaptures(that, frozen = true).isOK then that
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
-    else Var(this.owner.maxNested(that.owner), this.elems ++ that.elems)
+    else Var(
+        this.levelLimit.maxNested(that.levelLimit, pickFirstOnConflict = true),
+        this.elems ++ that.elems)
       .addAsDependentTo(this).addAsDependentTo(that)
 
   /** The smallest superset (via <:<) of this capture set that also contains `ref`.
@@ -406,7 +409,7 @@ object CaptureSet:
 
     def withDescription(description: String): Const = Const(elems, description)
 
-    def owner = NoSymbol
+    def levelLimit = NoSymbol
 
     override def toString = elems.toString
   end Const
@@ -433,15 +436,13 @@ object CaptureSet:
       varId += 1
       varId
 
-    override val owner = directOwner.levelOwner
+    //assert(id != 95)
+
+    override val levelLimit =
+      if directOwner.exists then directOwner.levelOwner else NoSymbol
 
     /** A variable is solved if it is aproximated to a from-then-on constant set. */
     private var isSolved: Boolean = false
-
-    private var ownLevelCache = -1
-    private def ownLevel(using Context) =
-      if ownLevelCache == -1 then ownLevelCache = owner.ccNestingLevel
-      ownLevelCache
 
     /** The elements currently known to be in the set */
     var elems: Refs = initialElems
@@ -503,11 +504,18 @@ object CaptureSet:
           r.andAlso(dep.tryInclude(elem, this))
         }
 
-    private def levelOK(elem: CaptureRef)(using Context): Boolean = elem match
-      case elem: TermRef if elem.symbol.isLevelOwner => elem.ccNestingLevel - 1 <= ownLevel
-      case elem: (TermRef | ThisType) => elem.ccNestingLevel <= ownLevel
-      case elem: CaptureRoot.Var => CaptureRoot.isEnclosingRoot(elem, owner.localRoot.termRef)
-      case _ => true
+    private def levelOK(elem: CaptureRef)(using Context): Boolean =
+      !levelLimit.exists
+      || elem.match
+          case elem: TermRef =>
+            var sym = elem.symbol
+            if sym.isLevelOwner then sym = sym.owner
+            levelLimit.isContainedIn(sym.levelOwner)
+          case elem: ThisType =>
+            levelLimit.isContainedIn(elem.cls.levelOwner)
+          case elem: CaptureRoot.Var =>
+            elem.encloses(levelLimit.localRoot.termRef)
+          case _ => true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -578,11 +586,11 @@ object CaptureSet:
       for vars <- ctx.property(ShownVars) do vars += this
       val debugInfo =
         if !isConst && ctx.settings.YccDebug.value then ids else ""
-      val nestingInfo =
-        if ctx.settings.YprintLevel.value
-        then s"<in ${owner.show}/${owner.ccNestingLevel}>"
+      val limitInfo =
+        if ctx.settings.YprintLevel.value && levelLimit.exists
+        then i"<in $levelLimit>"
         else ""
-      debugInfo ++ nestingInfo
+      debugInfo ++ limitInfo
 
     /** Used for diagnostics and debugging: A string that traces the creation
      *  history of a variable by following source links. Each variable on the
@@ -594,8 +602,8 @@ object CaptureSet:
       val trail = this.match
         case dv: DerivedVar => dv.source.ids
         case _ => ""
-      s"$id${getClass.getSimpleName.nn.take(1)}$trail"
-
+      val descr = getClass.getSimpleName.nn.take(1)
+      s"$id$descr$trail"
     override def toString = s"Var$id$elems"
   end Var
 
@@ -635,7 +643,7 @@ object CaptureSet:
    */
   class Mapped private[CaptureSet]
     (val source: Var, tm: TypeMap, variance: Int, initial: CaptureSet)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.owner, initial.elems):
+  extends DerivedVar(source.levelLimit, initial.elems):
     addAsDependentTo(initial)  // initial mappings could change by propagation
 
     private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
@@ -701,7 +709,7 @@ object CaptureSet:
    */
   final class BiMapped private[CaptureSet]
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.owner, initialElems):
+  extends DerivedVar(source.levelLimit, initialElems):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       if origin eq source then
@@ -731,7 +739,7 @@ object CaptureSet:
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
     (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
-  extends DerivedVar(source.owner, source.elems.filter(p)):
+  extends DerivedVar(source.levelLimit, source.elems.filter(p)):
 
     override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
       val filtered = newElems.filter(p)
@@ -762,7 +770,7 @@ object CaptureSet:
   extends Filtered(source, !other.accountsFor(_))
 
   class Intersected(cs1: CaptureSet, cs2: CaptureSet)(using Context)
-  extends Var(cs1.owner.minNested(cs2.owner), elemIntersection(cs1, cs2)):
+  extends Var(cs1.levelLimit.minNested(cs2.levelLimit), elemIntersection(cs1, cs2)):
     addAsDependentTo(cs1)
     addAsDependentTo(cs2)
     deps += cs1
@@ -851,7 +859,7 @@ object CaptureSet:
           case OK => Str("OK")
           case Fail(blocking: CaptureSet) => blocking.show
           case LevelError(cs: CaptureSet, elem: CaptureRef) =>
-            Str(i"($elem at wrong level for $cs in ${cs.owner})")
+            Str(i"($elem at wrong level for $cs in ${cs.levelLimit})")
 
     /** The result is OK */
     def isOK: Boolean = this == OK
@@ -1052,11 +1060,11 @@ object CaptureSet:
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
         val levelStr = ref match
-          case ref: (TermRef | ThisType) => i", defined at level ${ref.ccNestingLevel}"
+          case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
           case _ => ""
         i"""
            |
            |Note that reference ${ref}$levelStr
-           |cannot be included in outer capture set $cs, defined at level ${cs.owner.nestingLevel} in ${cs.owner}"""
+           |cannot be included in outer capture set $cs which is associated with ${cs.levelLimit}"""
 
 end CaptureSet

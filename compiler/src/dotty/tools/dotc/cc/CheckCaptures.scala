@@ -182,8 +182,8 @@ class CheckCaptures extends Recheck, SymTransformer:
             ref match
               case ref: CaptureRoot.Var =>
                 ref.followAlias match
-                  case rv: CaptureRoot.Var if rv.upperBound == ctx.owner.levelOwner =>
-                    rv.setAlias(ctx.owner.localRoot.termRef)
+                  case rv: CaptureRoot.Var if rv.innerLimit == ctx.owner.levelOwner =>
+                    rv.alias = ctx.owner.localRoot.termRef
                   case _ =>
               case _ =>
           traverse(parent)
@@ -249,7 +249,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     def capturedVars(sym: Symbol)(using Context) =
       myCapturedVars.getOrElseUpdate(sym,
         if sym.ownersIterator.exists(_.isTerm)
-        then CaptureSet.Var(sym.skipConstructor.owner)
+        then CaptureSet.Var(sym.owner)
         else CaptureSet.empty)
 
     /** For all nested environments up to `limit` or a closed environment perform `op`,
@@ -376,7 +376,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         || sym.isTerm && defn.isFunctionType(sym.info) && pt == AnySelectionProto
       if sym.skipConstructor.isLevelOwner && canInstantiate then
         val tpw = tp.widen
-        val tp1 = mapRoots(sym.localRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner, sym))(tpw)
+        val tp1 = mapRoots(sym.localRoot.termRef, CaptureRoot.Var(ctx.owner, sym))(tpw)
           .showing(i"INST $sym: $tp, ${sym.localRoot} = $result", ccSetup)
         if tpw eq tp1 then tp else tp1
       else
@@ -406,7 +406,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       if meth == defn.Caps_unsafeAssumePure then
         val arg :: Nil = tree.args: @unchecked
-        val argType0 = recheck(arg, pt.capturing(CaptureSet(CaptureRoot.Var(ctx.owner))))
+        val argType0 = recheck(arg, pt.capturing(CaptureSet(CaptureRoot.Var(ctx.owner, meth))))
         val argType =
           if argType0.captureSet.isAlwaysEmpty then argType0
           else argType0.widen.stripCapturing
@@ -756,14 +756,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           // but a uses `cap`, i.e. is capture polymorphic. In this case, adaptation is allowed
           // to instantiate `A` to match the root in `B`.
           val actualWide = actual.widen
-          val actualInst = mapRoots(tree.symbol.localRoot.termRef, CaptureRoot.Var(ctx.owner.levelOwner))(actualWide)
+          val actualInst = mapRoots(tree.symbol.localRoot.termRef, CaptureRoot.Var(ctx.owner, tree.symbol))(actualWide)
           capt.println(i"fallBack from $actualWide to $actualInst to match $expected1")
           ok = (actualInst ne actualWide)
             && isCompatible(adaptBoxed(actualInst, expected1, tree.srcPos), expected1)
         case _ =>
       if !ok then
         capt.println(i"conforms failed for ${tree}: $actual vs $expected")
-        err.typeMismatch(tree.withType(actualBoxed), expected, addenda ++ CaptureSet.levelErrors)
+        err.typeMismatch(tree.withType(actualBoxed), expected1, addenda ++ CaptureSet.levelErrors)
     end checkConformsExpr
 
     /** Turn `expected` into a dependent function when `actual` is dependent. */

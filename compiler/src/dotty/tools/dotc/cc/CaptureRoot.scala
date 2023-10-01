@@ -14,98 +14,85 @@ type CaptureRoot = TermRef | CaptureRoot.Var
 
 object CaptureRoot:
 
-  case class Var(owner: Symbol, source: Symbol = NoSymbol)(using @constructorOnly ictx: Context) extends CaptureRef, Showable:
+  private var nextId = 0
 
-    var upperBound: Symbol = owner
-    var lowerBound: Symbol = NoSymbol
-    var upperLevel: Int = owner.ccNestingLevel
-    var lowerLevel: Int = Int.MinValue
-    private[CaptureRoot] var lowerRoots: SimpleIdentitySet[Var] = SimpleIdentitySet.empty
-    private[CaptureRoot] var upperRoots: SimpleIdentitySet[Var] = SimpleIdentitySet.empty
-    private[CaptureRoot] var alias: CaptureRoot = this
+  case class Var(owner: Symbol, source: Symbol)(using @constructorOnly ictx: Context) extends CaptureRef, Showable:
 
-    override def localRootOwner(using Context) = owner
+    val id =
+      nextId += 1
+      nextId
+
+    var innerLimit: Symbol = owner.levelOwner
+    var outerLimit: Symbol = defn.RootClass
+    var outerRoots: SimpleIdentitySet[Var] = SimpleIdentitySet.empty
+
     override def isTrackableRef(using Context): Boolean = true
     override def captureSetOfInfo(using Context) = CaptureSet.universal
 
-    def setAlias(target: CaptureRoot) =
-      alias = target
-
-    def followAlias: CaptureRoot = alias match
-      case alias: Var if alias ne this => alias.followAlias
-      case _ => alias
-
-    def locallyConsistent =
-      lowerLevel <= upperLevel
-      && lowerRoots.forall(_.upperLevel <= upperLevel)
-      && upperRoots.forall(_.lowerLevel >= lowerLevel)
+    private var myAlias: CaptureRoot = this
+    def alias = myAlias
+    def alias_=(r: CaptureRoot)(using Context) =
+      //assert(id != 2, i"$this := $r")
+      alias match
+        case alias: TermRef =>
+          val owner = alias.localRootOwner
+          assert(
+            owner.isContainedIn(outerLimit) && innerLimit.isContainedIn(owner),
+            i"illegal alias $owner for $this")
+        case _ =>
+      myAlias = r
 
     def computeHash(bs: Binders): Int = hash
     def hash: Int = System.identityHashCode(this)
     def underlying(using Context): Type = defn.Caps_Cap.typeRef
   end Var
 
-  def isEnclosingRoot(c1: CaptureRoot, c2: CaptureRoot)(using Context): Boolean =
-    if c1 eq c2 then return true
-    c1 match
-      case c1: Var if c1.alias ne c1 => return isEnclosingRoot(c1.alias, c2)
-      case _ =>
-    c2 match
-      case c2: Var if c2.alias ne c2 => return isEnclosingRoot(c1, c2.alias)
-      case _ =>
-    (c1, c2) match
-      case (c1: TermRef, c2: TermRef) =>
-        c1.ccNestingLevel <= c2.ccNestingLevel
-      case (c1: TermRef, c2: Var) =>
-        val level1 = c1.ccNestingLevel
-        if level1 <= c2.lowerLevel then
-          true // no change
-        else if level1 <= c2.upperLevel && c2.upperRoots.forall(isEnclosingRoot(c1, _)) then
-          if level1 == c2.upperLevel then
-            c2.alias = c1
+  extension (r: CaptureRoot)
+
+    def followAlias(using Context): CaptureRoot = r match
+      case r: Var if r.alias ne r => r.alias.followAlias
+      case _ => r
+
+    def unifiesWith(other: CaptureRoot)(using Context): Boolean =
+      r.encloses(other) && other.encloses(r)
+
+    def encloses(other: CaptureRoot)(using Context): Boolean =
+      val (r1, r2) = (followAlias, other.followAlias)
+      (r1 eq r2) || (r1, r2).match
+        case (r1: TermRef, r2: TermRef) =>
+          r2.localRootOwner.isContainedIn(r1.localRootOwner)
+        case (r1: TermRef, r2: Var) =>
+          val r1Owner = r1.localRootOwner
+          if r2.outerLimit.isContainedIn(r1Owner) then true
+          else if !r2.innerLimit.isContainedIn(r1Owner) then false
           else
-            c2.lowerBound = c1.symbol
-            c2.lowerLevel = level1
-          true
-        else false
-      case (c1: Var, c2: TermRef) =>
-        val level2 = c2.ccNestingLevel
-        if c1.upperLevel <= level2 then
-          true // no change
-        else if c1.lowerLevel <= level2 && c1.lowerRoots.forall(isEnclosingRoot(_, c2)) then
-          if level2 == c1.lowerLevel then
-            c1.alias = c2
+            if r2.innerLimit == r1Owner then r2.alias = r1
+            else r2.outerLimit = r1Owner
+            true
+        case (r1: Var, r2: TermRef) =>
+          val r2Owner = r2.localRootOwner
+          if r2Owner.isContainedIn(r1.innerLimit) then true
+          else if !r2Owner.isContainedIn(r1.outerLimit) then false
           else
-            c1.upperBound = c2.symbol
-            c1.upperLevel = level2
-          true
-        else false
-      case (c1: Var, c2: Var) =>
-        if c1.upperRoots.contains(c2) then
-          true // no change
-        else if c1.lowerLevel > c2.upperLevel then
-          false // local inconsistency
-        else
-          c1.upperRoots += c2 // set early to prevent infinite looping
-          if c1.lowerRoots.forall(isEnclosingRoot(_, c2))
-            && c2.upperRoots.forall(isEnclosingRoot(c1, _))
-          then
-            if c1.lowerRoots.contains(c2) then
-              val c2a = c2.followAlias
-              if c2a ne c1 then c1.alias = c2a
-            else
-              if c1.upperLevel > c2.upperLevel then
-                c1.upperBound = c2.upperBound
-                c1.upperLevel = c2.upperLevel
-              if c2.lowerLevel < c1.lowerLevel then
-                c2.lowerBound = c1.lowerBound
-                c2.lowerLevel = c1.lowerLevel
-              c2.lowerRoots += c1
+            if r1.outerLimit == r2Owner then r1.alias = r2
+            else r1.innerLimit = r2Owner
+            true
+        case (r1: Var, r2: Var) =>
+          if r2.outerRoots.contains(r1) then true // no change
+          else if !r2.innerLimit.isContainedIn(r1.outerLimit) then false // no overlap
+          else if r1.outerRoots.contains(r2) then // unify
+            r1.alias = r2
+            r2.outerLimit = r1.outerLimit.maxNested(r2.outerLimit)
+            r2.innerLimit = r1.innerLimit.minNested(r2.innerLimit)
             true
           else
-            c1.upperRoots -= c2
-            false
-  end isEnclosingRoot
+            r2.outerRoots += r1 // set early to prevent infinite looping
+            if r1.outerRoots.forall(_.encloses(r2)) then true
+            else
+              r2.outerRoots -= r2
+              false
+    end encloses
+
 end CaptureRoot
 
 
