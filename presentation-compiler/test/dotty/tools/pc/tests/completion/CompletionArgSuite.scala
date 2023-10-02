@@ -238,6 +238,111 @@ class CompletionArgSuite extends BaseCompletionSuite:
       ""
     )
 
+  @Test def `default-args` =
+    check(
+      s"""|object Main {
+          |  def foo() = {
+          |    def deployment(
+          |      fst: Option[String],
+          |      snd: Int = 1,
+          |    ): Option[Int] = ???
+          |    val abc = deployment(@@)
+          |  }
+          |}
+          |""".stripMargin,
+      """|fst = : Option[String]
+         |snd = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+  @Test def `default-args2` =
+    check(
+      s"""|object Main {
+          |  def deployment(
+          |    fst: Option[String],
+          |    snd: Int = 1,
+          |  ): Option[Int] = ???
+          |  val abc = deployment(@@)
+          |}
+          |""".stripMargin,
+      """|fst = : Option[String]
+         |snd = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `default-args3` =
+    check(
+      s"""|object Main {
+          |  def deployment(str: String)(
+          |    fst: Option[String],
+          |    snd: Int = 1,
+          |  ): Option[Int] = ???
+          |  val abc = deployment("str")(
+          |    @@
+          |  )
+          |}
+          |""".stripMargin,
+      """|fst = : Option[String]
+         |snd = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `default-args4` =
+    check(
+      s"""|object Main {
+          |  def deployment(str: String)(opt: Option[Int])(
+          |    fst: Option[String],
+          |    snd: Int = 1,
+          |  ): Option[Int] = ???
+          |  val abc = deployment("str")(None)(
+          |    @@
+          |  )
+          |}
+          |""".stripMargin,
+      """|fst = : Option[String]
+         |snd = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+  @Test def `default-args5` =
+    check(
+      s"""|object Main {
+          |  def deployment(str: String)(opt: Option[Int] = None)(
+          |    fst: Option[String],
+          |    snd: Int = 1,
+          |  ): Option[Int] = ???
+          |  val abc = deployment("str")(
+          |    @@
+          |  )
+          |}
+          |""".stripMargin,
+      """|opt = : Option[Int]
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `default-args6` =
+    check(
+      s"""|object Main {
+          |  def deployment(using str: String)(
+          |    fst: Option[String],
+          |    snd: Int = 1,
+          |  ): Option[Int] = ???
+          |  val abc = deployment(using "str")(
+          |    @@
+          |  )
+          |}
+          |""".stripMargin,
+      """|fst = : Option[String]
+         |snd = : Int
+         |""".stripMargin,
+      topLines = Some(2),
+    )
+
+
   // @Test def `explicit-dollar` =
   // checkSnippet( // see: https://github.com/scalameta/metals/issues/2400
   //   """
