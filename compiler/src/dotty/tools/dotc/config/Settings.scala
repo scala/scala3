@@ -64,10 +64,27 @@ object Settings:
     depends: List[(Setting[?], Any)] = Nil,
     ignoreInvalidArgs: Boolean = false,
     propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
+    
+    private var enabledWith: Option[Setting[Boolean]] = None
+    private var enabledWithValue: T = _
 
     private var changed: Boolean = false
 
-    def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
+    def valueIn(state: SettingsState): T =
+      enabledWith.filter(_.valueIn(state)).map(_ => enabledWithValue)
+        .getOrElse(state.value(idx).asInstanceOf[T])
+
+    def enableWith(setting: Setting[Boolean])(using T =:= Boolean): Setting[T] = {
+      enabledWith = Some(setting)
+      enabledWithValue = true.asInstanceOf[T]
+      this
+    }
+
+    def enableWith[A](setting: Setting[Boolean], value: T): Setting[T] = {
+      enabledWith = Some(setting)
+      enabledWithValue = value
+      this
+    }
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)
