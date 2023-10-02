@@ -63,10 +63,27 @@ object Settings:
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
     propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
+    
+    private var overridenBy: Option[Setting[_]] = None
+    private var overridenByMapper: Any => T = _
 
     private var changed: Boolean = false
 
-    def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
+    def valueIn(state: SettingsState): T =
+      overridenBy.map(_.valueIn(state)).map(overridenByMapper)
+        .getOrElse(state.value(idx).asInstanceOf[T])
+
+    def overrideWith(setting: Setting[T]): Setting[T] = {
+      overridenBy = Some(setting)
+      overridenByMapper = _.asInstanceOf[T]
+      this
+    }
+    
+    def overrideWith[A](setting: Setting[A], mapper: A => T): Setting[T] = {
+      overridenBy = Some(setting)
+      overridenByMapper = mapper.asInstanceOf[Any => T]
+      this
+    }
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
       case _: T => state.update(idx, x)

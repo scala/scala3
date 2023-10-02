@@ -159,10 +159,11 @@ private sealed trait WarningSettings:
   import Setting.ChoiceWithHelp
 
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
+  val Wall: Setting[Boolean] = BooleanSetting("-Wall", "Enable all warnings")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
-  val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.")
-  val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
-  val WimplausiblePatterns = BooleanSetting("-Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.")
+  val WvalueDiscard: Setting[Boolean] = BooleanSetting("-Wvalue-discard", "Warn when non-Unit expression results are unused.").overrideWith(Wall)
+  val WNonUnitStatement = BooleanSetting("-Wnonunit-statement", "Warn when block statements are non-Unit expressions.").overrideWith(Wall)
+  val WimplausiblePatterns = BooleanSetting("-Wimplausible-patterns", "Warn if comparison with a pattern value looks like it might always fail.").overrideWith(Wall)
   val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     name = "-Wunused",
     helpArg = "warning",
@@ -194,7 +195,10 @@ private sealed trait WarningSettings:
         )
     ),
     default = Nil
-  )
+  ).overrideWith(Wall, {
+    case true => List(ChoiceWithHelp("all", ""))
+    case false => Nil
+  })
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
     def allOr(s: String)(using Context) = Wunused.value.pipe(us => us.contains("all") || us.contains(s))
