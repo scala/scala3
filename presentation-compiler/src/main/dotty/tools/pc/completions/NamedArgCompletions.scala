@@ -237,15 +237,24 @@ object NamedArgCompletions:
         .getOrElse(baseArgs)
         .filterNot(isUselessLiteral)
 
+      @tailrec
+      def isDefaultArg(t: Tree): Boolean = t match
+        // default args
+        case Ident(name) => name.is(DefaultGetterName)
+        // default args for methods defined in object
+        case Select(_, name) =>
+          name.is(DefaultGetterName)
+        // default args in not-first parameter list
+        // eg. def m(fst: Int)(snd: Int)(arg1: Int, arg2: Int = 123) = ???
+        case Apply(fun, _) => isDefaultArg(fun)
+        case _ => false
+
       val isNamed: Set[Name] = args.iterator
         .zip(baseParams.iterator)
         // filter out synthesized args and default arg getters
         .filterNot {
           case (arg, _) if arg.symbol.denot.is(Flags.Synthetic) => true
-          case (Ident(name), _) => name.is(DefaultGetterName) // default args
-          case (Select(Ident(_), name), _) =>
-            name.is(DefaultGetterName) // default args for apply method
-          case _ => false
+          case (arg, _) => isDefaultArg(arg)
         }
         .map {
           case (NamedArg(name, _), _) => name
