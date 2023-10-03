@@ -319,7 +319,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         markFree(tree.symbol, tree.srcPos)
-      instantiateLocalRoots(tree.symbol, pt):
+      instantiateLocalRoots(tree.symbol, NoPrefix, pt):
         super.recheckIdent(tree, pt)
 
     /** A specialized implementation of the selection rule.
@@ -349,7 +349,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
-      instantiateLocalRoots(tree.symbol, pt):
+      instantiateLocalRoots(tree.symbol, qualType, pt):
         if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
           selType
         else
@@ -370,14 +370,23 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - `tp` is the type of a function that gets applied, either as a method
      *     or as a function value that gets applied.
      */
-    def instantiateLocalRoots(sym: Symbol, pt: Type)(tp: Type)(using Context): Type =
+    def instantiateLocalRoots(sym: Symbol, pre: Type, pt: Type)(tp: Type)(using Context): Type =
       def canInstantiate =
         sym.is(Method, butNot = Accessor)
         || sym.isTerm && defn.isFunctionType(sym.info) && pt == AnySelectionProto
-      if sym.skipConstructor.isLevelOwner && canInstantiate then
+      if canInstantiate then
         val tpw = tp.widen
-        val tp1 = mapRoots(sym.localRoot.termRef, CaptureRoot.Var(ctx.owner, sym))(tpw)
-          .showing(i"INST $sym: $tp, ${sym.localRoot} = $result", ccSetup)
+        var tp1 = tpw
+        val rootVar = CaptureRoot.Var(ctx.owner, sym)
+        if sym.skipConstructor.isLevelOwner then
+          tp1 = mapRoots(sym.localRoot.termRef, rootVar)(tp1)
+          if tp1 ne tpw then
+            ccSetup.println(i"INST local $sym: $tp, ${sym.localRoot} = $tp1")
+        if sym.owner.isClass then
+          val tp2 = CaptureRoot.instantiateOuterClassRoots(sym, pre, rootVar)(tp1)
+          if tp2 ne tp1 then
+            ccSetup.println(i"INST class $sym: $tp, ${sym.localRoot} in $pre = $tp2")
+          tp1 = tp2
         if tpw eq tp1 then tp else tp1
       else
         tp
@@ -695,6 +704,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       val res =
         try super.recheck(tree, pt)
+        catch case ex: CaptureRoot.NoCommonRoot =>
+          report.error(ex.getMessage.nn)
+          tree.tpe
         finally curEnv = saved
       if tree.isTerm && !pt.isBoxedCapturing then
         markFree(res.boxedCaptureSet, tree.srcPos)

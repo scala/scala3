@@ -233,7 +233,7 @@ sealed abstract class CaptureSet extends Showable:
     else if that.subCaptures(this, frozen = true).isOK then this
     else if this.isConst && that.isConst then Const(this.elems ++ that.elems)
     else Var(
-        this.levelLimit.maxNested(that.levelLimit, pickFirstOnConflict = true),
+        this.levelLimit.maxNested(that.levelLimit, onConflict = (sym1, sym2) => sym1),
         this.elems ++ that.elems)
       .addAsDependentTo(this).addAsDependentTo(that)
 
@@ -314,6 +314,22 @@ sealed abstract class CaptureSet extends Showable:
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
+
+  /** The capture root that corresponds to this capture set. This is:
+   *    - if the capture set is a Var with a defined level limit, the
+   *      associated capture root,
+   *    - otherwise, if the set is nonempty, the innermost root such
+   *      that some element of the set subcaptures this root,
+   *    - otherwise, if the set is empty, `default`.
+   */
+  def impliedRoot(default: CaptureRoot)(using Context): CaptureRoot =
+    if levelLimit.exists then levelLimit.localRoot.termRef
+    else if elems.isEmpty then default
+    else elems.toList
+      .map:
+        case elem: CaptureRoot if elem.isLocalRootCapability => elem
+        case elem => elem.captureSetOfInfo.impliedRoot(default)
+      .reduce((x: CaptureRoot, y: CaptureRoot) => CaptureRoot.lub(x, y))
 
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
