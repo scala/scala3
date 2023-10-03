@@ -1,6 +1,7 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd.{Inlined, TreeTraverser}
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
@@ -423,12 +424,12 @@ object CheckUnused:
       if !tpd.languageImport(imp.expr).nonEmpty && !imp.isGeneratedByEnum && !isTransparentAndInline(imp) then
         impInScope.top += imp
         unusedImport ++= imp.selectors.filter { s =>
-          !shouldSelectorBeReported(imp, s) && !isImportExclusion(s)
+          !shouldSelectorBeReported(imp, s) && !isImportExclusion(s) && !isImportIgnored(imp, s)
         }
 
     /** Register (or not) some `val` or `def` according to the context, scope and flags */
     def registerDef(memDef: tpd.MemberDef)(using Context): Unit =
-      if memDef.isValidMemberDef then
+      if memDef.isValidMemberDef && !isDefIgnored(memDef) then
         if memDef.isValidParam then
           if memDef.symbol.isOneOf(GivenOrImplicit) then
             if !paramsToSkip.contains(memDef.symbol) then
@@ -507,7 +508,6 @@ object CheckUnused:
 
     def getUnused(using Context): UnusedResult =
       popScope()
-
       val sortedImp =
         if ctx.settings.WunusedHas.imports || ctx.settings.WunusedHas.strictNoImplicitWarn then
           unusedImport.map(d => UnusedSymbol(d.srcPos, d.name, WarnTypes.Imports)).toList
@@ -643,9 +643,21 @@ object CheckUnused:
         sel.isWildcard ||
         imp.expr.tpe.member(sel.name.toTermName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit)) ||
         imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
-      )
+      ) 
+    
+    /**
+     * Ignore CanEqual imports
+     */
+    private def isImportIgnored(imp: tpd.Import, sel: ImportSelector)(using Context): Boolean =
+      (sel.isWildcard && imp.expr.tpe.allMembers.exists(p => p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass)))) ||
+      (imp.expr.tpe.member(sel.name.toTermName).alternatives
+        .exists(p => p.symbol.isOneOf(GivenOrImplicit) && p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))))
 
-
+    /**
+     * Ignore definitions of CanEqual given
+     */ 
+    private def isDefIgnored(memDef: tpd.MemberDef)(using Context): Boolean =
+      memDef.symbol.isOneOf(GivenOrImplicit) && memDef.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
 
     extension (tree: ImportSelector)
       def boundTpe: Type = tree.bound match {
