@@ -89,8 +89,6 @@ trait FollowAliases extends TypeMap:
       mapOver(t)
 
 class mapRoots(from0: CaptureRoot, to: CaptureRoot)(using Context) extends BiTypeMap, FollowAliases:
-  thisMap =>
-
   val from = from0.followAlias
 
   //override val toString = i"mapRoots($from, $to)"
@@ -467,12 +465,10 @@ extension (sym: Symbol)
       else newRoot
     ccState.localRoots.getOrElseUpdate(owner, lclRoot)
 
-  def maxNested(other: Symbol, pickFirstOnConflict: Boolean = false)(using Context): Symbol =
+  def maxNested(other: Symbol, onConflict: (Symbol, Symbol) => Context ?=> Symbol)(using Context): Symbol =
     if !sym.exists || other.isContainedIn(sym) then other
     else if !other.exists || sym.isContainedIn(other) then sym
-    else
-      assert(pickFirstOnConflict, i"incomparable nesting: $sym and $other")
-      sym
+    else onConflict(sym, other)
 
   def minNested(other: Symbol)(using Context): Symbol =
     if !other.exists || other.isContainedIn(sym) then sym
