@@ -251,10 +251,11 @@ class ReplDriver(settings: Array[String],
       given state: State = newRun(state0)
       compiler
         .typeCheck(expr, errorsAllowed = true)
-        .map { tree =>
+        .map { (untpdTree, tpdTree) =>
           val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
           val unit = CompilationUnit(file)(using state.context)
-          unit.tpdTree = tree
+          unit.untpdTree = untpdTree
+          unit.tpdTree = tpdTree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
           val completions = try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil

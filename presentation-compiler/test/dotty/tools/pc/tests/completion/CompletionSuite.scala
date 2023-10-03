@@ -539,7 +539,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  new Foo().bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic2 =
@@ -549,7 +549,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val x = new Foo().foo.bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic3 =
@@ -560,7 +560,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  (foo.bar = 42).bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic4 =
@@ -570,7 +570,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |  val foo = new Foo().foo(x = 42).bana@@
           |}
           |""".stripMargin,
-      "selectDynamic(field: String): Foo"
+      "banana: Int"
     )
 
   @Test def dynamic5 =
@@ -669,14 +669,12 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       s"""|object Main {
           |  Option(1) match {
-          |    case _: S@@
+          |    case _: Som@@
           |}
           |""".stripMargin,
       """|Some[?] scala
-         |Seq scala.collection.immutable
-         |Set scala.collection.immutable
          |""".stripMargin,
-      topLines = Some(3)
+      topLines = Some(1)
     )
 
   @Test def adt3 =
@@ -695,9 +693,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|NotString: Int
          |Number: Regex
-         |Nil scala.collection.immutable
          |""".stripMargin,
-      topLines = Option(3)
+      topLines = Some(2)
     )
 
   @Test def adt4 =
@@ -705,29 +702,24 @@ class CompletionSuite extends BaseCompletionSuite:
       s"""|object Main {
           |  val Number = "".r
           |  "" match {
-          |    case _: N@@
+          |    case _: Numb@@
           |}
           |""".stripMargin,
       """|Number: Regex
-         |Nil scala.collection.immutable
-         |NoManifest scala.reflect
          |""".stripMargin,
-      topLines = Option(3)
+      topLines = Some(1)
     )
 
-  @Test def adt5 =
+  @Test def `no-methods-on-case-type` =
     check(
       s"""|object Main {
           |  val Number = "".r
           |  "" match {
-          |    case _: N@@
+          |    case _: NotImpl@@
           |}
           |""".stripMargin,
-      """|Number: Regex
-         |Nil scala.collection.immutable
-         |NoManifest scala.reflect
+      """|NotImplementedError scala
          |""".stripMargin,
-      topLines = Option(3)
     )
 
   @Test def underscore =
@@ -1326,6 +1318,171 @@ class CompletionSuite extends BaseCompletionSuite:
       """|AClass[A <: Int] test.O
          |AClass test.O
          |AbstractTypeClassManifest - scala.reflect.ClassManifestFactory
+         """.stripMargin
+    )
+
+  @Test def `extension-definition-scope` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
          |""".stripMargin
+    )
+
+  @Test def `extension-definition-symbol-search` =
+    check(
+      """|object T:
+         |  extension (x: ListBuffe@@)
+         |""".stripMargin,
+      """|ListBuffer[A] - scala.collection.mutable
+         |ListBuffer - scala.collection.mutable
+         |""".stripMargin,
+    )
+
+  @Test def `extension-definition-type-parameter` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A <: Fo@@]
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-type-parameter-symbol-search` =
+    check(
+      """|object T:
+         |  extension [A <: ListBuffe@@]
+         |""".stripMargin,
+      """|ListBuffer[A] - scala.collection.mutable
+         |ListBuffer - scala.collection.mutable
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-using-param-clause` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (using Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+
+  @Test def `extension-definition-mix-1` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (x: Int)(using Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-2` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (using Fo@@)(x: Int)(using Foo)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-3` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension (using Foo)(x: Int)(using Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-4` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-5` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](using Fo@@)(x: Int)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-6` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](using Foo)(x: Fo@@)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-mix-7` =
+    check(
+      """|trait Foo
+         |object T:
+         |  extension [A](using Foo)(x: Fo@@)(using Foo)
+         |""".stripMargin,
+      """|Foo test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-select` =
+    check(
+      """|object Test:
+         |  class TestSelect()
+         |object T:
+         |  extension (x: Test.TestSel@@)
+         |""".stripMargin,
+      """|TestSelect test.Test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-select-mix-1` =
+    check(
+      """|object Test:
+         |  class TestSelect()
+         |object T:
+         |  extension (using Int)(x: Test.TestSel@@)
+         |""".stripMargin,
+      """|TestSelect test.Test
+         |""".stripMargin
+    )
+
+  @Test def `extension-definition-select-mix-2` =
+    check(
+      """|object Test:
+         |  class TestSelect[T]()
+         |object T:
+         |  extension [T](x: Test.TestSel@@)
+         |""".stripMargin,
+      """|TestSelect[T] test.Test
+         |TestSelect test.Test
+         |""".stripMargin
+    )
+
+  @Test def `no-square-brackets` =
+    checkEdit(
+      """|object O:
+         |  val a = List.appl@@
+         |""".stripMargin,
+      """|object O:
+         |  val a = List.apply($0)
+         |""".stripMargin,
     )
 
