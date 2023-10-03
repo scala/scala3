@@ -1436,7 +1436,7 @@ class CompletionSuite extends BaseCompletionSuite:
     check(
       """|trait Foo
          |object T:
-         |  extension [A](using Foo)(x: Fo@@)(using Fo@@)
+         |  extension [A](using Foo)(x: Fo@@)(using Foo)
          |""".stripMargin,
       """|Foo test
          |""".stripMargin
