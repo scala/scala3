@@ -32,6 +32,11 @@ class TabcompleteTests extends ReplTest {
     assertEquals(List("apply"), comp)
   }
 
+  @Test def tabCompleteInExtensionDefinition = initially {
+    val comp = tabComplete("extension (x: Lis")
+    assertEquals(List("List"), comp)
+  }
+
   @Test def tabCompleteTwiceIn = {
     val src1 = "class Foo { def bar(xs: List[Int]) = xs.map"
     val src2 = "class Foo { def bar(xs: List[Int]) = xs.mapC"
