@@ -1395,7 +1395,8 @@ class ConstrProxyShadows(proxy: TermRef, shadowed: Type, shadowedIsApply: Boolea
        |or use a full prefix for ${shadowed.termSymbol.name} if you mean the latter."""
 end ConstrProxyShadows
 
-class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context)(using Context)
+class AmbiguousReference(
+    name: Name, newPrec: BindingPrec, prevPrec: BindingPrec, prevCtx: Context, isExtension: => Boolean = false)(using Context)
   extends ReferenceMsg(AmbiguousReferenceID), NoDisambiguation {
 
   /** A string which explains how something was bound; Depending on `prec` this is either
@@ -1417,10 +1418,17 @@ class AmbiguousReference(name: Name, newPrec: BindingPrec, prevPrec: BindingPrec
       i"""$howVisible$qualifier in ${whereFound.owner}"""
   }
 
+  def importHint =
+    if (newPrec == BindingPrec.NamedImport || newPrec == BindingPrec.WildImport)
+        && prevPrec == newPrec
+        && isExtension
+    then i"\n\n Hint: This error may arise if extension method `$name` is called as a normal method."
+    else ""
+
   def msg(using Context) =
     i"""|Reference to $name is ambiguous.
         |It is both ${bindingString(newPrec, ctx)}
-        |and ${bindingString(prevPrec, prevCtx, " subsequently")}"""
+        |and ${bindingString(prevPrec, prevCtx, " subsequently")}$importHint"""
 
   def explain(using Context) =
     val precedent =

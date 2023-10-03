@@ -69,14 +69,6 @@ object language:
     @compileTimeOnly("`clauseInterleaving` can only be used at compile time in import statements")
     object clauseInterleaving
 
-    /** Adds support for relaxed imports of extension methods.
-      * Extension methods with the same name can be imported from several places.
-      *
-      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
-      */
-    @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
-    object relaxedExtensionImports
-
     /** Experimental support for pure function type syntax
      *
      *  @see [[https://dotty.epfl.ch/docs/reference/experimental/purefuns]]
