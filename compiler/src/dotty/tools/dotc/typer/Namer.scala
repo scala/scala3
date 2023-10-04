@@ -1199,8 +1199,22 @@ class Namer { typer: Typer =>
             if mbr.isType then
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
               var target = pathType.select(sym)
-              if target.typeParams.nonEmpty then
-                target = target.etaExpand(target.typeParams)
+              val tparams = target.typeParams
+              if tparams.nonEmpty then
+                // like `target = target.etaExpand(target.typeParams)`
+                // except call `asSeenFrom` to fix class type parameter bounds
+                // e.g. in pos/i18569:
+                // `Test#F` should have `M2.A` or `Test.A` as bounds, not `M1#A`.
+                target = HKTypeLambda(tparams.map(_.paramName))(
+                  tl => tparams.map {
+                    case p: Symbol =>
+                      val info = p.info.asSeenFrom(pathType, sym.owner)
+                      HKTypeLambda.toPInfo(tl.integrate(tparams, info))
+                    case p =>
+                      val info = p.paramInfo
+                      HKTypeLambda.toPInfo(tl.integrate(tparams, info))
+                  },
+                  tl => tl.integrate(tparams, target.appliedTo(tparams.map(_.paramRef))))
               newSymbol(
                 cls, forwarderName,
                 MandatoryExportTypeFlags | (sym.flags & RetainedExportTypeFlags),
