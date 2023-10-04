@@ -90,6 +90,14 @@ object language:
      */
     @compileTimeOnly("`into` can only be used at compile time in import statements")
     object into
+
+    /** Was needed to add support for relaxed imports of extension methods.
+      * The language import is no longer needed as this is now a standard feature since SIP was accepted.
+      * @see [[http://dotty.epfl.ch/docs/reference/contextual/extension-methods]]
+      */
+    @compileTimeOnly("`relaxedExtensionImports` can only be used at compile time in import statements")
+    @deprecated("The experimental.relaxedExtensionImports language import is no longer needed since the feature is now standard", since = "3.4")
+    object relaxedExtensionImports
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
