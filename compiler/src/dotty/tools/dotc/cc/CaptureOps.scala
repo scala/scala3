@@ -28,15 +28,7 @@ private val adaptUnpickledFunctionTypes = false
  */
 private val constrainRootsWhenMapping = true
 
-/** If true, most vals can be level owners. If false, only vals defined by a
- *  closure as RHS can be level owners
- */
-private val valsCanBeLevelOwners = true
-
-/** If true, only vals, defs, and classes with a universal capability in a parameter
- *  or self type are considered as level owners.
- */
-private val levelOwnersNeedCapParam = true
+private val constructorsAreLevelOwners = false
 
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
@@ -390,25 +382,21 @@ extension (sym: Symbol)
     def isCaseClassSynthetic = // TODO drop
       symd.maybeOwner.isClass && symd.owner.is(Case) && symd.is(Synthetic) && symd.info.firstParamNames.isEmpty
     def classQualifies =
-      !levelOwnersNeedCapParam
-      || takesCappedParamIn(symd.primaryConstructor.info)
+      takesCappedParamIn(symd.primaryConstructor.info)
       || symd.asClass.givenSelfType.hasUniversalRootOf(sym)
-    def termQualifies =
-      !levelOwnersNeedCapParam || takesCappedParamIn(symd.info)
     def compute =
       if symd.isClass then
         symd.is(CaptureChecked) && classQualifies || symd.isRoot
       else
         (symd.is(Method, butNot = Accessor)
-          || valsCanBeLevelOwners && symd.isTerm && !symd.isOneOf(TermParamOrAccessor | Mutable))
+          || symd.isTerm && !symd.isOneOf(TermParamOrAccessor | Mutable))
         && (!symd.owner.isClass
             || symd.owner.is(CaptureChecked)
             || Synthetics.needsTransform(symd)
             )
-        && !isCaseClassSynthetic
         && !symd.isConstructor
         && (!symd.isAnonymousFunction || sym.definedLocalRoot.exists)
-        && termQualifies
+        && takesCappedParamIn(symd.info)
         && { ccSetup.println(i"Level owner $sym"); true }
 
     ccState.isLevelOwner.getOrElseUpdate(sym, compute)
@@ -433,17 +421,13 @@ extension (sym: Symbol)
    *  owner.
    */
   def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(sym: Symbol, prev: Symbol): Symbol =
+    def recur(sym: Symbol): Symbol =
       if sym.name.toString == name then
         if sym.isLevelOwner then sym
-        else if sym.isTerm && !sym.isOneOf(Method | Module) && prev.exists then prev
         else NoSymbol
-      else if sym == defn.RootClass then
-        NoSymbol
-      else
-        val prev1 = if sym.isAnonymousFunction && sym.isLevelOwner then sym else NoSymbol
-        recur(sym.owner, prev1)
-    recur(sym, NoSymbol)
+      else if sym == defn.RootClass then NoSymbol
+      else recur(sym.owner)
+    recur(sym)
       .showing(i"find outer $sym [ $name ] = $result", capt)
 
   /** The parameter with type caps.Cap in the leading term parameter section,

@@ -463,8 +463,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               case possiblyTypedClosureDef(ddef)
               if !mentionsCap(rhsOfEtaExpansion(ddef))
                   && !sym.is(Mutable)
-                  && (!levelOwnersNeedCapParam
-                      || ddef.symbol.takesCappedParamIn(ddef.symbol.info)) =>
+                  && ddef.symbol.takesCappedParamIn(ddef.symbol.info) =>
                 ccSetup.println(i"Level owner at setup $sym / ${ddef.symbol.info}")
                 ccState.isLevelOwner(sym) = true
               case _ =>
@@ -570,6 +569,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               if sym.isAnonymousFunction || sym.is(Param) || sym.is(ParamAccessor) then
                 // closures are handled specially; the newInfo is constrained from
                 // the expected type and only afterwards we recheck the definition
+                newInfo
+              else if sym.isPrimaryConstructor then
                 newInfo
               else new LazyType:
                 def complete(denot: SymDenotation)(using Context) =
