@@ -400,10 +400,10 @@ Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
                     |  SimpleRef ‘as’ id                                          Import(EmptyTree, ImportSelector(ref, id))
 ImportSpec        ::=  NamedSelector
-                    |  WildcardSelector
+                    |  WildCardSelector
                     | ‘{’ ImportSelectors) ‘}’
 NamedSelector     ::=  id [‘as’ (id | ‘_’)]
-WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+WildCardSelector  ::=  ‘*’ | ‘given’ [InfixType]
 ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
                     |  WildCardSelector {‘,’ WildCardSelector}
 
