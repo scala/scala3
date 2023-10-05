@@ -157,12 +157,12 @@ object Synthetics:
       case DefaultGetterName(nme.copy, n) =>
         transformDefaultGetterCaptures(info, symd.owner, n)
       case nme.unapply =>
-        if levelOwnersNeedCapParam then ccState.isLevelOwner(symd.symbol) = true
+        ccState.isLevelOwner(symd.symbol) = true
         transformUnapplyCaptures(info)
       case nme.apply | nme.copy =>
         addCaptureDeps(info)
       case nme.andThen | nme.compose =>
-        if levelOwnersNeedCapParam then ccState.isLevelOwner(symd.symbol) = true
+        ccState.isLevelOwner(symd.symbol) = true
         transformComposeCaptures(info, symd.owner)
       case nme.curried | nme.tupled =>
         transformCurriedTupledCaptures(info, symd.owner)
