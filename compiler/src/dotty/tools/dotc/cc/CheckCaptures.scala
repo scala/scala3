@@ -378,7 +378,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val tpw = tp.widen
         var tp1 = tpw
         val rootVar = CaptureRoot.Var(ctx.owner, sym)
-        if sym.skipConstructor.isLevelOwner then
+        if sym.isLevelOwner then
           tp1 = mapRoots(sym.localRoot.termRef, rootVar)(tp1)
           if tp1 ne tpw then
             ccSetup.println(i"INST local $sym: $tp, ${sym.localRoot} = $tp1")
