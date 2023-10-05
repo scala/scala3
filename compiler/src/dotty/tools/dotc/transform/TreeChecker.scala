@@ -571,6 +571,14 @@ object TreeChecker {
       super.typedClassDef(cdef, cls)
     }
 
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
+      val tpdTree = super.typedValDef(vdef, sym)
+      vdef.tpt.tpe match
+        case _: ValueType => () // ok
+        case _: ExprType if sym.isOneOf(TermParamOrAccessor) => () // ok
+        case _ => assert(false, i"wrong type, expected a value type for ${sym.fullName}, but found: ${sym.info}")
+      tpdTree
+
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       def defParamss = ddef.paramss.filter(!_.isEmpty).nestedMap(_.symbol)
       def layout(symss: List[List[Symbol]]): String =
