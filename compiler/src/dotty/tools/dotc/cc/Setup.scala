@@ -566,11 +566,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val newInfo = absInfo(localReturnType)
           if newInfo ne sym.info then
             val updatedInfo =
-              if sym.isAnonymousFunction || sym.is(Param) || sym.is(ParamAccessor) then
+              if sym.isAnonymousFunction
+                  || sym.is(Param)
+                  || sym.is(ParamAccessor)
+                  || sym.isPrimaryConstructor
+              then
                 // closures are handled specially; the newInfo is constrained from
                 // the expected type and only afterwards we recheck the definition
-                newInfo
-              else if sym.isPrimaryConstructor then
                 newInfo
               else new LazyType:
                 def complete(denot: SymDenotation)(using Context) =

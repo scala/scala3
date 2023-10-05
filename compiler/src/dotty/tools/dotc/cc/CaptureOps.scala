@@ -28,8 +28,6 @@ private val adaptUnpickledFunctionTypes = false
  */
 private val constrainRootsWhenMapping = true
 
-private val constructorsAreLevelOwners = false
-
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
@@ -394,7 +392,6 @@ extension (sym: Symbol)
             || symd.owner.is(CaptureChecked)
             || Synthetics.needsTransform(symd)
             )
-        && !symd.isConstructor
         && (!symd.isAnonymousFunction || sym.definedLocalRoot.exists)
         && takesCappedParamIn(symd.info)
         && { ccSetup.println(i"Level owner $sym"); true }
