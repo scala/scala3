@@ -11,7 +11,8 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       """|//> using lib "io.cir@@
          |package A
          |""".stripMargin,
-      "io.circe"
+      """|io.circe
+         |io.circul""".stripMargin
     )
 
   @Test def `multiple-deps` =
@@ -128,7 +129,8 @@ class CompletionScalaCliSuite extends BaseCompletionSuite:
       """|//> using dep "io.cir@@
          |package A
          |""".stripMargin,
-      "io.circe"
+      """|io.circe
+         |io.circul""".stripMargin
     )
 
   @Test def `multiple-deps2` =
