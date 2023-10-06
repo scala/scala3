@@ -511,7 +511,7 @@ object CaptureSet:
         if elem.isRootCapability then res
         else res.orElse(addNewElems(elem.captureSetOfInfo.elems, origin))
       else
-        //assert(id != 2, newElems)
+        //assert(id != 19 || !elem.isLocalRootCapability, elem.asInstanceOf[TermRef].localRootOwner)
         elems += elem
         if elem.isGenericRootCapability then rootAddedHandler()
         newElemAddedHandler(elem)

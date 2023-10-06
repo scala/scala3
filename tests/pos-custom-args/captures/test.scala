@@ -1,9 +1,16 @@
 class C
 type Cap = C^
 
-class Foo(x: Cap):
-  this: Foo^{x} =>
+type Proc = () => Unit
 
-def test(c: Cap) =
-  val x = Foo(c)
-  ()
+class Ref(p: () => Unit):
+  private var x: () => Unit = p
+  def set(x: () ->{cap[Ref]} Unit): Unit = this.x = x
+  def get: () => Unit = x
+
+def test(c: () => Unit) =
+  val p: () => Unit = ???
+  val r = Ref(p)
+  val x = r.get
+  r.set(x)
+
