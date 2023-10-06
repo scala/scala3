@@ -89,7 +89,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
-  "scala.quoted.Quotes.reflectModule.defnModule.PolyFunctionClass",
 
   // New feature: reverse method on Tuple
   "scala.Tuple.reverse",
