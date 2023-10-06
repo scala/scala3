@@ -11,7 +11,7 @@ import StdNames._
 import collection.mutable
 import ast.tpd._
 import reporting.trace
-import config.Printers.typr
+import config.Printers.{typr, ccSetup}
 import config.Feature
 import transform.SymUtils.*
 import typer.ProtoTypes._
@@ -93,13 +93,25 @@ object TypeOps:
         }
       }
 
+      def mapLocalRoot(tp: TermRef): Type =
+        if tp.symbol.owner.isLocalDummy then
+          val pre1 = toPrefix(pre, cls, tp.localRootOwner.asClass)
+          if pre1 ne tp then pre1.captureSet.impliedRoot(tp)
+            .showing(i"map local root $tp from $pre to $result", ccSetup)
+          else tp
+        else tp
+
       trace.conditionally(track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
-            if (sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)) tp
+            if sym.isStatic && !sym.maybeOwner.seesOpaques then tp
+            else if tp.prefix `eq` NoPrefix then
+              if tp.name == nme.LOCAL_CAPTURE_ROOT
+              then mapLocalRoot(tp.asInstanceOf[TermRef])
+              else tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case

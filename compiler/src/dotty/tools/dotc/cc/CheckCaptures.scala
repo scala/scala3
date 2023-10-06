@@ -382,11 +382,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           tp1 = mapRoots(sym.localRoot.termRef, rootVar)(tp1)
           if tp1 ne tpw then
             ccSetup.println(i"INST local $sym: $tp, ${sym.localRoot} = $tp1")
-        if sym.owner.isClass then
-          val tp2 = CaptureRoot.instantiateOuterClassRoots(sym, pre, rootVar)(tp1)
-          if tp2 ne tp1 then
-            ccSetup.println(i"INST class $sym: $tp, ${sym.localRoot} in $pre = $tp2")
-          tp1 = tp2
         if tpw eq tp1 then tp else tp1
       else
         tp
