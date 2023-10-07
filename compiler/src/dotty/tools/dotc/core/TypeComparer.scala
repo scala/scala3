@@ -68,6 +68,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
+  /** All capturing types in the original `tp1` enclosing the currently
+   *  compared type.
+   */
+  private var enclosingCapturing1: List[AnnotatedType] = Nil
+
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should
@@ -256,7 +261,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           report.log(explained(_.isSubType(tp1, tp2, approx)))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
-      val normalize = new TypeMap {
+      val normalize = new TypeMap with CaptureSet.IdempotentCaptRefMap {
         val DerefLimit = 10
         var derefCount = 0
         def apply(t: Type) = t match {
@@ -538,17 +543,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         res
 
-      case CapturingType(parent1, refs1) =>
-        if tp2.isAny then true
-        else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
-          || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
-        then
-          val tp2a =
-            if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
-            then tp2.unboxed
-            else tp2
-          recur(parent1, tp2a)
-        else thirdTry
+      case tp1 @ CapturingType(parent1, refs1) =>
+        def compareCapturing =
+          if tp2.isAny then true
+          else if subCaptures(refs1, tp2.captureSet, frozenConstraint).isOK && sameBoxed(tp1, tp2, refs1)
+            || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
+          then
+            val tp2a =
+              if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
+              then tp2.unboxed
+              else tp2
+            try
+              enclosingCapturing1 = tp1 :: enclosingCapturing1
+              recur(parent1, tp2a)
+            finally
+              enclosingCapturing1 = enclosingCapturing1.tail
+          else thirdTry
+        compareCapturing
       case tp1: AnnotatedType if !tp1.isRefining =>
         recur(tp1.parent, tp2)
       case tp1: MatchType =>
@@ -660,10 +671,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case (info1: MethodType, info2: MethodType) =>
                 matchingMethodParams(info1, info2, precise = false)
                 && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1 @ CapturingType(parent1, refs1), info2: Type) =>
+              case (info1 @ CapturingType(parent1, refs1), info2: Type)
+              if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 subCaptures(refs1, info2.captureSet, frozenConstraint).isOK && sameBoxed(info1, info2, refs1)
                   && isSubInfo(parent1, info2)
-              case (info1: Type, CapturingType(parent2, refs2)) =>
+              case (info1: Type, CapturingType(parent2, refs2))
+              if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                 val refs1 = info1.captureSet
                 (refs1.isAlwaysEmpty || subCaptures(refs1, refs2, frozenConstraint).isOK) && sameBoxed(info1, info2, refs1)
                   && isSubInfo(info1, parent2)
@@ -672,7 +685,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
-                return isSubInfo(tp1.member(nme.apply).info, tp2.refinedInfo)
+                return isSubInfo(tp1.ccMember(nme.apply).info, tp2.refinedInfo)
               else
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
@@ -2028,7 +2041,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
+    trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.ccMember(name).info}", subtyping) {
 
       // If the member is an abstract type and the prefix is a path, compare the member itself
       // instead of its bounds. This case is needed situations like:
@@ -2118,8 +2131,29 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
       end qualifies
 
-      tp1.member(name).hasAltWithInline(qualifies)
+      tp1.ccMember(name).hasAltWithInline(qualifies)
     }
+
+  extension (qual: Type)
+	/** Add all directly enclosing capture sets to `qual` and select `name` on the
+	 *  resulting type. A capture set is directly enclosing if there is an enclosing
+	 *  capturing type with the set and all types between `qual` and that type
+	 *  are RefinedTypes or CapturingTypes.
+	 */
+    def ccMember(name: Name): Denotation =
+      def isEnclosing(tp: Type): Boolean = tp match
+        case RefinedType(parent, _, _) => isEnclosing(parent)
+        case CapturingType(parent, _) => isEnclosing(parent)
+        case _ => tp eq qual
+
+      def addCaptures(tp: Type, encls: List[AnnotatedType]): Type = encls match
+        case (ct @ CapturingType(parent, refs)) :: encls1 if isEnclosing(parent) =>
+          addCaptures(CapturingType(tp, refs, ct.isBoxedCapturing), encls1)
+        case _ =>
+          tp
+
+      addCaptures(qual, enclosingCapturing1).member(name)
+    end ccMember
 
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable => tp
@@ -3397,7 +3431,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    traceIndented(s"hasMatchingMember(${show(tp1)} . $name, ${show(tp2.refinedInfo)}), member = ${show(tp1.member(name).info)}") {
+    traceIndented(s"hasMatchingMember(${show(tp1)} . $name, ${show(tp2.refinedInfo)}), member = ${show(tp1.ccMember(name).info)}") {
       super.hasMatchingMember(name, tp1, tp2)
     }
 
