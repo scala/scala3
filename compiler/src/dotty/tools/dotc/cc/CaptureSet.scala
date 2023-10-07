@@ -417,7 +417,7 @@ object CaptureSet:
     def isAlwaysEmpty = elems.isEmpty
 
     def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
-      CompareResult.Fail(this)
+      CompareResult.Fail(this :: Nil)
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
 
@@ -505,7 +505,7 @@ object CaptureSet:
 
     final def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then
-        CompareResult.Fail(this) // fail if variable is solved or given VarState is frozen
+        CompareResult.Fail(this :: Nil) // fail if variable is solved or given VarState is frozen
       else if !levelOK(elem) then
         val res = CompareResult.LevelError(this, elem)
         if elem.isRootCapability then res
@@ -518,7 +518,7 @@ object CaptureSet:
         // assert(id != 5 || elems.size != 3, this)
         (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(elem, this))
-        }
+        }.addToTrace(this)
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       !levelLimit.exists
@@ -540,7 +540,7 @@ object CaptureSet:
         deps += cs
         CompareResult.OK
       else
-        CompareResult.Fail(this)
+        CompareResult.Fail(this :: Nil)
 
     override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
       rootAddedHandler = handler
@@ -684,7 +684,7 @@ object CaptureSet:
         .andAlso {
           if added.isConst then CompareResult.OK
           else if added.asVar.recordDepsState() then { addAsDependentTo(added); CompareResult.OK }
-          else CompareResult.Fail(this)
+          else CompareResult.Fail(this :: Nil)
         }
         .andAlso {
           if (origin ne source) && (origin ne initial) && mapIsIdempotent then
@@ -701,7 +701,7 @@ object CaptureSet:
             // we approximate types resulting from such maps by returning a possible super type
             // from the actual type. But this is neither sound nor complete.
             report.warning(em"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
-            CompareResult.Fail(this)
+            CompareResult.Fail(this :: Nil)
           else
             CompareResult.OK
         }
@@ -767,7 +767,7 @@ object CaptureSet:
         super.addNewElems(newElems, origin)
           .andAlso {
             if filtered.size == newElems.size then source.tryInclude(newElems, this)
-            else CompareResult.Fail(this)
+            else CompareResult.Fail(this :: Nil)
           }
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
@@ -866,14 +866,16 @@ object CaptureSet:
 
   enum CompareResult extends Showable:
     case OK
-    case Fail(cs: CaptureSet)
+    case Fail(trace: List[CaptureSet])
     case LevelError(cs: CaptureSet, elem: CaptureRef)
 
     override def toText(printer: Printer): Text =
       inContext(printer.printerContext):
         this match
           case OK => Str("OK")
-          case Fail(blocking: CaptureSet) => blocking.show
+          case Fail(trace) =>
+            if ctx.settings.YccDebug.value then printer.toText(trace, ", ")
+            else blocking.show
           case LevelError(cs: CaptureSet, elem: CaptureRef) =>
             Str(i"($elem at wrong level for $cs in ${cs.levelLimit})")
 
@@ -882,7 +884,7 @@ object CaptureSet:
 
     /** If not isOK, the blocking capture set */
     def blocking: CaptureSet = (this: @unchecked) match
-      case Fail(cs) => cs
+      case Fail(cs) => cs.last
       case LevelError(cs, _) => cs
 
     /** Optionally, this result if it is a level error */
@@ -899,6 +901,10 @@ object CaptureSet:
         val alt = op
         if alt.isOK then alt
         else this
+
+    inline def addToTrace(cs: CaptureSet) = this match
+      case Fail(trace) => Fail(cs :: trace)
+      case _ => this
   end CompareResult
 
   /** A VarState serves as a snapshot mechanism that can undo
