@@ -319,7 +319,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           includeCallCaptures(tree.symbol, tree.srcPos)
       else
         markFree(tree.symbol, tree.srcPos)
-      instantiateLocalRoots(tree.symbol, NoPrefix, pt):
+      instantiateLocalRoots(tree.symbol, NoPrefix, pt, tree.srcPos):
         super.recheckIdent(tree, pt)
 
     /** A specialized implementation of the selection rule.
@@ -349,7 +349,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       val selType = recheckSelection(tree, qualType, name, disambiguate)
       val selCs = selType.widen.captureSet
-      instantiateLocalRoots(tree.symbol, qualType, pt):
+      instantiateLocalRoots(tree.symbol, qualType, pt, tree.srcPos):
         if selCs.isAlwaysEmpty || selType.widen.isBoxedCapturing || qualType.isBoxedCapturing then
           selType
         else
@@ -370,7 +370,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - `tp` is the type of a function that gets applied, either as a method
      *     or as a function value that gets applied.
      */
-    def instantiateLocalRoots(sym: Symbol, pre: Type, pt: Type)(tp: Type)(using Context): Type =
+    def instantiateLocalRoots(sym: Symbol, pre: Type, pt: Type, pos: SrcPos)(tp: Type)(using Context): Type =
       def canInstantiate =
         sym.is(Method, butNot = Accessor)
         || sym.isTerm && defn.isFunctionType(sym.info) && pt == AnySelectionProto
@@ -379,6 +379,16 @@ class CheckCaptures extends Recheck, SymTransformer:
         var tp1 = tpw
         val rootVar = CaptureRoot.Var(ctx.owner, sym)
         if sym.isLevelOwner then
+          val outerOwner = sym.skipConstructor.owner.levelOwner
+          if outerOwner.isClass then
+            val outerRoot = outerOwner.localRoot.termRef
+            outerRoot.asSeenFrom(pre, sym.owner) match
+              case outerLimit: CaptureRoot if outerLimit ne outerRoot =>
+                capt.println(i"constraining $rootVar of $sym by $outerLimit")
+                if !outerLimit.encloses(rootVar) then
+                // Should this be an assertion failure instead?
+                  report.error(em"outer instance $outerLimit does not enclose local root $rootVar", pos)
+              case _ =>
           tp1 = mapRoots(sym.localRoot.termRef, rootVar)(tp1)
           if tp1 ne tpw then
             ccSetup.println(i"INST local $sym: $tp, ${sym.localRoot} = $tp1")

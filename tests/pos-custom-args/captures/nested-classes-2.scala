@@ -20,6 +20,5 @@ def test2(x1: (() => Unit), x2: (() => Unit) => Unit) =
   def test3(y1: (() => Unit), y2: (() => Unit) => Unit) =
     val cc1/*: C1^{cap[test3]}*/ = C1(y1, y2)  // error (but should be OK)
     val cc2 = cc1.c2(x1, x2)         // error (but should be OK)
-    ()
     //val cc3: cc1.C2^{cap[test2]} = cc2
 
