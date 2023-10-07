@@ -274,6 +274,11 @@ sealed abstract class CaptureSet extends Showable:
       else Const(elems.filter(p))
     else Filtered(asVar, p)
 
+  /** This set with a new owner and therefore also a new levelLimit */
+  def changeOwner(newOwner: Symbol)(using Context): CaptureSet =
+    if this.isConst then this
+    else ChangedOwner(asVar, newOwner)
+
   /** Capture set obtained by applying `tm` to all elements of the current capture set
    *  and joining the results. If the current capture set is a variable, the same
    *  transformation is applied to all future additions of new elements.
@@ -751,6 +756,10 @@ object CaptureSet:
 
     override def toString = s"BiMapped$id($source, elems = $elems)"
   end BiMapped
+
+  /** Same as `source` but with a new directOwner */
+  class ChangedOwner private[CaptureSet](val source: Var, newOwner: Symbol)(using @constructorOnly ctx: Context)
+  extends DerivedVar(newOwner, source.elems)
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
