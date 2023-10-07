@@ -509,7 +509,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             augmentConstructorType(parent, initCs ++ refs)
           case _ =>
             val (refined, cs) = addParamArgRefinements(core, initCs)
-            refined.capturing(cs)
+            refined.capturing(cs.changeOwner(ctx.owner))
 
         augmentConstructorType(ownType, capturedVars(cls) ++ capturedVars(sym))
           .showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
