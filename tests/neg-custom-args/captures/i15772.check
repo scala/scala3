@@ -6,8 +6,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:46 ---------------------------------------
 20 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
-   |      Found:    (C{val arg: C^{cap[C]}}^{c} ->{'cap[main1..boxed1](from instantiating box1), c} Unit) ->{c} Unit
-   |      Required: (C^{cap[boxed1]} ->{cap[boxed1]} Unit) -> Unit
+   |  Found:    (C{val arg: C^{cap[main1]}}^{c} ->{'cap[main1..boxed1](from instantiating box1), c} Unit) ->{c} Unit
+   |  Required: (C^{cap[boxed1]} ->{cap[boxed1]} Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:26:26 ------------------------------------------------------------
@@ -18,15 +18,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:35 ---------------------------------------
 27 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
-   |      Found:    (C{val arg: C^{cap[C]}}^{c} ->{'cap[main2..boxed2](from instantiating box2), c} Unit) ->{c} Unit
-   |      Required: (C^{cap[boxed2]} ->{cap[boxed2]} Unit) -> Unit
+   |  Found:    (C{val arg: C^{cap[main2]}}^{c} ->{'cap[main2..boxed2](from instantiating box2), c} Unit) ->{c} Unit
+   |  Required: (C^{cap[boxed2]} ->{cap[boxed2]} Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:33 ---------------------------------------
 33 |  val boxed2 : Observe[C]^ = box2(c) // error
    |                             ^^^^^^^
-   |                         Found:    (C{val arg: C^{cap[C]}}^{cap[main3]} ->{cap[main3]} Unit) ->{cap[main3]} Unit
-   |                         Required: (C ->{cap[boxed2]} Unit) ->{cap[boxed2]} Unit
+   |                     Found:    (C{val arg: C^{cap[main3]}}^{cap[main3]} ->{cap[main3]} Unit) ->{cap[main3]} Unit
+   |                     Required: (C ->{cap[boxed2]} Unit) ->{cap[boxed2]} Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------

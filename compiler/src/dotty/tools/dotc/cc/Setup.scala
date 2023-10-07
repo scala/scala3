@@ -166,12 +166,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *     pos.../lists.scala and pos/...curried-shorthands.scala fail.
     *     Need to figure out why.
     *  3. Refine other class types C by adding capture set variables to their parameter getters
-    *     (see addCaptureRefinements)
+    *     (see addCaptureRefinements), provided `refine` is true.
     *  4. Add capture set variables to all types that can be tracked
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def mapInferred(using Context) = new TypeMap:
+  private def mapInferred(refine: Boolean)(using Context): TypeMap = new TypeMap:
     override def toString = "map inferred"
 
     /** Refine a possibly applied class type C where the class has tracked parameters
@@ -179,13 +179,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      *  where CV_1, ..., CV_n are fresh capture sets.
      */
     def addCaptureRefinements(tp: Type): Type = tp match
-      case _: TypeRef | _: AppliedType if tp.typeParams.isEmpty =>
+      case _: TypeRef | _: AppliedType if refine && tp.typeParams.isEmpty =>
         tp.typeSymbol match
           case cls: ClassSymbol
           if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
             cls.paramGetters.foldLeft(tp) { (core, getter) =>
               if atPhase(thisPhase.next)(getter.termRef.isTracked) then
-                val getterType = tp.memberInfo(getter).strippedDealias
+                val getterType =
+                  mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                 RefinedType(core, getter.name,
                     CapturingType(getterType, CaptureSet.RefiningVar(NoSymbol, getter)))
                   .showing(i"add capture refinement $tp --> $result", ccSetup)
@@ -254,7 +255,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   end mapInferred
 
   private def transformInferredType(tp: Type)(using Context): Type =
-    mapInferred(tp)
+    mapInferred(refine = true)(tp)
 
   private def transformExplicitType(tp: Type, rootTarget: Symbol, tptToCheck: Option[Tree] = None)(using Context): Type =
     val expandAliases = new DeepTypeMap:
