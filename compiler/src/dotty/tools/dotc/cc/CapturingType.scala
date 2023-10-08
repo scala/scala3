@@ -77,15 +77,10 @@ object CapturingType:
       None
 
   /** Check whether a type is uncachable when computing `baseType`.
-    * - Avoid caching all the types during the setup phase, since at that point
-    *   the capture set variables are not fully installed yet.
-    * - Avoid caching capturing types when IgnoreCaptures mode is set, since the
-    *   capture sets may be thrown away in the computed base type.
-    */
+   * We avoid caching capturing types when IgnoreCaptures mode is set, since the
+   */
   def isUncachable(tp: Type)(using Context): Boolean =
-    ctx.phase == Phases.checkCapturesPhase
-    && (Setup.isDuringSetup
-        || ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined)
+    ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined
 
 end CapturingType
 
