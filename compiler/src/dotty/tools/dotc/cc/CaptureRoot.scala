@@ -136,57 +136,6 @@ object CaptureRoot:
       case (r1: Var, r2) =>
         r1.freshEnclosedBy(r1, r2)
 
-  /** A map that instantiates all outer class roots in the info of `sym`
-   *  according to prefix `pre`. This is called for adapting the info of
-   *  a selection `pre.sym`. The logic of the function is modeled after
-   *  AsSeenFrom. But where AsSeenFrom maps a `this` of class `C` to a corresponding
-   *  prefix, the present method maps a local root corresponding to a class to
-   *  the root implied by the capture set of the corresponding prefix.
-   *  @param  sym     the class member symbol whose info is mapped
-   *  @param  pre     the prefix from which `sym` is selected
-   *  @param  deafilt the capture root to use if the capture set of the corresponding
-   *                  prfefix is empty.
-   */
-  class instantiateOuterClassRoots(sym: Symbol, pre: Type, default: CaptureRoot)(using Context) extends ApproximatingTypeMap:
-    val cls = sym.owner.asClass
-
-    def apply(tp: Type): Type =
-
-      /** Analogous to `toPrefix` in `AssSeenFromMap`, but result prefix gets
-       *  further mapped to a capture root via `impliedRoot`.
-       */
-      def mapCaptureRoot(pre: Type, cls: Symbol, thiscls: ClassSymbol, fallBack: CaptureRoot): CaptureRoot =
-        if (pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass) then
-          fallBack
-        else pre match
-          case pre: SuperType =>
-            mapCaptureRoot(pre.thistpe, cls, thiscls, fallBack)
-          case _ =>
-            if thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists then
-              pre.captureSet.impliedRoot(default)
-            else if pre.termSymbol.is(Package) && !thiscls.is(Package) then
-              mapCaptureRoot(pre.select(nme.PACKAGE), cls, thiscls, fallBack)
-            else
-              mapCaptureRoot(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls, fallBack)
-
-      def instRoot(elem: CaptureRef): CaptureRef = elem match
-        case elem: TermRef
-        if elem.name == nme.LOCAL_CAPTURE_ROOT && elem.symbol.owner.isLocalDummy =>
-          mapCaptureRoot(pre, cls, elem.localRootOwner.asClass, elem)
-            .showing(i"mapped capture root $elem in $cls to $result", capt)
-        case _ =>
-          elem
-
-      tp match
-        case t @ CapturingType(parent, refs) =>
-          val elems = refs.elems.toList
-          val elems1 = elems.mapConserve(instRoot)
-          val refs1 = if elems1 eq elems then refs else CaptureSet(elems1*)
-          t.derivedCapturingType(apply(parent), refs1)
-        case _ =>
-          mapOver(tp)
-  end instantiateOuterClassRoots
-
 end CaptureRoot
 
 
