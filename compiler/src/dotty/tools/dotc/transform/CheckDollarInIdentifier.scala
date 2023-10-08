@@ -7,19 +7,19 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.report
-import dotty.tools.dotc.reporting.*
-import dotty.tools.dotc.util.SourcePosition
 
 
 class CheckDollarInIdentifier extends MiniPhase:
   import CheckDollarInIdentifier.ShouldNotContainDollarSignError
 
-  override def phaseName: String = CheckUnused.phaseNamePrefix
+  override def phaseName: String = CheckDollarInIdentifier.phaseName
 
-  override def description: String = CheckUnused.description
+  override def description: String = CheckDollarInIdentifier.description
 
   override def isRunnable(using Context): Boolean =
-    super.isRunnable && ctx.settings.WdollarCheck.value
+    super.isRunnable &&
+      ctx.settings.WdollarCheck.value &&
+      !ctx.isJava
 
   override def transformValDef(tree: tpd.ValDef)(using Context): tpd.Tree =
     reportDollarInIdentifier(tree)
@@ -81,7 +81,7 @@ class CheckDollarInIdentifier extends MiniPhase:
 
 
 object CheckDollarInIdentifier:
-  val name: String = "dollarWarn"
+  val phaseName: String = "checkDollarInIdentifier"
   val description: String = "warns if identifiers contain dollar sign, $"
 
   private val ShouldNotContainDollarSignError = s"identifiers should not include dollar sign"
