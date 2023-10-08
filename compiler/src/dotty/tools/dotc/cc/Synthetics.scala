@@ -7,7 +7,6 @@ import Symbols.*, SymDenotations.*, Contexts.*, Flags.*, Types.*, Decorators.*
 import StdNames.nme
 import Names.Name
 import NameKinds.DefaultGetterName
-import Phases.checkCapturesPhase
 import config.Printers.capt
 
 /** Classification and transformation methods for function methods and
@@ -75,7 +74,7 @@ object Synthetics:
      */
     def addCaptureDeps(info: Type): Type = info match
       case info: MethodType =>
-        val trackedParams = info.paramRefs.filter(atPhase(checkCapturesPhase)(_.isTracked))
+        val trackedParams = info.paramRefs.filter(atPhase(Phases.checkCapturesPhase)(_.isTracked))
         def augmentResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>
             tp.derivedLambdaType(resType = augmentResult(tp.resType))

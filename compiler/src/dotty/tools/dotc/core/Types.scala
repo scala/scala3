@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, CaptureRoot}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, CaptureRoot, isCaptureChecking}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -2205,7 +2205,7 @@ object Types {
       else
         myCaptureSet = CaptureSet.Pending
         val computed = CaptureSet.ofInfo(this)
-        if ctx.phase != Phases.checkCapturesPhase || underlying.isProvisional then
+        if !isCaptureChecking || underlying.isProvisional then
           myCaptureSet = null
         else
           myCaptureSet = computed

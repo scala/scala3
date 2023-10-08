@@ -8,6 +8,7 @@ import NameKinds.DefaultGetterName
 import NullOpsDecorator._
 import collection.immutable.BitSet
 import scala.annotation.tailrec
+import cc.isCaptureChecking
 
 /** A module that can produce a kind of iterator (`Cursor`),
  *  which yields all pairs of overriding/overridden symbols
@@ -31,7 +32,7 @@ object OverridingPairs:
      */
     protected def exclude(sym: Symbol): Boolean =
       !sym.memberCanMatchInheritedSymbols
-      || ctx.phase == Phases.checkCapturesPhase && sym.is(Recheck.ResetPrivate)
+      || isCaptureChecking && sym.is(Recheck.ResetPrivate)
 
     /** The parents of base that are checked when deciding whether an overriding
      *  pair has already been treated in a parent class.

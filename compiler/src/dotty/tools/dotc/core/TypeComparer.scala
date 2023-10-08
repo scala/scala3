@@ -657,7 +657,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareRefined: Boolean =
           val tp1w = tp1.widen
 
-          if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
+          if isCaptureCheckingOrSetup then
 
             // A relaxed version of subtyping for dependent functions where method types
             // are treated as contravariant.
@@ -1013,10 +1013,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
           tp1 match
-            case tp1: CaptureRef
-            if (ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev)
-                && tp1.isTracked
-            =>
+            case tp1: CaptureRef if isCaptureCheckingOrSetup && tp1.isTracked =>
               CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
             case _ =>
               tp1w
@@ -2117,7 +2114,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             ExprType(info1.resType)
           case info1 => info1
 
-        if ccConfig.oldRefiningRoots && ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
+        if ccConfig.oldRefiningVars && isCaptureCheckingOrSetup then
           // When comparing against a RefiningVar refinement, map the
           // localRoot of the corresponding class in `tp1` to the owner of the
           // refining capture set.
@@ -2262,7 +2259,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val paramsMatch =
               if precise then
                 isSameTypeWhenFrozen(formal1, formal2a)
-              else if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
+              else if isCaptureCheckingOrSetup then
                 // allow to constrain capture set variables
                 isSubType(formal2a, formal1)
               else

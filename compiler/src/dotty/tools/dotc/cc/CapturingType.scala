@@ -56,10 +56,10 @@ object CapturingType:
   /** Decompose `tp` as a capturing type without taking IgnoreCaptures into account */
   def decomposeCapturingType(tp: Type)(using Context): Option[(Type, CaptureSet)] = tp match
     case AnnotatedType(parent, ann: CaptureAnnotation)
-    if ctx.phaseId <= Phases.checkCapturesPhase.id =>
+    if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
     case AnnotatedType(parent, ann)
-    if ann.symbol == defn.RetainsAnnot && ctx.phase == Phases.checkCapturesPhase =>
+    if ann.symbol == defn.RetainsAnnot && isCaptureChecking =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets
