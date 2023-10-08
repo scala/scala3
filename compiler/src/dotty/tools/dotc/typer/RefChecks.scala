@@ -20,7 +20,7 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
-import cc.{mapRoots, localRoot}
+import cc.{mapRoots, localRoot, isCaptureChecking}
 
 object RefChecks {
   import tpd._
@@ -105,7 +105,7 @@ object RefChecks {
 
       def checkSelfConforms(other: ClassSymbol) =
         var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
-        if ctx.phase == Phases.checkCapturesPhase then
+        if isCaptureChecking then
           otherSelf = mapRoots(other.localRoot.termRef, cls.localRoot.termRef)(otherSelf)
             .showing(i"map self $otherSelf = $result", capt)
         if otherSelf.exists then
