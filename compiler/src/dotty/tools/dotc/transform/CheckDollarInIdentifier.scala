@@ -47,6 +47,7 @@ class CheckDollarInIdentifier extends MiniPhase:
 
   private val allowedDefTermNames = List(
     nme.DOLLAR_NEW,
+    nme.ANON_FUN,
   ).map(_.toString)
 
   private def allowedTerms[T <: Tree](tree: T): List[String] =
