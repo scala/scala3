@@ -17,16 +17,21 @@ import collection.mutable
 private val Captures: Key[CaptureSet] = Key()
 private val BoxedType: Key[BoxedTypeCache] = Key()
 
-/** Switch whether unpickled function types and byname types should be mapped to
- *  impure types. With the new gradual typing using Fluid capture sets, this should
- *  be no longer needed. Also, it has bad interactions with pickling tests.
- */
-private val adaptUnpickledFunctionTypes = false
+object ccConfig:
 
-/** Switch whether we constrain a root var that includes the source of a
- *  root map to be an alias of that source (so that it can be mapped)
- */
-private val constrainRootsWhenMapping = true
+  /** Switch whether unpickled function types and byname types should be mapped to
+   *  impure types. With the new gradual typing using Fluid capture sets, this should
+   *  be no longer needed. Also, it has bad interactions with pickling tests.
+   */
+  private[cc] val adaptUnpickledFunctionTypes = false
+
+  /** Switch whether we constrain a root var that includes the source of a
+   *  root map to be an alias of that source (so that it can be mapped)
+   */
+  private[cc] val constrainRootsWhenMapping = true
+
+  val oldRefiningRoots = false
+end ccConfig
 
 def allowUniversalInBoxed(using Context) =
   Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
@@ -86,7 +91,7 @@ class mapRoots(from0: CaptureRoot, to: CaptureRoot)(using Context) extends BiTyp
   def apply(t: Type): Type =
     if t eq from then to
     else t match
-      case t: CaptureRoot.Var if constrainRootsWhenMapping && t.unifiesWith(from) =>
+      case t: CaptureRoot.Var if ccConfig.constrainRootsWhenMapping && t.unifiesWith(from) =>
         to
       case t @ Setup.Box(t1) =>
         t.derivedBox(this(t1))
@@ -129,7 +134,7 @@ extension (tree: Tree)
    *  a by name parameter type, turning the latter into an impure by name parameter type.
    */
   def adaptByNameArgUnderPureFuns(using Context): Tree =
-    if adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
+    if ccConfig.adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
       val rbn = defn.RetainsByNameAnnot
       Annotated(tree,
         New(rbn.typeRef).select(rbn.primaryConstructor).appliedTo(
@@ -228,7 +233,7 @@ extension (tp: Type)
    */
   def adaptFunctionTypeUnderPureFuns(using Context): Type = tp match
     case AppliedType(fn, args)
-    if adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere && defn.isFunctionClass(fn.typeSymbol) =>
+    if ccConfig.adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere && defn.isFunctionClass(fn.typeSymbol) =>
       val fname = fn.typeSymbol.name
       defn.FunctionType(
         fname.functionArity,
@@ -241,7 +246,7 @@ extension (tp: Type)
    *  a by name parameter type, turning the latter into an impure by name parameter type.
    */
   def adaptByNameArgUnderPureFuns(using Context): Type =
-    if adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
+    if ccConfig.adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
       AnnotatedType(tp,
         CaptureAnnotation(CaptureSet.universal, boxed = false)(defn.RetainsByNameAnnot))
     else

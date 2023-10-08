@@ -2117,7 +2117,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             ExprType(info1.resType)
           case info1 => info1
 
-        if ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
+        if ccConfig.oldRefiningRoots && ctx.phase == Phases.checkCapturesPhase || ctx.phase == Phases.checkCapturesPhase.prev then
           // When comparing against a RefiningVar refinement, map the
           // localRoot of the corresponding class in `tp1` to the owner of the
           // refining capture set.
