@@ -613,10 +613,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // why the class was picked as level owner. But self types should not be able
               // to mention other fields.
               val newSelfType = CapturingType(cinfo.selfType, CaptureSet.Var(cls))
-              ccSetup.println(i"mapped self type for $cls: $newSelfType, was $selfInfo")
-              val ps1 = ps.mapConserve(transformExplicitType(_, rootTarget = ctx.owner))
+              val ps1 = inContext(ctx.withOwner(cls)):
+                ps.mapConserve(transformExplicitType(_, rootTarget = cls))
               val newInfo = ClassInfo(prefix, cls, ps1, decls, newSelfType)
               updateInfo(cls, newInfo)
+              ccSetup.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
               cls.thisType.asInstanceOf[ThisType].invalidateCaches()
               if cls.is(ModuleClass) then
                 // if it's a module, the capture set of the module reference is the capture set of the self type

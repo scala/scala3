@@ -5962,17 +5962,16 @@ object Types {
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
-  abstract class DeepTypeMap(using Context) extends TypeMap {
-    override def mapClassInfo(tp: ClassInfo): ClassInfo = {
+  abstract class DeepTypeMap(using Context) extends TypeMap:
+    override def mapClassInfo(tp: ClassInfo): ClassInfo =
       val prefix1 = this(tp.prefix)
-      val parents1 = tp.declaredParents mapConserve this
-      val selfInfo1: TypeOrSymbol = tp.selfInfo match {
-        case selfInfo: Type => inContext(ctx.withOwner(tp.cls))(this(selfInfo))
-        case selfInfo => selfInfo
-      }
-      tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
-    }
-  }
+      inContext(ctx.withOwner(tp.cls)):
+        val parents1 = tp.declaredParents.mapConserve(this)
+        val selfInfo1: TypeOrSymbol = tp.selfInfo match
+          case selfInfo: Type => inContext(ctx.withOwner(tp.cls))(this(selfInfo))
+          case selfInfo => selfInfo
+        tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
+  end DeepTypeMap
 
   @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
     def apply(tp: Type): Type = tp
