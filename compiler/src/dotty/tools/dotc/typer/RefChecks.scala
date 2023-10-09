@@ -20,7 +20,7 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
-import cc.{mapRoots, localRoot, isCaptureChecking}
+import cc.{mapRoots, localRoot, isCaptureChecking, isLevelOwner}
 
 object RefChecks {
   import tpd._
@@ -269,7 +269,7 @@ object RefChecks {
         if dcl.is(Deferred) then
           for other <- dcl.allOverriddenSymbols do
             if !other.is(Deferred) then
-              checkOverride(checkSubType, dcl, other)
+              checkOverride(subtypeChecker, dcl, other)
     end checkAll
   end OverridingPairsChecker
 
@@ -375,7 +375,11 @@ object RefChecks {
       def memberTp(self: Type) =
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
         else self.memberInfo(member)
-      def otherTp(self: Type) = self.memberInfo(other)
+      def otherTp(self: Type) =
+        val info = self.memberInfo(other)
+        if isCaptureChecking && member.isLevelOwner && other.isLevelOwner
+        then info.substSym(other.localRoot :: Nil, member.localRoot :: Nil)
+        else info
 
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 
