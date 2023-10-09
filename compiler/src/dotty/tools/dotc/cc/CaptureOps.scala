@@ -397,8 +397,11 @@ extension (sym: Symbol)
     def isCaseClassSynthetic = // TODO drop
       symd.maybeOwner.isClass && symd.owner.is(Case) && symd.is(Synthetic) && symd.info.firstParamNames.isEmpty
     def classQualifies =
-      takesCappedParamIn(symd.primaryConstructor.info)
-      || symd.asClass.givenSelfType.hasUniversalRootOf(sym)
+      if sym.isEffectivelyFinal then
+        takesCappedParamIn(symd.primaryConstructor.info)
+        || symd.asClass.givenSelfType.hasUniversalRootOf(sym)
+      else
+        !sym.isPureClass
     def compute =
       if symd.isClass then
         symd.is(CaptureChecked) && classQualifies || symd.isRoot
