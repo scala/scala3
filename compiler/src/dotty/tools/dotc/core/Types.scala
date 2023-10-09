@@ -5120,10 +5120,8 @@ object Types {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf.dealiasKeepAnnots match
-            case givenSelf1 @ CapturingType(tp, _) =>
-              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
-            case givenSelf1 @ RetainingType(tp, _) =>
-              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
+            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol == defn.RetainsAnnot =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, ann)
             case _ =>
               AndType(givenSelf, appliedRef)
         }
@@ -5969,7 +5967,7 @@ object Types {
       val prefix1 = this(tp.prefix)
       val parents1 = tp.declaredParents mapConserve this
       val selfInfo1: TypeOrSymbol = tp.selfInfo match {
-        case selfInfo: Type => this(selfInfo)
+        case selfInfo: Type => inContext(ctx.withOwner(tp.cls))(this(selfInfo))
         case selfInfo => selfInfo
       }
       tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
