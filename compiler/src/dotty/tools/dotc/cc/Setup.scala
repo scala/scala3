@@ -113,9 +113,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
     if !pastRecheck && Feature.ccEnabledSomewhere then
       val sym = symd.symbol
+      def rootTarget =
+        if sym.isAliasType && sym.isStatic then NoSymbol else sym
       def mappedInfo =
         if toBeUpdated.contains(sym) then symd.info
-        else transformExplicitType(symd.info, rootTarget = sym)
+        else transformExplicitType(symd.info, rootTarget)
       // TODO if sym is class && level owner: add a capture root
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
@@ -123,13 +125,26 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         symd.copySymDenotation(info = fluidify(sym.info))
       else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
         val newFlags = newFlagsFor(symd)
-        val newInfo = mappedInfo
+        var newInfo = mappedInfo
+        if sym.is(ModuleVal) && !sym.isStatic then
+          val selfType1 = transformSelfType(sym.moduleClass)
+          if selfType1.exists then
+            newInfo = newInfo.capturing(selfType1.captureSet)
+            sym.termRef.invalidateCaches()
+        if sym.isClass then
+          sym.thisType.asInstanceOf[ThisType].invalidateCaches()
         if newFlags != symd.flags || (newInfo ne sym.info)
         then symd.copySymDenotation(initFlags = newFlags, info = newInfo)
         else symd
       else symd
     else symd
   end transformSym
+
+  def transformSelfType(sym: Symbol)(using Context) = (sym.info: @unchecked) match
+    case ClassInfo(_, cls, _, _, selfInfo: Type) =>
+      inContext(ctx.withOwner(cls)):
+        transformExplicitType(selfInfo, rootTarget = ctx.owner)
+    case _ => NoType
 
   /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
    *  convert it to be boxed.
@@ -490,15 +505,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       postProcess(tree)
     end traverse
 
-    extension (sym: Symbol)(using Context) def unlessStatic =
-      val owner = sym.levelOwner
-      if sym.isStaticOwner then NoSymbol else owner
-
     def postProcess(tree: Tree)(using Context): Unit = tree match
       case tree: TypeTree =>
         val lowner =
         transformTT(tree, boxed = false, exact = false,
-            rootTarget = ctx.owner.unlessStatic // roots of other types in static locations are not mapped
+            rootTarget = if ctx.owner.isStaticOwner then NoSymbol else ctx.owner
+            // roots of other types in static locations are not mapped
           )
       case tree: ValOrDefDef =>
         val sym = tree.symbol
@@ -594,22 +606,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tree.symbol match
           case cls: ClassSymbol =>
             val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-            val newSelfType =
-              if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
-                // add capture set to self type of nested classes if no self type is given explicitly.
-                // It's unclear what the right level owner should be. A self type should
-                // be able to mention class parameters, which are owned by the class; that's
-                // why the class was picked as level owner. But self types should not be able
-                // to mention other fields.
-                CapturingType(cinfo.selfType, CaptureSet.Var(cls))
-              else selfInfo match
-                case selfInfo: Type =>
-                  val selfInfo1 = inContext(ctx.withOwner(cls)):
-                    transformExplicitType(selfInfo, rootTarget = ctx.owner)
-                  if selfInfo1 eq selfInfo then NoType else selfInfo1
-                case _ =>
-                  NoType
-            if newSelfType.exists then
+            if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
+              // add capture set to self type of nested classes if no self type is given explicitly.
+              // It's unclear what the right level owner should be. A self type should
+              // be able to mention class parameters, which are owned by the class; that's
+              // why the class was picked as level owner. But self types should not be able
+              // to mention other fields.
+              val newSelfType = CapturingType(cinfo.selfType, CaptureSet.Var(cls))
               ccSetup.println(i"mapped self type for $cls: $newSelfType, was $selfInfo")
               val ps1 = ps.mapConserve(transformExplicitType(_, rootTarget = ctx.owner))
               val newInfo = ClassInfo(prefix, cls, ps1, decls, newSelfType)
@@ -621,11 +624,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 updateInfo(modul, CapturingType(modul.info, newSelfType.captureSet))
                 modul.termRef.invalidateCaches()
           case _ =>
-            val info = tree.symbol.info
-            val newInfo = transformExplicitType(info, rootTarget = ctx.owner.unlessStatic)
-            updateInfo(tree.symbol, newInfo)
-            if newInfo ne info then
-              ccSetup.println(i"update info of ${tree.symbol} from $info to $newInfo")
       case _ =>
     end postProcess
   end setupTraverser

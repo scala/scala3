@@ -1110,12 +1110,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         }
         assert(roots.nonEmpty)
         for case root: ClassSymbol <- roots do
-          inContext(ctx.fresh.setOwner(root).withProperty(LooseRootChecking, Some(()))):
-            // Without LooseRootChecking, we get problems with F-bounded parent types.
-            // These can make `cap` "pop out" in ways that are hard to prevent. I believe
-            // to prevent it we'd have to map `cap` in a whole class graph with all parent
-            // classes, which would be very expensive. So for now we approximate by assuming
-            // different roots are compatible for self type conformance checking.
+          inContext(ctx.fresh.setOwner(root)):
             checkSelfAgainstParents(root, root.baseClasses)
             val selfType = root.asClass.classInfo.selfType
             interpolator(startingVariance = -1).traverse(selfType)
@@ -1238,16 +1233,15 @@ class CheckCaptures extends Recheck, SymTransformer:
       setup.postCheck()
 
       if !ctx.reporter.errorsReported then
-        //inContext(ctx.withProperty(LooseRootChecking, Some(()))):
-          // We dont report errors here if previous errors were reported, because other
-          // errors often result in bad applied types, but flagging these bad types gives
-          // often worse error messages than the original errors.
-          val checkApplied = new TreeTraverser:
-            def traverse(t: Tree)(using Context) = t match
-              case tree: InferredTypeTree =>
-              case tree: New =>
-              case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
-              case _ => traverseChildren(t)
-          checkApplied.traverse(unit)
+        // We dont report errors here if previous errors were reported, because other
+        // errors often result in bad applied types, but flagging these bad types gives
+        // often worse error messages than the original errors.
+        val checkApplied = new TreeTraverser:
+          def traverse(t: Tree)(using Context) = t match
+            case tree: InferredTypeTree =>
+            case tree: New =>
+            case tree: TypeTree => checkAppliedTypesIn(tree.withKnownType)
+            case _ => traverseChildren(t)
+        checkApplied.traverse(unit)
   end CaptureChecker
 end CheckCaptures

@@ -95,7 +95,7 @@ trait FollowAliases extends TypeMap:
         if t2 ne t1 then return t2
       mapOver(t)
 
-class mapRoots(from0: CaptureRoot, to: CaptureRoot)(using Context) extends BiTypeMap, FollowAliases:
+class mapRoots(from0: CaptureRoot, to: CaptureRoot)(using Context) extends DeepTypeMap, BiTypeMap, FollowAliases:
   val from = from0.followAlias
 
   //override val toString = i"mapRoots($from, $to)"
