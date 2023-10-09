@@ -7,6 +7,3 @@ object A {
 object B {
   val s: String = s"${A.a}a"
 }
-
-@main
-def Test = print(A.a)
