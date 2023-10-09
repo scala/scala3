@@ -19,7 +19,7 @@ import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
 import reporting.TestingReporter
-import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing, isLevelOwner, localRoot}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -96,8 +96,9 @@ object TypeOps:
       def mapLocalRoot(tp: TermRef): Type =
         if tp.symbol.owner.isLocalDummy then
           val pre1 = toPrefix(pre, cls, tp.localRootOwner.asClass)
-          if pre1 ne tp then pre1.captureSet.impliedRoot(tp)
-            .showing(i"map local root $tp from $pre to $result", ccSetup)
+          if pre1 ne tp then pre1 match
+            case pre1: ThisType if pre1.cls.isLevelOwner => pre1.cls.localRoot.termRef
+            case _ => pre1.captureSet.impliedRoot(tp)
           else tp
         else tp
 
