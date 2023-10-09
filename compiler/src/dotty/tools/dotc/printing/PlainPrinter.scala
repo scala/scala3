@@ -407,7 +407,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
           if ctx.owner.levelOwner == tp.localRootOwner && !printDebug && shortenCap
           then Str("cap")
-          else Str(s"cap[${tp.localRootOwner.name}]")
+          else Str(s"cap[${nameString(tp.localRootOwner)}]")
         else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
