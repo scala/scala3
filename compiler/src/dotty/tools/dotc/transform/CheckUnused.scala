@@ -649,7 +649,7 @@ object CheckUnused:
      * Ignore CanEqual imports
      */
     private def isImportIgnored(imp: tpd.Import, sel: ImportSelector)(using Context): Boolean =
-      (sel.isWildcard && imp.expr.tpe.allMembers.exists(p => p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass)))) ||
+      (sel.isWildcard && sel.isGiven && imp.expr.tpe.allMembers.exists(p => p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass)) && p.symbol.isOneOf(GivenOrImplicit))) ||
       (imp.expr.tpe.member(sel.name.toTermName).alternatives
         .exists(p => p.symbol.isOneOf(GivenOrImplicit) && p.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))))
 
