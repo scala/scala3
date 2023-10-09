@@ -657,3 +657,44 @@ class CompletionCaseSuite extends BaseCompletionSuite:
          |case Singing(song) => test.Activity
          |case Sports(time, intensity) => test.Activity""".stripMargin
     )
+
+  @Test def `type-alias-case` =
+    check(
+      s"""|object O:
+          |  type Id[A] = A
+          |
+          |  enum Animal:
+          |    case Cat, Dog
+          |
+          |  val animal: Id[Animal] = ???
+          |
+          |  animal match
+          |    cas@@
+          |""".stripMargin,
+      """|case Animal.Cat =>
+         |case Animal.Dog =>
+         |""".stripMargin,
+    )
+
+  @Test def `type-alias-sealed-trait-case` =
+    check(
+      s"""|object O {
+          | type Id[A] = A
+          |
+          |sealed trait Animal
+          |object Animal {
+          |   case class Cat() extends Animal
+          |   case object Dog extends Animal
+          |}
+          |
+          | val animal: Id[Animal] = ???
+          |
+          |  animal match {
+          |    cas@@
+          |  }
+          |}
+          |""".stripMargin,
+      """|case Cat() => test.O.Animal
+         |case Dog => test.O.Animal
+         |""".stripMargin,
+    )

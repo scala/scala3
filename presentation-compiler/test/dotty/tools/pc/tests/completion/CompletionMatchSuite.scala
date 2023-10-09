@@ -601,3 +601,72 @@ class CompletionMatchSuite extends BaseCompletionSuite:
           |}""".stripMargin,
       filter = _.contains("exhaustive")
     )
+
+  @Test def `type-alias` =
+    checkEdit(
+      s"""|object O {
+          | type Id[A] = A
+          |
+          | enum Animal:
+          |   case Cat, Dog
+          |
+          | val animal: Id[Animal] = ???
+          |
+          | animal ma@@
+          |}
+          |""".stripMargin,
+      s"""object O {
+          | type Id[A] = A
+          |
+          | enum Animal:
+          |   case Cat, Dog
+          |
+          | val animal: Id[Animal] = ???
+          |
+          | animal match
+          |\tcase Animal.Cat => $$0
+          |\tcase Animal.Dog =>
+          |
+          |}
+          |""".stripMargin,
+      filter = _.contains("exhaustive"),
+    )
+
+  @Test def `type-alias-sealed-trait` =
+    checkEdit(
+      s"""|object O {
+          | type Id[A] = A
+          |
+          |sealed trait Animal
+          |object Animal {
+          |   case object Cat extends Animal
+          |   case object Dog extends Animal
+          |}
+          |
+          | val animal: Id[Animal] = ???
+          |
+          |animal ma@@
+          |}
+          |""".stripMargin,
+      s"""|
+          |import O.Animal.Cat
+          |import O.Animal.Dog
+          |object O {
+          | type Id[A] = A
+          |
+          |sealed trait Animal
+          |object Animal {
+          |   case object Cat extends Animal
+          |   case object Dog extends Animal
+          |}
+          |
+          | val animal: Id[Animal] = ???
+          |
+          |animal match
+          |\tcase Cat => $$0
+          |\tcase Dog =>
+          |
+          |}
+          |""".stripMargin,
+      filter = _.contains("exhaustive"),
+    )
