@@ -125,12 +125,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         symd.copySymDenotation(info = fluidify(sym.info))
       else if symd.owner.isTerm || symd.is(CaptureChecked) || symd.owner.is(CaptureChecked) then
         val newFlags = newFlagsFor(symd)
-        var newInfo = mappedInfo
-        if sym.is(ModuleVal) && !sym.isStatic then
-          val selfType1 = transformSelfType(sym.moduleClass)
-          if selfType1.exists then
-            newInfo = newInfo.capturing(selfType1.captureSet)
-            sym.termRef.invalidateCaches()
+        val newInfo = mappedInfo
         if sym.isClass then
           sym.thisType.asInstanceOf[ThisType].invalidateCaches()
         if newFlags != symd.flags || (newInfo ne sym.info)
@@ -139,12 +134,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       else symd
     else symd
   end transformSym
-
-  def transformSelfType(sym: Symbol)(using Context) = (sym.info: @unchecked) match
-    case ClassInfo(_, cls, _, _, selfInfo: Type) =>
-      inContext(ctx.withOwner(cls)):
-        transformExplicitType(selfInfo, rootTarget = ctx.owner)
-    case _ => NoType
 
   /** If `tp` is an unboxed capturing type or a function returning an unboxed capturing type,
    *  convert it to be boxed.
