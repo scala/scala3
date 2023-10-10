@@ -141,7 +141,7 @@ flowchart TB
 
 ## How should things be backported?
 
-The backporting process is tracked by a GitHub Project in the lampepfl organization. Every PR merged to the `main` branch is automatically added to the `Needs Assessment` column. Those PRs are reviewed by the release officer or other appointed person. They can decide to remove them from the project (backport rejected) or to move them to the `Backporting in progress` column. If the PR with the backport has any differences from the original PR, the person doing the backport will ask the author and reviewers of the original change to review the backport. After merging the backport, the PR will be moved to the `Backport done` column and, after the release, to the `Released` column.
+The backporting process is tracked by [a GitHub Project](https://github.com/orgs/lampepfl/projects/6) in the lampepfl organization. Every PR merged to the `main` branch is automatically added to the `Needs Assessment` column. Those PRs are reviewed by the release officer or other appointed person. They can decide to remove them from the project (backport rejected) or to move them to the `Backporting in progress` column. If the PR with the backport has any differences from the original PR, the person doing the backport will ask the author and reviewers of the original change to review the backport. After merging the backport, the PR will be moved to the `Backport done` column and, after the release, to the `Released` column.
 
 Maintainers can request backporting the entirety or a part of previously rejected PR by adding it to the `Backport requested` column.
 
