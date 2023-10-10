@@ -147,35 +147,22 @@ Maintainers can request backporting the entirety or a part of previously rejecte
 
 Labels form the `backport:*` family retains their current meaning, i.e., they are used to mark things on the `main` branch that should be backported to the RC. Due to dropping the RCs for the Scala Next patch releases (more about it below), they will be only relevant for the Scala Next minor versions.
 
-## The release cycle
+## The release cycles
 
-Releasing two different lines of the language at the same time requires some changes to the release procedures. We no longer release RC versions for patch releases of Scala Next. RC versions of patch releases of Scala LTS are released two weeks before the intended full release date. RC versions of Scala Next minor releases are released four weeks before the intended full release date.
+Two separate lines of the compiler require two intertwined release cycles.
 
-The releases will be performed according to the 6-week cycles. Actions of each week are started to be performed on Tuesday. This is because the compiler team meetings take place on Mondays, and some concerns might be raised during them.
+Scala Next strictly follows a six-week release train model. Every six weeks, a release candidate for the next version is published. During the next six weeks, we may release subsequent RCs containing fixes to critical bugs found in the previous RCs. A bug may be considered critical only if it is a regression; that is, some code that was correctly passing a compilation in any earlier versions of Scala 3 is now either failing compilation, crashing the compiler, or generating incorrect output (bytecode or TASTy). The compiler team decides which regression is considered a critical bug that requires a new RC and which can be fixed in the next release. After six weeks, the clock resets, the last released RC is promoted to a stable release, and the RC for the next version is published.
 
-If we assume that the cycle starts on Tuesday `t` and `t + 1` is the next Tuesday, the timeline looks as follows:
+If there is less than a week left before the release, and the last RC still contains critical bugs, the compiler team may decide to postpone publishing the stable version.  There will always be at least one whole week between publishing the last RC and promoting it to the status of a stable release. This delay doesn't affect the RC-1 date for the next version. It will be released six weeks after the previous version's RC-1. The goal is to ensure that delay in releasing one version doesn't cause future releases to be larger in terms of the number of merged PRs, as it can make regressions inside of them more complex to pinpoint and fix, leading to the accumulation of delays for future versions.
 
-- `t` - release of Scala Next and RC1 for the next Scala LTS patch.
-- `t + 2` - release of the next Scala LTS patch. If the next Scala Next version is a minor version, RC1 of that version is released.
-- `t + 6` - the start of the new release cycle
+Scala LTS has a more relaxed release model. RC-1 for the next version is published after the stable release of the previous version. Similar to Scala Next, we may release more RCs, fixing bugs. Unlike Scala Next, the bug doesn't need to be considered critical to guarantee the new RC. For Sala LTS, our primary goal is stability, so delays are acceptable. We guarantee that a stable release is at least six weeks after the first RC and at least one week after the last RC.
 
-### Dealing with delays
+The two release cycles are not synchronized in any way, as any synchronization would be broken on any delay in the Scala LTS cycle.
 
-It is possible that there will be problems in the RC releases that require fixes and further release candidates. We will not publish a full release in the same week as an RC. This means that delay can occur.
-
-In the case of LTS releases, there are four weeks to fix the problem if the versions is to be released before the RC1 of the next patch. If we don't solve the issue two weeks before the start of the next release cycle, we will find a commit on the release branch of the current version that the problem was not yet present and release it as an RC. Before releasing the RC1 for the next version, we will either find a fix for the problem or rebase the next release branch so that the offending change is removed from the branch.
-
-In the case of minor Scala Next releases, if we cannot have a satisfying RC on time, we can skip releasing the stable Scala Next version in the given release cycle. This means there may be cycles during which we release only Scala LTS.
-
-Accounting for delays adds these points to the timeline above:
-
-- `t + 4` - last possible moment to release RC for the Scala LTS patch, which is trying to fix a problem
-- `t + 5` - If no RC exists for Scala LTS fixing a problem, a version based on the last non-problematic commit is released. Also, this is the last moment to release RC for the Scala Next minor. Otherwise, we will skip the Scala Next release in the next cycle.
+The compiler team may pause the release cycles for a week or two on occasions such as New Year or a conference that most of the team is attending.
 
 ### What is being released?
 
 For the Scala LTS, what is released as an RC is always the current head of the release branch for the next release.
 
-For the Scala Next minor releases RC, it is the head of the `main` branch.
-
-For the Scala Next patches, there are no RCs. As a point of cut-off of the release, we are choosing one relatively recent commit from the `main` branch on which a full Open Community Build was run before the decision. The default choice here is the commit on which the last weekly community build was run.
+For the Scala Next minor releases RC, by default, it is the head of the `main` branch. Based on the Open Community Build results, the compiler team may decide to base the release on some earlier state of the branch.
