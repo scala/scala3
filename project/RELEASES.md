@@ -56,10 +56,10 @@ flowchart TB
     -- yes -->
 
     regIsLTS{"Was the last version
-              not affected by
+              affected by
               the regression released
               before 3.3.0?"}
-    -- no --> ocbReg
+    -- yes --> ocbReg
 
     subgraph "LTS Regression"
         ocbReg{"Does it cause
@@ -89,7 +89,7 @@ flowchart TB
                    the old regression"| reject
 
     regression -- no --> types
-    regIsLTS -- yes --> types
+    regIsLTS -- no --> types
     types{"Can the fix
            change types
            in any correct
