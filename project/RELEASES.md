@@ -145,7 +145,7 @@ The backporting process is tracked by a GitHub Project in the lampepfl organizat
 
 Maintainers can request backporting the entirety or a part of previously rejected PR by adding it to the `Backport requested` column.
 
-Labels form the `backport:*` family retains their current meaning, i.e., they are used to mark things on the `main` branch that should be backported to the RC. Due to dropping the RCs for the Scala Next patch releases (more about it below), they will be only relevant for the Scala Next minor versions.
+Labels from the `backport:*`  are used only for backports that targets versions with already released RCs.  They can be used to mark changes on the main that are fixing a critical bug present in the Scala Next RC release or changes that were backported to the future Scala LTS versions that should be also backported to the current RCs.
 
 ## The release cycles
 
