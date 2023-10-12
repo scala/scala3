@@ -481,6 +481,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           for case arg: TypeTree <- args do
             transformTT(arg, boxed = true, exact = false, rootTarget = ctx.owner) // type arguments in type applications are boxed
 
+          if allowUniversalInBoxed then
+            val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
+            for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
+              if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
+                def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
+                CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
+                  i"Sealed type variable $pname", "be instantiated to",
+                  i"This is often caused by a local capability$where\nleaking as part of its result.",
+                  tree.srcPos)
+
         case tree: TypeDef if tree.symbol.isClass =>
           inContext(ctx.withOwner(tree.symbol)):
             traverseChildren(tree)

@@ -29,7 +29,7 @@ import TypeErasure.erasure
 import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
-
+import annotation.unchecked.uncheckedCaptures
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
@@ -930,6 +930,8 @@ class Namer { typer: Typer =>
   class TypeDefCompleter(original: TypeDef)(ictx: DetachedContext)
   extends Completer(original)(ictx) with TypeParamsCompleter {
     private var myTypeParams: List[TypeSymbol] | Null = null
+
+    @uncheckedCaptures
     private var nestedCtx: Context | Null = null
     assert(!original.isClassDef)
 

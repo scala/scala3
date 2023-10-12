@@ -47,7 +47,7 @@ import dotty.tools.tasty.TastyFormat._
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 import language.experimental.pureFunctions
-import caps.unsafe.{unsafeUnbox, unsafeBox}
+import annotation.unchecked.uncheckedCaptures
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
@@ -1086,15 +1086,15 @@ class TreeUnpickler(reader: TastyReader,
 
     def readIndexedStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T =
       val buf = new mutable.ListBuffer[Tree]
-      var curCtx = ctx.unsafeBox
+      @uncheckedCaptures var curCtx = ctx
       while currentAddr.index < end.index do
-        val stat = readIndexedStat(exprOwner)(using curCtx.unsafeUnbox)
+        val stat = readIndexedStat(exprOwner)(using curCtx)
         buf += stat
         stat match
-          case stat: Import => curCtx = curCtx.unsafeUnbox.importContext(stat, stat.symbol).unsafeBox
+          case stat: Import => curCtx = curCtx.importContext(stat, stat.symbol)
           case _ =>
       assert(currentAddr.index == end.index)
-      k(buf.toList, curCtx.unsafeUnbox)
+      k(buf.toList, curCtx)
 
     def readStats[T](exprOwner: Symbol, end: Addr, k: (List[Tree], Context) => T = sameTrees)(using Context): T = {
       fork.indexStats(end)

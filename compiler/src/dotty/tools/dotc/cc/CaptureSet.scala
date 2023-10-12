@@ -82,10 +82,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
-    elems.exists {
-      case ref: TermRef => ref.symbol == defn.captureRoot
-      case _ => false
-    }
+    elems.exists(_.isGenericRootCapability)
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def containsRoot(using Context) =

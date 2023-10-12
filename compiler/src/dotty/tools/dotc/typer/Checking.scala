@@ -518,7 +518,12 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
+      val illegal = sym.flags & ClassOnlyFlags
+      if sym.is(TypeParam)
+          && illegal == Sealed
+          && Feature.ccEnabled && cc.allowUniversalInBoxed
+      then () // OK
+      else fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then

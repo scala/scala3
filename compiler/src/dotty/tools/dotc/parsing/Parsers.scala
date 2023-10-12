@@ -3194,7 +3194,9 @@ object Parsers {
      *                         id [HkTypeParamClause] TypeParamBounds
      *
      *  DefTypeParamClause::=  ‘[’ DefTypeParam {‘,’ DefTypeParam} ‘]’
-     *  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+     *  DefTypeParam      ::=  {Annotation}
+     *                         [`sealed`]                                    -- under captureChecking
+     *                         id [HkTypeParamClause] TypeParamBounds
      *
      *  TypTypeParamClause::=  ‘[’ TypTypeParam {‘,’ TypTypeParam} ‘]’
      *  TypTypeParam      ::=  {Annotation} id [HkTypePamClause] TypeBounds
@@ -3204,24 +3206,24 @@ object Parsers {
      */
     def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBrackets {
 
-      def variance(vflag: FlagSet): FlagSet =
-        if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
-          syntaxError(em"no `+/-` variance annotation allowed here")
-          in.nextToken()
-          EmptyFlags
-        else
-          in.nextToken()
-          vflag
+      def checkVarianceOK(): Boolean =
+        val ok = ownerKind != ParamOwner.Def && ownerKind != ParamOwner.TypeParam
+        if !ok then syntaxError(em"no `+/-` variance annotation allowed here")
+        in.nextToken()
+        ok
 
       def typeParam(): TypeDef = {
         val isAbstractOwner = ownerKind == ParamOwner.Type || ownerKind == ParamOwner.TypeParam
         val start = in.offset
-        val mods =
-          annotsAsMods()
-          | (if (ownerKind == ParamOwner.Class) Param | PrivateLocal else Param)
-          | (if isIdent(nme.raw.PLUS) then variance(Covariant)
-             else if isIdent(nme.raw.MINUS) then variance(Contravariant)
-             else EmptyFlags)
+        var mods = annotsAsMods() | Param
+        if ownerKind == ParamOwner.Class then mods |= PrivateLocal
+        if Feature.ccEnabled && in.token == SEALED then
+          mods |= Sealed
+          in.nextToken()
+        if isIdent(nme.raw.PLUS) && checkVarianceOK() then
+          mods |= Covariant
+        else if isIdent(nme.raw.MINUS) && checkVarianceOK() then
+          mods |= Contravariant
         atSpan(start, nameStart) {
           val name =
             if (isAbstractOwner && in.token == USCORE) {
