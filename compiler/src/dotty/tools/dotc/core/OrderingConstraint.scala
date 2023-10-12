@@ -748,6 +748,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         }
       if isRemovable(param.binder) then current = current.remove(param.binder)
       current.dropDeps(param)
+      replacedTypeVar match
+        case replacedTypeVar: TypeVar if isHard(replacedTypeVar) => current = current.hardenTypeVars(replacement)
+        case _ =>
       current.checkWellFormed()
   end replace
 
