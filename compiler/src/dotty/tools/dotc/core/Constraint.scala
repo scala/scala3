@@ -138,6 +138,9 @@ abstract class Constraint extends Showable {
   /** The same as this constraint, but with `tv` marked as hard. */
   def withHard(tv: TypeVar)(using Context): This
 
+  /** Mark toplevel type vars in `tp` as hard. */
+  def hardenTypeVars(tp: Type)(using Context): This
+
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints
    *  is done only in a temporary way for contexts that may be retracted

@@ -501,17 +501,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        /** Mark toplevel type vars in `tp2` as hard in the current constraint */
-        def hardenTypeVars(tp2: Type): Unit = tp2.dealiasKeepRefiningAnnots match
-          case tvar: TypeVar if constraint.contains(tvar.origin) =>
-            constraint = constraint.withHard(tvar)
-          case tp2: TypeParamRef if constraint.contains(tp2) =>
-            hardenTypeVars(constraint.typeVarOfParam(tp2))
-          case tp2: AndOrType =>
-            hardenTypeVars(tp2.tp1)
-            hardenTypeVars(tp2.tp2)
-          case _ =>
-
         val res = widenOK || joinOK
           || recur(tp11, tp2) && recur(tp12, tp2)
           || containsAnd(tp1)
@@ -534,7 +523,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // is marked so that it converts all soft unions in its lower bound to hard unions
           // before it is instantiated. The reason is that the variable's instance type will
           // be a supertype of (decomposed and reconstituted) `tp1`.
-          hardenTypeVars(tp2)
+          constraint = constraint.hardenTypeVars(tp2)
 
         res
 
