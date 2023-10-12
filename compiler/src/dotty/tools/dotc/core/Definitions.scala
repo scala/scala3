@@ -1165,10 +1165,12 @@ class Definitions {
           Some(mt)
         case _ => None
 
-    private def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
+    def isValidPolyFunctionInfo(info: Type)(using Context): Boolean =
       def isValidMethodType(info: Type) = info match
         case info: MethodType =>
-          !info.resType.isInstanceOf[MethodOrPoly] // Has only one parameter list
+          !info.resType.isInstanceOf[MethodOrPoly] && // Has only one parameter list
+          !info.isVarArgsMethod &&
+          !info.isMethodWithByNameArgs // No by-name parameters
         case _ => false
       info match
         case info: PolyType => isValidMethodType(info.resType)

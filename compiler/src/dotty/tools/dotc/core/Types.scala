@@ -429,6 +429,12 @@ object Types {
       case _ => false
     }
 
+    /** Is this the type of a method that has a by-name parameters? */
+    def isMethodWithByNameArgs(using Context): Boolean = stripPoly match {
+      case mt: MethodType => mt.paramInfos.exists(_.isInstanceOf[ExprType])
+      case _ => false
+    }
+
     /** Is this the type of a method with a leading empty parameter list?
      */
     def isNullaryMethod(using Context): Boolean = stripPoly match {
