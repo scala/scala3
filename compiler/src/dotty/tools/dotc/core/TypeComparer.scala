@@ -2388,7 +2388,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case Atoms.Range(lo2, hi2) =>
                 if hi1.subsetOf(lo2) then return tp2
                 if hi2.subsetOf(lo1) then return tp1
-                if (hi1 & hi2).isEmpty then return orType(tp1, tp2)
+                if (hi1 & hi2).isEmpty then return orType(tp1, tp2, isSoft = isSoft)
               case none =>
           case none =>
         val t1 = mergeIfSuper(tp1, tp2, canConstrain)
