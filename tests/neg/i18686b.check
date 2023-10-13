@@ -1,0 +1,28 @@
+-- [E173] Reference Error: tests/neg/i18686b.scala:15:16 ---------------------------------------------------------------
+15 |    println(foo.Bar1) // error
+   |            ^^^^^^^^
+   |            value Bar1 cannot be accessed as a member of Foo from object Main.
+   |              private value Bar1 can only be accessed from class Foo.
+-- [E173] Reference Error: tests/neg/i18686b.scala:16:16 ---------------------------------------------------------------
+16 |    println(foo.Bar2) // error
+   |            ^^^^^^^^
+   |            value Bar2 cannot be accessed as a member of Foo from object Main.
+   |              private[Foo] value Bar2 can only be accessed from class Foo.
+-- [E173] Reference Error: tests/neg/i18686b.scala:17:16 ---------------------------------------------------------------
+17 |    println(foo.Bar3) // error
+   |            ^^^^^^^^
+   |            value Bar3 cannot be accessed as a member of Foo from object Main.
+   |              protected value Bar3 can only be accessed from class Foo or one of its subclasses.
+-- [E173] Reference Error: tests/neg/i18686b.scala:18:16 ---------------------------------------------------------------
+18 |    println(foo.Bar4) // error
+   |            ^^^^^^^^
+   |            value Bar4 cannot be accessed as a member of Foo from object Main.
+   |              protected[Foo] value Bar4 can only be accessed from class Foo or one of its subclasses.
+-- [E008] Not Found Error: tests/neg/i18686b.scala:19:20 ---------------------------------------------------------------
+19 |    println(foo.Baz.Bar5) // error
+   |            ^^^^^^^^^^^^
+   |            value Bar5 is not a member of object Foo#Baz
+-- [E008] Not Found Error: tests/neg/i18686b.scala:20:20 ---------------------------------------------------------------
+20 |    println(foo.Baz.Bar6) // error
+   |            ^^^^^^^^^^^^
+   |            value Bar6 is not a member of object Foo#Baz
