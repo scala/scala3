@@ -152,7 +152,8 @@ sealed abstract class CaptureSet extends Showable:
           && ctx.property(LooseRootChecking).isDefined
 
     private def isSuperRootOf(y: CaptureRoot) = x match
-      case x: CaptureRoot if x.isLocalRootCapability => y.encloses(x)
+      case x: CaptureRoot =>
+        x.isGenericRootCapability || x.isLocalRootCapability && y.encloses(x)
       case _ => false
   end extension
 
