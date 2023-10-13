@@ -645,7 +645,7 @@ object Build {
           "-Ddotty.tests.classes.jlineTerminal=" + findArtifactPath(externalDeps, "jline-terminal"),
           "-Ddotty.tests.classes.jlineReader=" + findArtifactPath(externalDeps, "jline-reader"),
         ) ++
-          jars.get("stdlib-bootstrapped-tasty").map("-Ddotty.tests.tasties.scalaLibrary=" + _)
+          jars.get("scala2-library-tasty").map("-Ddotty.tests.tasties.scalaLibrary=" + _)
       },
 
       javaOptions ++= Seq(
