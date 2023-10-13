@@ -876,7 +876,7 @@ extends Message(PatternMatchExhaustivityID) {
 
     val pathes = List(
       ActionPatch(
-        srcPos = endPos, 
+        srcPos = endPos,
         replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
@@ -2963,7 +2963,13 @@ extends ReferenceMsg(CannotBeAccessedID):
         i"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuffer
-    alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
+    for alt <- alts do
+      if alt.is(Protected) then
+        val cls = alt.owner.enclosingSubClass
+        val owner = if cls.exists then cls else alt.owner
+        val location = if owner.is(Final) then owner.showLocated else owner.showLocated + " or one of its subclasses"
+        whyNot.append(i"""
+            | Protected $alt can only be accessed from $location.""")
     i"$whatCanNot be accessed as a member of $pre$where.$whyNot"
   def explain(using Context) = ""
 
