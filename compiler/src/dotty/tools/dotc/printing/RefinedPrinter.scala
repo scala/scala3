@@ -1123,7 +1123,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         nameString(sym)
 
     if sym.is(ModuleClass) && sym.isTopLevelDefinitionsObject then
-      "top-level definition in package " + nameString(sym.owner.name)
+      "the top-level definitions in package " + nameString(sym.owner.name)
     else (keywordText(kindString(sym)) ~~ {
       if (sym.isAnonymousClass)
         toTextParents(sym.info.parents) ~~ "{...}"

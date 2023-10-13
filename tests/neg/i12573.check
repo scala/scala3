@@ -4,6 +4,5 @@
    |value getDFType is not a member of DFBits[(8 : Int)].
    |Extension methods were tried, but the search failed with:
    |
-   |    method getDFType cannot be accessed as a member of DFType.type from top-level definition in package <empty>.
-   |     Access to protected method getDFType not permitted because enclosing top-level definition in package <empty>
-   |     is not a subclass of object DFType where target is defined
+   |    method getDFType cannot be accessed as a member of DFType.type from the top-level definitions in package <empty>.
+   |     Protected method getDFType can only be accessed from object DFType.
