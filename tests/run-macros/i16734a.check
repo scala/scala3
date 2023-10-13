@@ -1,0 +1,67 @@
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K1Inv[F]
+F
+A
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K1Cov[F]
+F
++A
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K1Con[F]
+F
+-A
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2InvInv[F]
+F
+A, B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2InvCov[F]
+F
+A, +B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2InvCon[F]
+F
+A, -B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2CovInv[F]
+F
++A, B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2CovCov[F]
+F
++A, +B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2CovCon[F]
+F
++A, -B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2ConInv[F]
+F
+-A, B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2ConCov[F]
+F
+-A, +B
+
+[F >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> K2ConCon[F]
+F
+-A, -B
+
+[G >: scala.Nothing <: [A >: scala.Nothing <: scala.Any, B >: scala.Nothing <: scala.Any, C >: scala.Nothing <: scala.Any, D >: scala.Nothing <: [X1 >: scala.Nothing <: scala.Any, Y1 >: scala.Nothing <: scala.Any, Z1 >: scala.Nothing <: scala.Any] =>> scala.Any, E >: scala.Nothing <: [X2 >: scala.Nothing <: scala.Any, Y2 >: scala.Nothing <: scala.Any, Z2 >: scala.Nothing <: scala.Any] =>> scala.Any, F >: scala.Nothing <: [X3 >: scala.Nothing <: scala.Any, Y3 >: scala.Nothing <: scala.Any, Z3 >: scala.Nothing <: scala.Any] =>> scala.Any] =>> scala.Any] =>> KFunky[G]
+G
+A, +B, -C, D, +E, -F
+X1, +Y1, -Z1
+X2, +Y2, -Z2
+X3, +Y3, -Z3
+
+[A >: scala.Nothing <: scala.Any, F >: scala.Nothing <: [B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> F[A]
+A, +F
+B
+
+[A >: scala.Nothing <: scala.Any, F >: scala.Nothing <: [B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> F[A]
++A, +F
++B
+
+[A >: scala.Nothing <: scala.Any, F >: scala.Nothing <: [B >: scala.Nothing <: scala.Any] =>> scala.Any] =>> F[A]
+-A, +F
+-B
+

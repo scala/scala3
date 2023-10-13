@@ -3258,8 +3258,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeLambda` */
     trait TypeLambdaMethods:
       extension (self: TypeLambda)
+        /** Reference to the i-th parameter */
         def param(idx: Int) : TypeRepr
+        /** Type bounds of the i-th parameter */
         def paramBounds: List[TypeBounds]
+        /** Variance flags for the i-th parameter
+         *
+         *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
+         */
+        @experimental
+        def paramVariances: List[Flags]
       end extension
     end TypeLambdaMethods
 
@@ -4078,7 +4086,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Fields of a case class type -- only the ones declared in primary constructor */
         def caseFields: List[Symbol]
 
+        /** Is this the symbol of a type parameter */
         def isTypeParam: Boolean
+
+        /** Variance flags for of this type parameter.
+         *
+         *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
+         *  If this is not the symbol of a type parameter the result is `Flags.EmptyFlags`.
+         */
+        @experimental
+        def paramVariance: Flags
 
         /** Signature of this definition */
         def signature: Signature

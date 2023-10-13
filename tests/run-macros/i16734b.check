@@ -1,0 +1,36 @@
+type F1Inv
+A
+
+type F1Cov
++A
+
+type F1Con
+-A
+
+type F2InvInv
+A, B
+
+type F2InvCov
+A, +B
+
+type F2InvCon
+A, -B
+
+type F2CovInv
++A, B
+
+type F2CovCov
++A, +B
+
+type F2CovCon
++A, -B
+
+type F2ConInv
+-A, B
+
+type F2ConCov
+-A, +B
+
+type F2ConCon
+-A, -B
+

@@ -1,0 +1,36 @@
+class C1Inv
+A
+
+class C1Cov
++A
+
+class C1Con
+-A
+
+class C2InvInv
+A, B
+
+class C2InvCov
+A, +B
+
+class C2InvCon
+A, -B
+
+class C2CovInv
++A, B
+
+class C2CovCov
++A, +B
+
+class C2CovCon
++A, -B
+
+class C2ConInv
+-A, B
+
+class C2ConCov
+-A, +B
+
+class C2ConCon
+-A, -B
+
