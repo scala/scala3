@@ -489,11 +489,14 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case m @ MatchTypeTree(bounds, selector, cases) =>
           // Analog to the case above for match types
           def transformCase(x: CaseDef): CaseDef =
-            cpy.CaseDef(tree)(
+            val gadtCtx = x.pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+              case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
+              case None       => ctx
+            inContext(gadtCtx)(cpy.CaseDef(tree)(
               withMode(Mode.Pattern)(transform(x.pat)),
               transform(x.guard),
               transform(x.body),
-            )
+            ))
           cpy.MatchTypeTree(tree)(
             super.transform(bounds),
             super.transform(selector),
