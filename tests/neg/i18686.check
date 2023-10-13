@@ -1,0 +1,13 @@
+-- [E173] Reference Error: tests/neg/i18686.scala:9:16 -----------------------------------------------------------------
+9 |    println(Foo.Bar1) // error
+  |            ^^^^^^^^
+  |            value Bar1 cannot be accessed as a member of Foo.type from object Main.
+-- [E173] Reference Error: tests/neg/i18686.scala:10:16 ----------------------------------------------------------------
+10 |    println(Foo.Bar2) // error
+   |            ^^^^^^^^
+   |            value Bar2 cannot be accessed as a member of Foo.type from object Main.
+-- [E173] Reference Error: tests/neg/i18686.scala:11:16 ----------------------------------------------------------------
+11 |    println(Foo.Bar3) // error
+   |            ^^^^^^^^
+   |            value Bar3 cannot be accessed as a member of Foo.type from object Main.
+   |             Protected value Bar3 can only be accessed from object Foo.

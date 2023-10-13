@@ -877,7 +877,7 @@ object SymDenotations {
      *  As a side effect, drop Local flags of members that are not accessed via the ThisType
      *  of their owner.
      */
-    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer | Null = null)(using Context): Boolean = {
+    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(using Context): Boolean = {
 
       /** Are we inside definition of `boundary`?
        *  If this symbol is Java defined, package structure is interpreted to be flat.
@@ -906,26 +906,13 @@ object SymDenotations {
 
       /** Is protected access to target symbol permitted? */
       def isProtectedAccessOK: Boolean =
-        inline def fail(str: String): false =
-          if whyNot != null then whyNot.nn.append(str)
-          false
         val cls = owner.enclosingSubClass
         if !cls.exists then
-          if pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner) then
-            true
-          else
-            val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
-            val location = if owner.is(Final) then owner.showLocated else owner.showLocated + " or one of its subclasses"
-            fail(i"""
-                | Protected $this can only be accessed from $location.""")
-        else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
+          pre.termSymbol.isPackageObject && accessWithin(pre.termSymbol.owner)
+        else
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
-          true
-        else
-          val location = if cls.is(Final) then cls.showLocated else cls.showLocated + " or one of its subclasses"
-          fail(i"""
-               | Protected $this can only be accessed from $location.""")
+          isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass)
       end isProtectedAccessOK
 
       if pre eq NoPrefix then true
