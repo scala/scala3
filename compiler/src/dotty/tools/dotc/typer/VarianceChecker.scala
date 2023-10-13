@@ -19,8 +19,8 @@ import printing.Formatting.hl
  */
 object VarianceChecker {
   case class VarianceError(tvar: Symbol, required: Variance)
-  def check(tree: tpd.Tree)(using Context): Unit =
-    VarianceChecker().Traverser.traverse(tree)
+  def check(tree: tpd.Tree, privateVarsSetNonLocally: collection.Set[Symbol])(using Context): Unit =
+    VarianceChecker(privateVarsSetNonLocally).Traverser.traverse(tree)
 
   /** Check that variances of type lambda correspond to their occurrences in its body.
    *  Note: this is achieved by a mechanism separate from checking class type parameters.
@@ -62,7 +62,7 @@ object VarianceChecker {
   end checkLambda
 }
 
-class VarianceChecker(using Context) {
+class VarianceChecker(privateVarsSetNonLocally: collection.Set[Symbol])(using Context) {
   import VarianceChecker._
   import tpd._
 
@@ -148,12 +148,19 @@ class VarianceChecker(using Context) {
       case _ =>
         apply(None, info)
 
-    def validateDefinition(base: Symbol): Option[VarianceError] = {
-      val saved = this.base
+    def validateDefinition(base: Symbol): Option[VarianceError] =
+      val savedBase = this.base
       this.base = base
+      val savedVariance = variance
+      def isLocal =
+        base.isAllOf(PrivateLocal)
+        || base.is(Private) && !privateVarsSetNonLocally.contains(base)
+      if base.is(Mutable, butNot = Method) && !isLocal then
+        variance = 0
       try checkInfo(base.info)
-      finally this.base = saved
-    }
+      finally
+        this.base = savedBase
+        this.variance = savedVariance
   }
 
   private object Traverser extends TreeTraverser {
