@@ -1113,13 +1113,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         fullNameString(sym)
       else if (sym.is(ModuleClass) && sym.isPackageObject && sym.name.stripModuleClassSuffix == tpnme.PACKAGE)
         nameString(sym.owner.name)
+      else if (sym.is(ModuleClass) && sym.isTopLevelDefinitionsObject)
+        nameString(sym.owner.name)
       else if (sym.is(ModuleClass))
         nameString(sym.name.stripModuleClassSuffix) + idString(sym)
       else if (hasMeaninglessName(sym))
         simpleNameString(sym.owner) + idString(sym)
       else
         nameString(sym)
-    (keywordText(kindString(sym)) ~~ {
+
+    if sym.is(ModuleClass) && sym.isTopLevelDefinitionsObject then
+      "the top-level definitions in package " + nameString(sym.owner.name)
+    else (keywordText(kindString(sym)) ~~ {
       if (sym.isAnonymousClass)
         toTextParents(sym.info.parents) ~~ "{...}"
       else

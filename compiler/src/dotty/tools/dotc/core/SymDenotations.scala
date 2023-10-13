@@ -672,6 +672,10 @@ object SymDenotations {
     def isPackageObject(using Context): Boolean =
       name.isPackageObjectName && owner.is(Package) && this.is(Module)
 
+    /** Is this symbol a package object containing top-level definitions? */
+    def isTopLevelDefinitionsObject(using Context): Boolean =
+      name.isTopLevelPackageObjectName && owner.is(Package) && this.is(Module)
+
     /** Is this symbol a toplevel definition in a package object? */
     def isWrappedToplevelDef(using Context): Boolean =
       !isConstructor && owner.isPackageObject
@@ -911,17 +915,17 @@ object SymDenotations {
             true
           else
             val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
+            val location = if owner.is(Final) then owner.showLocated else owner.showLocated + " or one of its subclasses"
             fail(i"""
-                 | Access to protected $this not permitted because enclosing ${encl.showLocated}
-                 | is not a subclass of ${owner.showLocated} where target is defined""")
+                | Protected $this can only be accessed from $location.""")
         else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
           // allow accesses to types from arbitrary subclasses fixes #4737
           // don't perform this check for static members
           true
         else
+          val location = if cls.is(Final) then cls.showLocated else cls.showLocated + " or one of its subclasses"
           fail(i"""
-               | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
-               | does not conform to ${cls.showLocated} where the access takes place""")
+               | Protected $this can only be accessed from $location.""")
       end isProtectedAccessOK
 
       if pre eq NoPrefix then true
