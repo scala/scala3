@@ -2,19 +2,24 @@
 8 |    def test(a: A) = a.x // error
   |                     ^^^
   |                     value x cannot be accessed as a member of (a : foo.A) from class B.
+  |                       private[A] value x can only be accessed from class A in package foo.
 -- [E173] Reference Error: tests/neg/not-accessible.scala:10:23 --------------------------------------------------------
 10 |    def test(a: A) = a.x // error
    |                     ^^^
    |                     value x cannot be accessed as a member of (a : foo.A) from object B.
+   |                       private[A] value x can only be accessed from class A in package foo.
 -- [E173] Reference Error: tests/neg/not-accessible.scala:13:23 --------------------------------------------------------
 13 |    def test(a: A) = a.x // error
    |                     ^^^
    |            value x cannot be accessed as a member of (a : foo.A) from the top-level definitions in package bar.
+   |              private[A] value x can only be accessed from class A in package foo.
 -- [E173] Reference Error: tests/neg/not-accessible.scala:5:21 ---------------------------------------------------------
 5 |  def test(a: A) = a.x // error
   |                   ^^^
   |              value x cannot be accessed as a member of (a : foo.A) from the top-level definitions in package foo.
+  |                private[A] value x can only be accessed from class A in package foo.
 -- [E173] Reference Error: tests/neg/not-accessible.scala:15:23 --------------------------------------------------------
 15 |def test(a: foo.A) = a.x // error
    |                     ^^^
    |        value x cannot be accessed as a member of (a : foo.A) from the top-level definitions in package <empty>.
+   |          private[A] value x can only be accessed from class A in package foo.

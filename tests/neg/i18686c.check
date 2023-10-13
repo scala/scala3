@@ -1,0 +1,8 @@
+-- [E173] Reference Error: tests/neg/i18686c.scala:8:6 -----------------------------------------------------------------
+8 |  foo.foo // error
+  |  ^^^^^^^
+  |method foo cannot be accessed as a member of (foo² : Bar.Foo) from the top-level definitions in package <empty>.
+  |  protected[Bar] method foo can only be accessed from object Bar, or class Foo in object Bar or one of its subclasses.
+  |
+  |where:    foo  is a method in class Foo
+  |          foo² is a parameter in method test
