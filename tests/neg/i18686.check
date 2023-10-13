@@ -1,0 +1,4 @@
+-- [E173] Reference Error: tests/neg/i18686.scala:7:16 -----------------------------------------------------------------
+7 |    println(Foo.Bar) // error
+  |            ^^^^^^^
+  |            value Bar cannot be accessed as a member of Foo.type from object Main.

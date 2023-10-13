@@ -876,7 +876,7 @@ extends Message(PatternMatchExhaustivityID) {
 
     val pathes = List(
       ActionPatch(
-        srcPos = endPos, 
+        srcPos = endPos,
         replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
@@ -2984,7 +2984,7 @@ extends ReferenceMsg(CannotBeAccessedID):
         i"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
       case _ =>
         i"none of the overloaded alternatives named $name can"
-    val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+    val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuffer
     alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
     i"$whatCanNot be accessed as a member of $pre$where.$whyNot"
