@@ -83,6 +83,10 @@ end CCState
 def ccState(using Context) =
   Phases.checkCapturesPhase.asInstanceOf[CheckCaptures].ccState
 
+class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
+  i"No common capture root nested in ${rs.mkString(" and ")}"
+)
+
 trait FollowAliases extends TypeMap:
   def mapOverFollowingAliases(t: Type): Type = t match
     case t: LazyRef =>
@@ -323,7 +327,7 @@ extension (tp: Type)
         tp.isCapabilityClassRef
   end hasUniversalRootOf
 
-extension (cls: Symbol)
+extension (cls: ClassSymbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
     if cls.isClass then cls.asClass.baseClasses.find: bc =>
@@ -390,6 +394,13 @@ extension (sym: Symbol)
           //.showing(i"takes capped param2 $sym: $rinfo = $result")
       case _ =>
         false
+
+  def isTrackedSomewhere(using Context): Boolean =
+    val search = new TypeAccumulator[Boolean]:
+      def apply(found: Boolean, tp: Type) =
+        def isTrackedHere = variance >= 0 && !tp.captureSet.isAlwaysEmpty
+        found || isTrackedHere || foldOver(found, tp)
+    search(false, sym.info)
 
   // TODO Also include vals (right now they are manually entered in levelOwners by Setup)
   def isLevelOwner(using Context): Boolean =

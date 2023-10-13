@@ -730,7 +730,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
       val res =
         try super.recheck(tree, pt)
-        catch case ex: CaptureRoot.NoCommonRoot =>
+        catch case ex: NoCommonRoot =>
           report.error(ex.getMessage.nn)
           tree.tpe
         finally curEnv = saved
@@ -760,9 +760,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      if !allowUniversalInBoxed && needsUniversalCheck then
-        checkNotUniversal(tpe)
-      super.recheckFinish(tpe, tree, pt)
+      val adapted =
+        if allowUniversalInBoxed then
+          adaptUniversal(tpe, pt, tree)
+        else
+          if needsUniversalCheck then checkNotUniversal(tpe)
+          tpe
+      super.recheckFinish(adapted, tree, pt)
     end recheckFinish
 
     // ------------------ Adaptation -------------------------------------
@@ -775,6 +779,32 @@ class CheckCaptures extends Recheck, SymTransformer:
     //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
     //   - Adapt box status and environment capture sets by simulating box/unbox operations.
     //   - Instantiate `cap` in actual as needed to a local root.
+
+    def impliedRoot(tree: Tree)(using Context) =
+      val acc = new TreeAccumulator[Symbol]:
+        val locals = mutable.Set[Symbol]()
+        private def max(sym1: Symbol, sym2: Symbol)(using Context) =
+          sym1.maxNested(sym2, onConflict = (_, _) => throw NoCommonRoot(sym1, sym2))
+        def apply(s: Symbol, t: Tree)(using Context) = t match
+          case t: (Ident | This)
+          if !locals.contains(t.symbol) && t.symbol.isTrackedSomewhere =>
+            max(s, t.symbol.levelOwner)
+          case t: DefTree =>
+            locals += t.symbol
+            foldOver(s, t)
+          case _ =>
+            foldOver(s, t)
+      acc(defn.RootClass, tree).localRoot
+
+    def adaptUniversal(actual: Type, expected: Type, tree: Tree)(using Context): Type =
+      if expected.captureSet.disallowsUniversal && actual.captureSet.isUniversal then
+        val localRoot = impliedRoot(tree)
+        CapturingType(
+            actual.stripCapturing,
+            localRoot.termRef.singletonCaptureSet,
+            actual.isBoxedCapturing)
+          .showing(i"adapt universal $actual vs $expected = $result")
+      else actual
 
     /** Massage `actual` and `expected` types before checking conformance.
      *  Massaging is done by the methods following this one:
@@ -864,6 +894,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
           expected
     end addOuterRefs
+
 
     /** Adapt `actual` type to `expected` type by inserting boxing and unboxing conversions
      *

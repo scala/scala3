@@ -90,6 +90,10 @@ sealed abstract class CaptureSet extends Showable:
       case ref: TermRef => ref.isRootCapability
       case _ => false
 
+  final def disallowsUniversal(using Context) =
+    if isConst then !isUniversal && elems.exists(_.isLocalRootCapability)
+    else asVar.noUniversal
+
   /** Add new elements to this capture set if allowed.
    *  @pre `newElems` is not empty and does not overlap with `this.elems`.
    *  Constant capture sets never allow to add new elements.
@@ -476,6 +480,8 @@ object CaptureSet:
     /** A handler to be invoked if the root reference `cap` is added to this set */
     var rootAddedHandler: () => Context ?=> Unit = () => ()
 
+    private[CaptureSet] var noUniversal = false
+
     /** A handler to be invoked when new elems are added to this set */
     var newElemAddedHandler: CaptureRef => Context ?=> Unit = _ => ()
 
@@ -545,6 +551,7 @@ object CaptureSet:
         CompareResult.Fail(this :: Nil)
 
     override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
+      noUniversal = true
       rootAddedHandler = handler
       super.disallowRootCapability(handler)
 
