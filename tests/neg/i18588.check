@@ -1,0 +1,4 @@
+-- Error: tests/neg/i18588.scala:7:14 ----------------------------------------------------------------------------------
+7 |  private var cached: A = value // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  covariant type A occurs in invariant position in type A of variable cached

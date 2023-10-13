@@ -864,6 +864,17 @@ object SymDenotations {
     final def isNullableClassAfterErasure(using Context): Boolean =
       isClass && !isValueClass && !is(ModuleClass) && symbol != defn.NothingClass
 
+    /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
+     *  or, if this symbol is protected, a subclass of the owner?
+     */
+    def isCorrectThisType(pre: Type)(using Context): Boolean = pre match
+      case pre: ThisType =>
+        (pre.cls eq owner) || this.is(Protected) && pre.cls.derivesFrom(owner)
+      case pre: TermRef =>
+        pre.symbol.moduleClass == owner
+      case _ =>
+        false
+
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
      *  @param superAccess  Access is via super
@@ -886,18 +897,6 @@ object SymDenotations {
       def accessWithinLinked(boundary: Symbol) = {
         val linked = boundary.linkedClass
         (linked ne NoSymbol) && accessWithin(linked)
-      }
-
-      /** Is `pre` the same as C.thisThis, where C is exactly the owner of this symbol,
-       *  or, if this symbol is protected, a subclass of the owner?
-       */
-      def isCorrectThisType(pre: Type): Boolean = pre match {
-        case pre: ThisType =>
-          (pre.cls eq owner) || this.is(Protected) && pre.cls.derivesFrom(owner)
-        case pre: TermRef =>
-          pre.symbol.moduleClass == owner
-        case _ =>
-          false
       }
 
       /** Is protected access to target symbol permitted? */
