@@ -1304,7 +1304,7 @@ object Objects:
           case _ => List()
 
         val implicitValuesAfterScrtinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
-        val unapplyRes = call(receiver, funRef.symbol, TraceValue(scrutinee, summon[Trace]) :: (implicitValuesBeforeScrutinee(fun) ++ implicitValuesAfterScrtinee), funRef.prefix, superType = NoType, needResolve = true)
+        val unapplyRes = call(receiver, funRef.symbol, implicitValuesBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitValuesAfterScrtinee), funRef.prefix, superType = NoType, needResolve = true)
 
         if fun.symbol.name == nme.unapplySeq then
           var resultTp = unapplyResTp
