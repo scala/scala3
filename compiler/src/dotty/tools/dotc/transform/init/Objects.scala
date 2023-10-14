@@ -1298,13 +1298,14 @@ object Objects:
           case select: Select =>
             eval(select.qualifier, thisV, klass)
 
-        def implicitValuesBeforeScrutinee(fun: Tree): Contextual[List[ArgInfo]] = fun match
+        def implicitArgsBeforeScrutinee(fun: Tree): Contextual[List[ArgInfo]] = fun match
           case Apply(f, implicitArgs) =>
-            implicitValuesBeforeScrutinee(f) ++ evalArgs(implicitArgs.map(Arg.apply), thisV, klass)
+            implicitArgsBeforeScrutinee(f) ++ evalArgs(implicitArgs.map(Arg.apply), thisV, klass)
           case _ => List()
 
-        val implicitValuesAfterScrtinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
-        val unapplyRes = call(receiver, funRef.symbol, implicitValuesBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitValuesAfterScrtinee), funRef.prefix, superType = NoType, needResolve = true)
+        val implicitArgsAfterScrtinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
+        val args = implicitArgsBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitArgsAfterScrtinee)
+        val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
         if fun.symbol.name == nme.unapplySeq then
           var resultTp = unapplyResTp
