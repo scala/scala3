@@ -79,18 +79,6 @@ class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
   i"No common capture root nested in ${rs.mkString(" and ")}"
 )
 
-trait FollowAliases extends TypeMap:
-  def mapOverFollowingAliases(t: Type): Type = t match
-    case t: LazyRef =>
-      val t1 = this(t.ref)
-      if t1 ne t.ref then t1 else t
-    case _ =>
-      val t1 = t.dealiasKeepAnnots
-      if t1 ne t then
-        val t2 = this(t1)
-        if t2 ne t1 then return t2
-      mapOver(t)
-
 extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
