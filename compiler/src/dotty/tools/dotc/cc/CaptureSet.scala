@@ -536,8 +536,6 @@ object CaptureSet:
             levelLimit.isContainedIn(sym.levelOwner)
           case elem: ThisType =>
             levelLimit.isContainedIn(elem.cls.levelOwner)
-          case elem: CaptureRoot.Var =>
-            elem.encloses(levelLimit.localRoot.termRef)
           case _ => true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =

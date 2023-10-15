@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, CaptureRoot, isCaptureChecking}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, isCaptureChecking}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -2189,7 +2189,6 @@ object Types {
      */
     def isLocalRootCapability(using Context): Boolean = this match
       case tp: TermRef => tp.localRootOwner.exists
-      case tp: CaptureRoot.Var => true
       case _ => false
 
     /** Is this reference the a (local or generic) root capability? */

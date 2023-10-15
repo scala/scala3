@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, CaptureRoot, isBoxed, levelOwner, retainedElems}
+import cc.{CapturingType, RetainingType, CaptureSet, isBoxed, levelOwner, retainedElems}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -47,12 +47,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
   protected def debugPos: Boolean = ctx.settings.YdebugPos.value
-
-  /** If true, shorten local roots of current owner tp `cap`,
-   *  For now it is better to turn this off, so that we get the best info for diagnosis.
-   *  TODO: we should consider dropping this switch once we implemented disambiguation of capture roots.
-   */
-  private val shortenCap = false
 
   def homogenize(tp: Type): Type =
     if (homogenizedView)
@@ -253,16 +247,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val rootsInRefs = refs.elems.filter(isRootCap(_)).toList
         val showAsCap = rootsInRefs match
           case (tp: TermRef) :: Nil =>
-            if tp.symbol == defn.captureRoot then
-              refs.elems.size == 1 || !printDebug
-                // {caps.cap} gets printed as `{cap}` even under printDebug as long as there
-                // are no other elements in the set
-            else
-              tp.symbol.name == nme.LOCAL_CAPTURE_ROOT
-              && ctx.owner.levelOwner == tp.localRootOwner
-              && !printDebug
-              && shortenCap // !!!
-                // local roots get printed as themselves under printDebug
+            tp.symbol == defn.captureRoot && (refs.elems.size == 1 || !printDebug)
+              // {caps.cap} gets printed as `{cap}` even under printDebug as long as there
+              // are no other elements in the set
           case _ =>
             false
         val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
@@ -405,9 +392,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TermRef =>
         if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
-          if ctx.owner.levelOwner == tp.localRootOwner && !printDebug && shortenCap
-          then Str("cap")
-          else Str(s"cap[${nameString(tp.localRootOwner)}]")
+          Str(s"cap[${nameString(tp.localRootOwner)}]")
         else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
@@ -427,17 +412,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (homogenizedView) toText(tp.info)
         else if (ctx.settings.XprintTypes.value) "<" ~ toText(tp.repr) ~ ":" ~ toText(tp.info) ~ ">"
         else toText(tp.repr)
-      case tp: CaptureRoot.Var =>
-        if tp.followAlias ne tp then toTextRef(tp.followAlias)
-        else
-          def boundText(sym: Symbol): Text =
-            toTextRef(sym.termRef).provided(sym.exists)
-          "'cap["
-          ~ toTextRef(tp.outerLimit.termRef).provided(!tp.outerLimit.isRoot)
-          ~ ".."
-          ~ toTextRef(tp.innerLimit.termRef)
-          ~ "]"
-          ~ ("(from instantiating " ~ nameString(tp.source) ~ ")").provided(tp.source.exists)
     }
   }
 

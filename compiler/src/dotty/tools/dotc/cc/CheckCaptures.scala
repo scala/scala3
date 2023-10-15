@@ -195,7 +195,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   def phaseName: String = "cc"
 
   override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
-  override def firstPrepPhase = preRecheckPhase.prev.asInstanceOf[AddTryOwners]
+  override def firstPrepPhase = preRecheckPhase
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
@@ -221,14 +221,6 @@ class CheckCaptures extends Recheck, SymTransformer:
           refs match
             case refs: CaptureSet.Var if variance < 0 => refs.solve()
             case _ =>
-          for ref <- refs.elems do
-            ref match
-              case ref: CaptureRoot.Var =>
-                ref.followAlias match
-                  case rv: CaptureRoot.Var if rv.innerLimit == ctx.owner.levelOwner =>
-                    rv.alias = ctx.owner.localRoot.termRef
-                  case _ =>
-              case _ =>
           traverse(parent)
         case t @ defn.RefinedFunctionOf(rinfo) =>
           traverse(rinfo)
@@ -683,14 +675,13 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckTyped(tree)
 
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
-      val tryOwner = ccState.tryBlockOwner.remove(tree).getOrElse(ctx.owner)
+/*
       val saved = curEnv
       curEnv = Env(tryOwner, EnvKind.Regular, CaptureSet.Var(curEnv.owner), curEnv)
-      val tp = try
-        inContext(ctx.withOwner(tryOwner)):
-          super.recheckTry(tree, pt)
-        finally
-          curEnv = saved
+      val tp =
+        try super.recheckTry(tree, pt)
+        finally curEnv = saved*/
+      val tp = super.recheckTry(tree, pt)
       if allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
         disallowRootCapabilitiesIn(tp, ctx.owner,
           "result of `try`", "have type",

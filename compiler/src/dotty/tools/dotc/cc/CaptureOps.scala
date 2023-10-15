@@ -61,9 +61,6 @@ class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
 
-  /** Cache for level ownership */
-  val isLevelOwner: mutable.HashMap[Symbol, Boolean] = new mutable.HashMap
-
   /** Associates nesting level owners with the local roots valid in their scopes. */
   val localRoots: mutable.HashMap[Symbol, Symbol] = new mutable.HashMap
 
@@ -71,11 +68,6 @@ class CCState:
    *  the reference could not be added to the set due to a level conflict.
    */
   var levelError: Option[CaptureSet.CompareResult.LevelError] = None
-
-  /** Under saferExceptions: The <try block> symbol generated  for a try.
-   *  Installed by Setup, removed by CheckCaptures.
-   */
-  val tryBlockOwner: mutable.HashMap[Try, Symbol] = new mutable.HashMap
 
 end CCState
 
