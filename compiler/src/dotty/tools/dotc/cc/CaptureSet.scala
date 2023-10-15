@@ -132,8 +132,6 @@ sealed abstract class CaptureSet extends Showable:
    *   - x is the same as y,
    *   - x is a this reference and y refers to a field of x
    *   - x and y are local roots and y is an enclosing root of x
-   *   - the LooseRootChecking property is asserted, and either `x` is `cap`
-   *     or `x` is a local root and y is `cap`.
    */
   extension (x: CaptureRef)(using Context)
     private def subsumes(y: CaptureRef) =
@@ -142,8 +140,6 @@ sealed abstract class CaptureSet extends Showable:
       || y.match
           case y: TermRef => y.prefix eq x
           case _ => false
-      || (x.isUniversalRootCapability || y.isRootCapability && x.isRootCapability)
-          && ctx.property(LooseRootChecking).isDefined
 
     /** x <:< cap,   cap[x] <:< cap
      *  cap[y] <:< cap[x] if y encloses x

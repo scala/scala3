@@ -25,26 +25,11 @@ trait SetupAPI:
   def postCheck()(using Context): Unit
 
 object Setup:
-  def newScheme(using Context) = ctx.settings.YccNew.value // if new impl is conditional
-
-  private val IsDuringSetupKey = new Property.Key[Unit]
-
-  def isDuringSetup(using Context): Boolean = ctx.property(IsDuringSetupKey).isDefined
-
   case class Box(t: Type) extends UncachedGroundType, TermType:
     override def fallbackToText(printer: Printer): Text =
       Str("Box(") ~ printer.toText(t) ~ ")"
     def derivedBox(t1: Type): Type =
       if t1 eq t then this else Box(t1)
-
-  trait DepFunSpecializedTypeMap(using Context) extends TypeMap:
-    override def mapOver(tp: Type) = tp match
-      case defn.RefinedFunctionOf(rinfo: MethodOrPoly) =>
-        val rinfo1 = this(rinfo)
-        if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-        else tp
-      case _ =>
-        super.mapOver(tp)
 
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
@@ -116,7 +101,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def mappedInfo =
         if toBeUpdated.contains(sym) then symd.info
         else transformExplicitType(symd.info)
-      // TODO if sym is class && level owner: add a capture root
       if Synthetics.needsTransform(symd) then
         Synthetics.transform(symd, mappedInfo)
       else if isPreCC(sym) then
@@ -173,91 +157,92 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     *
     *  Polytype bounds are only cleaned using step 1, but not otherwise transformed.
     */
-  private def mapInferred(refine: Boolean)(using Context): TypeMap = new TypeMap:
-    override def toString = "map inferred"
-
-    /** Refine a possibly applied class type C where the class has tracked parameters
-     *  x_1: T_1, ..., x_n: T_n to C { val x_1: CV_1 T_1, ..., val x_n: CV_n T_n }
-     *  where CV_1, ..., CV_n are fresh capture sets.
-     */
-    def addCaptureRefinements(tp: Type): Type = tp match
-      case _: TypeRef | _: AppliedType if refine && tp.typeParams.isEmpty =>
-        tp.typeSymbol match
-          case cls: ClassSymbol
-          if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-            cls.paramGetters.foldLeft(tp) { (core, getter) =>
-              if atPhase(thisPhase.next)(getter.termRef.isTracked) then
-                val getterType =
-                  mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
-                RefinedType(core, getter.name,
-                    CapturingType(getterType, CaptureSet.RefiningVar(NoSymbol, getter)))
-                  .showing(i"add capture refinement $tp --> $result", ccSetup)
-              else
-                core
-            }
-          case _ => tp
-      case _ => tp
-
-    private var isTopLevel = true
-
-    private def mapNested(ts: List[Type]): List[Type] =
-      val saved = isTopLevel
-      isTopLevel = false
-      try ts.mapConserve(this)
-      finally isTopLevel = saved
-
-    def apply(tp: Type) =
-      val tp1 = tp match
-        case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
-          // Drop explicit retains annotations
-          apply(parent)
-        case tp @ AppliedType(tycon, args) =>
-          val tycon1 = this(tycon)
-          if defn.isNonRefinedFunction(tp) then
-            // Convert toplevel generic function types to dependent functions
-            if !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) then
-              // This type is a function after dealiasing, so we dealias and recurse.
-              // See #15925.
-              this(tp.dealias)
-            else
-              val args0 = args.init
-              var res0 = args.last
-              val args1 = mapNested(args0)
-              val res1 = this(res0)
-              if isTopLevel then
-                depFun(args1, res1,
-                    isContextual = defn.isContextFunctionClass(tycon1.classSymbol))
-                  .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", ccSetup)
-              else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
-                tp
-              else
-                tp.derivedAppliedType(tycon1, args1 :+ res1)
-          else
-            tp.derivedAppliedType(tycon1, args.mapConserve(arg => box(this(arg))))
-        case defn.RefinedFunctionOf(rinfo: MethodType) =>
-          val rinfo1 = apply(rinfo)
-          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-          else tp
-        case tp: MethodType =>
-          tp.derivedLambdaType(
-            paramInfos = mapNested(tp.paramInfos),
-            resType = this(tp.resType))
-        case tp: TypeLambda =>
-          // Don't recurse into parameter bounds, just cleanup any stray retains annotations
-          // !!! TODO we should also map roots to rootvars here
-          tp.derivedLambdaType(
-            paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
-            resType = this(tp.resType))
-        case Box(tp1) =>
-          box(this(tp1))
-        case _ =>
-          mapOver(tp)
-      addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
-    end apply
-  end mapInferred
-
   private def transformInferredType(tp: Type)(using Context): Type =
+    def mapInferred(refine: Boolean): TypeMap = new TypeMap:
+      override def toString = "map inferred"
+
+      /** Refine a possibly applied class type C where the class has tracked parameters
+       *  x_1: T_1, ..., x_n: T_n to C { val x_1: CV_1 T_1, ..., val x_n: CV_n T_n }
+       *  where CV_1, ..., CV_n are fresh capture sets.
+       */
+      def addCaptureRefinements(tp: Type): Type = tp match
+        case _: TypeRef | _: AppliedType if refine && tp.typeParams.isEmpty =>
+          tp.typeSymbol match
+            case cls: ClassSymbol
+            if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
+              cls.paramGetters.foldLeft(tp) { (core, getter) =>
+                if atPhase(thisPhase.next)(getter.termRef.isTracked) then
+                  val getterType =
+                    mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
+                  RefinedType(core, getter.name,
+                      CapturingType(getterType, CaptureSet.RefiningVar(NoSymbol, getter)))
+                    .showing(i"add capture refinement $tp --> $result", ccSetup)
+                else
+                  core
+              }
+            case _ => tp
+        case _ => tp
+
+      private var isTopLevel = true
+
+      private def mapNested(ts: List[Type]): List[Type] =
+        val saved = isTopLevel
+        isTopLevel = false
+        try ts.mapConserve(this)
+        finally isTopLevel = saved
+
+      def apply(tp: Type) =
+        val tp1 = tp match
+          case AnnotatedType(parent, annot) if annot.symbol == defn.RetainsAnnot =>
+            // Drop explicit retains annotations
+            apply(parent)
+          case tp @ AppliedType(tycon, args) =>
+            val tycon1 = this(tycon)
+            if defn.isNonRefinedFunction(tp) then
+              // Convert toplevel generic function types to dependent functions
+              if !defn.isFunctionSymbol(tp.typeSymbol) && (tp.dealias ne tp) then
+                // This type is a function after dealiasing, so we dealias and recurse.
+                // See #15925.
+                this(tp.dealias)
+              else
+                val args0 = args.init
+                var res0 = args.last
+                val args1 = mapNested(args0)
+                val res1 = this(res0)
+                if isTopLevel then
+                  depFun(args1, res1,
+                      isContextual = defn.isContextFunctionClass(tycon1.classSymbol))
+                    .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", ccSetup)
+                else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
+                  tp
+                else
+                  tp.derivedAppliedType(tycon1, args1 :+ res1)
+            else
+              tp.derivedAppliedType(tycon1, args.mapConserve(arg => box(this(arg))))
+          case defn.RefinedFunctionOf(rinfo: MethodType) =>
+            val rinfo1 = apply(rinfo)
+            if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
+            else tp
+          case tp: MethodType =>
+            tp.derivedLambdaType(
+              paramInfos = mapNested(tp.paramInfos),
+              resType = this(tp.resType))
+          case tp: TypeLambda =>
+            // Don't recurse into parameter bounds, just cleanup any stray retains annotations
+            // !!! TODO we should also map roots to rootvars here
+            tp.derivedLambdaType(
+              paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
+              resType = this(tp.resType))
+          case Box(tp1) =>
+            box(this(tp1))
+          case _ =>
+            mapOver(tp)
+        addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
+      end apply
+    end mapInferred
+
     mapInferred(refine = true)(tp)
+  end transformInferredType
 
   private def transformExplicitType(tp: Type, tptToCheck: Option[Tree] = None)(using Context): Type =
     val expandAliases = new DeepTypeMap:
@@ -312,6 +297,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             else t.info match
               case TypeAlias(alias) =>
                 val transformed = this(alias)
+                  // TODO: Do we need an eager expansion, presumably, we need that only for normalizeCaptures
                 if transformed ne alias then transformed else t
                   //.showing(i"EXPAND $t with ${t.info} to $result in ${t.symbol.owner}/${ctx.owner}")
               case _ =>
@@ -568,7 +554,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 def complete(denot: SymDenotation)(using Context) =
                   // infos of other methods are determined from their definitions which
                   // are checked on demand
-                  assert(!isDuringSetup, i"$sym")
                   assert(ctx.phase == thisPhase.next, i"$sym")
                   ccSetup.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
                   //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
@@ -711,8 +696,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case _ => CaptureSet.Var(owner))
 
   def setupUnit(tree: Tree, recheckDef: DefRecheck)(using Context): Unit =
-    setupTraverser(recheckDef).traverse(tree)(
-      using ctx.withPhase(thisPhase).withProperty(IsDuringSetupKey, Some(())))
+    setupTraverser(recheckDef).traverse(tree)(using ctx.withPhase(thisPhase))
 
   // ------ Checks to run after main capture checking --------------------------
 

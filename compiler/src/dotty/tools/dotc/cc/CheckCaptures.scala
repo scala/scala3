@@ -19,7 +19,7 @@ import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
 import scala.collection.mutable
-import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult, LooseRootChecking}
+import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
 import StdNames.nme
 import NameKinds.DefaultGetterName
 import reporting.trace
@@ -1081,8 +1081,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       def traverse(t: Tree)(using Context) =
         t match
           case t: Template =>
-            checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))(
-              using ctx.withProperty(LooseRootChecking, Some(())))
+            checkAllOverrides(ctx.owner.asClass, OverridingPairsCheckerCC(_, _, t))
           case _ =>
         traverseChildren(t)
 
