@@ -56,7 +56,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def isAlwaysEmpty: Boolean
 
-  /** An optinal level limit, or NoSymbol if none exists. All elements of the set
+  /** An optional level limit, or NoSymbol if none exists. All elements of the set
    *  must be in scopes visible from the level limit.
    */
   def levelLimit: Symbol
@@ -78,13 +78,11 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
-    elems.exists(_.isGenericRootCapability)
+    elems.exists(_.isUniversalRootCapability)
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def containsRoot(using Context) =
-    elems.exists:
-      case ref: TermRef => ref.isRootCapability
-      case _ => false
+    elems.exists(_.isRootCapability)
 
   final def disallowsUniversal(using Context) =
     if isConst then !isUniversal && elems.exists(_.isLocalRootCapability)
@@ -144,7 +142,7 @@ sealed abstract class CaptureSet extends Showable:
       || y.match
           case y: TermRef => y.prefix eq x
           case _ => false
-      || (x.isGenericRootCapability || y.isRootCapability && x.isRootCapability)
+      || (x.isUniversalRootCapability || y.isRootCapability && x.isRootCapability)
           && ctx.property(LooseRootChecking).isDefined
 
     /** x <:< cap,   cap[x] <:< cap
@@ -153,8 +151,8 @@ sealed abstract class CaptureSet extends Showable:
      */
     private def isSuperRootOf(y: CaptureRef): Boolean = x match
       case x: TermRef =>
-        if x.isGenericRootCapability then true
-        else if x.isLocalRootCapability && !y.isGenericRootCapability then
+        if x.isUniversalRootCapability then true
+        else if x.isLocalRootCapability && !y.isUniversalRootCapability then
           val xowner = x.localRootOwner
           y match
             case y: TermRef =>
@@ -286,11 +284,6 @@ sealed abstract class CaptureSet extends Showable:
       if elems1 == elems then this
       else Const(elems.filter(p))
     else Filtered(asVar, p)
-
-  /** This set with a new owner and therefore also a new levelLimit */
-  def changeOwner(newOwner: Symbol)(using Context): CaptureSet =
-    if this.isConst then this
-    else ChangedOwner(asVar, newOwner)
 
   /** Capture set obtained by applying `tm` to all elements of the current capture set
    *  and joining the results. If the current capture set is a variable, the same
@@ -517,7 +510,7 @@ object CaptureSet:
       else
         //assert(id != 19 || !elem.isLocalRootCapability, elem.asInstanceOf[TermRef].localRootOwner)
         elems += elem
-        if elem.isGenericRootCapability then rootAddedHandler()
+        if elem.isUniversalRootCapability then rootAddedHandler()
         newElemAddedHandler(elem)
         // assert(id != 5 || elems.size != 3, this)
         val res = (CompareResult.OK /: deps) { (r, dep) =>
@@ -527,7 +520,7 @@ object CaptureSet:
         res
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isGenericRootCapability then !noUniversal
+      if elem.isUniversalRootCapability then !noUniversal
       else !levelLimit.exists
       || elem.match
           case elem: TermRef =>
@@ -560,7 +553,7 @@ object CaptureSet:
 
     /** Roughly: the intersection of all constant known supersets of this set.
      *  The aim is to find an as-good-as-possible constant set that is a superset
-     *  of this set. The associated root set {cap[owner]} is a sound fallback.
+     *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
       if isConst then this
@@ -757,10 +750,6 @@ object CaptureSet:
 
     override def toString = s"BiMapped$id($source, elems = $elems)"
   end BiMapped
-
-  /** Same as `source` but with a new directOwner */
-  class ChangedOwner private[CaptureSet](val source: Var, newOwner: Symbol)(using @constructorOnly ctx: Context)
-  extends DerivedVar(newOwner, source.elems)
 
   /** A variable with elements given at any time as { x <- source.elems | p(x) } */
   class Filtered private[CaptureSet]
@@ -1087,7 +1076,7 @@ object CaptureSet:
     override def toAdd(using Context) =
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
-        if ref.isGenericRootCapability then
+        if ref.isUniversalRootCapability then
           i"""
             |
             |Note that the universal capability `cap`

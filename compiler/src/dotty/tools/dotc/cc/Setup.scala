@@ -311,12 +311,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             if sym.isClass then t
             else t.info match
               case TypeAlias(alias) =>
-                val transformed =
-                  if sym.isStatic || true then this(alias)
-                  else transformExplicitType(alias)(
-                    using ctx.withOwner(sym.owner))
+                val transformed = this(alias)
                 if transformed ne alias then transformed else t
-                    //.showing(i"EXPAND $t with ${t.info} to $result in ${t.symbol.owner}/${ctx.owner}")
+                  //.showing(i"EXPAND $t with ${t.info} to $result in ${t.symbol.owner}/${ctx.owner}")
               case _ =>
                 recur(t)
           case t @ AppliedType(tycon: TypeProxy, args) if true =>

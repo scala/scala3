@@ -140,7 +140,10 @@ object CheckCaptures:
           case tpe =>
             report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
-  /** Report an error if some part of `tp` contains the root capability in its capture set */
+  /** Report an error if some part of `tp` contains the root capability in its capture set
+   *  or if it refers to an unsealed type parameter that could possibly be instantiated with
+   *  cap in a way that's visible at the type.
+   */
   def disallowRootCapabilitiesIn(tp: Type, carrier: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
       extension (tparam: Symbol) def isParametricIn(carrier: Symbol): Boolean =
@@ -195,7 +198,6 @@ class CheckCaptures extends Recheck, SymTransformer:
   def phaseName: String = "cc"
 
   override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
-  override def firstPrepPhase = preRecheckPhase
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
@@ -525,7 +527,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             augmentConstructorType(parent, initCs ++ refs)
           case _ =>
             val (refined, cs) = addParamArgRefinements(core, initCs)
-            refined.capturing(cs.changeOwner(ctx.owner))
+            refined.capturing(cs)
 
         augmentConstructorType(ownType, capturedVars(cls) ++ capturedVars(sym))
           .showing(i"constr type $mt with $argTypes%, % in $cls = $result", capt)
@@ -675,12 +677,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       super.recheckTyped(tree)
 
     override def recheckTry(tree: Try, pt: Type)(using Context): Type =
-/*
-      val saved = curEnv
-      curEnv = Env(tryOwner, EnvKind.Regular, CaptureSet.Var(curEnv.owner), curEnv)
-      val tp =
-        try super.recheckTry(tree, pt)
-        finally curEnv = saved*/
       val tp = super.recheckTry(tree, pt)
       if allowUniversalInBoxed && Feature.enabled(Feature.saferExceptions) then
         disallowRootCapabilitiesIn(tp, ctx.owner,
@@ -805,7 +801,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           .showing(i"adapt universal $actual vs $expected = $result", capt)
       else actual
 
-    val debugSuccesses = false
+    private inline val debugSuccesses = false
 
     /** Massage `actual` and `expected` types before checking conformance.
      *  Massaging is done by the methods following this one:

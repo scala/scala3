@@ -2182,7 +2182,7 @@ object Types {
       isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this reference the generic root capability `cap` ? */
-    def isGenericRootCapability(using Context): Boolean = false
+    def isUniversalRootCapability(using Context): Boolean = false
 
     /** Is this reference a local root capability `{<cap in owner>}`
      *  for some level owner?
@@ -2193,7 +2193,7 @@ object Types {
 
     /** Is this reference the a (local or generic) root capability? */
     def isRootCapability(using Context): Boolean =
-      isGenericRootCapability || isLocalRootCapability
+      isUniversalRootCapability || isLocalRootCapability
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2927,7 +2927,7 @@ object Types {
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
-    override def isGenericRootCapability(using Context): Boolean =
+    override def isUniversalRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     def localRootOwner(using Context): Symbol =

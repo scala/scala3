@@ -15,7 +15,6 @@ import config.Feature
 import collection.mutable
 
 private val Captures: Key[CaptureSet] = Key()
-private val BoxedType: Key[BoxedTypeCache] = Key()
 
 object ccConfig:
 
@@ -25,14 +24,6 @@ object ccConfig:
    */
   private[cc] val adaptUnpickledFunctionTypes = false
 
-  /** Switch whether we constrain a root var that includes the source of a
-   *  root map to be an alias of that source (so that it can be mapped)
-   */
-  private[cc] val constrainRootsWhenMapping = true
-
-  /** Use old scheme for refining vars, which should be no longer necessary
-   */
-  val oldRefiningVars = false
 end ccConfig
 
 def allowUniversalInBoxed(using Context) =
@@ -132,7 +123,6 @@ extension (tp: Type)
       if (parent eq p) && (refs eq r) then tp
       else CapturingType(parent, refs, tp.isBoxed)
 
-  // TODO Move boxed/unboxed to CaapturingType?
   /** If this is a unboxed capturing type with nonempty capture set, its boxed version.
    *  Or, if type is a TypeBounds of capturing types, the version where the bounds are boxed.
    *  The identity for all other types.
@@ -140,13 +130,8 @@ extension (tp: Type)
   def boxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
-        case ann: CaptureAnnotation =>
-          AnnotatedType(parent, ann.boxedAnnot)
-        case ann =>
-          ann.tree.getAttachment(BoxedType) match // TODO drop
-            case None => ann.tree.putAttachment(BoxedType, BoxedTypeCache())
-            case _ =>
-          ann.tree.attachment(BoxedType)(tp)
+        case ann: CaptureAnnotation => AnnotatedType(parent, ann.boxedAnnot)
+        case ann => tp
     case tp: RealTypeBounds =>
       tp.derivedTypeBounds(tp.lo.boxed, tp.hi.boxed)
     case _ =>

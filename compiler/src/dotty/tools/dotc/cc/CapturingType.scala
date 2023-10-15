@@ -28,7 +28,7 @@ object CapturingType:
 
   /** Smart constructor that
    *   - drops empty capture sets
-   *   - drops capability class ecpansion if they are refined with another capturing type
+   *   - drops a capability class expansion if it is further refined with another capturing type
    *   - fuses compatible capturiong types.
    *  An outer type capturing type A can be fused with an inner capturing type B if their
    *  boxing status is the same or if A is boxed.
@@ -77,7 +77,7 @@ object CapturingType:
       None
 
   /** Check whether a type is uncachable when computing `baseType`.
-   * We avoid caching capturing types when IgnoreCaptures mode is set, since the
+   *  We avoid caching capturing types when IgnoreCaptures mode is set.
    */
   def isUncachable(tp: Type)(using Context): Boolean =
     ctx.mode.is(Mode.IgnoreCaptures) && decomposeCapturingType(tp).isDefined
