@@ -19,7 +19,7 @@ import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
 import reporting.TestingReporter
-import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing, isLevelOwner, localRoot}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -99,8 +99,8 @@ object TypeOps:
         tp match {
           case tp: NamedType =>
             val sym = tp.symbol
-            if sym.isStatic && !sym.maybeOwner.seesOpaques then tp
-            else if tp.prefix `eq` NoPrefix then tp
+            if sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)
+            then tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case

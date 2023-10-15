@@ -68,11 +68,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
-  /** All capturing types in the original `tp1` enclosing the currently
-   *  compared type.
-   */
-  private var enclosingCapturing1: List[AnnotatedType] = Nil
-
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should
@@ -553,11 +548,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               if tp1.isBoxedCapturing && !parent1.isBoxedCapturing
               then tp2.unboxed
               else tp2
-            try
-              enclosingCapturing1 = tp1 :: enclosingCapturing1
-              recur(parent1, tp2a)
-            finally
-              enclosingCapturing1 = enclosingCapturing1.tail
+            recur(parent1, tp2a)
           else thirdTry
         compareCapturing
       case tp1: AnnotatedType if !tp1.isRefining =>
@@ -685,7 +676,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
-                return isSubInfo(tp1.ccMember(nme.apply).info, tp2.refinedInfo)
+                return isSubInfo(tp1.member(nme.apply).info, tp2.refinedInfo)
               else
                 tp1w.widenDealias match
                   case tp1: RefinedType =>
@@ -2038,7 +2029,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
    */
   def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.ccMember(name).info}", subtyping) {
+    trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
 
       // If the member is an abstract type and the prefix is a path, compare the member itself
       // instead of its bounds. This case is needed situations like:
@@ -2119,29 +2110,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
       end qualifies
 
-      tp1.ccMember(name).hasAltWithInline(qualifies)
+      tp1.member(name).hasAltWithInline(qualifies)
     }
-
-  extension (qual: Type)
-	/** Add all directly enclosing capture sets to `qual` and select `name` on the
-	 *  resulting type. A capture set is directly enclosing if there is an enclosing
-	 *  capturing type with the set and all types between `qual` and that type
-	 *  are RefinedTypes or CapturingTypes.
-	 */
-    def ccMember(name: Name): Denotation =
-      def isEnclosing(tp: Type): Boolean = tp match
-        case RefinedType(parent, _, _) => isEnclosing(parent)
-        case CapturingType(parent, _) => isEnclosing(parent)
-        case _ => tp eq qual
-
-      def addCaptures(tp: Type, encls: List[AnnotatedType]): Type = encls match
-        case (ct @ CapturingType(parent, refs)) :: encls1 if isEnclosing(parent) =>
-          addCaptures(CapturingType(tp, refs, ct.isBoxedCapturing), encls1)
-        case _ =>
-          tp
-
-      addCaptures(qual, enclosingCapturing1).member(name)
-    end ccMember
 
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType if tp.isStable => tp
@@ -3418,7 +3388,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
-    traceIndented(s"hasMatchingMember(${show(tp1)} . $name, ${show(tp2.refinedInfo)}), member = ${show(tp1.ccMember(name).info)}") {
+    traceIndented(s"hasMatchingMember(${show(tp1)} . $name, ${show(tp2.refinedInfo)}), member = ${show(tp1.member(name).info)}") {
       super.hasMatchingMember(name, tp1, tp2)
     }
 

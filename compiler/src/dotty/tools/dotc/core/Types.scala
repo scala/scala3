@@ -2931,6 +2931,7 @@ object Types {
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     def localRootOwner(using Context): Symbol =
+      // TODO Try to make local class roots be NonMembers owned directly by the class
       val owner = symbol.maybeOwner
       def normOwner = if owner.isLocalDummy then owner.owner else owner
       if name == nme.LOCAL_CAPTURE_ROOT then normOwner

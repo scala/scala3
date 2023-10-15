@@ -20,7 +20,6 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
-import cc.{localRoot, isCaptureChecking, isLevelOwner}
 
 object RefChecks {
   import tpd._
