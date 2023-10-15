@@ -8,8 +8,8 @@
 -- Error: tests/neg-custom-args/captures/cc-this.scala:10:15 -----------------------------------------------------------
 10 |  class C2(val x: () => Int): // error
    |               ^
-   |reference (C2.this.x : () ->{cap[C2]} Int) is not included in the allowed capture set {} of the self type of class C2
+   |    reference (C2.this.x : () => Int) is not included in the allowed capture set {} of the self type of class C2
 -- Error: tests/neg-custom-args/captures/cc-this.scala:17:8 ------------------------------------------------------------
 17 |  class C4(val f: () => Int) extends C3 // error
    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |reference (C4.this.f : () ->{cap[C4]} Int) is not included in the allowed capture set {} of pure base class class C3
+   |  reference (C4.this.f : () => Int) is not included in the allowed capture set {} of pure base class class C3

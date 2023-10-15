@@ -340,7 +340,7 @@ abstract class Recheck extends Phase, SymTransformer:
       tptType
 
     def recheckAssign(tree: Assign)(using Context): Type =
-      val lhsType = recheck(tree.lhs)
+      val lhsType = recheck(tree.lhs, LhsProto)
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
@@ -531,9 +531,9 @@ abstract class Recheck extends Phase, SymTransformer:
      *  @param pt    the expected type
      */
     def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
-      checkConforms(tpe, pt, tree)
-      if keepType(tree) then tree.rememberType(tpe)
-      tpe
+      val tpe1 = checkConforms(tpe, pt, tree)
+      if keepType(tree) then tree.rememberType(tpe1)
+      tpe1
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       def op =
@@ -572,10 +572,9 @@ abstract class Recheck extends Phase, SymTransformer:
     private val debugSuccesses = false
 
     /** Check that widened types of `tpe` and `pt` are compatible. */
-    def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Unit = tree match
-      case _: DefTree | EmptyTree | _: TypeTree =>
-      case _ =>
-        checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
+    def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Type = tree match
+      case _: DefTree | EmptyTree | _: TypeTree => tpe
+      case _ => checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
     def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
       actual <:< expected
@@ -587,17 +586,12 @@ abstract class Recheck extends Phase, SymTransformer:
         (widened ne expected) && isCompatible(actual, widened)
       }
 
-    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Unit =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Type =
       //println(i"check conforms $actual <:< $expected")
       if !isCompatible(actual, expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
         err.typeMismatch(tree.withType(actual), expected, addenda)
-      else if debugSuccesses then
-        tree match
-          case closureDef(_) =>
-            println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
-          case _ =>
-    end checkConformsExpr
+      actual
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)

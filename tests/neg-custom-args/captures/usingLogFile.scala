@@ -14,7 +14,7 @@ object Test1:
 
 object Test2:
 
-  def usingLogFile[T](op: (local: caps.Cap) ?-> FileOutputStream^{local} => T): T =
+  def usingLogFile[sealed T](op: FileOutputStream^ => T): T =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -28,11 +28,11 @@ object Test2:
   private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
   later2.x()
 
-  var later3: () => Unit = () => ()
+  var later3: () ->{cap[`<root>`]} Unit = () => ()
   usingLogFile { f => later3 = () => f.write(0) }  // error
   later3()
 
-  var later4: Cell[() => Unit] = Cell(() => ())
+  var later4: Cell[() ->{cap[`<root>`]} Unit] = Cell(() => ())
   usingLogFile { f => later4 = Cell(() => f.write(0)) }  // error
   later4.x()
 

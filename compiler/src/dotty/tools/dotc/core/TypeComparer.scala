@@ -2114,15 +2114,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             ExprType(info1.resType)
           case info1 => info1
 
-        if ccConfig.oldRefiningVars && isCaptureCheckingOrSetup then
-          // When comparing against a RefiningVar refinement, map the
-          // localRoot of the corresponding class in `tp1` to the owner of the
-          // refining capture set.
-          tp2.refinedInfo match
-            case rinfo2 @ CapturingType(_, refs: CaptureSet.RefiningVar) =>
-              info1 = mapRoots(refs.getter.owner.localRoot.termRef, refs.levelLimit.localRoot.termRef)(info1)
-            case _ =>
-
         isSubInfo(info1, info2, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))

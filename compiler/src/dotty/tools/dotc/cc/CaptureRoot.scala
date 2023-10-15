@@ -59,7 +59,7 @@ object CaptureRoot:
      */
     def freshEnclosedBy(rs: CaptureRoot*)(using Context): CaptureRoot =
       val r = fresh
-      if rs.forall(_.encloses(r)) then r else throw NoCommonRoot(rs*)
+      if rs.forall(_.encloses(r)) then r else throw CaptureRoot.NoCommonRoot(rs*)
 
     def computeHash(bs: Binders): Int = hash
     def hash: Int = System.identityHashCode(this)
@@ -107,7 +107,7 @@ object CaptureRoot:
             r1.alias = r2
             r2.outerLimit =
               r1.outerLimit.maxNested(r2.outerLimit,
-                onConflict = (_, _) => throw NoCommonRoot(r1, r2))
+                onConflict = (_, _) => throw CaptureRoot.NoCommonRoot(r1, r2))
             r2.innerLimit = r1.innerLimit.minNested(r2.innerLimit)
             true
           else
@@ -129,7 +129,7 @@ object CaptureRoot:
     else (r1, r2) match
       case (r1: TermRef, r2: TermRef) =>
         r1.localRootOwner.maxNested(r2.localRootOwner,
-          onConflict = (_, _) => throw NoCommonRoot(r1, r2)
+          onConflict = (_, _) => throw CaptureRoot.NoCommonRoot(r1, r2)
         ).termRef
       case (r1: TermRef, r2: Var) =>
         r2.freshEnclosedBy(r1, r2)

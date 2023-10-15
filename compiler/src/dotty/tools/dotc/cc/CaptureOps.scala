@@ -99,31 +99,13 @@ trait FollowAliases extends TypeMap:
         if t2 ne t1 then return t2
       mapOver(t)
 
-class mapRoots(from0: CaptureRoot, to: CaptureRoot)(using Context) extends DeepTypeMap, BiTypeMap, FollowAliases:
-  val from = from0.followAlias
-
-  //override val toString = i"mapRoots($from, $to)"
-
-  def apply(t: Type): Type =
-    if t eq from then to
-    else t match
-      case t: CaptureRoot.Var if ccConfig.constrainRootsWhenMapping && t.unifiesWith(from) =>
-        to
-      case t @ Setup.Box(t1) =>
-        t.derivedBox(this(t1))
-      case _ =>
-        mapOverFollowingAliases(t)
-
-  def inverse = mapRoots(to, from)
-end mapRoots
-
 extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
   def toCaptureRef(using Context): CaptureRef = tree match
     case QualifiedRoot(outer) =>
       ctx.owner.levelOwnerNamed(outer)
-        .orElse(defn.captureRoot) // non-existing outer roots are reported in Setup's checkQualifiedRoots
+        .orElse(defn.RootClass) // non-existing outer roots are reported in Setup's checkQualifiedRoots
         .localRoot.termRef
     case _ => tree.tpe match
       case ref: CaptureRef => ref
@@ -301,32 +283,6 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
-  def hasUniversalRootOf(sym: Symbol)(using Context): Boolean =
-
-    def isOwnRoot(tp: Type)(using Context): Boolean =
-      tp.isCapabilityClassRef
-      || tp.dealias.match
-        case tp: TermRef =>
-          tp.isGenericRootCapability || tp.localRootOwner == sym
-        case _ =>
-          false
-
-    tp.dealiasKeepAnnots match
-      case tp @ AnnotatedType(parent, annot) =>
-        val found = annot match
-          case CaptureAnnotation(refs, _) => refs.elems.exists(isOwnRoot(_))
-          case _ => annot.tree.retainedElems.exists(tree => isOwnRoot(tree.tpe))
-        found || parent.hasUniversalRootOf(sym)
-      case tp: TypeRef =>
-        tp.isRef(defn.Caps_Cap) || tp.isCapabilityClassRef
-      case tp: LazyRef =>
-        tp.ref.hasUniversalRootOf(sym)
-      case tp: TypeVar =>
-        tp.underlying.hasUniversalRootOf(sym)
-      case _ =>
-        tp.isCapabilityClassRef
-  end hasUniversalRootOf
-
 extension (cls: ClassSymbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
@@ -382,19 +338,6 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  def takesCappedParamIn(info: Type)(using Context): Boolean =
-    info.dealias.stripPoly match
-      case mt: MethodType =>
-        (mt.paramInfos.exists(_.hasUniversalRootOf(sym)) || takesCappedParamIn(mt.resType))
-          //.showing(i"takes capped param1 $sym: $mt = $result")
-      case AppliedType(fn, args) if defn.isFunctionClass(fn.typeSymbol) =>
-        args.init.exists(_.hasUniversalRootOf(sym)) || takesCappedParamIn(args.last)
-      case defn.RefinedFunctionOf(rinfo) =>
-        takesCappedParamIn(rinfo)
-          //.showing(i"takes capped param2 $sym: $rinfo = $result")
-      case _ =>
-        false
-
   def isTrackedSomewhere(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:
       def apply(found: Boolean, tp: Type) =
@@ -404,31 +347,18 @@ extension (sym: Symbol)
 
   // TODO Also include vals (right now they are manually entered in levelOwners by Setup)
   def isLevelOwner(using Context): Boolean =
-    val symd = sym.denot
-    def isCaseClassSynthetic = // TODO drop
-      symd.maybeOwner.isClass && symd.owner.is(Case) && symd.is(Synthetic) && symd.info.firstParamNames.isEmpty
-    def classQualifies =
-      if sym.isEffectivelyFinal then
-        takesCappedParamIn(symd.primaryConstructor.info)
-        || symd.asClass.givenSelfType.hasUniversalRootOf(sym)
-      else
-        !sym.isPureClass
-    def compute =
-      if symd.isClass then
-        symd.is(CaptureChecked) && classQualifies || symd.isRoot
-      else
-        (symd.is(Method, butNot = Accessor)
-          || symd.isTerm && !symd.isOneOf(TermParamOrAccessor | Mutable))
-        && (!symd.owner.isClass
-            || symd.owner.is(CaptureChecked)
-            || Synthetics.needsTransform(symd)
-            )
-        && (!symd.isAnonymousFunction || sym.definedLocalRoot.exists)
-        && takesCappedParamIn(symd.info)
-        && { ccSetup.println(i"Level owner $sym"); true }
+    sym.isClass
+    || sym.is(Method, butNot = Accessor)// && !sym.isAnonymousFunction // TODO enable?
 
-    ccState.isLevelOwner.getOrElseUpdate(sym, compute)
-  end isLevelOwner
+  /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
+   */
+  def levelOwnerNamed(name: String)(using Context): Symbol =
+    def recur(sym: Symbol): Symbol =
+      if sym.name.toString == name then
+        if sym.isLevelOwner then sym else NoSymbol
+      else if sym == defn.RootClass then NoSymbol
+      else recur(sym.owner)
+    recur(sym)
 
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
@@ -443,20 +373,6 @@ extension (sym: Symbol)
       else if sym.isLevelOwner then sym
       else recur(sym.owner)
     recur(sym)
-
-  /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
-   *  If name refers to a val that has a closure as rhs, we return the closure as level
-   *  owner.
-   */
-  def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(sym: Symbol): Symbol =
-      if sym.name.toString == name then
-        if sym.isLevelOwner then sym
-        else NoSymbol
-      else if sym == defn.RootClass then NoSymbol
-      else recur(sym.owner)
-    recur(sym)
-      .showing(i"find outer $sym [ $name ] = $result", capt)
 
   /** The parameter with type caps.Cap in the leading term parameter section,
    *  or NoSymbol, if none exists.

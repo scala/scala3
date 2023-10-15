@@ -61,10 +61,6 @@ sealed abstract class CaptureSet extends Showable:
    */
   def levelLimit: Symbol
 
-  def rootSet(using Context): CaptureSet =
-    assert(levelLimit.exists, this)
-    levelLimit.localRoot.termRef.singletonCaptureSet
-
   /** Is this capture set definitely non-empty? */
   final def isNotEmpty: Boolean = !elems.isEmpty
 
@@ -144,16 +140,30 @@ sealed abstract class CaptureSet extends Showable:
   extension (x: CaptureRef)(using Context)
     private def subsumes(y: CaptureRef) =
       (x eq y)
+      || x.isSuperRootOf(y)
       || y.match
-          case y: TermRef => (y.prefix eq x) || y.isLocalRootCapability && x.isSuperRootOf(y)
-          case y: CaptureRoot.Var => x.isSuperRootOf(y)
+          case y: TermRef => y.prefix eq x
           case _ => false
       || (x.isGenericRootCapability || y.isRootCapability && x.isRootCapability)
           && ctx.property(LooseRootChecking).isDefined
 
-    private def isSuperRootOf(y: CaptureRoot) = x match
-      case x: CaptureRoot =>
-        x.isGenericRootCapability || x.isLocalRootCapability && y.encloses(x)
+    /** x <:< cap,   cap[x] <:< cap
+     *  cap[y] <:< cap[x] if y encloses x
+     *  y <:< cap[x] if y's level owner encloses x's local root owner
+     */
+    private def isSuperRootOf(y: CaptureRef): Boolean = x match
+      case x: TermRef =>
+        if x.isGenericRootCapability then true
+        else if x.isLocalRootCapability && !y.isGenericRootCapability then
+          val xowner = x.localRootOwner
+          y match
+            case y: TermRef =>
+              xowner.isContainedIn(y.symbol.levelOwner)
+            case y: ThisType =>
+              xowner.isContainedIn(y.cls)
+            case _ =>
+              false
+        else false
       case _ => false
   end extension
 
@@ -207,9 +217,10 @@ sealed abstract class CaptureSet extends Showable:
     def recur(elems: List[CaptureRef]): CompareResult = elems match
       case elem :: elems1 =>
         var result = that.tryInclude(elem, this)
-        if !result.isOK && !elem.isRootCapability && summon[VarState] != FrozenState then
+        if !result.isOK then
           ccState.levelError = ccState.levelError.orElse(result.levelError)
-          result = result.orElse(elem.captureSetOfInfo.subCaptures(that))
+          if !elem.isRootCapability && summon[VarState] != FrozenState then
+            result = result.orElse(elem.captureSetOfInfo.subCaptures(that))
         if result.isOK then
           recur(elems1)
         else
@@ -321,22 +332,6 @@ sealed abstract class CaptureSet extends Showable:
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
   def substParams(tl: BindingType, to: List[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
-
-  /** The capture root that corresponds to this capture set. This is:
-   *    - if the capture set is a Var with a defined level limit, the
-   *      associated capture root,
-   *    - otherwise, if the set is nonempty, the innermost root such
-   *      that some element of the set subcaptures this root,
-   *    - otherwise, if the set is empty, `default`.
-   */
-  def impliedRoot(default: CaptureRoot)(using Context): CaptureRoot =
-    if levelLimit.exists then levelLimit.localRoot.termRef
-    else if elems.isEmpty then default
-    else elems.toList
-      .map:
-        case elem: CaptureRoot if elem.isLocalRootCapability => elem
-        case elem => elem.captureSetOfInfo.impliedRoot(default)
-      .reduce((x: CaptureRoot, y: CaptureRoot) => CaptureRoot.lub(x, y))
 
   /** Invoke handler if this set has (or later aquires) the root capability `cap` */
   def disallowRootCapability(handler: () => Context ?=> Unit)(using Context): this.type =
@@ -459,7 +454,7 @@ object CaptureSet:
       varId += 1
       varId
 
-    //assert(id != 95)
+    //assert(id != 40)
 
     override val levelLimit =
       if directOwner.exists then directOwner.levelOwner else NoSymbol
@@ -525,12 +520,15 @@ object CaptureSet:
         if elem.isGenericRootCapability then rootAddedHandler()
         newElemAddedHandler(elem)
         // assert(id != 5 || elems.size != 3, this)
-        (CompareResult.OK /: deps) { (r, dep) =>
+        val res = (CompareResult.OK /: deps) { (r, dep) =>
           r.andAlso(dep.tryInclude(elem, this))
         }.addToTrace(this)
+        if !res.isOK then elems -= elem
+        res
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      !levelLimit.exists
+      if elem.isGenericRootCapability then !noUniversal
+      else !levelLimit.exists
       || elem.match
           case elem: TermRef =>
             var sym = elem.symbol
@@ -571,7 +569,7 @@ object CaptureSet:
       else if elems.exists(_.isRootCapability) then
         CaptureSet(elems.filter(_.isRootCapability).toList*)
       else if computingApprox then
-        rootSet
+        universal
       else
         computingApprox = true
         try computeApprox(origin).ensuring(_.isConst)
@@ -579,7 +577,7 @@ object CaptureSet:
 
     /** The intersection of all upper approximations of dependent sets */
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      (rootSet /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
+      (universal /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
 
     /** Widen the variable's elements to its upper approximation and
      *  mark it as constant from now on. This is used for contra-variant type variables
@@ -720,7 +718,7 @@ object CaptureSet:
       if source eq origin then
         // it's a mapping of origin, so not a superset of `origin`,
         // therefore don't contribute to the intersection.
-        rootSet
+        universal
       else
         source.upperApprox(this).map(tm)
 
@@ -788,7 +786,7 @@ object CaptureSet:
       if source eq origin then
         // it's a filter of origin, so not a superset of `origin`,
         // therefore don't contribute to the intersection.
-        rootSet
+        universal
       else
         source.upperApprox(this).filter(p)
 
@@ -819,7 +817,7 @@ object CaptureSet:
       if (origin eq cs1) || (origin eq cs2) then
         // it's a combination of origin with some other set, so not a superset of `origin`,
         // therefore don't contribute to the intersection.
-        rootSet
+        universal
       else
         CaptureSet(elemIntersection(cs1.upperApprox(this), cs2.upperApprox(this)))
 
@@ -1010,10 +1008,6 @@ object CaptureSet:
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
     case ref: TermRef if ref.isRootCapability =>
       ref.singletonCaptureSet
-    case ref: TermRef if ref.symbol.isLevelOwner =>
-      ofType(ref.underlying, followResult = true).filter(
-        ref.symbol.localRoot.termRef != _)
-      // TODO: Can replace filter with - ref.symbol.localRoot.termRef when we drop level nesting
     case _ =>
       ofType(ref.underlying, followResult = true)
 
@@ -1095,12 +1089,18 @@ object CaptureSet:
     override def toAdd(using Context) =
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
-        val levelStr = ref match
-          case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
-          case _ => ""
-        i"""
-           |
-           |Note that reference ${ref}$levelStr
-           |cannot be included in outer capture set $cs which is associated with ${cs.levelLimit}"""
+        if ref.isGenericRootCapability then
+          i"""
+            |
+            |Note that the universal capability `cap`
+            |cannot be included in capture set $cs"""
+        else
+          val levelStr = ref match
+            case ref: TermRef => i", defined in ${ref.symbol.maybeOwner}"
+            case _ => ""
+          i"""
+            |
+            |Note that reference ${ref}$levelStr
+            |cannot be included in outer capture set $cs which is associated with ${cs.levelLimit}"""
 
 end CaptureSet

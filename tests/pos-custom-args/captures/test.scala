@@ -3,10 +3,10 @@ type Cap = C^
 
 type Proc = () => Unit
 
-class Ref(p: () => Unit):
-  private var x: () => Unit = p
-  def set(x: () ->{cap[Ref]} Unit): Unit = this.x = x
-  def get: () => Unit = x
+class Ref[sealed T](p: T):
+  private var x: T = p
+  def set(x: T): Unit = this.x = x
+  def get: T = x
 
 def test(c: () => Unit) =
   val p: () => Unit = ???

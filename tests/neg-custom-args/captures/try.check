@@ -1,15 +1,15 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:24:32 ------------------------------------------
-24 |    (x: CanThrow[Exception]) => x  // error
-   |                                ^
-   |                                Found:    (x : CT[Exception]^{lcap})
-   |                                Required: CT[Exception]^?
-   |
-   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/try.scala:23:16 ---------------------------------------------------------------
+23 |  val a = handle[Exception, CanThrow[Exception]] {  // error
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          Sealed type variable R cannot be instantiated to box CT[Exception]^ since
+   |          that type captures the root capability `cap`.
+   |          This is often caused by a local capability in an argument of method handle
+   |          leaking as part of its result.
 -- Error: tests/neg-custom-args/captures/try.scala:30:65 ---------------------------------------------------------------
 30 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x) // error
    |                                                                 ^
-   |          (x : CT[Exception]^{lcap}) cannot be referenced here; it is not included in the allowed capture set {}
-   |          of an enclosing function literal with expected type () ->? Nothing
+   |                (x : CT[Exception]^) cannot be referenced here; it is not included in the allowed capture set {}
+   |                of an enclosing function literal with expected type () ->? Nothing
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:52:2 -------------------------------------------
 47 |val global: () -> Int = handle {
 48 |  (x: CanThrow[Exception]) =>
@@ -18,8 +18,11 @@
 51 |      22
 52 |} {  // error
    |                        ^
-   |                        Found:    () ->{x$0, lcap} Int
+   |                        Found:    () ->{x$0, x$0²} Int
    |                        Required: () -> Int
+   |
+   |                        where:    x$0  is a reference to a value parameter
+   |                                  x$0² is a reference to a value parameter
 53 |  (ex: Exception) => () => 22
 54 |}
    |
@@ -27,4 +30,10 @@
 -- Error: tests/neg-custom-args/captures/try.scala:35:11 ---------------------------------------------------------------
 35 |  val xx = handle {  // error
    |           ^^^^^^
-   |           escaping local reference lcap.type
+   |           reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
+   |
+   |           Note that the universal capability `cap`
+   |           cannot be included in capture set {x$0, x$0}
+   |
+   |           where:    x$0  is a reference to a value parameter
+   |                     x$0² is a reference to a value parameter

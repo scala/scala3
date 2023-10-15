@@ -20,7 +20,7 @@ import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
 import reporting._
 import Constants.Constant
-import cc.{mapRoots, localRoot, isCaptureChecking, isLevelOwner}
+import cc.{localRoot, isCaptureChecking, isLevelOwner}
 
 object RefChecks {
   import tpd._
@@ -105,9 +105,6 @@ object RefChecks {
 
       def checkSelfConforms(other: ClassSymbol) =
         var otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
-        if isCaptureChecking then
-          otherSelf = mapRoots(other.localRoot.termRef, cls.localRoot.termRef)(otherSelf)
-            .showing(i"map self $otherSelf = $result", capt)
         if otherSelf.exists then
           if !(cinfo.selfType <:< otherSelf) then
             report.error(DoesNotConformToSelfType("illegal inheritance", cinfo.selfType, cls, otherSelf, "parent", other),
@@ -376,10 +373,7 @@ object RefChecks {
         if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
         else self.memberInfo(member)
       def otherTp(self: Type) =
-        val info = self.memberInfo(other)
-        if isCaptureChecking && member.isLevelOwner && other.isLevelOwner
-        then info.substSym(other.localRoot :: Nil, member.localRoot :: Nil)
-        else info
+        self.memberInfo(other)
 
       refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 

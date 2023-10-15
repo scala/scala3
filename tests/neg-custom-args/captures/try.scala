@@ -14,14 +14,14 @@ def raise[E <: Exception](e: E): Nothing throws E = throw e
 def foo(x: Boolean): Int throws Fail =
   if x then 1 else raise(Fail())
 
-def handle[E <: Exception, R <: Top](op: (lcap: caps.Cap) ?-> CT[E]^{lcap} => R)(handler: E => R): R =
+def handle[E <: Exception, sealed R <: Top](op: CT[E]^ => R)(handler: E => R): R =
   val x: CT[E] = ???
   try op(x)
   catch case ex: E => handler(ex)
 
 def test =
-  val a = handle[Exception, CanThrow[Exception]] {
-    (x: CanThrow[Exception]) => x  // error
+  val a = handle[Exception, CanThrow[Exception]] {  // error
+    (x: CanThrow[Exception]) => x
   }{
     (ex: Exception) => ???
   }

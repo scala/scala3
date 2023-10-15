@@ -708,6 +708,9 @@ object ProtoTypes {
   @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways:
     override def toString = "AnyTypeConstructorProto"
 
+  @sharable object LhsProto extends UncachedGroundType with MatchAlways:
+    override def toString = "LhsProto"
+
   extension (pt: Type)
     def isExtensionApplyProto: Boolean = pt match
       case PolyProto(targs, res) => res.isExtensionApplyProto

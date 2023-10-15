@@ -1,28 +1,14 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/pairs.scala:15:31 ----------------------------------------
-15 |    val x1c: Cap^ ->{c} Unit = x1  // error
-   |                               ^^
-   |                               Found:    (x$0: Cap^{cap[test]}) ->{x1} Unit
-   |                               Required: Cap^{cap[x1c]} ->{c} Unit
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/pairs.scala:14:30 ----------------------------------------
+14 |    val x1c: Cap ->{c} Unit = x1  // error
+   |                              ^^
+   |                              Found:    (x$0: Cap^?) ->{x1} Unit
+   |                              Required: Cap^ ->{c} Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/pairs.scala:17:30 ----------------------------------------
-17 |    val y1c: Cap ->{d} Unit = y1  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/pairs.scala:16:30 ----------------------------------------
+16 |    val y1c: Cap ->{d} Unit = y1  // error
    |                              ^^
-   |                              Found:    (x$0: Cap^{cap[test]}) ->{y1} Unit
-   |                              Required: Cap^{cap[y1c]} ->{d} Unit
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/pairs.scala:34:30 ----------------------------------------
-34 |    val x1c: Cap ->{c} Unit = x1  // error
-   |                              ^^
-   |                              Found:    (x$0: Cap^{cap[test]}) ->{x1} Unit
-   |                              Required: Cap^{cap[x1c]} ->{c} Unit
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/pairs.scala:36:30 ----------------------------------------
-36 |    val y1c: Cap ->{d} Unit = y1  // error
-   |                              ^^
-   |                              Found:    (x$0: Cap^{cap[test]}) ->{y1} Unit
-   |                              Required: Cap^{cap[y1c]} ->{d} Unit
+   |                              Found:    (x$0: Cap^?) ->{y1} Unit
+   |                              Required: Cap^ ->{d} Unit
    |
    | longer explanation available when compiling with `-explain`

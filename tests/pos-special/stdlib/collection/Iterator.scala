@@ -14,7 +14,7 @@ package scala.collection
 
 import scala.collection.mutable.{ArrayBuffer, ArrayBuilder, Builder, ImmutableBuilder}
 import scala.annotation.tailrec
-import scala.annotation.unchecked.uncheckedVariance
+import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import scala.runtime.Statics
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
@@ -161,12 +161,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
     require(size >= 1 && step >= 1, f"size=$size%d and step=$step%d, but both must be positive")
 
-    private[this] var buffer: Array[B] = null                 // current result
-    private[this] var prev: Array[B] = null                   // if sliding, overlap from previous result
+    private[this] var buffer: Array[B @uncheckedCaptures] = null                 // current result
+    private[this] var prev: Array[B @uncheckedCaptures] = null                   // if sliding, overlap from previous result
     private[this] var first = true                            // if !first, advancing may skip ahead
     private[this] var filled = false                          // whether the buffer is "hot"
     private[this] var partial = true                          // whether to emit partial sequence
-    private[this] var padding: () -> B = null                 // what to pad short sequences with
+    private[this] var padding: () -> B @uncheckedCaptures = null // what to pad short sequences with
     private[this] def pad = padding != null                   // irrespective of partial flag
     private[this] def newBuilder = {
       val b = ArrayBuilder.make[Any]
@@ -1143,11 +1143,11 @@ object Iterator extends IterableFactory[Iterator] {
    *  Nested ConcatIterators are merged to avoid blowing the stack.
    */
   private final class ConcatIterator[+A](val from: Iterator[A]^) extends AbstractIterator[A] {
-    private var current: Iterator[A] = from.unsafeAssumePure
+    private var current: Iterator[A @uncheckedCaptures] = from.unsafeAssumePure
       // This should be Iteratpr[A]^, but fails since mutable variables can't capture cap.
       // To do better we'd need to track nesting levels for universal capabiltities.
-    private var tail: ConcatIteratorCell[A @uncheckedVariance] = null
-    private var last: ConcatIteratorCell[A @uncheckedVariance] = null
+    private var tail: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
+    private var last: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var currentHasNextChecked = false
 
     def hasNext =
@@ -1216,7 +1216,7 @@ object Iterator extends IterableFactory[Iterator] {
     }
   }
 
-  private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: ConcatIteratorCell[A]) {
+  private[this] final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: ConcatIteratorCell[A @uncheckedCaptures]) {
     def headIterator: Iterator[A]^{this} = head.iterator // CC todo: can't use {head} as capture set, gives "cannot establish a reference"
   }
 
@@ -1277,8 +1277,8 @@ object Iterator extends IterableFactory[Iterator] {
     * type `A` and update an internal state of type `S`.
     */
   private final class UnfoldIterator[A, S](init: S)(f: S => Option[(A, S)])extends AbstractIterator[A] {
-    private[this] var state: S = init
-    private[this] var nextResult: Option[(A, S)] = null
+    private[this] var state: S @uncheckedCaptures = init
+    private[this] var nextResult: Option[(A, S)] @uncheckedCaptures = null
 
     override def hasNext: Boolean = {
       if (nextResult eq null) {

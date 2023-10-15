@@ -1,30 +1,34 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:24 -----------------------------------------
-11 |  val z2c: () -> Unit = z2  // error
-   |                        ^^
-   |                        Found:    () ->{z2} Unit
-   |                        Required: () -> Unit
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:22:14 --------------------------------------------------------------
 22 |    a = x => g(x)      // error
    |             ^^^^
-   |             reference (cap3 : CC^{cap[scope]}) is not included in the allowed capture set {cap[test]}
-   |             of an enclosing function literal with expected type box String ->{cap[test]} String
+   |             reference (cap3 : CC^) is not included in the allowed capture set {cap1} of variable a
+   |
+   |             Note that reference (cap3 : CC^), defined in method scope
+   |             cannot be included in outer capture set {cap1} of variable a which is associated with method test
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:23:8 ------------------------------------------
 23 |    a = g      // error
    |        ^
-   |        Found:    box (x: String) ->{cap3} String
-   |        Required: box (x$0: String) ->{cap[test]} String
+   |        Found:    (x: String) ->{cap3} String
+   |        Required: (x$0: String) ->{cap1} String
+   |
+   |        Note that reference (cap3 : CC^), defined in method scope
+   |        cannot be included in outer capture set {cap1} of variable a which is associated with method test
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:13 -----------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:12 -----------------------------------------
 25 |    b = List(g) // error
-   |             ^
-   |             Found:    Seq[(x: String) ->{cap3} String]
-   |             Required: Seq[box (x$0: String) ->{cap3} String]
+   |        ^^^^^^^
+   |        Found:    List[box (x$0: String) ->{cap3} String]
+   |        Required: List[box String ->{cap[test]} String]
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------
-34 |  local { root => cap3 => // error
+34 |  local { cap3 => // error
    |  ^^^^^
-   |  escaping local reference root.type
+   |  reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
+   |
+   |  Note that the universal capability `cap`
+   |  cannot be included in capture set {x$0, x$0}
+   |
+   |  where:    x$0  is a reference to a value parameter
+   |            x$0² is a reference to a value parameter

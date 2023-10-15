@@ -2178,7 +2178,8 @@ object Types {
     /** Is the reference tracked? This is true if it can be tracked and the capture
      *  set of the underlying type is not always empty.
      */
-    final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
+    final def isTracked(using Context): Boolean =
+      isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this reference the generic root capability `cap` ? */
     def isGenericRootCapability(using Context): Boolean = false

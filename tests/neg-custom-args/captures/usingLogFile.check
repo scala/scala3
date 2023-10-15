@@ -1,8 +1,8 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:32:37 ------------------------------------------------------
 32 |  usingLogFile { f => later3 = () => f.write(0) }  // error
    |                                     ^
-   |(f : java.io.FileOutputStream^{local}) cannot be referenced here; it is not included in the allowed capture set {cap[<root>]}
-   |of an enclosing function literal with expected type box () ->{cap[<root>]} Unit
+   |(f : java.io.FileOutputStream^) cannot be referenced here; it is not included in the allowed capture set {cap[<root>]}
+   |of an enclosing function literal with expected type () ->{cap[<root>]} Unit
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:36:35 ---------------------------------
 36 |  usingLogFile { f => later4 = Cell(() => f.write(0)) }  // error
    |                               ^^^^^^^^^^^^^^^^^^^^^^
@@ -13,11 +13,23 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
+   |              reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
+   |
+   |              Note that the universal capability `cap`
+   |              cannot be included in capture set {x$0, x$0}
+   |
+   |              where:    x$0  is a reference to a value parameter
+   |                        x$0² is a reference to a value parameter
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:28:23 ------------------------------------------------------
 28 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                       ^^^^^^^^^^^^
-   |                       escaping local reference local.type
+   |                       reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
+   |
+   |                       Note that the universal capability `cap`
+   |                       cannot be included in capture set {x$0, x$0}
+   |
+   |                       where:    x$0  is a reference to a value parameter
+   |                                 x$0² is a reference to a value parameter
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:14 ------------------------------------------------------
 47 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
@@ -32,4 +44,4 @@
    |          reference (_$1 : java.io.OutputStream^{local}) is not included in the allowed capture set {x$0, local}
    |
    |          Note that reference (_$1 : java.io.OutputStream^{local}), defined in method $anonfun
-   |          cannot be included in outer capture set {x$0, local} which is associated with package <root>
+   |          cannot be included in outer capture set {x$0, local} which is associated with method test

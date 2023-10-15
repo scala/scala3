@@ -62,8 +62,6 @@ object Synthetics:
    */
   def transform(symd: SymDenotation, info: Type)(using Context): SymDenotation =
 
-    def localRootSet = symd.symbol.localRoot.termRef.singletonCaptureSet
-
     /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
      *  An apply method in a case class like this:
      *    case class CC(a: A^{d}, b: B, c: C^{cap})
@@ -118,7 +116,7 @@ object Synthetics:
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
-        val newParamInfo = CapturingType(paramInfo, localRootSet)
+        val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>
@@ -135,7 +133,7 @@ object Synthetics:
       val (mt: MethodType) = pt.resType: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
-        mt1 => mt.paramInfos.map(_.capturing(localRootSet)),
+        mt1 => mt.paramInfos.map(_.capturing(CaptureSet.universal)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
 
     def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
@@ -150,18 +148,16 @@ object Synthetics:
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
     def transformCompareCaptures =
-      MethodType(defn.ObjectType.capturing(localRootSet) :: Nil, defn.BooleanType)
+      MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match
       case DefaultGetterName(nme.copy, n) =>
         transformDefaultGetterCaptures(info, symd.owner, n)
       case nme.unapply =>
-        ccState.isLevelOwner(symd.symbol) = true
         transformUnapplyCaptures(info)
       case nme.apply | nme.copy =>
         addCaptureDeps(info)
       case nme.andThen | nme.compose =>
-        ccState.isLevelOwner(symd.symbol) = true
         transformComposeCaptures(info, symd.owner)
       case nme.curried | nme.tupled =>
         transformCurriedTupledCaptures(info, symd.owner)

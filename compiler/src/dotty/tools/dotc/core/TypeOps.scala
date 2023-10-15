@@ -93,15 +93,6 @@ object TypeOps:
         }
       }
 
-      def mapLocalRoot(tp: TermRef): Type =
-        if tp.symbol.owner.isLocalDummy then
-          val pre1 = toPrefix(pre, cls, tp.localRootOwner.asClass)
-          if pre1 ne tp then pre1 match
-            case pre1: ThisType if pre1.cls.isLevelOwner => pre1.cls.localRoot.termRef
-            case _ => pre1.captureSet.impliedRoot(tp)
-          else tp
-        else tp
-
       trace.conditionally(track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
         // All cases except for ThisType are the same as in Map. Inlined for performance
         // TODO: generalize the inlining trick?
@@ -109,10 +100,7 @@ object TypeOps:
           case tp: NamedType =>
             val sym = tp.symbol
             if sym.isStatic && !sym.maybeOwner.seesOpaques then tp
-            else if tp.prefix `eq` NoPrefix then
-              if tp.name == nme.LOCAL_CAPTURE_ROOT
-              then mapLocalRoot(tp.asInstanceOf[TermRef])
-              else tp
+            else if tp.prefix `eq` NoPrefix then tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case

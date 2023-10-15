@@ -361,14 +361,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             recur(t)
     end expandAliases
 
-    val tp1 = expandAliases(tp)
-    val tp2 =
-      if rootTarget.exists
-      then mapRoots(defn.captureRoot.termRef, rootTarget.localRoot.termRef)(tp1)
-            .showing(i"map roots $tp1, ${tp1.getClass} == $result", capt)
-      else tp1
-    if tp2 ne tp then ccSetup.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1  -->  $tp2")
-    tp2
+    val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
+    if tp1 ne tp then ccSetup.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1")
+    tp1
   end transformExplicitType
 
   /** Transform type of type tree, and remember the transformed type as the type the tree */
@@ -431,11 +426,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   def setupTraverser(recheckDef: DefRecheck) = new TreeTraverserWithPreciseImportContexts:
 
-    def transformResultType(tpt: TypeTree, sym: Symbol)(using Context) =
+    def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       transformTT(tpt,
-        boxed = sym.is(Mutable, butNot = Method),     // types of mutable variables are boxed
-        exact = sym.allOverriddenSymbols.hasNext,     // types of symbols that override a parent don't get a capture set TODO drop
+        boxed =
+          !allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
+          // types of mutable variables are boxed in pre 3.3 codee
+        exact = sym.allOverriddenSymbols.hasNext,
+          // types of symbols that override a parent don't get a capture set TODO drop
         rootTarget = ctx.owner)
+      val addDescription = new TypeTraverser:
+        def traverse(tp: Type) = tp match
+          case tp @ CapturingType(parent, refs) =>
+            if !refs.isConst then refs.withDescription(i"of $sym")
+            traverse(parent)
+          case _ =>
+            traverseChildren(tp)
+      addDescription.traverse(tpt.knownType)
 
     def traverse(tree: Tree)(using Context): Unit =
       tree match
@@ -464,15 +470,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val sym = tree.symbol
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
-            tree.rhs match
-              case possiblyTypedClosureDef(ddef)
-              if !mentionsCap(rhsOfEtaExpansion(ddef))
-                  && !sym.is(Mutable)
-                  && ddef.symbol.takesCappedParamIn(ddef.symbol.info) =>
-                ccSetup.println(i"Level owner at setup $sym / ${ddef.symbol.info}")
-                ccState.isLevelOwner(sym) = true
-              case _ =>
             transformResultType(tpt, sym)
+            if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
+              CheckCaptures.disallowRootCapabilitiesIn(tpt.knownType, sym,
+                i"mutable $sym", "have type", "", sym.srcPos)
             ccSetup.println(i"mapped $tree = ${tpt.knownType}")
             traverse(tree.rhs)
 
@@ -486,7 +487,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
               if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
                 def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
-                CheckCaptures.disallowRootCapabilitiesIn(arg.knownType,
+                CheckCaptures.disallowRootCapabilitiesIn(arg.knownType, fn.symbol,
                   i"Sealed type variable $pname", "be instantiated to",
                   i"This is often caused by a local capability$where\nleaking as part of its result.",
                   tree.srcPos)
@@ -754,11 +755,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private def checkWellformedPost(parent: Type, ann: Tree, tpt: Tree)(using Context): Unit =
     capt.println(i"checkWF post $parent ${ann.retainedElems} in $tpt")
-    val normCap = new TypeMap:
-      def apply(t: Type): Type = t match
-        case t: TermRef if t.isGenericRootCapability => ctx.owner.localRoot.termRef
-        case _ => t
-
     var retained = ann.retainedElems.toArray
     for i <- 0 until retained.length do
       val refTree = retained(i)
@@ -770,8 +766,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else tpt.srcPos
 
       def check(others: CaptureSet, dom: Type | CaptureSet): Unit =
-        val remaining = others.map(normCap)
-        if remaining.accountsFor(ref) then
+        if others.accountsFor(ref) then
           report.warning(em"redundant capture: $dom already accounts for $ref", pos)
 
       if ref.captureSetOfInfo.elems.isEmpty then

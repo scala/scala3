@@ -6,7 +6,7 @@ def localCap[sealed T](op: (c: Capp^{cap}) => T): T = ???
 
 def main(io: Capp^{cap}, net: Capp^{cap}): Unit = {
 
-  val test1 = localCap { c => // should be error
+  val test1 = localCap { c => // error
     () => { c.use() }
   }
 
