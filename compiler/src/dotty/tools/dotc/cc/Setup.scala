@@ -175,7 +175,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   val getterType =
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                   RefinedType(core, getter.name,
-                      CapturingType(getterType, CaptureSet.RefiningVar(NoSymbol, getter)))
+                      CapturingType(getterType, CaptureSet.Var(ctx.owner)))
                     .showing(i"add capture refinement $tp --> $result", ccSetup)
                 else
                   core

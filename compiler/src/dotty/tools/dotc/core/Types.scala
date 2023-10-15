@@ -834,26 +834,19 @@ object Types {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else rinfo match
-          case CapturingType(_, cs: CaptureSet.RefiningVar) =>
-            // If `rinfo` is a capturing type added by `addCaptureRefinements` it
-            // already contains everything there is to know about the member type.
-            // On the other hand, the member in parent might belong to an outer nesting level,
-            // which should be ignored at the point where instances of the class are constructed.
-            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
-          case _ =>
-            val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = pdenot.meet(
-              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-              pre,
-              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-            joint match
-              case joint: SingleDenotation
-              if isRefinedMethod && rinfo <:< joint.info =>
-                // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-                joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-              case _ =>
-                joint
+        else
+          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
+          val joint = pdenot.meet(
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+            pre,
+            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+          joint match
+            case joint: SingleDenotation
+            if isRefinedMethod && rinfo <:< joint.info =>
+              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+            case _ =>
+              joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =

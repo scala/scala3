@@ -395,13 +395,6 @@ object CaptureSet:
   def apply(elems: Refs)(using Context): CaptureSet.Const =
     if elems.isEmpty then empty else Const(elems)
 
-  /** If this context property is asserted, we conflate capture roots in subCapture
-   *  tests. Specifically, `cap` then subsumes everything and all local roots subsume `cap`.
-   *  This generally not sound. We currently use loose root checking only in self type
-   *  conformance tests in CheckCaptures.checkSelfTypes.
-   */
-  val LooseRootChecking: Property.Key[Unit] = Property.Key()
-
   /** The subclass of constant capture sets with given elements `elems` */
   class Const private[CaptureSet] (val elems: Refs, val description: String = "") extends CaptureSet:
     def isConst = true
@@ -617,14 +610,6 @@ object CaptureSet:
       s"$id$descr$trail"
     override def toString = s"Var$id$elems"
   end Var
-
-  /** A variable used in refinements of class parameters. See `addCaptureRefinements`.
-   */
-  class RefiningVar(owner: Symbol, val getter: Symbol)(using @constructorOnly ictx: Context) extends Var(owner):
-    description = i"of parameter ${getter.name} of ${getter.owner}"
-    override def optionalInfo(using Context): String =
-      super.optionalInfo + (
-        if ctx.settings.YprintDebug.value then "(refining)" else "")
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -1006,8 +991,6 @@ object CaptureSet:
           if tp.typeSymbol == defn.Caps_Cap then universal else empty
         case _: TypeParamRef =>
           empty
-        case CapturingType(parent, refs: RefiningVar) =>
-          refs
         case CapturingType(parent, refs) =>
           recur(parent) ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodType) if followResult =>
