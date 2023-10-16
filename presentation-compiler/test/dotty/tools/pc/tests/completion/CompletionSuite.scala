@@ -1486,3 +1486,17 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
     )
 
+  @Test def `multiline-comment` =
+   checkEdit(
+     """|package a
+        |object O:
+        |  /*@@
+        |  def f = 1
+        |""".stripMargin,
+     """|package a
+        |object O:
+        |  /* $0 */
+        |  def f = 1
+        |""".stripMargin,
+   )
+
