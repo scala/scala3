@@ -97,12 +97,58 @@ sealed abstract class CaptureSet extends Showable:
    *  @return CompareResult.OK if elements were added, or a conflicting
    *          capture set that prevents addition otherwise.
    */
-  protected def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+  protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
     (CompareResult.OK /: newElems): (r, elem) =>
-      r.andAlso(addNewElem(elem, origin))
+      r.andAlso(tryInclude(elem, origin))
 
-  /** Add a single element, with the same meaning as in `addNewElems` */
-  protected def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult
+  /** Try to include an element in this capture set.
+   *  @param elem    The element to be added
+   *  @param origin  The set that originated the request, or `empty` if the request came from outside.
+   *
+   *  If the set already accounts for the element, return OK.
+   *  Otherwise, try to add a new element to the set. This is OK if
+   *    - the set is a variable, and
+   *    - the element is not at a deeper nesting level than the set, and
+   *    - the element can also be added (in mapped/filtered form) to all
+   *      dependent sets.
+   *  If the `origin` is the same as the `source` of the set variable, the
+   *  element might be filtered or mapped according to the class of the variable.
+   *  Otherwise, the element might have to be back-propagated to the source
+   *  of the variable.
+   *
+   *  If the element itself cannot be added to the set for some reason, and the
+   *  element is not the root capability, try instead to include its underlying
+   *  capture set.
+   */
+  protected def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+    if accountsFor(elem) then CompareResult.OK
+    else addNewElem(elem)
+
+  /** Add an element to this capture set, assuming it is not already accounted for,
+   *  and omitting any mapping or filtering.
+   *
+   *  If the element itself cannot be added to the set for some reason, and the
+   *  element is not the root capability, try instead to include its underlying
+   *  capture set.
+   */
+  protected final def addNewElem(elem: CaptureRef)(using Context, VarState): CompareResult =
+    if elem.isRootCapability || summon[VarState] == FrozenState then addThisElem(elem)
+    else addThisElem(elem).orElse:
+      val underlying = elem.captureSetOfInfo
+      tryInclude(underlying.elems, this).andAlso:
+        underlying.addDependent(this)
+        CompareResult.OK
+
+  /** Add new elements one by one using `addNewElem`, abort on first failure */
+  protected final def addNewElems(newElems: Refs)(using Context, VarState): CompareResult =
+    (CompareResult.OK /: newElems): (r, elem) =>
+      r.andAlso(addNewElem(elem))
+
+  /** Add a specific element, assuming it is not already accounted for,
+   *  and omitting any mapping or filtering, without possibility to backtrack
+   *  to underlying capture set
+   */
+  protected def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult
 
   /** If this is a variable, add `cs` as a dependent set */
   protected def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult
@@ -111,7 +157,7 @@ sealed abstract class CaptureSet extends Showable:
   protected def addAsDependentTo(cs: CaptureSet)(using Context): this.type =
     cs.addDependent(this)(using ctx, UnrecordedState)
     this
-
+/*
   /** Try to include all references of `elems` that are not yet accounted for by this
    *  capture set. Inclusion is via `addNewElems`.
    *  @param origin   The set where the elements come from, or `empty` if not known.
@@ -121,13 +167,13 @@ sealed abstract class CaptureSet extends Showable:
   protected final def tryInclude(elems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
     val unaccounted = elems.filter(!accountsFor(_))
     if unaccounted.isEmpty then CompareResult.OK
-    else addNewElems(unaccounted, origin)
+    else tryInclude(unaccounted, origin)
 
   /** Equivalent to `tryInclude({elem}, origin)`, but more efficient */
   protected final def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
     if accountsFor(elem) then CompareResult.OK
-    else addNewElems(elem.singletonCaptureSet.elems, origin)
-
+    else tryInclude(elem, origin)
+*/
   /* x subsumes y if one of the following is true:
    *   - x is the same as y,
    *   - x is a this reference and y refers to a field of x
@@ -208,21 +254,13 @@ sealed abstract class CaptureSet extends Showable:
 
   /** The subcapturing test, using a given VarState */
   private def subCaptures(that: CaptureSet)(using Context, VarState): CompareResult =
-    def recur(elems: List[CaptureRef]): CompareResult = elems match
-      case elem :: elems1 =>
-        var result = that.tryInclude(elem, this)
-        if !result.isOK then
-          ccState.levelError = ccState.levelError.orElse(result.levelError)
-          if !elem.isRootCapability && summon[VarState] != FrozenState then
-            result = result.orElse(elem.captureSetOfInfo.subCaptures(that))
-        if result.isOK then
-          recur(elems1)
-        else
-          varState.rollBack()
-          result
-      case Nil =>
-        addDependent(that)
-    recur(elems.toList)
+    val result = that.tryInclude(elems, this)
+    if result.isOK then
+      addDependent(that)
+    else
+      ccState.levelError = ccState.levelError.orElse(result.levelError)
+      varState.rollBack()
+      result
       //.showing(i"subcaptures $this <:< $that = ${result.show}", capt)
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
@@ -400,7 +438,7 @@ object CaptureSet:
     def isConst = true
     def isAlwaysEmpty = elems.isEmpty
 
-    def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+    def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       CompareResult.Fail(this :: Nil)
 
     def addDependent(cs: CaptureSet)(using Context, VarState) = CompareResult.OK
@@ -422,7 +460,7 @@ object CaptureSet:
    */
   object Fluid extends Const(emptySet):
     override def isAlwaysEmpty = false
-    override def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState) = CompareResult.OK
+    override def addThisElem(elem: CaptureRef)(using Context, VarState) = CompareResult.OK
     override def accountsFor(x: CaptureRef)(using Context): Boolean = true
     override def mightAccountFor(x: CaptureRef)(using Context): Boolean = true
     override def toString = "<fluid>"
@@ -489,24 +527,23 @@ object CaptureSet:
     def resetDeps()(using state: VarState): Unit =
       deps = state.deps(this)
 
-    final def addNewElem(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+    final def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult =
       if isConst || !recordElemsState() then
         CompareResult.Fail(this :: Nil) // fail if variable is solved or given VarState is frozen
       else if !levelOK(elem) then
-        val res = CompareResult.LevelError(this, elem)
-        if elem.isRootCapability then res
-        else res.orElse(addNewElems(elem.captureSetOfInfo.elems, origin))
+        CompareResult.LevelError(this, elem)
       else
         //assert(id != 19 || !elem.isLocalRootCapability, elem.asInstanceOf[TermRef].localRootOwner)
         elems += elem
-        if elem.isUniversalRootCapability then rootAddedHandler()
+        if elem.isUniversalRootCapability then
+          rootAddedHandler()
         newElemAddedHandler(elem)
         // assert(id != 5 || elems.size != 3, this)
-        val res = (CompareResult.OK /: deps) { (r, dep) =>
+        val res = (CompareResult.OK /: deps): (r, dep) =>
           r.andAlso(dep.tryInclude(elem, this))
-        }.addToTrace(this)
-        if !res.isOK then elems -= elem
-        res
+        res.orElse:
+          elems -= elem
+          res.addToTrace(this)
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isUniversalRootCapability then !noUniversal
@@ -569,7 +606,7 @@ object CaptureSet:
           .showing(i"solve $this = $result", capt)
         //println(i"solving var $this $approx ${approx.isConst} deps = ${deps.toList}")
         val newElems = approx.elems -- elems
-        if newElems.isEmpty || addNewElems(newElems, empty)(using ctx, VarState()).isOK then
+        if tryInclude(newElems, empty)(using ctx, VarState()).isOK then
           markSolved()
 
     /** Mark set as solved and propagate this info to all dependent sets */
@@ -652,39 +689,43 @@ object CaptureSet:
               |Stack trace of variable creation:"
               |${stack.mkString("\n")}"""
 
-    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      val added =
-        if origin eq source then // elements have to be mapped
-          mapRefs(newElems, tm, variance)
+    override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+      def propagate: CompareResult =
+        if (origin ne source) && (origin ne initial) && mapIsIdempotent then
+          // `tm` is idempotent, propagate back elems from image set.
+          // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
+          // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
+          // It's not necessarily the only possible solution, so the scheme is incomplete.
+          source.tryInclude(elem, this)
+        else if !mapIsIdempotent && variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source) then
+          // The map is neither a BiTypeMap nor an idempotent type map.
+          // In that case there's no much we can do.
+          // The scheme then does not propagate added elements back to source and rejects adding
+          // elements from variable sources in contra- and non-variant positions. In essence,
+          // we approximate types resulting from such maps by returning a possible super type
+          // from the actual type. But this is neither sound nor complete.
+          report.warning(em"trying to add $elem from unrecognized source $origin of mapped set $this$whereCreated")
+          CompareResult.Fail(this :: Nil)
         else
-          // elements are added by subcapturing propagation with this Mapped set
-          // as superset; no mapping is necessary or allowed.
-          Const(newElems)
-      super.addNewElems(added.elems, origin)
-        .andAlso {
-          if added.isConst then CompareResult.OK
-          else if added.asVar.recordDepsState() then { addAsDependentTo(added); CompareResult.OK }
-          else CompareResult.Fail(this :: Nil)
-        }
-        .andAlso {
-          if (origin ne source) && (origin ne initial) && mapIsIdempotent then
-            // `tm` is idempotent, propagate back elems from image set.
-            // This is sound, since we know that for `r in newElems: tm(r) = r`, hence
-            // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
-            // It's not necessarily the only possible solution, so the scheme is incomplete.
-            source.tryInclude(newElems, this)
-          else if !mapIsIdempotent && variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source) then
-            // The map is neither a BiTypeMap nor an idempotent type map.
-            // In that case there's no much we can do.
-            // The scheme then does not propagate added elements back to source and rejects adding
-            // elements from variable sources in contra- and non-variant positions. In essence,
-            // we approximate types resulting from such maps by returning a possible super type
-            // from the actual type. But this is neither sound nor complete.
-            report.warning(em"trying to add elems ${CaptureSet(newElems)} from unrecognized source $origin of mapped set $this$whereCreated")
-            CompareResult.Fail(this :: Nil)
-          else
-            CompareResult.OK
-        }
+          CompareResult.OK
+      def propagateIf(cond: Boolean): CompareResult =
+        if cond then propagate else CompareResult.OK
+
+      if origin eq source then // elements have to be mapped
+        val mapped = extrapolateCaptureRef(elem, tm, variance)
+        val added = mapped.elems.filter(!accountsFor(_))
+        addNewElems(added)
+          .andAlso:
+            if mapped.isConst then CompareResult.OK
+            else if mapped.asVar.recordDepsState() then { addAsDependentTo(mapped); CompareResult.OK }
+            else CompareResult.Fail(this :: Nil)
+          .andAlso:
+            propagateIf(!added.isEmpty)
+      else if accountsFor(elem) then
+        CompareResult.OK
+      else
+        addNewElem(elem).andAlso(propagate)
+    end tryInclude
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then
@@ -707,15 +748,17 @@ object CaptureSet:
     (val source: Var, bimap: BiTypeMap, initialElems: Refs)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.levelLimit, initialElems):
 
-    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+    override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
       if origin eq source then
-        super.addNewElems(newElems.map(bimap.forward), origin)
+        val mappedElem = bimap.forward(elem)
+        if accountsFor(mappedElem) then CompareResult.OK
+        else addNewElem(mappedElem)
+      else if accountsFor(elem) then
+        CompareResult.OK
       else
-        super.addNewElems(newElems, origin)
-          .andAlso {
-            source.tryInclude(newElems.map(bimap.backward), this)
-              .showing(i"propagating new elems ${CaptureSet(newElems)} backward from $this to $source", capt)
-          }
+        addNewElem(elem).andAlso:
+          source.tryInclude(bimap.backward(elem), this)
+            .showing(i"propagating new elem $elem backward from $this to $source", capt)
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -737,18 +780,17 @@ object CaptureSet:
     (val source: Var, p: Context ?=> CaptureRef => Boolean)(using @constructorOnly ctx: Context)
   extends DerivedVar(source.levelLimit, source.elems.filter(p)):
 
-    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      val filtered = newElems.filter(p)
-      if origin eq source then
-        super.addNewElems(filtered, origin)
+    override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+      if accountsFor(elem) then
+        CompareResult.OK
+      else if origin eq source then
+        if p(elem) then addNewElem(elem)
+        else CompareResult.OK
       else
         // Filtered elements have to be back-propagated to source.
         // Elements that don't satisfy `p` are not allowed.
-        super.addNewElems(newElems, origin)
-          .andAlso {
-            if filtered.size == newElems.size then source.tryInclude(newElems, this)
-            else CompareResult.Fail(this :: Nil)
-          }
+        if p(elem) then source.tryInclude(elem, this)
+        else CompareResult.Fail(this :: Nil)
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if source eq origin then
@@ -772,14 +814,13 @@ object CaptureSet:
     deps += cs1
     deps += cs2
 
-    override def addNewElems(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-      val added =
-        if origin eq cs1 then newElems.filter(cs2.accountsFor)
-        else if origin eq cs2 then newElems.filter(cs1.accountsFor)
-        else newElems
-          // If origin is not cs1 or cs2, then newElems will be propagated to
-          // cs1, cs2 since they are in deps.
-      super.addNewElems(added, origin)
+    override def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
+      val present =
+        if origin eq cs1 then cs2.accountsFor(elem)
+        else if origin eq cs2 then cs1.accountsFor(elem)
+        else true
+      if present && !accountsFor(elem) then addNewElem(elem)
+      else CompareResult.OK
 
     override def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
       if (origin eq cs1) || (origin eq cs2) then
@@ -882,7 +923,7 @@ object CaptureSet:
         if alt.isOK then alt
         else this
 
-    inline def addToTrace(cs: CaptureSet) = this match
+    inline def addToTrace(cs: CaptureSet): CompareResult = this match
       case Fail(trace) => Fail(cs :: trace)
       case _ => this
   end CompareResult

@@ -19,5 +19,5 @@ def test2(cap1: CC^) =
 
   def scope(cap3: CC^) =
     def g(x: String): String = if cap3 == cap3 then "" else "a"
-    r.setV(g) // should be error
+    r.setV(g) // error
   ()
