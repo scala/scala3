@@ -68,7 +68,8 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.init$.region",
 
    //// New APIs: Quotes
-  "scala.quoted.Quotes.reflectModule.FlagsModule.AbsOverride",
+  "scala.quoted.Quotes.reflectModule.TypeLambdaMethods.paramVariances",
+  "scala.quoted.Quotes.reflectModule.SymbolMethods.paramVariance",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
   "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
@@ -89,7 +90,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
-  "scala.quoted.Quotes.reflectModule.defnModule.PolyFunctionClass",
 
   // New feature: reverse method on Tuple
   "scala.Tuple.reverse",

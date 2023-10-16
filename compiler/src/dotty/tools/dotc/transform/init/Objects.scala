@@ -470,7 +470,7 @@ object Objects:
 
     /** Store the heap as a mutable field to avoid threading it through the program. */
     class MutableData(private[Heap] var heap: Data):
-      private[Heap] def update(addr: Addr, value: Value): Unit =
+      private[Heap] def writeJoin(addr: Addr, value: Value): Unit =
         heap.get(addr) match
         case None =>
           heap = heap.updated(addr, value)
@@ -479,7 +479,7 @@ object Objects:
           val value2 = value.join(current)
           if value2 != current then
             heap = heap.updated(addr, value2)
-
+    end MutableData
 
     def empty(): MutableData = new MutableData(Map.empty)
 
@@ -489,8 +489,8 @@ object Objects:
     def read(addr: Addr)(using mutable: MutableData): Value =
       mutable.heap(addr)
 
-    def write(addr: Addr, value: Value)(using mutable: MutableData): Unit =
-      mutable.update(addr, value)
+    def writeJoin(addr: Addr, value: Value)(using mutable: MutableData): Unit =
+      mutable.writeJoin(addr, value)
 
     def localVarAddr(regions: Regions.Data, sym: Symbol, owner: ClassSymbol): Addr =
       LocalVarAddr(regions, sym, owner)
@@ -616,7 +616,7 @@ object Objects:
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case Cold =>
       report.warning("Using cold alias. Calling trace:\n" + Trace.show, Trace.position)
@@ -639,7 +639,7 @@ object Objects:
         if arr.addr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, arr.addr.owner)
         else
-          Heap.write(arr.addr, args.tail.head.value)
+          Heap.writeJoin(arr.addr, args.tail.head.value)
         Bottom
       else
         // Array.length is OK
@@ -658,7 +658,11 @@ object Objects:
           resolve(ref.klass, meth)
 
       if target.isOneOf(Flags.Method) then
-        if target.hasSource then
+        if target.owner == defn.ArrayModuleClass && target.name == nme.apply then
+          val arr = OfArray(State.currentObject, summon[Regions.Data])
+          Heap.writeJoin(arr.addr, args.map(_.value).join)
+          arr
+        else if target.hasSource then
           val cls = target.owner.enclosingClass.asClass
           val ddef = target.defTree.asInstanceOf[DefDef]
           val meth = ddef.symbol
@@ -762,8 +766,11 @@ object Objects:
       val target = if needResolve then resolve(ref.klass, field) else field
       if target.is(Flags.Lazy) then
         given Env.Data = Env.emptyEnv(target.owner.asInstanceOf[ClassSymbol].primaryConstructor)
-        val rhs = target.defTree.asInstanceOf[ValDef].rhs
-        eval(rhs, ref, target.owner.asClass, cacheResult = true)
+        if target.hasSource then
+          val rhs = target.defTree.asInstanceOf[ValDef].rhs
+          eval(rhs, ref, target.owner.asClass, cacheResult = true)
+        else
+          Bottom
       else if target.exists then
         if target.isOneOf(Flags.Mutable) then
           if ref.hasVar(target) then
@@ -842,7 +849,7 @@ object Objects:
         if addr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, addr.owner)
         else
-          Heap.write(addr, rhs)
+          Heap.writeJoin(addr, rhs)
       else
         report.warning("Mutating a field before its initialization: " + field.show + ". Calling trace:\n" + Trace.show, Trace.position)
     end match
@@ -867,7 +874,7 @@ object Objects:
     case outer: (Ref | Cold.type | Bottom.type) =>
       if klass == defn.ArrayClass then
         val arr = OfArray(State.currentObject, summon[Regions.Data])
-        Heap.write(arr.addr, Bottom)
+        Heap.writeJoin(arr.addr, Bottom)
         arr
       else
         // Widen the outer to finitize the domain. Arguments already widened in `evalArgs`.
@@ -903,7 +910,7 @@ object Objects:
     if sym.is(Flags.Mutable) then
       val addr = Heap.localVarAddr(summon[Regions.Data], sym, State.currentObject)
       Env.setLocalVar(sym, addr)
-      Heap.write(addr, value)
+      Heap.writeJoin(addr, value)
     else
       Env.setLocalVal(sym, value)
   }
@@ -964,8 +971,8 @@ object Objects:
    * @param value        The value of the rhs of the assignment.
    */
   def writeLocal(thisV: ThisValue, sym: Symbol, value: Value): Contextual[Value] = log("write local " + sym.show + " with " + value.show, printer, (_: Value).show) {
-
     assert(sym.is(Flags.Mutable), "Writing to immutable variable " + sym.show)
+
     Env.resolveEnv(sym.enclosingMethod, thisV, summon[Env.Data]) match
     case Some(thisV -> env) =>
       given Env.Data = env
@@ -974,7 +981,7 @@ object Objects:
         if addr.owner != State.currentObject then
           errorMutateOtherStaticObject(State.currentObject, addr.owner)
         else
-          Heap.write(addr, value)
+          Heap.writeJoin(addr, value)
       case _ =>
         report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
 
@@ -1537,7 +1544,7 @@ object Objects:
       if acc.is(Flags.Mutable) then
         val addr = Heap.fieldVarAddr(summon[Regions.Data], acc, State.currentObject)
         thisV.initVar(acc, addr)
-        Heap.write(addr, value)
+        Heap.writeJoin(addr, value)
       else
         thisV.initVal(acc, value)
       printer.println(acc.show + " initialized with " + value)
@@ -1632,7 +1639,7 @@ object Objects:
         if sym.is(Flags.Mutable) then
           val addr = Heap.fieldVarAddr(summon[Regions.Data], sym, State.currentObject)
           thisV.initVar(sym, addr)
-          Heap.write(addr, res)
+          Heap.writeJoin(addr, res)
         else
           thisV.initVal(sym, res)
 

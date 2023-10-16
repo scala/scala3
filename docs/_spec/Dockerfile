@@ -1,3 +1,5 @@
+# Keep in sync with relevant parts of .github/workflows/spec.yml
+
 FROM ruby:2.7
 
 RUN apt-get install -y curl \

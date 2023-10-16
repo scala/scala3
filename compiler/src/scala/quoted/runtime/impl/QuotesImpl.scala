@@ -2246,6 +2246,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: TypeLambda)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
         def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramVariances: List[Flags] =
+          self.typeParams.map(_.paramVariance)
       end extension
     end TypeLambdaMethods
 
@@ -2754,6 +2756,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }
 
         def isTypeParam: Boolean = self.isTypeParam
+        def paramVariance: Flags = self.paramVariance
         def signature: Signature = self.signature
         def moduleClass: Symbol = self.denot.moduleClass
         def companionClass: Symbol = self.denot.companionClass

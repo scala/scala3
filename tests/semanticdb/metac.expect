@@ -199,21 +199,21 @@ Occurrences:
 [27:6..27:9): s1x <- advanced/Test.s1x.
 [27:12..27:13): s -> advanced/Test.s.
 [27:14..27:16): s1 -> advanced/Structural#s1().
-[27:16..27:18): .x -> scala/reflect/Selectable#selectDynamic().
+[27:17..27:18): x -> scala/reflect/Selectable#selectDynamic().
 [28:6..28:8): s2 <- advanced/Test.s2.
 [28:11..28:12): s -> advanced/Test.s.
 [28:13..28:15): s2 -> advanced/Structural#s2().
 [29:6..29:9): s2x <- advanced/Test.s2x.
 [29:12..29:13): s -> advanced/Test.s.
 [29:14..29:16): s2 -> advanced/Structural#s2().
-[29:16..29:18): .x -> scala/reflect/Selectable#selectDynamic().
+[29:17..29:18): x -> scala/reflect/Selectable#selectDynamic().
 [30:6..30:8): s3 <- advanced/Test.s3.
 [30:11..30:12): s -> advanced/Test.s.
 [30:13..30:15): s3 -> advanced/Structural#s3().
 [31:6..31:9): s3x <- advanced/Test.s3x.
 [31:12..31:13): s -> advanced/Test.s.
 [31:14..31:16): s3 -> advanced/Structural#s3().
-[31:16..31:18): .m -> scala/reflect/Selectable#applyDynamic().
+[31:17..31:18): m -> scala/reflect/Selectable#applyDynamic().
 [31:19..31:22): ??? -> scala/Predef.`???`().
 [33:6..33:7): e <- advanced/Test.e.
 [33:14..33:23): Wildcards -> advanced/Wildcards#
@@ -248,7 +248,7 @@ Occurrences:
 [47:11..47:14): foo -> advanced/Test.foo.
 [47:15..47:16): A -> local17
 [47:19..47:22): foo -> advanced/Test.foo.
-[47:22..47:24): .a -> scala/reflect/Selectable#selectDynamic().
+[47:23..47:24): a -> scala/reflect/Selectable#selectDynamic().
 [52:6..52:13): HKClass <- advanced/HKClass#
 [52:13..52:13): <- advanced/HKClass#`<init>`().
 [52:14..52:15): F <- advanced/HKClass#[F]
@@ -1771,8 +1771,8 @@ Occurrences:
 [5:16..5:19): any <- a/b/Givens.sayHello().(any)
 [5:21..5:22): A -> a/b/Givens.sayHello().[A]
 [6:8..6:16): sayHello <- a/b/Givens.sayHello().
+[6:19..6:20): s -> scala/StringContext#s().
 [6:34..6:37): any -> a/b/Givens.sayHello().(any)
-[6:37..6:38): " -> scala/StringContext#s().
 [8:13..8:14): B <- a/b/Givens.sayGoodbye().[B]
 [8:13..8:14): B <- a/b/Givens.saySoLong().[B]
 [8:16..8:19): any <- a/b/Givens.sayGoodbye().(any)
@@ -1780,11 +1780,11 @@ Occurrences:
 [8:21..8:22): B -> a/b/Givens.sayGoodbye().[B]
 [8:21..8:22): B -> a/b/Givens.saySoLong().[B]
 [9:8..9:18): sayGoodbye <- a/b/Givens.sayGoodbye().
+[9:21..9:22): s -> scala/StringContext#s().
 [9:38..9:41): any -> a/b/Givens.sayGoodbye().(any)
-[9:41..9:42): " -> scala/StringContext#s().
 [10:8..10:17): saySoLong <- a/b/Givens.saySoLong().
+[10:20..10:21): s -> scala/StringContext#s().
 [10:37..10:40): any -> a/b/Givens.saySoLong().(any)
-[10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
 [12:17..12:25): sayHello -> a/b/Givens.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
@@ -1903,12 +1903,12 @@ Occurrences:
 [20:6..20:7): x <- example/ImplicitConversion#x.
 [20:9..20:12): Int -> scala/Int#
 [20:15..20:22): message -> example/ImplicitConversion#message.
+[23:2..23:3): s -> scala/StringContext#s().
 [23:11..23:18): message -> example/ImplicitConversion#message.
 [23:20..23:26): number -> example/ImplicitConversion#number.
-[23:26..23:27): " -> scala/StringContext#s().
+[24:2..24:3): s -> scala/StringContext#s().
 [25:7..25:14): message -> example/ImplicitConversion#message.
 [26:7..26:13): number -> example/ImplicitConversion#number.
-[26:15..26:16): " -> scala/StringContext#s().
 [26:17..26:28): stripMargin -> scala/collection/StringOps#stripMargin(+1).
 [28:6..28:7): a <- example/ImplicitConversion#a.
 [28:9..28:12): Int -> scala/Int#
@@ -3417,6 +3417,73 @@ Occurrences:
 [13:17..13:17): <- selfs/C6#`<init>`().
 [13:27..13:28): B -> selfs/B#
 
+expect/StructuralTypes.scala
+----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => StructuralTypes.scala
+Text => empty
+Language => Scala
+Symbols => 12 entries
+Occurrences => 33 entries
+Synthetics => 4 entries
+
+Symbols:
+example/StructuralTypes. => final object StructuralTypes extends Object { self: StructuralTypes.type => +5 decls }
+example/StructuralTypes.User# => type User  = Object { abstract method foo (param x: Int): Int; abstract method age => Int; abstract method name => String }
+example/StructuralTypes.V. => val method V Object { abstract method scalameta => String }
+example/StructuralTypes.fooBar. => val method fooBar Int
+example/StructuralTypes.user. => val method user User
+local0 => abstract method name => String
+local1 => abstract method age => Int
+local2 => param x: Int
+local3 => abstract method foo (param x: Int): Int
+local4 => abstract method scalameta => String
+local5 => method scalameta => String
+local6 => final class $anon extends Object { self: $anon => +2 decls }
+
+Occurrences:
+[0:8..0:15): example <- example/
+[2:7..2:14): reflect -> scala/reflect/
+[2:15..2:25): Selectable -> scala/reflect/Selectable.
+[2:26..2:46): reflectiveSelectable -> scala/reflect/Selectable.reflectiveSelectable().
+[4:7..4:22): StructuralTypes <- example/StructuralTypes.
+[5:7..5:11): User <- example/StructuralTypes.User#
+[6:8..6:12): name <- local0
+[6:14..6:20): String -> scala/Predef.String#
+[7:8..7:11): age <- local1
+[7:13..7:16): Int -> scala/Int#
+[8:8..8:11): foo <- local3
+[8:12..8:13): x <- local2
+[8:15..8:18): Int -> scala/Int#
+[8:21..8:24): Int -> scala/Int#
+[11:6..11:10): user <- example/StructuralTypes.user.
+[11:18..11:30): asInstanceOf -> scala/Any#asInstanceOf().
+[11:31..11:35): User -> example/StructuralTypes.User#
+[12:2..12:6): user -> example/StructuralTypes.user.
+[12:7..12:11): name -> scala/reflect/Selectable#selectDynamic().
+[13:2..13:6): user -> example/StructuralTypes.user.
+[13:7..13:10): age -> scala/reflect/Selectable#selectDynamic().
+[14:6..14:12): fooBar <- example/StructuralTypes.fooBar.
+[14:15..14:19): user -> example/StructuralTypes.user.
+[14:20..14:23): foo -> scala/reflect/Selectable#applyDynamic().
+[16:6..16:7): V <- example/StructuralTypes.V.
+[16:9..16:15): Object -> java/lang/Object#
+[17:8..17:17): scalameta <- local4
+[17:19..17:25): String -> scala/Predef.String#
+[18:6..18:6): <- local6
+[19:8..19:17): scalameta <- local5
+[20:2..20:3): V -> example/StructuralTypes.V.
+[20:4..20:13): scalameta -> scala/reflect/Selectable#selectDynamic().
+[21:4..21:19): StructuralTypes -> example/StructuralTypes.
+
+Synthetics:
+[12:2..12:6):user => reflectiveSelectable(*)
+[13:2..13:6):user => reflectiveSelectable(*)
+[14:15..14:19):user => reflectiveSelectable(*)
+[20:2..20:3):V => reflectiveSelectable(*)
+
 expect/Synthetic.scala
 ----------------------
 
@@ -4022,7 +4089,7 @@ Occurrences:
 [48:18..48:19): v -> example/ValUsages.v.
 [48:20..48:23): yim -> example/Vals#yim().
 [49:2..49:3): v -> example/ValUsages.v.
-[49:3..49:18): .explicitSetter -> example/Vals#`explicitSetter_=`().
+[49:4..49:18): explicitSetter -> example/Vals#`explicitSetter_=`().
 
 Diagnostics:
 [2:20..2:21): [warning] unused explicit parameter

@@ -1,4 +1,4 @@
-// scalac: -Werror -Wunused:all
+//> using options -Werror -Wunused:all
 
 import scala.quoted.*
 

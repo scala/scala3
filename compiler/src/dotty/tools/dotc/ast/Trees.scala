@@ -455,7 +455,7 @@ object Trees {
         val point = span.point
         if name.toTermName == nme.ERROR then
           Span(point)
-        else if qualifier.span.start > span.start then // right associative
+        else if qualifier.span.exists && qualifier.span.start > span.point then // right associative
           val realName = name.stripModuleClassSuffix.lastPart
           Span(span.start, span.start + realName.length, point)
         else

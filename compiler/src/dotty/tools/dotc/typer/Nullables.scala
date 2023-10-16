@@ -201,6 +201,16 @@ object Nullables:
     // TODO: Add constant pattern if the constant type is not nullable
     case _ => false
 
+  def matchesNull(cdef: CaseDef)(using Context): Boolean =
+    cdef.guard.isEmpty && patMatchesNull(cdef.pat)
+
+  private def patMatchesNull(pat: Tree)(using Context): Boolean = pat match
+    case Literal(Constant(null)) => true
+    case Bind(_, pat) => patMatchesNull(pat)
+    case Alternative(trees) => trees.exists(patMatchesNull)
+    case _ if isVarPattern(pat) => true
+    case _ => false
+
   extension (infos: List[NotNullInfo])
 
     /** Do the current not-null infos imply that `ref` is not null?
@@ -456,7 +466,7 @@ object Nullables:
                 else candidates -= name
               case None =>
             traverseChildren(tree)
-          case _: (If | WhileDo | Typed) =>
+          case _: (If | WhileDo | Typed | Match | CaseDef | untpd.ParsedTry) =>
             traverseChildren(tree)      // assignments to candidate variables are OK here ...
           case _ =>
             reachable = Set.empty       // ... but not here
@@ -518,7 +528,7 @@ object Nullables:
   def postProcessByNameArgs(fn: TermRef, app: Tree)(using Context): Tree =
     fn.widen match
       case mt: MethodType
-      if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
+      if mt.isMethodWithByNameArgs && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
             object dropNotNull extends TreeMap:

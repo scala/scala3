@@ -29,19 +29,22 @@ object CheckCaptures:
 
   class Pre extends PreRecheck, SymTransformer:
 
-    override def isEnabled(using Context) = true
+    override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
 
   	/**  - Reset `private` flags of parameter accessors so that we can refine them
      *     in Setup if they have non-empty capture sets.
      *   - Special handling of some symbols defined for case classes.
+     *  Enabled only until recheck is finished, and provided some compilation unit
+     *  is CC-enabled.
      */
     def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-      if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
-        sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
-      else if Synthetics.needsTransform(sym) then
-        Synthetics.transform(sym, toCC = true)
-      else
-        sym
+      if !pastRecheck && Feature.ccEnabledSomewhere then
+        if sym.isAllOf(PrivateParamAccessor) && !sym.hasAnnotation(defn.ConstructorOnlyAnnot) then
+          sym.copySymDenotation(initFlags = sym.flags &~ Private | Recheck.ResetPrivate)
+        else if Synthetics.needsTransform(sym) then
+          Synthetics.transform(sym)
+        else sym
+      else sym
   end Pre
 
   enum EnvKind:
@@ -190,7 +193,8 @@ class CheckCaptures extends Recheck, SymTransformer:
   import CheckCaptures.*
 
   def phaseName: String = "cc"
-  override def isEnabled(using Context) = true
+
+  override def isRunnable(using Context) = super.isRunnable && Feature.ccEnabledSomewhere
 
   def newRechecker()(using Context) = CaptureChecker(ctx)
 
@@ -199,11 +203,7 @@ class CheckCaptures extends Recheck, SymTransformer:
   override def run(using Context): Unit =
     if Feature.ccEnabled then
       super.run
-
-  override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if Synthetics.needsTransform(sym) then Synthetics.transform(sym, toCC = false)
-    else super.transformSym(sym)
-
+      
   override def printingContext(ctx: Context) = ctx.withProperty(ccStateKey, Some(new CCState))
 
   class CaptureChecker(ictx: Context) extends Rechecker(ictx):
@@ -369,7 +369,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           case _ =>
             val t1  = t match
               case t @ defn.RefinedFunctionOf(rinfo: MethodType) =>
-                t.derivedRefinedType(t.parent, t.refinedName, this(rinfo))
+                t.derivedRefinedType(refinedInfo = this(rinfo))
               case _ =>
                 mapOver(t)
             if variance > 0 then t1
@@ -948,7 +948,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               adaptTypeFun(actual, rinfo.resType, expected, covariant, insertBox,
                 ares1 =>
                   val rinfo1 = rinfo.derivedLambdaType(rinfo.paramNames, rinfo.paramInfos, ares1)
-                  val actual1 = actual.derivedRefinedType(actual.parent, actual.refinedName, rinfo1)
+                  val actual1 = actual.derivedRefinedType(refinedInfo = rinfo1)
                   actual1
               )
             case _ =>

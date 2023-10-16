@@ -1,6 +1,4 @@
-/*
- * scalac: -Xfatal-warnings -Xlint
- */
+//> using options -Xfatal-warnings -Xlint
 package t8013
 
 // unsuspecting user of perverse macro

@@ -237,7 +237,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           found
         else
           if !scala2pkg && !previous.isError && !found.isError then
-            fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx))
+            fail(AmbiguousReference(name, newPrec, prevPrec, prevCtx,
+              isExtension = previous.termSymbol.is(ExtensionMethod) && found.termSymbol.is(ExtensionMethod)))
           previous
 
       /** Assemble and check alternatives to an imported reference. This implies:
@@ -264,7 +265,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           then
             altImports.uncheckedNN += altImp
 
-        if Feature.enabled(Feature.relaxedExtensionImports) && altImports != null && ctx.isImportContext then
+        if altImports != null && ctx.isImportContext then
           val curImport = ctx.importInfo.uncheckedNN
           namedImportRef(curImport) match
             case altImp: TermRef =>
@@ -1846,12 +1847,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   /** Special typing of Match tree when the expected type is a MatchType,
    *  and the patterns of the Match tree and the MatchType correspond.
    */
-  def typedDependentMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: MatchType)(using Context): Tree = {
+  def typedDependentMatchFinish(tree: untpd.Match, sel: Tree, wideSelType0: Type, cases: List[untpd.CaseDef], pt: MatchType)(using Context): Tree = {
     var caseCtx = ctx
+    var wideSelType = wideSelType0
+    var alreadyStripped = false
     val cases1 = tree.cases.zip(pt.cases)
       .map { case (cas, tpe) =>
         val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
         caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+        if !alreadyStripped && Nullables.matchesNull(case1) then
+          wideSelType = wideSelType.stripNull
+          alreadyStripped = true
         case1
       }
       .asInstanceOf[List[CaseDef]]
@@ -1865,11 +1871,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
 
-  def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(using Context): List[CaseDef] =
+  def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType0: Type, pt: Type)(using Context): List[CaseDef] =
     var caseCtx = ctx
+    var wideSelType = wideSelType0
+    var alreadyStripped = false
     cases.mapconserve { cas =>
       val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+      if !alreadyStripped && Nullables.matchesNull(case1) then
+        wideSelType = wideSelType.stripNull
+        alreadyStripped = true
       case1
     }
 
@@ -3231,7 +3242,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val paramTypes = {
       val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], StopAt.Static))
       if hasWildcard then formals.map(_ => untpd.TypeTree())
-      else formals.map(untpd.TypeTree)
+      else formals.map(formal => untpd.TypeTree(formal.loBound)) // about loBound, see tests/pos/i18649.scala
     }
 
     val erasedParams = pt match {

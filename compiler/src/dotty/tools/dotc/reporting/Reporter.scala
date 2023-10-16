@@ -176,13 +176,19 @@ abstract class Reporter extends interfaces.ReporterResult {
   end issueUnconfigured
 
   def issueIfNotSuppressed(dia: Diagnostic)(using Context): Unit =
+    def toErrorIfFatal(dia: Diagnostic) = dia match
+      case w: Warning if ctx.settings.silentWarnings.value => dia
+      case w: ConditionalWarning if w.isSummarizedConditional => dia
+      case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
+      case _ => dia
+
     def go() =
       import Action._
       dia match
-        case w: Warning => WConf.parsed.action(w) match
+        case w: Warning => WConf.parsed.action(dia) match
           case Error   => issueUnconfigured(w.toError)
-          case Warning => issueUnconfigured(w)
-          case Verbose => issueUnconfigured(w.setVerbose())
+          case Warning => issueUnconfigured(toErrorIfFatal(w))
+          case Verbose => issueUnconfigured(toErrorIfFatal(w.setVerbose()))
           case Info    => issueUnconfigured(w.toInfo)
           case Silent  =>
         case _ => issueUnconfigured(dia)

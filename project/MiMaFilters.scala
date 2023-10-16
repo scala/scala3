@@ -4,10 +4,11 @@ import com.typesafe.tools.mima.core._
 object MiMaFilters {
   val Library: Seq[ProblemFilter] = Seq(
     // New API in 3.4.X
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#FlagsModule.AbsOverride"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefTypeTest"),
     ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ValOrDefDefMethods"),
-    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#defnModule.FunctionClass")
-    // New API in 3.4.X
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#defnModule.FunctionClass"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule#defnModule.PolyFunctionClass"),
   )
   val TastyCore: Seq[ProblemFilter] = Seq(
     ProblemFilters.exclude[DirectMissingMethodProblem]("dotty.tools.tasty.TastyFormat.EXPLICITtpt"),
@@ -90,6 +91,9 @@ object MiMaFilters {
         "scala.collection.IterableOnceOps#Maximized.this", // New in 2.13.11: private inner class
         "scala.util.Properties.<clinit>",
         "scala.util.Sorting.scala$util$Sorting$$mergeSort$default$5",
+        // New in 2.13.12 -- can be removed once scala/scala#10549 lands in 2.13.13
+        // and we take the upgrade here
+        "scala.collection.immutable.MapNodeRemoveAllSetNodeIterator.next",
       ).map(ProblemFilters.exclude[DirectMissingMethodProblem])
     }
   )

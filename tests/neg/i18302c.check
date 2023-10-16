@@ -1,0 +1,4 @@
+-- Error: tests/neg/i18302c.scala:4:32 ---------------------------------------------------------------------------------
+4 |def polyFun: PolyFunction { def foo(x: Int): Int } = // error
+  |                            ^^^^^^^^^^^^^^^^^^^^
+  |                            PolyFunction only supports apply method refinements

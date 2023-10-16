@@ -18,6 +18,7 @@ import scala.concurrent.duration._
 import TestSources.sources
 import reporting.TestReporter
 import vulpix._
+import dotty.tools.dotc.config.ScalaSettings
 
 class CompilationTests {
   import ParallelTesting._
@@ -38,6 +39,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFile("tests/pos-special/utf8encoded.scala", defaultOptions.and("-encoding", "UTF8")),
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
+      compileDir("tests/pos-special/i18589", defaultOptions.and("-Ysafe-init").without("-Ycheck:all")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -217,7 +219,6 @@ class CompilationTests {
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
-
     // The regression test for i12128 has some atypical classpath requirements.
     // The test consists of three files: (a) Reflect_1  (b) Macro_2  (c) Test_3
     // which must be compiled separately. In addition:
@@ -238,6 +239,38 @@ class CompilationTests {
 
       tests.foreach(_.delete())
     }
+  }
+
+  // parallel backend tests
+  @Test def parallelBackend: Unit = {
+    given TestGroup = TestGroup("parallelBackend")
+    val parallelism = Runtime.getRuntime().availableProcessors().min(16)
+    assumeTrue("Not enough available processors to run parallel tests", parallelism > 1)
+
+    val options = defaultOptions.and(s"-Ybackend-parallelism:${parallelism}")
+    def parCompileDir(directory: String) = compileDir(directory, options)
+
+    // Compilation units containing more than 1 source file
+    aggregateTests(
+      parCompileDir("tests/pos/i10477"),
+      parCompileDir("tests/pos/i4758"),
+      parCompileDir("tests/pos/scala2traits"),
+      parCompileDir("tests/pos/class-gadt"),
+      parCompileDir("tests/pos/tailcall"),
+      parCompileDir("tests/pos/reference"),
+      parCompileDir("tests/pos/pos_valueclasses")
+    ).checkCompile()
+
+    aggregateTests(
+      parCompileDir("tests/neg/package-implicit"),
+      parCompileDir("tests/neg/package-export")
+    ).checkExpectedErrors()
+
+    aggregateTests(
+      parCompileDir("tests/run/decorators"),
+      parCompileDir("tests/run/generic")
+    ).checkRuns()
+
   }
 }
 

@@ -55,14 +55,15 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       (classSym != defn.NothingClass && classSym != defn.NullClass),
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
 
-    convertedClasses.getOrElse(classSym, {
-      val internalName = classSym.javaBinaryName
-      // We first create and add the ClassBType to the hash map before computing its info. This
-      // allows initializing cylic dependencies, see the comment on variable ClassBType._info.
-      val classBType = new ClassBType(internalName)
-      convertedClasses(classSym) = classBType
-      setClassInfo(classSym, classBType)
-    })
+    convertedClasses.synchronized:
+      convertedClasses.getOrElse(classSym, {
+        val internalName = classSym.javaBinaryName
+        // We first create and add the ClassBType to the hash map before computing its info. This
+        // allows initializing cylic dependencies, see the comment on variable ClassBType._info.
+        val classBType = new ClassBType(internalName)
+        convertedClasses(classSym) = classBType
+        setClassInfo(classSym, classBType)
+      })
   }
 
   final def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol): ClassBType = {

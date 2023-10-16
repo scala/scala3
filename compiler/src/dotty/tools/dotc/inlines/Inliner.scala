@@ -497,8 +497,8 @@ class Inliner(val call: tpd.Tree)(using Context):
     // assertAllPositioned(tree)   // debug
     tree.changeOwner(originalOwner, ctx.owner)
 
-  def tryConstValue: Tree =
-    TypeComparer.constValue(callTypeArgs.head.tpe) match {
+  def tryConstValue(tpe: Type): Tree =
+    TypeComparer.constValue(tpe) match {
       case Some(c) => Literal(c).withSpan(call.span)
       case _ => EmptyTree
     }
