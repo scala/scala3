@@ -991,22 +991,19 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
 
           // Capture set of the term after adaptation
-          val cs1 = if covariant then cs ++ leaked else cs
-
-          def checkLeaked: Boolean =
-            covariant || leaked.subCaptures(cs1, frozen = false).isOK || {
-              report.error(
-                em"""$expected cannot be box-converted to $actual
-                    |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
-              false
-            }
+          val cs1 =
+            if covariant then cs ++ leaked
+            else
+              if !leaked.subCaptures(cs, frozen = false).isOK then
+                report.error(
+                  em"""$expected cannot be box-converted to $actual
+                      |since the additional capture set $leaked resulted from box conversion is not allowed in $actual""", pos)
+              cs
 
           // Compute the adapted type
           def adaptedType(resultBoxed: Boolean) =
             if (styp1 eq styp) && leaked.isAlwaysEmpty && boxed == resultBoxed then actual
             else styp1.capturing(if alwaysConst then CaptureSet(cs1.elems) else cs1).forceBoxStatus(resultBoxed)
-
-          checkLeaked
 
           if needsAdaptation then
             val criticalSet =          // the set which is not allowed to have `cap`
