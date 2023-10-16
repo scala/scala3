@@ -3887,9 +3887,9 @@ Occurrences:
 [40:10..40:18): rightVar -> local4
 
 Diagnostics:
-[30:11..30:18): [warning] unset local variable
-[30:20..30:28): [warning] unset local variable
-[31:15..31:25): [warning] unset local variable
+[30:11..30:18): [warning] unset local variable, consider using an immutable val instead
+[30:20..30:28): [warning] unset local variable, consider using an immutable val instead
+[31:15..31:25): [warning] unset local variable, consider using an immutable val instead
 
 Synthetics:
 [5:6..5:10):Some => *.unapply[Int]
