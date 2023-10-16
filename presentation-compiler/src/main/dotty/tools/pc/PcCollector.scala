@@ -200,6 +200,12 @@ abstract class PcCollector[T](
         val realName = arg.name.stripModuleClassSuffix.lastPart
         if pos.span.start > arg.span.start && pos.span.end < arg.span.point + realName.length
         then
+          val length = realName.toString.backticked.length()
+          val pos = arg.sourcePos.withSpan(
+            arg.span
+              .withEnd(arg.span.start + length)
+              .withPoint(arg.span.start)
+          )
           appl.symbol.paramSymss.flatten.find(_.name == arg.name).map { s =>
             // if it's a case class we need to look for parameters also
             if caseClassSynthetics(s.owner.name) && s.owner.is(Flags.Synthetic)
@@ -211,9 +217,9 @@ abstract class PcCollector[T](
                   s.owner.owner.info.member(s.name).symbol
                 )
                   .filter(_ != NoSymbol),
-                arg.sourcePos,
+                pos,
               )
-            else (Set(s), arg.sourcePos)
+            else (Set(s), pos)
           }
         else None
         end if
@@ -489,6 +495,7 @@ abstract class PcCollector[T](
           }
           val named = args.map { arg =>
             val realName = arg.name.stripModuleClassSuffix.lastPart
+            val length = realName.toString.backticked.length()
             val sym = apply.symbol.paramSymss.flatten
               .find(_.name == realName)
             collect(
@@ -496,7 +503,7 @@ abstract class PcCollector[T](
               pos
                 .withSpan(
                   arg.span
-                    .withEnd(arg.span.start + realName.length)
+                    .withEnd(arg.span.start + length)
                     .withPoint(arg.span.start)
                 ),
               sym
