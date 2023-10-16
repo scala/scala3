@@ -154,14 +154,10 @@ abstract class Reporter extends interfaces.ReporterResult {
       val key = w.enablingOption.name
       addUnreported(key, 1)
     case _                                                  =>
-      // conditional warnings that are not enabled are not fatal
-      val d = dia match
-        case w: Warning if ctx.settings.XfatalWarnings.value => w.toError
-        case _                                               => dia
-      if !isHidden(d) then // avoid isHidden test for summarized warnings so that message is not forced
-        markReported(d)
-        withMode(Mode.Printing)(doReport(d))
-        d match {
+      if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
+        markReported(dia)
+        withMode(Mode.Printing)(doReport(dia))
+        dia match {
           case w: Warning =>
             warnings = w :: warnings
             _warningCount += 1
