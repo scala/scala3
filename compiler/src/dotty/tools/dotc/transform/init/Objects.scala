@@ -1303,7 +1303,7 @@ object Objects:
             implicitArgsBeforeScrutinee(f) ++ evalArgs(implicitArgs.map(Arg.apply), thisV, klass)
           case _ => List()
 
-        val implicitArgsAfterScrtinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
+        val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
         val args = implicitArgsBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitArgsAfterScrtinee)
         val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
