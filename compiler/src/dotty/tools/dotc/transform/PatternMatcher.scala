@@ -327,10 +327,13 @@ object PatternMatcher {
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
-        lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
+        lazy val caseAccessors = caseClass.caseAccessors.filter(sym => sym.is(Method) || sym.owner.is(Scala2Tasty))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
+          sym.is(Synthetic) && (
+            (sym.is(Case) && sym.owner.is(Scala2x))
+            || sym.owner.is(Scala2Tasty)
+          )
 
         def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)
