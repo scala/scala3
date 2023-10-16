@@ -3253,7 +3253,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     def matchCase(cas: Type): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
-          caseLambda = constrained(cas)
+          caseLambda = constrained(cas, ast.tpd.EmptyTree)._1
           caseLambda.resultType
         case _ =>
           cas

@@ -476,8 +476,8 @@ object SpaceEngine {
         erase(parent, inArray, isValue, isTyped)
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
-        if inArray then tref.underlying
-        else if isValue then tref.superType
+        if inArray then erase(tref.underlying, inArray, isValue, isTyped)
+        else if isValue then erase(tref.superType, inArray, isValue, isTyped)
         else WildcardType
 
       case _ => tp
@@ -531,7 +531,7 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-          val tvars = pt.paramInfos.map(newTypeVar(_))
+          val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton

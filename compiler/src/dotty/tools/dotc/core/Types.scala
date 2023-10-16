@@ -4949,6 +4949,9 @@ object Types {
       if (inst.exists) inst else origin
     }
 
+    def wrapInTypeTree(owningTree: Tree)(using Context): InferredTypeTree =
+      new InferredTypeTree().withSpan(owningTree.span).withType(this)
+
     override def computeHash(bs: Binders): Int = identityHash(bs)
     override def equals(that: Any): Boolean = this.eq(that.asInstanceOf[AnyRef])
 
