@@ -507,3 +507,16 @@ class PcPrepareRenameSuite extends BasePcRenameSuite:
          |end extension
          |""".stripMargin
     )
+
+  @Test def `named-arg-backtick` =
+    prepare(
+      """|object Main {
+         |  def m() = {
+         |    def foo(`type`: String): String = `type`
+         |    val x = foo(
+         |      <<`ty@@pe`>> = "abc"
+         |    )
+         |  }
+         |}
+         |""".stripMargin,
+    )
