@@ -708,9 +708,6 @@ object ProtoTypes {
   @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways:
     override def toString = "AnyTypeConstructorProto"
 
-  @sharable object LhsProto extends UncachedGroundType with MatchAlways:
-    override def toString = "LhsProto"
-
   extension (pt: Type)
     def isExtensionApplyProto: Boolean = pt match
       case PolyProto(targs, res) => res.isExtensionApplyProto
@@ -971,7 +968,7 @@ object ProtoTypes {
 
   final def wildApprox(tp: Type)(using Context): Type = wildApprox(tp, null, Set.empty, Set.empty)
 
-  @sharable object AssignProto extends UncachedGroundType with MatchAlways
+  @sharable object LhsProto extends UncachedGroundType with MatchAlways
 
   private[ProtoTypes] class WildApproxMap(val seen: Set[TypeParamRef], val internal: Set[TypeLambda])(using Context) extends TypeMap {
     def apply(tp: Type): Type = wildApprox(tp, this, seen, internal)
