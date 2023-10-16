@@ -185,7 +185,7 @@ object JSSymUtils {
         val list =
           for ((name, info) <- paramNamesAndTypes) yield {
             val v =
-              if (info.isRepeatedParam) Some(info.repeatedToSingle.widenDealias)
+              if (info.isRepeatedParam) Some(TypeErasure.erasure(info.repeatedToSingle))
               else None
             name -> v
           }
