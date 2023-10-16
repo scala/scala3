@@ -109,13 +109,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       try op finally noCheckNews = saved
     }
 
-    /** The set of all private class variables that are assigned
-     *  when selected with a qualifier other than the `this` of the owning class.
-     *  Such variables can contain only invariant type parameters in
-     *  their types.
-     */
-    private var privateVarsSetNonLocally: Set[Symbol] = Set()
-
     def isCheckable(t: New): Boolean = !inJavaAnnot && !noCheckNews.contains(t)
 
     /** Mark parameter accessors that are aliases of like-named parameters
@@ -156,8 +149,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     private def processMemberDef(tree: Tree)(using Context): tree.type = {
       val sym = tree.symbol
       Checking.checkValidOperator(sym)
-      if sym.isClass then
-        VarianceChecker.check(tree, privateVarsSetNonLocally)
       sym.transformAnnotations(transformAnnot)
       sym.defTree = tree
       tree
@@ -265,14 +256,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case _ => super.transform(tree)
       }
     }
-
-    /** Update privateVarsSetNonLocally is symbol is a private variable
-     *  that is selected from something other than `this` when assigned
-     */
-    private def markVarAccess(tree: Tree, qual: Tree)(using Context): Unit =
-      val sym = tree.symbol
-      if sym.is(Private, butNot = Local) && !sym.isCorrectThisType(qual.tpe) then
-        privateVarsSetNonLocally += sym
 
     def checkNoConstructorProxy(tree: Tree)(using Context): Unit =
       if tree.symbol.is(ConstructorProxy) then
@@ -414,6 +397,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           registerIfHasMacroAnnotations(tree)
           val sym = tree.symbol
           if (sym.isClass)
+            VarianceChecker.check(tree)
             annotateExperimental(sym)
             checkMacroAnnotation(sym)
             if sym.isOneOf(GivenOrImplicit) then
@@ -490,9 +474,6 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               case tpe => tpe
             }
           )
-        case Assign(lhs @ Select(qual, _), _) =>
-          markVarAccess(lhs, qual)
-          super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
             // The added mode signals that bounds in a pattern need not

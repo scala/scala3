@@ -871,7 +871,7 @@ object SymDenotations {
     /** Is `pre` the same as C.this, where C is exactly the owner of this symbol,
      *  or, if this symbol is protected, a subclass of the owner?
      */
-    def isCorrectThisType(pre: Type)(using Context): Boolean = pre match
+    def isAccessPrivilegedThisType(pre: Type)(using Context): Boolean = pre match
       case pre: ThisType =>
         (pre.cls eq owner) || this.is(Protected) && pre.cls.derivesFrom(owner)
       case pre: TermRef =>
@@ -936,7 +936,7 @@ object SymDenotations {
         || boundary.isRoot
         || (accessWithin(boundary) || accessWithinLinked(boundary)) &&
              (  !this.is(Local)
-             || isCorrectThisType(pre)
+             || isAccessPrivilegedThisType(pre)
              || canBeLocal(name, flags)
                 && {
                   resetFlag(Local)
