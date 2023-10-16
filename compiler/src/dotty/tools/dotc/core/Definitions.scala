@@ -993,6 +993,7 @@ class Definitions {
   // Annotation classes
   @tu lazy val AllowConversionsAnnot: ClassSymbol = requiredClass("scala.annotation.allowConversions")
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = requiredClass("scala.annotation.internal.AnnotationDefault")
+  @tu lazy val AssignedNonLocallyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.AssignedNonLocally")
   @tu lazy val BeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BeanProperty")
   @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
   @tu lazy val BodyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Body")
