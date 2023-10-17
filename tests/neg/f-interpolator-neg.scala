@@ -1,4 +1,4 @@
-object Test {
+@scala.annotation.nowarn("msg=pure expression does nothing") object Test {
 
   def numberArgumentsTests(s : String, d : Int) = {
     new StringContext().f() // error
