@@ -156,7 +156,7 @@ object CheckCaptures:
             else recur(encl.owner.enclosingMethodOrClass)
           recur(encl)
       def traverse(t: Type) =
-        t match
+        t.dealiasKeepAnnots match
           case t: TypeRef =>
             capt.println(i"disallow $t, $tp, $what, ${t.symbol.is(Sealed)}")
             t.info match
@@ -724,13 +724,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         markFree(res.boxedCaptureSet, tree.srcPos)
       res
 
-    /** If `tree` is a reference or an application where the result type refers
-     *  to an enclosing class or method parameter of the reference, check that the result type
-     *  does not capture the universal capability. This is justified since the
-     *  result type would have to be implicitly unboxed.
-     *  TODO: Can we find a cleaner way to achieve this? Logically, this should be part
-     *  of simulated boxing and unboxing.
-     */
     override def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
       def needsUniversalCheck = tree match
         case _: RefTree | _: Apply | _: TypeApply => tree.symbol.unboxesResult

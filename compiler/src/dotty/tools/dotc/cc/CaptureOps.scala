@@ -16,6 +16,9 @@ import collection.mutable
 
 private val Captures: Key[CaptureSet] = Key()
 
+/** RetainingType will be boxed when it gets turned into a capturing type */
+private val NeedsBox: Key[Unit] = Key()
+
 object ccConfig:
 
   /** Switch whether unpickled function types and byname types should be mapped to
@@ -234,7 +237,7 @@ extension (tp: Type)
     case _ =>
       false
 
-  def isCapabilityClassRef(using Context) = tp match
+  def isCapabilityClassRef(using Context) = tp.dealiasKeepAnnots match
     case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
     case _ => false
 
@@ -255,7 +258,7 @@ extension (cls: ClassSymbol)
       defn.pureBaseClasses.contains(bc)
       || bc.givenSelfType.dealiasKeepAnnots.match
           case CapturingType(_, refs) => refs.isAlwaysEmpty
-          case RetainingType(_, refs) => refs.isEmpty // TODO: Better: test at phase cc instead?
+          case RetainingType(_, refs) => refs.isEmpty
           case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
     else None
 
@@ -372,4 +375,4 @@ extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
-    case _ => false
+    case ann => ann.tree.hasAttachment(NeedsBox)

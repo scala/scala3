@@ -121,9 +121,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  convert it to be boxed.
    */
   private def box(tp: Type)(using Context): Type =
-    def recur(tp: Type): Type = tp.dealias match
-      case tp @ CapturingType(parent, refs) if !tp.isBoxed =>
-        tp.boxed
+    def recur(tp: Type): Type = tp.dealiasKeepAnnots match
+      case tp @ CapturingType(parent, refs) =>
+        if tp.isBoxed then tp else tp.boxed
+      case tp @ AnnotatedType(parent, ann) =>
+        if ann.symbol == defn.RetainsAnnot then
+          ann.tree.putAttachment(NeedsBox, ())
+          tp
+        else tp.derivedAnnotatedType(box(parent), ann)
       case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
         val res = args.last
         val boxedRes = recur(res)
@@ -229,7 +234,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               resType = this(tp.resType))
           case tp: TypeLambda =>
             // Don't recurse into parameter bounds, just cleanup any stray retains annotations
-            // !!! TODO we should also map roots to rootvars here
             tp.derivedLambdaType(
               paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
               resType = this(tp.resType))
@@ -291,18 +295,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val t2 = expandCapabilityClass(t)
         if t2 ne t then return t2
         t match
-          case t: TypeRef =>
-            val sym = t.symbol
-            if sym.isClass then t
-            else t.info match
-              case TypeAlias(alias) =>
-                val transformed = this(alias)
-                  // TODO: Do we need an eager expansion, presumably, we need that only for normalizeCaptures
-                if transformed ne alias then transformed else t
-                  //.showing(i"EXPAND $t with ${t.info} to $result in ${t.symbol.owner}/${ctx.owner}")
-              case _ =>
-                recur(t)
-          case t @ AppliedType(tycon: TypeProxy, args) if true =>
+          case t @ AppliedType(tycon: TypeProxy, args) =>
             tycon.underlying match
               case TypeAlias(aliasTycon) =>
                 val args1 =
@@ -327,7 +320,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               for tpt <- tptToCheck do
                 checkQualifiedRoots(ann.tree)
                 checkWellformedLater(parent1, ann.tree, tpt)
-              CapturingType(parent1, ann.tree.toCaptureSet)
+              CapturingType(parent1, ann.tree.toCaptureSet, boxed = ann.tree.hasAttachment(NeedsBox))
             else
               t.derivedAnnotatedType(this(parent), ann)
           case Box(t1) =>
@@ -632,6 +625,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
         && !refs.containsRoot // if refs is {cap}, an added variable would not change anything
+      case RetainingType(parent, refs) =>
+        needsVariable(parent)
+        && !refs.tpes.exists:
+            case ref: TermRef => ref.isUniversalRootCapability
+            case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
       case _ =>

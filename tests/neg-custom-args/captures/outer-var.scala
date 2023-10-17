@@ -3,9 +3,9 @@ type Cap = CC^
 
 type Proc = () => Unit
 
-def test(p: Proc) =
+def test(p: Proc, q: () => Unit) =
   var x: () ->{cap[test]} Unit = p
-  var y = p
+  var y = p // OK, y has type () ->{p} Proc
 
   def inner(q: Proc) =
     x = q           // error
