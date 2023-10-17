@@ -330,10 +330,7 @@ object PatternMatcher {
         lazy val caseAccessors = caseClass.caseAccessors.filter(sym => sym.is(Method) || sym.owner.is(Scala2Tasty))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.is(Synthetic) && (
-            (sym.is(Case) && sym.owner.is(Scala2x))
-            || sym.owner.is(Scala2Tasty)
-          )
+          sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
         def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)

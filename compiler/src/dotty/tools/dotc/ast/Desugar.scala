@@ -805,13 +805,15 @@ object desugar {
             else if caseClassInScala2StdLib then scala2LibCompatUnapplyRhs(unapplyParam.name)
             else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
-
+          val unapplyMods =
+            if ctx.settings.Yscala2Stdlib.value then synthetic | Case
+            else synthetic
           DefDef(
             methName,
             joinParams(derivedTparams, (unapplyParam :: Nil) :: Nil),
             unapplyResTp,
             unapplyRHS
-          ).withMods(synthetic)
+          ).withMods(unapplyMods)
         }
         val toStringMeth =
           DefDef(nme.toString_, Nil, TypeTree(), Literal(Constant(className.toString))).withMods(Modifiers(Override | Synthetic))
