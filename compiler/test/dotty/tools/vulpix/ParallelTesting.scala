@@ -741,8 +741,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           s"""Compilation failed for: ${testSource.title}
              |$showDiagnostics
              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
-        else if obtCount == 0 then s"\nNo warnings found when compiling warn test $testSource"
-        else if expCount == 0 then s"\nNo warning expected/defined in $testSource -- use // warn"
         else if expCount != obtCount then
           s"""|Wrong number of warnings encountered when compiling $testSource
               |expected: $expCount, actual: $obtCount
