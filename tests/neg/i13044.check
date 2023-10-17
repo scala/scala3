@@ -1,5 +1,5 @@
--- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
-50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+-- Error: tests/neg/i13044.scala:65:40 ---------------------------------------------------------------------------------
+65 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
    |                                        ^^^^^^^^^^
    |                                        given instance gen is declared as `inline`, but was not inlined
    |
@@ -71,8 +71,8 @@
 37 |  inline given gen[A]: Schema[A] = derived
    |                                   ^^^^^^^
     --------------------------------------------------------------------------------------------------------------------
--- Error: tests/neg/i13044.scala:50:40 ---------------------------------------------------------------------------------
-50 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
+-- Error: tests/neg/i13044.scala:65:40 ---------------------------------------------------------------------------------
+65 |   implicit def typeSchema: Schema[A] = Schema.gen // error // error
    |                                        ^^^^^^^^^^
    |                                        method recurse is declared as `inline`, but was not inlined
    |
