@@ -244,7 +244,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     final def countErrors  (reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._1
     final def countWarnings(reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._2
-    final def reporterFailed(r: TestReporter) = r.compilerCrashed || r.errorCount > 0
+    final def reporterFailed(r: TestReporter) = r.errorCount > 0
 
     /**
      * For a given test source, returns a check file against which the result of the test run
@@ -737,8 +737,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def showDiagnostics = "-> following the diagnostics:\n" +
         reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
       Option:
-        if reporters.exists(_.compilerCrashed) then s"Compiler crashed when compiling: ${testSource.title}"
-        else if reporters.exists(_.errorCount > 0) then
+        if reporters.exists(_.errorCount > 0) then
           s"""Compilation failed for: ${testSource.title}
              |$showDiagnostics
              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
@@ -862,7 +861,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     override def suppressErrors = true
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
-      def compilerCrashed = reporters.exists(_.compilerCrashed)
       lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       lazy val (expected, unexpected) = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
@@ -871,8 +869,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         reporters.flatMap(_.allErrors.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
 
       Option {
-        if compilerCrashed then s"Compiler crashed when compiling: ${testSource.title}"
-        else if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
+        if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
         else if expectedErrors == 0 then s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error"
         else if expectedErrors != actualErrors then
           s"""|Wrong number of errors encountered when compiling $testSource
