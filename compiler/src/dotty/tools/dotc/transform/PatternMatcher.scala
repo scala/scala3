@@ -327,7 +327,9 @@ object PatternMatcher {
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
-        lazy val caseAccessors = caseClass.caseAccessors.filter(sym => sym.is(Method) || sym.owner.is(Scala2Tasty))
+        lazy val scala2CaseAccessors =
+          if caseClass.is(Scala2Tasty) then caseClass.caseAccessors
+          else caseClass.caseAccessors.filter(_.is(Method))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
@@ -337,11 +339,11 @@ object PatternMatcher {
             .select(defn.RuntimeTuples_apply)
             .appliedTo(receiver, Literal(Constant(i)))
 
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
+        if (isSyntheticScala2Unapply(unapp.symbol) && scala2CaseAccessors.length == args.length)
           def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
           val isGenericTuple = defn.isTupleClass(caseClass) &&
             !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
-          val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
+          val components = if isGenericTuple then scala2CaseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else scala2CaseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
         else if (unapp.tpe <:< (defn.BooleanType))
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
