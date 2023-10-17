@@ -883,7 +883,7 @@ object TypeOps:
           else if symbol.is(Module) then
             TermRef(this(tref.prefix), symbol.sourceModule)
           else if (prefixTVar != null)
-            this(tref)
+            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType)))
           else {
             prefixTVar = WildcardType  // prevent recursive call from assigning it
             // e.g. tests/pos/i15029.more.scala, create a TypeVar for `Instances`' B, so we can disregard `Ints`
