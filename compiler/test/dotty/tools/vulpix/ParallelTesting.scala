@@ -733,9 +733,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       lazy val (map, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
       lazy val (expected, unexpected) = getMissingExpectedWarnings(map, reporters.iterator.flatMap(_.diagnostics))
+      lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s" at ${e.pos.line + 1}: ${e.message}"))
+      def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else title + lines.mkString("\n", "\n", "")
       def hasMissingAnnotations = expected.nonEmpty || unexpected.nonEmpty
-      def showDiagnostics = "-> following the diagnostics:\n" +
-        reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
+      def showDiagnostics = showLines("-> following the diagnostics:", diagnostics)
       Option:
         if reporters.exists(_.errorCount > 0) then
           s"""Compilation failed for: ${testSource.title}
@@ -744,8 +745,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         else if expCount != obtCount then
           s"""|Wrong number of warnings encountered when compiling $testSource
               |expected: $expCount, actual: $obtCount
-              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
-              |${unexpected.mkString("Unexpected warnings:\n", "\n", "")}
+              |${showLines("Unfulfilled expectations:", expected)}
+              |${showLines("Unexpected warnings:", unexpected)}
               |$showDiagnostics
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if hasMissingAnnotations then s"\nWarnings found on incorrect row numbers when compiling $testSource\n$showDiagnostics"
