@@ -144,7 +144,7 @@ object CheckCaptures:
    *  or if it refers to an unsealed type parameter that could possibly be instantiated with
    *  cap in a way that's visible at the type.
    */
-  def disallowRootCapabilitiesIn(tp: Type, carrier: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
+  private def disallowRootCapabilitiesIn(tp: Type, carrier: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
       extension (tparam: Symbol) def isParametricIn(carrier: Symbol): Boolean =
         val encl = carrier.owner.enclosingMethodOrClass
@@ -172,9 +172,9 @@ object CheckCaptures:
                   traverse(hi)
               case _ =>
             traverseChildren(t)
-          case AnnotatedType(tp, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
+          case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
-          case _ =>
+          case t =>
             if variance >= 0 then
               t.captureSet.disallowRootCapability: () =>
                 def part = if t eq tp then "" else i"the part $t of "
@@ -534,6 +534,20 @@ class CheckCaptures extends Recheck, SymTransformer:
       else ownType
     end instantiate
 
+    override def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
+      if allowUniversalInBoxed then
+        val TypeApply(fn, args) = tree
+        val polyType = atPhase(thisPhase.prev):
+          fn.tpe.widen.asInstanceOf[TypeLambda]
+        for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
+          if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
+            def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
+            disallowRootCapabilitiesIn(arg.knownType, fn.symbol,
+              i"Sealed type variable $pname", "be instantiated to",
+              i"This is often caused by a local capability$where\nleaking as part of its result.",
+              tree.srcPos)
+      super.recheckTypeApply(tree, pt)
+
     override def recheckClosure(tree: Closure, pt: Type, forceDependent: Boolean)(using Context): Type =
       val cs = capturedVars(tree.meth.symbol)
       capt.println(i"typing closure $tree with cvs $cs")
@@ -574,7 +588,11 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
-        else checkInferredResult(super.recheckValDef(tree, sym), tree)
+        else
+          if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
+            disallowRootCapabilitiesIn(tree.tpt.knownType, sym,
+              i"mutable $sym", "have type", "", sym.srcPos)
+          checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
           // Parameters with inferred types belong to anonymous methods. We need to wait

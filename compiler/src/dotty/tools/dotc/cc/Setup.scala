@@ -433,9 +433,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             transformResultType(tpt, sym)
-            if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
-              CheckCaptures.disallowRootCapabilitiesIn(tpt.knownType, sym,
-                i"mutable $sym", "have type", "", sym.srcPos)
             ccSetup.println(i"mapped $tree = ${tpt.knownType}")
             traverse(tree.rhs)
 
@@ -443,16 +440,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverse(fn)
           for case arg: TypeTree <- args do
             transformTT(arg, boxed = true, exact = false) // type arguments in type applications are boxed
-
-          if allowUniversalInBoxed then
-            val polyType = fn.tpe.widen.asInstanceOf[TypeLambda]
-            for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
-              if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
-                def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
-                CheckCaptures.disallowRootCapabilitiesIn(arg.knownType, fn.symbol,
-                  i"Sealed type variable $pname", "be instantiated to",
-                  i"This is often caused by a local capability$where\nleaking as part of its result.",
-                  tree.srcPos)
 
         case tree: TypeDef if tree.symbol.isClass =>
           inContext(ctx.withOwner(tree.symbol)):
