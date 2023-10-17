@@ -1103,6 +1103,18 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
 
+        /** Mark private variables that are assigned with a prefix other than
+         *  the `this` type of their owner with a `annotation.internal.AssignedNonLocally`
+         *  annotation. The annotation influences the variance check for these
+         *  variables, which is done at PostTyper. It will be removed after the
+         *  variance check.
+         */
+        def rememberNonLocalAssignToPrivate(sym: Symbol) = lhs1 match
+          case Select(qual, _)
+          if sym.is(Private, butNot = Local) && !sym.isAccessPrivilegedThisType(qual.tpe) =>
+            sym.addAnnotation(Annotation(defn.AssignedNonLocallyAnnot, lhs1.span))
+          case _ =>
+
         lhsCore match
           case Apply(fn, _) if fn.symbol.is(ExtensionMethod) =>
             def toSetter(fn: Tree): untpd.Tree = fn match
@@ -1136,15 +1148,16 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => lhsCore.tpe match {
             case ref: TermRef =>
               val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
-              if (canAssign(lhsVal.symbol)) {
-                // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsVal.symbol
+              val lhsSym = lhsVal.symbol
+              if canAssign(lhsSym) then
+                rememberNonLocalAssignToPrivate(lhsSym)
+                // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsSym
                 // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
                 val lhsBounds =
-                  TypeBounds.lower(lhsVal.symbol.info).asSeenFrom(ref.prefix, lhsVal.symbol.owner)
+                  TypeBounds.lower(lhsSym.info).asSeenFrom(ref.prefix, lhsSym.owner)
                 assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsBounds.loBound)))
                   .computeAssignNullable()
-              }
-              else {
+              else
                 val pre = ref.prefix
                 val setterName = ref.name.setterName
                 val setter = pre.member(setterName)
@@ -1157,7 +1170,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   case _ =>
                     reassignmentToVal
                 }
-              }
             case TryDynamicCallType =>
               typedDynamicAssign(tree, pt)
             case tpe =>
