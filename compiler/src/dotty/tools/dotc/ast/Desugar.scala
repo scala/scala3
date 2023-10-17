@@ -505,7 +505,7 @@ object desugar {
     def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
-    val caseClassInScala2StdLib = isCaseClass && ctx.settings.Yscala2Stdlib.value
+    val caseClassInScala2Library = isCaseClass && ctx.settings.YcompileScala2Library.value
 
     val originalTparams = constr1.leadingTypeParams
     val originalVparamss = asTermOnly(constr1.trailingParamss)
@@ -684,7 +684,7 @@ object desugar {
         DefDef(name, Nil, tpt, rhs).withMods(synthetic)
 
       def productElemMeths =
-        if caseClassInScala2StdLib then Nil
+        if caseClassInScala2Library then Nil
         else
           val caseParams = derivedVparamss.head.toArray
           val selectorNamesInBody = normalizedBody.collect {
@@ -715,7 +715,7 @@ object desugar {
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
-          if ctx.settings.Yscala2Stdlib.value then flags &~= Private
+          if ctx.settings.YcompileScala2Library.value then flags &~= Private
           DefDef(
             nme.copy,
             joinParams(derivedTparams, copyFirstParams :: copyRestParamss),
@@ -776,7 +776,7 @@ object desugar {
           else {
             val appMods =
               var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
-              if ctx.settings.Yscala2Stdlib.value then flags &~= Private
+              if ctx.settings.YcompileScala2Library.value then flags &~= Private
               Modifiers(flags).withPrivateWithin(constr1.mods.privateWithin)
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
@@ -802,7 +802,7 @@ object desugar {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS =
             if (arity == 0) Literal(Constant(true))
-            else if caseClassInScala2StdLib then scala2LibCompatUnapplyRhs(unapplyParam.name)
+            else if caseClassInScala2Library then scala2LibCompatUnapplyRhs(unapplyParam.name)
             else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
 
@@ -860,7 +860,7 @@ object desugar {
                     // TODO: drop this once we do not silently insert empty class parameters anymore
           case paramss => paramss
         }
-        val finalFlag = if ctx.settings.Yscala2Stdlib.value then EmptyFlags else Final
+        val finalFlag = if ctx.settings.YcompileScala2Library.value then EmptyFlags else Final
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
         DefDef(

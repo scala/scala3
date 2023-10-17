@@ -2749,7 +2749,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     checkEnumParent(cls, firstParent)
 
-    if defn.ScalaValueClasses()(cls) && ctx.settings.Yscala2Stdlib.value then
+    if defn.ScalaValueClasses()(cls) && ctx.settings.YcompileScala2Library.value then
       constr1.symbol.resetFlag(Private)
 
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
@@ -2789,7 +2789,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
          && !cls.isAllOf(PrivateLocal)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
-         && !ctx.settings.Yscala2Stdlib.value // FIXME?: class PermutationsItr cannot be defined in universal trait SeqOps
+         && !ctx.settings.YcompileScala2Library.value // FIXME?: class PermutationsItr cannot be defined in universal trait SeqOps
       then
         report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 

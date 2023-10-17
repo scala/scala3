@@ -24,7 +24,7 @@ object TastyMiMaFilters {
     // In Scala 3 these accessors are added in the `postyper` phase.
     // In Scala 2 these accessors are added in the `superaccessors` phase after typer.
     // Are these accessors in the Scala 2 pickles? If so, it implies that TASTy Query/MiMa is ignoring them in Scala 2 but not Scala 3.
-    // Otherwise, if these are not in the Scala 2 pickles, we might need to remove them when compiling with -Yscala2-stdlib
+    // Otherwise, if these are not in the Scala 2 pickles, we might need to remove them when compiling with -Ycompile-scala2-library
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.IndexedSeqOps.superscala$collection$immutable$IndexedSeqOps$$slice"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.StrictOptimizedSeqOps.superscala$collection$immutable$StrictOptimizedSeqOps$$sorted"),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.immutable.IndexedSeq.superscala$collection$immutable$IndexedSeq$$*"/* sameElements, canEqual */),
