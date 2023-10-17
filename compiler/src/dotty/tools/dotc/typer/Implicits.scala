@@ -825,7 +825,7 @@ trait Implicits:
     && !to.isError
     && !ctx.isAfterTyper
     && ctx.mode.is(Mode.ImplicitsEnabled)
-    && from.isValueType
+    && from.widen.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
