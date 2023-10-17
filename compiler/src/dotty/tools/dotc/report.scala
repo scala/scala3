@@ -132,7 +132,13 @@ object report:
   private object messageRendering extends MessageRendering
 
   // Should only be called from Run#enrichErrorMessage.
-  def enrichErrorMessage(errorMessage: String)(using Context): String = try {
+  def enrichErrorMessage(errorMessage: String)(using Context): String =
+    if ctx.settings.YnoEnrichErrorMessages.value then errorMessage
+    else try enrichErrorMessage1(errorMessage)
+    catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+
+  private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
+    import untpd.*, config.Settings.*
     def formatExplain(pairs: List[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
 
     val settings = ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name)
@@ -155,5 +161,5 @@ object report:
        |
        |$info1
        |""".stripMargin
-  } catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+  }
 end report
