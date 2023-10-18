@@ -20,7 +20,7 @@ class ScalaSettings extends SettingGroup with AllScalaSettings
 object ScalaSettings:
   // Keep synchronized with `classfileVersion` in `BackendUtils`
   private val minTargetVersion = 8
-  private val maxTargetVersion = 21
+  private val maxTargetVersion = 22
 
   def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)

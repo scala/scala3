@@ -594,7 +594,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.6.0-scala-1", // used by the backend
         Dependencies.compilerInterface,
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
