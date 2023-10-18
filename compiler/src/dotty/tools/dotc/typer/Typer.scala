@@ -1119,7 +1119,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case Apply(fn, _) if fn.symbol.is(ExtensionMethod) =>
             def toSetter(fn: Tree): untpd.Tree = fn match
               case fn @ Ident(name: TermName) =>
-                untpd.cpy.Ident(fn)(name.setterName)
+                // We need to make sure that the prefix of this extension getter is
+                // retained when we transform it into a setter. Otherwise, we could
+                // end up resoving an unrelated setter from another extension. We
+                // transform the `Ident` into a `Select` to ensure that the prefix
+                // is retained with a `TypedSplice` (see `case Select` bellow).
+                // See tests/pos/i18713.scala for an example.
+                fn.tpe match
+                  case TermRef(qual: TermRef, _) =>
+                    toSetter(ref(qual).select(fn.symbol).withSpan(fn.span))
+                  case TermRef(qual: ThisType, _) =>
+                    toSetter(This(qual.cls).select(fn.symbol).withSpan(fn.span))
+                  case TermRef(NoPrefix, _) =>
+                    untpd.cpy.Ident(fn)(name.setterName)
               case fn @ Select(qual, name: TermName) =>
                 untpd.cpy.Select(fn)(untpd.TypedSplice(qual), name.setterName)
               case fn @ TypeApply(fn1, targs) =>
