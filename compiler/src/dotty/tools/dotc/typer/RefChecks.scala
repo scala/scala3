@@ -1578,7 +1578,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     private def transformIf(tree: If): Tree = {
       val If(cond, thenpart, elsepart) = tree
       def unitIfEmpty(t: Tree): Tree =
-        if (t == EmptyTree) Literal(Constant(())).setPos(tree.pos).setType(UnitTpe) else t
+        if (t == EmptyTree) unitLiteral.setPos(tree.pos).setType(UnitTpe) else t
 
       cond.tpe match {
         case ConstantType(value) =>

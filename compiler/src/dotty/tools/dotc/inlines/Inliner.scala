@@ -793,7 +793,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       typed(tree.cond, defn.BooleanType)(using condCtx) match {
         case cond1 @ ConstantValue(b: Boolean) =>
           val selected0 = if (b) tree.thenp else tree.elsep
-          val selected = if (selected0.isEmpty) tpd.Literal(Constant(())) else typed(selected0, pt)
+          val selected = if (selected0.isEmpty) tpd.unitLiteral else typed(selected0, pt)
           if (isIdempotentExpr(cond1)) selected
           else Block(cond1 :: Nil, selected)
         case cond1 =>
