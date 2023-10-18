@@ -25,11 +25,6 @@ trait SetupAPI:
   def postCheck()(using Context): Unit
 
 object Setup:
-  case class Box(t: Type) extends UncachedGroundType, TermType:
-    override def fallbackToText(printer: Printer): Text =
-      Str("Box(") ~ printer.toText(t) ~ ")"
-    def derivedBox(t1: Type): Type =
-      if t1 eq t then this else Box(t1)
 
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
@@ -125,9 +120,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp @ CapturingType(parent, refs) =>
         if tp.isBoxed then tp else tp.boxed
       case tp @ AnnotatedType(parent, ann) =>
-        if ann.symbol == defn.RetainsAnnot then
-          ann.tree.putAttachment(NeedsBox, ())
-          tp
+        if ann.symbol == defn.RetainsAnnot
+        then CapturingType(parent, ann.tree.toCaptureSet, boxed = true)
         else tp.derivedAnnotatedType(box(parent), ann)
       case tp1 @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp1) =>
         val res = args.last
@@ -237,8 +231,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             tp.derivedLambdaType(
               paramInfos = tp.paramInfos.mapConserve(_.dropAllRetains.bounds),
               resType = this(tp.resType))
-          case Box(tp1) =>
-            box(this(tp1))
           case _ =>
             mapOver(tp)
         addVar(addCaptureRefinements(normalizeCaptures(tp1)), ctx.owner)
@@ -259,22 +251,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         * expands to
         *       (erased x$0: CanThrow[E1]) ?-> (erased x$1: CanThrow[E1]) ?->{x$0} T
         */
-      private def expandThrowsAlias(tp: Type, encl: List[MethodType] = Nil): Type = tp match
-        case throwsAlias(res, exc) =>
-          val paramType = AnnotatedType(
-              defn.CanThrowClass.typeRef.appliedTo(exc),
-              Annotation(defn.ErasedParamAnnot, defn.CanThrowClass.span))
-          val isLast = throwsAlias.unapply(res).isEmpty
-          val paramName = nme.syntheticParamName(encl.length)
-          val mt = ContextualMethodType(paramName :: Nil)(
+      private def expandThrowsAlias(res: Type, exc: Type, encl: List[MethodType]): Type =
+        val paramType = AnnotatedType(
+            defn.CanThrowClass.typeRef.appliedTo(exc),
+            Annotation(defn.ErasedParamAnnot, defn.CanThrowClass.span))
+        val resDecomposed = throwsAlias.unapply(res)
+        val paramName = nme.syntheticParamName(encl.length)
+        val mt = ContextualMethodType(paramName :: Nil)(
             _ => paramType :: Nil,
-            mt => if isLast then res else expandThrowsAlias(res, mt :: encl))
-          val fntpe = defn.PolyFunctionOf(mt)
-          if !encl.isEmpty && isLast then
-            val cs = CaptureSet(encl.map(_.paramRefs.head)*)
-            CapturingType(fntpe, cs, boxed = false)
-          else fntpe
-        case _ => tp
+            mt => resDecomposed match
+              case Some((res1, exc1)) => expandThrowsAlias(res1, exc1, mt :: encl)
+              case _ => res
+          )
+        val fntpe = defn.PolyFunctionOf(mt)
+        if !encl.isEmpty && resDecomposed.isEmpty then
+          val cs = CaptureSet(encl.map(_.paramRefs.head)*)
+          CapturingType(fntpe, cs, boxed = false)
+        else fntpe
 
       /** Map references to capability classes C to C^ */
       private def expandCapabilityClass(tp: Type): Type =
@@ -290,48 +283,30 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       private def recur(t: Type): Type = normalizeCaptures(mapOver(t))
 
       def apply(t: Type) =
-        val t1 = expandThrowsAlias(t)
-        if t1 ne t then return this(t1)
-        val t2 = expandCapabilityClass(t)
-        if t2 ne t then return t2
         t match
-          case t @ AppliedType(tycon: TypeProxy, args) =>
-            tycon.underlying match
-              case TypeAlias(aliasTycon) =>
-                val args1 =
-                  if defn.isFunctionClass(t.dealias.typeSymbol) then args
-                  else args.map(Box(_))
-                val alias = aliasTycon.applyIfParameterized(args1)
-                val transformed = this(alias)
-                if transformed ne alias then
-                  //println(i"APP ALIAS $t / $alias / $transformed")
-                  transformed
-                else
-                  //println(i"NO ALIAS $t / $alias / $transformed")
-                  recur(t)
-              case _ =>
-                recur(t)
           case t @ CapturingType(parent, refs) =>
             checkQualifiedRoots(t.annot.tree) // TODO: NEEDED?
             t.derivedCapturingType(this(parent), refs)
           case t @ AnnotatedType(parent, ann) =>
+            val parent1 = this(parent)
             if ann.symbol == defn.RetainsAnnot then
-              val parent1 = this(parent)
               for tpt <- tptToCheck do
                 checkQualifiedRoots(ann.tree)
                 checkWellformedLater(parent1, ann.tree, tpt)
-              CapturingType(parent1, ann.tree.toCaptureSet, boxed = ann.tree.hasAttachment(NeedsBox))
+              CapturingType(parent1, ann.tree.toCaptureSet)
             else
-              t.derivedAnnotatedType(this(parent), ann)
-          case Box(t1) =>
-            box(this(t1))
+              t.derivedAnnotatedType(parent1, ann)
+          case throwsAlias(res, exc) =>
+            this(expandThrowsAlias(res, exc, Nil))
           case t: LazyRef =>
             val t1 = this(t.ref)
             if t1 ne t.ref then t1 else t
           case t: TypeVar =>
             this(t.underlying)
-          case _ =>
-            recur(t)
+          case t =>
+            if t.isCapabilityClassRef
+            then CapturingType(t, defn.expandedUniversalSet, boxed = false)
+            else recur(t)
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
@@ -342,11 +317,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
   /** Transform type of type tree, and remember the transformed type as the type the tree */
   private def transformTT(tree: TypeTree, boxed: Boolean, exact: Boolean)(using Context): Unit =
     if !tree.hasRememberedType then
-      val tp = if boxed then Box(tree.tpe) else tree.tpe
-      tree.rememberType(
+      val transformed =
         if tree.isInstanceOf[InferredTypeTree] && !exact
-        then transformInferredType(tp)
-        else transformExplicitType(tp, tptToCheck = Some(tree)))
+        then transformInferredType(tree.tpe)
+        else transformExplicitType(tree.tpe, tptToCheck = Some(tree))
+      tree.rememberType(if boxed then box(transformed) else transformed)
 
   /** Substitute parameter symbols in `from` to paramRefs in corresponding
    *  method or poly types `to`. We use a single BiTypeMap to do everything.

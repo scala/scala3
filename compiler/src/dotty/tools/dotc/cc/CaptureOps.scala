@@ -16,9 +16,6 @@ import collection.mutable
 
 private val Captures: Key[CaptureSet] = Key()
 
-/** RetainingType will be boxed when it gets turned into a capturing type */
-private val NeedsBox: Key[Unit] = Key()
-
 object ccConfig:
 
   /** Switch whether unpickled function types and byname types should be mapped to
@@ -375,4 +372,4 @@ extension (tp: AnnotatedType)
   /** Is this a boxed capturing type? */
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
-    case ann => ann.tree.hasAttachment(NeedsBox)
+    case _ => false

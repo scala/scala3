@@ -17,7 +17,7 @@ def main(io: Cap^, fs: Cap^): Unit = {
     type Op0[X] = Box[X] -> Unit
     type Op1[X] = Unit -> Box[X]
     val f: Unit -> (Cap^{io}) -> Unit = ???
-    val test: Op1[Op0[Cap^{io}]^{io}]^{} = f // error  ??? not sure this is correct
+    val test: Op1[Op0[Cap^{io}]^{io}]^{} = f
     // expected: {} Unit -> box {io} (box {io} Cap) -> Unit
     // actual: Unit -> ({io} Cap) -> Unit
     //
@@ -32,7 +32,7 @@ def main(io: Cap^, fs: Cap^): Unit = {
     type Id[X] = Box[X] -> Unit
     type Op[X] = Unit -> Box[X]
     val f: Unit -> (Cap^{io}) -> Unit = ???
-    val g: Op[Id[Cap^{io}]^{fs}] = f // error
-    val h: Op[Id[Cap^{io}]^{io}] = f // error  ??? not sure this is correct
+    val g: Op[Id[Cap^{io}]^{fs}] = f
+    val h: Op[Id[Cap^{io}]^{io}] = f
   }
 }
