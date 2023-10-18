@@ -122,7 +122,7 @@ class DropBreaks extends MiniPhase:
           case id: Ident =>
             val arg = (args: @unchecked) match
               case arg :: Nil => arg
-              case Nil => Literal(Constant(())).withSpan(tree.span)
+              case Nil => unitLiteral.withSpan(tree.span)
             Some((id.symbol, arg))
           case _ => None
       case _ => None
