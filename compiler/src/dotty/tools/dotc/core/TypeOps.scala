@@ -11,7 +11,7 @@ import StdNames._
 import collection.mutable
 import ast.tpd._
 import reporting.trace
-import config.Printers.{typr, ccSetup}
+import config.Printers.typr
 import config.Feature
 import transform.SymUtils.*
 import typer.ProtoTypes._

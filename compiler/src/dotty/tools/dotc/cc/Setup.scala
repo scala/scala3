@@ -8,7 +8,7 @@ import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
 import Annotations.Annotation
 import config.Feature
-import config.Printers.{capt, ccSetup}
+import config.Printers.capt
 import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
 import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
@@ -175,7 +175,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                   RefinedType(core, getter.name,
                       CapturingType(getterType, CaptureSet.Var(ctx.owner)))
-                    .showing(i"add capture refinement $tp --> $result", ccSetup)
+                    .showing(i"add capture refinement $tp --> $result", capt)
                 else
                   core
               }
@@ -211,7 +211,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 if isTopLevel then
                   depFun(args1, res1,
                       isContextual = defn.isContextFunctionClass(tycon1.classSymbol))
-                    .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", ccSetup)
+                    .showing(i"add function refinement $tp ($tycon1, $args1, $res1) (${tp.dealias}) --> $result", capt)
                 else if (tycon1 eq tycon) && (args1 eq args0) && (res1 eq res0) then
                   tp
                 else
@@ -310,7 +310,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     end expandAliases
 
     val tp1 = expandAliases(tp) // TODO: Do we still need to follow aliases?
-    if tp1 ne tp then ccSetup.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1")
+    if tp1 ne tp then capt.println(i"expanded in ${ctx.owner}: $tp  -->  $tp1")
     tp1
   end transformExplicitType
 
@@ -330,7 +330,6 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   private class SubstParams(from: List[List[Symbol]], to: List[LambdaType])(using Context)
   extends DeepTypeMap, BiTypeMap:
-    thisMap =>
 
     def apply(t: Type): Type = t match
       case t: NamedType =>
@@ -357,7 +356,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           recur(to, from)
         case _ =>
           mapOver(t)
-      def inverse = thisMap
+      def inverse = SubstParams.this
   end SubstParams
 
   /** Update info of `sym` for CheckCaptures phase only */
@@ -376,7 +375,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def transformResultType(tpt: TypeTree, sym: Symbol)(using Context): Unit =
       transformTT(tpt,
-          boxed = !allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
+          boxed = !ccConfig.allowUniversalInBoxed && sym.is(Mutable, butNot = Method),
             // types of mutable variables are boxed in pre 3.3 codee
           exact = sym.allOverriddenSymbols.hasNext,
             // types of symbols that override a parent don't get a capture set TODO drop
@@ -408,7 +407,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val defCtx = if sym.isOneOf(TermParamOrAccessor) then ctx else ctx.withOwner(sym)
           inContext(defCtx):
             transformResultType(tpt, sym)
-            ccSetup.println(i"mapped $tree = ${tpt.knownType}")
+            capt.println(i"mapped $tree = ${tpt.knownType}")
             traverse(tree.rhs)
 
         case tree @ TypeApply(fn, args) =>
@@ -494,7 +493,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
         if sym.exists && signatureChanges then
           val newInfo = integrateRT(sym.info, sym.paramSymss, localReturnType, Nil, Nil)
-            .showing(i"update info $sym: ${sym.info} = $result", ccSetup)
+            .showing(i"update info $sym: ${sym.info} = $result", capt)
           if newInfo ne sym.info then
             val updatedInfo =
               if sym.isAnonymousFunction
@@ -510,7 +509,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   // infos of other methods are determined from their definitions which
                   // are checked on demand
                   assert(ctx.phase == thisPhase.next, i"$sym")
-                  ccSetup.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
+                  capt.println(i"forcing $sym, printing = ${ctx.mode.is(Mode.Printing)}")
                   //if ctx.mode.is(Mode.Printing) then new Error().printStackTrace()
                   denot.info = newInfo
                   recheckDef(tree, sym)
@@ -530,7 +529,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 ps.mapConserve(transformExplicitType(_))
               val newInfo = ClassInfo(prefix, cls, ps1, decls, newSelfType)
               updateInfo(cls, newInfo)
-              ccSetup.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
+              capt.println(i"update class info of $cls with parents $ps selfinfo $selfInfo to $newInfo")
               cls.thisType.asInstanceOf[ThisType].invalidateCaches()
               if cls.is(ModuleClass) then
                 // if it's a module, the capture set of the module reference is the capture set of the self type
@@ -564,7 +563,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
       case _ =>
         false
-  }.showing(i"super type is impure $tp = $result", ccSetup)
+  }.showing(i"super type is impure $tp = $result", capt)
 
   /** Should a capture set variable be added on type `tp`? */
   def needsVariable(tp: Type)(using Context): Boolean = {

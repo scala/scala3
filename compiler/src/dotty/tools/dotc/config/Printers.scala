@@ -14,9 +14,13 @@ object Printers {
 
   val default = new Printer
 
-  val capt = noPrinter
-  val ccSetupOn = new Printer
-  def ccSetup(using Context): Printer = if ctx.settings.YccTest.value then ccSetupOn else noPrinter
+  /** Enabled via Ycc-log flag. This is not super-efficient but helps debug
+   *  variants of capture checking faster.
+   *  TODO: Revert to static scheme once capture checking has stabilized
+   */
+  def capt(using Context): Printer =
+    if ctx.settings.YccLog.value then captActive else noPrinter
+  val captActive = new Printer
 
   val constr = noPrinter
   val core = noPrinter

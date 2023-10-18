@@ -414,9 +414,9 @@ private sealed trait YSettings:
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation.")
   val YrecheckTest: Setting[Boolean] = BooleanSetting("-Yrecheck-test", "Run basic rechecking (internal test only).")
   val YccDebug: Setting[Boolean] = BooleanSetting("-Ycc-debug", "Used in conjunction with captureChecking language import, debug info for captured references.")
-  val YccNew: Setting[Boolean] = BooleanSetting("-Ycc-new", "Used in conjunction with captureChecking language import, debug info for captured references")
-  val YccTest: Setting[Boolean] = BooleanSetting("-Ycc-test", "Used in conjunction with captureChecking language import, debug info for captured references")
-  val YccPrintSetup: Setting[Boolean] = BooleanSetting("-Ycc-print-setup", "")
+  val YccNew: Setting[Boolean] = BooleanSetting("-Ycc-new", "Used in conjunction with captureChecking language import, try out new variants (debug option)")
+  val YccLog: Setting[Boolean] = BooleanSetting("-Ycc-log", "Used in conjunction with captureChecking language import, print tracing and debug info")
+  val YccPrintSetup: Setting[Boolean] = BooleanSetting("-Ycc-print-setup", "Used in conjunction with captureChecking language import, print trees after cc.Setup phase")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

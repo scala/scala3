@@ -29,7 +29,7 @@ object CapturingType:
   /** Smart constructor that
    *   - drops empty capture sets
    *   - drops a capability class expansion if it is further refined with another capturing type
-   *   - fuses compatible capturiong types.
+   *   - fuses compatible capturing types.
    *  An outer type capturing type A can be fused with an inner capturing type B if their
    *  boxing status is the same or if A is boxed.
    */

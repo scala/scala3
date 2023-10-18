@@ -4,7 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Flags.*, Contexts.*, Decorators.*
-import config.Printers.{capt, ccSetup}
+import config.Printers.capt
 import Annotations.Annotation
 import annotation.threadUnsafe
 import annotation.constructorOnly
@@ -12,7 +12,7 @@ import annotation.internal.sharable
 import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property, optional}, optional.{break, ?}
+import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
@@ -84,22 +84,12 @@ sealed abstract class CaptureSet extends Showable:
   final def containsRoot(using Context) =
     elems.exists(_.isRootCapability)
 
+  /** Does this capture set disallow an addiiton of `cap`, whereas it
+   *  might allow an addition of a local root?
+   */
   final def disallowsUniversal(using Context) =
     if isConst then !isUniversal && elems.exists(_.isLocalRootCapability)
     else asVar.noUniversal
-
-  /** Add new elements to this capture set if allowed.
-   *  @pre `newElems` is not empty and does not overlap with `this.elems`.
-   *  Constant capture sets never allow to add new elements.
-   *  Variables allow it if and only if the new elements can be included
-   *  in all their dependent sets.
-   *  @param origin   The set where the elements come from, or `empty` if not known.
-   *  @return CompareResult.OK if elements were added, or a conflicting
-   *          capture set that prevents addition otherwise.
-   */
-  protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-    (CompareResult.OK /: newElems): (r, elem) =>
-      r.andAlso(tryInclude(elem, origin))
 
   /** Try to include an element in this capture set.
    *  @param elem    The element to be added
@@ -124,6 +114,11 @@ sealed abstract class CaptureSet extends Showable:
     if accountsFor(elem) then CompareResult.OK
     else addNewElem(elem)
 
+  /** Try to include all element in `refs` to this capture set. */
+  protected final def tryInclude(newElems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
+    (CompareResult.OK /: newElems): (r, elem) =>
+      r.andAlso(tryInclude(elem, origin))
+
   /** Add an element to this capture set, assuming it is not already accounted for,
    *  and omitting any mapping or filtering.
    *
@@ -132,12 +127,14 @@ sealed abstract class CaptureSet extends Showable:
    *  capture set.
    */
   protected final def addNewElem(elem: CaptureRef)(using Context, VarState): CompareResult =
-    if elem.isRootCapability || summon[VarState] == FrozenState then addThisElem(elem)
-    else addThisElem(elem).orElse:
-      val underlying = elem.captureSetOfInfo
-      tryInclude(underlying.elems, this).andAlso:
-        underlying.addDependent(this)
-        CompareResult.OK
+    if elem.isRootCapability || summon[VarState] == FrozenState then
+      addThisElem(elem)
+    else
+      addThisElem(elem).orElse:
+        val underlying = elem.captureSetOfInfo
+        tryInclude(underlying.elems, this).andAlso:
+          underlying.addDependent(this)
+          CompareResult.OK
 
   /** Add new elements one by one using `addNewElem`, abort on first failure */
   protected final def addNewElems(newElems: Refs)(using Context, VarState): CompareResult =
@@ -146,7 +143,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Add a specific element, assuming it is not already accounted for,
    *  and omitting any mapping or filtering, without possibility to backtrack
-   *  to underlying capture set
+   *  to the underlying capture set.
    */
   protected def addThisElem(elem: CaptureRef)(using Context, VarState): CompareResult
 
@@ -157,29 +154,14 @@ sealed abstract class CaptureSet extends Showable:
   protected def addAsDependentTo(cs: CaptureSet)(using Context): this.type =
     cs.addDependent(this)(using ctx, UnrecordedState)
     this
-/*
-  /** Try to include all references of `elems` that are not yet accounted for by this
-   *  capture set. Inclusion is via `addNewElems`.
-   *  @param origin   The set where the elements come from, or `empty` if not known.
-   *  @return  CompareResult.OK if all unaccounted elements could be added,
-   *           capture set that prevents addition otherwise.
-   */
-  protected final def tryInclude(elems: Refs, origin: CaptureSet)(using Context, VarState): CompareResult =
-    val unaccounted = elems.filter(!accountsFor(_))
-    if unaccounted.isEmpty then CompareResult.OK
-    else tryInclude(unaccounted, origin)
 
-  /** Equivalent to `tryInclude({elem}, origin)`, but more efficient */
-  protected final def tryInclude(elem: CaptureRef, origin: CaptureSet)(using Context, VarState): CompareResult =
-    if accountsFor(elem) then CompareResult.OK
-    else tryInclude(elem, origin)
-*/
-  /* x subsumes y if one of the following is true:
-   *   - x is the same as y,
-   *   - x is a this reference and y refers to a field of x
-   *   - x and y are local roots and y is an enclosing root of x
-   */
   extension (x: CaptureRef)(using Context)
+
+    /* x subsumes y if one of the following is true:
+    *   - x is the same as y,
+    *   - x is a this reference and y refers to a field of x
+    *   - x is a super root of y
+    */
     private def subsumes(y: CaptureRef) =
       (x eq y)
       || x.isSuperRootOf(y)
@@ -193,8 +175,8 @@ sealed abstract class CaptureSet extends Showable:
      */
     private def isSuperRootOf(y: CaptureRef): Boolean = x match
       case x: TermRef =>
-        if x.isUniversalRootCapability then true
-        else if x.isLocalRootCapability && !y.isUniversalRootCapability then
+        x.isUniversalRootCapability
+        || x.isLocalRootCapability && !y.isUniversalRootCapability && {
           val xowner = x.localRootOwner
           y match
             case y: TermRef =>
@@ -203,7 +185,7 @@ sealed abstract class CaptureSet extends Showable:
               xowner.isContainedIn(y.cls)
             case _ =>
               false
-        else false
+        }
       case _ => false
   end extension
 
@@ -548,14 +530,14 @@ object CaptureSet:
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isUniversalRootCapability then !noUniversal
       else !levelLimit.exists
-      || elem.match
-          case elem: TermRef =>
-            var sym = elem.symbol
-            if sym.isLevelOwner then sym = sym.owner
-            levelLimit.isContainedIn(sym.levelOwner)
-          case elem: ThisType =>
-            levelLimit.isContainedIn(elem.cls.levelOwner)
-          case _ => true
+        || elem.match
+            case elem: TermRef =>
+              var sym = elem.symbol
+              if sym.isLevelOwner then sym = sym.owner
+              levelLimit.isContainedIn(sym.levelOwner)
+            case elem: ThisType =>
+              levelLimit.isContainedIn(elem.cls.levelOwner)
+            case _ => true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -1015,10 +997,8 @@ object CaptureSet:
 
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
-    case ref: TermRef if ref.isRootCapability =>
-      ref.singletonCaptureSet
-    case _ =>
-      ofType(ref.underlying, followResult = true)
+    case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
+    case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
   def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =

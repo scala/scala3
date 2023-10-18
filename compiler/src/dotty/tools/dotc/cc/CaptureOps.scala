@@ -7,7 +7,7 @@ import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.SourceVersion
-import config.Printers.{capt, ccSetup}
+import config.Printers.capt
 import util.Property.Key
 import tpd.*
 import StdNames.nme
@@ -24,10 +24,13 @@ object ccConfig:
    */
   private[cc] val adaptUnpickledFunctionTypes = false
 
+  /** If true, use `sealed` as encapsulation mechanism instead of the
+   *  previous global retriction that `cap` can't be boxed or unboxed.
+   */
+  def allowUniversalInBoxed(using Context) =
+    Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 end ccConfig
 
-def allowUniversalInBoxed(using Context) =
-  Feature.sourceVersion.isAtLeast(SourceVersion.`3.3`)
 
 /** Are we at checkCaptures phase? */
 def isCaptureChecking(using Context): Boolean =
@@ -251,13 +254,12 @@ extension (tp: Type)
 extension (cls: ClassSymbol)
 
   def pureBaseClass(using Context): Option[Symbol] =
-    if cls.isClass then cls.asClass.baseClasses.find: bc =>
+    cls.baseClasses.find: bc =>
       defn.pureBaseClasses.contains(bc)
       || bc.givenSelfType.dealiasKeepAnnots.match
           case CapturingType(_, refs) => refs.isAlwaysEmpty
           case RetainingType(_, refs) => refs.isEmpty
           case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
-    else None
 
 extension (sym: Symbol)
 
@@ -303,19 +305,15 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  def isTrackedSomewhere(using Context): Boolean =
-    val search = new TypeAccumulator[Boolean]:
-      def apply(found: Boolean, tp: Type) =
-        def isTrackedHere = variance >= 0 && !tp.captureSet.isAlwaysEmpty
-        found || isTrackedHere || foldOver(found, tp)
-    search(false, sym.info)
-
-  // TODO Also include vals (right now they are manually entered in levelOwners by Setup)
+  /** Can this symbol possibly own a local root?
+   *  TODO: Disallow anonymous functions?
+   */
   def isLevelOwner(using Context): Boolean =
     sym.isClass
-    || sym.is(Method, butNot = Accessor)// && !sym.isAnonymousFunction // TODO enable?
+    || sym.is(Method, butNot = Accessor)
 
-  /** The level owner enclosing `sym` which has the given name, or NoSymbol if none exists.
+  /** The level owner enclosing `sym` which has the given name, or NoSymbol
+   *  if none exists.
    */
   def levelOwnerNamed(name: String)(using Context): Symbol =
     def recur(sym: Symbol): Symbol =
@@ -347,11 +345,17 @@ extension (sym: Symbol)
       nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef)
     ccState.localRoots.getOrElseUpdate(owner, newRoot)
 
+  /** The outermost symbol owned by both `sym` and `other`. if none exists
+   *  since the owning scopes of `sym` and `other` are not nested, invoke
+   *  `onConflict` to return a symbol.
+   */
   def maxNested(other: Symbol, onConflict: (Symbol, Symbol) => Context ?=> Symbol)(using Context): Symbol =
     if !sym.exists || other.isContainedIn(sym) then other
     else if !other.exists || sym.isContainedIn(other) then sym
     else onConflict(sym, other)
 
+  /** The innermost symbol owning both `sym` and `other`.
+   */
   def minNested(other: Symbol)(using Context): Symbol =
     if !other.exists || other.isContainedIn(sym) then sym
     else if !sym.exists || sym.isContainedIn(other) then other

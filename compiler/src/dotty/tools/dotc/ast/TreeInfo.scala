@@ -810,7 +810,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** An extractor for def of a closure contained the block of the closure,
+  /** An extractor for the method of a closure contained the block of the closure,
    *  possibly with type ascriptions.
    */
   object possiblyTypedClosureDef:

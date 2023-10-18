@@ -17,7 +17,7 @@ import typer.TypeAssigner.seqLitType
 import typer.ConstFold
 import typer.ErrorReporting.{Addenda, NothingToAdd}
 import NamerOps.methodType
-import config.Printers.{recheckr, ccSetup, noPrinter}
+import config.Printers.recheckr
 import util.Property
 import StdNames.nme
 import reporting.trace
@@ -536,14 +536,10 @@ abstract class Recheck extends Phase, SymTransformer:
       tpe1
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      def op =
-        try recheckFinish(recheckStart(tree, pt), tree, pt)
-        catch case ex: Exception =>
-          println(i"error while rechecking $tree")
-          throw ex
-      if ccSetup eq noPrinter then op
-      else trace.force(i"rechecking $tree with pt = $pt", recheckr, show = true):
-        op
+      try recheckFinish(recheckStart(tree, pt), tree, pt)
+      catch case ex: Exception =>
+        println(i"error while rechecking $tree")
+        throw ex
 
     /** Typing and previous transforms sometimes leaves skolem types in prefixes of
      *  NamedTypes in `expected` that do not match the `actual` Type. -Ycheck does
