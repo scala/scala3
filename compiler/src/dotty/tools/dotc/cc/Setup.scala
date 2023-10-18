@@ -559,7 +559,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp: (RefinedOrRecType | MatchType) =>
         superTypeIsImpure(tp.underlying)
       case tp: AndType =>
-        superTypeIsImpure(tp.tp1) || needsVariable(tp.tp2)
+        superTypeIsImpure(tp.tp1) || superTypeIsImpure(tp.tp2)
       case tp: OrType =>
         superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
       case _ =>

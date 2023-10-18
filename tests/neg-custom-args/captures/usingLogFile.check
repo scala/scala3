@@ -30,18 +30,23 @@
    |
    |                       where:    x$0  is a reference to a value parameter
    |                                 x$0² is a reference to a value parameter
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:14 ------------------------------------------------------
-47 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:16 ------------------------------------------------------
-62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:52:16 ------------------------------------------------------
+52 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
-   |                escaping local reference local.type
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:70:16 ------------------------------------------------------
-70 |    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
-   |                ^^^^^^^^^
-   |          reference (_$1 : java.io.OutputStream^{local}) is not included in the allowed capture set {x$0, local}
+   |                reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
    |
-   |          Note that reference (_$1 : java.io.OutputStream^{local}), defined in method $anonfun
-   |          cannot be included in outer capture set {x$0, local} which is associated with method test
+   |                Note that the universal capability `cap`
+   |                cannot be included in capture set {x$0, x$0}
+   |
+   |                where:    x$0  is a reference to a value parameter
+   |                          x$0² is a reference to a value parameter
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:60:16 ------------------------------------------------------
+60 |    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
+   |                ^^^^^^^^^
+   |                reference (_$1 : java.io.OutputStream^) is not included in the allowed capture set {x$0, x$0²}
+   |
+   |                Note that reference (_$1 : java.io.OutputStream^), defined in method $anonfun
+   |                cannot be included in outer capture set {x$0, x$0} which is associated with method test
+   |
+   |                where:    x$0  is a reference to a value parameter
+   |                          x$0² is a reference to a value parameter

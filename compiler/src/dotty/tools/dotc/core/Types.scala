@@ -2927,9 +2927,7 @@ object Types {
       // TODO Try to make local class roots be NonMembers owned directly by the class
       val owner = symbol.maybeOwner
       def normOwner = if owner.isLocalDummy then owner.owner else owner
-      if name == nme.LOCAL_CAPTURE_ROOT then normOwner
-      else if info.isRef(defn.Caps_Cap) && owner.isTerm then normOwner
-      else NoSymbol
+      if name == nme.LOCAL_CAPTURE_ROOT then normOwner else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this

@@ -37,20 +37,10 @@ object Test2:
   later4.x()
 
 object Test3:
-
-  def usingLogFile[T](op: (local: caps.Cap) ?-> FileOutputStream^{local} => T) =
-    val logFile = FileOutputStream("log")
-    val result = op(logFile)
-    logFile.close()
-    result
-
-  val later = usingLogFile { f => () => f.write(0) } // error
-
-object Test4:
   class Logger(f: OutputStream^):
     def log(msg: String): Unit = ???
 
-  def usingFile[T](name: String, op: (local: caps.Cap) ?-> OutputStream^{local} => T): T =
+  def usingFile[sealed T](name: String, op: OutputStream^ => T): T =
     val f = new FileOutputStream(name)
     val result = op(f)
     f.close()
@@ -62,7 +52,7 @@ object Test4:
     val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
     later(1)
 
-  def usingLogger[T](f: OutputStream^, op: (local: caps.Cap) ?-> Logger^{f} => T): T =
+  def usingLogger[sealed T](f: OutputStream^, op: Logger^{f} => T): T =
     val logger = Logger(f)
     op(logger)
 

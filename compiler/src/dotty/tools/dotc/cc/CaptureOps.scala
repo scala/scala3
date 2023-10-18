@@ -339,24 +339,13 @@ extension (sym: Symbol)
       else recur(sym.owner)
     recur(sym)
 
-  /** The parameter with type caps.Cap in the leading term parameter section,
-   *  or NoSymbol, if none exists.
-   */
-  def definedLocalRoot(using Context): Symbol =
-    sym.paramSymss.dropWhile(psyms => psyms.nonEmpty && psyms.head.isType) match
-      case psyms :: _ => psyms.find(_.info.typeSymbol == defn.Caps_Cap).getOrElse(NoSymbol)
-      case _ => NoSymbol
-
   /** The local root corresponding to sym's level owner */
   def localRoot(using Context): Symbol =
     val owner = sym.levelOwner
     assert(owner.exists)
     def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
       nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef)
-    def lclRoot =
-      if owner.isTerm then owner.definedLocalRoot.orElse(newRoot)
-      else newRoot
-    ccState.localRoots.getOrElseUpdate(owner, lclRoot)
+    ccState.localRoots.getOrElseUpdate(owner, newRoot)
 
   def maxNested(other: Symbol, onConflict: (Symbol, Symbol) => Context ?=> Symbol)(using Context): Symbol =
     if !sym.exists || other.isContainedIn(sym) then other
