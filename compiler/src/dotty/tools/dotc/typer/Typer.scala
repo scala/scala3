@@ -4216,7 +4216,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)) {
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
         }
-        return tpd.Block(tree1 :: Nil, Literal(Constant(())))
+        return tpd.Block(tree1 :: Nil, unitLiteral)
       }
 
       // convert function literal to SAM closure

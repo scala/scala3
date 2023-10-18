@@ -31,6 +31,8 @@ object Trees {
 
   /** Property key for backquoted identifiers and definitions */
   val Backquoted: Property.StickyKey[Unit] = Property.StickyKey()
+  
+  val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.

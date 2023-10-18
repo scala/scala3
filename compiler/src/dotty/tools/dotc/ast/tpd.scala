@@ -64,7 +64,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.Literal(const))
 
   def unitLiteral(using Context): Literal =
-    Literal(Constant(()))
+    Literal(Constant(())).withAttachment(SyntheticUnit, ())
 
   def nullLiteral(using Context): Literal =
     Literal(Constant(null))

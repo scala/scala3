@@ -2211,7 +2211,7 @@ object Parsers {
               case _ =>
             }
             patch(source, cond.span.endPos, "}) ()")
-          WhileDo(Block(body, cond), Literal(Constant(())))
+          WhileDo(Block(body, cond), unitLiteral)
         }
       case TRY =>
         val tryOffset = in.offset
@@ -2241,7 +2241,7 @@ object Parsers {
               in.nextToken();
               val expr = subExpr()
               if expr.span.exists then expr
-              else Literal(Constant(())) // finally without an expression
+              else unitLiteral // finally without an expression
             }
             else {
               if handler.isEmpty then
@@ -3728,10 +3728,10 @@ object Parsers {
             val stats = selfInvocation() :: (
               if (isStatSep) { in.nextToken(); blockStatSeq() }
               else Nil)
-            Block(stats, Literal(Constant(())))
+            Block(stats, unitLiteral)
           }
         }
-      else Block(selfInvocation() :: Nil, Literal(Constant(())))
+      else Block(selfInvocation() :: Nil, unitLiteral)
 
     /** SelfInvocation  ::= this ArgumentExprs {ArgumentExprs}
      */

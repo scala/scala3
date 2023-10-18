@@ -319,7 +319,7 @@ object Erasure {
           cast(tree1, pt)
         case _ =>
           val cls = pt.classSymbol
-          if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
+          if (cls eq defn.UnitClass) constant(tree, unitLiteral)
           else {
             assert(cls ne defn.ArrayClass)
             ref(unboxMethod(cls.asClass)).appliedTo(tree)
