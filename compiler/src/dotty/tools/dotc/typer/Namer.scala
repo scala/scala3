@@ -1139,11 +1139,16 @@ class Namer { typer: Typer =>
 
       def foreachDefaultGetterOf(sym: TermSymbol, op: TermSymbol => Unit): Unit =
         var n = 0
+        val methodName =
+          if sym.name == nme.apply && sym.is(Synthetic) && sym.owner.companionClass.is(Case) then
+            // The synthesized `apply` methods of case classes use the constructor's default getters
+            nme.CONSTRUCTOR
+          else sym.name
         for params <- sym.paramSymss; param <- params do
           if param.isTerm then
             if param.is(HasDefault) then
-              val getterName = DefaultGetterName(sym.name, n)
-              val getter = pathType.member(DefaultGetterName(sym.name, n)).symbol
+              val getterName = DefaultGetterName(methodName, n)
+              val getter = pathType.member(getterName).symbol
               assert(getter.exists, i"$path does not have a default getter named $getterName")
               op(getter.asTerm)
             n += 1
