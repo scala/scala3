@@ -24,7 +24,7 @@ def foo1: Unit =
   // then Typer rejects "String" as an infix extractor (like ::)
   // which is the second error
 
-def foo2: Unit = // error
+def foo2: Unit = // was: error, recursive value _root_ needs type
   val _root_ : String = "abc" // error
 
 // i17757

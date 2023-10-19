@@ -3176,7 +3176,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case ex: CyclicReference
           if ctx.reporter.errorsReported
               && xtree.span.isZeroExtent
-              && ex.isVal && false =>
+              && ex.isVal =>
             // Don't report a "recursive val ... needs type" if errors were reported
             // previously and the span of the offending tree is empty. In this case,
             // it's most likely that this is desugared code, and the error message would
