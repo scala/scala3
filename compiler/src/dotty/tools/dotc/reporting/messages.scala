@@ -876,7 +876,7 @@ extends Message(PatternMatchExhaustivityID) {
 
     val pathes = List(
       ActionPatch(
-        srcPos = endPos, 
+        srcPos = endPos,
         replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
@@ -2358,7 +2358,7 @@ class ClassCannotExtendEnum(cls: Symbol, parent: Symbol)(using Context) extends 
   def explain(using Context) = ""
 }
 
-class NotAnExtractor(tree: untpd.Tree)(using Context) extends SyntaxMsg(NotAnExtractorID) {
+class NotAnExtractor(tree: untpd.Tree)(using Context) extends PatternMatchMsg(NotAnExtractorID) {
   def msg(using Context) = i"$tree cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method"
   def explain(using Context) =
     i"""|An ${hl("unapply")} method should be defined in an ${hl("object")} as follow:
@@ -2370,6 +2370,14 @@ class NotAnExtractor(tree: untpd.Tree)(using Context) extends SyntaxMsg(NotAnExt
         |For this reason, you can also define patterns through ${hl("unapplySeq")} which returns ${hl("Option[Seq[T]]")}.
         |This mechanism is used for instance in pattern ${hl("case List(x1, ..., xn)")}"""
 }
+
+class ExtractorNotFound(val name: Name)(using Context) extends NotFoundMsg(ExtractorNotFoundID):
+  def msg(using Context) = i"no pattern match extractor named $name was found"
+  def explain(using Context) =
+    i"""An application $name(...) in a pattern can refer to an extractor
+       |which defines an unapply or unapplySeq method. Case classes and enum cases
+       |implicitly define extractors with the name of the class or enum case.
+       |Here, no extractor named $name was found, so the pattern could not be typed."""
 
 class MemberWithSameNameAsStatic()(using Context)
   extends SyntaxMsg(MemberWithSameNameAsStaticID) {

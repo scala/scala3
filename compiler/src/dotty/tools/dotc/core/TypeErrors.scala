@@ -134,14 +134,18 @@ end handleRecursive
  * so it requires knowing denot already.
  * @param denot
  */
-class CyclicReference private (val denot: SymDenotation)(using Context) extends TypeError:
+class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError:
   var inImplicitSearch: Boolean = false
 
-  override def toMessage(using Context): Message =
-    val cycleSym = denot.symbol
+  val cycleSym = denot.symbol
 
-    // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
-    // set by the parser.
+  // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
+  // set by the parser.
+  def unsafeFlags = cycleSym.flagsUNSAFE
+  def isMethod = unsafeFlags.is(Method)
+  def isVal = !isMethod && cycleSym.isTerm
+
+  override def toMessage(using Context): Message =
     val unsafeFlags = cycleSym.flagsUNSAFE
     val isMethod = unsafeFlags.is(Method)
     val isVal = !isMethod && cycleSym.isTerm

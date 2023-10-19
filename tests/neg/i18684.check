@@ -1,0 +1,30 @@
+-- [E189] Not Found Error: tests/neg/i18684.scala:3:6 ------------------------------------------------------------------
+3 |  val s(): String = "hello, world" // error
+  |      ^
+  |      no pattern match extractor named s was found
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E189] Not Found Error: tests/neg/i18684.scala:5:6 ------------------------------------------------------------------
+5 |  val i() = 22 // error
+  |      ^
+  |      no pattern match extractor named i was found
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E189] Not Found Error: tests/neg/i18684.scala:10:8 -----------------------------------------------------------------
+10 |    val foo() = "33" // error
+   |        ^^^
+   |        no pattern match extractor named foo was found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E127] Pattern Match Error: tests/neg/i18684.scala:12:6 -------------------------------------------------------------
+12 |  val inner(x) = 3 // error // error
+   |      ^^^^^
+   |      Test.inner cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E045] Cyclic Error: tests/neg/i18684.scala:12:14 -------------------------------------------------------------------
+12 |  val inner(x) = 3 // error // error
+   |              ^
+   |              Recursive value x needs type
+   |
+   | longer explanation available when compiling with `-explain`

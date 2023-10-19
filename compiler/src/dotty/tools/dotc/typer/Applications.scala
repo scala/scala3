@@ -1295,15 +1295,22 @@ trait Applications extends Compatibility {
 
     /** Report errors buffered in state.
      *  @pre state has errors to report
-     *  If there is a single error stating that "unapply" is not a member, print
-     *  the more informative "notAnExtractor" message instead.
+     *  If the last reported error states that "unapply" is not a member, report
+     *  the more informative `NotAnExtractor` message instead.
+     *  If the last reported error states that the qualifier was not found, report
+     *  the more informative `ExtractorNotFound` message instead.
      */
     def reportErrors(tree: Tree, state: TyperState): Tree =
       assert(state.reporter.hasErrors)
-      if saysNotFound(state, nme.unapply) then notAnExtractor(tree)
-      else
-        state.reporter.flush()
-        tree
+      if saysNotFound(state, nme.unapply) then
+        notAnExtractor(tree)
+      else qual match
+        case qual: Ident if saysNotFound(state, qual.name) =>
+          report.error(ExtractorNotFound(qual.name), tree.srcPos)
+          tree
+        case _ =>
+          state.reporter.flush()
+          tree
 
     /** If this is a term ref tree, try to typecheck with its type name.
      *  If this refers to a type alias, follow the alias, and if
