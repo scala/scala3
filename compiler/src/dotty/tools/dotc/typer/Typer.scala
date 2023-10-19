@@ -3184,6 +3184,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => typedUnadapted(desugar(tree, pt), pt, locked)
         }
 
+        def handleTypeError(ex: TypeError): Tree = ex match
+          case ex: CyclicReference
+          if ctx.reporter.errorsReported
+              && xtree.span.isZeroExtent
+              && ex.isVal =>
+            // Don't report a "recursive val ... needs type" if errors were reported
+            // previously and the span of the offending tree is empty. In this case,
+            // it's most likely that this is desugared code, and the error message would
+            // be redundant and confusing.
+            xtree.withType(ErrorType(ex.toMessage))
+          case _ =>
+            // Use focussed sourcePos since tree might be a large definition
+            // and a large error span would hide all errors in interior.
+            // TODO: Not clear that hiding is what we want, actually
+            errorTree(xtree, ex, xtree.srcPos.focus)
+
         try
           val ifpt = defn.asContextFunctionType(pt)
           val result =
@@ -3206,11 +3222,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           result.tpe.stripTypeVar match
             case e: ErrorType if !unsimplifiedType.isErroneous => errorTree(xtree, e.msg, xtree.srcPos)
             case _ => result
-        catch case ex: TypeError => errorTree(xtree, ex, xtree.srcPos.focus)
-          // use focussed sourcePos since tree might be a large definition
-          // and a large error span would hide all errors in interior.
-          // TODO: Not clear that hiding is what we want, actually
-    }
+        catch case ex: TypeError =>
+          handleTypeError(ex)
+     }
   }
 
   /** Interpolate and simplify the type of the given tree. */
