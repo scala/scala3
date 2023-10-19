@@ -711,6 +711,8 @@ object Checking {
     if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
+      if clazz.is(Module) then
+        report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if (clazz.is(Abstract))
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)

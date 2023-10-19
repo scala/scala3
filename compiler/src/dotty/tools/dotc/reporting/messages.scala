@@ -876,7 +876,7 @@ extends Message(PatternMatchExhaustivityID) {
 
     val pathes = List(
       ActionPatch(
-        srcPos = endPos, 
+        srcPos = endPos,
         replacement = uncoveredCases.map(c => indent(s"case $c => ???", startColumn))
           .mkString("\n", "\n", "")
       ),
@@ -1686,10 +1686,15 @@ class CannotExtendAnyVal(sym: Symbol)(using Context)
   extends SyntaxMsg(CannotExtendAnyValID) {
   def msg(using Context) = i"""$sym cannot extend ${hl("AnyVal")}"""
   def explain(using Context) =
-    i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
-        |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
-        |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
-        |"""
+    if sym.is(Trait) then
+      i"""Only classes (not traits) are allowed to extend ${hl("AnyVal")}, but traits may extend
+          |${hl("Any")} to become ${Green("\"universal traits\"")} which may only have ${hl("def")} members.
+          |Universal traits can be mixed into classes that extend ${hl("AnyVal")}.
+          |"""
+    else if sym.is(Module) then
+      i"""Only classes (not objects) are allowed to extend ${hl("AnyVal")}.
+          |"""
+    else ""
 }
 
 class CannotExtendJavaEnum(sym: Symbol)(using Context)
@@ -2986,7 +2991,24 @@ extends ReferenceMsg(CannotBeAccessedID):
         i"none of the overloaded alternatives named $name can"
     val where = if (ctx.owner.exists) i" from ${ctx.owner.enclosingClass}" else ""
     val whyNot = new StringBuffer
-    alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
+    for alt <- alts do
+      val cls = alt.owner.enclosingSubClass
+      val owner = if cls.exists then cls else alt.owner
+      val location: String =
+        if alt.is(Protected) then
+          if alt.privateWithin.exists && alt.privateWithin != owner then
+            if owner.is(Final) then alt.privateWithin.showLocated
+            else alt.privateWithin.showLocated + ", or " + owner.showLocated + " or one of its subclasses"
+          else
+            if owner.is(Final) then owner.showLocated
+            else owner.showLocated + " or one of its subclasses"
+        else
+          alt.privateWithin.orElse(owner).showLocated
+      val accessMod = if alt.is(Protected) then "protected" else "private"
+      val within = if alt.privateWithin.exists then i"[${alt.privateWithin.name}]"
+        else ""
+      whyNot.append(i"""
+          |  $accessMod$within $alt can only be accessed from $location.""")
     i"$whatCanNot be accessed as a member of $pre$where.$whyNot"
   def explain(using Context) = ""
 

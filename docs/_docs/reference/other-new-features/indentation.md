@@ -274,7 +274,8 @@ Indentation can be mixed freely with braces `{...}`, as well as brackets `[...]`
 For instance, consider:
 ```scala
 {
-  val x = f(x: Int, y =>
+  val x = 4
+  f(x: Int, y =>
     x * (
       y + 1
     ) +
@@ -283,13 +284,13 @@ For instance, consider:
   )
 }
 ```
- - Here, the indentation width of the region enclosed by the braces is 3 (i.e. the indentation width of the
+ - Here, the indentation width of the region enclosed by the braces is 2 (i.e. the indentation width of the
 statement starting with `val`).
- - The indentation width of the region in parentheses that follows `f` is also 3, since the opening
+ - The indentation width of the region in parentheses that follows `f` is also 2, since the opening
    parenthesis is not at the end of a line.
- - The indentation width of the region in parentheses around `y + 1` is 9
+ - The indentation width of the region in parentheses around `y + 1` is 6
    (i.e. the indentation width of `y + 1`).
- - Finally, the indentation width of the last region in parentheses starting with `(x` is 6 (i.e. the indentation width of the indented region following the `=>`.
+ - Finally, the indentation width of the last region in parentheses starting with `(x` is 4 (i.e. the indentation width of the indented region following the `=>`.
 
 ## Special Treatment of Case Clauses
 

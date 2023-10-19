@@ -726,7 +726,7 @@ object ProtoTypes {
     tl: TypeLambda, owningTree: untpd.Tree,
     alwaysAddTypeVars: Boolean,
     nestingLevel: Int = ctx.nestingLevel
-  ): (TypeLambda, List[TypeTree]) = {
+  ): (TypeLambda, List[TypeVar]) = {
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
@@ -734,33 +734,31 @@ object ProtoTypes {
         s"inconsistent: no typevars were added to committable constraint ${state.constraint}")
       // hk type lambdas can be added to constraints without typevars during match reduction
 
-    def newTypeVars(tl: TypeLambda): List[TypeTree] =
-      for (paramRef <- tl.paramRefs)
-      yield {
-        val tt = InferredTypeTree().withSpan(owningTree.span)
+    def newTypeVars(tl: TypeLambda): List[TypeVar] =
+      for paramRef <- tl.paramRefs
+      yield
         val tvar = TypeVar(paramRef, state, nestingLevel)
         state.ownedVars += tvar
-        tt.withType(tvar)
-      }
+        tvar
 
     val added = state.constraint.ensureFresh(tl)
-    val tvars = if (addTypeVars) newTypeVars(added) else Nil
-    TypeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
+    val tvars = if addTypeVars then newTypeVars(added) else Nil
+    TypeComparer.addToConstraint(added, tvars)
     (added, tvars)
   }
 
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeTree]) =
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeVar]) =
     constrained(tl, owningTree,
       alwaysAddTypeVars = tl.isInstanceOf[PolyType] && ctx.typerState.isCommittable)
 
-  /**  Same as `constrained(tl, EmptyTree)`, but returns just the created type lambda */
-  def constrained(tl: TypeLambda)(using Context): TypeLambda =
-    constrained(tl, EmptyTree)._1
+  /**  Same as `constrained(tl, EmptyTree, alwaysAddTypeVars = true)`, but returns just the created type vars. */
+  def constrained(tl: TypeLambda)(using Context): List[TypeVar] =
+    constrained(tl, EmptyTree, alwaysAddTypeVars = true)._2
 
   /** Instantiate `tl` with fresh type variables added to the constraint. */
   def instantiateWithTypeVars(tl: TypeLambda)(using Context): Type =
-    val targs = constrained(tl, ast.tpd.EmptyTree, alwaysAddTypeVars = true)._2
-    tl.instantiate(targs.tpes)
+    val tvars = constrained(tl)
+    tl.instantiate(tvars)
 
   /** A fresh type variable added to the current constraint.
    *  @param  bounds        The initial bounds of the variable
@@ -779,7 +777,7 @@ object ProtoTypes {
         pt => bounds :: Nil,
         pt => represents.orElse(defn.AnyType))
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true, nestingLevel)
-      ._2.head.tpe.asInstanceOf[TypeVar]
+      ._2.head
 
   /** If `param` was created using `newTypeVar(..., represents = X)`, returns X.
    *  This is used in:

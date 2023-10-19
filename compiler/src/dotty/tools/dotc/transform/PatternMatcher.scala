@@ -947,7 +947,7 @@ object PatternMatcher {
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))
         case ReturnPlan(label) =>
-          Return(Literal(Constant(())), ref(label))
+          Return(unitLiteral, ref(label))
         case plan: SeqPlan =>
           def default = seq(emit(plan.head) :: Nil, emit(plan.tail))
           def maybeEmitSwitch(scrutinee: Tree): Tree = {

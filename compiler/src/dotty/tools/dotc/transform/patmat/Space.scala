@@ -476,8 +476,8 @@ object SpaceEngine {
         erase(parent, inArray, isValue, isTyped)
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
-        if inArray then tref.underlying
-        else if isValue then tref.superType
+        if inArray then erase(tref.underlying, inArray, isValue, isTyped)
+        else if isValue then erase(tref.superType, inArray, isValue, isTyped)
         else WildcardType
 
       case _ => tp
@@ -516,10 +516,14 @@ object SpaceEngine {
    *  We assume that unapply methods are pure, but the same method may
    *  be called with different prefixes, thus behaving differently.
    */
-  def isSameUnapply(tp1: TermRef, tp2: TermRef)(using Context): Boolean =
+  def isSameUnapply(tp1: TermRef, tp2: TermRef)(using Context): Boolean = trace(i"isSameUnapply($tp1, $tp2)") {
+    def isStable(tp: TermRef) =
+      !tp.symbol.is(ExtensionMethod) // The "prefix" of an extension method may be, but the receiver isn't, so exclude
+      && tp.prefix.isStable
     // always assume two TypeTest[S, T].unapply are the same if they are equal in types
-    (tp1.prefix.isStable && tp2.prefix.isStable || tp1.symbol == defn.TypeTest_unapply)
+    (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
     && tp1 =:= tp2
+  }
 
   /** Return term parameter types of the extractor `unapp`.
    *  Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
@@ -531,7 +535,7 @@ object SpaceEngine {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-          val tvars = pt.paramInfos.map(newTypeVar(_))
+          val tvars = constrained(pt)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton

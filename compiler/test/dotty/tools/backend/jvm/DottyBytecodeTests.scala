@@ -1682,6 +1682,25 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertSameCode(instructions, expected)
     }
   }
+
+  @Test def i18320(): Unit = {
+    val c1 =
+      """class C {
+        |  def m: Unit = {
+        |    val x = 1
+        |  }
+        |}
+        |""".stripMargin
+    checkBCode(c1) {dir =>
+      val clsIn = dir.lookupName("C.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method = getMethod(clsNode, "m")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+      val expected = List(LineNumber(3, Label(0)))
+      assertSameCode(instructions, expected)
+
+    }
+  }
 }
 
 object invocationReceiversTestCode {

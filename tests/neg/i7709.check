@@ -2,39 +2,39 @@
 5 |  class B extends X.Y // error
   |                  ^^^
   |                  class Y cannot be accessed as a member of X.type from class B.
-  |                   Protected class Y can only be accessed from object X.
+  |                    protected class Y can only be accessed from object X.
 -- [E173] Reference Error: tests/neg/i7709.scala:6:21 ------------------------------------------------------------------
 6 |  class B2 extends X.Y: // error
   |                   ^^^
   |                   class Y cannot be accessed as a member of X.type from class B2.
-  |                    Protected class Y can only be accessed from object X.
+  |                     protected class Y can only be accessed from object X.
 -- [E173] Reference Error: tests/neg/i7709.scala:9:28 ------------------------------------------------------------------
 9 |  class B4 extends B3(new X.Y) // error
   |                          ^^^
   |                          class Y cannot be accessed as a member of X.type from class B4.
-  |                           Protected class Y can only be accessed from object X.
+  |                            protected class Y can only be accessed from object X.
 -- [E173] Reference Error: tests/neg/i7709.scala:11:34 -----------------------------------------------------------------
 11 |    def this(n: Int) = this(new X.Y().toString) // error
    |                                ^^^
    |                                class Y cannot be accessed as a member of X.type from class B5.
-   |                                 Protected class Y can only be accessed from object X.
+   |                                  protected class Y can only be accessed from object X.
 -- [E173] Reference Error: tests/neg/i7709.scala:13:20 -----------------------------------------------------------------
 13 |  class B extends X.Y // error
    |                  ^^^
    |                  class Y cannot be accessed as a member of X.type from class B.
-   |                   Protected class Y can only be accessed from object X.
+   |                    protected class Y can only be accessed from object X.
 -- [E173] Reference Error: tests/neg/i7709.scala:18:18 -----------------------------------------------------------------
 18 |  def y  = new xx.Y  // error
    |               ^^^^
    |               class Y cannot be accessed as a member of XX from class C.
-   |                Protected class Y can only be accessed from class XX or one of its subclasses.
+   |                 protected class Y can only be accessed from class XX or one of its subclasses.
 -- [E173] Reference Error: tests/neg/i7709.scala:23:20 -----------------------------------------------------------------
 23 |    def y  = new xx.Y  // error
    |                 ^^^^
    |                 class Y cannot be accessed as a member of XX from class D.
-   |                  Protected class Y can only be accessed from class XX or one of its subclasses.
+   |                   protected class Y can only be accessed from class XX or one of its subclasses.
 -- [E173] Reference Error: tests/neg/i7709.scala:31:20 -----------------------------------------------------------------
 31 |  class Q extends X.Y // error
    |                  ^^^
    |                  class Y cannot be accessed as a member of p.X.type from class Q.
-   |                   Protected class Y can only be accessed from object X in package p.
+   |                    protected class Y can only be accessed from object X in package p.

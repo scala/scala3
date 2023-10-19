@@ -82,7 +82,7 @@ object TypeTestsCasts {
         case tp: TypeProxy => underlyingLambda(tp.superType)
       }
       val typeLambda = underlyingLambda(tycon)
-      val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
+      val tvars = constrained(typeLambda)
       val P1 = tycon.appliedTo(tvars)
 
       debug.println("before " + ctx.typerState.constraint.show)
@@ -285,7 +285,7 @@ object TypeTestsCasts {
             Typed(expr, tree.args.head) // Replace cast by type ascription (which does not generate any bytecode)
           else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
-            Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
+            Block(expr :: Nil, unitLiteral).withSpan(expr.span)
           else if (foundClsSymPrimitive)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)

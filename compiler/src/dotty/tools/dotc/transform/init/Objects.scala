@@ -1305,9 +1305,14 @@ object Objects:
           case select: Select =>
             eval(select.qualifier, thisV, klass)
 
-        val implicitValues = evalArgs(implicits.map(Arg.apply), thisV, klass)
-        // TODO: implicit values may appear before and/or after the scrutinee parameter.
-        val unapplyRes = call(receiver, funRef.symbol, TraceValue(scrutinee, summon[Trace]) :: implicitValues, funRef.prefix, superType = NoType, needResolve = true)
+        def implicitArgsBeforeScrutinee(fun: Tree): Contextual[List[ArgInfo]] = fun match
+          case Apply(f, implicitArgs) =>
+            implicitArgsBeforeScrutinee(f) ++ evalArgs(implicitArgs.map(Arg.apply), thisV, klass)
+          case _ => List()
+
+        val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
+        val args = implicitArgsBeforeScrutinee(fun) ++ (TraceValue(scrutinee, summon[Trace]) :: implicitArgsAfterScrutinee)
+        val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
         if fun.symbol.name == nme.unapplySeq then
           var resultTp = unapplyResTp

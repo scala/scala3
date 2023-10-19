@@ -148,12 +148,20 @@ class VarianceChecker(using Context) {
       case _ =>
         apply(None, info)
 
-    def validateDefinition(base: Symbol): Option[VarianceError] = {
-      val saved = this.base
+    def validateDefinition(base: Symbol): Option[VarianceError] =
+      val savedBase = this.base
       this.base = base
+      val savedVariance = variance
+      def isLocal =
+        base.isAllOf(PrivateLocal)
+        || base.is(Private) && !base.hasAnnotation(defn.AssignedNonLocallyAnnot)
+      if base.is(Mutable, butNot = Method) && !isLocal then
+        base.removeAnnotation(defn.AssignedNonLocallyAnnot)
+        variance = 0
       try checkInfo(base.info)
-      finally this.base = saved
-    }
+      finally
+        this.base = savedBase
+        this.variance = savedVariance
   }
 
   private object Traverser extends TreeTraverser {
