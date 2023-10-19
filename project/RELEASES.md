@@ -139,6 +139,10 @@ flowchart TB
     reject(["The PR is not backported"])
 ```
 
+CVE stands for Common Vulnerabilities and Exposures and in the chart above it means an issue with an CVE-ID assigned to it.
+
+CB stands for Community Build, and by full CB we mean the full run of [the Scala 3 Open Community Build](https://github.com/VirtusLab/community-build3).
+
 ## How should things be backported?
 
 The backporting process is tracked by [a GitHub Project](https://github.com/orgs/lampepfl/projects/6) in the lampepfl organization. Every PR merged to the `main` branch is automatically added to the `Needs Assessment` column. Those PRs are reviewed by the release officer or other appointed person. They can decide to remove them from the project (backport rejected) or to move them to the `Backporting in progress` column. If the PR with the backport has any differences from the original PR, the person doing the backport will ask the author and reviewers of the original change to review the backport. After merging the backport, the PR will be moved to the `Backport done` column and, after the release, to the `Released` column.
