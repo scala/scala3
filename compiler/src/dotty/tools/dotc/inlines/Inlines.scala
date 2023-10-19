@@ -12,7 +12,7 @@ import SymDenotations.SymDenotation
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos}
-import parsing.Parsers.Parser
+import parsing.Parsers
 import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
 
@@ -337,7 +337,7 @@ object Inlines:
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
           inContext(ctx.fresh.setNewTyperState().setTyper(new Typer(ctx.nestingLevel + 1)).setSource(source2)) {
-            val tree2 = new Parser(source2).block()
+            val tree2 = Parsers.parser(source2).block()
             if ctx.reporter.allErrors.nonEmpty then
               ctx.reporter.allErrors.map((ErrorKind.Parser, _))
             else

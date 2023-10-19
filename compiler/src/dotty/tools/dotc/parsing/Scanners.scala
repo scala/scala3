@@ -60,7 +60,7 @@ object Scanners {
     /** the base of a number */
     var base: Int = 0
 
-    def copyFrom(td: TokenData): Unit = {
+    def copyFrom(td: TokenData): this.type =
       this.token = td.token
       this.offset = td.offset
       this.lastOffset = td.lastOffset
@@ -68,7 +68,9 @@ object Scanners {
       this.name = td.name
       this.strVal = td.strVal
       this.base = td.base
-    }
+      this
+
+    def saveCopy: TokenData = newTokenData.copyFrom(this)
 
     def isNewLine = token == NEWLINE || token == NEWLINES
     def isStatSep = isNewLine || token == SEMI
@@ -86,11 +88,13 @@ object Scanners {
 
     def isOperator =
       token == BACKQUOTED_IDENT
-      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      || token == IDENTIFIER && isOperatorPart(name.last)
 
     def isArrow =
       token == ARROW || token == CTXARROW
   }
+
+  def newTokenData: TokenData = new TokenData {}
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
@@ -170,7 +174,7 @@ object Scanners {
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowRewrite: Boolean = true, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -179,7 +183,7 @@ object Scanners {
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
-    val rewrite = ctx.settings.rewrite.value.isDefined
+    val rewrite = allowRewrite && ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value
 
@@ -264,11 +268,10 @@ object Scanners {
       if (idx >= 0 && idx <= lastKeywordStart) handleMigration(kwArray(idx))
       else IDENTIFIER
 
-    def newTokenData: TokenData = new TokenData {}
-
     /** We need one token lookahead and one token history
      */
     val next = newTokenData
+    val last = newTokenData
     private val prev = newTokenData
 
     /** The current region. This is initially an Indented region with zero indentation width. */
@@ -433,7 +436,7 @@ object Scanners {
         // in backticks and is a binary operator. Hence, `x` is not classified as a
         // leading infix operator.
         def assumeStartsExpr(lexeme: TokenData) =
-          (canStartExprTokens.contains(lexeme.token) || lexeme.token == COLONeol)
+          (canStartExprTokens.contains(lexeme.token) || lexeme.token == COLONfollow)
           && (!lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
@@ -483,7 +486,7 @@ object Scanners {
             if (nextChar == ch)
               recur(idx - 1, ch, n + 1, k)
             else {
-              val k1: IndentWidth => IndentWidth = if (n == 0) k else Conc(_, Run(ch, n))
+              val k1: IndentWidth => IndentWidth = if (n == 0) k else iw => k(Conc(iw, Run(ch, n)))
               recur(idx - 1, nextChar, 1, k1)
             }
           else recur(idx - 1, ' ', 0, identity)
@@ -638,7 +641,8 @@ object Scanners {
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           val lw = lastWidth
-          errorButContinue(spaceTabMismatchMsg(lw, nextWidth))
+          val msg = spaceTabMismatchMsg(lw, nextWidth)
+          if rewriteToIndent then report.warning(msg) else errorButContinue(msg)
       if token != OUTDENT then
         handleNewIndentWidth(currentRegion, _.otherIndentWidths += nextWidth)
       if next.token == EMPTY then
@@ -762,6 +766,9 @@ object Scanners {
           if lookahead.token == EOF
           || source.offsetToLine(lookahead.offset) > endLine
           then return true
+
+          if lookahead.token == LBRACE && rewriteToIndent then
+            patch(Span(offset, offset + 3), s"`end`")
       false
 
     /** Is there a blank line between the current token and the last one?
@@ -1266,6 +1273,7 @@ object Scanners {
               putChar(ch) ; nextRawChar()
               loopRest()
             else
+              next.lineOffset = if next.lastOffset < lineStartOffset then lineStartOffset else -1
               finishNamedToken(IDENTIFIER, target = next)
           end loopRest
           setStrVal()
@@ -1312,10 +1320,10 @@ object Scanners {
       }
     end getStringPart
 
-    private def fetchStringPart(multiLine: Boolean) = {
+    private def fetchStringPart(multiLine: Boolean) =
       offset = charOffset - 1
+      lineOffset = if lastOffset < lineStartOffset then lineStartOffset else -1
       getStringPart(multiLine)
-    }
 
     private def isTripleQuote(): Boolean =
       if (ch == '"') {
@@ -1545,7 +1553,7 @@ object Scanners {
 
    /* Initialization: read first char, then first token */
     nextChar()
-    nextToken()
+    (this: @unchecked).nextToken()
     currentRegion = topLevelRegion(indentWidth(offset))
   }
   end Scanner
@@ -1657,20 +1665,30 @@ object Scanners {
     case Run(ch: Char, n: Int)
     case Conc(l: IndentWidth, r: Run)
 
-    def <= (that: IndentWidth): Boolean = this match {
-      case Run(ch1, n1) =>
-        that match {
-          case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
-          case Conc(l, r) => this <= l
-        }
-      case Conc(l1, r1) =>
-        that match {
-          case Conc(l2, r2) => l1 == l2 && r1 <= r2
-          case _ => false
-        }
-    }
+    def <= (that: IndentWidth): Boolean = (this, that) match
+      case (Run(ch1, n1), Run(ch2, n2)) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
+      case (Conc(l1, r1), Conc(l2, r2)) => (l1 == l2 && r1 <= r2) || this <= l2
+      case (_, Conc(l2, _)) => this <= l2
+      case _ => false
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
+
+    def >= (that: IndentWidth): Boolean = that <= this
+
+    def >(that: IndentWidth): Boolean = that < this
+
+    def size: Int = this match
+      case Run(_, n) => n
+      case Conc(l, r) => l.size + r.n
+
+    /** Add one level of indentation (one tab or two spaces depending on the last char) */
+    def increment: IndentWidth =
+      def incRun(ch: Char, n: Int): Run = ch match
+        case ' ' => IndentWidth.Run(' ', n + 2)
+        case ch => IndentWidth.Run(ch, n + 1)
+      this match
+        case Run(ch, n) => incRun(ch, n)
+        case Conc(l, Run(ch, n)) => Conc(l, incRun(ch, n))
 
     /** Does `this` differ from `that` by not more than a single space? */
     def isClose(that: IndentWidth): Boolean = this match

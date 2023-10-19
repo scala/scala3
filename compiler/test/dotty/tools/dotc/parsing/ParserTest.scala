@@ -25,7 +25,7 @@ class ParserTest extends DottyTest {
 
   private def parseSource(source: SourceFile): Tree = {
     //println("***** parsing " + source.file)
-    val parser = new Parser(source)
+    val parser = Parsers.parser(source)
     val tree = parser.parse()
     parsed += 1
     parsedTrees += tree

@@ -23,11 +23,10 @@ import StdNames._
 import util.Spans._
 import Constants._
 import Symbols.NoSymbol
-import ScriptParsers._
 import Decorators._
 import util.Chars
 import scala.annotation.tailrec
-import rewrites.Rewrites.{patch, overlapsPatch}
+import rewrites.Rewrites.{patch, patchOver, overlapsPatch}
 import reporting._
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
@@ -74,7 +73,7 @@ object Parsers {
    *  if not, the AST will be supplemented.
    */
   def parser(source: SourceFile)(using Context): Parser =
-    if source.isSelfContained then new ScriptParser(source)
+    if ctx.settings.rewrite.value.isDefined && ctx.settings.indent.value then new ToIndentParser(source)
     else new Parser(source)
 
   private val InCase: Region => Region = Scanners.InCase(_)
@@ -169,13 +168,15 @@ object Parsers {
     }
   }
 
-  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
+  class Parser private[Parsers] (source: SourceFile, allowRewrite: Boolean = true)(using Context) extends ParserCommon(source) {
 
-    val in: Scanner = new Scanner(source, profile = Profile.current)
+    val in: Scanner = createScanner()
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
+    def createScanner() =
+      new Scanner(source, profile = Profile.current, allowRewrite = allowRewrite)
+
     /** This is the general parse entry point.
-     *  Overridden by ScriptParser
      */
     def parse(): Tree = {
       val t = compilationUnit()
@@ -473,7 +474,6 @@ object Parsers {
       }
       case _ =>
 
-
     /** Convert (qual)ident to type identifier
      */
     def convertToTypeId(tree: Tree): Tree = tree match {
@@ -559,15 +559,14 @@ object Parsers {
     def inBraces[T](body: => T): T = enclosed(LBRACE, body)
     def inBrackets[T](body: => T): T = enclosed(LBRACKET, body)
 
+    def isAfterArrow = testChars(in.lastOffset - 3, " =>")
+
     def inBracesOrIndented[T](body: => T, rewriteWithColon: Boolean = false): T =
       if in.token == INDENT then
-        val rewriteToBraces = in.rewriteNoIndent
-          && !testChars(in.lastOffset - 3, " =>") // braces are always optional after `=>` so none should be inserted
-        if rewriteToBraces then indentedToBraces(body)
+        // braces are always optional after `=>` so none should be inserted
+        if in.rewriteNoIndent && !isAfterArrow then indentedToBraces(body)
         else enclosed(INDENT, body)
-      else
-        if in.rewriteToIndent then bracesToIndented(body, rewriteWithColon)
-        else inBraces(body)
+      else inBraces(body)
 
     def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
       inBracesOrIndented(body, rewriteWithColon)
@@ -638,20 +637,13 @@ object Parsers {
 
 /* -------- REWRITES ----------------------------------------------------------- */
 
-    /** The last offset where a colon at the end of line would be required if a subsequent { ... }
-     *  block would be converted to an indentation region.
-     */
-    var possibleColonOffset: Int = -1
-
-    def testChar(idx: Int, p: Char => Boolean): Boolean = {
+    def testChar(idx: Int, p: Char => Boolean): Boolean =
       val txt = source.content
-      idx < txt.length && p(txt(idx))
-    }
+      idx > -1 && idx < txt.length && p(txt(idx))
 
-    def testChar(idx: Int, c: Char): Boolean = {
+    def testChar(idx: Int, c: Char): Boolean =
       val txt = source.content
-      idx < txt.length && txt(idx) == c
-    }
+      idx > -1 && idx < txt.length && txt(idx) == c
 
     def testChars(from: Int, str: String): Boolean =
       str.isEmpty ||
@@ -723,74 +715,21 @@ object Parsers {
       t
     end indentedToBraces
 
-    /** The region to eliminate when replacing an opening `(` or `{` that ends a line.
-     *  The `(` or `{` is at in.offset.
-     */
-    def startingElimRegion(colonRequired: Boolean): (Offset, Offset) = {
-      val skipped = skipBlanks(in.offset + 1)
-      if (in.isAfterLineEnd)
-        if (testChar(skipped, Chars.LF) && !colonRequired)
-          (in.lineOffset, skipped + 1) // skip the whole line
-        else
-          (in.offset, skipped)
-      else if (testChar(in.offset - 1, ' ')) (in.offset - 1, in.offset + 1)
-      else (in.offset, in.offset + 1)
-    }
+    /** The region to eliminate when replacing a brace or parenthesis that ends a line */
+    def elimRegion(offset: Offset): (Offset, Offset) =
+      val (start, end) = blankLinesAround(offset, offset + 1)
+      if testChar(end, Chars.LF) then
+        if testChar(start - 1, Chars.LF) then (start, end + 1) // skip the whole line
+        else (start, end) // skip from previous char to end of line
+      else (offset, end) // skip from token to next char
 
-    /** The region to eliminate when replacing a closing `)` or `}` that starts a new line
-     *  The `)` or `}` precedes in.lastOffset.
-     */
-    def closingElimRegion(): (Offset, Offset) = {
-      val skipped = skipBlanks(in.lastOffset)
-      if (testChar(skipped, Chars.LF))                    // if `)` or `}` is on a line by itself
-        (source.startOfLine(in.lastOffset), skipped + 1)  //   skip the whole line
-      else                                                // else
-        (in.lastOffset - 1, skipped)                      //   move the following text up to where the `)` or `}` was
-    }
+    /** Expand the current span to its surrounding blank space */
+    def blankLinesAround(start: Offset, end: Offset): (Offset, Offset) =
+      (skipBlanks(start - 1, -1) + 1, skipBlanks(end, 1))
 
-    /** Parse brace-enclosed `body` and rewrite it to be an indentation region instead, if possible.
-     *  If possible means:
-     *   1. not inside (...), [...], case ... =>
-     *   2. opening brace `{` is at end of line
-     *   3. closing brace `}` is at start of line
-     *   4. there is at least one token between the braces
-     *   5. the closing brace is also at the end of the line, or it is followed by one of
-     *      `then`, `else`, `do`, `catch`, `finally`, `yield`, or `match`.
-     *   6. the opening brace does not follow a `=>`. The reason for this condition is that
-     *      rewriting back to braces does not work after `=>` (since in most cases braces are omitted
-     *      after a `=>` it would be annoying if braces were inserted).
-     */
-    def bracesToIndented[T](body: => T, rewriteWithColon: Boolean): T = {
-      val underColonSyntax = possibleColonOffset == in.lastOffset
-      val colonRequired = rewriteWithColon || underColonSyntax
-      val (startOpening, endOpening) = startingElimRegion(colonRequired)
-      val isOutermost = in.currentRegion.isOutermost
-      def allBraces(r: Region): Boolean = r match {
-        case r: Indented => r.isOutermost || allBraces(r.enclosing)
-        case r: InBraces => allBraces(r.enclosing)
-        case _ => false
-      }
-      var canRewrite = allBraces(in.currentRegion) && // test (1)
-        !testChars(in.lastOffset - 3, " =>") // test(6)
-      val t = enclosed(LBRACE, {
-        canRewrite &= in.isAfterLineEnd // test (2)
-        val curOffset = in.offset
-        try body
-        finally {
-          canRewrite &= in.isAfterLineEnd && in.offset != curOffset // test (3)(4)
-        }
-      })
-      canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if canRewrite && (!underColonSyntax || Feature.fewerBracesEnabled) then
-        val openingPatchStr =
-          if !colonRequired then ""
-          else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
-          else ":"
-        val (startClosing, endClosing) = closingElimRegion()
-        patch(source, Span(startOpening, endOpening), openingPatchStr)
-        patch(source, Span(startClosing, endClosing), "")
-      t
-    }
+    /** When rewriting to indent, make sure there is an indent after a `=>\n` */
+    def indentedRegionAfterArrow[T](body: => T, inCaseDef: Boolean = false): T =
+      body
 
     /** Drop (...) or { ... }, replacing the closing element with `endStr` */
     def dropParensOrBraces(start: Offset, endStr: String): Unit = {
@@ -803,7 +742,7 @@ object Parsers {
       val preFill = if (closingStartsLine || endStr.isEmpty) "" else " "
       val postFill = if (in.lastOffset == in.offset) " " else ""
       val (startClosing, endClosing) =
-        if (closingStartsLine && endStr.isEmpty) closingElimRegion()
+        if (closingStartsLine && endStr.isEmpty) elimRegion(in.lastOffset - 1)
         else (in.lastOffset - 1, in.lastOffset)
       patch(source, Span(startClosing, endClosing), s"$preFill$endStr$postFill")
     }
@@ -1057,7 +996,7 @@ object Parsers {
 
     /** Accept identifier and return its name as a term name. */
     def ident(): TermName =
-      if (isIdent) {
+      if isIdent then
         val name = in.name
         if name == nme.CONSTRUCTOR || name == nme.STATIC_CONSTRUCTOR then
           report.error(
@@ -1065,11 +1004,9 @@ object Parsers {
             in.sourcePos())
         in.nextToken()
         name
-      }
-      else {
+      else
         syntaxErrorOrIncomplete(ExpectedTokenButFound(IDENTIFIER, in.token))
         nme.ERROR
-      }
 
     /** Accept identifier and return Ident with its name as a term name. */
     def termIdent(): Ident =
@@ -1314,14 +1251,14 @@ object Parsers {
 /* ------------- NEW LINES ------------------------------------------------- */
 
     def newLineOpt(): Unit =
-      if (in.token == NEWLINE) in.nextToken()
+      if in.token == NEWLINE then in.nextToken()
 
     def newLinesOpt(): Unit =
       if in.isNewLine then in.nextToken()
 
     def newLineOptWhenFollowedBy(token: Int): Unit =
       // note: next is defined here because current == NEWLINE
-      if (in.token == NEWLINE && in.next.token == token) in.nextToken()
+      if in.token == NEWLINE && in.next.token == token then in.nextToken()
 
     def newLinesOptWhenFollowedBy(token: Int): Unit =
       if in.isNewLine && in.next.token == token then in.nextToken()
@@ -1339,7 +1276,6 @@ object Parsers {
         syntaxErrorOrIncomplete(em"indented definitions expected, ${in} found")
 
     def colonAtEOLOpt(): Unit =
-      possibleColonOffset = in.lastOffset
       in.observeColonEOL(inTemplate = false)
       if in.token == COLONeol then
         in.nextToken()
@@ -2422,7 +2358,7 @@ object Parsers {
           in.nextToken()
         else
           accept(ARROW)
-        val body =
+        val body = indentedRegionAfterArrow:
           if location == Location.InBlock then block()
           else if location == Location.InColonArg && in.token == INDENT then blockExpr()
           else expr()
@@ -2443,7 +2379,7 @@ object Parsers {
         t
 
     def postfixExprRest(t: Tree, location: Location): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr, location, ParseKind.Expr,
+      infixOps(t, in.canStartExprTokens, prefixExpr(_), location, ParseKind.Expr,
         isOperator = !(location.inArgs && followingIsVararg()))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
@@ -2665,10 +2601,10 @@ object Parsers {
      */
     def blockExpr(): Tree = atSpan(in.offset) {
       val simplify = in.token == INDENT
-      inDefScopeBraces {
+      inDefScopeBraces({
         if (in.token == CASE) Match(EmptyTree, caseClauses(() => caseClause()))
         else block(simplify)
-      }
+      })
     }
 
     /** Block ::= BlockStatSeq
@@ -2833,14 +2769,16 @@ object Parsers {
         (pattern(), guard())
       }
       CaseDef(pat, grd, atSpan(accept(ARROW)) {
-        if exprOnly then
-          if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
-            warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
-                        |If this is intended, it should be indented for clarity.
-                        |Otherwise, if the handler is intended to be empty, use a multi-line catch with
-                        |an indented case.""")
-          expr()
-        else block()
+        indentedRegionAfterArrow({
+          if exprOnly then
+            if in.indentSyntax && in.isAfterLineEnd && in.token != INDENT then
+              warning(em"""Misleading indentation: this expression forms part of the preceding catch case.
+                          |If this is intended, it should be indented for clarity.
+                          |Otherwise, if the handler is intended to be empty, use a multi-line catch with
+                          |an indented case.""")
+            expr()
+          else block()
+        }, inCaseDef = true)
       })
     }
 
@@ -2858,7 +2796,7 @@ object Parsers {
         }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
-        val t = rejectWildcardType(typ())
+        val t = indentedRegionAfterArrow(rejectWildcardType(typ()), inCaseDef = true)
         if in.token == SEMI then in.nextToken()
         newLinesOptWhenFollowedBy(CASE)
         t
@@ -4238,23 +4176,28 @@ object Parsers {
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
+      val startsAfterLineEnd = in.isAfterLineEnd
       val self = selfType()
-      while
-        var empty = false
-        if (in.token == IMPORT)
-          stats ++= importClause()
-        else if (in.token == EXPORT)
-          stats ++= exportClause()
-        else if isIdent(nme.extension) && followingIsExtension() then
-          stats += extension()
-        else if (isDefIntro(modifierTokensOrCase))
-          stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
-        else if (isExprIntro)
-          stats += expr1()
-        else
-          empty = true
-        statSepOrEnd(stats, noPrevStat = empty)
-      do ()
+      def loop =
+        while
+          var empty = false
+          if (in.token == IMPORT)
+            stats ++= importClause()
+          else if (in.token == EXPORT)
+            stats ++= exportClause()
+          else if isIdent(nme.extension) && followingIsExtension() then
+            stats += extension()
+          else if (isDefIntro(modifierTokensOrCase))
+            stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
+          else if (isExprIntro)
+            stats += expr1()
+          else
+            empty = true
+          statSepOrEnd(stats, noPrevStat = empty)
+        do ()
+      if self != null && !startsAfterLineEnd then
+        indentedRegionAfterArrow(loop)
+      else loop
       (self, if stats.isEmpty then List(EmptyTree) else stats.toList)
     }
 
@@ -4388,7 +4331,7 @@ object Parsers {
   /** OutlineParser parses top-level declarations in `source` to find declared classes, ignoring their bodies (which
    *  must only have balanced braces). This is used to map class names to defining sources.
    */
-  class OutlineParser(source: SourceFile)(using Context) extends Parser(source) with OutlineParserCommon {
+  class OutlineParser(source: SourceFile)(using Context) extends Parser(source, allowRewrite = false) with OutlineParserCommon {
 
     def skipBracesHook(): Option[Tree] =
       if (in.token == XMLSTART) Some(xmlLiteral()) else None
@@ -4403,4 +4346,137 @@ object Parsers {
       (EmptyValDef, List(EmptyTree))
     }
   }
+
+  /** The Scala parser that can rewrite to indent */
+  private class ToIndentParser(source: SourceFile)(using Context) extends Parser(source):
+
+    override def createScanner(): Scanner = new Scanner(source):
+      override def nextToken(): Unit =
+        if token != EMPTY then patchIndent()
+        prev = saveCopy
+        super.nextToken()
+
+    assert(in.rewriteToIndent)
+    
+    private var prev: TokenData = Scanners.newTokenData
+
+    /** The last offset where a colon at the end of line would be required if a subsequent { ... }
+     *  block would be converted to an indentation region. */
+    private var possibleColonOffset: Int = -1
+
+    /** the minimum indent width to rewrite to */
+    private var minimumIndent: IndentWidth = IndentWidth.Zero
+
+    /** the maximum indent width to ensure an indent region is properly closed by outdentation */
+    private var maximumIndent: Option[IndentWidth] = None
+
+    override def colonAtEOLOpt(): Unit =
+      possibleColonOffset = in.lastOffset
+      super.colonAtEOLOpt()
+
+    /** make sure there is an indent after a `=>\n` */
+    override def indentedRegionAfterArrow[T](body: => T, inCaseDef: Boolean = false): T =
+      if in.rewriteToIndent && (inCaseDef || in.isAfterLineEnd) then toIndentedRegion(body)
+      else body
+
+    override def inBracesOrIndented[T](body: => T, rewriteWithColon: Boolean = false): T =
+      if in.token == INDENT then
+        if isAfterArrow then enclosed(INDENT, body)
+        else enclosed(INDENT, toIndentedRegion(body))
+      else
+        if isAfterArrow then 
+          val t = enclosed(LBRACE, toIndentedRegion(body))
+          maximumIndent = None // no need to force outdentation after `}`
+          t
+        else bracesToIndented(body, rewriteWithColon)
+
+    private val bracesToIndentPredecessors =
+      colonEOLPredecessors | canStartIndentTokens | BitSet(IDENTIFIER)
+    
+    /** Parse brace-enclosed `body` and rewrite it to be an indentation region instead, if possible.
+     *  If possible means:
+     *   1. not inside (...), [...], case ... =>
+     *   2. opening brace `{` is at end of line
+     *   3. closing brace `}` is at start of line
+     *   4. there is at least one token between the braces
+     *   5. the closing brace is also at the end of the line, or it is followed by one of
+     *      `then`, `else`, `do`, `catch`, `finally`, `yield`, or `match`.
+     *   6. the opening brace `}` follows a colonEOLPredecessors, a canStartIndentTokens or an
+     *      identifier
+     *   7. last token is not a leading operator
+     */
+    private def bracesToIndented[T](body: => T, rewriteWithColon: Boolean): T =
+      val prevSaved = prev.saveCopy
+      val lastOffsetSaved = in.lastOffset
+      val underColonSyntax = possibleColonOffset == in.lastOffset
+      val colonRequired = rewriteWithColon || underColonSyntax
+      val (startOpening, endOpening) = elimRegion(in.offset)
+      def isBracesOrIndented(r: Region): Boolean = r match
+        case r: (Indented | InBraces) => true
+        case _ => false
+      var canRewrite =
+        isBracesOrIndented(in.currentRegion) // test (1)
+        && bracesToIndentPredecessors.contains(prevSaved.token) // test (6)
+        && !(prevSaved.isOperator && prevSaved.isAfterLineEnd) // test (7)
+      val t = enclosed(LBRACE, {
+        if in.isAfterLineEnd && in.token != RBRACE then // test (2)(4)
+          toIndentedRegion:
+            try body
+            finally canRewrite &= in.isAfterLineEnd // test (3)
+        else
+          canRewrite = false
+          body
+      })
+      canRewrite &= in.isAfterLineEnd || in.token == EOF || statCtdTokens.contains(in.token) // test (5)
+      if canRewrite && (!underColonSyntax || Feature.fewerBracesEnabled) then
+        val (startClosing, endClosing) = elimRegion(in.lastOffset - 1)
+        // patch over the added indentation to remove braces
+        patchOver(source, Span(startOpening, endOpening), "")
+        patchOver(source, Span(startClosing, endClosing), "")
+        if colonRequired then
+          if prevSaved.token == IDENTIFIER && prevSaved.isOperator then
+            patch(Span(prevSaved.offset, lastOffsetSaved), s"`${prevSaved.name}`:")
+          else if prevSaved.token == IDENTIFIER && prevSaved.name.last == '_' then
+            patch(Span(lastOffsetSaved), " :")
+          else patch(Span(lastOffsetSaved), ":")
+      else
+        // no need to force outdentation after `}`
+        maximumIndent = None
+      t
+    end bracesToIndented
+
+    /** compute required indentation to indent region properly */
+    private def toIndentedRegion[T](body: => T): T =
+      val enclosingIndent = minimumIndent
+      minimumIndent =
+        if enclosingIndent < in.currentRegion.indentWidth then
+          in.currentRegion.indentWidth
+        else if
+          in.token == CASE && (
+            in.currentRegion.enclosing == null ||
+            in.currentRegion.indentWidth == in.currentRegion.enclosing.indentWidth
+          )
+        then enclosingIndent
+        else enclosingIndent.increment
+      try body
+      finally
+        maximumIndent = Some(minimumIndent)
+        minimumIndent = enclosingIndent
+
+    /** check that indentaton is correct or patch */
+    private def patchIndent(): Unit =
+      if in.isAfterLineEnd && !in.isNewLine && in.token != OUTDENT && in.token != INDENT then
+        val currentIndent = in.indentWidth(in.offset)
+        val indentEndOffset = in.lineOffset + currentIndent.size
+        def isDotOrClosing = (closingParens + DOT).contains(in.token)
+        val needsOutdent = maximumIndent.exists: max =>
+          currentIndent >= max || (!isDotOrClosing  && currentIndent > minimumIndent)
+        val offByOne =
+          currentIndent != minimumIndent && currentIndent.isClose(minimumIndent)
+        if needsOutdent || !(currentIndent >= minimumIndent) || offByOne then
+          patch(Span(in.lineOffset, indentEndOffset), minimumIndent.toPrefix)
+        // no need to outdent anymore
+        if in.token != RBRACE then
+          maximumIndent = None
+  end ToIndentParser
 }

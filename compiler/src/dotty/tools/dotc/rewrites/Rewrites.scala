@@ -37,9 +37,14 @@ object Rewrites {
     def addPatch(span: Span, replacement: String): Unit =
       pbuf += Patch(span, replacement)
 
+    def patchOver(span: Span, replacement: String): Unit =
+      val prevPatchIdx = pbuf.lastIndexWhere(p => span.contains(p.span))
+      if prevPatchIdx >= 0 then pbuf.remove(prevPatchIdx)
+      pbuf += Patch(span, replacement)
+
     def apply(cs: Array[Char]): Array[Char] = {
       val delta = pbuf.map(_.delta).sum
-      val patches = pbuf.toList.sortBy(_.span.start)
+      val patches = pbuf.toList.sortBy(p => (p.span.start, p.span.end))
       if (patches.nonEmpty)
         patches.reduceLeft {(p1, p2) =>
           assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")
@@ -81,6 +86,14 @@ object Rewrites {
     then ctx.settings.rewrite.value.foreach(_.patched
          .getOrElseUpdate(source, new Patches(source))
          .addPatch(span, replacement)
+    )
+
+  /** Record a patch that replaces the first patch that it contains */
+  def patchOver(source: SourceFile, span: Span, replacement: String)(using Context): Unit =
+    if ctx.reporter != Reporter.NoReporter // NoReporter is used for syntax highlighting
+    then ctx.settings.rewrite.value.foreach(_.patched
+         .getOrElseUpdate(source, new Patches(source))
+         .patchOver(span, replacement)
     )
 
   /** Patch position in `ctx.compilationUnit.source`. */

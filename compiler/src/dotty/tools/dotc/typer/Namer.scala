@@ -19,7 +19,7 @@ import config.{Config, Feature}
 import config.Printers.typr
 import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
-import parsing.Parsers.Parser
+import parsing.Parsers
 import Annotations._
 import Inferencing._
 import transform.ValueClasses._
@@ -741,7 +741,7 @@ class Namer { typer: Typer =>
 
     unit.untpdTree =
       if (unit.isJava) new JavaParser(unit.source).parse()
-      else new Parser(unit.source).parse()
+      else Parsers.parser(unit.source).parse()
 
     atPhase(Phases.typerPhase) {
       inContext(PrepareInlineable.initContext(ctx)) {

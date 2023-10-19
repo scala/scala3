@@ -5,7 +5,7 @@ import dotc.CompilationUnit
 import dotc.ast.untpd
 import dotc.core.Contexts._
 import dotc.core.StdNames.str
-import dotc.parsing.Parsers.Parser
+import dotc.parsing.Parsers
 import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
@@ -121,7 +121,7 @@ object ParseResult {
   @sharable private val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
   private def parseStats(using Context): List[untpd.Tree] = {
-    val parser = new Parser(ctx.source)
+    val parser = Parsers.parser(ctx.source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
     stats

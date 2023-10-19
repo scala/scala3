@@ -324,8 +324,7 @@ object MarkupParsers {
     /** Some try/catch/finally logic used by xLiteral and xLiteralPattern.  */
     inline private def xLiteralCommon(f: () => Tree, ifTruncated: String => Unit): Tree = {
       assert(parser.in.token == Tokens.XMLSTART)
-      val saved = parser.in.newTokenData
-      saved.copyFrom(parser.in)
+      val saved = parser.in.saveCopy
       var output: Tree = null.asInstanceOf[Tree]
       try output = f()
       catch {
@@ -404,7 +403,7 @@ object MarkupParsers {
     def escapeToScala[A](op: => A, kind: String): A = {
       xEmbeddedBlock = false
       val res = saving(parser.in.currentRegion, parser.in.currentRegion = _) {
-        val lbrace = parser.in.newTokenData
+        val lbrace = Scanners.newTokenData
         lbrace.token = LBRACE
         lbrace.offset = parser.in.charOffset - 1
         lbrace.lastOffset = parser.in.lastOffset
