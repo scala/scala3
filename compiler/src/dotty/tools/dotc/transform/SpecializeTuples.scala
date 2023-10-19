@@ -37,15 +37,14 @@ class SpecializeTuples extends MiniPhase:
   end transformApply
 
   override def transformSelect(tree: Select)(using Context): Tree = tree match
-    case Select(qual, nme._1) if isAppliedSpecializableTuple(qual.tpe.widenDealias) =>
-      Select(qual, nme._1.specializedName(qual.tpe.widenDealias.argInfos.slice(0, 1)))
-    case Select(qual, nme._2) if isAppliedSpecializableTuple(qual.tpe.widenDealias) =>
-      Select(qual, nme._2.specializedName(qual.tpe.widenDealias.argInfos.slice(1, 2)))
+    case Select(qual, name @ (nme._1 | nme._2)) =>
+      qual.tpe.widenDealias match
+        case AppliedType(tycon, args) if defn.isSpecializableTuple(tycon.classSymbol, args) =>
+          val argIdx = if name == nme._1 then 0 else 1
+          Select(qual, name.specializedName(args(argIdx) :: Nil))
+        case _ =>
+          tree
     case _ => tree
-
-  private def isAppliedSpecializableTuple(tp: Type)(using Context) = tp match
-    case AppliedType(tycon, args) => defn.isSpecializableTuple(tycon.classSymbol, args)
-    case _                        => false
 end SpecializeTuples
 
 object SpecializeTuples:
