@@ -71,7 +71,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
           val outputDir =
             ExtractSemanticDB.semanticdbPath(
               unit.source,
-              ExtractSemanticDB.outputDirectory(using unitCtx),
+              ExtractSemanticDB.semanticdbOutDir(using unitCtx),
               sourceRoot
             )
           (outputDir, ws.map(_.toSemanticDiagnostic))
@@ -86,7 +86,7 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
         val outputDir =
           ExtractSemanticDB.semanticdbPath(
             unit.source,
-            ExtractSemanticDB.outputDirectory(using unitCtx),
+            ExtractSemanticDB.semanticdbOutDir(using unitCtx),
             sourceRoot
           )
         val extractor = ExtractSemanticDB.Extractor()
@@ -128,8 +128,13 @@ object ExtractSemanticDB:
       .filterNot(_.isEmpty)
       .map(Paths.get(_))
 
-  private def outputDirectory(using Context): Path =
-    semanticdbTarget.getOrElse(ctx.settings.outputDir.value.jpath)
+  /** Destination for generated classfiles */
+  private def outputDirectory(using Context): AbstractFile =
+    ctx.settings.outputDir.value
+
+  /** Output directory for SemanticDB files */
+  private def semanticdbOutDir(using Context): Path =
+    semanticdbTarget.getOrElse(outputDirectory.jpath)
 
   private def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
 
