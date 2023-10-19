@@ -58,20 +58,25 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended
 
+  /** Keep synchronised with `monitor` subcalls */
+  override def subPhases: List[String] = List("indexing", "typechecking", "checking java")
+
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val unitContexts =
       for unit <- units yield
         val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         val newCtx = PrepareInlineable.initContext(newCtx0)
-        newCtx.run.beginUnit(unit)
         report.inform(s"typing ${unit.source}")
         if (addRootImports)
           newCtx.withRootImports
         else
           newCtx
 
-    for given Context <- unitContexts do
-      enterSyms
+    try
+      for given Context <- unitContexts do
+        enterSyms
+    finally
+      ctx.run.advanceSubPhase() // tick from "typer (indexing)" to "typer (typechecking)"
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
@@ -83,13 +88,16 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       case _ =>
     }
 
-    for given Context <- unitContexts do
-      typeCheck
+    try
+      for given Context <- unitContexts do
+        typeCheck
+    finally
+      ctx.run.advanceSubPhase() // tick from "typer (typechecking)" to "typer (java checking)"
 
     record("total trees after typer", ast.Trees.ntrees)
+
     for given Context <- unitContexts do
-      try javaCheck // after typechecking to avoid cycles
-      finally ctx.run.advanceUnit()
+      javaCheck // after typechecking to avoid cycles
 
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)

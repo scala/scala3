@@ -35,7 +35,7 @@ class Checker extends Phase:
     val checkCtx = ctx.fresh.setPhase(this.start)
     val traverser = new InitTreeTraverser()
     for unit <- units do
-      checkCtx.run.beginUnit(unit)
+      checkCtx.run.beginUnit()
       try traverser.traverse(unit.tpdTree)
       finally ctx.run.advanceUnit()
     val classes = traverser.getClasses()

@@ -328,6 +328,10 @@ object Phases {
     /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
 
+    /** for purposes of progress tracking, overridden in TyperPhase */
+    def subPhases: List[String] = Nil
+    final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
+
     /** @pre `isRunnable` returns true */
     def run(using Context): Unit
 
@@ -335,7 +339,7 @@ object Phases {
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
       units.map { unit =>
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        ctx.run.beginUnit(unit)
+        ctx.run.beginUnit()
         try run
         catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
           println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
@@ -450,12 +454,15 @@ object Phases {
     final def iterator: Iterator[Phase] =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
-    final def monitor(doing: String)(body: => Unit)(using Context): Unit =
+    /** run the body as one iteration of a (sub)phase (see Run.Progress), Enrich crash messages */
+    final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Unit =
+      ctx.run.beginUnit()
       try body
       catch
         case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
           report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
+      finally ctx.run.advanceUnit()
 
     override def toString: String = phaseName
   }

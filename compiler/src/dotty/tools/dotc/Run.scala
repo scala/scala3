@@ -176,13 +176,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if local != null then
       op(using ctx)(local)
 
-  def doBeginUnit(unit: CompilationUnit)(using Context): Unit =
+  def doBeginUnit()(using Context): Unit =
     trackProgress: progress =>
-      progress.informUnitStarting(unit)
+      progress.informUnitStarting(ctx.compilationUnit)
 
   def doAdvanceUnit()(using Context): Unit =
     trackProgress: progress =>
-      progress.unitc += 1 // trace that we completed a unit in the current phase
+      progress.unitc += 1 // trace that we completed a unit in the current (sub)phase
       progress.refreshProgress()
 
   def doAdvanceLate()(using Context): Unit =
@@ -196,14 +196,23 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
     trackProgress: progress =>
-      progress.unitc = 0 // reset unit count in current phase
-      progress.seen += 1 // trace that we've seen a phase
+      progress.unitc = 0 // reset unit count in current (sub)phase
+      progress.subtraversalc = 0 // reset subphase index to initial
+      progress.seen += 1 // trace that we've seen a (sub)phase
       if wasRan then
-        // add an extra traversal now that we completed a phase
+        // add an extra traversal now that we completed a (sub)phase
         progress.traversalc += 1
       else
-        // no phase was ran, remove a traversal from expected total
-        progress.runnablePhases -= 1
+        // no subphases were ran, remove traversals from expected total
+        progress.totalTraversals -= currentPhase.traversals
+
+  private def doAdvanceSubPhase()(using Context): Unit =
+    trackProgress: progress =>
+      progress.unitc = 0 // reset unit count in current (sub)phase
+      progress.seen += 1 // trace that we've seen a (sub)phase
+      progress.traversalc += 1 // add an extra traversal now that we completed a (sub)phase
+      progress.subtraversalc += 1 // record that we've seen a subphase
+      progress.tickSubphase()
 
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
@@ -318,7 +327,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     unfusedPhases.foreach(_.initContext(runCtx))
     val fusedPhases = runCtx.base.allPhases
     runCtx.withProgressCallback: cb =>
-      _progress = Progress(cb, this, fusedPhases.length)
+      _progress = Progress(cb, this, fusedPhases.map(_.traversals).sum)
     runPhases(allPhases = fusedPhases)(using runCtx)
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
@@ -451,31 +460,52 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
 object Run {
 
-  /**Computes the next MegaPhase for the given phase.*/
-  def nextMegaPhase(phase: Phase)(using Context): Phase = phase.megaPhase.next.megaPhase
+  class SubPhases(val phase: Phase):
+    require(phase.exists)
 
-  private class Progress(cb: ProgressCallback, private val run: Run, val initialPhases: Int):
-    private[Run] var runnablePhases: Int = initialPhases // track how many phases we expect to run
-    private[Run] var unitc: Int = 0 // current unit count in the current phase
+    val all = IArray.from(phase.subPhases.map(sub => s"${phase.phaseName} ($sub)"))
+
+    def next(using Context): Option[SubPhases] =
+      val next0 = phase.megaPhase.next.megaPhase
+      if next0.exists then Some(SubPhases(next0))
+      else None
+
+    def subPhase(index: Int) =
+      if index < all.size then all(index)
+      else phase.phaseName
+
+  private class Progress(cb: ProgressCallback, private val run: Run, val initialTraversals: Int):
+    private[Run] var totalTraversals: Int = initialTraversals  // track how many phases we expect to run
+    private[Run] var unitc: Int = 0 // current unit count in the current (sub)phase
     private[Run] var latec: Int = 0 // current late unit count
     private[Run] var traversalc: Int = 0 // completed traversals over all files
+    private[Run] var subtraversalc: Int = 0 // completed subphases in the current phase
     private[Run] var seen: Int = 0 // how many phases we've seen so far
 
     private var currPhase: Phase = uninitialized  // initialized by enterPhase
+    private var subPhases: SubPhases = uninitialized  // initialized by enterPhase
     private var currPhaseName: String = uninitialized // initialized by enterPhase
     private var nextPhaseName: String = uninitialized // initialized by enterPhase
 
-    private def phaseNameFor(phase: Phase): String =
-      if phase.exists then phase.phaseName
-      else "<end>"
-
+    /** Enter into a new real phase, setting the current and next (sub)phases */
     private[Run] def enterPhase(newPhase: Phase)(using Context): Unit =
       if newPhase ne currPhase then
         currPhase = newPhase
-        currPhaseName = phaseNameFor(newPhase)
-        nextPhaseName = phaseNameFor(Run.nextMegaPhase(newPhase))
-        if seen > 0 then
-          refreshProgress()
+        subPhases = SubPhases(newPhase)
+        tickSubphase()
+
+    /** Compute the current (sub)phase name and next (sub)phase name */
+    private[Run] def tickSubphase()(using Context): Unit =
+      val index = subtraversalc
+      val s = subPhases
+      currPhaseName = s.subPhase(index)
+      nextPhaseName =
+        if index + 1 < s.all.size then s.subPhase(index + 1)
+        else s.next match
+          case None => "<end>"
+          case Some(next0) => next0.subPhase(0)
+      if seen > 0 then
+        refreshProgress()
 
 
     /** Counts the number of completed full traversals over files, plus the number of units in the current phase */
@@ -487,26 +517,35 @@ object Run {
      * - the number of late compilations
      */
     private def totalProgress()(using Context): Int =
-      runnablePhases * run.files.size + run.lateFiles.size
+      totalTraversals * run.files.size + run.lateFiles.size
 
     private def requireInitialized(): Unit =
       require((currPhase: Phase | Null) != null, "enterPhase was not called")
 
+    /** trace that we are beginning a unit in the current (sub)phase */
     private[Run] def informUnitStarting(unit: CompilationUnit)(using Context): Unit =
       requireInitialized()
       cb.informUnitStarting(currPhaseName, unit)
 
+    /** trace the current progress out of the total, in the current (sub)phase, reporting the next (sub)phase */
     private[Run] def refreshProgress()(using Context): Unit =
       requireInitialized()
       cb.progress(currentProgress(), totalProgress(), currPhaseName, nextPhaseName)
 
   extension (run: Run | Null)
-    def beginUnit(unit: CompilationUnit)(using Context): Unit =
-      if run != null then run.doBeginUnit(unit)
 
+    /** record that the current phase has begun for the compilation unit of the current Context */
+    def beginUnit()(using Context): Unit =
+      if run != null then run.doBeginUnit()
+
+    /** advance the unit count and record progress in the current phase */
     def advanceUnit()(using Context): Unit =
       if run != null then run.doAdvanceUnit()
 
+    def advanceSubPhase()(using Context): Unit =
+      if run != null then run.doAdvanceSubPhase()
+
+    /** advance the late count and record progress in the current phase */
     def advanceLate()(using Context): Unit =
       if run != null then run.doAdvanceLate()
 
