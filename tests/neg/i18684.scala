@@ -1,4 +1,4 @@
-//> using option -explain
+//> using options -explain
 object Test:
   val s(): String = "hello, world" // error
 
