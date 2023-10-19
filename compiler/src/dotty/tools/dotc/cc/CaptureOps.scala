@@ -256,10 +256,11 @@ extension (cls: ClassSymbol)
   def pureBaseClass(using Context): Option[Symbol] =
     cls.baseClasses.find: bc =>
       defn.pureBaseClasses.contains(bc)
-      || bc.givenSelfType.dealiasKeepAnnots.match
-          case CapturingType(_, refs) => refs.isAlwaysEmpty
-          case RetainingType(_, refs) => refs.isEmpty
-          case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
+      || bc.is(CaptureChecked)
+          && bc.givenSelfType.dealiasKeepAnnots.match
+            case CapturingType(_, refs) => refs.isAlwaysEmpty
+            case RetainingType(_, refs) => refs.isEmpty
+            case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
 
 extension (sym: Symbol)
 

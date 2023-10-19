@@ -36,7 +36,7 @@
 16 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                        Found:    scala.collection.mutable.ListBuffer[box () => Unit]
-   |                        Required: scala.collection.mutable.ListBuffer[box () ->? Unit]
+   |                        Required: scala.collection.mutable.ListBuffer[box () ->? Unit]^?
    |
    |                        Note that the universal capability `cap`
    |                        cannot be included in capture set ? of variable finalizeActions
