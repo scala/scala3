@@ -15,6 +15,7 @@ import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.io.VirtualDirectory
+import dotty.tools.dotc.NoCompilationUnit
 
 final class ProgressCallbackTest extends DottyTest:
 
@@ -49,30 +50,30 @@ final class ProgressCallbackTest extends DottyTest:
   def assertNextPhaseIsNext()(using Context): Unit =
     val allPhases = ctx.base.allPhases
     for case Array(p1, p2) <- allPhases.sliding(2) do
-      val p1Next = Run.nextMegaPhase(p1) // used to compute the next phase in `Run.doAdvancePhase`
-      assertEquals(p1Next.phaseName, p2.phaseName)
+      val p1Next = Run.SubPhases(p1).next.get.phase // used to compute the next phase in `Run.doAdvancePhase`
+      assertEquals(p1Next, p2)
 
   /** Assert that the recorded progression of phases are all in the real progression, and that order is preserved */
   def assertMonotonicProgression(progressCallback: TestProgressCallback)(using Context): Unit =
-    val allPhasePlan = ctx.base.allPhases
+    val allPhasePlan = ctx.base.allPhases.flatMap(asSubphases) ++ syntheticNextPhases
     for case List(
       PhaseTransition(curr1, next1),
       PhaseTransition(curr2, next2)
     ) <- progressCallback.progressPhasesFinal.sliding(2) do
-      val curr1Index = indexFor(allPhasePlan, curr1)
-      val curr2Index = indexFor(allPhasePlan, curr2)
-      val next1Index = indexFor(allPhasePlan, next1)
-      val next2Index = indexFor(allPhasePlan, next2)
-      assertTrue(s"Phase $curr1 comes before $curr2", curr1Index < curr2Index)
-      assertTrue(s"Phase $next1 comes before $next2", next1Index < next2Index)
-      assertTrue(s"Phase $curr1 comes before $next1", curr1Index < next1Index)
-      assertTrue(s"Phase $curr2 comes before $next2", curr2Index < next2Index)
-      assertTrue(s"Predicted next phase $next1 was next current $curr2", next1Index == curr2Index)
+      val curr1Index = indexOrFail(allPhasePlan, curr1)
+      val curr2Index = indexOrFail(allPhasePlan, curr2)
+      val next1Index = indexOrFail(allPhasePlan, next1)
+      val next2Index = indexOrFail(allPhasePlan, next2)
+      assertTrue(s"Phase `$curr1` did not come before `$curr2`", curr1Index < curr2Index)
+      assertTrue(s"Phase `$next1` did not come before `$next2`", next1Index < next2Index)
+      assertTrue(s"Phase `$curr1` did not come before `$next1`", curr1Index < next1Index)
+      assertTrue(s"Phase `$curr2` did not come before `$next2`", curr2Index < next2Index)
+      assertTrue(s"Predicted next phase `$next1` didn't match the following current `$curr2`", next1Index == curr2Index)
 
   /** Assert that the recorded progression of phases contains every phase in the plan */
   def assertFullCoverage(progressCallback: TestProgressCallback)(using Context): Unit =
     val (allPhasePlan, expectedCurrPhases, expectedNextPhases) =
-      val allPhases = ctx.base.allPhases.map(_.phaseName)
+      val allPhases = ctx.base.allPhases.flatMap(asSubphases)
       val firstPhase = allPhases.head
       val expectedCurrPhases = allPhases.toSet
       val expectedNextPhases = expectedCurrPhases - firstPhase ++ syntheticNextPhases
@@ -98,22 +99,23 @@ final class ProgressCallbackTest extends DottyTest:
 
   /** Assert that the phases recorded per unit match the actual phases ran on them */
   def assertExpectedPhases(progressCallback: TestProgressCallback)(using Context): Unit =
-    val expectedPhases = runnablePhases()
-    for (_, visitedPhases) <- progressCallback.unitPhases do
+    val expectedPhases = runnablePhases().flatMap(asSubphases)
+    for (unit, visitedPhases) <- progressCallback.unitPhases do
       val uniquePhases = visitedPhases.toSet
-      assertEquals("some phases were visited twice!", visitedPhases.size, uniquePhases.size)
+      assert(unit != NoCompilationUnit, s"unexpected NoCompilationUnit for phases $uniquePhases")
+      val duplicatePhases = visitedPhases.view.groupBy(identity).values.filter(_.size > 1).map(_.head)
+      assertEquals(s"some phases were visited twice for $unit! ${duplicatePhases.toList}", visitedPhases.size, uniquePhases.size)
       val unvisitedPhases = expectedPhases.filterNot(visitedPhases.contains)
       val extraPhases = visitedPhases.filterNot(expectedPhases.contains)
-      assertTrue(s"these phases were not visited ${unvisitedPhases}", unvisitedPhases.isEmpty)
-      assertTrue(s"these phases were visited, but not expected ${extraPhases}", extraPhases.isEmpty)
+      assertTrue(s"these phases were not visited for $unit ${unvisitedPhases}", unvisitedPhases.isEmpty)
+      assertTrue(s"these phases were visited for $unit, but not expected ${extraPhases}", extraPhases.isEmpty)
 
   /** Assert that the number of total units of work matches the number of files * the runnable phases */
   def assertTotalUnits(progressCallback: TestProgressCallback)(using Context): Unit =
-    val expectedPhases = runnablePhases()
     var fileTraversals = 0 // files * phases
     for (_, phases) <- progressCallback.unitPhases do
       fileTraversals += phases.size
-    val expectedTotal = fileTraversals
+    val expectedTotal = fileTraversals // assume that no late enters occur
     progressCallback.totalEvents match
       case Nil => fail("No total events recorded")
       case TotalEvent(total, _) :: _ =>
@@ -143,26 +145,22 @@ object ProgressCallbackTest:
   case class ProgressEvent(curr: Int, total: Int, currPhase: String, nextPhase: String)
   case class PhaseTransition(curr: String, next: String)
 
-  def runnablePhases()(using Context) =
-    ctx.base.allPhases.filter(_.isRunnable).map(_.phaseName).toList
+  def asSubphases(phase: Phase): IArray[String] =
+    val subPhases = Run.SubPhases(phase).all
+    if subPhases.isEmpty then IArray(phase.phaseName)
+    else subPhases
+
+  def runnablePhases()(using Context): IArray[Phase] =
+    IArray.from(ctx.base.allPhases.filter(_.isRunnable))
 
   private val syntheticNextPhases = List("<end>")
 
-  /** Flatten the terminal phases into linear order */
-  private val terminalIndices =
-    syntheticNextPhases.zipWithIndex.toMap
-
   /** Asserts that the computed phase name exists in the real phase plan */
-  def indexFor(allPhasePlan: Array[Phase], phaseName: String): Int =
-    val i = allPhasePlan.indexWhere(_.phaseName == phaseName)
-    if i < 0 then // not found in real phase plan
-      terminalIndices.get(phaseName) match
-        case Some(index) => allPhasePlan.size + index // append to end of phase plan
-        case None =>
-          fail(s"Phase $phaseName not found")
-          -1
-    else
-      i
+  def indexOrFail(allPhasePlan: Array[String], phaseName: String): Int =
+    val i = allPhasePlan.indexOf(phaseName)
+    if i < 0 then
+      fail(s"Phase $phaseName not found")
+    i
 
   final class TestProgressCallback extends interfaces.ProgressCallback:
     private var _cancelled: Boolean = false

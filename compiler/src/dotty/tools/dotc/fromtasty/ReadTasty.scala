@@ -25,7 +25,7 @@ class ReadTasty extends Phase {
     withMode(Mode.ReadPositions)(units.flatMap(applyPhase(_)))
 
   private def applyPhase(unit: CompilationUnit)(using Context): Option[CompilationUnit] =
-    ctx.run.beginUnit(unit)
+    ctx.run.beginUnit()
     try readTASTY(unit)
     finally ctx.run.advanceUnit()
 
