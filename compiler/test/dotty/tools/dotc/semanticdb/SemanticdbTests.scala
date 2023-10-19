@@ -71,6 +71,7 @@ class SemanticdbTests:
     def collectErrorOrUpdate(expectPath: Path, obtained: String) =
       if updateExpectFiles then
         Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
+        println("updated: " + expectPath)
       else
         val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
         val expectName = expectPath.getFileName
