@@ -9,6 +9,7 @@ trait Box:
 def main(): Unit =
   val leaked = withCap: (io: Cap^) =>
     class Foo extends Box, Pure:
+      self =>
       val get: () ->{} () ->{io} Cap^ =
         () => () => io // error
     new Foo
