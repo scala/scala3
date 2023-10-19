@@ -69,6 +69,8 @@ object Tools:
     sb.append("Language => ").append(languageString(doc.language)).nl
     sb.append("Symbols => ").append(doc.symbols.length).append(" entries").nl
     sb.append("Occurrences => ").append(doc.occurrences.length).append(" entries").nl
+    if doc.diagnostics.nonEmpty then
+      sb.append("Diagnostics => ").append(doc.diagnostics.length).append(" entries").nl
     if doc.synthetics.nonEmpty then
       sb.append("Synthetics => ").append(doc.synthetics.length).append(" entries").nl
     sb.nl
@@ -78,6 +80,10 @@ object Tools:
     sb.append("Occurrences:").nl
     doc.occurrences.sorted.foreach(processOccurrence)
     sb.nl
+    if doc.diagnostics.nonEmpty then
+      sb.append("Diagnostics:").nl
+      doc.diagnostics.sorted.foreach(d => processDiag(d))
+      sb.nl
     if doc.synthetics.nonEmpty then
       sb.append("Synthetics:").nl
       doc.synthetics.sorted.foreach(s => processSynth(s, synthPrinter))
@@ -107,6 +113,20 @@ object Tools:
 
   private def processSynth(synth: Synthetic, printer: SyntheticPrinter)(using sb: StringBuilder): Unit =
     sb.append(printer.pprint(synth)).nl
+
+  private def processDiag(d: Diagnostic)(using sb: StringBuilder): Unit =
+    d.range match
+      case Some(range) => processRange(sb, range)
+      case _ => sb.append("[):")
+    sb.append(" ")
+    d.severity match
+      case Diagnostic.Severity.ERROR => sb.append("[error]")
+      case Diagnostic.Severity.WARNING => sb.append("[warning]")
+      case Diagnostic.Severity.INFORMATION => sb.append("[info]")
+      case _ => sb.append("[unknown]")
+    sb.append(" ")
+    sb.append(d.message)
+    sb.nl
 
   private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
     occ.range match
