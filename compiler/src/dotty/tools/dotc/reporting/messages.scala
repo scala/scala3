@@ -2375,8 +2375,18 @@ class ExtractorNotFound(val name: Name)(using Context) extends NotFoundMsg(Extra
   def msg(using Context) = i"no pattern match extractor named $name was found"
   def explain(using Context) =
     i"""An application $name(...) in a pattern can refer to an extractor
-       |which defines an unapply or unapplySeq method. Case classes and enum cases
-       |implicitly define extractors with the name of the class or enum case.
+       |which defines an unapply or unapplySeq method. Example:
+       |
+       |  object split:
+       |    def unapply(x: String) =
+       |      val (leading, trailing) = x.splitAt(x.length / 2)
+       |      Some((leading, trailing))
+       |
+       |  val split(fst, snd) = "HiHo"
+       |
+       |The extractor pattern `split(fst, snd)` defines `fst` as the first half "Hi" and
+       |`snd` as the second half "Ho" of the right hand side "HiHo". Case classes and
+       |enum cases implicitly define extractors with the name of the class or enum case.
        |Here, no extractor named $name was found, so the pattern could not be typed."""
 
 class MemberWithSameNameAsStatic()(using Context)
