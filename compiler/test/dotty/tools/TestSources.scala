@@ -15,11 +15,13 @@ object TestSources {
   def posTestPicklingBlacklistFile: String = "compiler/test/dotc/pos-test-pickling.blacklist"
   def posTestRecheckExcludesFile: String = "compiler/test/dotc/pos-test-recheck.excludes"
   def posLazyValsAllowlistFile: String = "compiler/test/dotc/pos-lazy-vals-tests.allowlist"
+  def posLintingAllowlistFile: String = "compiler/test/dotc/pos-linting.allowlist"
 
   def posFromTastyBlacklisted: List[String] = loadList(posFromTastyBlacklistFile)
   def posTestPicklingBlacklisted: List[String] = loadList(posTestPicklingBlacklistFile)
   def posTestRecheckExcluded: List[String] = loadList(posTestRecheckExcludesFile)
   def posLazyValsAllowlist: List[String] = loadList(posLazyValsAllowlistFile)
+  def posLintingAllowlist: List[String] = loadList(posLintingAllowlistFile)
 
   // run tests lists
 
