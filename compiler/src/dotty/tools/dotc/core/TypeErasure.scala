@@ -239,8 +239,7 @@ object TypeErasure {
    *  TermRefs are kept instead of being widened away.
    */
   def erasedRef(tp: Type)(using Context): Type = tp match {
-    case tp: TermRef =>
-      assert(tp.symbol.exists, tp)
+    case tp: TermRef if tp.symbol.exists =>
       val tp1 = makePackageObjPrefixExplicit(tp)
       if (tp1 ne tp) erasedRef(tp1)
       else TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
