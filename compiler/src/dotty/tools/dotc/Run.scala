@@ -36,6 +36,7 @@ import scala.io.Codec
 
 import Run.Progress
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.transform.MegaPhase
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -463,7 +464,11 @@ object Run {
   class SubPhases(val phase: Phase):
     require(phase.exists)
 
-    val all = IArray.from(phase.subPhases.map(sub => s"${phase.phaseName} ($sub)"))
+    private def baseName: String = phase match
+      case phase: MegaPhase => phase.shortPhaseName
+      case phase => phase.phaseName
+
+    val all = IArray.from(phase.subPhases.map(sub => s"$baseName ($sub)"))
 
     def next(using Context): Option[SubPhases] =
       val next0 = phase.megaPhase.next.megaPhase
@@ -472,7 +477,8 @@ object Run {
 
     def subPhase(index: Int) =
       if index < all.size then all(index)
-      else phase.phaseName
+      else baseName
+
 
   private class Progress(cb: ProgressCallback, private val run: Run, val initialTraversals: Int):
     private[Run] var totalTraversals: Int = initialTraversals  // track how many phases we expect to run
