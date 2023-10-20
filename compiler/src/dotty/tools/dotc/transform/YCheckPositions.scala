@@ -35,7 +35,7 @@ class YCheckPositions extends Phase {
                 val currentSource = sources.head
                 assert(tree.source == currentSource, i"wrong source set for $tree # ${tree.uniqueId} of ${tree.getClass}, set to ${tree.source} but context had $currentSource\n ${tree.symbol.flagsString}")
 
-            // Recursivlely check children while keeping track of current source
+            // Recursively check children while keeping track of current source
             reporting.trace(i"check pos ${tree.getClass} ${tree.source} ${sources.head} $tree") {
               tree match {
                 case tree @ Inlined(_, bindings, expansion) if tree.inlinedFromOuterScope =>
@@ -46,7 +46,7 @@ class YCheckPositions extends Phase {
                   sources = old
                 case tree @ Inlined(call, bindings, expansion) =>
                   // bindings.foreach(traverse(_)) // TODO check inline proxies (see tests/tun/lst)
-                  sources = call.symbol.topLevelClass.source :: sources
+                  sources = call.symbol.source :: sources
                   if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
                     traverse(expansion)(using inlineContext(tree).withSource(sources.head))
                   sources = sources.tail
@@ -61,10 +61,10 @@ class YCheckPositions extends Phase {
 
   private def isMacro(call: Tree)(using Context) =
     call.symbol.is(Macro) ||
-    (call.symbol.isClass && call.tpe.derivesFrom(defn.MacroAnnotationClass)) ||
-    // The call of a macro after typer is encoded as a Select while other inlines are Ident
-    // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
-    (!(ctx.phase <= postTyperPhase) && call.isInstanceOf[Select])
+        (call.symbol.isClass && call.tpe.derivesFrom(defn.MacroAnnotationClass)) ||
+    // In 3.0-3.3, the call of a macro after typer is encoded as a Select while other inlines are Ident.
+    // In those versions we kept the reference to the top-level class instead of the methods.
+    (!(ctx.phase <= postTyperPhase) && call.symbol.isClass && call.isInstanceOf[Select])
 
 }
 

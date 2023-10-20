@@ -31,7 +31,7 @@ object Trees {
 
   /** Property key for backquoted identifiers and definitions */
   val Backquoted: Property.StickyKey[Unit] = Property.StickyKey()
-  
+
   val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Trees take a parameter indicating what the type of their `tpe` field
@@ -661,7 +661,8 @@ object Trees {
    *
    *  @param  call      Info about the original call that was inlined
    *                    Until PostTyper, this is the full call, afterwards only
-   *                    a reference to the toplevel class from which the call was inlined.
+   *                    a reference to the method or the top-level class from
+   *                    which the call was inlined.
    *  @param  bindings  Bindings for proxies to be used in the inlined code
    *  @param  expansion The inlined tree, minus bindings.
    *
