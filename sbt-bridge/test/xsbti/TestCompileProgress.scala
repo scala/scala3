@@ -8,9 +8,11 @@ class TestCompileProgress extends CompileProgress:
   class Run:
     private[TestCompileProgress] val _phases: mutable.Set[String] = mutable.LinkedHashSet.empty
     private[TestCompileProgress] val _unitPhases: mutable.Map[String, mutable.Set[String]] = mutable.LinkedHashMap.empty
+    private[TestCompileProgress] var _latestTotal: Int = 0
 
     def phases: List[String] = _phases.toList
     def unitPhases: collection.MapView[String, List[String]] = _unitPhases.view.mapValues(_.toList)
+    def total: Int = _latestTotal
 
   private val _runs: mutable.ListBuffer[Run] = mutable.ListBuffer.empty
   private var _currentRun: Run = new Run
@@ -27,4 +29,5 @@ class TestCompileProgress extends CompileProgress:
   override def advance(current: Int, total: Int, prevPhase: String, nextPhase: String): Boolean =
     _currentRun._phases += prevPhase
     _currentRun._phases += nextPhase
+    _currentRun._latestTotal = total
     true

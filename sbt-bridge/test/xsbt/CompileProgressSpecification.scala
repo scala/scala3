@@ -9,6 +9,30 @@ import org.junit.Assert._
 class CompileProgressSpecification {
 
   @Test
+  def totalIsMoreWhenSourcePath = {
+    val srcA = """class A"""
+    val srcB = """class B"""
+    val extraC = """trait C""" // will only exist in the `-sourcepath`, causing a late compile
+    val extraD = """trait D""" // will only exist in the `-sourcepath`, causing a late compile
+    val srcE = """class E extends C""" // depends on class in the sourcepath
+    val srcF = """class F extends C, D""" // depends on classes in the sourcepath
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+
+    val totalA = compilerForTesting.extractTotal(srcA)()
+    assertTrue("expected more than 1 unit of work for a single file", totalA > 1)
+
+    val totalB = compilerForTesting.extractTotal(srcA, srcB)()
+    assertEquals("expected twice the work for two sources", totalA * 2, totalB)
+
+    val totalC = compilerForTesting.extractTotal(srcA, srcE)(extraC)
+    assertEquals("expected 2x+1 the work for two sources, and 1 late compile", totalA * 2 + 1, totalC)
+
+    val totalD = compilerForTesting.extractTotal(srcA, srcF)(extraC, extraD)
+    assertEquals("expected 2x+2 the work for two sources, and 2 late compiles", totalA * 2 + 2, totalD)
+  }
+
+  @Test
   def multipleFilesVisitSamePhases = {
     val srcA = """class A"""
     val srcB = """class B"""
