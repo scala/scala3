@@ -244,7 +244,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
     final def countErrors  (reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._1
     final def countWarnings(reporters: Seq[TestReporter]) = countErrorsAndWarnings(reporters)._2
-    final def reporterFailed(r: TestReporter) = r.compilerCrashed || r.errorCount > 0
+    final def reporterFailed(r: TestReporter) = r.errorCount > 0
 
     /**
      * For a given test source, returns a check file against which the result of the test run
@@ -733,22 +733,20 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       lazy val (map, expCount) = getWarnMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val obtCount = reporters.foldLeft(0)(_ + _.warningCount)
       lazy val (expected, unexpected) = getMissingExpectedWarnings(map, reporters.iterator.flatMap(_.diagnostics))
+      lazy val diagnostics = reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s" at ${e.pos.line + 1}: ${e.message}"))
+      def showLines(title: String, lines: Seq[String]) = if lines.isEmpty then "" else title + lines.mkString("\n", "\n", "")
       def hasMissingAnnotations = expected.nonEmpty || unexpected.nonEmpty
-      def showDiagnostics = "-> following the diagnostics:\n" +
-        reporters.flatMap(_.diagnostics.toSeq.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
+      def showDiagnostics = showLines("-> following the diagnostics:", diagnostics)
       Option:
-        if reporters.exists(_.compilerCrashed) then s"Compiler crashed when compiling: ${testSource.title}"
-        else if reporters.exists(_.errorCount > 0) then
+        if reporters.exists(_.errorCount > 0) then
           s"""Compilation failed for: ${testSource.title}
              |$showDiagnostics
              |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
-        else if obtCount == 0 then s"\nNo warnings found when compiling warn test $testSource"
-        else if expCount == 0 then s"\nNo warning expected/defined in $testSource -- use // warn"
         else if expCount != obtCount then
           s"""|Wrong number of warnings encountered when compiling $testSource
               |expected: $expCount, actual: $obtCount
-              |${expected.mkString("Unfulfilled expectations:\n", "\n", "")}
-              |${unexpected.mkString("Unexpected warnings:\n", "\n", "")}
+              |${showLines("Unfulfilled expectations:", expected)}
+              |${showLines("Unexpected warnings:", unexpected)}
               |$showDiagnostics
               |""".stripMargin.trim.linesIterator.mkString("\n", "\n", "")
         else if hasMissingAnnotations then s"\nWarnings found on incorrect row numbers when compiling $testSource\n$showDiagnostics"
@@ -862,7 +860,6 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     override def suppressErrors = true
 
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
-      def compilerCrashed = reporters.exists(_.compilerCrashed)
       lazy val (errorMap, expectedErrors) = getErrorMapAndExpectedCount(testSource.sourceFiles.toIndexedSeq)
       lazy val actualErrors = reporters.foldLeft(0)(_ + _.errorCount)
       lazy val (expected, unexpected) = getMissingExpectedErrors(errorMap, reporters.iterator.flatMap(_.errors))
@@ -871,8 +868,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         reporters.flatMap(_.allErrors.sortBy(_.pos.line).map(e => s"${e.pos.line + 1}: ${e.message}")).mkString(" at ", "\n at ", "")
 
       Option {
-        if compilerCrashed then s"Compiler crashed when compiling: ${testSource.title}"
-        else if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
+        if actualErrors == 0 then s"\nNo errors found when compiling neg test $testSource"
         else if expectedErrors == 0 then s"\nNo errors expected/defined in $testSource -- use // error or // nopos-error"
         else if expectedErrors != actualErrors then
           s"""|Wrong number of errors encountered when compiling $testSource
