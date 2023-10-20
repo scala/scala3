@@ -173,6 +173,12 @@ object Build {
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
+  // Use the TASTy jar from `scala2-library-tasty` in the classpath
+  // This only works with `scala3-bootstrapped/scalac` and tests in `scala3-bootstrapped`
+  //
+  // Enable in SBT with: set ThisBuild/Build.useScala2LibraryTasty := true
+  val useScala2LibraryTasty = settingKey[Boolean]("Use the TASTy jar from `scala2-library-tasty` in the classpath")
+
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
@@ -218,6 +224,8 @@ object Build {
     Test / parallelExecution := false,
 
     outputStrategy := Some(StdoutOutput),
+
+    useScala2LibraryTasty := false,
 
     // enable verbose exception messages for JUnit
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
@@ -633,7 +641,11 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
 
-        Seq(
+        val scala2LibraryTasty =
+          if (useScala2LibraryTasty.value) Seq("-Ddotty.tests.tasties.scalaLibrary=" + jars("scala2-library-tasty"))
+          else Seq.empty
+
+        scala2LibraryTasty ++ Seq(
           "-Ddotty.tests.dottyCompilerManagedSources=" + managedSrcDir,
           "-Ddotty.tests.classes.dottyInterfaces=" + jars("scala3-interfaces"),
           "-Ddotty.tests.classes.dottyLibrary=" + jars("scala3-library"),
@@ -729,11 +741,9 @@ object Build {
         val args0: List[String] = spaceDelimited("<arg>").parsed.toList
         val decompile = args0.contains("-decompile")
         val printTasty = args0.contains("-print-tasty")
-        val useScala2LibraryTasty = args0.contains("-Yscala2-library-tasty")
         val debugFromTasty = args0.contains("-Ythrough-tasty")
         val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty"
-            && arg != "-Yscala2-library-tasty")
+            arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
         val main =
           if (decompile) "dotty.tools.dotc.decompiler.Main"
           else if (printTasty) "dotty.tools.dotc.core.tasty.TastyPrinter"
@@ -742,10 +752,10 @@ object Build {
 
         var extraClasspath =
           scalaLibTastyOpt match {
-            case Some(scalaLibTasty) if useScala2LibraryTasty =>
+            case Some(scalaLibTasty) if useScala2LibraryTasty.value =>
               Seq(scalaLibTasty, scalaLib, dottyLib)
             case _ =>
-              if (useScala2LibraryTasty) log.error("-Yscala2-library-tasty can only be used with a bootstrapped compiler")
+              if (useScala2LibraryTasty.value) log.warn("useScala2LibraryTasty is ignored on non-bootstrapped compiler")
               Seq(scalaLib, dottyLib)
           }
 
