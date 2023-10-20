@@ -30,7 +30,7 @@ class DiagnosticsTest {
           |}"""
      .diagnostics(m1,
        (m1 to m2,
-        "A pure expression does nothing in statement position; you may be omitting necessary parentheses",
+        "A pure expression does nothing in statement position",
         Warning, Some(PureExpressionInStatementPositionID)))
 
   @Test def diagnosticWorksheetPureExpression: Unit =

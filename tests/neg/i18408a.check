@@ -13,6 +13,6 @@
 -- [E129] Potential Issue Warning: tests/neg/i18408a.scala:4:16 --------------------------------------------------------
 4 |def test2 = fa({42; ()})
   |                ^^
-  |                A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |                A pure expression does nothing in statement position
   |
   | longer explanation available when compiling with `-explain`
