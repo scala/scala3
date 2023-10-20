@@ -17,6 +17,6 @@
    |           Required: box (x$0: String) ->? String
    |
    |           Note that reference (cap3 : CC^), defined in method scope
-   |           cannot be included in outer capture set ? which is associated with method test2
+   |           cannot be included in outer capture set ? of value r which is associated with method test2
    |
    | longer explanation available when compiling with `-explain`

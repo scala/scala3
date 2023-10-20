@@ -4,7 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Flags.*, Contexts.*, Decorators.*
-import config.Printers.capt
+import config.Printers.{capt, captDebug}
 import Annotations.Annotation
 import annotation.threadUnsafe
 import annotation.constructorOnly
@@ -515,7 +515,7 @@ object CaptureSet:
       else if !levelOK(elem) then
         CompareResult.LevelError(this, elem)
       else
-        //assert(id != 19 || !elem.isLocalRootCapability, elem.asInstanceOf[TermRef].localRootOwner)
+        //if id == 34 then assert(!elem.isUniversalRootCapability)
         elems += elem
         if elem.isUniversalRootCapability then
           rootAddedHandler()
@@ -529,6 +529,10 @@ object CaptureSet:
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isUniversalRootCapability then !noUniversal
+      else if elem.isInstanceOf[TermParamRef] then
+        //println(i"can't include $elem in $this")
+        //new Error().printStackTrace()
+        !ctx.settings.YccNew.value
       else !levelLimit.exists
         || elem.match
             case elem: TermRef =>
@@ -537,7 +541,8 @@ object CaptureSet:
               levelLimit.isContainedIn(sym.levelOwner)
             case elem: ThisType =>
               levelLimit.isContainedIn(elem.cls.levelOwner)
-            case _ => true
+            case _ =>
+              true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then
@@ -738,9 +743,10 @@ object CaptureSet:
       else if accountsFor(elem) then
         CompareResult.OK
       else
-        addNewElem(elem).andAlso:
-          source.tryInclude(bimap.backward(elem), this)
-            .showing(i"propagating new elem $elem backward from $this to $source", capt)
+        source.tryInclude(bimap.backward(elem), this)
+          .showing(i"propagating new elem $elem backward from $this to $source = $result", capt)
+          .andAlso:
+            addNewElem(elem)
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
@@ -1037,7 +1043,7 @@ object CaptureSet:
         case _ =>
           empty
     recur(tp)
-      .showing(i"capture set of $tp = $result", capt)
+      .showing(i"capture set of $tp = $result", captDebug)
 
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
 
