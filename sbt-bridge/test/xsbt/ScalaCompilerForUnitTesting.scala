@@ -30,6 +30,12 @@ class ScalaCompilerForUnitTesting {
     tempSrcFiles.map(src => run.unitPhases(src.id))
   }
 
+  def extractTotal(srcs: String*)(extraSourcePath: String*): Int = {
+    val (tempSrcFiles, Callbacks(_, testProgress)) = compileSrcs(List(srcs.toList), extraSourcePath.toList)
+    val run = testProgress.runs.head
+    run.total
+  }
+
   def extractProgressPhases(srcs: String*): List[String] = {
     val (_, Callbacks(_, testProgress)) = compileSrcs(srcs: _*)
     testProgress.runs.head.phases
@@ -136,7 +142,7 @@ class ScalaCompilerForUnitTesting {
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  def compileSrcs(groupedSrcs: List[List[String]]): (Seq[VirtualFile], Callbacks) = {
+  def compileSrcs(groupedSrcs: List[List[String]], sourcePath: List[String] = Nil): (Seq[VirtualFile], Callbacks) = {
       val temp = IO.createTemporaryDirectory
       val analysisCallback = new TestCallback
       val testProgress = new TestCompileProgress
@@ -146,6 +152,11 @@ class ScalaCompilerForUnitTesting {
       val bridge = new CompilerBridge
 
       val files = for ((compilationUnits, unitId) <- groupedSrcs.zipWithIndex) yield {
+        val extraFiles = sourcePath.toSeq.zipWithIndex.map {
+          case (src, i) =>
+            val fileName = s"Extra-$unitId-$i.scala"
+            prepareSrcFile(temp, fileName, src)
+        }
         val srcFiles = compilationUnits.toSeq.zipWithIndex.map {
           (src, i) =>
             val fileName = s"Test-$unitId-$i.scala"
@@ -157,10 +168,12 @@ class ScalaCompilerForUnitTesting {
         val output = new SingleOutput:
           def getOutputDirectory() = classesDir
 
+        val maybeSourcePath = if extraFiles.isEmpty then Nil else List("-sourcepath", temp.getAbsolutePath.toString)
+
         bridge.run(
           virtualSrcFiles,
           new TestDependencyChanges,
-          Array("-Yforce-sbt-phases", "-classpath", classesDirPath, "-usejavacp", "-d", classesDirPath),
+          Array("-Yforce-sbt-phases", "-classpath", classesDirPath, "-usejavacp", "-d", classesDirPath) ++ maybeSourcePath,
           output,
           analysisCallback,
           new TestReporter,
