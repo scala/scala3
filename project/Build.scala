@@ -632,6 +632,7 @@ object Build {
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
       javaOptions ++= {
+        val log = streams.value.log
         val managedSrcDir = {
           // Populate the directory
           (Compile / managedSources).value
@@ -641,9 +642,13 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
 
-        val scala2LibraryTasty =
-          if (useScala2LibraryTasty.value) Seq("-Ddotty.tests.tasties.scalaLibrary=" + jars("scala2-library-tasty"))
-          else Seq.empty
+        val scala2LibraryTasty = jars.get("scala2-library-tasty") match {
+          case Some(scala2LibraryTastyJar) if useScala2LibraryTasty.value =>
+            Seq("-Ddotty.tests.tasties.scalaLibrary=" + scala2LibraryTastyJar)
+          case _ =>
+            if (useScala2LibraryTasty.value) log.warn("useScala2LibraryTasty is ignored on non-bootstrapped compiler")
+            Seq.empty
+        }
 
         scala2LibraryTasty ++ Seq(
           "-Ddotty.tests.dottyCompilerManagedSources=" + managedSrcDir,
