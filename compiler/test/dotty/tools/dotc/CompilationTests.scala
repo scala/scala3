@@ -31,7 +31,8 @@ class CompilationTests {
   @Test def pos: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePos")
     var tests = List(
-      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Wunused:all", "-Xlint:private-shadow", "-Xlint:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
