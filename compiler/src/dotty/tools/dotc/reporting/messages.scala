@@ -2403,10 +2403,20 @@ class MemberWithSameNameAsStatic()(using Context)
 class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(using Context)
   extends Message(PureExpressionInStatementPositionID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"
+  def msg(using Context) = "A pure expression does nothing in statement position"
   def explain(using Context) =
     i"""The pure expression $stat doesn't have any side effect and its result is not assigned elsewhere.
         |It can be removed without changing the semantics of the program. This may indicate an error."""
+}
+
+class PureUnitExpression(stat: untpd.Tree, tpe: Type)(using Context)
+  extends Message(PureUnitExpressionID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Discarded non-Unit value of type ${tpe.widen}. You may want to use `()`."
+  def explain(using Context) =
+    i"""As this expression is not of type Unit, it is desugared into `{ $stat; () }`.
+       |Here the `$stat` expression is a pure statement that can be discarded.
+       |Therefore the expression is effectively equivalent to `()`."""
 }
 
 class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Context)

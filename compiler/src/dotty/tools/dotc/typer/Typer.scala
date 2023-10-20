@@ -4226,7 +4226,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // local adaptation makes sure every adapted tree conforms to its pt
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
-        checkStatementPurity(tree1)(tree, ctx.owner)
+        checkStatementPurity(tree1)(tree, ctx.owner, isUnitExpr = true)
         if (!ctx.isAfterTyper && !tree.isInstanceOf[Inlined] && ctx.settings.WvalueDiscard.value && !isThisTypeResult(tree)) {
           report.warning(ValueDiscarding(tree.tpe), tree.srcPos)
         }
@@ -4432,7 +4432,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedExpr(cmp, defn.BooleanType)
       case _ =>
 
-  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =
+  private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean = false)(using Context): Unit =
     if !tree.tpe.isErroneous
       && !ctx.isAfterTyper
       && !tree.isInstanceOf[Inlined]
@@ -4450,6 +4450,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // sometimes we do not have the original anymore and use the transformed tree instead.
         // But taken together, the two criteria are quite accurate.
         missingArgs(tree, tree.tpe.widen)
+      case _ if isUnitExpr =>
+        report.warning(PureUnitExpression(original, tree.tpe), original.srcPos)
       case _ =>
         report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
 
