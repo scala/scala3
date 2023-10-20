@@ -2403,7 +2403,7 @@ class MemberWithSameNameAsStatic()(using Context)
 class PureExpressionInStatementPosition(stat: untpd.Tree, val exprOwner: Symbol)(using Context)
   extends Message(PureExpressionInStatementPositionID) {
   def kind = MessageKind.PotentialIssue
-  def msg(using Context) = "A pure expression does nothing in statement position; you may be omitting necessary parentheses"
+  def msg(using Context) = "A pure expression does nothing in statement position"
   def explain(using Context) =
     i"""The pure expression $stat doesn't have any side effect and its result is not assigned elsewhere.
         |It can be removed without changing the semantics of the program. This may indicate an error."""
