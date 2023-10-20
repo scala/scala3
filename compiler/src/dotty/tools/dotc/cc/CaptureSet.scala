@@ -529,20 +529,19 @@ object CaptureSet:
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isUniversalRootCapability then !noUniversal
-      else if elem.isInstanceOf[TermParamRef] then
-        //println(i"can't include $elem in $this")
-        //new Error().printStackTrace()
-        !ctx.settings.YccNew.value
-      else !levelLimit.exists
-        || elem.match
-            case elem: TermRef =>
-              var sym = elem.symbol
-              if sym.isLevelOwner then sym = sym.owner
-              levelLimit.isContainedIn(sym.levelOwner)
-            case elem: ThisType =>
-              levelLimit.isContainedIn(elem.cls.levelOwner)
-            case _ =>
-              true
+      else elem match
+        case elem: TermRef =>
+          if levelLimit.exists then
+            var sym = elem.symbol
+            if sym.isLevelOwner then sym = sym.owner
+            levelLimit.isContainedIn(sym.levelOwner)
+          else true
+        case elem: ThisType =>
+          if levelLimit.exists then
+            levelLimit.isContainedIn(elem.cls.levelOwner)
+          else true
+        case elem: TermParamRef =>
+          true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
       if (cs eq this) || cs.isUniversal || isConst then

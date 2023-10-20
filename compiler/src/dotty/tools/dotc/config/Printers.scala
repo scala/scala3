@@ -22,6 +22,10 @@ object Printers {
     if ctx.settings.YccLog.value then captActive else noPrinter
   val captActive = new Printer
 
+  def captDebug(using Context): Printer =
+    if ctx.settings.YccDebug.value then captDebugActive else noPrinter
+  val captDebugActive = new Printer
+
   val constr = noPrinter
   val core = noPrinter
   val checks = noPrinter

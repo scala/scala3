@@ -8,7 +8,7 @@ import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
 import Annotations.Annotation
 import config.Feature
-import config.Printers.capt
+import config.Printers.{capt, captDebug}
 import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
 import CaptureSet.{IdentityCaptRefMap, IdempotentCaptRefMap}
@@ -595,7 +595,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         needsVariable(parent)
       case _ =>
         false
-  }.showing(i"can have inferred capture $tp = $result", capt)
+  }.showing(i"can have inferred capture $tp = $result", captDebug)
 
   /** Pull out an embedded capture set from a part of `tp` */
   def normalizeCaptures(tp: Type)(using Context): Type = tp match
