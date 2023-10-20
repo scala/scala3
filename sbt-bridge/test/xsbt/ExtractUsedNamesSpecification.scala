@@ -1,6 +1,7 @@
 package xsbt
 
 import xsbti.UseScope
+import ScalaCompilerForUnitTesting.Callbacks
 
 import org.junit.{ Test, Ignore }
 import org.junit.Assert._
@@ -226,7 +227,7 @@ class ExtractUsedNamesSpecification {
 
     def findPatMatUsages(in: String): Set[String] = {
       val compilerForTesting = new ScalaCompilerForUnitTesting
-      val (_, callback) =
+      val (_, Callbacks(callback, _)) =
         compilerForTesting.compileSrcs(List(List(sealedClass, in)))
       val clientNames = callback.usedNamesAndScopes.view.filterKeys(!_.startsWith("base."))
 

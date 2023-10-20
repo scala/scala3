@@ -145,6 +145,12 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     if (miniPhases.length == 1) miniPhases(0).phaseName
     else miniPhases.map(_.phaseName).mkString("MegaPhase{", ", ", "}")
 
+  /** Used in progress reporting to avoid super long phase names, also the precision is not so important here */
+  lazy val shortPhaseName: String =
+    if (miniPhases.length == 1) miniPhases(0).phaseName
+    else
+      s"MegaPhase{${miniPhases.head.phaseName},...,${miniPhases.last.phaseName}}"
+
   private var relaxedTypingCache: Boolean = _
   private var relaxedTypingKnown = false
 
