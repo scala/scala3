@@ -27,7 +27,7 @@ scala> def f = { 1; 2 }
 -- [E129] Potential Issue Warning: ---------------------------------------------
 1 | def f = { 1; 2 }
   |           ^
-  |A pure expression does nothing in statement position; you may be omitting necessary parentheses
+  |           A pure expression does nothing in statement position
   |
   | longer explanation available when compiling with `-explain`
 def f: Int
