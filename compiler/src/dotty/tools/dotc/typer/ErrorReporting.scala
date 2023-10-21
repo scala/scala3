@@ -204,7 +204,7 @@ object ErrorReporting {
           |  $found
           |conforms to
           |  $expected
-          |but the comparison trace ended with `false`:
+          |but none of the attempts shown below succeeded:
           |"""
       val c = ctx.typerState.constraint
       val constraintText =
@@ -213,7 +213,7 @@ object ErrorReporting {
         else
           i"""a constraint with:
              |$c"""
-      i"""${TypeComparer.explained(_.isSubType(found, expected), header)}
+      i"""${TypeComparer.explained(_.isSubType(found, expected), header, short = !ctx.settings.Ydebug.value)}
          |
          |The tests were made under $constraintText"""
 
