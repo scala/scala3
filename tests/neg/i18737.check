@@ -1,0 +1,75 @@
+-- [E007] Type Mismatch Error: tests/neg/i18737.scala:3:36 -------------------------------------------------------------
+3 |def test2(v: String & Long) = test1(v)  // error
+  |                                    ^
+  |                                    Found:    (v : String & Long)
+  |                                    Required: String & Integer & List[String]
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |
+  | Tree: v
+  | I tried to show that
+  |   (v : String & Long)
+  | conforms to
+  |   String & Integer & List[String]
+  | but none of the attempts shown below succeeded:
+  |
+  |   ==> (v : String & Long)  <:  String & Integer & List[String]
+  |     ==> (v : String & Long)  <:  String & Integer
+  |       ==> (v : String & Long)  <:  Integer
+  |         ==> String & Long  <:  Integer
+  |           ==> String  <:  Integer  = false
+  |           ==> Long  <:  Integer  = false
+  |
+  | The tests were made under the empty constraint
+   ---------------------------------------------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i18737.scala:6:36 -------------------------------------------------------------
+6 |def test4(v: String | Long) = test3(v)  // error
+  |                                    ^
+  |                                    Found:    (v : String | Long)
+  |                                    Required: String | Integer | List[String]
+  |---------------------------------------------------------------------------------------------------------------------
+  | Explanation (enabled by `-explain`)
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |
+  | Tree: v
+  | I tried to show that
+  |   (v : String | Long)
+  | conforms to
+  |   String | Integer | List[String]
+  | but none of the attempts shown below succeeded:
+  |
+  |   ==> (v : String | Long)  <:  String | Integer | List[String]
+  |     ==> String | Long  <:  String | Integer | List[String]
+  |       ==> Long  <:  String | Integer | List[String]
+  |         ==> Long  <:  String | Integer
+  |           ==> Long  <:  String  = false
+  |           ==> Long  <:  Integer  = false
+  |         ==> Long  <:  List[String]  = false
+  |     ==> (v : String | Long)  <:  String | Integer
+  |       ==> String | Long  <:  String | Integer
+  |         ==> Long  <:  String | Integer
+  |           ==> Long  <:  String  = false
+  |           ==> Long  <:  Integer  = false
+  |       ==> (v : String | Long)  <:  String
+  |         ==> String | Long  <:  String
+  |           ==> Long  <:  String  = false
+  |       ==> (v : String | Long)  <:  Integer
+  |         ==> String | Long  <:  Integer
+  |           ==> String  <:  Integer  = false
+  |       ==> String | Long  <:  String | Integer
+  |         ==> Long  <:  String | Integer
+  |           ==> Long  <:  String  = false
+  |           ==> Long  <:  Integer  = false
+  |     ==> (v : String | Long)  <:  List[String]
+  |       ==> String | Long  <:  List[String]
+  |         ==> String  <:  List[String]  = false
+  |     ==> String | Long  <:  String | Integer | List[String]
+  |       ==> Long  <:  String | Integer | List[String]
+  |         ==> Long  <:  String | Integer
+  |           ==> Long  <:  String  = false
+  |           ==> Long  <:  Integer  = false
+  |         ==> Long  <:  List[String]  = false
+  |
+  | The tests were made under the empty constraint
+   ---------------------------------------------------------------------------------------------------------------------

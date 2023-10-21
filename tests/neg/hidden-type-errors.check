@@ -12,12 +12,9 @@
   |   String
   | conforms to
   |   Int
-  | but the comparison trace ended with `false`:
+  | but none of the attempts shown below succeeded:
   |
-  |   ==> String  <:  Int
-  |     ==> String  <:  Int
-  |     <== String  <:  Int = false
-  |   <== String  <:  Int = false
+  |   ==> String  <:  Int  = false
   |
   | The tests were made under the empty constraint
    ---------------------------------------------------------------------------------------------------------------------

@@ -9,12 +9,10 @@
   |   Any
   | conforms to
   |   T & Any
-  | but the comparison trace ended with `false`:
+  | but none of the attempts shown below succeeded:
   |
   |   ==> Any  <:  T & Any
-  |     ==> Any  <:  T
-  |     <== Any  <:  T = false
-  |   <== Any  <:  T & Any = false
+  |     ==> Any  <:  T  = false
   |
   | The tests were made under the empty constraint
    ---------------------------------------------------------------------------------------------------------------------
@@ -29,12 +27,9 @@
   |   CharSequence
   | conforms to
   |   String
-  | but the comparison trace ended with `false`:
+  | but none of the attempts shown below succeeded:
   |
-  |   ==> CharSequence  <:  String
-  |     ==> CharSequence  <:  String
-  |     <== CharSequence  <:  String = false
-  |   <== CharSequence  <:  String = false
+  |   ==> CharSequence  <:  String  = false
   |
   | The tests were made under the empty constraint
    ---------------------------------------------------------------------------------------------------------------------
