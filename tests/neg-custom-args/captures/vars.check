@@ -25,10 +25,4 @@
 -- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------
 34 |  local { cap3 => // error
    |  ^^^^^
-   |  reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
-   |
-   |  Note that the universal capability `cap`
-   |  cannot be included in capture set {x$0, x$0}
-   |
-   |  where:    x$0  is a reference to a value parameter
-   |            x$0² is a reference to a value parameter
+   |  local reference cap3 leaks into outer capture set of type parameter T of method local

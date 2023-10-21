@@ -19,7 +19,7 @@
 27 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
    |                               Found:    (C{val arg: C^}^{c} => Unit) ->{c} Unit
-   |                               Required: Observe[C^]
+   |                               Required: (C^ => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:33 ---------------------------------------

@@ -18,11 +18,11 @@
 51 |      22
 52 |} {  // error
    |                        ^
-   |                        Found:    () ->{x$0, x$0²} Int
+   |                        Found:    () ->{x, x²} Int
    |                        Required: () -> Int
    |
-   |                        where:    x$0  is a reference to a value parameter
-   |                                  x$0² is a reference to a value parameter
+   |                        where:    x  is a reference to a value parameter
+   |                                  x² is a reference to a value parameter
 53 |  (ex: Exception) => () => 22
 54 |}
    |
@@ -30,10 +30,4 @@
 -- Error: tests/neg-custom-args/captures/try.scala:35:11 ---------------------------------------------------------------
 35 |  val xx = handle {  // error
    |           ^^^^^^
-   |           reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
-   |
-   |           Note that the universal capability `cap`
-   |           cannot be included in capture set {x$0, x$0}
-   |
-   |           where:    x$0  is a reference to a value parameter
-   |                     x$0² is a reference to a value parameter
+   |           local reference x leaks into outer capture set of type parameter R of method handle

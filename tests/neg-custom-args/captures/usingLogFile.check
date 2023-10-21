@@ -13,40 +13,16 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
-   |              reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
-   |
-   |              Note that the universal capability `cap`
-   |              cannot be included in capture set {x$0, x$0}
-   |
-   |              where:    x$0  is a reference to a value parameter
-   |                        x$0² is a reference to a value parameter
+   |              local reference f leaks into outer capture set of type parameter T of method usingLogFile
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:28:23 ------------------------------------------------------
 28 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                       ^^^^^^^^^^^^
-   |                       reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
-   |
-   |                       Note that the universal capability `cap`
-   |                       cannot be included in capture set {x$0, x$0}
-   |
-   |                       where:    x$0  is a reference to a value parameter
-   |                                 x$0² is a reference to a value parameter
+   |                       local reference f leaks into outer capture set of type parameter T of method usingLogFile
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:52:16 ------------------------------------------------------
 52 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
-   |                reference (caps.cap : caps.Cap) is not included in the allowed capture set {x$0, x$0²}
-   |
-   |                Note that the universal capability `cap`
-   |                cannot be included in capture set {x$0, x$0}
-   |
-   |                where:    x$0  is a reference to a value parameter
-   |                          x$0² is a reference to a value parameter
+   |                local reference f leaks into outer capture set of type parameter T of method usingFile
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:60:16 ------------------------------------------------------
 60 |    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
    |                ^^^^^^^^^
-   |                reference (_$1 : java.io.OutputStream^) is not included in the allowed capture set {x$0, x$0²}
-   |
-   |                Note that reference (_$1 : java.io.OutputStream^), defined in method $anonfun
-   |                cannot be included in outer capture set {x$0, x$0} which is associated with method test
-   |
-   |                where:    x$0  is a reference to a value parameter
-   |                          x$0² is a reference to a value parameter
+   |                local reference l leaks into outer capture set of type parameter T of method usingFile

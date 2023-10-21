@@ -4,6 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Annotations.*, Flags.*
+import Names.TermName
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.SourceVersion
@@ -45,9 +46,12 @@ def isCaptureCheckingOrSetup(using Context): Boolean =
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
  */
-def depFun(args: List[Type], resultType: Type, isContextual: Boolean)(using Context): Type =
-  MethodType.companion(isContextual = isContextual)(args, resultType)
-    .toFunctionType(alwaysDependent = true)
+def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames: List[TermName] = Nil)(using Context): Type =
+  val make = MethodType.companion(isContextual = isContextual)
+  val mt = 
+    if paramNames.length == args.length then make(paramNames, args, resultType)
+    else make(args, resultType)
+  mt.toFunctionType(alwaysDependent = true)
 
 /** An exception thrown if a @retains argument is not syntactically a CaptureRef */
 class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)

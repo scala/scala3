@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/simple-using.scala:8:2 --------------------------------------------------------
+8 |  usingLogFile { f => () => f.write(2) } // error
+  |  ^^^^^^^^^^^^
+  |  local reference f leaks into outer capture set of type parameter T of method usingLogFile

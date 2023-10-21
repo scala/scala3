@@ -867,11 +867,13 @@ class CheckCaptures extends Recheck, SymTransformer:
           if eparent1 eq eparent then expected
           else CapturingType(eparent1, refs, boxed = expected0.isBoxed)
         case expected @ defn.FunctionOf(args, resultType, isContextual)
-          if defn.isNonRefinedFunction(expected) && defn.isFunctionNType(actual) && !defn.isNonRefinedFunction(actual) =>
-          val expected1 = depFun(args, resultType, isContextual)
-          expected1
-        case _ =>
-          expected
+        if defn.isNonRefinedFunction(expected) =>
+          actual match
+            case RefinedType(parent, nme.apply, rinfo: MethodType)
+            if defn.isFunctionNType(actual) =>
+              depFun(args, resultType, isContextual, rinfo.paramNames)
+            case _ => expected
+        case _ => expected
       recur(expected)
 
     /** For the expected type, implement the rule outlined in #14390:
@@ -1239,7 +1241,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  compensate this by pushing the widened capture set of `f` into ?1.
      *  This solves the soundness issue caused by the ill-formness of ?1.
      */
-    private def healTypeParam(tree: Tree)(using Context): Unit =
+    private def healTypeParam(tree: Tree, paramName: TypeName, meth: Symbol)(using Context): Unit =
       val checker = new TypeTraverser:
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
@@ -1261,8 +1263,14 @@ class CheckCaptures extends Recheck, SymTransformer:
                     val widened = ref.captureSetOfInfo
                     val added = widened.filter(isAllowed(_))
                     capt.println(i"heal $ref in $cs by widening to $added")
-                    checkSubset(added, cs, tree.srcPos)
-                    widened.elems.foreach(recur)
+                    if !added.subCaptures(cs, frozen = false).isOK then
+                      val location = if meth.exists then i" of $meth" else ""
+                      val debugSetInfo = if ctx.settings.YccDebug.value then i" $cs" else ""
+                      report.error(
+                        i"local reference ${ref.paramName} leaks into outer capture set$debugSetInfo of type parameter $paramName$location",
+                        tree.srcPos)
+                    else
+                      widened.elems.foreach(recur)
                 case _ =>
               recur(elem)
 
@@ -1303,14 +1311,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           case t @ TypeApply(fun, args) =>
             fun.knownType.widen match
               case tl: PolyType =>
-                val normArgs = args.lazyZip(tl.paramInfos).map { (arg, bounds) =>
+                val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
                   arg.withType(arg.knownType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
-                }
                 checkBounds(normArgs, tl)
+                args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
               case _ =>
-
-            args.foreach(healTypeParam(_))
           case _ =>
         end check
       end checker
