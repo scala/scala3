@@ -2607,6 +2607,8 @@ object Parsers {
       parents match {
         case parent :: Nil if !in.isNestedStart =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+        case tkn if in.token == INDENT =>
+          New(templateBodyOpt(emptyConstructor, parents, Nil))
         case _ =>
           New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
       }
