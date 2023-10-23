@@ -15,6 +15,7 @@ package scala.collection
 import scala.annotation.{nowarn, tailrec}
 import scala.collection.mutable.{ArrayBuffer, Builder}
 import scala.collection.immutable.LazyList
+import scala.annotation.unchecked.uncheckedCaptures
 import language.experimental.captureChecking
 
 /** Views are collections whose transformation operations are non strict: the resulting elements
@@ -448,7 +449,7 @@ object View extends IterableFactory[View] {
   }
 
   private final class TakeRightIterator[A](underlying: Iterator[A]^, maxlen: Int) extends AbstractIterator[A] {
-    private[this] var current: Iterator[A]^{underlying} = underlying
+    private[this] var current: Iterator[A @uncheckedCaptures]^{underlying} = underlying
     private[this] var len: Int = -1
     private[this] var pos: Int = 0
     private[this] var buf: ArrayBuffer[AnyRef] = _

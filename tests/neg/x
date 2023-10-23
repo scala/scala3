@@ -1,0 +1,151 @@
+2023.10.13 14:54:13 INFO  compiling 37 Scala sources to /Users/odersky/workspace/dotty/compiler/target/scala-3.3.1/classes ...
+2023.10.13 14:54:22 INFO  compiling 36 Scala sources to /Users/odersky/workspace/dotty/compiler/target/scala-3.3.1/classes ...
+2023.10.13 14:54:25 ERROR text document: file:///Users/odersky/workspace/dotty/tests/pos-custom-args/captures/outer-roots.scala
+java.nio.file.NoSuchFileException: /Users/odersky/workspace/dotty/tests/pos-custom-args/captures/outer-roots.scala
+	at sun.nio.fs.UnixException.translateToIOException(UnixException.java:92)
+	at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:106)
+	at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:111)
+	at sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:218)
+	at java.nio.file.Files.newByteChannel(Files.java:380)
+	at java.nio.file.Files.newByteChannel(Files.java:432)
+	at java.nio.file.Files.readAllBytes(Files.java:3288)
+	at scala.meta.internal.io.PlatformFileIO$.slurp(PlatformFileIO.scala:45)
+	at scala.meta.internal.io.FileIO$.slurp(FileIO.scala:24)
+	at scala.meta.internal.metals.InteractiveSemanticdbs.$anonfun$textDocument$2(InteractiveSemanticdbs.scala:90)
+	at scala.Option.getOrElse(Option.scala:201)
+	at scala.meta.internal.metals.InteractiveSemanticdbs.$anonfun$textDocument$1(InteractiveSemanticdbs.scala:90)
+	at java.util.HashMap.compute(HashMap.java:1316)
+	at java.util.Collections$SynchronizedMap.compute(Collections.java:2770)
+	at scala.meta.internal.metals.InteractiveSemanticdbs.textDocument(InteractiveSemanticdbs.scala:89)
+	at scala.meta.internal.metals.InteractiveSemanticdbs.textDocument(InteractiveSemanticdbs.scala:63)
+	at scala.meta.internal.metals.AggregateSemanticdbs.loop$1(AggregateSemanticdbs.scala:30)
+	at scala.meta.internal.metals.AggregateSemanticdbs.textDocument(AggregateSemanticdbs.scala:36)
+	at scala.meta.internal.metals.CodeLensProvider.findLenses(CodeLensProvider.scala:22)
+	at scala.meta.internal.metals.MetalsLspService.$anonfun$codeLens$2(MetalsLspService.scala:1574)
+	at scala.meta.internal.metals.TimerProvider.timedThunk(TimerProvider.scala:25)
+	at scala.meta.internal.metals.MetalsLspService.$anonfun$codeLens$1(MetalsLspService.scala:1572)
+	at scala.meta.internal.metals.CancelTokens$.$anonfun$apply$2(CancelTokens.scala:26)
+	at scala.concurrent.Future$.$anonfun$apply$1(Future.scala:687)
+	at scala.concurrent.impl.Promise$Transformation.run(Promise.scala:467)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.lang.Thread.run(Thread.java:833)
+
+2023.10.13 14:54:27 INFO  Deduplicating compilation of project_bd2c96d2de from bsp client 'scala-cli 0.1.19' (since 4h 32m 27.423s)
+2023.10.13 14:54:27 INFO  compiling project_bd2c96d2de (470 scala sources and 5 java sources)
+2023.10.13 14:54:28 INFO  time: compiled scala3-compiler in 14s
+2023.10.13 14:54:28 INFO  compiling scala3-presentation-compiler
+2023.10.13 14:54:28 INFO  compiling scala3-compiler-test
+2023.10.13 14:54:28 INFO  compiling 2 Scala sources to /Users/odersky/workspace/dotty/presentation-compiler/target/scala-3.3.1/classes ...
+2023.10.13 14:54:28 INFO  compiling 7 Scala sources and 1 Java source to /Users/odersky/workspace/dotty/compiler/target/scala-3.3.1/test-classes ...
+2023.10.13 14:54:30 INFO  time: compiled scala3-presentation-compiler in 0.54s
+2023.10.13 14:54:30 INFO  compiling scala3-presentation-compiler-test
+2023.10.13 14:54:30 INFO  time: compiled scala3-presentation-compiler-test in 26ms
+2023.10.13 14:54:30 INFO  time: compiled scala3-compiler-test in 1.32s
+2023.10.13 14:54:30 INFO  Processing buildTarget/scalaMainClasses
+2023.10.13 14:54:31 INFO  compiling scala3-interfaces
+2023.10.13 14:54:31 INFO  compiling scala3-library
+2023.10.13 14:54:31 INFO  time: compiled scala3-interfaces in 2ms
+2023.10.13 14:54:31 INFO  time: compiled scala3-library in 3ms
+2023.10.13 14:54:31 INFO  compiling tasty-core
+2023.10.13 14:54:31 INFO  time: compiled tasty-core in 2ms
+2023.10.13 14:54:31 INFO  compiling scala3-compiler
+2023.10.13 14:54:31 INFO  time: compiled scala3-compiler in 14ms
+2023.10.13 14:54:31 INFO  compiling scala3-sbt-bridge
+2023.10.13 14:54:31 INFO  compiling scala3-presentation-compiler
+2023.10.13 14:54:31 INFO  compiling scala3-compiler-test
+2023.10.13 14:54:31 INFO  compiling 1 Java source to /Users/odersky/workspace/dotty/sbt-bridge/src/target/classes ...
+2023.10.13 14:54:31 INFO  time: compiled scala3-compiler-test in 9ms
+2023.10.13 14:54:31 INFO  time: compiled scala3-presentation-compiler in 14ms
+2023.10.13 14:54:31 INFO  compiling scala3-presentation-compiler-test
+2023.10.13 14:54:31 INFO  time: compiled scala3-presentation-compiler-test in 7ms
+2023.10.13 14:54:32 INFO  time: compiled scala3-sbt-bridge in 1.06s
+2023.10.13 14:54:33 INFO  compiling scala3-library-bootstrapped
+2023.10.13 14:54:33 INFO  compiling 2 Scala sources to /Users/odersky/workspace/dotty/out/bootstrap/scala3-library-bootstrapped/scala-3.4.0-RC1-bin-SNAPSHOT-nonbootstrapped/classes ...
+2023.10.13 14:54:35 INFO  Processing buildTarget/scalaTestClasses
+2023.10.13 14:54:35 INFO  compiling scala3-library
+2023.10.13 14:54:35 INFO  time: compiled scala3-library in 1ms
+2023.10.13 14:54:35 INFO  compiling scala3-interfaces
+2023.10.13 14:54:35 INFO  compiling tasty-core
+2023.10.13 14:54:35 INFO  time: compiled scala3-interfaces in 1ms
+2023.10.13 14:54:35 INFO  time: compiled tasty-core in 1ms
+2023.10.13 14:54:35 INFO  compiling scala3-compiler
+2023.10.13 14:54:35 INFO  time: compiled scala3-compiler in 15ms
+2023.10.13 14:54:35 INFO  compiling scala3-presentation-compiler
+2023.10.13 14:54:35 INFO  compiling scala3-compiler-test
+2023.10.13 14:54:35 INFO  time: compiled scala3-presentation-compiler in 5ms
+2023.10.13 14:54:35 INFO  time: compiled scala3-compiler-test in 6ms
+2023.10.13 14:54:35 INFO  compiling scala3-presentation-compiler-test
+2023.10.13 14:54:35 INFO  time: compiled scala3-presentation-compiler-test in 3ms
+2023.10.13 14:54:35 INFO  Processing buildTarget/jvmRunEnvironment
+2023.10.13 14:54:35 INFO  compiling scala3-interfaces
+2023.10.13 14:54:35 INFO  compiling scala3-library
+2023.10.13 14:54:35 INFO  time: compiled scala3-interfaces in 3ms
+2023.10.13 14:54:35 INFO  time: compiled scala3-library in 4ms
+2023.10.13 14:54:35 INFO  compiling tasty-core
+2023.10.13 14:54:35 INFO  time: compiled tasty-core in 1ms
+2023.10.13 14:54:35 INFO  compiling scala3-compiler
+2023.10.13 14:54:35 INFO  time: compiled scala3-compiler in 13ms
+2023.10.13 14:54:35 INFO  compiling scala3-sbt-bridge
+2023.10.13 14:54:35 INFO  compiling scala3-compiler-test
+2023.10.13 14:54:35 INFO  compiling scala3-presentation-compiler
+2023.10.13 14:54:35 INFO  time: compiled scala3-sbt-bridge in 8ms
+2023.10.13 14:54:35 INFO  time: compiled scala3-presentation-compiler in 8ms
+2023.10.13 14:54:35 INFO  time: compiled scala3-compiler-test in 13ms
+2023.10.13 14:54:35 INFO  compiling scala3-presentation-compiler-test
+2023.10.13 14:54:35 INFO  time: compiled scala3-presentation-compiler-test in 3ms
+2023.10.13 14:54:35 INFO  compiling scala3-library-bootstrapped
+2023.10.13 14:54:41 WARN  sbt does not support `buildTarget/inverseSources`, unable to fetch targets owning source.
+2023.10.13 14:54:41 WARN  no build target for: /Users/odersky/workspace/dotty/tests/neg/i18588.scala
+2023.10.13 14:54:41 WARN  sbt does not support `buildTarget/inverseSources`, unable to fetch targets owning source.
+2023.10.13 14:54:41 WARN  no build target for: /Users/odersky/workspace/dotty/tests/neg/i18588.scala
+2023.10.13 14:54:48 WARN  sbt does not support `buildTarget/inverseSources`, unable to fetch targets owning source.
+2023.10.13 14:54:48 WARN  no build target for: /Users/odersky/workspace/dotty/tests/neg/i18588.scala
+2023.10.13 14:55:05 INFO  Processing workspace/buildTargets
+2023.10.13 14:55:13 WARN  sbt does not support `buildTarget/inverseSources`, unable to fetch targets owning source.
+2023.10.13 14:55:13 WARN  no build target for: /Users/odersky/workspace/dotty/tests/neg/i18588.scala
+2023.10.13 14:56:06 INFO  Processing workspace/buildTargets
+2023.10.13 14:56:08 INFO  time: code lens generation in 1.36s
+2023.10.13 14:56:16 INFO  time: code lens generation in 1.24s
+2023.10.13 14:56:30 WARN  sbt does not support `buildTarget/inverseSources`, unable to fetch targets owning source.
+2023.10.13 14:56:32 WARN  no build target for: /Users/odersky/workspace/dotty/tests/neg/i18588.scala
+2023.10.13 14:56:41 INFO  time: code lens generation in 24s
+2023.10.13 14:56:53 INFO  BSP server: [warn] ./backend/jvm/ClassNode1.java:1:1: Using directives detected in multiple files. It is recommended to keep them centralized in the /Users/odersky/workspace/dotty/tests/pos-with-compiler-cc/project.scala file.
+2023.10.13 14:56:53 INFO  BSP server: [warn] ./backend/jvm/LabelNode1.java:1:1: Using directives detected in multiple files. It is recommended to keep them centralized in the /Users/odersky/workspace/dotty/tests/pos-with-compiler-cc/project.scala file.
+2023.10.13 14:56:53 INFO  BSP server: [warn] ./backend/jvm/MethodNode1.java:1:1: Using directives detected in multiple files. It is recommended to keep them centralized in the /Users/odersky/workspace/dotty/tests/pos-with-compiler-cc/project.scala file.
+2023.10.13 14:56:53 INFO  BSP server: [warn] ./dotc/profile/ExtendedThreadMxBean.java:1:1: Using directives detected in multiple files. It is recommended to keep them centralized in the /Users/odersky/workspace/dotty/tests/pos-with-compiler-cc/project.scala file.
+2023.10.13 14:56:53 INFO  BSP server: [warn] package dotty.tools.dotc.profile;
+2023.10.13 14:56:53 INFO  BSP server: [warn] ^
+2023.10.13 14:56:53 INFO  BSP server: [warn] ./dotc/profile/ExternalToolHook.java:1:1: Using directives detected in multiple files. It is recommended to keep them centralized in the /Users/odersky/workspace/dotty/tests/pos-with-compiler-cc/project.scala file.
+2023.10.13 14:56:53 INFO  BSP server: [warn] package dotty.tools.dotc.profile;
+2023.10.13 14:56:53 INFO  BSP server: [warn] ^
+2023.10.13 14:56:59 INFO  time: code lens generation in 35s
+2023.10.13 14:56:59 INFO  time: code lens generation in 37s
+2023.10.13 14:57:06 INFO  Processing workspace/buildTargets
+2023.10.13 14:58:32 INFO  Processing workspace/buildTargets
+2023.10.13 14:59:13 INFO  Processing workspace/buildTargets
+[Error - 15:01:20] Request textDocument/codeAction failed.
+  Message: Internal error.
+  Code: -32603
+java.lang.RuntimeException: java.lang.reflect.InvocationTargetException
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$null$0(GenericEndpoint.java:67)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.request(GenericEndpoint.java:120)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleRequest(RemoteEndpoint.java:261)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:190)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:194)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:94)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:113)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+Caused by: java.lang.reflect.InvocationTargetException
+	at jdk.internal.reflect.GeneratedMethodAccessor11.invoke(Unknown Source)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$null$0(GenericEndpoint.java:65)
+	... 11 more
+Caused by: java.lang.OutOfMemoryError: Java heap space
+
+2023.10.13 15:01:21 INFO  time: code lens generation in 1.23s

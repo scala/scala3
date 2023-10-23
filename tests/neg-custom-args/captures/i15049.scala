@@ -2,7 +2,7 @@ class Session:
   def request = "Response"
 class Foo:
   private val session: Session^{cap} = new Session
-  def withSession[T](f: (local: caps.Cap) ?-> (Session^{local}) => T): T = f(session)
+  def withSession[sealed T](f: Session^ => T): T = f(session)
 
 def Test: Unit =
   val f = new Foo

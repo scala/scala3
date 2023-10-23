@@ -36,7 +36,7 @@ import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 import compiletime.uninitialized
-import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, EventuallyCapturingType, boxedUnlessFun, ccNestingLevel}
+import cc.{CapturingType, CaptureSet, derivedCapturingType, isBoxedCapturing, RetainingType, isCaptureChecking}
 import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 
 import scala.annotation.internal.sharable
@@ -834,26 +834,19 @@ object Types {
               pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
-        else rinfo match
-          case CapturingType(_, cs: CaptureSet.RefiningVar) =>
-            // If `rinfo` is a capturing type added by `addCaptureRefinements` it
-            // already contains everything there is to know about the member type.
-            // On the other hand, the member in parent might belong to an outer nesting level,
-            // which should be ignored at the point where instances of the class are constructed.
-            pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
-          case _ =>
-            val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
-            val joint = pdenot.meet(
-              new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
-              pre,
-              safeIntersection = ctx.base.pendingMemberSearches.contains(name))
-            joint match
-              case joint: SingleDenotation
-              if isRefinedMethod && rinfo <:< joint.info =>
-                // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-                joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
-              case _ =>
-                joint
+        else
+          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
+          val joint = pdenot.meet(
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
+            pre,
+            safeIntersection = ctx.base.pendingMemberSearches.contains(name))
+          joint match
+            case joint: SingleDenotation
+            if isRefinedMethod && rinfo <:< joint.info =>
+              // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
+              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
+            case _ =>
+              joint
       }
 
       def goApplied(tp: AppliedType, tycon: HKTypeLambda) =
@@ -1456,12 +1449,12 @@ object Types {
         if (tp1.exists) tp1.dealias1(keep, keepOpaques) else tp
       case tp: AnnotatedType =>
         val parent1 = tp.parent.dealias1(keep, keepOpaques)
-        tp match
+        if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
+        else tp match
           case tp @ CapturingType(parent, refs) =>
             tp.derivedCapturingType(parent1, refs)
           case _ =>
-            if keep(tp) then tp.derivedAnnotatedType(parent1, tp.annot)
-            else parent1
+            parent1
       case tp: LazyRef =>
         tp.ref.dealias1(keep, keepOpaques)
       case _ => this
@@ -2178,24 +2171,22 @@ object Types {
     /** Is the reference tracked? This is true if it can be tracked and the capture
      *  set of the underlying type is not always empty.
      */
-    final def isTracked(using Context): Boolean = isTrackableRef && !captureSetOfInfo.isAlwaysEmpty
+    final def isTracked(using Context): Boolean =
+      isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this reference the generic root capability `cap` ? */
-    def isGenericRootCapability(using Context): Boolean = false
+    def isUniversalRootCapability(using Context): Boolean = false
 
     /** Is this reference a local root capability `{<cap in owner>}`
      *  for some level owner?
      */
-    def isLocalRootCapability(using Context): Boolean =
-      localRootOwner.exists
-
-    /** If this is a local root capability, its owner, otherwise NoSymbol.
-     */
-    def localRootOwner(using Context): Symbol = NoSymbol
+    def isLocalRootCapability(using Context): Boolean = this match
+      case tp: TermRef => tp.localRootOwner.exists
+      case _ => false
 
     /** Is this reference the a (local or generic) root capability? */
     def isRootCapability(using Context): Boolean =
-      isGenericRootCapability || isLocalRootCapability
+      isUniversalRootCapability || isLocalRootCapability
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2213,7 +2204,7 @@ object Types {
       else
         myCaptureSet = CaptureSet.Pending
         val computed = CaptureSet.ofInfo(this)
-        if ctx.phase != Phases.checkCapturesPhase || underlying.isProvisional then
+        if !isCaptureChecking || underlying.isProvisional then
           myCaptureSet = null
         else
           myCaptureSet = computed
@@ -2714,7 +2705,7 @@ object Types {
             if (tparams.head.eq(tparam))
               return args.head match {
                 case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
-                case arg => arg.boxedUnlessFun(tycon)
+                case arg => arg
               }
             tparams = tparams.tail
             args = args.tail
@@ -2929,17 +2920,14 @@ object Types {
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
 
-    override def isGenericRootCapability(using Context): Boolean =
+    override def isUniversalRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
-    override def localRootOwner(using Context): Symbol =
-      if name == nme.LOCAL_CAPTURE_ROOT then
-        if symbol.owner.isLocalDummy then symbol.owner.owner
-        else symbol.owner
-      else if info.isRef(defn.Caps_Cap) then
-        val owner = symbol.maybeOwner
-        if owner.isTerm then owner else NoSymbol
-      else NoSymbol
+    def localRootOwner(using Context): Symbol =
+      // TODO Try to make local class roots be NonMembers owned directly by the class
+      val owner = symbol.maybeOwner
+      def normOwner = if owner.isLocalDummy then owner.owner else owner
+      if name == nme.LOCAL_CAPTURE_ROOT then normOwner else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
       if isTrackableRef then symbol.termRef else this
@@ -4090,10 +4078,15 @@ object Types {
 
     protected def toPInfo(tp: Type)(using Context): PInfo
 
+    /** If `tparam` is a sealed type parameter symbol of a polymorphic method, add
+     *  a @caps.Sealed annotation to the upperbound in `tp`.
+     */
+    protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type = tp
+
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(using Context): Type =
       if (params.isEmpty) resultType
       else apply(params.map(_.paramName))(
-        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+        tl => params.map(param => toPInfo(addSealed(param, tl.integrate(params, param.paramInfo)))),
         tl => tl.integrate(params, resultType))
   }
 
@@ -4414,6 +4407,16 @@ object Types {
         paramInfosExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(using Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
+
+    override protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type =
+      tparam match
+        case tparam: Symbol if tparam.is(Sealed) =>
+          tp match
+            case tp @ TypeBounds(lo, hi) =>
+              tp.derivedTypeBounds(lo,
+                AnnotatedType(hi, Annotation(defn.Caps_SealedAnnot, tparam.span)))
+            case _ => tp
+        case _ => tp
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
@@ -5127,8 +5130,8 @@ object Types {
           else if (clsd.is(Module)) givenSelf
           else if (ctx.erasedTypes) appliedRef
           else givenSelf.dealiasKeepAnnots match
-            case givenSelf1 @ EventuallyCapturingType(tp, _) =>
-              givenSelf1.derivedAnnotatedType(tp & appliedRef, givenSelf1.annot)
+            case givenSelf1 @ AnnotatedType(tp, ann) if ann.symbol == defn.RetainsAnnot =>
+              givenSelf1.derivedAnnotatedType(tp & appliedRef, ann)
             case _ =>
               AndType(givenSelf, appliedRef)
         }
@@ -5969,17 +5972,16 @@ object Types {
   }
 
   /** A type map that maps also parents and self type of a ClassInfo */
-  abstract class DeepTypeMap(using Context) extends TypeMap {
-    override def mapClassInfo(tp: ClassInfo): ClassInfo = {
+  abstract class DeepTypeMap(using Context) extends TypeMap:
+    override def mapClassInfo(tp: ClassInfo): ClassInfo =
       val prefix1 = this(tp.prefix)
-      val parents1 = tp.declaredParents mapConserve this
-      val selfInfo1: TypeOrSymbol = tp.selfInfo match {
-        case selfInfo: Type => this(selfInfo)
-        case selfInfo => selfInfo
-      }
-      tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
-    }
-  }
+      inContext(ctx.withOwner(tp.cls)):
+        val parents1 = tp.declaredParents.mapConserve(this)
+        val selfInfo1: TypeOrSymbol = tp.selfInfo match
+          case selfInfo: Type => inContext(ctx.withOwner(tp.cls))(this(selfInfo))
+          case selfInfo => selfInfo
+        tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
+  end DeepTypeMap
 
   @sharable object IdentityTypeMap extends TypeMap()(NoContext) {
     def apply(tp: Type): Type = tp

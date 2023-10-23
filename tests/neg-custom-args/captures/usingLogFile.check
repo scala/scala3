@@ -1,28 +1,28 @@
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:32:37 ------------------------------------------------------
 32 |  usingLogFile { f => later3 = () => f.write(0) }  // error
    |                                     ^
-   |(f : java.io.FileOutputStream^{local}) cannot be referenced here; it is not included in the allowed capture set {cap[<root>]}
-   |of an enclosing function literal with expected type box () ->{cap[<root>]} Unit
+   |(f : java.io.FileOutputStream^) cannot be referenced here; it is not included in the allowed capture set {cap[<root>]}
+   |of an enclosing function literal with expected type () ->{cap[<root>]} Unit
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/usingLogFile.scala:36:35 ---------------------------------
 36 |  usingLogFile { f => later4 = Cell(() => f.write(0)) }  // error
    |                               ^^^^^^^^^^^^^^^^^^^^^^
    |                               Found:    Test2.Cell[box () ->{f} Unit]^?
-   |                               Required: Test2.Cell[() ->{cap[<root>]} Unit]
+   |                               Required: Test2.Cell[box () ->{cap[<root>]} Unit]
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:23:14 ------------------------------------------------------
 23 |  val later = usingLogFile { f => () => f.write(0) } // error
    |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
+   |              local reference f leaks into outer capture set of type parameter T of method usingLogFile
 -- Error: tests/neg-custom-args/captures/usingLogFile.scala:28:23 ------------------------------------------------------
 28 |  private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
    |                       ^^^^^^^^^^^^
-   |                       escaping local reference local.type
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:47:14 ------------------------------------------------------
-47 |  val later = usingLogFile { f => () => f.write(0) } // error
-   |              ^^^^^^^^^^^^
-   |              escaping local reference local.type
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:62:16 ------------------------------------------------------
-62 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
+   |                       local reference f leaks into outer capture set of type parameter T of method usingLogFile
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:52:16 ------------------------------------------------------
+52 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
-   |                escaping local reference local.type
+   |                local reference f leaks into outer capture set of type parameter T of method usingFile
+-- Error: tests/neg-custom-args/captures/usingLogFile.scala:60:16 ------------------------------------------------------
+60 |    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
+   |                ^^^^^^^^^
+   |                local reference l leaks into outer capture set of type parameter T of method usingFile

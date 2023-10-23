@@ -32,7 +32,7 @@ def main(io: Cap^, fs: Cap^): Unit = {
     type Id[X] = Box[X] -> Unit
     type Op[X] = Unit -> Box[X]
     val f: Unit -> (Cap^{io}) -> Unit = ???
-    val g: Op[Id[Cap^{io}]^{fs}] = f // error
+    val g: Op[Id[Cap^{io}]^{fs}] = f
     val h: Op[Id[Cap^{io}]^{io}] = f
   }
 }

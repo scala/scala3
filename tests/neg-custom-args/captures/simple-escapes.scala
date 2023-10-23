@@ -10,7 +10,7 @@ def Test1 =
     logFile.close()
     result
 
-  var foo: FileOutputStream^ = FileOutputStream("")
+  var foo: FileOutputStream^{cap[Test1]} = FileOutputStream("")
 
   val later1 = usingLogFile { local => f =>
     foo = f      // error

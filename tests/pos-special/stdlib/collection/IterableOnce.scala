@@ -14,7 +14,7 @@ package scala
 package collection
 
 import scala.annotation.tailrec
-import scala.annotation.unchecked.uncheckedVariance
+import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import scala.collection.mutable.StringBuilder
 import scala.language.implicitConversions
 import scala.math.{Numeric, Ordering}
@@ -1340,8 +1340,8 @@ object IterableOnceOps:
   // Moved out of trait IterableOnceOps to here, since universal traits cannot
   // have nested classes in Scala 3
   private class Maximized[X, B](descriptor: String)(f: X -> B)(cmp: (B, B) -> Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
-    var maxElem: X = null.asInstanceOf[X]
-    var maxF: B = null.asInstanceOf[B]
+    var maxElem: X @uncheckedCaptures = null.asInstanceOf[X]
+    var maxF: B @uncheckedCaptures = null.asInstanceOf[B]
     var nonEmpty = false
     def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
     def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")

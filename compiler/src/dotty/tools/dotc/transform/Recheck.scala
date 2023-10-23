@@ -46,27 +46,23 @@ object Recheck:
         case Some(tpe) => tree1.withType(tpe)
         case None => tree1
 
-  extension (sym: Symbol)
+  extension (sym: Symbol)(using Context)
 
     /** Update symbol's info to newInfo after `prevPhase`.
      *  Also update owner to newOwnerOrNull if it is not null.
      *  The update is valid until after Recheck. After that the symbol's denotation
      *  is reset to what it was before PreRecheck.
      */
-    def updateInfo(prevPhase: DenotTransformer, newInfo: Type, newOwnerOrNull: Symbol | Null = null)(using Context): Unit =
-      val newOwner = if newOwnerOrNull == null then sym.owner else newOwnerOrNull
-      if (sym.info ne newInfo) || (sym.owner ne newOwner)  then
-        val flags = sym.flags
-        sym.copySymDenotation(
-            owner = newOwner,
-            info = newInfo,
-            initFlags = if newInfo.isInstanceOf[LazyType] then flags &~ Touched else flags
-          ).installAfter(prevPhase)
+    def updateInfo(prevPhase: DenotTransformer, newInfo: Type, newFlags: FlagSet = sym.flags, newOwner: Symbol = sym.owner): Unit =
+      if (sym.info ne newInfo) || sym.flags != newFlags || (sym.maybeOwner ne newOwner)  then
+        val flags = if newInfo.isInstanceOf[LazyType] then newFlags &~ Touched else newFlags
+        sym.copySymDenotation(owner = newOwner, info = newInfo, initFlags = flags)
+          .installAfter(prevPhase)
 
     /** Does symbol have a new denotation valid from phase.next that is different
      *  from the denotation it had before?
      */
-    def isUpdatedAfter(phase: Phase)(using Context) =
+    def isUpdatedAfter(phase: Phase) =
       val symd = sym.denot
       symd.validFor.firstPhaseId == phase.id + 1 && (sym.originDenotation ne symd)
 
@@ -142,7 +138,14 @@ abstract class Recheck extends Phase, SymTransformer:
   import ast.tpd.*
   import Recheck.*
 
+  /** The phase before rechecking, used to setup symbol infos. */
   def preRecheckPhase = this.prev.asInstanceOf[PreRecheck]
+
+  /** The first phase that pepares for rechecking. This is usually preRecheckPhase
+   *  but could also be before. Updated symbols will snap back to their
+   *  denotations at firestPrepPhase after rechecking.
+   */
+  def firstPrepPhase: Phase = preRecheckPhase
 
   override def changesBaseTypes: Boolean = true
 
@@ -150,11 +153,13 @@ abstract class Recheck extends Phase, SymTransformer:
     // TODO: investigate what goes wrong we Ycheck directly after rechecking.
     // One failing test is pos/i583a.scala
 
-  /** Change any `ResetPrivate` flags back to `Private` */
+  /** Change denotation back to what it was before (pre-)rechecking` */
   def transformSym(symd: SymDenotation)(using Context): SymDenotation =
     val sym = symd.symbol
-    if sym.isUpdatedAfter(preRecheckPhase)
-    then atPhase(preRecheckPhase)(sym.denot.copySymDenotation())
+    def updatedAfter(p: Phase): Boolean =
+      sym.isUpdatedAfter(p) || p != preRecheckPhase && updatedAfter(p.next)
+    if updatedAfter(firstPrepPhase)
+    then atPhase(firstPrepPhase)(sym.denot.copySymDenotation())
     else symd
 
   def run(using Context): Unit =
@@ -202,7 +207,7 @@ abstract class Recheck extends Phase, SymTransformer:
       val tree2 = ConstFold(tree1)
       if tree2 ne tree1 then tree2.tpe else tp
 
-    def recheckIdent(tree: Ident)(using Context): Type =
+    def recheckIdent(tree: Ident, pt: Type)(using Context): Type =
       tree.tpe
 
     def recheckSelect(tree: Select, pt: Type)(using Context): Type =
@@ -250,13 +255,17 @@ abstract class Recheck extends Phase, SymTransformer:
         val exprType = recheck(expr, defn.UnitType)
         bindType.symbol.info
 
-    def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Unit =
-      if !tree.rhs.isEmpty then recheck(tree.rhs, sym.info)
+    def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
+      val resType = recheck(tree.tpt)
+      if tree.rhs.isEmpty then resType
+      else recheck(tree.rhs, resType)
 
-    def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Unit =
-      val rhsCtx = linkConstructorParams(sym).withOwner(sym)
-      if !tree.rhs.isEmpty && !sym.isInlineMethod && !sym.isEffectivelyErased then
-        inContext(rhsCtx) { recheck(tree.rhs, recheck(tree.tpt)) }
+    def recheckDefDef(tree: DefDef, sym: Symbol)(using Context): Type =
+      inContext(linkConstructorParams(sym).withOwner(sym)):
+        val resType = recheck(tree.tpt)
+        if tree.rhs.isEmpty || sym.isInlineMethod || sym.isEffectivelyErased
+        then resType
+        else recheck(tree.rhs, resType)
 
     def recheckTypeDef(tree: TypeDef, sym: Symbol)(using Context): Type =
       recheck(tree.rhs)
@@ -286,6 +295,7 @@ abstract class Recheck extends Phase, SymTransformer:
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
+    /** A hook to massage the type of an applied method; currently not overridden */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
@@ -330,7 +340,7 @@ abstract class Recheck extends Phase, SymTransformer:
       tptType
 
     def recheckAssign(tree: Assign)(using Context): Type =
-      val lhsType = recheck(tree.lhs)
+      val lhsType = recheck(tree.lhs, LhsProto)
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
@@ -425,7 +435,7 @@ abstract class Recheck extends Phase, SymTransformer:
       seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
-      knownType(tree) // allows to install new types at Setup
+      tree.knownType  // allows to install new types at Setup
 
     def recheckAnnotated(tree: Annotated)(using Context): Type =
       tree.tpe match
@@ -451,7 +461,7 @@ abstract class Recheck extends Phase, SymTransformer:
         case _ =>
       traverse(stats)
 
-    def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Unit =
+    def recheckDef(tree: ValOrDefDef, sym: Symbol)(using Context): Type =
       inContext(ctx.localContext(tree, sym)) {
         tree match
           case tree: ValDef => recheckValDef(tree, sym)
@@ -467,7 +477,7 @@ abstract class Recheck extends Phase, SymTransformer:
       def recheckNamed(tree: NameTree, pt: Type)(using Context): Type =
         val sym = tree.symbol
         tree match
-          case tree: Ident => recheckIdent(tree)
+          case tree: Ident => recheckIdent(tree, pt)
           case tree: Select => recheckSelect(tree, pt)
           case tree: Bind => recheckBind(tree, pt)
           case tree: ValOrDefDef =>
@@ -521,17 +531,15 @@ abstract class Recheck extends Phase, SymTransformer:
      *  @param pt    the expected type
      */
     def recheckFinish(tpe: Type, tree: Tree, pt: Type)(using Context): Type =
-      checkConforms(tpe, pt, tree)
-      if keepType(tree) then tree.rememberType(tpe)
-      tpe
+      val tpe1 = checkConforms(tpe, pt, tree)
+      if keepType(tree) then tree.rememberType(tpe1)
+      tpe1
 
     def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
-      trace(i"rechecking $tree with pt = $pt", recheckr, show = true) {
-        try recheckFinish(recheckStart(tree, pt), tree, pt)
-        catch case ex: Exception =>
-          println(i"error while rechecking $tree")
-          throw ex
-      }
+      try recheckFinish(recheckStart(tree, pt), tree, pt)
+      catch case ex: Exception =>
+        println(i"error while rechecking $tree")
+        throw ex
 
     /** Typing and previous transforms sometimes leaves skolem types in prefixes of
      *  NamedTypes in `expected` that do not match the `actual` Type. -Ycheck does
@@ -560,10 +568,9 @@ abstract class Recheck extends Phase, SymTransformer:
     private val debugSuccesses = false
 
     /** Check that widened types of `tpe` and `pt` are compatible. */
-    def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Unit = tree match
-      case _: DefTree | EmptyTree | _: TypeTree =>
-      case _ =>
-        checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
+    def checkConforms(tpe: Type, pt: Type, tree: Tree)(using Context): Type = tree match
+      case _: DefTree | EmptyTree | _: TypeTree => tpe
+      case _ => checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
     def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
       actual <:< expected
@@ -575,17 +582,12 @@ abstract class Recheck extends Phase, SymTransformer:
         (widened ne expected) && isCompatible(actual, widened)
       }
 
-    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Unit =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, addenda: Addenda = NothingToAdd)(using Context): Type =
       //println(i"check conforms $actual <:< $expected")
       if !isCompatible(actual, expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")
         err.typeMismatch(tree.withType(actual), expected, addenda)
-      else if debugSuccesses then
-        tree match
-          case _: Ident =>
-            println(i"SUCCESS $tree:\n${TypeComparer.explained(_.isSubType(actual, expected))}")
-          case _ =>
-    end checkConformsExpr
+      actual
 
     def checkUnit(unit: CompilationUnit)(using Context): Unit =
       recheck(unit.tpdTree)

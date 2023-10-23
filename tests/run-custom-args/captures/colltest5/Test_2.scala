@@ -64,7 +64,7 @@ object Test {
   def viewOps(xs: View[Int]^{cap}) = {
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
-    val isEven: Int => Boolean = _ % 2 == 0
+    val isEven: Int ->{cap[viewOps]} Boolean = _ % 2 == 0
     val isNonNeg: Int => Boolean = _ > 0
     val flips: Int => List[Int] = x => Cons(x, Cons(-x, Nil))
     val x1 = xs.foldLeft("")(strPlusInt)

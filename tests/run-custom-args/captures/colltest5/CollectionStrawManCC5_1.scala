@@ -3,7 +3,7 @@ package strawman.collections
 
 import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
-import annotation.unchecked.uncheckedVariance
+import annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import annotation.tailrec
 
 /** A strawman architecture for new collections. It contains some
@@ -215,7 +215,7 @@ object CollectionStrawMan5 {
     }
     def length: Int =
       if (isEmpty) 0 else 1 + tail.length
-    protected[this] def newBuilder = new ListBuffer[A] @uncheckedVariance
+    protected[this] def newBuilder = new ListBuffer[A @uncheckedVariance @uncheckedCaptures]
     def ++:[B >: A](prefix: List[B]): List[B] =
       if (prefix.isEmpty) this
       else Cons(prefix.head, prefix.tail ++: this)
@@ -227,7 +227,7 @@ object CollectionStrawMan5 {
       if (n > 0) tail.drop(n - 1) else this
   }
 
-  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
+  case class Cons[+A](x: A, private[collections] var next: List[A @uncheckedVariance @uncheckedCaptures]) // sound because `next` is used only locally
   extends List[A] {
     override def isEmpty = false
     override def head = x
@@ -244,17 +244,17 @@ object CollectionStrawMan5 {
     type C[X] = List[X]
     def fromIterable[B](coll: Iterable[B]^): List[B] = coll match {
       case coll: List[B] => coll
-      case _ => ListBuffer.fromIterable(coll).result
+      case _ => ListBuffer.fromIterable[B @uncheckedCaptures](coll).result
     }
   }
 
   /** Concrete collection type: ListBuffer */
-  class ListBuffer[A] extends Seq[A] with SeqLike[A] with Builder[A, List[A]] {
+  class ListBuffer[sealed A] extends Seq[A] with SeqLike[A] with Builder[A, List[A]] {
     type C[X] = ListBuffer[X]
     private var first, last: List[A] = Nil
     private var aliased = false
     def iterator = first.iterator
-    def fromIterable[B](coll: Iterable[B]^): ListBuffer[B] = ListBuffer.fromIterable(coll)
+    def fromIterable[sealed B](coll: Iterable[B]^): ListBuffer[B] = ListBuffer.fromIterable(coll)
     def apply(i: Int) = first.apply(i)
     def length = first.length
 
@@ -288,7 +288,7 @@ object CollectionStrawMan5 {
 
   object ListBuffer extends SeqFactory {
     type C[X] = ListBuffer[X]
-    def fromIterable[B](coll: Iterable[B]^): ListBuffer[B] = new ListBuffer[B] ++= coll
+    def fromIterable[sealed B](coll: Iterable[B]^): ListBuffer[B] = new ListBuffer[B] ++= coll
   }
 
   /** Concrete collection type: ArrayBuffer */

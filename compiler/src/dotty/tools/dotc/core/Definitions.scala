@@ -16,7 +16,8 @@ import Comments.Comment
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
-import cc.{CapturingType, CaptureSet, EventuallyCapturingType}
+import cc.{CaptureSet, RetainingType}
+import ast.tpd.ref
 
 import scala.annotation.tailrec
 
@@ -121,8 +122,8 @@ class Definitions {
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => List.fill(arity + 1)(TypeBounds.empty),
-              tl => CapturingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
-                CaptureSet.universal)
+              tl => RetainingType(underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      ref(captureRoot.termRef) :: Nil)
             ))
         else
           val cls = denot.asClass.classSymbol
@@ -982,6 +983,8 @@ class Definitions {
     @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
+    @tu lazy val Caps_SealedAnnot: ClassSymbol = requiredClass("scala.caps.Sealed")
+    @tu lazy val expandedUniversalSet: CaptureSet = CaptureSet(captureRoot.termRef)
 
   @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
 
@@ -1033,6 +1036,7 @@ class Definitions {
   @tu lazy val UncheckedAnnot: ClassSymbol = requiredClass("scala.unchecked")
   @tu lazy val UncheckedStableAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
   @tu lazy val UncheckedVarianceAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedVariance")
+  @tu lazy val UncheckedCapturesAnnot: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedCaptures")
   @tu lazy val VolatileAnnot: ClassSymbol = requiredClass("scala.volatile")
   @tu lazy val WithPureFunsAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WithPureFuns")
   @tu lazy val CaptureCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.CaptureChecked")
@@ -1250,8 +1254,8 @@ class Definitions {
    */
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
-      case tp @ EventuallyCapturingType(tp1, refs) if tp.annot.symbol == RetainsByNameAnnot =>
-        CapturingType(apply(tp1), refs)
+      case tp @ RetainingType(tp1, refs) if tp.annot.symbol == RetainsByNameAnnot =>
+        RetainingType(apply(tp1), refs)
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp match

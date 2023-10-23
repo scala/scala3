@@ -18,9 +18,10 @@ def usingLogFile[T](op: (local: caps.Cap) ?-> FileOutputStream^{local} => T): T 
   result
 
 def test1 =
-  usingLogFile[Proc]: (local: caps.Cap) ?=> // error (but with a hard to parse error message)
+  usingLogFile[Proc]: (local: caps.Cap) ?=>
     (f: FileOutputStream^{local}) =>
-      () => f.write(1)  // this line has type () ->{local} Unit, but usingLogFile
+      () => f.write(1)  // error (but with a hard to parse error message)
+                        // this line has type () ->{local} Unit, but usingLogFile
                         // requires Proc, which expands to () -> 'cap[..test1](from instantiating usingLogFile)
 
 def test2 =

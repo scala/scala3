@@ -534,7 +534,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   def toNotNullTermRef(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case ref: TermRef
-    if pt != AssignProto && // Ensure it is not the lhs of Assign
+    if pt != LhsProto && // Ensure it is not the lhs of Assign
     ctx.notNullInfos.impliesNotNull(ref) &&
     // If a reference is in the context, it is already trackable at the point we add it.
     // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
@@ -744,7 +744,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         && selName.isTermName && !isDynamicExpansion(tree)
       then
         val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
-        if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
+        if pt.isInstanceOf[FunOrPolyProto] || pt == LhsProto then
           assignType(tree2, TryDynamicCallType)
         else
           typedDynamicSelect(tree2, Nil, pt)
@@ -1090,8 +1090,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typed(appliedUpdate, pt)
       case lhs =>
         val locked = ctx.typerState.ownedVars
-        val lhsCore = typedUnadapted(lhs, AssignProto, locked)
-        def lhs1 = adapt(lhsCore, AssignProto, locked)
+        val lhsCore = typedUnadapted(lhs, LhsProto, locked)
+        def lhs1 = adapt(lhsCore, LhsProto, locked)
 
         def reassignmentToVal =
           report.error(ReassignmentToVal(lhsCore.symbol.name), tree.srcPos)
@@ -4054,7 +4054,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if (implicitFun || caseCompanion)
           && !isApplyProto(pt)
           && pt != SingletonTypeProto
-          && pt != AssignProto
+          && pt != LhsProto
           && !ctx.mode.is(Mode.Pattern)
           && !tree.isInstanceOf[SplicePattern]
           && !ctx.isAfterTyper

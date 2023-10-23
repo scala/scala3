@@ -1286,6 +1286,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
   }
 
+  /** A tree traverser that generates the the same import contexts as original typer for statements.
+   *  TODO: Should we align TreeMapWithPreciseStatContexts and also keep track of exprOwners?
+   */
+  abstract class TreeTraverserWithPreciseImportContexts extends TreeTraverser:
+    override def apply(x: Unit, trees: List[Tree])(using Context): Unit =
+      def recur(trees: List[Tree]): Unit = trees match
+        case (imp: Import) :: rest =>
+          traverse(rest)(using ctx.importContext(imp, imp.symbol))
+        case tree :: rest =>
+          traverse(tree)
+          traverse(rest)
+        case Nil =>
+      recur(trees)
+  end TreeTraverserWithPreciseImportContexts
+
   extension (xs: List[tpd.Tree])
     def tpes: List[Type] = xs match {
       case x :: xs1 => x.tpe :: xs1.tpes

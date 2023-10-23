@@ -1,4 +1,6 @@
-package dotty.tools.dotc.config
+package dotty.tools.dotc
+package config
+import core.Contexts.{Context, ctx}
 
 object Printers {
 
@@ -12,7 +14,18 @@ object Printers {
 
   val default = new Printer
 
-  val capt = noPrinter
+  /** Enabled via Ycc-log flag. This is not super-efficient but helps debug
+   *  variants of capture checking faster.
+   *  TODO: Revert to static scheme once capture checking has stabilized
+   */
+  def capt(using Context): Printer =
+    if ctx.settings.YccLog.value then captActive else noPrinter
+  val captActive = new Printer
+
+  def captDebug(using Context): Printer =
+    if ctx.settings.YccDebug.value then captDebugActive else noPrinter
+  val captDebugActive = new Printer
+
   val constr = noPrinter
   val core = noPrinter
   val checks = noPrinter

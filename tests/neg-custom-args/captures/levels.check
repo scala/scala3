@@ -1,10 +1,22 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:15:11 ---------------------------------------
-15 |    r.setV(g) // error
+-- Error: tests/neg-custom-args/captures/levels.scala:6:16 -------------------------------------------------------------
+6 |    private var v: T = init  // error
+  |                ^
+  |                mutable variable v cannot have type T since
+  |                that type refers to the type variable T, which is not sealed.
+-- Error: tests/neg-custom-args/captures/levels.scala:17:13 ------------------------------------------------------------
+17 |  val _ = Ref[String => String]((x: String) => x) // error
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |          Sealed type variable T cannot be instantiated to box String => String since
+   |          that type captures the root capability `cap`.
+   |          This is often caused by a local capability in an argument of constructor Ref
+   |          leaking as part of its result.
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:22:11 ---------------------------------------
+22 |    r.setV(g) // error
    |           ^
    |           Found:    box (x: String) ->{cap3} String
    |           Required: box (x$0: String) ->? String
    |
-   |           Note that reference (cap3 : CC^), defined at level 2
-   |           cannot be included in outer capture set ?, defined at level 1 in method test
+   |           Note that reference (cap3 : CC^), defined in method scope
+   |           cannot be included in outer capture set ? of value r which is associated with method test2
    |
    | longer explanation available when compiling with `-explain`

@@ -7,7 +7,6 @@ import Symbols.*, SymDenotations.*, Contexts.*, Flags.*, Types.*, Decorators.*
 import StdNames.nme
 import Names.Name
 import NameKinds.DefaultGetterName
-import Phases.checkCapturesPhase
 import config.Printers.capt
 
 /** Classification and transformation methods for function methods and
@@ -59,9 +58,9 @@ object Synthetics:
   /** Transform the type of a method either to its type under capture checking
    *  or back to its previous type.
    *  @param  sym  The method to transform @pre needsTransform(sym) must hold.
-   *  @param  toCC Whether to transform the type to capture checking or back.
+   *  @param  info The possibly already mapped info of sym
    */
-  def transform(sym: SymDenotation)(using Context): SymDenotation =
+  def transform(symd: SymDenotation, info: Type)(using Context): SymDenotation =
 
     /** Add capture dependencies to the type of the `apply` or `copy` method of a case class.
      *  An apply method in a case class like this:
@@ -73,7 +72,7 @@ object Synthetics:
      */
     def addCaptureDeps(info: Type): Type = info match
       case info: MethodType =>
-        val trackedParams = info.paramRefs.filter(atPhase(checkCapturesPhase)(_.isTracked))
+        val trackedParams = info.paramRefs.filter(atPhase(Phases.checkCapturesPhase)(_.isTracked))
         def augmentResult(tp: Type): Type = tp match
           case tp: MethodOrPoly =>
             tp.derivedLambdaType(resType = augmentResult(tp.resType))
@@ -99,7 +98,7 @@ object Synthetics:
         info.derivedLambdaType(resType = transformDefaultGetterCaptures(info.resType, owner, idx))
       case info: ExprType =>
         info.derivedExprType(transformDefaultGetterCaptures(info.resType, owner, idx))
-      case EventuallyCapturingType(parent, _) =>
+      case CapturingType(parent, _) =>
         transformDefaultGetterCaptures(parent, owner, idx)
       case info @ AnnotatedType(parent, annot) =>
         info.derivedAnnotatedType(transformDefaultGetterCaptures(parent, owner, idx), annot)
@@ -129,17 +128,17 @@ object Synthetics:
       case info: PolyType =>
         info.derivedLambdaType(resType = transformUnapplyCaptures(info.resType))
 
-    def transformComposeCaptures(symd: SymDenotation) =
-      val (pt: PolyType) = symd.info: @unchecked
+    def transformComposeCaptures(info: Type, owner: Symbol) =
+      val (pt: PolyType) = info: @unchecked
       val (mt: MethodType) = pt.resType: @unchecked
-      val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+      val (enclThis: ThisType) = owner.thisType: @unchecked
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
         mt1 => mt.paramInfos.map(_.capturing(CaptureSet.universal)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
 
-    def transformCurriedTupledCaptures(symd: SymDenotation) =
-      val (et: ExprType) = symd.info: @unchecked
-      val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+    def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
+      val (et: ExprType) = info: @unchecked
+      val (enclThis: ThisType) = owner.thisType: @unchecked
       def mapFinalResult(tp: Type, f: Type => Type): Type =
         val defn.FunctionOf(args, res, isContextual) = tp: @unchecked
         if defn.isFunctionNType(res) then
@@ -151,17 +150,17 @@ object Synthetics:
     def transformCompareCaptures =
       MethodType(defn.ObjectType.capturing(CaptureSet.universal) :: Nil, defn.BooleanType)
 
-    sym.copySymDenotation(info = sym.name match
+    symd.copySymDenotation(info = symd.name match
       case DefaultGetterName(nme.copy, n) =>
-        transformDefaultGetterCaptures(sym.info, sym.owner, n)
+        transformDefaultGetterCaptures(info, symd.owner, n)
       case nme.unapply =>
-        transformUnapplyCaptures(sym.info)
+        transformUnapplyCaptures(info)
       case nme.apply | nme.copy =>
-        addCaptureDeps(sym.info)
+        addCaptureDeps(info)
       case nme.andThen | nme.compose =>
-        transformComposeCaptures(sym)
+        transformComposeCaptures(info, symd.owner)
       case nme.curried | nme.tupled =>
-        transformCurriedTupledCaptures(sym)
+        transformCurriedTupledCaptures(info, symd.owner)
       case n if n == nme.eq || n == nme.ne =>
         transformCompareCaptures)
   end transform

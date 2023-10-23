@@ -39,6 +39,7 @@ import config.Feature.sourceVersion
 import config.SourceVersion._
 import printing.Formatting.hlAsKeyword
 import transform.TypeUtils.*
+import cc.isCaptureChecking
 
 import collection.mutable
 import reporting._
@@ -67,7 +68,7 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
     instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
-    if ctx.phase != Phases.checkCapturesPhase then
+    if !isCaptureChecking then
       args.lazyZip(boundss).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
           errorTree(arg,
@@ -152,7 +153,7 @@ object Checking {
             // if we attempt to check bounds of F-bounded mutually recursive Java interfaces.
             // Do check all bounds in Scala units and those bounds in Java units that
             // occur in applications of Scala type constructors.
-            && !(ctx.phase == Phases.checkCapturesPhase && !tycon.typeSymbol.is(CaptureChecked))
+            && !isCaptureChecking || tycon.typeSymbol.is(CaptureChecked)
             // Don't check bounds when capture checking type constructors that were not
             // themselves capture checked. Since the type constructor could not foresee
             // possible capture sets, it's better to be lenient for backwards compatibility.
@@ -517,7 +518,12 @@ object Checking {
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
-      fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
+      val illegal = sym.flags & ClassOnlyFlags
+      if sym.is(TypeParam)
+          && illegal == Sealed
+          && Feature.ccEnabled && cc.ccConfig.allowUniversalInBoxed
+      then () // OK
+      else fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then

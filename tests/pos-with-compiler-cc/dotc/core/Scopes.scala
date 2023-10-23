@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
 package dotty.tools
 package dotc
 package core
@@ -17,6 +12,7 @@ import Denotations._
 import printing.Texts._
 import printing.Printer
 import SymDenotations.NoDenotation
+import annotation.unchecked.uncheckedCaptures
 
 import collection.mutable
 
@@ -220,6 +216,7 @@ object Scopes {
     private var elemsCache: List[Symbol] | Null = null
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
+    @uncheckedCaptures
     private var synthesize: SymbolSynthesizer | Null = null
 
     /** Use specified synthesize for this scope */

@@ -54,7 +54,7 @@ trait ConstraintHandling {
   protected var homogenizeArgs: Boolean = false
 
   /** We are currently comparing type lambdas. Used as a flag for
-   *  optimization: when `false`, no need to do an expensive `pruneLambdaParams`
+   *  optimization: when `false`, no need to do an expensive `avoidLambdaParams`
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 

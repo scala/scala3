@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:18:4 ------------------------------------
 18 |    final class Mapped extends LazyList[B]:  // error
    |    ^
-   |    Found:    LazyList[B^?]^{f, xs}
+   |    Found:    LazyList[box B^?]^{f, xs}
    |    Required: LazyList[B]^{f}
 19 |      this: (Mapped^{xs, f}) =>
 20 |      def isEmpty = false
@@ -13,7 +13,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:27:4 ------------------------------------
 27 |    final class Mapped extends LazyList[B]:  // error
    |    ^
-   |    Found:    LazyList[B^?]^{f, xs}
+   |    Found:    LazyList[box B^?]^{f, xs}
    |    Required: LazyList[B]^{xs}
 28 |      this: Mapped^{xs, f} =>
 29 |      def isEmpty = false
@@ -25,15 +25,15 @@
 -- Error: tests/neg-custom-args/captures/lazylists2.scala:40:20 --------------------------------------------------------
 40 |      def head: B = f(xs.head)  // error
    |                    ^
-   |(f : A ->{cap[map3]} B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
+   |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
 -- Error: tests/neg-custom-args/captures/lazylists2.scala:41:48 --------------------------------------------------------
 41 |      def tail: LazyList[B]^{this}= xs.tail.map(f) // error
    |                                                ^
-   |(f : A ->{cap[map3]} B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
+   |(f : A => B) cannot be referenced here; it is not included in the allowed capture set {xs} of the self type of class Mapped
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazylists2.scala:45:4 ------------------------------------
 45 |    final class Mapped extends LazyList[B]:  // error
    |    ^
-   |    Found:    LazyList[B^?]^{f, xs}
+   |    Found:    LazyList[box B^?]^{f, xs}
    |    Required: LazyList[B]^{xs}
 46 |      this: (Mapped^{xs, f}) =>
 47 |      def isEmpty = false

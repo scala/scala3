@@ -6,8 +6,8 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:20:46 ---------------------------------------
 20 |    val boxed1 : ((C^) => Unit) -> Unit = box1(c)  // error
    |                                          ^^^^^^^
-   |            Found:    (C{val arg: C^{cap[C]}}^{c} ->{'cap[..main1](from instantiating box1), c} Unit) ->{c} Unit
-   |            Required: (C^ => Unit) -> Unit
+   |                                          Found:    (C{val arg: C^}^{c} => Unit) ->{c} Unit
+   |                                          Required: (C^ => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/i15772.scala:26:26 ------------------------------------------------------------
@@ -18,28 +18,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:27:35 ---------------------------------------
 27 |    val boxed2 : Observe[C^] = box2(c)  // error
    |                               ^^^^^^^
-   |            Found:    (C{val arg: C^{cap[C]}}^{c} ->{'cap[..main2](from instantiating box2), c} Unit) ->{c} Unit
-   |            Required: (C^ => Unit) -> Unit
+   |                               Found:    (C{val arg: C^}^{c} => Unit) ->{c} Unit
+   |                               Required: (C^ => Unit) -> Unit
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:34 ---------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:33:33 ---------------------------------------
 33 |  val boxed2 : Observe[C]^ = box2(c) // error
-   |                                  ^
-   |                                  Found:    box C^{cap[c]}
-   |                                  Required: box C{val arg: C^?}^?
-   |
-   |                                  Note that reference (cap[c] : caps.Cap), defined at level 2
-   |                                  cannot be included in outer capture set ?, defined at level 1 in method main3
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:34:29 ---------------------------------------
-34 |  boxed2((cap: C^) => unsafe(c)) // error
-   |                             ^
-   |                             Found:    C^{cap[c]}
-   |                             Required: C^{'cap[..main3](from instantiating unsafe)}
-   |
-   |                             Note that reference (cap[c] : caps.Cap), defined at level 2
-   |                             cannot be included in outer capture set ?, defined at level 1 in method main3
+   |                             ^^^^^^^
+   |                             Found:    (C{val arg: C^}^ => Unit) ->? Unit
+   |                             Required: Observe[C]^
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15772.scala:44:2 ----------------------------------------
@@ -47,8 +34,5 @@
    |  ^
    |  Found:    () ->{x} Unit
    |  Required: () -> Unit
-   |
-   |  Note that reference (cap[c] : caps.Cap), defined at level 2
-   |  cannot be included in outer capture set ?, defined at level 1 in method main3
    |
    | longer explanation available when compiling with `-explain`

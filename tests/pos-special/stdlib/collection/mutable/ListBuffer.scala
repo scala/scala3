@@ -19,6 +19,7 @@ import java.lang.{IllegalArgumentException, IndexOutOfBoundsException}
 
 import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
+import scala.annotation.unchecked.uncheckedCaptures
 import language.experimental.captureChecking
 
 /** A `Buffer` implementation backed by a list. It provides constant time
@@ -37,7 +38,7 @@ import language.experimental.captureChecking
   *  @define willNotTerminateInf
   */
 @SerialVersionUID(-8428291952499836345L)
-class ListBuffer[A]
+class ListBuffer[sealed A]
   extends AbstractBuffer[A]
      with SeqOps[A, ListBuffer, ListBuffer[A]]
      with StrictOptimizedSeqOps[A, ListBuffer, ListBuffer[A]]
@@ -396,9 +397,9 @@ class ListBuffer[A]
 @SerialVersionUID(3L)
 object ListBuffer extends StrictOptimizedSeqFactory[ListBuffer] {
 
-  def from[A](coll: collection.IterableOnce[A]^): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
+  def from[sealed A](coll: collection.IterableOnce[A]^): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
 
-  def newBuilder[A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
+  def newBuilder[sealed A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
 
-  def empty[A]: ListBuffer[A] = new ListBuffer[A]
+  def empty[A]: ListBuffer[A] = new ListBuffer[A @uncheckedCaptures]
 }

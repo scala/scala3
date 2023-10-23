@@ -24,7 +24,7 @@ import config.Config
 import reporting._
 import collection.mutable
 import transform.TypeUtils._
-import cc.{CapturingType, derivedCapturingType, Setup, EventuallyCapturingType, isEventuallyCapturingType}
+import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
 

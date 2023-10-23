@@ -31,7 +31,7 @@ def main(fs: Cap^): Unit = {
       }
 
     val op4: Unit ->{} Unit = (x: Unit) =>  // o k
-      expect[Cap^](io)
+      expect[Cap^](io) // error
 
     val op: Unit -> Unit = (x: Unit) =>
       expect[Cap^] {

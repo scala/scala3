@@ -8,16 +8,15 @@ def test(cap1: Cap, cap2: Cap) =
   val z = () => if x("") == "" then "a" else "b"
   val zc: () ->{cap1} String = z
   val z2 = () => { x = identity }
-  val z2c: () -> Unit = z2  // error
-  var a: String => String = f
+  val z2c: () -> Unit = z2
+  var a = f
 
-  var b: List[String => String] = Nil
-  val u = a  // was error, now ok
-  a("")  // was error, now ok
-  b.head // was error, now ok
+  var b: List[String ->{cap[test]} String] = Nil
+  val u = a
+  a("")
+  b.head
 
-  def scope =
-    val cap3: Cap = CC()
+  def scope(cap3: Cap) =
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     def h(): String = ""
     a = x => g(x)      // error
@@ -27,12 +26,12 @@ def test(cap1: Cap, cap2: Cap) =
     val gc = g
     g
 
-  val s = scope // error (but should be OK, we need to allow poly-captures)
-  val sc: String => String = scope // error (but should also be OK)
+  val s = scope(new CC)
+  val sc: String => String = scope(new CC)
 
-  def local[T](op: (local: caps.Cap) -> CC^{local} -> T): T = op(caps.cap)(CC())
+  def local[sealed T](op: CC^ -> T): T = op(CC())
 
-  local { root => cap3 => // error
+  local { cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"
     g
   }

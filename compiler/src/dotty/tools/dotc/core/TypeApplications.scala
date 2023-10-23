@@ -12,7 +12,6 @@ import Names._
 import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
-import cc.boxedUnlessFun
 import dotty.tools.dotc.transform.TypeUtils.isErasedValueType
 
 object TypeApplications {
@@ -354,7 +353,7 @@ class TypeApplications(val self: Type) extends AnyVal {
             }
             if ((dealiased eq stripped) || followAlias)
               try
-                val instantiated = dealiased.instantiate(args.mapConserve(_.boxedUnlessFun(self)))
+                val instantiated = dealiased.instantiate(args)
                 if (followAlias) instantiated.normalized else instantiated
               catch
                 case ex: IndexOutOfBoundsException =>
@@ -502,7 +501,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(using Context): List[Type] = self.stripped match
-    case AppliedType(tycon, args) => args.boxedUnlessFun(tycon)
+    case AppliedType(tycon, args) => args
     case _ => Nil
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.

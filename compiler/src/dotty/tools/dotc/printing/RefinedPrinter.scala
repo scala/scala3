@@ -29,7 +29,7 @@ import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
-import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef, ccNestingLevelOpt}
+import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef}
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -868,13 +868,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def optAscription[T <: Untyped](tpt: Tree[T]): Text = optText(tpt)(": " ~ _)
 
-  private def nestingLevel(sym: Symbol): Int =
-    sym.ccNestingLevelOpt.getOrElse(sym.nestingLevel)
-
   private def idText(tree: untpd.Tree): Text =
     (if showUniqueIds && tree.hasType && tree.symbol.exists then s"#${tree.symbol.id}" else "") ~
     (if showNestingLevel then tree.typeOpt match
-      case tp: NamedType if !tp.symbol.isStatic => s"%${nestingLevel(tp.symbol)}"
+      case tp: NamedType if !tp.symbol.isStatic => s"%${tp.symbol.nestingLevel}"
       case tp: TypeVar => s"%${tp.nestingLevel}"
       case tp: TypeParamRef => ctx.typerState.constraint.typeVarOfParam(tp) match
         case tvar: TypeVar => s"%${tvar.nestingLevel}"

@@ -1,50 +1,28 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:11:24 -----------------------------------------
-11 |  val z2c: () -> Unit = z2  // error
-   |                        ^^
-   |                        Found:    () ->{z2} Unit
-   |                        Required: () -> Unit
-   |
-   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:23:14 --------------------------------------------------------------
-23 |    a = x => g(x)      // error
+-- Error: tests/neg-custom-args/captures/vars.scala:22:14 --------------------------------------------------------------
+22 |    a = x => g(x)      // error
    |             ^^^^
-   |             reference (cap3 : CC^) is not included in the allowed capture set {cap[test]}
-   |             of an enclosing function literal with expected type box String ->{cap[test]} String
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:24:8 ------------------------------------------
-24 |    a = g      // error
+   |             reference (cap3 : Cap) is not included in the allowed capture set {cap1} of variable a
+   |
+   |             Note that reference (cap3 : Cap), defined in method scope
+   |             cannot be included in outer capture set {cap1} of variable a which is associated with method test
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:23:8 ------------------------------------------
+23 |    a = g      // error
    |        ^
-   |        Found:    box (x: String) ->{cap3} String
-   |        Required: box (x$0: String) ->{cap[test]} String
+   |        Found:    (x: String) ->{cap3} String
+   |        Required: (x$0: String) ->{cap1} String
+   |
+   |        Note that reference (cap3 : Cap), defined in method scope
+   |        cannot be included in outer capture set {cap1} of variable a which is associated with method test
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:26:12 -----------------------------------------
-26 |    b = List(g) // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:25:12 -----------------------------------------
+25 |    b = List(g) // error
    |        ^^^^^^^
    |        Found:    List[box (x$0: String) ->{cap3} String]
-   |        Required: List[String ->{cap[test]} String]
+   |        Required: List[box String ->{cap[test]} String]
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:30:10 -----------------------------------------
-30 |  val s = scope // error (but should be OK, we need to allow poly-captures)
-   |          ^^^^^
-   |          Found:    (x$0: String) ->{cap[scope]} String
-   |          Required: (x$0: String) ->? String
-   |
-   |          Note that reference (cap[scope] : caps.Cap), defined at level 2
-   |          cannot be included in outer capture set ?, defined at level 1 in method test
-   |
-   | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/vars.scala:31:29 -----------------------------------------
-31 |  val sc: String => String = scope // error (but should also be OK)
-   |                             ^^^^^
-   |                             Found:    (x$0: String) ->{cap[scope]} String
-   |                             Required: String => String
-   |
-   |                             Note that reference (cap[scope] : caps.Cap), defined at level 2
-   |                             cannot be included in outer capture set ?, defined at level 1 in method test
-   |
-   | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/vars.scala:35:2 ---------------------------------------------------------------
-35 |  local { root => cap3 => // error
+-- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------
+34 |  local { cap3 => // error
    |  ^^^^^
-   |  escaping local reference root.type
+   |  local reference cap3 leaks into outer capture set of type parameter T of method local

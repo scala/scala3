@@ -1,28 +1,60 @@
--- Error: tests/neg-custom-args/captures/i15116.scala:3:6 --------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:3:13 ----------------------------------------
 3 |  val x = Foo(m)   // error
-  |  ^^^^^^^^^^^^^^
-  |  Non-local value x cannot have an inferred type
-  |  Foo{val m: String^{Bar.this.m}}^{Bar.this.m}
-  |  with non-empty capture set {Bar.this.m}.
-  |  The type needs to be declared explicitly.
--- Error: tests/neg-custom-args/captures/i15116.scala:5:6 --------------------------------------------------------------
+  |          ^^^^^^
+  |          Found:    Foo{val m²: (Bar.this.m : String^)}^{Bar.this.m}
+  |          Required: Foo
+  |
+  |          where:    m  is a value in class Bar
+  |                    m² is a value in class Foo
+  |
+  |
+  |          Note that the expected type Foo
+  |          is the previously inferred type of value x
+  |          which is also the type seen in separately compiled sources.
+  |          The new inferred type Foo{val m: (Bar.this.m : String^)}^{Bar.this.m}
+  |          must conform to this type.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:5:13 ----------------------------------------
 5 |  val x = Foo(m)   // error
-  |  ^^^^^^^^^^^^^^
-  |  Non-local value x cannot have an inferred type
-  |  Foo{val m: String^{Baz.this}}^{Baz.this}
-  |  with non-empty capture set {Baz.this}.
-  |  The type needs to be declared explicitly.
--- Error: tests/neg-custom-args/captures/i15116.scala:7:6 --------------------------------------------------------------
+  |          ^^^^^^
+  |          Found:    Foo{val m: String^{Baz.this}}^{Baz.this}
+  |          Required: Foo
+  |
+  |          Note that the expected type Foo
+  |          is the previously inferred type of value x
+  |          which is also the type seen in separately compiled sources.
+  |          The new inferred type Foo{val m: String^{Baz.this}}^{Baz.this}
+  |          must conform to this type.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:7:13 ----------------------------------------
 7 |  val x = Foo(m)   // error
-  |  ^^^^^^^^^^^^^^
-  |  Non-local value x cannot have an inferred type
-  |  Foo{val m: String^{Bar1.this.m}}^{Bar1.this.m}
-  |  with non-empty capture set {Bar1.this.m}.
-  |  The type needs to be declared explicitly.
--- Error: tests/neg-custom-args/captures/i15116.scala:9:6 --------------------------------------------------------------
+  |          ^^^^^^
+  |          Found:    Foo{val m²: (Bar1.this.m : String^)}^{Bar1.this.m}
+  |          Required: Foo
+  |
+  |          where:    m  is a value in class Bar1
+  |                    m² is a value in class Foo
+  |
+  |
+  |          Note that the expected type Foo
+  |          is the previously inferred type of value x
+  |          which is also the type seen in separately compiled sources.
+  |          The new inferred type Foo{val m: (Bar1.this.m : String^)}^{Bar1.this.m}
+  |          must conform to this type.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i15116.scala:9:13 ----------------------------------------
 9 |  val x = Foo(m)   // error
-  |  ^^^^^^^^^^^^^^
-  |  Non-local value x cannot have an inferred type
-  |  Foo{val m: String^{Baz2.this}}^{Baz2.this}
-  |  with non-empty capture set {Baz2.this}.
-  |  The type needs to be declared explicitly.
+  |          ^^^^^^
+  |          Found:    Foo{val m: String^{Baz2.this}}^{Baz2.this}
+  |          Required: Foo
+  |
+  |          Note that the expected type Foo
+  |          is the previously inferred type of value x
+  |          which is also the type seen in separately compiled sources.
+  |          The new inferred type Foo{val m: String^{Baz2.this}}^{Baz2.this}
+  |          must conform to this type.
+  |
+  | longer explanation available when compiling with `-explain`

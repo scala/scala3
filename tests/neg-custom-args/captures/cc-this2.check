@@ -2,5 +2,5 @@
 -- Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:2:6 --------------------------------------------------------
 2 |class D extends C: // error
   |^
-  |reference (cap : caps.Cap) is not included in the allowed capture set {} of pure base class class C
+  |reference (caps.cap : caps.Cap) is not included in the allowed capture set {} of pure base class class C
 3 |  this: D^ =>
