@@ -1008,7 +1008,7 @@ object Build {
         Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions += "-Yscala2-stdlib",
+      scalacOptions += "-Ycompile-scala2-library",
       scalacOptions += "-Ycheck:all",
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,

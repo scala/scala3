@@ -1421,7 +1421,7 @@ class Definitions {
       denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
       patch2(denot, patchCls)
 
-    if ctx.settings.Yscala2Stdlib.value then
+    if ctx.settings.YcompileScala2Library.value then
       ()
     else if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
       patchWith(ScalaPredefModuleClassPatch)
@@ -1769,7 +1769,7 @@ class Definitions {
     || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
-    if !ctx.settings.Yscala2Stdlib.value then
+    if !ctx.settings.YcompileScala2Library.value then
       for base <- bases; tp <- paramTypes do
         cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
     cls
@@ -1812,7 +1812,7 @@ class Definitions {
       case List(x, y) => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
       case _          => false
     && base.owner.denot.info.member(base.name.specializedName(args)).exists // when dotc compiles the stdlib there are no specialised classes
-    && !ctx.settings.Yscala2Stdlib.value // We do not add the specilized TupleN methods/classes when compiling the stdlib
+    && !ctx.settings.YcompileScala2Library.value // We do not add the specilized TupleN methods/classes when compiling the stdlib
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
@@ -1834,7 +1834,7 @@ class Definitions {
       case _ =>
         false
     })
-    && !ctx.settings.Yscala2Stdlib.value // We do not add the specilized FunctionN methods/classes when compiling the stdlib
+    && !ctx.settings.YcompileScala2Library.value // We do not add the specilized FunctionN methods/classes when compiling the stdlib
 
   @tu lazy val Function0SpecializedApplyNames: List[TermName] =
     for r <- Function0SpecializedReturnTypes

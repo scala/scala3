@@ -162,7 +162,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productPrefix if isEnumValue => nameRef
         case nme.productPrefix => ownName
         case nme.productElement =>
-          if ctx.settings.Yscala2Stdlib.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
+          if ctx.settings.YcompileScala2Library.value then productElementBodyForScala2Compat(accessors.length, vrefss.head.head)
           else productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }
@@ -666,7 +666,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val syntheticMembers = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz)
     checkInlining(syntheticMembers)
     val impl1 = cpy.Template(impl)(body = syntheticMembers ::: impl.body)
-    if ctx.settings.Yscala2Stdlib.value then impl1
+    if ctx.settings.YcompileScala2Library.value then impl1
     else addMirrorSupport(impl1)
   }
 

@@ -241,7 +241,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   }
 
   private def checkScala2Stdlib(using Context): Unit =
-    assert(!ctx.settings.Yscala2Stdlib.value, "No Scala 2 libraries should be unpickled under -Yscala2-stdlib")
+    assert(!ctx.settings.YcompileScala2Library.value, "No Scala 2 libraries should be unpickled under -Ycompile-scala2-library")
 
   /** The `decls` scope associated with given symbol */
   protected def symScope(sym: Symbol): Scope = symScopes.getOrElseUpdate(sym, newScope(0))

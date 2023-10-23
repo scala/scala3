@@ -82,7 +82,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   private var compilingScala2StdLib = false
   override def initContext(ctx: FreshContext): Unit =
-    compilingScala2StdLib = ctx.settings.Yscala2Stdlib.value(using ctx)
+    compilingScala2StdLib = ctx.settings.YcompileScala2Library.value(using ctx)
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
