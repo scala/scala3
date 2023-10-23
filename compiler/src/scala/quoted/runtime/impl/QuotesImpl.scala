@@ -1790,6 +1790,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def widenTermRefByName: TypeRepr = self.widenTermRefExpr
         def widenByName: TypeRepr = self.widenExpr
         def dealias: TypeRepr = self.dealias
+        def dealiasKeepOpaques: TypeRepr = self.dealiasKeepOpaques
         def simplified: TypeRepr = self.simplified
         def classSymbol: Option[Symbol] =
           if self.classSymbol.exists then Some(self.classSymbol.asClass)
