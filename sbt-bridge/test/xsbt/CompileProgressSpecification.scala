@@ -54,7 +54,6 @@ class CompileProgressSpecification {
         "parser",
         "typer (indexing)", "typer (typechecking)", "typer (checking java)",
         "sbt-deps",
-        "extractSemanticDB",
         "posttyper",
         "sbt-api",
         "SetRootTree",

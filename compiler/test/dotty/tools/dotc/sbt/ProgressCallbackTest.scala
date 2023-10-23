@@ -145,10 +145,10 @@ object ProgressCallbackTest:
   case class ProgressEvent(curr: Int, total: Int, currPhase: String, nextPhase: String)
   case class PhaseTransition(curr: String, next: String)
 
-  def asSubphases(phase: Phase): IArray[String] =
-    val subPhases = Run.SubPhases(phase).all
-    if subPhases.isEmpty then IArray(phase.phaseName)
-    else subPhases
+  def asSubphases(phase: Phase): IndexedSeq[String] =
+    val subPhases = Run.SubPhases(phase)
+    val indices = 0 until phase.traversals
+    indices.map(subPhases.subPhase)
 
   def runnablePhases()(using Context): IArray[Phase] =
     IArray.from(ctx.base.allPhases.filter(_.isRunnable))
