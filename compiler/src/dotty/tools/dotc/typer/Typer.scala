@@ -4366,7 +4366,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case _ =>
               adaptOverloaded(ref)
           }
-        case poly: PolyType if !(ctx.mode is Mode.Type) =>
+        case poly: PolyType
+        if !(ctx.mode is Mode.Type) && dummyTreeOfType.unapply(tree).isEmpty =>
+            // If we are in a conversion from a TermRef with polymorphic underlying
+        	  // type, give up. In this case the typed `null` literal cannot be instantiated.
+            // Test case was but i18695.scala, but it got fixed by a different tweak in #18719.
+            // We leave test for this condition in as a defensive measure in case
+            // it arises somewhere else.
           if isApplyProxy(tree) then newExpr
           else if pt.isInstanceOf[PolyProto] then tree
           else
