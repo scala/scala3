@@ -126,21 +126,33 @@ object DidYouMean:
   def didYouMean(candidates: List[(Int, Binding)], proto: Type, prefix: String)(using Context): String =
 
     def qualifies(b: Binding)(using Context): Boolean =
-      proto match
-        case _: SelectionProto => true
-        case _ =>
-          try !b.sym.isNoValue
-          catch case ex: Exception => false
+      try
+        val valueOK = proto match
+          case _: SelectionProto => true
+          case _ => !b.sym.isNoValue
+        val accessOK = b.sym.isAccessibleFrom(b.site)
+        valueOK && accessOK
+      catch case ex: Exception => false
+        // exceptions might arise when completing (e.g. malformed class file, or cyclic reference)
 
     def showName(name: Name, sym: Symbol)(using Context): String =
       if sym.is(ModuleClass) then s"${name.show}.type"
       else name.show
 
+    def alternatives(distance: Int, candidates: List[(Int, Binding)]): List[Binding] = candidates match
+      case (d, b) :: rest if d == distance =>
+        if qualifies(b) then b :: alternatives(distance, rest) else alternatives(distance, rest)
+      case _ =>
+        Nil
+
     def recur(candidates: List[(Int, Binding)]): String = candidates match
       case (d, b) :: rest
       if d != 0 || b.sym.is(ModuleClass) => // Avoid repeating the same name in "did you mean"
         if qualifies(b) then
-          s" - did you mean $prefix${showName(b.name, b.sym)}?"
+          def hint(b: Binding) = prefix ++ showName(b.name, b.sym)
+          val alts = alternatives(d, rest).map(hint).take(3)
+          val suffix = if alts.isEmpty then "" else alts.mkString(" or perhaps ", " or ", "?")
+          s" - did you mean ${hint(b)}?$suffix"
         else
           recur(rest)
       case _ => ""
