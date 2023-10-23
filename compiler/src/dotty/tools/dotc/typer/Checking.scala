@@ -1529,7 +1529,7 @@ trait Checking {
           && !qualType.member(sel.name).exists
           && !qualType.member(sel.name.toTypeName).exists
       then
-        report.error(NotAMember(qualType, sel.name, "value"), sel.imported.srcPos)
+        report.error(NotAMember(qualType, sel.name, "value", WildcardType), sel.imported.srcPos)
       if sel.isUnimport then
         if originals.contains(sel.name) then
           report.error(UnimportedAndImported(sel.name, targets.contains(sel.name)), sel.imported.srcPos)

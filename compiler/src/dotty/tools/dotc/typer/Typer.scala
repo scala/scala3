@@ -665,7 +665,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     then // we are in the arguments of a this(...) constructor call
       errorTree(tree, em"$tree is not accessible from constructor arguments")
     else
-      errorTree(tree, MissingIdent(tree, kind, name))
+      errorTree(tree, MissingIdent(tree, kind, name, pt))
   end typedIdent
 
   /** (1) If this reference is neither applied nor selected, check that it does
@@ -754,7 +754,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case rawType: NamedType =>
               inaccessibleErrorType(rawType, superAccess, tree.srcPos)
             case _ =>
-              notAMemberErrorType(tree, qual))
+              notAMemberErrorType(tree, qual, pt))
   end typedSelect
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
