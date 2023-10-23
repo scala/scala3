@@ -45,21 +45,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Apply(fn: Tree, args: List[Tree])(using Context): Apply = fn match
     case Block(Nil, expr) =>
       Apply(expr, args)
+    case _: RefTree | _: GenericApply | _: Inlined | _: Hole =>
+      ta.assignType(untpd.Apply(fn, args), fn, args)
     case _ =>
-      assert(
-        fn.isInstanceOf[RefTree | GenericApply | Inlined | Hole] || ctx.reporter.errorsReported,
-        s"Illegal Apply function prefix: $fn"
-      )
+      assert(ctx.reporter.errorsReported)
       ta.assignType(untpd.Apply(fn, args), fn, args)
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
     case Block(Nil, expr) =>
       TypeApply(expr, args)
+    case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
     case _ =>
-      assert(
-        fn.isInstanceOf[RefTree | GenericApply] || ctx.reporter.errorsReported,
-        s"Illegal TypeApply function prefix: $fn"
-      )
+      assert(ctx.reporter.errorsReported, s"unexpected tree for type application: $fn")
       ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
