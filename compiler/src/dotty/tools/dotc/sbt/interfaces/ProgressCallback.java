@@ -15,7 +15,7 @@ public interface ProgressCallback {
   /** Record the current compilation progress.
    *  @param current `completedPhaseCount * totalUnits + completedUnitsInCurrPhase + completedLate`
    *  @param total `totalPhases * totalUnits + totalLate`
-   *  @return true if the compilation should continue (if false, then subsequent calls to `isCancelled()` will return true)
+   *  @return true if the compilation should continue (callers are expected to cancel if this returns false)
    */
   default boolean progress(int current, int total, String currPhase, String nextPhase) { return true; }
 }

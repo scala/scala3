@@ -337,16 +337,20 @@ object Phases {
 
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
-      units.map { unit =>
+      val buf = List.newBuilder[CompilationUnit]
+      for unit <- units do
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        ctx.run.beginUnit()
-        try run
-        catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
-          println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
-          throw ex
-        finally ctx.run.advanceUnit()
-        unitCtx.compilationUnit
-      }
+        if ctx.run.enterUnit() then
+          try run
+          catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+            println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
+            throw ex
+          finally ctx.run.advanceUnit()
+          buf += unitCtx.compilationUnit
+        end if
+      end for
+      buf.result()
+    end runOn
 
     /** Convert a compilation unit's tree to a string; can be overridden */
     def show(tree: untpd.Tree)(using Context): String =
@@ -455,14 +459,28 @@ object Phases {
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
     /** run the body as one iteration of a (sub)phase (see Run.Progress), Enrich crash messages */
-    final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Unit =
-      ctx.run.beginUnit()
-      try body
-      catch
-        case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
-          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
-          throw ex
-      finally ctx.run.advanceUnit()
+    final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Boolean =
+      if ctx.run.enterUnit() then
+        try {body; true}
+        catch
+          case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+            report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
+            throw ex
+        finally ctx.run.advanceUnit()
+      else
+        false
+
+    /** run the body as one iteration of a (sub)phase (see Run.Progress), Enrich crash messages */
+    final def monitorOpt[T](doing: String)(body: Context ?=> Option[T])(using Context): Option[T] =
+      if ctx.run.enterUnit() then
+        try body
+        catch
+          case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+            report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
+            throw ex
+        finally ctx.run.advanceUnit()
+      else
+        None
 
     override def toString: String = phaseName
   }

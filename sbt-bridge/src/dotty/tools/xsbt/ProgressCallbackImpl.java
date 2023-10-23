@@ -30,8 +30,6 @@ public final class ProgressCallbackImpl implements ProgressCallback {
 
   @Override
   public boolean progress(int current, int total, String currPhase, String nextPhase) {
-    boolean shouldAdvance = _progress.advance(current, total, currPhase, nextPhase);
-    if (!shouldAdvance) cancel();
-    return shouldAdvance;
+    return _progress.advance(current, total, currPhase, nextPhase);
   }
 }

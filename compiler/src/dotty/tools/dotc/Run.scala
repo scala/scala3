@@ -177,9 +177,18 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if local != null then
       op(using ctx)(local)
 
-  def doBeginUnit()(using Context): Unit =
-    trackProgress: progress =>
-      progress.informUnitStarting(ctx.compilationUnit)
+  private inline def foldProgress[T](using Context)(inline default: T)(inline op: Context ?=> Progress => T): T =
+    val local = _progress
+    if local != null then
+      op(using ctx)(local)
+    else
+      default
+
+  def didEnterUnit()(using Context): Boolean =
+    foldProgress(true /* should progress by default */)(_.tryEnterUnit(ctx.compilationUnit))
+
+  def didEnterFinal()(using Context): Boolean =
+    foldProgress(true /* should progress by default */)(p => !p.checkCancellation())
 
   def doAdvanceUnit()(using Context): Unit =
     trackProgress: progress =>
@@ -194,6 +203,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private def doEnterPhase(currentPhase: Phase)(using Context): Unit =
     trackProgress: progress =>
       progress.enterPhase(currentPhase)
+
+  /** interrupt the thread and set cancellation state */
+  private def cancelInterrupted(): Unit =
+    try
+      trackProgress(_.cancel())
+    finally
+      Thread.currentThread().nn.interrupt()
 
   private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
     trackProgress: progress =>
@@ -213,7 +229,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       progress.seen += 1 // trace that we've seen a (sub)phase
       progress.traversalc += 1 // add an extra traversal now that we completed a (sub)phase
       progress.subtraversalc += 1 // record that we've seen a subphase
-      progress.tickSubphase()
+      if !progress.isCancelled() then
+        progress.tickSubphase()
 
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
@@ -297,7 +314,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
           Stats.trackTime(s"phase time ms/$phase") {
             val start = System.currentTimeMillis
             val profileBefore = profiler.beforePhase(phase)
-            units = phase.runOn(units)
+            try units = phase.runOn(units)
+            catch case _: InterruptedException => cancelInterrupted()
             profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase))
               for (unit <- units)
@@ -333,7 +351,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
-    while (finalizeActions.nonEmpty) {
+    while (finalizeActions.nonEmpty && didEnterFinal()) {
       val action = finalizeActions.remove(0)
       action()
     }
@@ -481,6 +499,8 @@ object Run {
 
 
   private class Progress(cb: ProgressCallback, private val run: Run, val initialTraversals: Int):
+    export cb.{cancel, isCancelled}
+
     private[Run] var totalTraversals: Int = initialTraversals  // track how many phases we expect to run
     private[Run] var unitc: Int = 0 // current unit count in the current (sub)phase
     private[Run] var latec: Int = 0 // current late unit count
@@ -515,34 +535,46 @@ object Run {
 
 
     /** Counts the number of completed full traversals over files, plus the number of units in the current phase */
-    private def currentProgress()(using Context): Int =
-      traversalc * run.files.size + unitc + latec
+    private def currentProgress(): Int =
+      traversalc * work() + unitc + latec
 
     /**Total progress is computed as the sum of
      * - the number of traversals we expect to make over all files
      * - the number of late compilations
      */
-    private def totalProgress()(using Context): Int =
-      totalTraversals * run.files.size + run.lateFiles.size
+    private def totalProgress(): Int =
+      totalTraversals * work() + run.lateFiles.size
+
+    private def work(): Int = run.files.size
 
     private def requireInitialized(): Unit =
       require((currPhase: Phase | Null) != null, "enterPhase was not called")
 
-    /** trace that we are beginning a unit in the current (sub)phase */
-    private[Run] def informUnitStarting(unit: CompilationUnit)(using Context): Unit =
-      requireInitialized()
-      cb.informUnitStarting(currPhaseName, unit)
+    private[Run] def checkCancellation(): Boolean =
+      if Thread.interrupted() then cancel()
+      isCancelled()
+
+    /** trace that we are beginning a unit in the current (sub)phase, unless cancelled */
+    private[Run] def tryEnterUnit(unit: CompilationUnit): Boolean =
+      if checkCancellation() then false
+      else
+        requireInitialized()
+        cb.informUnitStarting(currPhaseName, unit)
+        true
 
     /** trace the current progress out of the total, in the current (sub)phase, reporting the next (sub)phase */
     private[Run] def refreshProgress()(using Context): Unit =
       requireInitialized()
-      cb.progress(currentProgress(), totalProgress(), currPhaseName, nextPhaseName)
+      val total = totalProgress()
+      if total > 0 && !cb.progress(currentProgress(), total, currPhaseName, nextPhaseName) then
+        cancel()
 
   extension (run: Run | Null)
 
     /** record that the current phase has begun for the compilation unit of the current Context */
-    def beginUnit()(using Context): Unit =
-      if run != null then run.doBeginUnit()
+    def enterUnit()(using Context): Boolean =
+      if run != null then run.didEnterUnit()
+      else true // don't check cancellation if we're not tracking progress
 
     /** advance the unit count and record progress in the current phase */
     def advanceUnit()(using Context): Unit =

@@ -31,13 +31,21 @@ class Checker extends Phase:
   override def isEnabled(using Context): Boolean =
     super.isEnabled && (ctx.settings.YcheckInit.value || ctx.settings.YcheckInitGlobal.value)
 
+  def traverse(traverser: InitTreeTraverser)(using Context): Boolean = monitor(phaseName):
+    val unit = ctx.compilationUnit
+    traverser.traverse(unit.tpdTree)
+
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)
     val traverser = new InitTreeTraverser()
-    for unit <- units do
-      checkCtx.run.beginUnit()
-      try traverser.traverse(unit.tpdTree)
-      finally ctx.run.advanceUnit()
+    val unitContexts = units.map(unit => checkCtx.fresh.setCompilationUnit(unit))
+
+    val unitContexts0 =
+      for
+        given Context <- unitContexts
+        if traverse(traverser)
+      yield ctx
+
     val classes = traverser.getClasses()
 
     if ctx.settings.YcheckInit.value then
@@ -46,7 +54,7 @@ class Checker extends Phase:
     if ctx.settings.YcheckInitGlobal.value then
       Objects.checkClasses(classes)(using checkCtx)
 
-    units
+    unitContexts0.map(_.compilationUnit)
 
   def run(using Context): Unit = unsupported("run")
 

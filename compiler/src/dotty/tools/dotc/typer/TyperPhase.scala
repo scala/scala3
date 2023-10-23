@@ -31,13 +31,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   // Run regardless of parsing errors
   override def isRunnable(implicit ctx: Context): Boolean = true
 
-  def enterSyms(using Context): Unit = monitor("indexing") {
+  def enterSyms(using Context): Boolean = monitor("indexing") {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: " + unit.source)
   }
 
-  def typeCheck(using Context): Unit = monitor("typechecking") {
+  def typeCheck(using Context): Boolean = monitor("typechecking") {
     val unit = ctx.compilationUnit
     try
       if !unit.suspended then
@@ -49,7 +49,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     catch case _: CompilationUnit.SuspendException => ()
   }
 
-  def javaCheck(using Context): Unit = monitor("checking java") {
+  def javaCheck(using Context): Boolean = monitor("checking java") {
     val unit = ctx.compilationUnit
     if unit.isJava then
       JavaChecks.check(unit.tpdTree)
@@ -72,11 +72,14 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         else
           newCtx
 
-    try
-      for given Context <- unitContexts do
-        enterSyms
-    finally
-      ctx.run.advanceSubPhase() // tick from "typer (indexing)" to "typer (typechecking)"
+    val unitContexts0 =
+      try
+        for
+          given Context <- unitContexts
+          if enterSyms
+        yield ctx
+      finally
+        ctx.run.advanceSubPhase() // tick from "typer (indexing)" to "typer (typechecking)"
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
@@ -88,18 +91,24 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       case _ =>
     }
 
-    try
-      for given Context <- unitContexts do
-        typeCheck
-    finally
-      ctx.run.advanceSubPhase() // tick from "typer (typechecking)" to "typer (java checking)"
+    val unitContexts1 =
+      try
+        for
+          given Context <- unitContexts0
+          if typeCheck
+        yield ctx
+      finally
+        ctx.run.advanceSubPhase() // tick from "typer (typechecking)" to "typer (java checking)"
 
     record("total trees after typer", ast.Trees.ntrees)
 
-    for given Context <- unitContexts do
-      javaCheck // after typechecking to avoid cycles
+    val unitContexts2 =
+      for
+        given Context <- unitContexts1
+        if javaCheck // after typechecking to avoid cycles
+      yield ctx
 
-    val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
+    val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 
