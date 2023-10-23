@@ -1,0 +1,87 @@
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:11:14 ------------------------------------------------------------
+11 |def u: Unit = () // error
+   |              ^^
+   |              Found:    Unit
+   |              Required: Unit²
+   |
+   |              where:    Unit  is a class in package scala
+   |                        Unit² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:12:20 ------------------------------------------------------------
+12 |def bool: Boolean = true // error
+   |                    ^^^^
+   |                    Found:    (true : Boolean)
+   |                    Required: Boolean²
+   |
+   |                    where:    Boolean  is a class in package scala
+   |                              Boolean² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:13:14 ------------------------------------------------------------
+13 |def b: Byte = 1: scala.Byte // error
+   |              ^^^^^^^^^^^^^
+   |              Found:    Byte
+   |              Required: Byte²
+   |
+   |              where:    Byte  is a class in package scala
+   |                        Byte² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:14:15 ------------------------------------------------------------
+14 |def s: Short = 2: scala.Short // error
+   |               ^^^^^^^^^^^^^^
+   |               Found:    Short
+   |               Required: Short²
+   |
+   |               where:    Short  is a class in package scala
+   |                         Short² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:15:13 ------------------------------------------------------------
+15 |def i: Int = 3 // error
+   |             ^
+   |             Found:    (3 : Int)
+   |             Required: Int²
+   |
+   |             where:    Int  is a class in package scala
+   |                       Int² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:16:14 ------------------------------------------------------------
+16 |def l: Long = 4L // error
+   |              ^^
+   |              Found:    (4L : Long)
+   |              Required: Long²
+   |
+   |              where:    Long  is a class in package scala
+   |                        Long² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:17:15 ------------------------------------------------------------
+17 |def f: Float = 5.6 // error
+   |               ^^^
+   |               Found:    (5.6d : Double)
+   |               Required: Float
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:18:16 ------------------------------------------------------------
+18 |def d: Double = 6.7d // error
+   |                ^^^^
+   |                Found:    (6.7d : Double)
+   |                Required: Double²
+   |
+   |                where:    Double  is a class in package scala
+   |                          Double² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i18678.scala:19:14 ------------------------------------------------------------
+19 |def c: Char = 'a' // error
+   |              ^^^
+   |              Found:    ('a' : Char)
+   |              Required: Char²
+   |
+   |              where:    Char  is a class in package scala
+   |                        Char² is a class in the empty package
+   |
+   | longer explanation available when compiling with `-explain`
