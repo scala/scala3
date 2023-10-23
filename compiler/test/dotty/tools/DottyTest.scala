@@ -44,7 +44,7 @@ trait DottyTest extends ContextEscapeDetection {
     fc.setProperty(ContextDoc, new ContextDocstrings)
   }
 
-  protected def defaultCompiler: Compiler = Compiler()
+  protected def defaultCompiler: Compiler = new Compiler()
 
   private def compilerWithChecker(phase: String)(assertion: (tpd.Tree, Context) => Unit) = new Compiler {
 
