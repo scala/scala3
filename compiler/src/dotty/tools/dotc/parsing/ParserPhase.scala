@@ -22,7 +22,7 @@ class Parser extends Phase {
    */
   private[dotc] var firstXmlPos: SourcePosition = NoSourcePosition
 
-  def parse(using Context) = monitor("parser") {
+  def parse(using Context): Boolean = monitor("parser") {
     val unit = ctx.compilationUnit
     unit.untpdTree =
       if (unit.isJava) new JavaParsers.JavaParser(unit.source).parse()
@@ -46,12 +46,15 @@ class Parser extends Phase {
         report.inform(s"parsing ${unit.source}")
         ctx.fresh.setCompilationUnit(unit).withRootImports
 
-    for given Context <- unitContexts do
-      parse
+    val unitContexts0 =
+      for
+        given Context <- unitContexts
+        if parse
+      yield ctx
 
     record("parsedTrees", ast.Trees.ntrees)
 
-    unitContexts.map(_.compilationUnit)
+    unitContexts0.map(_.compilationUnit)
   }
 
   def run(using Context): Unit = unsupported("run")

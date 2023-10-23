@@ -22,12 +22,14 @@ class ReadTasty extends Phase {
     ctx.settings.fromTasty.value
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    withMode(Mode.ReadPositions)(units.flatMap(applyPhase(_)))
+    withMode(Mode.ReadPositions) {
+      val unitContexts = units.map(unit => ctx.fresh.setCompilationUnit(unit))
+      unitContexts.flatMap(applyPhase()(using _))
+    }
 
-  private def applyPhase(unit: CompilationUnit)(using Context): Option[CompilationUnit] =
-    ctx.run.beginUnit()
-    try readTASTY(unit)
-    finally ctx.run.advanceUnit()
+  private def applyPhase()(using Context): Option[CompilationUnit] = monitorOpt(phaseName):
+    val unit = ctx.compilationUnit
+    readTASTY(unit)
 
   def readTASTY(unit: CompilationUnit)(using Context): Option[CompilationUnit] = unit match {
     case unit: TASTYCompilationUnit =>
@@ -82,7 +84,7 @@ class ReadTasty extends Phase {
           }
       }
     case unit =>
-     Some(unit)
+      Some(unit)
   }
 
   def run(using Context): Unit = unsupported("run")
