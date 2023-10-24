@@ -1811,10 +1811,20 @@ class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathI
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
 
-class WrongNumberOfParameters(expected: Int)(using Context)
+class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
-  def msg(using Context) = s"Wrong number of parameters, expected: $expected"
-  def explain(using Context) = ""
+  def msg(using Context) = s"Wrong number of parameters, expected: $expectedCount"
+  def explain(using Context) =
+    val ending = if foundCount == 1 then "" else "s"
+    i"""The function literal
+       |
+       |    $tree
+       |
+       |has $foundCount parameter$ending. But the expected type
+       |
+       |    $pt
+       |
+       |requires a function with $expectedCount parameters."""
 }
 
 class DuplicatePrivateProtectedQualifier()(using Context)

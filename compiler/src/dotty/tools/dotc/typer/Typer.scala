@@ -1586,7 +1586,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     /** Returns the type and whether the parameter is erased */
     def protoFormal(i: Int): (Type, Boolean) =
       if (protoFormals.length == params.length) (protoFormals(i), isDefinedErased(i))
-      else (errorType(WrongNumberOfParameters(protoFormals.length), tree.srcPos), false)
+      else (errorType(WrongNumberOfParameters(tree, params.length, pt, protoFormals.length), tree.srcPos), false)
 
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) =
