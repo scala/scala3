@@ -973,66 +973,63 @@ extends SyntaxMsg(IllegalStartOfSimplePatternID) {
   def msg(using Context) = "pattern expected"
   def explain(using Context) = {
     val sipCode =
-      """def f(x: Int, y: Int) = x match {
-        |  case `y` => ...
-        |}
-      """
+      """def f(x: Int, y: Int) = x match
+        |    case `y` => ...""".stripMargin
     val constructorPatternsCode =
       """case class Person(name: String, age: Int)
         |
-        |def test(p: Person) = p match {
-        |  case Person(name, age) => ...
-        |}
-      """
-    val tupplePatternsCode =
-      """def swap(tuple: (String, Int)): (Int, String) = tuple match {
-        |  case (text, number) => (number, text)
-        |}
-      """
+        |  def test(p: Person) = p match
+        |    case Person(name, age) => ...""".stripMargin
+    val tuplePatternsCode =
+      """def swap(tuple: (String, Int)): (Int, String) = tuple match
+        |    case (text, number) => (number, text)""".stripMargin
     val patternSequencesCode =
-      """def getSecondValue(list: List[Int]): Int = list match {
-        |  case List(_, second, x:_*) => second
-        |  case _ => 0
-        |}"""
+      """def getSecondValue(list: List[Int]): Int = list match
+        |    case List(_, second, x*) => second
+        |    case _ => 0""".stripMargin
     i"""|Simple patterns can be divided into several groups:
-        |- Variable Patterns: ${hl("case x => ...")}.
+        |- Variable Patterns: ${hl("case x => ...")} or ${hl("case _ => ...")}
         |  It matches any value, and binds the variable name to that value.
         |  A special case is the wild-card pattern _ which is treated as if it was a fresh
         |  variable on each occurrence.
         |
-        |- Typed Patterns: ${hl("case x: Int => ...")} or ${hl("case _: Int => ...")}.
+        |- Typed Patterns: ${hl("case x: Int => ...")} or ${hl("case _: Int => ...")}
         |  This pattern matches any value matched by the specified type; it binds the variable
         |  name to that value.
         |
-        |- Literal Patterns: ${hl("case 123 => ...")} or ${hl("case 'A' => ...")}.
+        |- Given Patterns: ${hl("case given ExecutionContext => ...")}
+        |  This pattern matches any value matched by the specified type; it binds a ${hl("given")}
+        |  instance with the same type to that value.
+        |
+        |- Literal Patterns: ${hl("case 123 => ...")} or ${hl("case 'A' => ...")}
         |  This type of pattern matches any value that is equal to the specified literal.
         |
         |- Stable Identifier Patterns:
         |
-        |  $sipCode
+        |  ${hl(sipCode)}
         |
         |  the match succeeds only if the x argument and the y argument of f are equal.
         |
         |- Constructor Patterns:
         |
-        |  $constructorPatternsCode
+        |  ${hl(constructorPatternsCode)}
         |
         |  The pattern binds all object's fields to the variable names (name and age, in this
         |  case).
         |
         |- Tuple Patterns:
         |
-        |  $tupplePatternsCode
+        |  ${hl(tuplePatternsCode)}
         |
         |  Calling:
         |
-        |  ${hl("""swap(("Luftballons", 99)""")}
+        |  ${hl("""swap(("Luftballons", 99))""")}
         |
         |  would give ${hl("""(99, "Luftballons")""")} as a result.
         |
         |- Pattern Sequences:
         |
-        |  $patternSequencesCode
+        |  ${hl(patternSequencesCode)}
         |
         |  Calling:
         |
