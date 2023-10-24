@@ -597,6 +597,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def extendedLocationText(sym: Symbol): Text =
     if (!sym.exists) ""
+    else if isEmptyPrefix(sym.owner) then
+      " in the empty package"
     else {
       def recur(ownr: Symbol, innerLocation: String): Text = {
         def nextOuter(innerKind: String): Text =

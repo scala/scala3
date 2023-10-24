@@ -18,7 +18,7 @@
    |                                 Found:    HK[[Y] =>> Foo[(X, X)]]
    |                                 Required: HK[[X²] =>> Foo[(X², X²)]]
    |
-   |                                 where:    X  is a class
+   |                                 where:    X  is a class in the empty package
    |                                           X² is a type variable
    |
    | longer explanation available when compiling with `-explain`
@@ -29,6 +29,6 @@
    |                                 Required: HK[[Y] =>> Foo[(X², X²)]]
    |
    |                                 where:    X  is a type variable
-   |                                           X² is a class
+   |                                           X² is a class in the empty package
    |
    | longer explanation available when compiling with `-explain`
