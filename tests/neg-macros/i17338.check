@@ -1,0 +1,9 @@
+-- Error: tests/neg-macros/i17338.scala:4:5 ----------------------------------------------------------------------------
+4 |  '{ '{ 1 } } // error
+  |     ^
+  |     access to parameter quotes from wrong staging level:
+  |      - the definition is at level 0,
+  |      - but the access is at level 1.
+  |
+  |     Hint: Nested quote needs a local context defined at level 1.
+  |     One way to introduce this context is to give the outer quote the type `Expr[Quotes ?=> Expr[T]]`.
