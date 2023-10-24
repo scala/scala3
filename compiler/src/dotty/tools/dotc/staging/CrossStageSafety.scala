@@ -228,6 +228,10 @@ class CrossStageSafety extends TreeMapWithStages {
         "\n\n" +
         "Hint: Staged references to inline definition in quotes are only inlined after the quote is spliced into level 0 code by a macro. " +
         "Try moving this inline definition in a statically accessible location such as an object (this definition can be private)."
+      else if level > 0 && sym.info.derivesFrom(defn.QuotesClass) then
+        s"""\n
+         |Hint: Nested quote needs a local context defined at level $level.
+         |One way to introduce this context is to give the outer quote the type `Expr[Quotes ?=> Expr[T]]`.""".stripMargin
       else ""
     report.error(
       em"""access to $symStr from wrong staging level:
