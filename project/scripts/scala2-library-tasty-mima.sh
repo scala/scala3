@@ -17,6 +17,7 @@ setTastyVersion $MINOR_TASTY_VERSION_SUPPORTED_BY_TASTY_MIMA 0
 # Run scala2-library-bootstrapped/tastyMiMaReportIssues using a custom TASTy version.
 # We clean before to make sure all sources are recompiled using the new TASTY version.
 # We clean after to make sure no other test will use the TASTy generated with this version.
-"$SBT" "clean; scala2-library-bootstrapped/clean; reload; scala2-library-bootstrapped/tastyMiMaReportIssues; clean; scala2-library-bootstrapped/clean"
+# We set -Ycheck:all to check that -Ycompile-scala2-library does not gererate inconsistent trees.
+"$SBT" 'clean; scala2-library-bootstrapped/clean; reload; set `scala2-library-bootstrapped`/scalacOptions += "-Ycheck:all"; scala2-library-bootstrapped/tastyMiMaReportIssues; clean; scala2-library-bootstrapped/clean'
 
 setTastyVersion $MINOR_TASTY_VERSION $EXPERIMENTAL_TASTY_VERSION
