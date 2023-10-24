@@ -3598,6 +3598,8 @@ object Parsers {
      *            |  id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
+      if in.token != USCORE && isKeyword(in.token) then
+        syntaxError(ExpectedTokenButFound(IDENTIFIER, in.token), Span(in.offset))
       val first = pattern2(Location.InPattern)
       var lhs = first match {
         case id: Ident if in.token == COMMA =>
