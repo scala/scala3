@@ -186,11 +186,6 @@ object Contexts {
       val local = progressCallback
       if local != null then op(local)
 
-    def cancelSignalRecorded: Boolean =
-      val local = progressCallback
-      val noSignalRecieved = local == null || !local.isCancelled
-      !noSignalRecieved // if true then cancel request was recorded
-
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
 
