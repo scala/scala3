@@ -29,6 +29,7 @@ import dotty.tools.dotc.{semanticdb => s}
 import dotty.tools.io.{AbstractFile, JarArchive}
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
+import java.nio.file.Path
 
 
 /** Extract symbol references and uses to semanticdb files.
@@ -65,41 +66,49 @@ class ExtractSemanticDB private (phaseMode: ExtractSemanticDB.PhaseMode) extends
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     if (appendDiagnostics)
       val warnings = ctx.reporter.allWarnings.groupBy(w => w.pos.source)
-      units.flatMap { unit =>
-        warnings.get(unit.source).map { ws =>
-          val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
+      val buf = mutable.ListBuffer.empty[(Path, Seq[Diagnostic])]
+      units.foreach { unit =>
+        val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
+        monitor(phaseName) {
+          warnings.get(unit.source).foreach { ws =>
+            val outputDir =
+              ExtractSemanticDB.semanticdbPath(
+                unit.source,
+                ExtractSemanticDB.semanticdbOutDir(using unitCtx),
+                sourceRoot
+              )
+            buf += ((outputDir, ws.map(_.toSemanticDiagnostic)))
+          }
+        }(using unitCtx)
+      }
+      cancellable {
+        buf.toList.asJava.parallelStream().forEach { case (out, warnings) =>
+          ExtractSemanticDB.appendDiagnostics(warnings, out)
+        }
+      }
+    else
+      val writeSemanticdbText = ctx.settings.semanticdbText.value
+      units.foreach { unit =>
+        val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
+        monitor(phaseName) {
           val outputDir =
             ExtractSemanticDB.semanticdbPath(
               unit.source,
               ExtractSemanticDB.semanticdbOutDir(using unitCtx),
               sourceRoot
             )
-          (outputDir, ws.map(_.toSemanticDiagnostic))
-        }
-      }.asJava.parallelStream().forEach { case (out, warnings) =>
-        ExtractSemanticDB.appendDiagnostics(warnings, out)
-      }
-    else
-      val writeSemanticdbText = ctx.settings.semanticdbText.value
-      units.foreach { unit =>
-        val unitCtx = ctx.fresh.setCompilationUnit(unit).withRootImports
-        val outputDir =
-          ExtractSemanticDB.semanticdbPath(
+          val extractor = ExtractSemanticDB.Extractor()
+          extractor.extract(unit.tpdTree)(using unitCtx)
+          ExtractSemanticDB.write(
             unit.source,
-            ExtractSemanticDB.semanticdbOutDir(using unitCtx),
-            sourceRoot
+            extractor.occurrences.toList,
+            extractor.symbolInfos.toList,
+            extractor.synthetics.toList,
+            outputDir,
+            sourceRoot,
+            writeSemanticdbText
           )
-        val extractor = ExtractSemanticDB.Extractor()
-        extractor.extract(unit.tpdTree)(using unitCtx)
-        ExtractSemanticDB.write(
-          unit.source,
-          extractor.occurrences.toList,
-          extractor.symbolInfos.toList,
-          extractor.synthetics.toList,
-          outputDir,
-          sourceRoot,
-          writeSemanticdbText
-        )
+        }(using unitCtx)
       }
     units
   }
