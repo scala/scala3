@@ -42,7 +42,8 @@ import dotty.tools.dotc.core.Names.Name
  *
  *  Note also that the transformation applies only to types of parameters, not to other
  *  occurrences of ExprTypes. In particular, embedded occurrences in function types
- *  such as `(=> T) => U` are left as-is here (they are eliminated in erasure).
+ *  such as `(=> T) => U` are left as-is here (they are eliminated in erasure),
+ *  unless they are in a `((=> T) => U)#apply` term reference.
  *  Trying to convert these as well would mean traversing all the types, and that
  *  leads to cyclic reference errors in many cases.  This can cause problems in that
  *  we might have sometimes a `() ?=> T` where a `=> T` is expected. To compensate,
@@ -60,7 +61,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
   override def description: String = ElimByName.description
 
   override def runsAfterGroupsOf: Set[String] = Set(ExpandSAMs.name, ElimRepeated.name, RefChecks.name)
-    // - ExpanSAMs applied to partial functions creates methods that need
+    // - ExpandSAMs applied to partial functions creates methods that need
     //   to be fully defined before converting. Test case is pos/i9391.scala.
     // - ElimByName needs to run in a group after ElimRepeated since ElimRepeated
     //   works on simple arguments but not converted closures, and it sees the arguments
@@ -116,10 +117,10 @@ class ElimByName extends MiniPhase, InfoTransformer:
     else tree
 
   override def transformIdent(tree: Ident)(using Context): Tree =
-    applyIfFunction(tree)
+    transformFunctionTypeApplyReferences(applyIfFunction(tree))
 
   override def transformSelect(tree: Select)(using Context): Tree =
-    applyIfFunction(tree)
+    transformFunctionTypeApplyReferences(applyIfFunction(tree))
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
     case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
@@ -128,6 +129,25 @@ class ElimByName extends MiniPhase, InfoTransformer:
       applyIfFunction(tree)
     case _ => tree
   }
+
+  /** Transform references to by-name function type apply
+   *
+   *     ((=> T1) => R)#apply  --->  ((() ?=> T1) => R)#apply
+   */
+  private def transformFunctionTypeApplyReferences(tree: Tree)(using Context) =
+    val tpe1 = new TypeMap {
+      def apply(tp: Type): Type = tp match
+        case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+          val args1 = args.mapConserve {
+            case ExprType(tp) => defn.ByNameFunction(tp)
+            case arg => arg
+          }
+          tp.derivedAppliedType(tycon, args1)
+        case tp: TermRef if tp.termSymbol.name == nme.apply && defn.isFunctionClass(tp.termSymbol.owner) =>
+          mapOver(tp)
+        case tp => tp
+    }.apply(tree.tpe)
+    tree.withType(tpe1)
 
   override def transformApply(tree: Apply)(using Context): Tree =
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {

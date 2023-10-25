@@ -1,0 +1,5 @@
+scala> def f: ( => Int) => Int = i => i ; f(1)
+def f: (=> Int) => Int
+val res0: Int = 1
+scala> f(1)
+val res1: Int = 1
