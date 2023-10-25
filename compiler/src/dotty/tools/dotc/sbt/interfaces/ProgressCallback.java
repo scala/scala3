@@ -3,7 +3,7 @@ package dotty.tools.dotc.sbt.interfaces;
 import dotty.tools.dotc.CompilationUnit;
 
 public interface ProgressCallback {
-  /** Record that the cancellation signal has been recieved during the Zinc run. */
+  /** Record that the cancellation signal has been received during the Zinc run. */
   default void cancel() {}
 
   /** Report on if there was a cancellation signal for the current Zinc run. */

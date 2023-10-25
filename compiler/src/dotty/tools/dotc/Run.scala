@@ -189,12 +189,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   def doAdvanceUnit()(using Context): Unit =
     trackProgress: progress =>
-      progress.unitc += 1 // trace that we completed a unit in the current (sub)phase
+      progress.currentUnitCount += 1 // trace that we completed a unit in the current (sub)phase
       progress.refreshProgress()
 
   def doAdvanceLate()(using Context): Unit =
     trackProgress: progress =>
-      progress.latec += 1 // trace that we completed a late compilation
+      progress.currentLateUnitCount += 1 // trace that we completed a late compilation
       progress.refreshProgress()
 
   private def doEnterPhase(currentPhase: Phase)(using Context): Unit =
@@ -210,22 +210,22 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private def doAdvancePhase(currentPhase: Phase, wasRan: Boolean)(using Context): Unit =
     trackProgress: progress =>
-      progress.unitc = 0 // reset unit count in current (sub)phase
-      progress.subtraversalc = 0 // reset subphase index to initial
-      progress.seen += 1 // trace that we've seen a (sub)phase
+      progress.currentUnitCount = 0 // reset unit count in current (sub)phase
+      progress.currentCompletedSubtraversalCount = 0 // reset subphase index to initial
+      progress.seenPhaseCount += 1 // trace that we've seen a (sub)phase
       if wasRan then
         // add an extra traversal now that we completed a (sub)phase
-        progress.traversalc += 1
+        progress.completedTraversalCount += 1
       else
         // no subphases were ran, remove traversals from expected total
         progress.totalTraversals -= currentPhase.traversals
 
   private def doAdvanceSubPhase()(using Context): Unit =
     trackProgress: progress =>
-      progress.unitc = 0 // reset unit count in current (sub)phase
-      progress.seen += 1 // trace that we've seen a (sub)phase
-      progress.traversalc += 1 // add an extra traversal now that we completed a (sub)phase
-      progress.subtraversalc += 1 // record that we've seen a subphase
+      progress.currentUnitCount = 0 // reset unit count in current (sub)phase
+      progress.seenPhaseCount += 1 // trace that we've seen a (sub)phase
+      progress.completedTraversalCount += 1 // add an extra traversal now that we completed a (sub)phase
+      progress.currentCompletedSubtraversalCount += 1 // record that we've seen a subphase
       if !progress.isCancelled() then
         progress.tickSubphase()
 
@@ -498,12 +498,12 @@ object Run {
   private class Progress(cb: ProgressCallback, private val run: Run, val initialTraversals: Int):
     export cb.{cancel, isCancelled}
 
-    private[Run] var totalTraversals: Int = initialTraversals  // track how many phases we expect to run
-    private[Run] var unitc: Int = 0 // current unit count in the current (sub)phase
-    private[Run] var latec: Int = 0 // current late unit count
-    private[Run] var traversalc: Int = 0 // completed traversals over all files
-    private[Run] var subtraversalc: Int = 0 // completed subphases in the current phase
-    private[Run] var seen: Int = 0 // how many phases we've seen so far
+    var totalTraversals: Int = initialTraversals  // track how many phases we expect to run
+    var currentUnitCount: Int = 0 // current unit count in the current (sub)phase
+    var currentLateUnitCount: Int = 0 // current late unit count
+    var completedTraversalCount: Int = 0 // completed traversals over all files
+    var currentCompletedSubtraversalCount: Int = 0 // completed subphases in the current phase
+    var seenPhaseCount: Int = 0 // how many phases we've seen so far
 
     private var currPhase: Phase = uninitialized  // initialized by enterPhase
     private var subPhases: SubPhases = uninitialized  // initialized by enterPhase
@@ -519,7 +519,7 @@ object Run {
 
     /** Compute the current (sub)phase name and next (sub)phase name */
     private[Run] def tickSubphase()(using Context): Unit =
-      val index = subtraversalc
+      val index = currentCompletedSubtraversalCount
       val s = subPhases
       currPhaseName = s.subPhase(index)
       nextPhaseName =
@@ -527,13 +527,13 @@ object Run {
         else s.next match
           case None => "<end>"
           case Some(next0) => next0.subPhase(0)
-      if seen > 0 then
+      if seenPhaseCount > 0 then
         refreshProgress()
 
 
     /** Counts the number of completed full traversals over files, plus the number of units in the current phase */
     private def currentProgress(): Int =
-      traversalc * work() + unitc + latec
+      completedTraversalCount * work() + currentUnitCount + currentLateUnitCount
 
     /**Total progress is computed as the sum of
      * - the number of traversals we expect to make over all files
