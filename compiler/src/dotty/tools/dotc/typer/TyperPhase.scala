@@ -75,9 +75,9 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     val unitContexts0 =
       try
         for
-          given Context <- unitContexts
-          if enterSyms
-        yield ctx
+          unitContext <- unitContexts
+          if enterSyms(using unitContext)
+        yield unitContext
       finally
         ctx.run.advanceSubPhase() // tick from "typer (indexing)" to "typer (typechecking)"
 
@@ -94,9 +94,9 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     val unitContexts1 =
       try
         for
-          given Context <- unitContexts0
-          if typeCheck
-        yield ctx
+          unitContext <- unitContexts0
+          if typeCheck(using unitContext)
+        yield unitContext
       finally
         ctx.run.advanceSubPhase() // tick from "typer (typechecking)" to "typer (java checking)"
 
@@ -104,9 +104,9 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
     val unitContexts2 =
       for
-        given Context <- unitContexts1
-        if javaCheck // after typechecking to avoid cycles
-      yield ctx
+        unitContext <- unitContexts1
+        if javaCheck(using unitContext) // after typechecking to avoid cycles
+      yield unitContext
 
     val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)

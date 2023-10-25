@@ -48,9 +48,9 @@ class Parser extends Phase {
 
     val unitContexts0 =
       for
-        given Context <- unitContexts
-        if parse
-      yield ctx
+        unitContext <- unitContexts
+        if parse(using unitContext)
+      yield unitContext
 
     record("parsedTrees", ast.Trees.ntrees)
 
