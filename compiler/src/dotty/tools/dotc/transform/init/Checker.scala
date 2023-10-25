@@ -41,7 +41,7 @@ class Checker extends Phase:
     val unitContexts = units.map(unit => checkCtx.fresh.setCompilationUnit(unit))
 
     val units0 =
-      for given Context <- unitContexts if traverse(traverser) yield ctx.compilationUnit
+      for unitContext <- unitContexts if traverse(traverser)(using unitContext) yield unitContext.compilationUnit
 
     cancellable {
       val classes = traverser.getClasses()

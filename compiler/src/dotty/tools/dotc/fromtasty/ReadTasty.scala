@@ -24,7 +24,7 @@ class ReadTasty extends Phase {
     withMode(Mode.ReadPositions) {
       val nextUnits = collection.mutable.ListBuffer.empty[CompilationUnit]
       val unitContexts = units.view.map(ctx.fresh.setCompilationUnit)
-      for given Context <- unitContexts if addTasty(nextUnits += _) do ()
+      for unitContext <- unitContexts if addTasty(nextUnits += _)(using unitContext) do ()
       nextUnits.toList
     }
 
