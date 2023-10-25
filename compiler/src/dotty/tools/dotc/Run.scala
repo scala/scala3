@@ -220,14 +220,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         // no subphases were ran, remove traversals from expected total
         progress.totalTraversals -= currentPhase.traversals
 
-  private def doAdvanceSubPhase()(using Context): Unit =
+  private def tryAdvanceSubPhase()(using Context): Unit =
     trackProgress: progress =>
-      progress.currentUnitCount = 0 // reset unit count in current (sub)phase
-      progress.seenPhaseCount += 1 // trace that we've seen a (sub)phase
-      progress.completedTraversalCount += 1 // add an extra traversal now that we completed a (sub)phase
-      progress.currentCompletedSubtraversalCount += 1 // record that we've seen a subphase
-      if !progress.isCancelled() then
-        progress.tickSubphase()
+      if progress.canAdvanceSubPhase then
+        progress.currentUnitCount = 0 // reset unit count in current (sub)phase
+        progress.seenPhaseCount += 1 // trace that we've seen a (sub)phase
+        progress.completedTraversalCount += 1 // add an extra traversal now that we completed a (sub)phase
+        progress.currentCompletedSubtraversalCount += 1 // record that we've seen a subphase
+        if !progress.isCancelled() then
+          progress.tickSubphase()
 
   /** Will be set to true if any of the compiled compilation units contains
    *  a pureFunctions language import.
@@ -476,6 +477,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
 object Run {
 
+  case class SubPhase(val name: String):
+    override def toString: String = name
+
   class SubPhases(val phase: Phase):
     require(phase.exists)
 
@@ -483,12 +487,14 @@ object Run {
       case phase: MegaPhase => phase.shortPhaseName
       case phase => phase.phaseName
 
-    val all = IArray.from(phase.subPhases.map(sub => s"$baseName ($sub)"))
+    val all = IArray.from(phase.subPhases.map(sub => s"$baseName[$sub]"))
 
     def next(using Context): Option[SubPhases] =
       val next0 = phase.megaPhase.next.megaPhase
       if next0.exists then Some(SubPhases(next0))
       else None
+
+    def size: Int = all.size
 
     def subPhase(index: Int) =
       if index < all.size then all(index)
@@ -511,14 +517,17 @@ object Run {
     private var nextPhaseName: String = uninitialized // initialized by enterPhase
 
     /** Enter into a new real phase, setting the current and next (sub)phases */
-    private[Run] def enterPhase(newPhase: Phase)(using Context): Unit =
+    def enterPhase(newPhase: Phase)(using Context): Unit =
       if newPhase ne currPhase then
         currPhase = newPhase
         subPhases = SubPhases(newPhase)
         tickSubphase()
 
+    def canAdvanceSubPhase: Boolean =
+      currentCompletedSubtraversalCount + 1 < subPhases.size
+
     /** Compute the current (sub)phase name and next (sub)phase name */
-    private[Run] def tickSubphase()(using Context): Unit =
+    def tickSubphase()(using Context): Unit =
       val index = currentCompletedSubtraversalCount
       val s = subPhases
       currPhaseName = s.subPhase(index)
@@ -547,12 +556,12 @@ object Run {
     private def requireInitialized(): Unit =
       require((currPhase: Phase | Null) != null, "enterPhase was not called")
 
-    private[Run] def checkCancellation(): Boolean =
+    def checkCancellation(): Boolean =
       if Thread.interrupted() then cancel()
       isCancelled()
 
     /** trace that we are beginning a unit in the current (sub)phase, unless cancelled */
-    private[Run] def tryEnterUnit(unit: CompilationUnit): Boolean =
+    def tryEnterUnit(unit: CompilationUnit): Boolean =
       if checkCancellation() then false
       else
         requireInitialized()
@@ -560,7 +569,7 @@ object Run {
         true
 
     /** trace the current progress out of the total, in the current (sub)phase, reporting the next (sub)phase */
-    private[Run] def refreshProgress()(using Context): Unit =
+    def refreshProgress()(using Context): Unit =
       requireInitialized()
       val total = totalProgress()
       if total > 0 && !cb.progress(currentProgress(), total, currPhaseName, nextPhaseName) then
@@ -582,8 +591,9 @@ object Run {
     def advanceUnit()(using Context): Unit =
       if run != null then run.doAdvanceUnit()
 
-    def advanceSubPhase()(using Context): Unit =
-      if run != null then run.doAdvanceSubPhase()
+    /** if there exists another subphase, switch to it and record progress */
+    def enterNextSubphase()(using Context): Unit =
+      if run != null then run.tryAdvanceSubPhase()
 
     /** advance the late count and record progress in the current phase */
     def advanceLate()(using Context): Unit =
