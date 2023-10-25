@@ -259,7 +259,7 @@ extends NotFoundMsg(MissingIdentID) {
     i"""|Each identifier in Scala needs a matching declaration. There are two kinds of
         |identifiers: type identifiers and value identifiers. Value identifiers are introduced
         |by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
-        |`class`, or `trait` declarations.
+        |`class`, `enum`, or `trait` declarations.
         |
         |Identifiers refer to matching declarations in their environment, or they can be
         |imported from elsewhere.
