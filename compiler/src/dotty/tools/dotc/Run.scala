@@ -171,11 +171,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
-  /** Only safe to call if progress is being tracked. */
   private inline def trackProgress(using Context)(inline op: Context ?=> Progress => Unit): Unit =
-    val local = _progress
-    if local != null then
-      op(using ctx)(local)
+    foldProgress(())(op)
 
   private inline def foldProgress[T](using Context)(inline default: T)(inline op: Context ?=> Progress => T): T =
     val local = _progress
@@ -184,11 +181,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     else
       default
 
-  def didEnterUnit()(using Context): Boolean =
-    foldProgress(true /* should progress by default */)(_.tryEnterUnit(ctx.compilationUnit))
+  def didEnterUnit(unit: CompilationUnit)(using Context): Boolean =
+    foldProgress(true /* should progress by default */)(_.tryEnterUnit(unit))
 
-  def didEnterFinal()(using Context): Boolean =
-    foldProgress(true /* should progress by default */)(p => !p.checkCancellation())
+  def canProgress()(using Context): Boolean =
+    foldProgress(true /* not cancelled by default */)(p => !p.checkCancellation())
 
   def doAdvanceUnit()(using Context): Unit =
     trackProgress: progress =>
@@ -351,7 +348,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if (!ctx.reporter.hasErrors)
       Rewrites.writeBack()
     suppressions.runFinished(hasErrors = ctx.reporter.hasErrors)
-    while (finalizeActions.nonEmpty && didEnterFinal()) {
+    while (finalizeActions.nonEmpty && canProgress()) {
       val action = finalizeActions.remove(0)
       action()
     }
@@ -572,8 +569,13 @@ object Run {
   extension (run: Run | Null)
 
     /** record that the current phase has begun for the compilation unit of the current Context */
-    def enterUnit()(using Context): Boolean =
-      if run != null then run.didEnterUnit()
+    def enterUnit(unit: CompilationUnit)(using Context): Boolean =
+      if run != null then run.didEnterUnit(unit)
+      else true // don't check cancellation if we're not tracking progress
+
+    /** check progress cancellation, true if not cancelled */
+    def enterRegion()(using Context): Boolean =
+      if run != null then run.canProgress()
       else true // don't check cancellation if we're not tracking progress
 
     /** advance the unit count and record progress in the current phase */

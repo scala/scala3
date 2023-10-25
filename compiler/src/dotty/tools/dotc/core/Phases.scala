@@ -340,7 +340,7 @@ object Phases {
       val buf = List.newBuilder[CompilationUnit]
       for unit <- units do
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        if ctx.run.enterUnit() then
+        if ctx.run.enterUnit(unit) then
           try run
           catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
             println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
@@ -458,29 +458,26 @@ object Phases {
     final def iterator: Iterator[Phase] =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
-    /** run the body as one iteration of a (sub)phase (see Run.Progress), Enrich crash messages */
+    /** Cancellable region, if not cancelled, run the body in the context of the current compilation unit.
+      * Enrich crash messages.
+      */
     final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Boolean =
-      if ctx.run.enterUnit() then
+      val unit = ctx.compilationUnit
+      if ctx.run.enterUnit(unit) then
         try {body; true}
-        catch
-          case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
-            report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
-            throw ex
+        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing $unit"))
+          throw ex
         finally ctx.run.advanceUnit()
       else
         false
 
-    /** run the body as one iteration of a (sub)phase (see Run.Progress), Enrich crash messages */
-    final def monitorOpt[T](doing: String)(body: Context ?=> Option[T])(using Context): Option[T] =
-      if ctx.run.enterUnit() then
-        try body
-        catch
-          case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
-            report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
-            throw ex
-        finally ctx.run.advanceUnit()
+    /** Do not run if compile progress has been cancelled */
+    final def cancellable(body: Context ?=> Unit)(using Context): Boolean =
+      if ctx.run.enterRegion() then
+        {body; true}
       else
-        None
+        false
 
     override def toString: String = phaseName
   }

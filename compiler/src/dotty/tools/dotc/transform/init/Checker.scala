@@ -40,21 +40,21 @@ class Checker extends Phase:
     val traverser = new InitTreeTraverser()
     val unitContexts = units.map(unit => checkCtx.fresh.setCompilationUnit(unit))
 
-    val unitContexts0 =
-      for
-        given Context <- unitContexts
-        if traverse(traverser)
-      yield ctx
+    val units0 =
+      for given Context <- unitContexts if traverse(traverser) yield ctx.compilationUnit
 
-    val classes = traverser.getClasses()
+    cancellable {
+      val classes = traverser.getClasses()
 
-    if ctx.settings.YcheckInit.value then
-      Semantic.checkClasses(classes)(using checkCtx)
+      if ctx.settings.YcheckInit.value then
+        Semantic.checkClasses(classes)(using checkCtx)
 
-    if ctx.settings.YcheckInitGlobal.value then
-      Objects.checkClasses(classes)(using checkCtx)
+      if ctx.settings.YcheckInitGlobal.value then
+        Objects.checkClasses(classes)(using checkCtx)
+    }
 
-    unitContexts0.map(_.compilationUnit)
+    units0
+  end runOn
 
   def run(using Context): Unit = unsupported("run")
 
