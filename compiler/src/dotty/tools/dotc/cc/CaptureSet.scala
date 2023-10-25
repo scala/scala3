@@ -682,7 +682,9 @@ object CaptureSet:
           // `r` is _one_ possible solution in `source` that would make an `r` appear in this set.
           // It's not necessarily the only possible solution, so the scheme is incomplete.
           source.tryInclude(elem, this)
-        else if !mapIsIdempotent && variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source) then
+        else if ccConfig.allowUnsoundMaps && !mapIsIdempotent
+            && variance <= 0 && !origin.isConst && (origin ne initial) && (origin ne source)
+        then
           // The map is neither a BiTypeMap nor an idempotent type map.
           // In that case there's no much we can do.
           // The scheme then does not propagate added elements back to source and rejects adding
@@ -696,8 +698,11 @@ object CaptureSet:
       def propagateIf(cond: Boolean): CompareResult =
         if cond then propagate else CompareResult.OK
 
-      if origin eq source then // elements have to be mapped
-        val mapped = extrapolateCaptureRef(elem, tm, variance)
+      val mapped = extrapolateCaptureRef(elem, tm, variance)
+      def isFixpoint =
+        mapped.isConst && mapped.elems.size == 1 && mapped.elems.contains(elem)
+
+      def addMapped =
         val added = mapped.elems.filter(!accountsFor(_))
         addNewElems(added)
           .andAlso:
@@ -706,6 +711,35 @@ object CaptureSet:
             else CompareResult.Fail(this :: Nil)
           .andAlso:
             propagateIf(!added.isEmpty)
+
+      def failNoFixpoint =
+        val reason =
+          if variance <= 0 then i"the set's variance is $variance"
+          else i"$elem gets mapped to $mapped, which is not a supercapture."
+        report.warning(em"""trying to add $elem from unrecognized source $origin of mapped set $this$whereCreated
+                            |The reference cannot be added since $reason""")
+        CompareResult.Fail(this :: Nil)
+
+      if origin eq source then // elements have to be mapped
+        addMapped
+          .andAlso:
+            if mapped.isConst then CompareResult.OK
+            else if mapped.asVar.recordDepsState() then { addAsDependentTo(mapped); CompareResult.OK }
+            else CompareResult.Fail(this :: Nil)
+      else if !isFixpoint then
+        // We did not yet observe the !isFixpoint condition in our tests, but it's a
+        // theoretical possibility. In that case, it would be inconsistent to both
+        // add `elem` to the set and back-propagate it. But if `{elem} <:< tm(elem)`
+        // and the variance of the set is positive, we can soundly add `tm(ref)` to
+        // the set while back-propagating `ref` as before. Otherwise there's nothing
+        // obvious left to do except fail (which is always sound).
+        if variance > 0
+            && elem.singletonCaptureSet.subCaptures(mapped, frozen = true).isOK then
+          // widen to fixpoint. mapped is known to be a fixpoint since tm is idempotent.
+          // The widening is sound, but loses completeness.
+          addMapped
+        else
+          failNoFixpoint
       else if accountsFor(elem) then
         CompareResult.OK
       else
