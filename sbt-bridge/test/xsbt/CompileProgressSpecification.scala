@@ -52,7 +52,7 @@ class CompileProgressSpecification {
     val someExpectedPhases = // just check some "fundamental" phases, don't put all phases to avoid brittleness
       Set(
         "parser",
-        "typer (indexing)", "typer (typechecking)", "typer (checking java)",
+        "typer[indexing]", "typer[typechecking]", "typer[checkingJava]",
         "sbt-deps",
         "posttyper",
         "sbt-api",

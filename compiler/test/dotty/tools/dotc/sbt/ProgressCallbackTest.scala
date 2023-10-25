@@ -57,7 +57,7 @@ final class ProgressCallbackTest extends DottyTest:
 
   @Test
   def cancelMidTyper: Unit =
-    inspectCancellationAtPhase("typer (typechecking)")
+    inspectCancellationAtPhase("typer[typechecking]")
 
   @Test
   def cancelErasure: Unit =

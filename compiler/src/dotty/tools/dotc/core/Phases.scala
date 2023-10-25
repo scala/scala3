@@ -318,7 +318,7 @@ object Phases {
     def runsAfter: Set[String] = Set.empty
 
     /** for purposes of progress tracking, overridden in TyperPhase */
-    def subPhases: List[String] = Nil
+    def subPhases: List[Run.SubPhase] = Nil
     final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
 
     /** @pre `isRunnable` returns true */
@@ -459,6 +459,13 @@ object Phases {
         finally ctx.run.advanceUnit()
       else
         false
+
+    inline def runSubPhase[T](id: Run.SubPhase)(inline body: (Run.SubPhase, Context) ?=> T)(using Context): T =
+      given Run.SubPhase = id
+      try
+        body
+      finally
+        ctx.run.enterNextSubphase()
 
     /** Do not run if compile progress has been cancelled */
     final def cancellable(body: Context ?=> Unit)(using Context): Boolean =
