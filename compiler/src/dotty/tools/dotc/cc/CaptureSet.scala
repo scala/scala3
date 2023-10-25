@@ -16,7 +16,6 @@ import util.{SimpleIdentitySet, Property}
 import typer.ErrorReporting.Addenda
 import util.common.alwaysTrue
 import scala.collection.mutable
-import config.Config.ccAllowUnsoundMaps
 
 /** A class for capture sets. Capture sets can be constants or variables.
  *  Capture sets support inclusion constraints <:< where <:< is subcapturing.
@@ -667,7 +666,7 @@ object CaptureSet:
 
     private def mapIsIdempotent = tm.isInstanceOf[IdempotentCaptRefMap]
 
-    assert(ccAllowUnsoundMaps || mapIsIdempotent, tm.getClass)
+    assert(ccConfig.allowUnsoundMaps || mapIsIdempotent, tm.getClass)
 
     private def whereCreated(using Context): String =
       if stack == null then ""

@@ -32,7 +32,6 @@ import ast.{Trees, tpd, untpd}
 import Trees._
 import Decorators._
 import transform.SymUtils._
-import cc.{adaptFunctionTypeUnderPureFuns, adaptByNameArgUnderPureFuns}
 import dotty.tools.dotc.quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
@@ -383,7 +382,7 @@ class TreeUnpickler(reader: TastyReader,
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
-              postProcessFunction(readType().appliedTo(until(end)(readType())))
+              readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then
@@ -460,8 +459,7 @@ class TreeUnpickler(reader: TastyReader,
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
         case BYNAMEtype =>
-          val arg = readType()
-          ExprType(if withPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
+          ExprType(readType())
         case _ =>
           ConstantType(readConstant(tag))
       }
@@ -494,12 +492,6 @@ class TreeUnpickler(reader: TastyReader,
 
     def readTreeRef()(using Context): TermRef =
       readType().asInstanceOf[TermRef]
-
-    /** Under pureFunctions, map all function types to impure function types,
-     *  unless the unpickled class was also compiled with pureFunctions.
-     */
-    private def postProcessFunction(tp: Type)(using Context): Type =
-      if withPureFuns then tp else tp.adaptFunctionTypeUnderPureFuns
 
 // ------ Reading definitions -----------------------------------------------------
 
@@ -1240,8 +1232,7 @@ class TreeUnpickler(reader: TastyReader,
         case SINGLETONtpt =>
           SingletonTypeTree(readTree())
         case BYNAMEtpt =>
-          val arg = readTpt()
-          ByNameTypeTree(if withPureFuns then arg else arg.adaptByNameArgUnderPureFuns)
+          ByNameTypeTree(readTpt())
         case NAMEDARG =>
           NamedArg(readName(), readTree())
         case EXPLICITtpt =>
@@ -1453,7 +1444,7 @@ class TreeUnpickler(reader: TastyReader,
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
               val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
-              tree.withType(postProcessFunction(ownType))
+              tree.withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTree())
             case LAMBDAtpt =>

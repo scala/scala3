@@ -19,11 +19,11 @@ private val Captures: Key[CaptureSet] = Key()
 
 object ccConfig:
 
-  /** Switch whether unpickled function types and byname types should be mapped to
-   *  impure types. With the new gradual typing using Fluid capture sets, this should
-   *  be no longer needed. Also, it has bad interactions with pickling tests.
+  /** If true, allow mappping capture set variables under captureChecking with maps that are neither
+   *  bijective nor idempotent. We currently do now know how to do this correctly in all
+   *  cases, though.
    */
-  private[cc] val adaptUnpickledFunctionTypes = false
+  inline val allowUnsoundMaps = false
 
   /** If true, use `sealed` as encapsulation mechanism instead of the
    *  previous global retriction that `cap` can't be boxed or unboxed.
@@ -48,7 +48,7 @@ def isCaptureCheckingOrSetup(using Context): Boolean =
  */
 def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames: List[TermName] = Nil)(using Context): Type =
   val make = MethodType.companion(isContextual = isContextual)
-  val mt = 
+  val mt =
     if paramNames.length == args.length then make(paramNames, args, resultType)
     else make(args, resultType)
   mt.toFunctionType(alwaysDependent = true)
@@ -105,22 +105,6 @@ extension (tree: Tree)
   def retainedElems(using Context): List[Tree] = tree match
     case Apply(_, Typed(SeqLiteral(elems, _), _) :: Nil) => elems
     case _ => Nil
-
-  /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
-   *  a by name parameter type, turning the latter into an impure by name parameter type.
-   */
-  def adaptByNameArgUnderPureFuns(using Context): Tree =
-    if ccConfig.adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
-      val rbn = defn.RetainsByNameAnnot
-      Annotated(tree,
-        New(rbn.typeRef).select(rbn.primaryConstructor).appliedTo(
-          Typed(
-            SeqLiteral(ref(defn.captureRoot) :: Nil, TypeTree(defn.AnyType)),
-            TypeTree(defn.RepeatedParamType.appliedTo(defn.AnyType))
-          )
-        )
-      )
-    else tree
 
 extension (tp: Type)
 
@@ -197,29 +181,6 @@ extension (tp: Type)
     case atd @ AnnotatedType(parent, annot) =>
       atd.derivedAnnotatedType(parent.stripCapturing, annot)
     case _ =>
-      tp
-
-  /** Under pureFunctions, map regular function type to impure function type
-   */
-  def adaptFunctionTypeUnderPureFuns(using Context): Type = tp match
-    case AppliedType(fn, args)
-    if ccConfig.adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere && defn.isFunctionClass(fn.typeSymbol) =>
-      val fname = fn.typeSymbol.name
-      defn.FunctionType(
-        fname.functionArity,
-        isContextual = fname.isContextFunction,
-        isImpure = true).appliedTo(args)
-    case _ =>
-      tp
-
-  /** Under pureFunctions, add a @retainsByName(*)` annotation to the argument of
-   *  a by name parameter type, turning the latter into an impure by name parameter type.
-   */
-  def adaptByNameArgUnderPureFuns(using Context): Type =
-    if ccConfig.adaptUnpickledFunctionTypes && Feature.pureFunsEnabledSomewhere then
-      AnnotatedType(tp,
-        CaptureAnnotation(CaptureSet.universal, boxed = false)(defn.RetainsByNameAnnot))
-    else
       tp
 
   /** Is type known to be always pure by its class structure,
