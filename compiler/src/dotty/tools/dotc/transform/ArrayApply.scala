@@ -52,7 +52,7 @@ class ArrayApply extends MiniPhase {
           if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) &&
             rest.elems.lengthIs < transformListApplyLimit =>
           rest.elems.foldRight(tpd.ref(defn.NilModule)): (elem, acc) => 
-            tpd.New(defn.ConsType, List(elem, acc))
+            tpd.New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
 
         case _ =>
           tree
