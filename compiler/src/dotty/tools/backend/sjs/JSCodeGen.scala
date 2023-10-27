@@ -2845,7 +2845,7 @@ class JSCodeGen()(using genCtx: Context) {
   private lazy val externalEqualsNumNum: Symbol =
     defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
   private lazy val externalEqualsNumChar: Symbol =
-    NoSymbol // requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+    defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumChar)
   private lazy val externalEqualsNumObject: Symbol =
     defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
   private lazy val externalEquals: Symbol =
@@ -2885,7 +2885,7 @@ class JSCodeGen()(using genCtx: Context) {
         val ptfm = ctx.platform
         if (lsym.derivesFrom(defn.BoxedNumberClass)) {
           if (rsym.derivesFrom(defn.BoxedNumberClass)) externalEqualsNumNum
-          else if (rsym.derivesFrom(defn.BoxedCharClass)) externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
+          else if (rsym.derivesFrom(defn.BoxedCharClass)) externalEqualsNumChar
           else externalEqualsNumObject
         } else externalEquals
       }
