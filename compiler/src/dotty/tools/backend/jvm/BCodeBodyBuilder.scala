@@ -1684,7 +1684,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         val equalsMethod: Symbol = {
           if (l.tpe <:< defn.BoxedNumberClass.info) {
             if (r.tpe <:< defn.BoxedNumberClass.info) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumNum)
-            else if (r.tpe <:< defn.BoxedCharClass.info) NoSymbol // ctx.requiredMethod(BoxesRunTimeTypeRef, nme.equalsNumChar) // this method is private
+            else if (r.tpe <:< defn.BoxedCharClass.info) defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumChar)
             else defn.BoxesRunTimeModule.requiredMethod(nme.equalsNumObject)
           } else defn.BoxesRunTimeModule_externalEquals
         }
