@@ -1,6 +1,7 @@
 class Ifce[BT <: Boolean]:
   type RT = BT match
-    case true => this.type { val v1: Int }
+    case true  => this.type { val v1: Int }
+    case false => this.type
   def cast: RT = this.asInstanceOf[RT]
 
 class Test:
