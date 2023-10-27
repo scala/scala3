@@ -992,6 +992,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
         case defn.PolyFunctionOf(_) =>
           false
+        case tp: MatchType =>
+          hasRefinement(tp.tryNormalize)
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
