@@ -41,7 +41,7 @@ object CompletionPos:
       offsetParams: OffsetParams,
       treePath: List[Tree]
   )(using Context): CompletionPos =
-    infer(cursorPos, offsetParams.uri, offsetParams.text, treePath)
+    infer(cursorPos, offsetParams.uri.nn, offsetParams.text.nn, treePath)
 
   def infer(
       cursorPos: SourcePosition,
@@ -55,18 +55,11 @@ object CompletionPos:
     val prevIsDot =
       if start - 1 >= 0 then text.charAt(start - 1) == '.' else false
     val kind =
-      if query.isEmpty && !prevIsDot then CompletionKind.Empty
+      if query.nn.isEmpty && !prevIsDot then CompletionKind.Empty
       else if prevIsDot then CompletionKind.Members
       else CompletionKind.Scope
 
-    CompletionPos(
-      kind,
-      start,
-      end,
-      query,
-      cursorPos,
-      uri
-    )
+    CompletionPos(kind, start, end, query.nn, cursorPos, uri)
   end infer
 
   /**

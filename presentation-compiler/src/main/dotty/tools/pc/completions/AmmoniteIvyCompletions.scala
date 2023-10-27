@@ -31,7 +31,7 @@ object AmmoniteIvyCompletions:
             val (rangeStart, rangeEnd) =
               CoursierComplete.inferEditRange(pos.point, text)
             pos.withStart(rangeStart).withEnd(rangeEnd).toLsp
-        val completions = coursierComplete.complete(dependency)
+        val completions = coursierComplete.complete(dependency.nn)
         completions
           .map(insertText =>
             CompletionValue.IvyImport(

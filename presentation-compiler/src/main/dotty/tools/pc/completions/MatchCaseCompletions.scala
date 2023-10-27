@@ -74,20 +74,16 @@ object CaseKeywordCompletion:
     val parents: Parents = selector match
       case EmptyTree =>
         val seenFromType = parent match
-          case TreeApply(fun, _) if fun.tpe != null && !fun.tpe.isErroneous =>
-            fun.tpe
-          case _ =>
-            parent.tpe
+          case TreeApply(fun, _) if !fun.tpe.isErroneous => fun.tpe
+          case _ => parent.tpe
         seenFromType.paramInfoss match
           case (head :: Nil) :: _
               if definitions.isFunctionType(head) || head.isRef(
                 definitions.PartialFunctionClass
               ) =>
-            val argTypes =
-              head.argTypes.init
+            val argTypes = head.argTypes.init
             new Parents(argTypes, definitions)
-          case _ =>
-            new Parents(NoType, definitions)
+          case _ => new Parents(NoType, definitions)
       case sel => new Parents(sel.tpe, definitions)
 
     val selectorSym = parents.selector.widen.metalsDealias.typeSymbol
@@ -113,7 +109,7 @@ object CaseKeywordCompletion:
             ),
             Nil,
             range = Some(completionPos.toEditRange),
-            command = config.parameterHintsCommand().asScala,
+            command = config.parameterHintsCommand().nn.asScala,
           )
         )
       else Nil
@@ -305,10 +301,7 @@ object CaseKeywordCompletion:
       syms.sortBy(_._1.sym.sourcePos.point)
     else
       val defnSymbols = search
-        .definitionSourceToplevels(
-          SemanticdbSymbols.symbolName(tpe.typeSymbol),
-          uri
-        )
+        .definitionSourceToplevels(SemanticdbSymbols.symbolName(tpe.typeSymbol), uri).nn
         .asScala
         .zipWithIndex
         .toMap
@@ -410,11 +403,7 @@ class CompletionValueGenerator(
       case None => true
       case Some("") => true
       case Some(Cursor.value) => true
-      case Some(query) =>
-        CompletionFuzzy.matches(
-          query.replace(Cursor.value, ""),
-          name
-        )
+      case Some(query) => CompletionFuzzy.matches(query.replace(Cursor.value, "").nn, name)
 
   def labelForCaseMember(sym: Symbol, name: String)(using
       Context

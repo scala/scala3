@@ -1262,7 +1262,8 @@ object Build {
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      (Compile / sourceGenerators) += Def.task {
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val targetDir = (Compile/sourceManaged).value / "mtags-shared"
