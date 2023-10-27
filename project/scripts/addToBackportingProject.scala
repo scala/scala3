@@ -8,6 +8,9 @@ import sttp.client4.*
 lazy val apiToken =
   System.getenv("GRAPHQL_API_TOKEN")
 
+val PROJECT_ID: String = "PVT_kwDOACj3ec4AWSoi"
+val FIELD_ID: String = "PVTF_lADOACj3ec4AWSoizgO7uJ4"
+
 case class ID(value: String) derives WrapperVariable
 
 @main def run(number: Int) =
@@ -19,7 +22,7 @@ def getPrData(number: Int): (ID, String) =
   val res = query"""
     |query getPR {
     |  repository(owner: "lampepfl", name:"dotty") {
-    |    pullRequest(number: 17570) {
+    |    pullRequest(number: $number) {
     |      id
     |      mergedAt
     |    }
@@ -36,9 +39,9 @@ def timestampItem(id: ID, date: String) =
   query"""
     |mutation editField {
     |  updateProjectV2ItemFieldValue(input: {
-    |    projectId: "PVT_kwDOACj3ec4AWSoi",
+    |    projectId: $PROJECT_ID,
     |    itemId: $id,
-    |    fieldId: "PVTF_lADOACj3ec4AWSoizgO7uJ4",
+    |    fieldId: $FIELD_ID,
     |    value: { text: $date }
     |  }) {
     |    projectV2Item {
@@ -56,7 +59,7 @@ def addItem(id: ID) =
   val res = query"""
     |mutation addItem {
     |  addProjectV2ItemById(input: {
-    |    projectId: "PVT_kwDOACj3ec4AWSoi",
+    |    projectId: $PROJECT_ID,
     |    contentId: $id
     |  }) {
     |    item {
