@@ -10,6 +10,7 @@ import Flags.*
 import config.Config
 import config.Printers.typr
 import typer.ProtoTypes.{newTypeVar, representedParamRef}
+import transform.TypeUtils.isTransparent
 import UnificationDirection.*
 import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet
@@ -566,13 +567,6 @@ trait ConstraintHandling {
         inst
   end approximation
 
-  private def isTransparent(tp: Type, traitOnly: Boolean)(using Context): Boolean = tp match
-    case AndType(tp1, tp2) =>
-      isTransparent(tp1, traitOnly) && isTransparent(tp2, traitOnly)
-    case _ =>
-      val cls = tp.underlyingClassRef(refinementOK = false).typeSymbol
-      cls.isTransparentClass && (!traitOnly || cls.is(Trait))
-
   /** If `tp` is an intersection such that some operands are transparent trait instances
    *  and others are not, replace as many transparent trait instances as possible with Any
    *  as long as the result is still a subtype of `bound`. But fall back to the
@@ -585,7 +579,7 @@ trait ConstraintHandling {
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
     def dropOneTransparentTrait(tp: Type): Type =
-      if isTransparent(tp, traitOnly = true) && !kept.contains(tp) then
+      if tp.isTransparent(traitOnly = true) && !kept.contains(tp) then
         dropped = tp :: dropped
         defn.AnyType
       else tp match
@@ -658,7 +652,7 @@ trait ConstraintHandling {
     def widenOr(tp: Type) =
       if widenUnions then
         val tpw = tp.widenUnion
-        if (tpw ne tp) && !isTransparent(tpw, traitOnly = false) && (tpw <:< bound) then tpw else tp
+        if (tpw ne tp) && !tpw.isTransparent() && (tpw <:< bound) then tpw else tp
       else tp.hardenUnions
 
     def widenSingle(tp: Type) =
