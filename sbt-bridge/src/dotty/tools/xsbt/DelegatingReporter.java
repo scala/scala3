@@ -48,22 +48,14 @@ final public class DelegatingReporter extends AbstractReporter {
   public void doReport(Diagnostic dia, Context ctx) {
     Severity severity = severityOf(dia.level());
     Position position = positionOf(dia.pos().nonInlined());
-
-    StringBuilder rendered = new StringBuilder();
-    rendered.append(messageAndPos(dia, ctx));
     Message message = dia.msg();
-    StringBuilder messageBuilder = new StringBuilder();
-    messageBuilder.append(message.message());
+    StringBuilder messageBuilder = new StringBuilder(message.message());
     String diagnosticCode = String.valueOf(message.errorId().errorNumber());
-    boolean shouldExplain = Diagnostic.shouldExplain(dia, ctx);
     List<CodeAction> actions = CollectionConverters.asJava(message.actions(ctx));
-    if (shouldExplain && !message.explanation().isEmpty()) {
-      rendered.append(explanation(message, ctx));
+    if (Diagnostic.shouldExplain(dia, ctx) && !message.explanation().isEmpty())
       messageBuilder.append(System.lineSeparator()).append(explanation(message, ctx));
-    }
-
-    delegate.log(new Problem(position, messageBuilder.toString(), severity, rendered.toString(), diagnosticCode, actions,
-      lookupVirtualFileId));
+    Problem problem = new Problem(position, messageBuilder.toString(), severity, messageAndPos(dia, ctx), diagnosticCode, actions, lookupVirtualFileId);
+    delegate.log(problem);
   }
 
   public void reportBasicWarning(String message) {
