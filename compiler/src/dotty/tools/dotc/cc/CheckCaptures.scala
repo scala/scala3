@@ -826,12 +826,16 @@ class CheckCaptures extends Recheck, SymTransformer:
      */
     def adaptUniversal(actual: Type, expected: Type, tree: Tree)(using Context): Type =
       if expected.captureSet.disallowsUniversal && actual.captureSet.isUniversal then
-        val localRoot = impliedRoot(tree)
-        CapturingType(
-            actual.stripCapturing,
-            localRoot.termRef.singletonCaptureSet,
-            actual.isBoxedCapturing)
-          .showing(i"adapt universal $actual vs $expected = $result", capt)
+        if actual.isInstanceOf[SingletonType] then
+          // capture set is only exposed when widening
+          adaptUniversal(actual.widen, expected, tree)
+        else
+          val localRoot = impliedRoot(tree)
+          CapturingType(
+              actual.stripCapturing,
+              localRoot.termRef.singletonCaptureSet,
+              actual.isBoxedCapturing)
+            .showing(i"adapt universal $actual vs $expected = $result", capt)
       else actual
 
     private inline val debugSuccesses = false
