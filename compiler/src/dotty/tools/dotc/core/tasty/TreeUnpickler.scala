@@ -1464,22 +1464,7 @@ class TreeUnpickler(reader: TastyReader,
               val fst = readTpt()
               val (bound, scrut) =
                 if (nextUnsharedTag == CASEDEF) (EmptyTree, fst) else (fst, readTpt())
-              val tpt = MatchTypeTree(bound, scrut, readCases(end))
-              // If a match type definition can reduce (e.g. Id in i18261.min)
-              // then it's important to trigger that reduction
-              // before a TypeVar is added to the constraint,
-              // associated to the match type's type parameter.
-              // Otherwise, if the reduction is triggered with that constraint,
-              // the reduction will be simplified,
-              // at which point the TypeVar will replace the type parameter
-              // and then that TypeVar will be cached
-              // as the reduction of the match type definition!
-              //
-              // We also override the type, as that's what Typer does.
-              // The difference here is that a match type that reduces to a non-match type
-              // makes the TypeRef for that definition will have a TypeAlias info instead of a MatchAlias.
-              tpt.overwriteType(tpt.tpe.normalized)
-              tpt
+              MatchTypeTree(bound, scrut, readCases(end))
             case TYPEBOUNDStpt =>
               val lo = readTpt()
               val hi = if currentAddr == end then lo else readTpt()

@@ -710,7 +710,19 @@ trait ConstraintHandling {
    *  than `maxLevel`.
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean, widenUnions: Boolean, maxLevel: Int)(using Context): Type = {
-    val approx = approximation(param, fromBelow, maxLevel).simplified
+    val addTypeVars = new TypeMap with cc.CaptureSet.IdempotentCaptRefMap:
+      val constraint = ctx.typerState.constraint
+      def apply(tp: Type): Type = tp match
+        case tp: TypeParamRef => constraint.typeVarOfParam(tp).orElse(tp)
+        case tp: AppliedType if tp.isMatchAlias =>
+          // this case appears necessary to compile
+          // tests/pos-custom-args/captures/matchtypes.scala
+          // under -language:experimental.captureChecking
+          typer.Inferencing.isFullyDefined(tp, typer.ForceDegree.all)
+          val normed = tp.tryNormalize
+          if normed.exists then apply(normed) else mapOver(tp)
+        case _ => mapOver(tp)
+    val approx = addTypeVars(approximation(param, fromBelow, maxLevel))
     if fromBelow then
       val widened = widenInferred(approx, param, widenUnions)
       // Widening can add extra constraints, in particular the widened type might
