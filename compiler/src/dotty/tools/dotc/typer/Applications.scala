@@ -1781,8 +1781,7 @@ trait Applications extends Compatibility {
 
       overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
       if winsType1 && winsType2
-          && alt1.widenExpr =:= alt2.widenExpr
-          && alt1.widenExpr.isStable
+          && (alt1.widenExpr frozen_=:= alt2.widenExpr) && alt1.widenExpr.isStable
       then
         // alternatives are the same after following ExprTypes, pick one of them
         // (prefer the one that is not a method, but that's arbitrary).
