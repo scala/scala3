@@ -1,0 +1,4 @@
+
+class InnerOfUnnamed {}
+
+void main() {}
