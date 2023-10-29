@@ -7,7 +7,7 @@ import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import NameKinds.WildcardParamName
+import NameKinds.{WildcardParamName, ContextFunctionParamName}
 import parsing.Scanners.Token
 import parsing.Tokens
 import printing.Highlighting._
@@ -166,21 +166,24 @@ class AnonymousFunctionMissingParamType(param: untpd.ValDef,
                                         (using Context)
 extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
   def msg(using Context) = {
-    val ofFun =
+    val paramDescription =
       if param.name.is(WildcardParamName)
-          || (MethodType.syntheticParamNames(tree.args.length + 1) contains param.name)
-      then i"\n\nIn expanded function:\n$tree"
+          || param.name.is(ContextFunctionParamName)
+          || MethodType.syntheticParamNames(tree.args.length + 1).contains(param.name)
+      then i"\nin expanded function:\n  $tree"
       else ""
 
     val inferred =
-      if (inferredType == WildcardType) ""
-      else i"\n\nPartially inferred type for the parameter: $inferredType"
+      if inferredType == WildcardType then ""
+      else i"\nWhat I could infer was: $inferredType"
 
     val expected =
-      if (expectedType == WildcardType) ""
-      else i"\n\nExpected type for the whole anonymous function: $expectedType"
+      if expectedType == WildcardType then ""
+      else i"\nExpected type for the whole anonymous function:\n  $expectedType"
 
-    i"Could not infer type for parameter ${param.name} of anonymous function$ofFun$inferred$expected"
+    i"""Missing parameter type
+       |
+       |I could not infer the type of the parameter ${param.name}$paramDescription$inferred$expected"""
   }
 
   def explain(using Context) = ""
