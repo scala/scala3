@@ -7,7 +7,7 @@
 -- [E040] Syntax Error: tests/neg/i5498-postfixOps.scala:6:29 ----------------------------------------------------------
 6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
   |                             ^^^^^^^^
-  |                             ')' expected, but identifier found
+  |                             ',' or ')' expected, but identifier found
 -- [E172] Type Error: tests/neg/i5498-postfixOps.scala:6:0 -------------------------------------------------------------
 6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
   |^

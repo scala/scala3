@@ -1169,7 +1169,7 @@ extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
         |"""
 }
 
-class ExpectedTokenButFound(expected: Token, found: Token)(using Context)
+class ExpectedTokenButFound(expected: Token, found: Token, prefix: String = "")(using Context)
 extends SyntaxMsg(ExpectedTokenButFoundID) {
 
   private def foundText = Tokens.showToken(found)
@@ -1178,7 +1178,7 @@ extends SyntaxMsg(ExpectedTokenButFoundID) {
     val expectedText =
       if (Tokens.isIdentifier(expected)) "an identifier"
       else Tokens.showToken(expected)
-    i"""${expectedText} expected, but ${foundText} found"""
+    i"""$prefix$expectedText expected, but $foundText found"""
 
   def explain(using Context) =
     if (Tokens.isIdentifier(expected) && Tokens.isKeyword(found))

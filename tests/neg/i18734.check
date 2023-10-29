@@ -1,0 +1,28 @@
+-- [E040] Syntax Error: tests/neg/i18734.scala:7:8 ---------------------------------------------------------------------
+7 |  Foo(1 2) // error
+  |        ^
+  |        ',' or ')' expected, but integer literal found
+-- [E040] Syntax Error: tests/neg/i18734.scala:9:8 ---------------------------------------------------------------------
+9 |  Foo(x y) // error
+  |        ^
+  |        ',' or ')' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18734.scala:11:8 --------------------------------------------------------------------
+11 |  Foo(1 b = 2) // error
+   |        ^
+   |        ',' or ')' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18734.scala:16:4 --------------------------------------------------------------------
+16 |    b = 2 // error
+   |    ^
+   |    ',' or ')' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18734.scala:19:32 -------------------------------------------------------------------
+19 |  val f: (Int, Int) => Int = (x y) => x + y // error
+   |                                ^
+   |                                ',' or ')' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18734.scala:23:10 -------------------------------------------------------------------
+23 |  bar[Int String](1 2) // error // error
+   |          ^^^^^^
+   |          ',' or ']' expected, but identifier found
+-- [E040] Syntax Error: tests/neg/i18734.scala:23:20 -------------------------------------------------------------------
+23 |  bar[Int String](1 2) // error // error
+   |                    ^
+   |                    ',' or ')' expected, but integer literal found
