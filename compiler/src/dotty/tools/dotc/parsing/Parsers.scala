@@ -997,6 +997,8 @@ object Parsers {
       leadingOperandTokens.contains(in.lookahead.token)
       || in.postfixOpsEnabled
       || in.lookahead.token == COLONop
+      || in.lookahead.token == EOF     // important for REPL completions
+      || ctx.mode.is(Mode.Interactive) // in interactive mode the next tokens might be missing
 
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
