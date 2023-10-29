@@ -970,6 +970,15 @@ object Parsers {
         isArrowIndent()
       else false
 
+    /** Can the next lookahead token start an operand as defined by
+     *  leadingOperandTokens, or is postfix ops enabled?
+     *  This is used to decide whether the current token can be an infix operator.
+     */
+    def nextCanFollowOperator(leadingOperandTokens: BitSet): Boolean =
+      leadingOperandTokens.contains(in.lookahead.token)
+      || in.postfixOpsEnabled
+      || in.lookahead.token == COLONop
+
   /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -1050,7 +1059,11 @@ object Parsers {
         then recur(top)
         else top
 
-      recur(first)
+      val res = recur(first)
+      if isIdent(nme.raw.STAR) && !followingIsVararg() then
+        syntaxError(em"spread operator `*` not allowed here; must come last in a parameter list")
+        in.nextToken()
+      res
     end infixOps
 
 /* -------- IDENTIFIERS AND LITERALS ------------------------------------------- */
@@ -1671,7 +1684,8 @@ object Parsers {
 
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartInfixTypeTokens, refinedTypeFn, Location.ElseWhere, ParseKind.Type,
-        isOperator = !followingIsVararg() && !isPureArrow)
+        isOperator = !followingIsVararg() && !isPureArrow
+                     && nextCanFollowOperator(canStartInfixTypeTokens))
 
     /** RefinedType   ::=  WithType {[nl] Refinement} [`^` CaptureSet]
      */
@@ -2444,7 +2458,8 @@ object Parsers {
 
     def postfixExprRest(t: Tree, location: Location): Tree =
       infixOps(t, in.canStartExprTokens, prefixExpr, location, ParseKind.Expr,
-        isOperator = !(location.inArgs && followingIsVararg()))
+        isOperator = !(location.inArgs && followingIsVararg())
+                     && nextCanFollowOperator(canStartInfixExprTokens))
 
     /** PrefixExpr       ::= [PrefixOperator'] SimpleExpr
      *  PrefixOperator   ::=  ‘-’ | ‘+’ | ‘~’ | ‘!’ (if not backquoted)
@@ -2947,7 +2962,8 @@ object Parsers {
     def infixPattern(): Tree =
       infixOps(
         simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern, ParseKind.Pattern,
-        isOperator = in.name != nme.raw.BAR && !followingIsVararg())
+        isOperator = in.name != nme.raw.BAR && !followingIsVararg()
+                     && nextCanFollowOperator(canStartPatternTokens))
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
