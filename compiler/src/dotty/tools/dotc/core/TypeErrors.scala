@@ -140,7 +140,7 @@ class CyclicReference private (val denot: SymDenotation)(using Context) extends 
     // cycleSym.flags would try completing denot and would fail, but here we can use flagsUNSAFE to detect flags
     // set by the parser.
     val unsafeFlags = cycleSym.flagsUNSAFE
-    val isMethod = unsafeFlags.is(Method) // sometimes,isMethod and isConstructor can both be true!
+    val isMethod = unsafeFlags.is(Method)
     val isVal = !isMethod && cycleSym.isTerm
     val isConstructor = cycleSym.isConstructor
 
