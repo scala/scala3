@@ -198,7 +198,6 @@ trait MessageRendering {
   end posStr
 
   /** Explanation rendered under "Explanation" header */
-  @deprecated("Explanations are rendered with the message text", since="3.4")
   def explanation(m: Message)(using Context): String = {
     val sb = new StringBuilder(
       s"""|
