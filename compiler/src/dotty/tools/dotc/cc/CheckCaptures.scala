@@ -163,7 +163,8 @@ object CheckCaptures:
             capt.println(i"disallow $t, $tp, $what, ${t.symbol.is(Sealed)}")
             t.info match
               case TypeBounds(_, hi)
-              if !t.symbol.is(Sealed) && !t.symbol.isParametricIn(carrier) =>
+              if !t.symbol.is(Sealed) && !hi.hasAnnotation(defn.Caps_SealedAnnot)
+                  && !t.symbol.isParametricIn(carrier) =>
                 if hi.isAny then
                   report.error(
                     em"""$what cannot $have $tp since
