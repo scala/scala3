@@ -8,10 +8,10 @@ import sttp.client4.*
 lazy val apiToken =
   System.getenv("GRAPHQL_API_TOKEN")
 
-val PROJECT_ID: String = "PVT_kwDOACj3ec4AWSoi"
-val FIELD_ID: String = "PVTF_lADOACj3ec4AWSoizgO7uJ4"
-
 case class ID(value: String) derives WrapperVariable
+
+val PROJECT_ID = ID("PVT_kwDOACj3ec4AWSoi")
+val FIELD_ID = ID("PVTF_lADOACj3ec4AWSoizgO7uJ4")
 
 @main def run(number: Int) =
   val (id, date) = getPrData(number)
