@@ -1,0 +1,12 @@
+-- Error: tests/neg-custom-args/captures/localcaps.scala:4:12 ----------------------------------------------------------
+4 |  def x: C^{cap[d]} = ??? // error
+  |            ^^^^^^
+  |            `d` does not name an outer definition that represents a capture level
+-- Error: tests/neg-custom-args/captures/localcaps.scala:9:47 ----------------------------------------------------------
+9 |  private val z2 = identity((x: Int) => (c: C^{cap[z2]}) => x) // error
+  |                                               ^^^^^^^
+  |                                            `z2` does not name an outer definition that represents a capture level
+-- Error: tests/neg-custom-args/captures/localcaps.scala:6:6 -----------------------------------------------------------
+6 |  def y: C^{cap[C]} = ???  // error
+  |      ^
+  |      local root (cap[C] : caps.Cap) cannot appear in type of class C

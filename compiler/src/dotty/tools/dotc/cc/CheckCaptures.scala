@@ -1301,6 +1301,20 @@ class CheckCaptures extends Recheck, SymTransformer:
         checker.traverse(tree.knownType)
     end healTypeParam
 
+    def checkNoLocalRootIn(sym: Symbol, info: Type, pos: SrcPos)(using Context): Unit =
+      val check = new TypeTraverser:
+        def traverse(tp: Type) = tp match
+          case tp: TermRef if tp.isLocalRootCapability =>
+            if tp.localRootOwner == sym then
+              report.error(i"local root $tp cannot appear in type of $sym", pos)
+          case tp: ClassInfo =>
+            traverseChildren(tp)
+            for mbr <- tp.decls do
+              if !mbr.is(Private) then checkNoLocalRootIn(sym, mbr.info, mbr.srcPos)
+          case _ =>
+            traverseChildren(tp)
+      check.traverse(info)
+
     /** Perform the following kinds of checks
      *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
      *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
@@ -1324,6 +1338,8 @@ class CheckCaptures extends Recheck, SymTransformer:
                 checkBounds(normArgs, tl)
                 args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
               case _ =>
+          case _: ValOrDefDef | _: TypeDef =>
+            checkNoLocalRootIn(tree.symbol, tree.symbol.info, tree.symbol.srcPos)
           case _ =>
         end check
       end checker

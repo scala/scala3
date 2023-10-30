@@ -12,3 +12,11 @@
    |                              Required: Cap^ ->{d} Unit
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/pairs.scala:6:8 ---------------------------------------------------------------
+6 |    def fst: Cap^{cap[Pair]} ->{x} Unit = x  // error
+  |        ^
+  |        local root (cap[Pair] : caps.Cap) cannot appear in type of class Pair
+-- Error: tests/neg-custom-args/captures/pairs.scala:7:8 ---------------------------------------------------------------
+7 |    def snd: Cap^{cap[Pair]} ->{y} Unit = y  // error
+  |        ^
+  |        local root (cap[Pair] : caps.Cap) cannot appear in type of class Pair

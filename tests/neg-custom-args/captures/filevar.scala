@@ -5,7 +5,7 @@ class File:
   def write(x: String): Unit = ???
 
 class Service:
-  var file: File^{cap[Service]} = uninitialized
+  var file: File^{cap[Service]} = uninitialized  // error
   def log = file.write("log")
 
 def withFile[T](op: (l: caps.Cap) ?-> (f: File^{l}) => T): T =
