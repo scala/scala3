@@ -2785,11 +2785,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       checkDerivedValueClass(cls, body1)
 
       val effectiveOwner = cls.owner.skipWeakOwner
-      if !cls.isRefinementClass
-         && !cls.isAllOf(PrivateLocal)
+      if cls.is(ModuleClass)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
-         && !ctx.settings.YcompileScala2Library.value // FIXME?: class PermutationsItr cannot be defined in universal trait SeqOps
       then
         report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 
