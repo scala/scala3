@@ -1896,7 +1896,10 @@ class Namer { typer: Typer =>
      */
     def expectedDefaultArgType =
       val originalTp = defaultParamType
-      val approxTp = wildApprox(originalTp)
+      val approxTp = withMode(Mode.TypevarsMissContext):
+        // assert TypevarsMissContext so that TyperState does not leak into approximation
+        // We approximate precisely because we want to unlink the type variable. Test case is i18795.scala.
+        wildApprox(originalTp)
       approxTp.stripPoly match
         case atp @ defn.ContextFunctionType(_, resType)
         if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
