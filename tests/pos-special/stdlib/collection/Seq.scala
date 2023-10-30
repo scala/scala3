@@ -77,7 +77,7 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
   * @define coll sequence
   * @define Coll `Seq`
   */
-trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
+trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
 
@@ -234,7 +234,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
    *
    *  @return  an iterator yielding the elements of this $coll in reversed order
    */
-  def reverseIterator: Iterator[A] = reversed.iterator
+  override def reverseIterator: Iterator[A] = reversed.iterator
 
   /** Tests whether this $coll contains the given sequence at a given index.
     *
