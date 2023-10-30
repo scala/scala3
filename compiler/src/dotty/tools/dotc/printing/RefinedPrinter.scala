@@ -640,8 +640,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           try changePrec(GlobalPrec)(toText(arg) ~ "^" ~ toTextCaptureSet(captureSet))
           catch case ex: IllegalCaptureRef => toTextAnnot
         if annot.symbol.maybeOwner == defn.RetainsAnnot
-            && Feature.ccEnabled
-            && Config.printCaptureSetsAsPrefix && !printDebug
+            && Feature.ccEnabled && !printDebug
             && Phases.checkCapturesPhase.exists // might be missing on -Ytest-pickler
         then toTextRetainsAnnot
         else toTextAnnot

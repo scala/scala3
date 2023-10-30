@@ -33,7 +33,6 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting._
-import cc.{adaptFunctionTypeUnderPureFuns, adaptByNameArgUnderPureFuns}
 
 object Scala2Unpickler {
 
@@ -824,7 +823,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         val tycon = select(pre, sym)
         val args = until(end, () => readTypeRef())
-        if (sym == defn.ByNameParamClass2x) ExprType(args.head.adaptByNameArgUnderPureFuns)
+        if (sym == defn.ByNameParamClass2x) ExprType(args.head)
         else if (ctx.settings.scalajs.value && args.length == 2 &&
             sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym == JSDefinitions.jsdefn.PseudoUnionClass) {
           // Treat Scala.js pseudo-unions as real unions, this requires a
@@ -833,7 +832,6 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         else if args.nonEmpty then
           tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
-            .adaptFunctionTypeUnderPureFuns
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
