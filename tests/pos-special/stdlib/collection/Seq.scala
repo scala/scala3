@@ -18,6 +18,7 @@ import Searching.{Found, InsertionPoint, SearchResult}
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** Base trait for sequence collections
   *
@@ -598,7 +599,8 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
       if (!hasNext)
         Iterator.empty.next()
 
-      val forcedElms = new mutable.ArrayBuffer[A](elms.size) ++= elms
+      val forcedElms = new mutable.ArrayBuffer[A @uncheckedCaptures](elms.size) ++= elms
+        // uncheckedCaptures OK since used only locally
       val result = (newSpecificBuilder ++= forcedElms).result()
       var i = idxs.length - 2
       while(i >= 0 && idxs(i) >= idxs(i+1))

@@ -18,7 +18,7 @@ import language.experimental.captureChecking
 
 
 /** A `Buffer` is a growable and shrinkable `Seq`. */
-trait Buffer[A]
+trait Buffer[sealed A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]

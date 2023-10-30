@@ -18,6 +18,7 @@ import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import scala.runtime.Statics
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
+import annotation.unchecked.uncheckedCaptures
 
 
 /** Iterators are data structures that allow to iterate over a sequence
@@ -416,7 +417,9 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   }
 
   @deprecated("Call scanRight on an Iterable instead.", "2.13.0")
-  def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this} = ArrayBuffer.from(this).scanRight(z)(op).iterator
+  def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this} =
+    ArrayBuffer.from[A @uncheckedCaptures](this).scanRight(z)(op).iterator
+      // @uncheckedCaptures is safe since the ArrayBuffer is local temporrary storage
 
   def indexWhere(p: A => Boolean, from: Int = 0): Int = {
     var i = math.max(from, 0)
