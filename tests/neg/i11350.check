@@ -1,16 +1,22 @@
 -- [E081] Type Error: tests/neg/i11350.scala:1:39 ----------------------------------------------------------------------
 1 |class A1[T](action: A1[T] ?=> String = "") // error
   |                                       ^
-  |                                       Could not infer type for parameter contextual$1 of anonymous function
+  |                                       Missing parameter type
   |
-  |                                       Partially inferred type for the parameter: A1[<?>]
-  |
-  |                                       Expected type for the whole anonymous function: (A1[<?>]) ?=> String
+  |                                       I could not infer the type of the parameter contextual$1
+  |                                       in expanded function:
+  |                                         contextual$1 ?=> ""
+  |                                       What I could infer was: A1[<?>]
+  |                                       Expected type for the whole anonymous function:
+  |                                         (A1[<?>]) ?=> String
 -- [E081] Type Error: tests/neg/i11350.scala:2:39 ----------------------------------------------------------------------
 2 |class A2[T](action: A1[T] ?=> String = summon[A1[T]]) // error
   |                                       ^
-  |                                       Could not infer type for parameter contextual$2 of anonymous function
+  |                                       Missing parameter type
   |
-  |                                       Partially inferred type for the parameter: A1[<?>]
-  |
-  |                                       Expected type for the whole anonymous function: (A1[<?>]) ?=> String
+  |                                       I could not infer the type of the parameter contextual$2
+  |                                       in expanded function:
+  |                                         contextual$2 ?=> summon[A1[T]]
+  |                                       What I could infer was: A1[<?>]
+  |                                       Expected type for the whole anonymous function:
+  |                                         (A1[<?>]) ?=> String
