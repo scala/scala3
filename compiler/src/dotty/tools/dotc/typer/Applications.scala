@@ -1780,14 +1780,20 @@ trait Applications extends Compatibility {
       def winsType2 = isAsSpecific(alt2, tp2, alt1, tp1)
 
       overload.println(i"compare($alt1, $alt2)? $tp1 $tp2 $ownerScore $winsType1 $winsType2")
-      if (ownerScore == 1)
-        if (winsType1 || !winsType2) 1 else 0
-      else if (ownerScore == -1)
-        if (winsType2 || !winsType1) -1 else 0
-      else if (winsType1)
-        if (winsType2) 0 else 1
+      if winsType1 && winsType2
+          && alt1.widenExpr.isStable && (alt1.widenExpr frozen_=:= alt2.widenExpr)
+      then
+        // alternatives are the same after following ExprTypes, pick one of them
+        // (prefer the one that is not a method, but that's arbitrary).
+        if alt1.widenExpr =:= alt2 then -1 else 1
+      else if ownerScore == 1 then
+        if winsType1 || !winsType2 then 1 else 0
+      else if ownerScore == -1 then
+        if winsType2 || !winsType1 then -1 else 0
+      else if winsType1 then
+        if winsType2 then 0 else 1
       else
-        if (winsType2) -1 else 0
+        if winsType2 then -1 else 0
     }
 
     if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
