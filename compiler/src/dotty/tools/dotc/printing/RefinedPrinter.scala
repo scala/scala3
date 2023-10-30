@@ -641,6 +641,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           catch case ex: IllegalCaptureRef => toTextAnnot
         if annot.symbol.maybeOwner == defn.RetainsAnnot
             && Feature.ccEnabled && !printDebug
+            && Phases.checkCapturesPhase.exists // might be missing on -Ytest-pickler
         then toTextRetainsAnnot
         else toTextAnnot
       case EmptyTree =>

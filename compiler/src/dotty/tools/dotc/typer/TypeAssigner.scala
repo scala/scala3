@@ -165,7 +165,7 @@ trait TypeAssigner {
 
   def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
-  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
+  def notAMemberErrorType(tree: untpd.Select, qual: Tree, proto: Type)(using Context): ErrorType =
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
     val foundWithoutNull = qualType match
@@ -177,7 +177,7 @@ trait TypeAssigner {
     def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then em"$qualType does not have a constructor"
-      else NotAMember(qualType, tree.name, kind, addendum)
+      else NotAMember(qualType, tree.name, kind, proto, addendum)
     errorType(msg, tree.srcPos)
 
   def inaccessibleErrorType(tpe: NamedType, superAccess: Boolean, pos: SrcPos)(using Context): Type =
@@ -206,7 +206,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.Select, qual: Tree)(using Context): Select =
     val rawType = selectionType(tree, qual)
     val checkedType = ensureAccessible(rawType, qual.isInstanceOf[Super], tree.srcPos)
-    val ownType = checkedType.orElse(notAMemberErrorType(tree, qual))
+    val ownType = checkedType.orElse(notAMemberErrorType(tree, qual, WildcardType))
     assignType(tree, ownType)
 
   /** Normalize type T appearing in a new T by following eta expansions to

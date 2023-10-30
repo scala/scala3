@@ -253,7 +253,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         //}
         assert(!ctx.settings.YnoDeepSubtypes.value)
         if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-          report.log(explained(_.isSubType(tp1, tp2, approx)))
+          report.log(explained(_.isSubType(tp1, tp2, approx), short = false))
       }
       // Eliminate LazyRefs before checking whether we have seen a type before
       val normalize = new TypeMap with CaptureSet.IdempotentCaptRefMap {
@@ -2959,7 +2959,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
   }
 
-  protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
+  protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
   protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
@@ -2969,8 +2969,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     finally myInstance = saved
 
   /** The trace of comparison operations when performing `op` */
-  def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
-    val cmp = explainingTypeComparer
+  def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean)(using Context): String =
+    val cmp = explainingTypeComparer(short)
     inSubComparer(cmp)(op)
     cmp.lastTrace(header)
 
@@ -3139,8 +3139,8 @@ object TypeComparer {
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
 
-  def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
-    comparing(_.explained(op, header))
+  def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:", short: Boolean = false)(using Context): String =
+    comparing(_.explained(op, header, short))
 
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     comparing(_.tracked(op))
@@ -3337,30 +3337,47 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 }
 
-/** A type comparer that can record traces of subtype operations */
-class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+/** A type comparer that can record traces of subtype operations
+ *  @param short  if true print only failing forward traces; never print succesful
+ *                subtraces; never print backtraces starting with `<==`.
+ */
+class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {
   import TypeComparer._
 
   init(initctx)
 
-  override def explainingTypeComparer = this
+  override def explainingTypeComparer(short: Boolean) =
+    if short == this.short then this
+    else ExplainingTypeComparer(comparerContext, short)
 
   private var indent = 0
   private val b = new StringBuilder
-
-  private var skipped = false
+  private var lastForwardGoal: String | Null = null
 
   override def traceIndented[T](str: String)(op: => T): T =
-    if (skipped) op
-    else {
+    val str1 = str.replace('\n', ' ')
+    if short && str1 == lastForwardGoal then
+      op // repeated goal, skip for clarity
+    else
+      lastForwardGoal = str1
+      val curLength = b.length
       indent += 2
-      val str1 = str.replace('\n', ' ')
       b.append("\n").append(" " * indent).append("==> ").append(str1)
       val res = op
-      b.append("\n").append(" " * indent).append("<== ").append(str1).append(" = ").append(show(res))
+      if short then
+        if res == false then
+          if lastForwardGoal != null then  // last was deepest goal that failed
+            b.append("  = false")
+            lastForwardGoal = null
+        else
+          b.length = curLength // don't show successful subtraces
+      else
+        b.append("\n").append(" " * indent).append("<== ").append(str1).append(" = ").append(show(res))
       indent -= 2
       res
-    }
+
+  private def traceIndentedIfNotShort[T](str: String)(op: => T): T =
+    if short then op else traceIndented(str)(op)
 
   private def frozenNotice: String =
     if frozenConstraint then " in frozen constraint" else ""
@@ -3371,7 +3388,8 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
     val approx = approxState
-    traceIndented(s"${show(tp1)}  <:  ${show(tp2)}$moreInfo${approx.show}$frozenNotice") {
+    def approxStr = if short then "" else approx.show
+    traceIndented(s"${show(tp1)}  <:  ${show(tp2)}$moreInfo${approxStr}$frozenNotice") {
       super.recur(tp1, tp2)
     }
 
@@ -3381,12 +3399,12 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
   override def lub(tp1: Type, tp2: Type, canConstrain: Boolean, isSoft: Boolean): Type =
-    traceIndented(s"lub(${show(tp1)}, ${show(tp2)}, canConstrain=$canConstrain, isSoft=$isSoft)") {
+    traceIndentedIfNotShort(s"lub(${show(tp1)}, ${show(tp2)}, canConstrain=$canConstrain, isSoft=$isSoft)") {
       super.lub(tp1, tp2, canConstrain, isSoft)
     }
 
   override def glb(tp1: Type, tp2: Type): Type =
-    traceIndented(s"glb(${show(tp1)}, ${show(tp2)})") {
+    traceIndentedIfNotShort(s"glb(${show(tp1)}, ${show(tp2)})") {
       super.glb(tp1, tp2)
     }
 

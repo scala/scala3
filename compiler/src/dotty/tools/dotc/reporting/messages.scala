@@ -16,7 +16,7 @@ import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.ViewProto
+import typer.ProtoTypes.{ViewProto, SelectionProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
 import scala.util.control.NonFatal
@@ -34,6 +34,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourcePosition
 import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
+import DidYouMean.*
 
 /**  Messages
   *  ========
@@ -243,14 +244,29 @@ extends NamingMsg(DuplicateBindID) {
   }
 }
 
-class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name)(using Context)
+class MissingIdent(tree: untpd.Ident, treeKind: String, val name: Name, proto: Type)(using Context)
 extends NotFoundMsg(MissingIdentID) {
-  def msg(using Context) = i"Not found: $treeKind$name"
+  def msg(using Context) =
+    val missing = name.show
+    val addendum =
+      didYouMean(
+        inScopeCandidates(name.isTypeName, isApplied = proto.isInstanceOf[FunProto], rootImportOK = true)
+          .closestTo(missing),
+        proto, "")
+
+    i"Not found: $treeKind$name$addendum"
   def explain(using Context) = {
-    i"""|The identifier for `$treeKind$name` is not bound, that is,
-        |no declaration for this identifier can be found.
-        |That can happen, for example, if `$name` or its declaration has either been
-        |misspelt or if an import is missing."""
+    i"""|Each identifier in Scala needs a matching declaration. There are two kinds of
+        |identifiers: type identifiers and value identifiers. Value identifiers are introduced
+        |by `val`, `def`, or `object` declarations. Type identifiers are introduced by `type`,
+        |`class`, `enum`, or `trait` declarations.
+        |
+        |Identifiers refer to matching declarations in their environment, or they can be
+        |imported from elsewhere.
+        |
+        |Possible reasons why no matching declaration was found:
+        | - The declaration or the use is mis-spelt.
+        | - An import is missing."""
   }
 }
 
@@ -309,47 +325,12 @@ class TypeMismatch(found: Type, expected: Type, inTree: Option[untpd.Tree], adde
 
 end TypeMismatch
 
-class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
+class NotAMember(site: Type, val name: Name, selected: String, proto: Type, addendum: => String = "")(using Context)
 extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
   //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
   def msg(using Context) = {
-    import core.Flags._
-    val maxDist = 3  // maximal number of differences to be considered for a hint
     val missing = name.show
-
-    // The symbols of all non-synthetic, non-private members of `site`
-    // that are of the same type/term kind as the missing member.
-    def candidates: Set[Symbol] =
-      for
-        bc <- site.widen.baseClasses.toSet
-        sym <- bc.info.decls.filter(sym =>
-          sym.isType == name.isTypeName
-          && !sym.isConstructor
-          && !sym.flagsUNSAFE.isOneOf(Synthetic | Private))
-      yield sym
-
-    // Calculate Levenshtein distance
-    def distance(s1: String, s2: String): Int =
-      val dist = Array.ofDim[Int](s2.length + 1, s1.length + 1)
-      for
-        j <- 0 to s2.length
-        i <- 0 to s1.length
-      do
-        dist(j)(i) =
-          if j == 0 then i
-          else if i == 0 then j
-          else if s2(j - 1) == s1(i - 1) then dist(j - 1)(i - 1)
-          else (dist(j - 1)(i) min dist(j)(i - 1) min dist(j - 1)(i - 1)) + 1
-      dist(s2.length)(s1.length)
-
-    // A list of possible candidate symbols with their Levenstein distances
-    // to the name of the missing member
-    def closest: List[(Int, Symbol)] = candidates
-      .toList
-      .map(sym => (distance(sym.name.show, missing), sym))
-      .filter((d, sym) => d <= maxDist && d < missing.length && d < sym.name.show.length)
-      .sortBy((d, sym) => (d, sym.name.show))  // sort by distance first, alphabetically second
 
     val enumClause =
       if ((name eq nme.values) || (name eq nme.valueOf)) && site.classSymbol.companionClass.isEnumClass then
@@ -367,17 +348,18 @@ extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
 
     val finalAddendum =
       if addendum.nonEmpty then prefixEnumClause(addendum)
-      else closest match
-        case (d, sym) :: _ =>
-          val siteName = site match
-            case site: NamedType => site.name.show
-            case site => i"$site"
-          val showName =
-            // Add .type to the name if it is a module
-            if sym.is(ModuleClass) then s"${sym.name.show}.type"
-            else sym.name.show
-          s" - did you mean $siteName.$showName?$enumClause"
-        case Nil => prefixEnumClause("")
+      else
+        val hint = didYouMean(
+          memberCandidates(site, name.isTypeName, isApplied = proto.isInstanceOf[FunProto])
+            .closestTo(missing)
+            .map((d, sym) => (d, Binding(sym.name, sym, site))),
+          proto,
+          prefix = site match
+            case site: NamedType => i"${site.name}."
+            case site => i"$site."
+        )
+        if hint.isEmpty then prefixEnumClause("")
+        else hint ++ enumClause
 
     i"$selected $name is not a member of ${site.widen}$finalAddendum"
   }
@@ -973,66 +955,63 @@ extends SyntaxMsg(IllegalStartOfSimplePatternID) {
   def msg(using Context) = "pattern expected"
   def explain(using Context) = {
     val sipCode =
-      """def f(x: Int, y: Int) = x match {
-        |  case `y` => ...
-        |}
-      """
+      """def f(x: Int, y: Int) = x match
+        |    case `y` => ...""".stripMargin
     val constructorPatternsCode =
       """case class Person(name: String, age: Int)
         |
-        |def test(p: Person) = p match {
-        |  case Person(name, age) => ...
-        |}
-      """
-    val tupplePatternsCode =
-      """def swap(tuple: (String, Int)): (Int, String) = tuple match {
-        |  case (text, number) => (number, text)
-        |}
-      """
+        |  def test(p: Person) = p match
+        |    case Person(name, age) => ...""".stripMargin
+    val tuplePatternsCode =
+      """def swap(tuple: (String, Int)): (Int, String) = tuple match
+        |    case (text, number) => (number, text)""".stripMargin
     val patternSequencesCode =
-      """def getSecondValue(list: List[Int]): Int = list match {
-        |  case List(_, second, x:_*) => second
-        |  case _ => 0
-        |}"""
+      """def getSecondValue(list: List[Int]): Int = list match
+        |    case List(_, second, x*) => second
+        |    case _ => 0""".stripMargin
     i"""|Simple patterns can be divided into several groups:
-        |- Variable Patterns: ${hl("case x => ...")}.
+        |- Variable Patterns: ${hl("case x => ...")} or ${hl("case _ => ...")}
         |  It matches any value, and binds the variable name to that value.
         |  A special case is the wild-card pattern _ which is treated as if it was a fresh
         |  variable on each occurrence.
         |
-        |- Typed Patterns: ${hl("case x: Int => ...")} or ${hl("case _: Int => ...")}.
+        |- Typed Patterns: ${hl("case x: Int => ...")} or ${hl("case _: Int => ...")}
         |  This pattern matches any value matched by the specified type; it binds the variable
         |  name to that value.
         |
-        |- Literal Patterns: ${hl("case 123 => ...")} or ${hl("case 'A' => ...")}.
+        |- Given Patterns: ${hl("case given ExecutionContext => ...")}
+        |  This pattern matches any value matched by the specified type; it binds a ${hl("given")}
+        |  instance with the same type to that value.
+        |
+        |- Literal Patterns: ${hl("case 123 => ...")} or ${hl("case 'A' => ...")}
         |  This type of pattern matches any value that is equal to the specified literal.
         |
         |- Stable Identifier Patterns:
         |
-        |  $sipCode
+        |  ${hl(sipCode)}
         |
         |  the match succeeds only if the x argument and the y argument of f are equal.
         |
         |- Constructor Patterns:
         |
-        |  $constructorPatternsCode
+        |  ${hl(constructorPatternsCode)}
         |
         |  The pattern binds all object's fields to the variable names (name and age, in this
         |  case).
         |
         |- Tuple Patterns:
         |
-        |  $tupplePatternsCode
+        |  ${hl(tuplePatternsCode)}
         |
         |  Calling:
         |
-        |  ${hl("""swap(("Luftballons", 99)""")}
+        |  ${hl("""swap(("Luftballons", 99))""")}
         |
         |  would give ${hl("""(99, "Luftballons")""")} as a result.
         |
         |- Pattern Sequences:
         |
-        |  $patternSequencesCode
+        |  ${hl(patternSequencesCode)}
         |
         |  Calling:
         |
@@ -1190,7 +1169,7 @@ extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
         |"""
 }
 
-class ExpectedTokenButFound(expected: Token, found: Token)(using Context)
+class ExpectedTokenButFound(expected: Token, found: Token, prefix: String = "")(using Context)
 extends SyntaxMsg(ExpectedTokenButFoundID) {
 
   private def foundText = Tokens.showToken(found)
@@ -1199,7 +1178,7 @@ extends SyntaxMsg(ExpectedTokenButFoundID) {
     val expectedText =
       if (Tokens.isIdentifier(expected)) "an identifier"
       else Tokens.showToken(expected)
-    i"""${expectedText} expected, but ${foundText} found"""
+    i"""$prefix$expectedText expected, but $foundText found"""
 
   def explain(using Context) =
     if (Tokens.isIdentifier(expected) && Tokens.isKeyword(found))
@@ -1811,10 +1790,20 @@ class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathI
         | - a reference to `this`, or
         | - a selection of an immutable path with an immutable value."""
 
-class WrongNumberOfParameters(expected: Int)(using Context)
+class WrongNumberOfParameters(tree: untpd.Tree, foundCount: Int, pt: Type, expectedCount: Int)(using Context)
   extends SyntaxMsg(WrongNumberOfParametersID) {
-  def msg(using Context) = s"Wrong number of parameters, expected: $expected"
-  def explain(using Context) = ""
+  def msg(using Context) = s"Wrong number of parameters, expected: $expectedCount"
+  def explain(using Context) =
+    val ending = if foundCount == 1 then "" else "s"
+    i"""The function literal
+       |
+       |    $tree
+       |
+       |has $foundCount parameter$ending. But the expected type
+       |
+       |    $pt
+       |
+       |requires a function with $expectedCount parameters."""
 }
 
 class DuplicatePrivateProtectedQualifier()(using Context)

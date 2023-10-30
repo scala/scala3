@@ -97,25 +97,26 @@ object CaseKeywordCompletion:
         selectorSym
       )
     then
-      val label =
-        if patternOnly.isEmpty then s"case ${parents.selector.show} =>"
-        else parents.selector.show
-      List(
-        CompletionValue.CaseKeyword(
-          selectorSym,
-          label,
-          Some(
-            if patternOnly.isEmpty then
+      if patternOnly.isEmpty then
+        val selectorTpe = parents.selector.show
+        val tpeLabel =
+          if !selectorTpe.contains("x$1") then selectorTpe
+          else selector.symbol.info.show
+        val label = s"case ${tpeLabel} =>"
+        List(
+          CompletionValue.CaseKeyword(
+            selectorSym,
+            label,
+            Some(
               if config.isCompletionSnippetsEnabled() then "case ($0) =>"
               else "case () =>"
-            else if config.isCompletionSnippetsEnabled() then "($0)"
-            else "()"
-          ),
-          Nil,
-          range = Some(completionPos.toEditRange),
-          command = config.parameterHintsCommand().asScala
+            ),
+            Nil,
+            range = Some(completionPos.toEditRange),
+            command = config.parameterHintsCommand().asScala,
+          )
         )
-      )
+      else Nil
     else
       val result = ListBuffer.empty[SymbolImport]
       val isVisited = mutable.Set.empty[Symbol]

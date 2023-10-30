@@ -665,7 +665,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     then // we are in the arguments of a this(...) constructor call
       errorTree(tree, em"$tree is not accessible from constructor arguments")
     else
-      errorTree(tree, MissingIdent(tree, kind, name))
+      errorTree(tree, MissingIdent(tree, kind, name, pt))
   end typedIdent
 
   /** (1) If this reference is neither applied nor selected, check that it does
@@ -754,7 +754,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case rawType: NamedType =>
               inaccessibleErrorType(rawType, superAccess, tree.srcPos)
             case _ =>
-              notAMemberErrorType(tree, qual))
+              notAMemberErrorType(tree, qual, pt))
   end typedSelect
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
@@ -1586,7 +1586,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     /** Returns the type and whether the parameter is erased */
     def protoFormal(i: Int): (Type, Boolean) =
       if (protoFormals.length == params.length) (protoFormals(i), isDefinedErased(i))
-      else (errorType(WrongNumberOfParameters(protoFormals.length), tree.srcPos), false)
+      else (errorType(WrongNumberOfParameters(tree, params.length, pt, protoFormals.length), tree.srcPos), false)
 
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) =
@@ -4366,7 +4366,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case _ =>
               adaptOverloaded(ref)
           }
-        case poly: PolyType if !(ctx.mode is Mode.Type) =>
+        case poly: PolyType
+        if !(ctx.mode is Mode.Type) && dummyTreeOfType.unapply(tree).isEmpty =>
+            // If we are in a conversion from a TermRef with polymorphic underlying
+        	  // type, give up. In this case the typed `null` literal cannot be instantiated.
+            // Test case was but i18695.scala, but it got fixed by a different tweak in #18719.
+            // We leave test for this condition in as a defensive measure in case
+            // it arises somewhere else.
           if isApplyProxy(tree) then newExpr
           else if pt.isInstanceOf[PolyProto] then tree
           else
