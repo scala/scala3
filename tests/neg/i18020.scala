@@ -16,7 +16,7 @@ def foo3 =
   val _root_ = "abc" // error
 
 def foo1: Unit =
-  val _root_: String = "abc" // error // error
+  val _root_: String = "abc" // error
   // _root_: is, technically, a legal name
   // so then it tries to construct the infix op pattern
   // "_root_ String .." and then throws in a null when it fails
