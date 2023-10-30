@@ -77,13 +77,7 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
   * @define coll sequence
   * @define Coll `Seq`
   */
-trait SeqOps[+A, +CC[_], +C] extends AnyRef
-  // CC TODO: Our treechecker disallows classes in universal traits, but the typer accepts
-  // them. Since SeqOps contains nested classes, I changed it to be no longer a universal trait.
-  // Alternatively we could
-  //  - Change TreeChecker to accept this
-  //  - Move nested classes out of the trait
-  with IterableOps[A, CC, C] { self =>
+trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
 
