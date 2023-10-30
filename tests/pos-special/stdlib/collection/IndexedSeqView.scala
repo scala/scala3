@@ -43,9 +43,9 @@ trait IndexedSeqView[+A] extends IndexedSeqViewOps[A, View, View[A]] with SeqVie
   override def slice(from: Int, until: Int): IndexedSeqView[A]^{this} = new IndexedSeqView.Slice(this, from, until)
   override def tapEach[U](f: A => U): IndexedSeqView[A]^{this, f} = new IndexedSeqView.Map(this, { (a: A) => f(a); a})
 
-  def concat[B >: A](suffix: IndexedSeqView.SomeIndexedSeqViewOps[B]): IndexedSeqView[B]^{this} = new IndexedSeqView.Concat(this, suffix)
-  def appendedAll[B >: A](suffix: IndexedSeqView.SomeIndexedSeqViewOps[B]): IndexedSeqView[B]^{this} = new IndexedSeqView.Concat(this, suffix)
-  def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqViewOps[B]): IndexedSeqView[B]^{this} = new IndexedSeqView.Concat(prefix, this)
+  def concat[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B]^{this} = new IndexedSeqView.Concat(this, suffix)
+  def appendedAll[B >: A](suffix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B]^{this} = new IndexedSeqView.Concat(this, suffix)
+  def prependedAll[B >: A](prefix: IndexedSeqView.SomeIndexedSeqOps[B]): IndexedSeqView[B]^{this} = new IndexedSeqView.Concat(prefix, this)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix: String = "IndexedSeqView"
@@ -125,46 +125,46 @@ object IndexedSeqView {
   }
 
   /** An `IndexedSeqViewOps` whose collection type and collection type constructor are unknown */
-  type SomeIndexedSeqViewOps[A] = IndexedSeqViewOps[A, AnyConstr, _]
+  type SomeIndexedSeqOps[A] = IndexedSeqViewOps[A, AnyConstr, _]
 
   @SerialVersionUID(3L)
-  class Id[+A](underlying: SomeIndexedSeqViewOps[A]^)
+  class Id[+A](underlying: SomeIndexedSeqOps[A]^)
     extends SeqView.Id(underlying) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Appended[+A](underlying: SomeIndexedSeqViewOps[A]^, elem: A)
+  class Appended[+A](underlying: SomeIndexedSeqOps[A]^, elem: A)
     extends SeqView.Appended(underlying, elem) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Prepended[+A](elem: A, underlying: SomeIndexedSeqViewOps[A]^)
+  class Prepended[+A](elem: A, underlying: SomeIndexedSeqOps[A]^)
     extends SeqView.Prepended(elem, underlying) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Concat[A](prefix: SomeIndexedSeqViewOps[A]^, suffix: SomeIndexedSeqViewOps[A]^)
+  class Concat[A](prefix: SomeIndexedSeqOps[A]^, suffix: SomeIndexedSeqOps[A]^)
     extends SeqView.Concat[A](prefix, suffix) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Take[A](underlying: SomeIndexedSeqViewOps[A]^, n: Int)
+  class Take[A](underlying: SomeIndexedSeqOps[A]^, n: Int)
     extends SeqView.Take(underlying, n) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class TakeRight[A](underlying: SomeIndexedSeqViewOps[A]^, n: Int)
+  class TakeRight[A](underlying: SomeIndexedSeqOps[A]^, n: Int)
     extends SeqView.TakeRight(underlying, n) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Drop[A](underlying: SomeIndexedSeqViewOps[A]^, n: Int)
+  class Drop[A](underlying: SomeIndexedSeqOps[A]^, n: Int)
     extends SeqView.Drop[A](underlying, n) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class DropRight[A](underlying: SomeIndexedSeqViewOps[A]^, n: Int)
+  class DropRight[A](underlying: SomeIndexedSeqOps[A]^, n: Int)
     extends SeqView.DropRight[A](underlying, n) with IndexedSeqView[A]
 
   @SerialVersionUID(3L)
-  class Map[A, B](underlying: SomeIndexedSeqViewOps[A]^, f: A => B)
+  class Map[A, B](underlying: SomeIndexedSeqOps[A]^, f: A => B)
     extends SeqView.Map(underlying, f) with IndexedSeqView[B]
 
   @SerialVersionUID(3L)
-  class Reverse[A](underlying: SomeIndexedSeqViewOps[A]^) extends SeqView.Reverse[A](underlying) with IndexedSeqView[A] {
+  class Reverse[A](underlying: SomeIndexedSeqOps[A]^) extends SeqView.Reverse[A](underlying) with IndexedSeqView[A] {
     override def reverse: IndexedSeqView[A] = underlying match {
       case x: IndexedSeqView[A] => x
       case _ => super.reverse
@@ -172,7 +172,7 @@ object IndexedSeqView {
   }
 
   @SerialVersionUID(3L)
-  class Slice[A](underlying: SomeIndexedSeqViewOps[A]^, from: Int, until: Int) extends AbstractIndexedSeqView[A] {
+  class Slice[A](underlying: SomeIndexedSeqOps[A]^, from: Int, until: Int) extends AbstractIndexedSeqView[A] {
     protected val lo = from max 0
     protected val hi = (until max 0) min underlying.length
     protected val len = (hi - lo) max 0
