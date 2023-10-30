@@ -30,7 +30,7 @@ def getPrData(number: Int): (ID, String) =
     |}
     """.send(
       uri"https://api.github.com/graphql",
-      "Kordyjan",
+      "DummyUser",
       apiToken
     )
   (ID(res.repository.pullRequest.id), res.repository.pullRequest.mergedAt)
@@ -51,7 +51,7 @@ def timestampItem(id: ID, date: String) =
     |}
     """.send(
       uri"https://api.github.com/graphql",
-      "Kordyjan",
+      "DummyUser",
       apiToken
     )
 
@@ -69,7 +69,7 @@ def addItem(id: ID) =
     |}
     """.send(
       uri"https://api.github.com/graphql",
-      "Kordyjan",
+      "DummyUser",
       apiToken
     )
   ID(res.addProjectV2ItemById.item.id)
