@@ -705,7 +705,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
        */
       private[this] var status = 0
       private def store(a: A): Unit = {
-        if (lookahead == null) lookahead = new mutable.Queue[A]
+        if (lookahead == null) lookahead = new mutable.Queue[A @uncheckedCaptures]
         lookahead += a
       }
       def hasNext = {
@@ -868,7 +868,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     *  @note   Reuse: $consumesOneAndProducesTwoIterators
     */
   def duplicate: (Iterator[A]^{this}, Iterator[A]^{this}) = {
-    val gap = new scala.collection.mutable.Queue[A]
+    val gap = new scala.collection.mutable.Queue[A @uncheckedCaptures]
     var ahead: Iterator[A] = null
     class Partner extends AbstractIterator[A] {
       override def knownSize: Int = self.synchronized {
