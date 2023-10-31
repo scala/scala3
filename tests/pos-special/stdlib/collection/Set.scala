@@ -17,6 +17,7 @@ import scala.util.hashing.MurmurHash3
 import java.lang.String
 
 import scala.annotation.nowarn
+import language.experimental.captureChecking
 
 /** Base trait for set collections.
   */
@@ -25,6 +26,7 @@ trait Set[A]
     with SetOps[A, Set, Set[A]]
     with Equals
     with IterableFactoryDefaults[A, Set] {
+  self: Set[A] =>
 
   def canEqual(that: Any) = true
 
@@ -86,8 +88,7 @@ trait Set[A]
   * @define Coll `Set`
   */
 trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
-  extends IterableOps[A, CC, C]
-     with (A => Boolean) {
+  extends IterableOps[A, CC, C], (A -> Boolean) { self =>
 
   def contains(elem: A): Boolean
 
@@ -234,7 +235,7 @@ trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
       case that: collection.Iterable[A] => new View.Concat(this, that)
       case _ => iterator.concat(that.iterator)
     })
-  }    
+  }
 
   @deprecated("Consider requiring an immutable Set or fall back to Set.union", "2.13.0")
   def + (elem: A): C = fromSpecific(new View.Appended(this, elem))
