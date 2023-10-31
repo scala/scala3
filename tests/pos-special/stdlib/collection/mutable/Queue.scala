@@ -130,7 +130,7 @@ class Queue[sealed A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
 
-  def from[sealed A](source: IterableOnce[A]): Queue[A] = empty ++= source
+  def from[sealed A](source: IterableOnce[A]^): Queue[A] = empty ++= source
 
   def empty[sealed A]: Queue[A] = new Queue
 

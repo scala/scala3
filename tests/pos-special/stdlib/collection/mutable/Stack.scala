@@ -135,7 +135,7 @@ class Stack[sealed A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Stack extends StrictOptimizedSeqFactory[Stack] {
 
-  def from[sealed A](source: IterableOnce[A]): Stack[A] = empty ++= source
+  def from[sealed A](source: IterableOnce[A]^): Stack[A] = empty ++= source
 
   def empty[sealed A]: Stack[A] = new Stack
 

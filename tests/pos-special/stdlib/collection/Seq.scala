@@ -82,6 +82,8 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
 
+  def iterableFactory: FreeSeqFactory[CC]
+
   /** Get the element at the specified index. This operation is provided for convenience in `Seq`. It should
     * not be assumed to be efficient unless you have an `IndexedSeq`. */
   @throws[IndexOutOfBoundsException]

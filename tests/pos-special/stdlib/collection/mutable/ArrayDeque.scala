@@ -526,7 +526,7 @@ class ArrayDeque[sealed A] protected (
 @SerialVersionUID(3L)
 object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
 
-  def from[sealed B](coll: collection.IterableOnce[B]): ArrayDeque[B] = {
+  def from[sealed B](coll: collection.IterableOnce[B]^): ArrayDeque[B] = {
     val s = coll.knownSize
     if (s >= 0) {
       val array = alloc(s)

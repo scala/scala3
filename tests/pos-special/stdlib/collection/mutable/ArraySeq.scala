@@ -110,7 +110,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   private[this] val EmptyArraySeq  = new ofRef[AnyRef](new Array[AnyRef](0))
   def empty[T : ClassTag]: ArraySeq[T] = EmptyArraySeq.asInstanceOf[ArraySeq[T]]
 
-  def from[sealed A : ClassTag](it: scala.collection.IterableOnce[A]): ArraySeq[A] = make(Array.from[A](it))
+  def from[sealed A : ClassTag](it: scala.collection.IterableOnce[A]^): ArraySeq[A] = make(Array.from[A](it))
 
   def newBuilder[sealed A : ClassTag]: Builder[A, ArraySeq[A]] = ArrayBuilder.make[A].mapResult(make)
 
