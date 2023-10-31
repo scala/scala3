@@ -522,7 +522,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tree.symbol match
           case cls: ClassSymbol =>
             val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-            if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
+            if ((selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic)
+              && !cls.isPureClass
+            then
               // add capture set to self type of nested classes if no self type is given explicitly.
               val newSelfType = CapturingType(cinfo.selfType, CaptureSet.Var(cls))
               val ps1 = inContext(ctx.withOwner(cls)):
