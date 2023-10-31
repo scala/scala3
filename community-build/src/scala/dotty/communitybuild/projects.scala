@@ -358,14 +358,6 @@ object projects:
     // sbtDocCommand = "dotty-community-build/doc"
   )
 
-  lazy val stdLib213 = SbtCommunityProject(
-    project       = "stdLib213",
-    extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
-    sbtTestCommand   = """set Global / fatalWarnings := false; library/compile""",
-    sbtPublishCommand = """set Global / fatalWarnings := false; set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
-    // sbtDocCommand = "library/doc" // Does no compile? No idea :/
-  )
-
   lazy val shapeless3 = SbtCommunityProject(
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
@@ -793,7 +785,6 @@ def allProjects = List(
   projects.scalaPB,
   projects.minitest,
   projects.fastparse,
-  projects.stdLib213,
   projects.shapeless3,
   projects.xmlInterpolator,
   projects.effpi,
