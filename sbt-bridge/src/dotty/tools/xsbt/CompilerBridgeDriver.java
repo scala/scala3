@@ -21,6 +21,7 @@ import scala.io.Codec;
 import xsbti.Problem;
 import xsbti.*;
 import xsbti.compile.Output;
+import xsbti.compile.CompileProgress;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -82,7 +83,8 @@ public class CompilerBridgeDriver extends Driver {
     reporter.reportBasicWarning(message);
   }
 
-  synchronized public void run(VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate) {
+  synchronized public void run(
+      VirtualFile[] sources, AnalysisCallback callback, Logger log, Reporter delegate, CompileProgress progress) {
     VirtualFile[] sortedSources = new VirtualFile[sources.length];
     System.arraycopy(sources, 0, sortedSources, 0, sources.length);
     Arrays.sort(sortedSources, (x0, x1) -> x0.id().compareTo(x1.id()));
@@ -111,6 +113,8 @@ public class CompilerBridgeDriver extends Driver {
         return sourceFile.path();
     });
 
+    ProgressCallbackImpl progressCallback = new ProgressCallbackImpl(progress);
+
     IncrementalCallback incCallback = new IncrementalCallback(callback, sourceFile ->
       asVirtualFile(sourceFile, reporter, lookup)
     );
@@ -121,7 +125,8 @@ public class CompilerBridgeDriver extends Driver {
       Contexts.Context initialCtx = initCtx()
         .fresh()
         .setReporter(reporter)
-        .setIncCallback(incCallback);
+        .setIncCallback(incCallback)
+        .setProgressCallback(progressCallback);
 
       Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
 

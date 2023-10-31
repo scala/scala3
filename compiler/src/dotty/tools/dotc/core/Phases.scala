@@ -328,19 +328,29 @@ object Phases {
     /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
 
+    /** for purposes of progress tracking, overridden in TyperPhase */
+    def subPhases: List[Run.SubPhase] = Nil
+    final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
+
     /** @pre `isRunnable` returns true */
     def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
-      units.map { unit =>
+      val buf = List.newBuilder[CompilationUnit]
+      for unit <- units do
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        try run
-        catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
-          println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
-          throw ex
-        unitCtx.compilationUnit
-      }
+        if ctx.run.enterUnit(unit) then
+          try run
+          catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+            println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
+            throw ex
+          finally ctx.run.advanceUnit()
+          buf += unitCtx.compilationUnit
+        end if
+      end for
+      buf.result()
+    end runOn
 
     /** Convert a compilation unit's tree to a string; can be overridden */
     def show(tree: untpd.Tree)(using Context): String =
@@ -448,12 +458,33 @@ object Phases {
     final def iterator: Iterator[Phase] =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
-    final def monitor(doing: String)(body: => Unit)(using Context): Unit =
-      try body
-      catch
-        case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
-          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
+    /** Cancellable region, if not cancelled, run the body in the context of the current compilation unit.
+      * Enrich crash messages.
+      */
+    final def monitor(doing: String)(body: Context ?=> Unit)(using Context): Boolean =
+      val unit = ctx.compilationUnit
+      if ctx.run.enterUnit(unit) then
+        try {body; true}
+        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing $unit"))
           throw ex
+        finally ctx.run.advanceUnit()
+      else
+        false
+
+    inline def runSubPhase[T](id: Run.SubPhase)(inline body: (Run.SubPhase, Context) ?=> T)(using Context): T =
+      given Run.SubPhase = id
+      try
+        body
+      finally
+        ctx.run.enterNextSubphase()
+
+    /** Do not run if compile progress has been cancelled */
+    final def cancellable(body: Context ?=> Unit)(using Context): Boolean =
+      if ctx.run.enterRegion() then
+        {body; true}
+      else
+        false
 
     override def toString: String = phaseName
   }

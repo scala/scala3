@@ -724,20 +724,27 @@ class Namer { typer: Typer =>
    *  Will call the callback with an implementation of type checking
    *  That will set the tpdTree and root tree for the compilation unit.
    */
-  def lateEnterUnit(typeCheckCB: (() => Unit) => Unit)(using Context) =
+  def lateEnterUnit(typeCheck: Boolean)(typeCheckCB: (() => Unit) => Unit)(using Context) =
     val unit = ctx.compilationUnit
 
     /** Index symbols in unit.untpdTree with lateCompile flag = true */
     def lateEnter()(using Context): Context =
       val saved = lateCompile
       lateCompile = true
-      try index(unit.untpdTree :: Nil) finally lateCompile = saved
+      try
+        index(unit.untpdTree :: Nil)
+      finally
+        lateCompile = saved
+        if !typeCheck then ctx.run.advanceLate()
 
     /** Set the tpdTree and root tree of the compilation unit */
     def lateTypeCheck()(using Context) =
-      unit.tpdTree = typer.typedExpr(unit.untpdTree)
-      val phase = new transform.SetRootTree()
-      phase.run
+      try
+        unit.tpdTree = typer.typedExpr(unit.untpdTree)
+        val phase = new transform.SetRootTree()
+        phase.run
+      finally
+        if typeCheck then ctx.run.advanceLate()
 
     unit.untpdTree =
       if (unit.isJava) new JavaParser(unit.source).parse()
@@ -748,9 +755,10 @@ class Namer { typer: Typer =>
         // inline body annotations are set in namer, capturing the current context
         // we need to prepare the context for inlining.
         lateEnter()
-        typeCheckCB { () =>
-          lateTypeCheck()
-        }
+        if typeCheck then
+          typeCheckCB { () =>
+            lateTypeCheck()
+          }
       }
     }
   end lateEnterUnit

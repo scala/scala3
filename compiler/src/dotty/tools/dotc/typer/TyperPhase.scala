@@ -3,6 +3,7 @@ package dotc
 package typer
 
 import core._
+import Run.SubPhase
 import Phases._
 import Contexts._
 import Symbols._
@@ -31,13 +32,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   // Run regardless of parsing errors
   override def isRunnable(implicit ctx: Context): Boolean = true
 
-  def enterSyms(using Context): Unit = monitor("indexing") {
+  def enterSyms(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: " + unit.source)
   }
 
-  def typeCheck(using Context): Unit = monitor("typechecking") {
+  def typeCheck(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     try
       if !unit.suspended then
@@ -49,7 +50,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     catch case _: CompilationUnit.SuspendException => ()
   }
 
-  def javaCheck(using Context): Unit = monitor("checking java") {
+  def javaCheck(using Context)(using subphase: SubPhase): Boolean = monitor(subphase.name) {
     val unit = ctx.compilationUnit
     if unit.isJava then
       JavaChecks.check(unit.tpdTree)
@@ -58,7 +59,11 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended
 
+  override val subPhases: List[SubPhase] = List(
+    SubPhase("indexing"), SubPhase("typechecking"), SubPhase("checkingJava"))
+
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val List(Indexing @ _, Typechecking @ _, CheckingJava @ _) = subPhases: @unchecked
     val unitContexts =
       for unit <- units yield
         val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
@@ -69,7 +74,12 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
         else
           newCtx
 
-    unitContexts.foreach(enterSyms(using _))
+    val unitContexts0 = runSubPhase(Indexing) {
+      for
+        unitContext <- unitContexts
+        if enterSyms(using unitContext)
+      yield unitContext
+    }
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
@@ -81,11 +91,22 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
       case _ =>
     }
 
-    unitContexts.foreach(typeCheck(using _))
-    record("total trees after typer", ast.Trees.ntrees)
-    unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
+    val unitContexts1 = runSubPhase(Typechecking) {
+      for
+        unitContext <- unitContexts0
+        if typeCheck(using unitContext)
+      yield unitContext
+    }
 
-    val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
+    record("total trees after typer", ast.Trees.ntrees)
+
+    val unitContexts2 = runSubPhase(CheckingJava) {
+      for
+        unitContext <- unitContexts1
+        if javaCheck(using unitContext) // after typechecking to avoid cycles
+      yield unitContext
+    }
+    val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 

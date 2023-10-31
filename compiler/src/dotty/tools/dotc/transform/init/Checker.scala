@@ -18,6 +18,7 @@ import Phases._
 import scala.collection.mutable
 
 import Semantic._
+import dotty.tools.unsupported
 
 class Checker extends Phase:
 
@@ -30,23 +31,32 @@ class Checker extends Phase:
   override def isEnabled(using Context): Boolean =
     super.isEnabled && (ctx.settings.YcheckInit.value || ctx.settings.YcheckInitGlobal.value)
 
+  def traverse(traverser: InitTreeTraverser)(using Context): Boolean = monitor(phaseName):
+    val unit = ctx.compilationUnit
+    traverser.traverse(unit.tpdTree)
+
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this.start)
     val traverser = new InitTreeTraverser()
-    units.foreach { unit => traverser.traverse(unit.tpdTree) }
-    val classes = traverser.getClasses()
+    val unitContexts = units.map(unit => checkCtx.fresh.setCompilationUnit(unit))
 
-    if ctx.settings.YcheckInit.value then
-      Semantic.checkClasses(classes)(using checkCtx)
+    val units0 =
+      for unitContext <- unitContexts if traverse(traverser)(using unitContext) yield unitContext.compilationUnit
 
-    if ctx.settings.YcheckInitGlobal.value then
-      Objects.checkClasses(classes)(using checkCtx)
+    cancellable {
+      val classes = traverser.getClasses()
 
-    units
+      if ctx.settings.YcheckInit.value then
+        Semantic.checkClasses(classes)(using checkCtx)
 
-  def run(using Context): Unit =
-    // ignore, we already called `Semantic.check()` in `runOn`
-    ()
+      if ctx.settings.YcheckInitGlobal.value then
+        Objects.checkClasses(classes)(using checkCtx)
+    }
+
+    units0
+  end runOn
+
+  def run(using Context): Unit = unsupported("run")
 
   class InitTreeTraverser extends TreeTraverser:
     private val classes: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer
