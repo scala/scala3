@@ -48,7 +48,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   def empty: BitSet = immutable.BitSet.empty
   def newBuilder: Builder[Int, BitSet] = immutable.BitSet.newBuilder
-  def fromSpecific(it: IterableOnce[Int]): BitSet = immutable.BitSet.fromSpecific(it)
+  def fromSpecific(it: IterableOnce[Int]^): BitSet = immutable.BitSet.fromSpecific(it)
 
   @SerialVersionUID(3L)
   private[collection] abstract class SerializationProxy(@transient protected val coll: BitSet) extends Serializable {

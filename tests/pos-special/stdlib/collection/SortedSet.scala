@@ -14,6 +14,7 @@ package scala.collection
 
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.annotation.unchecked.uncheckedVariance
+import language.experimental.captureChecking
 
 /** Base type of sorted sets */
 trait SortedSet[A] extends Set[A]
@@ -68,7 +69,7 @@ trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
     * @param start The lower-bound (inclusive) of the iterator
     */
   def iteratorFrom(start: A): Iterator[A]
-  
+
   @deprecated("Use `iteratorFrom` instead.", "2.13.0")
   @`inline` def keysIteratorFrom(start: A): Iterator[A] = iteratorFrom(start)
 
@@ -178,7 +179,7 @@ object SortedSetOps {
     def flatMap[B : Ordering](f: A => IterableOnce[B]): CC[B] =
       self.sortedIterableFactory.from(new View.FlatMap(filtered, f))
 
-    override def withFilter(q: A => Boolean): WithFilter[A, IterableCC, CC] =
+    override def withFilter(q: A => Boolean): WithFilter[A, IterableCC, CC]^{this, q} =
       new WithFilter[A, IterableCC, CC](self, (a: A) => p(a) && q(a))
   }
 

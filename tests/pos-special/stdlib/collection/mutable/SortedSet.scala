@@ -13,6 +13,7 @@
 package scala
 package collection
 package mutable
+import language.experimental.captureChecking
 
 /**
   * Base type for mutable sorted set collections

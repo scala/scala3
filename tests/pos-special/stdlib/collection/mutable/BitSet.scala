@@ -361,7 +361,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
-  def fromSpecific(it: scala.collection.IterableOnce[Int]): BitSet = Growable.from(empty, it)
+  def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet = Growable.from(empty, it)
 
   def empty: BitSet = new BitSet()
 

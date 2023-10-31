@@ -95,7 +95,7 @@ sealed abstract class BitSet
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
-  def fromSpecific(it: scala.collection.IterableOnce[Int]): BitSet =
+  def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet =
     it match {
       case bs: BitSet => bs
       case _          => (newBuilder ++= it).result()
