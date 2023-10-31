@@ -707,4 +707,5 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   def postCheck()(using Context): Unit =
     for chk <- todoAtPostCheck do chk(ctx)
+    todoAtPostCheck.clear()
 end Setup
