@@ -148,7 +148,7 @@ object CheckCaptures:
     val check = new TypeTraverser:
 
       extension (tparam: Symbol) def isParametricIn(carrier: Symbol): Boolean =
-        val encl = carrier.owner.enclosingMethodOrClass
+        val encl = carrier.maybeOwner.enclosingMethodOrClass
         if encl.isClass then tparam.isParametricIn(encl)
         else
           def recur(encl: Symbol): Boolean =
@@ -160,11 +160,9 @@ object CheckCaptures:
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
           case t: TypeRef =>
-            capt.println(i"disallow $t, $tp, $what, ${t.symbol.is(Sealed)}")
+            capt.println(i"disallow $t, $tp, $what, ${t.isSealed}")
             t.info match
-              case TypeBounds(_, hi)
-              if !t.symbol.is(Sealed) && !hi.hasAnnotation(defn.Caps_SealedAnnot)
-                  && !t.symbol.isParametricIn(carrier) =>
+              case TypeBounds(_, hi) if !t.isSealed && !t.symbol.isParametricIn(carrier) =>
                 if hi.isAny then
                   report.error(
                     em"""$what cannot $have $tp since
@@ -543,8 +541,8 @@ class CheckCaptures extends Recheck, SymTransformer:
         val TypeApply(fn, args) = tree
         val polyType = atPhase(thisPhase.prev):
           fn.tpe.widen.asInstanceOf[TypeLambda]
-        for case (arg: TypeTree, pinfo, pname) <- args.lazyZip(polyType.paramInfos).lazyZip((polyType.paramNames)) do
-          if pinfo.bounds.hi.hasAnnotation(defn.Caps_SealedAnnot) then
+        for case (arg: TypeTree, formal, pname) <- args.lazyZip(polyType.paramRefs).lazyZip((polyType.paramNames)) do
+          if formal.isSealed then
             def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
             disallowRootCapabilitiesIn(arg.knownType, fn.symbol,
               i"Sealed type variable $pname", "be instantiated to",
@@ -1313,6 +1311,23 @@ class CheckCaptures extends Recheck, SymTransformer:
             traverseChildren(tp)
       check.traverse(info)
 
+    def checkArraysAreSealedIn(tp: Type, pos: SrcPos)(using Context): Unit =
+      val check = new TypeTraverser:
+        def traverse(t: Type): Unit =
+          t match
+            case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.ArrayClass =>
+              if !(pos.span.isSynthetic && ctx.reporter.errorsReported) then
+                CheckCaptures.disallowRootCapabilitiesIn(arg, NoSymbol,
+                  "Array", "have element type",
+                  "Since arrays are mutable, they have to be treated like variables,\nso their element type must be sealed.",
+                  pos)
+              traverseChildren(t)
+            case defn.RefinedFunctionOf(rinfo: MethodType) =>
+              traverse(rinfo)
+            case _ =>
+              traverseChildren(t)
+      check.traverse(tp)
+
     /** Perform the following kinds of checks
      *   - Check all explicitly written capturing types for well-formedness using `checkWellFormedPost`.
      *   - Check that arguments of TypeApplys and AppliedTypes conform to their bounds.
@@ -1338,6 +1353,8 @@ class CheckCaptures extends Recheck, SymTransformer:
               case _ =>
           case _: ValOrDefDef | _: TypeDef =>
             checkNoLocalRootIn(tree.symbol, tree.symbol.info, tree.symbol.srcPos)
+          case tree: TypeTree =>
+            checkArraysAreSealedIn(tree.tpe, tree.srcPos)
           case _ =>
         end check
       end checker
