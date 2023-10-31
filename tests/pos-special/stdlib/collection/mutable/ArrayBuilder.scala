@@ -13,6 +13,7 @@
 package scala.collection
 package mutable
 
+import language.experimental.captureChecking
 import scala.reflect.ClassTag
 
 /** A builder class for arrays.
@@ -20,7 +21,7 @@ import scala.reflect.ClassTag
  *  @tparam T    the type of the elements for the builder.
  */
 @SerialVersionUID(3L)
-sealed abstract class ArrayBuilder[T]
+sealed abstract class ArrayBuilder[sealed T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
   protected[this] var capacity: Int = 0
@@ -57,7 +58,7 @@ sealed abstract class ArrayBuilder[T]
     this
   }
 
-  override def addAll(xs: IterableOnce[T]): this.type = {
+  override def addAll(xs: IterableOnce[T]^): this.type = {
     val k = xs.knownSize
     if (k > 0) {
       ensureSize(this.size + k)
@@ -493,7 +494,7 @@ object ArrayBuilder {
       this
     }
 
-    override def addAll(xs: IterableOnce[Unit]): this.type = {
+    override def addAll(xs: IterableOnce[Unit]^): this.type = {
       size += xs.iterator.size
       this
     }
