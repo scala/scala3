@@ -1500,3 +1500,36 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
    )
 
+  @Test def `prepend-instead-of-replace` =
+    checkEdit(
+      """|object O:
+         |  printl@@println()
+         |""".stripMargin,
+      """|object O:
+         |  printlnprintln()
+         |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `prepend-instead-of-replace-duplicate-word` =
+    checkEdit(
+      """|object O:
+         |  println@@println()
+         |""".stripMargin,
+      """|object O:
+         |  printlnprintln()
+         |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `prepend-instead-of-replace-exact-same` =
+    checkEdit(
+      """|object O:
+         |  println@@()
+         |""".stripMargin,
+      """|object O:
+         |  println()
+         |""".stripMargin,
+      assertSingleItem = false
+    )
+
