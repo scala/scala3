@@ -19,6 +19,8 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl._
 import scala.reflect.ClassTag
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
+import annotation.unchecked.uncheckedCaptures
 
 /**
   *  A collection representing `Array[T]`. Unlike `ArrayBuffer` it is always backed by the same
@@ -34,7 +36,7 @@ import scala.util.hashing.MurmurHash3
   *  @define willNotTerminateInf
   */
 @SerialVersionUID(3L)
-sealed abstract class ArraySeq[T]
+sealed abstract class ArraySeq[sealed T]
   extends AbstractSeq[T]
     with IndexedSeq[T]
     with IndexedSeqOps[T, ArraySeq, ArraySeq[T]]
@@ -43,14 +45,15 @@ sealed abstract class ArraySeq[T]
 
   override def iterableFactory: scala.collection.SeqFactory[ArraySeq] = ArraySeq.untagged
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[T]): ArraySeq[T] = {
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[T]^): ArraySeq[T] = {
     val b = ArrayBuilder.make(elemTag).asInstanceOf[ArrayBuilder[T]]
     val s = coll.knownSize
     if(s > 0) b.sizeHint(s)
     b ++= coll
     ArraySeq.make(b.result())
   }
-  override protected def newSpecificBuilder: Builder[T, ArraySeq[T]] = ArraySeq.newBuilder(elemTag).asInstanceOf[Builder[T, ArraySeq[T]]]
+  override protected def newSpecificBuilder: Builder[T, ArraySeq[T]] =
+    ArraySeq.newBuilder[T](elemTag.asInstanceOf[ClassTag[T]]).asInstanceOf[Builder[T, ArraySeq[T]]]
   override def empty: ArraySeq[T] = ArraySeq.empty(elemTag.asInstanceOf[ClassTag[T]])
 
   /** The tag of the element type. This does not have to be equal to the element type of this ArraySeq. A primitive
@@ -71,9 +74,9 @@ sealed abstract class ArraySeq[T]
   override protected[this] def className = "ArraySeq"
 
   /** Clones this object, including the underlying Array. */
-  override def clone(): ArraySeq[T] = ArraySeq.make(array.clone()).asInstanceOf[ArraySeq[T]]
+  override def clone(): ArraySeq[T] = ArraySeq.make[T](array.clone().asInstanceOf[Array[T]])
 
-  override def copyToArray[B >: T](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[sealed B >: T](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
     if(copied > 0) {
       Array.copy(array, 0, xs, start, copied)
@@ -89,10 +92,10 @@ sealed abstract class ArraySeq[T]
   }
 
   override def sorted[B >: T](implicit ord: Ordering[B]): ArraySeq[T] =
-    ArraySeq.make(array.sorted(ord.asInstanceOf[Ordering[Any]])).asInstanceOf[ArraySeq[T]]
+    ArraySeq.make(array.asInstanceOf[Array[T]].sorted(ord.asInstanceOf[Ordering[Any]])).asInstanceOf[ArraySeq[T]]
 
   override def sortInPlace[B >: T]()(implicit ord: Ordering[B]): this.type = {
-    if (length > 1) scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]])
+    if (length > 1) scala.util.Sorting.stableSort(array.asInstanceOf[Array[B @uncheckedCaptures]])
     this
   }
 }
@@ -107,9 +110,9 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   private[this] val EmptyArraySeq  = new ofRef[AnyRef](new Array[AnyRef](0))
   def empty[T : ClassTag]: ArraySeq[T] = EmptyArraySeq.asInstanceOf[ArraySeq[T]]
 
-  def from[A : ClassTag](it: scala.collection.IterableOnce[A]): ArraySeq[A] = make(Array.from[A](it))
+  def from[sealed A : ClassTag](it: scala.collection.IterableOnce[A]): ArraySeq[A] = make(Array.from[A](it))
 
-  def newBuilder[A : ClassTag]: Builder[A, ArraySeq[A]] = ArrayBuilder.make[A].mapResult(make)
+  def newBuilder[sealed A : ClassTag]: Builder[A, ArraySeq[A]] = ArrayBuilder.make[A].mapResult(make)
 
   /**
    * Wrap an existing `Array` into a `ArraySeq` of the proper primitive specialization type
@@ -123,7 +126,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    * `ArraySeq.make(a.asInstanceOf[Array[Int]])` does not work, it throws a `ClassCastException`
    * at runtime.
    */
-  def make[T](x: Array[T]): ArraySeq[T] = ((x.asInstanceOf[Array[_]]: @unchecked) match {
+  def make[sealed T](x: Array[T]): ArraySeq[T] = ((x.asInstanceOf[Array[_]]: @unchecked) match {
     case null              => null
     case x: Array[AnyRef]  => new ofRef[AnyRef](x)
     case x: Array[Int]     => new ofInt(x)
