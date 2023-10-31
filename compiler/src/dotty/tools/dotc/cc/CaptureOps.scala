@@ -206,6 +206,12 @@ extension (tp: Type)
     case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
     case _ => false
 
+  def isSealed(using Context): Boolean = tp match
+    case tp: TypeParamRef => tp.underlying.isSealed
+    case tp: TypeBounds => tp.hi.hasAnnotation(defn.Caps_SealedAnnot)
+    case tp: TypeRef => tp.symbol.is(Sealed) || tp.info.isSealed // TODO: drop symbol flag?
+    case _ => false
+
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:

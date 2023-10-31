@@ -241,7 +241,7 @@ class ArrayBuffer[sealed A] private (initialElements: Array[AnyRef], initialSize
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix = "ArrayBuffer"
 
-  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
     if(copied > 0) {
       Array.copy(array, 0, xs, start, copied)
@@ -258,7 +258,7 @@ class ArrayBuffer[sealed A] private (initialElements: Array[AnyRef], initialSize
   override def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
     if (length > 1) {
       mutationCount += 1
-      scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]], 0, length)
+      scala.util.Sorting.stableSort(array.asInstanceOf[Array[B @uncheckedCaptures]], 0, length)
     }
     this
   }

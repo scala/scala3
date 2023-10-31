@@ -259,7 +259,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       }
       // segment must have data, and must be complete unless they allow partial
       val ok = index > 0 && (partial || index == size)
-      if (ok) buffer = builder.result().asInstanceOf[Array[B]]
+      if (ok) buffer = builder.result().asInstanceOf[Array[B @uncheckedCaptures]]
       else prev = null
       ok
     }

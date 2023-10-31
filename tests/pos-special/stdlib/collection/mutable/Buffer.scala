@@ -15,6 +15,7 @@ package mutable
 
 import scala.annotation.nowarn
 import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 
 /** A `Buffer` is a growable and shrinkable `Seq`. */
@@ -185,7 +186,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     // There's scope for a better implementation which copies elements in place.
     var i = 0
     val s = size
-    val newElems = new Array[IterableOnce[A]^](s)
+    val newElems = new Array[(IterableOnce[A]^) @uncheckedCaptures](s)
     while (i < s) { newElems(i) = f(this(i)); i += 1 }
     clear()
     i = 0

@@ -596,9 +596,9 @@ abstract class Recheck extends Phase, SymTransformer:
 
   /** Show tree with rechecked types instead of the types stored in the `.tpe` field */
   override def show(tree: untpd.Tree)(using Context): String =
-    atPhase(thisPhase) {
-      super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
-    }
+    atPhase(thisPhase):
+      withMode(Mode.Printing):
+        super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
 end Recheck
 
 /** A class that can be used to test basic rechecking without any customaization */
