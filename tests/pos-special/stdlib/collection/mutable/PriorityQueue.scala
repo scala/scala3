@@ -15,6 +15,7 @@ package mutable
 
 import scala.collection.generic.DefaultSerializationProxy
 import scala.math.Ordering
+import language.experimental.captureChecking
 
 /** A heap-based priority queue.
  *
@@ -66,7 +67,7 @@ import scala.math.Ordering
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
  */
-sealed class PriorityQueue[A](implicit val ord: Ordering[A])
+sealed class PriorityQueue[sealed A](implicit val ord: Ordering[A])
   extends AbstractIterable[A]
     with Iterable[A]
     with IterableOps[A, Iterable, PriorityQueue[A]]
@@ -77,7 +78,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     with Serializable
 {
 
-  private class ResizableArrayAccess[A0] extends ArrayBuffer[A0] {
+  private class ResizableArrayAccess[sealed A0] extends ArrayBuffer[A0] {
     override def mapInPlace(f: A0 => A0): this.type = {
       var i = 1 // see "we do not use array(0)" comment below (???)
       val siz = this.size
@@ -106,7 +107,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   override def isEmpty: Boolean = resarr.p_size0 < 2
 
   // not eligible for EvidenceIterableFactoryDefaults since C != CC[A] (PriorityQueue[A] != Iterable[A])
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[A]): PriorityQueue[A] = PriorityQueue.from(coll)
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[A]^): PriorityQueue[A] = PriorityQueue.from(coll)
   override protected def newSpecificBuilder: Builder[A, PriorityQueue[A]] = PriorityQueue.newBuilder
   override def empty: PriorityQueue[A] = PriorityQueue.empty
 
@@ -161,7 +162,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type = {
+  override def addAll(xs: IterableOnce[A]^): this.type = {
     val from = resarr.p_size0
     for (x <- xs.iterator) unsafeAdd(x)
     heapify(from)
@@ -364,7 +365,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     pq
   }
 
-  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
     if (copied > 0) {
       Array.copy(resarr.p_array, 1, xs, start, copied)
@@ -383,7 +384,7 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
 
 @SerialVersionUID(3L)
 object PriorityQueue extends SortedIterableFactory[PriorityQueue] {
-  def newBuilder[A : Ordering]: Builder[A, PriorityQueue[A]] = {
+  def newBuilder[sealed A : Ordering]: Builder[A, PriorityQueue[A]] = {
     new Builder[A, PriorityQueue[A]] {
       val pq = new PriorityQueue[A]
       def addOne(elem: A): this.type = { pq.unsafeAdd(elem); this }
@@ -392,9 +393,9 @@ object PriorityQueue extends SortedIterableFactory[PriorityQueue] {
     }
   }
 
-  def empty[A : Ordering]: PriorityQueue[A] = new PriorityQueue[A]
+  def empty[sealed A : Ordering]: PriorityQueue[A] = new PriorityQueue[A]
 
-  def from[E : Ordering](it: IterableOnce[E]): PriorityQueue[E] = {
+  def from[sealed E : Ordering](it: IterableOnce[E]^): PriorityQueue[E] = {
     val b = newBuilder[E]
     b ++= it
     b.result()
