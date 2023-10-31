@@ -14,6 +14,8 @@ import dotty.tools.dotc.util._
 import dotty.tools.io.AbstractFile
 import dotty.tools.tasty.TastyReader
 
+import ClassfileParser.Header
+
 import java.io.IOException
 import java.lang.Integer.toHexString
 import java.util.UUID
@@ -23,10 +25,11 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   import ClassfileConstants._
 
   private var pool: ConstantPool = uninitialized // the classfile's constant pool
+  private var classfileVersion: Header.Version = Header.Version.Unknown
 
   def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)
-    ClassfileParser.parseHeader(classfile)
+    this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
     this.pool =  null
@@ -34,9 +37,11 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
+      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
-        i"""class file ${classfile.canonicalPath} is broken, reading aborted with ${e.getClass}
-           |${Option(e.getMessage).getOrElse("")}""")
+        i"""  class file ${classfile.canonicalPath} is broken$addendum,
+          |  reading aborted with ${e.getClass}:
+          |  ${Option(e.getMessage).getOrElse("")}""")
   }
 
   private def checkTastyAttr(tastyUUID: UUID)(using ctx: Context, in: DataReader): Unit = {
