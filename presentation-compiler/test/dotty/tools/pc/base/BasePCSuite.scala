@@ -11,6 +11,7 @@ import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.*
 import dotty.tools.pc.ScalaPresentationCompiler

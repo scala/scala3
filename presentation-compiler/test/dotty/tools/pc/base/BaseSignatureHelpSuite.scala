@@ -4,6 +4,7 @@ import java.nio.file.Paths
 
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
+import scala.language.unsafeNulls
 
 abstract class BaseSignatureHelpSuite extends BasePCSuite:
   def checkDoc(

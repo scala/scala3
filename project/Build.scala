@@ -1251,7 +1251,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.0.0"
+    val mtagsVersion = "1.1.1"
 
     Seq(
       libraryDependencies ++= Seq(

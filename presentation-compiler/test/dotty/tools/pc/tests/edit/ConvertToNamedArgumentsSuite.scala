@@ -7,6 +7,7 @@ import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.pc.CodeActionErrorMessages
 import scala.meta.pc.DisplayableException
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -102,8 +103,7 @@ class ConvertToNamedArgumentsSuite extends BaseCodeActionSuite:
     catch
       case e: ExecutionException =>
         e.getCause() match
-          case cause: DisplayableException =>
-            assertNoDiff(expectedErrorMsg, cause.getMessage)
+          case cause => assertNoDiff(expectedErrorMsg, cause.getMessage)
 
   def checkEdit(
       original: String,
