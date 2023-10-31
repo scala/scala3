@@ -17,7 +17,7 @@ object Test {
     assert(xs.mapConserve(x => x) eq xs)
   }
 
-  def checkBehaviourUnchanged(input: List[_], oldOutput: List[_], newOutput: List[_]): Unit = {
+  def checkBehaviourUnchanged(input: List[?], oldOutput: List[?], newOutput: List[?]): Unit = {
     if (oldOutput eq input)
       assert(newOutput eq oldOutput)
     else {

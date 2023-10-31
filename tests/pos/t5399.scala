@@ -4,7 +4,7 @@ class Test {
 
   case class CaseClass[T](x: T)
 
-  def break(existB: B[_]) =
+  def break(existB: B[?]) =
     CaseClass(existB.a) match { case CaseClass(_) => }
 }
 
@@ -21,7 +21,7 @@ class Foo {
   val scalaHome: Setting[Option[String]] = null
   val scalaVersion: Setting[String] = null
 
-  def testPatternMatch(s: Setting[_]): Unit = {
+  def testPatternMatch(s: Setting[?]): Unit = {
     s.key match {
       case ScopedKey1(scalaHome.key | scalaVersion.key) => ()
     }
@@ -29,7 +29,7 @@ class Foo {
 }
 
 class Test2 {
-  type AnyCyclic = Execute[Task]#CyclicException[_]
+  type AnyCyclic = Execute[Task]#CyclicException[?]
 
   trait Task[T]
 
@@ -39,7 +39,7 @@ class Test2 {
 
   def convertCyclic(c: AnyCyclic): String =
     (c.caller, c.target) match {
-      case (caller: Task[_], target: Task[_]) => "bazinga!"
+      case (caller: Task[?], target: Task[?]) => "bazinga!"
     }
 }
 

@@ -1,5 +1,5 @@
 object Test {
-  case class A(l: List[_]*)
+  case class A(l: List[?]*)
 
   def main(args: Array[String]): Unit = {
     /** Kind of sneaking a slightly different test in here as well as

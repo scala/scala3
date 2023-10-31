@@ -1,3 +1,3 @@
 object C {
-  def x: Seq[S[_]] = A.ss
+  def x: Seq[S[?]] = A.ss
 }

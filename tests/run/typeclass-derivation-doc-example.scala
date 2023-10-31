@@ -1,7 +1,7 @@
 import scala.deriving.*
 import scala.compiletime.{erasedValue, summonInline}
 
-inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
+inline def summonAll[T <: Tuple]: List[Eq[?]] = inline erasedValue[T] match {
   case _: EmptyTuple => Nil
   case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 }
@@ -15,12 +15,12 @@ object Eq {
     def eqv(x: Int, y: Int) = x == y
   }
 
-  def check(elem: Eq[_])(x: Any, y: Any): Boolean =
+  def check(elem: Eq[?])(x: Any, y: Any): Boolean =
     elem.asInstanceOf[Eq[Any]].eqv(x, y)
 
   def iterator[T](p: T) = p.asInstanceOf[Product].productIterator
 
-  def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =
+  def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[?]]): Eq[T] =
     new Eq[T] {
       def eqv(x: T, y: T): Boolean = {
         val ordx = s.ordinal(x)
@@ -28,7 +28,7 @@ object Eq {
       }
     }
 
-  def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
+  def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[?]]): Eq[T] =
     new Eq[T] {
       def eqv(x: T, y: T): Boolean =
         iterator(x).zip(iterator(y)).zip(elems.iterator).forall {

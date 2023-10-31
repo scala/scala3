@@ -1,6 +1,6 @@
 object bar {
 
-  class C[T <: Seq[_]]
+  class C[T <: Seq[?]]
 
   val x: AnyRef = new C
 

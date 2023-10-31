@@ -1,5 +1,5 @@
 -- [E035] Syntax Error: tests/neg/i13769.scala:2:21 --------------------------------------------------------------------
-2 |val te = tup.map((x: _ <: Int) => List(x)) // error
+2 |val te = tup.map((x: ? <: Int) => List(x)) // error
   |                     ^^^^^^^^
   |                     Unbound wildcard type
   |

@@ -24,7 +24,7 @@ object Lft {
 
   class LiftableSum[T, MElemTypes](
     mirror: Mirror.Sum { type MirroredElemTypes = MElemTypes; type MirroredMonoType = T },
-    liftables: Seq[Lft[_]] // TODO make Lft creation lazy
+    liftables: Seq[Lft[?]] // TODO make Lft creation lazy
   ) extends Lft[T]:
       def toExpr(x: T)(using Type[T], Quotes): Expr[T] =
         val ordinal = mirror.ordinal(x)
@@ -37,7 +37,7 @@ object Lft {
 
   class LiftableProduct[T, MElemTypes](
     mirror: Mirror.Product { type MirroredElemTypes = MElemTypes; type MirroredMonoType = T },
-    liftables: Seq[Lft[_]]
+    liftables: Seq[Lft[?]]
   ) extends Lft[T]:
       def toExpr(x: T)(using Type[T], Quotes): Expr[T] =
         val mirrorExpr = Expr.summon[Mirror.ProductOf[T]].get
@@ -49,13 +49,13 @@ object Lft {
         '{ $mirrorExpr.fromProduct($elemsTupleExpr) }
   end LiftableProduct
 
-  private def elemTypesLfts[X: Type](using Quotes): List[Expr[Lft[_]]] =
+  private def elemTypesLfts[X: Type](using Quotes): List[Expr[Lft[?]]] =
     Type.of[X] match
       case '[ head *: tail ] =>
         Expr.summon[Lft[head]].getOrElse(quotes.reflect.report.errorAndAbort(s"Could not find given Lft[${Type.show[head]}]")) :: elemTypesLfts[tail]
       case '[ EmptyTuple ] => Nil
 
-  private def elemType[X: Type](ordinal: Int)(using Quotes): Type[_] =
+  private def elemType[X: Type](ordinal: Int)(using Quotes): Type[?] =
     Type.of[X] match
       case '[ head *: tail ] =>
         if ordinal == 0 then Type.of[head]

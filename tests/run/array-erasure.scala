@@ -14,7 +14,7 @@ object Test {
     assert(x(0) == 1)
     x.sameElements(x)
     x match {
-      case x: Array[_] =>
+      case x: Array[?] =>
         x(0) = 2
         x.sameElements(x)
     }
@@ -23,7 +23,7 @@ object Test {
 
   def arr2[T](x: T) = {
     x match {
-      case x: Array[_] =>
+      case x: Array[?] =>
         assert(x(0) == 2)
         x.sameElements(x)
     }

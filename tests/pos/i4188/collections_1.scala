@@ -12,7 +12,7 @@ trait IterableOps[+A, +CC[_], +C]
 
 trait Map[K, +V] extends MapOps[K, V, Map, Map[K, V]]
 
-trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
+trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   extends IterableOps[(K, V), Iterable, C] {
   def view: MapView[K, V] = ???
 }
@@ -39,5 +39,5 @@ trait HasMapOps[C] {
 object decorators {
   def MapDecorator[C](coll: C)(implicit map: HasMapOps[C]): MapDecorator[C, map.type] = ???
 
-  implicit def mapHasMapOps[CC[X, +Y] <: MapOps[X, Y, ({ type l[X, +Y] = IterableOps[_, AnyConstr, _] })#l, _], K0, V0]: HasMapOps[CC[K0, V0]] { type K = K0; type V = V0 } = ???
+  implicit def mapHasMapOps[CC[X, +Y] <: MapOps[X, Y, ({ type l[X, +Y] = IterableOps[?, AnyConstr, ?] })#l, ?], K0, V0]: HasMapOps[CC[K0, V0]] { type K = K0; type V = V0 } = ???
 }

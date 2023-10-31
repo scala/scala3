@@ -23,7 +23,7 @@ object Printable:
    given Printable[Boolean] with
       def print: Unit = println("BOOLEAN")
 
-   def printProduct[T](p: Mirror.ProductOf[T], elems: => List[Printable[_]]): Printable[T] =
+   def printProduct[T](p: Mirror.ProductOf[T], elems: => List[Printable[?]]): Printable[T] =
       new Printable[T]:
          def print: Unit =
             elems.foreach(_.print)
@@ -35,7 +35,7 @@ object Printable:
 
 end Printable
 
-inline def summonAllPrintable[T <: Tuple]: List[Printable[_]] =
+inline def summonAllPrintable[T <: Tuple]: List[Printable[?]] =
    inline erasedValue[T] match
       case _: EmptyTuple => Nil
       case _: (t *: ts) => summonInline[Printable[t]] :: summonAllPrintable[ts]

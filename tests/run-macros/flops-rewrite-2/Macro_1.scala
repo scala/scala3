@@ -59,11 +59,11 @@ class Transformation[T: Type](transform: PartialFunction[Expr[T], Expr[T]]) {
 }
 
 private object Rewriter {
-  def apply(preTransform: List[Transformation[_]] = Nil, postTransform: List[Transformation[_]] = Nil, fixPoint: Boolean = false): Rewriter =
+  def apply(preTransform: List[Transformation[?]] = Nil, postTransform: List[Transformation[?]] = Nil, fixPoint: Boolean = false): Rewriter =
     new Rewriter(preTransform, postTransform, fixPoint)
 }
 
-private class Rewriter(preTransform: List[Transformation[_]] = Nil, postTransform: List[Transformation[_]] = Nil, fixPoint: Boolean) extends ExprMap {
+private class Rewriter(preTransform: List[Transformation[?]] = Nil, postTransform: List[Transformation[?]] = Nil, fixPoint: Boolean) extends ExprMap {
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = transformChildren(e2)

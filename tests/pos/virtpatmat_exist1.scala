@@ -25,7 +25,7 @@ object Test {
 
   def splitArray[T](ad: Array[Iterable[T]]): Any =
     ad(0) match {
-      case _: HashMapCollision1[_, _] | _: HashSetCollision1[_] => null
+      case _: HashMapCollision1[?, ?] | _: HashSetCollision1[?] => null
     }
 
     // without type ascription for the one in the body of the last flatmap of each alternative, type inference borks on the existentials

@@ -69,7 +69,7 @@ object Test/*<-types::Test.*/ {
     val annType1/*<-types::Test.C#annType1.*/: T/*->types::T#*/ @ann(42) = ???/*->scala::Predef.`???`().*/
     val annType2/*<-types::Test.C#annType2.*/: T/*->types::T#*/ @ann1/*->types::ann1#*/ @ann2/*->types::ann2#*/ = ???/*->scala::Predef.`???`().*/
 
-    val existentialType2/*<-types::Test.C#existentialType2.*/: List/*->scala::package.List#*/[_] = ???/*->scala::Predef.`???`().*/
+    val existentialType2/*<-types::Test.C#existentialType2.*/: List/*->scala::package.List#*/[?] = ???/*->scala::Predef.`???`().*/
     val existentialType3/*<-types::Test.C#existentialType3.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
     val existentialType4/*<-types::Test.C#existentialType4.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
 

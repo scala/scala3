@@ -9,5 +9,5 @@ trait Endpoint[INPUT, ERROR_OUTPUT, OUTPUT]{
 }
 
 @main def Test() =
-  val x: Endpoint[_, Unit, Unit] = ???
+  val x: Endpoint[?, Unit, Unit] = ???
   x.zServerLogic[Any](_ => ZIO.fail(new RuntimeException("boom")))

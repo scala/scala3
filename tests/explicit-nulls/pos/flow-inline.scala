@@ -7,8 +7,8 @@ class TreeOps {
   abstract class Tree[A, B](val key: A, val value: B)
   class RedTree[A, B](override val key: A, override val value: B) extends Tree[A, B](key, value)
 
-  private transparent inline def isRedTree(tree: Tree[_, _] | Null) =
-    (tree != null) && tree.isInstanceOf[RedTree[_, _]]
+  private transparent inline def isRedTree(tree: Tree[?, ?] | Null) =
+    (tree != null) && tree.isInstanceOf[RedTree[?, ?]]
 
   def foo[A, B](tree: Tree[A, B] | Null): Unit = {
     if (isRedTree(tree)) {

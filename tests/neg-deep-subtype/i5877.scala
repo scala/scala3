@@ -8,7 +8,7 @@ object Main {
 
     // ---- ---- ---- ----
 
-    trait HasThisType[PThis <: HasThisType[_ <: PThis]] {
+    trait HasThisType[PThis <: HasThisType[? <: PThis]] {
       this: PThis =>
       type This = PThis
 
@@ -19,22 +19,22 @@ object Main {
     // ---- ---- ---- ----
 
     def testHasThisType(): Unit = {
-      def testSelf[PThis <: HasThisType[_ <: PThis]](that: HasThisType[PThis]): Unit = {
+      def testSelf[PThis <: HasThisType[? <: PThis]](that: HasThisType[PThis]): Unit = {
         val thatSelf = that.self()
         // that.self().type <: that.This
         assert(implicitly[thatSelf.type <:< that.This] != null)
       }
-      val that: HasThisType[_] = Foo() // null.asInstanceOf
+      val that: HasThisType[?] = Foo() // null.asInstanceOf
       testSelf(that) // error: recursion limit exceeded
     }
 
 
     def testHasThisType2(): Unit = {
-      def testSelf[PThis <: HasThisType[_ <: PThis]](that: PThis with HasThisType[PThis]): Unit = {
+      def testSelf[PThis <: HasThisType[? <: PThis]](that: PThis with HasThisType[PThis]): Unit = {
         // that.type <: that.This
         assert(implicitly[that.type <:< that.This] != null)
       }
-      val that: HasThisType[_] = Foo() // null.asInstanceOf
+      val that: HasThisType[?] = Foo() // null.asInstanceOf
       // this line of code makes Dotty compiler infinite recursion (stopped only by overflow) - comment it to make it compilable again
       testSelf(that) // error: recursion limit exceeded
     }
@@ -42,10 +42,10 @@ object Main {
     // ---- ---- ---- ----
 
     // `HasThisType` instantiation/sub-classing
-    trait FooLike[PThis <: FooLike[_ <: PThis]] extends HasThisType[PThis] {
+    trait FooLike[PThis <: FooLike[? <: PThis]] extends HasThisType[PThis] {
       this: PThis =>
     }
     case class Foo(payload: Any = "dummy") extends FooLike[Foo]
-    case class Bar(dummy: Any = "payload") extends FooLike[FooLike[_]]
+    case class Bar(dummy: Any = "payload") extends FooLike[FooLike[?]]
 
   }

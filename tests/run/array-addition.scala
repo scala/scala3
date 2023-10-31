@@ -1,5 +1,5 @@
 object Test {
-  def prettyPrintArray(x: Array[_]) = println("Array(" + x.mkString(", ") + ")")
+  def prettyPrintArray(x: Array[?]) = println("Array(" + x.mkString(", ") + ")")
 
   def main(args: Array[String]): Unit = {
     prettyPrintArray(Array(1,2,3) :+ 4)

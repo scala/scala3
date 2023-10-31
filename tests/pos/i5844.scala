@@ -6,7 +6,7 @@ package p1 {
   trait C[X] extends B[X, X & A]
 
   object O{
-    def m(c: C[_]) = {
+    def m(c: C[?]) = {
       val x = c.m()
     }
   }
@@ -19,7 +19,7 @@ package p2 {
   trait C[X] extends B[X with A]
 
   object O{
-    def m(c: C[_]) = {
+    def m(c: C[?]) = {
       val x: A = c.m()
     }
   }

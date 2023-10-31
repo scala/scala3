@@ -5,8 +5,8 @@ trait QuerySQLSyntaxProvider[S <: SQLSyntaxSupport[A], A]{
   def resultName: ResultNameSQLSyntaxProvider[S, A] = ???
 }
 
-def include(syntaxProviders: QuerySQLSyntaxProvider[_, _]*) = {
+def include(syntaxProviders: QuerySQLSyntaxProvider[?, ?]*) = {
   syntax(syntaxProviders.map(_.resultName): _*)
 }
 
-def syntax(resultNames: ResultNameSQLSyntaxProvider[_, _]*) = ???
+def syntax(resultNames: ResultNameSQLSyntaxProvider[?, ?]*) = ???

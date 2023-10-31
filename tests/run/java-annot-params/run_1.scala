@@ -1,6 +1,6 @@
 package annots
 
-def runTest(cls: Class[_]): Unit =
+def runTest(cls: Class[?]): Unit =
   val params =
     Option(cls.getAnnotation(classOf[WithClass])).map(_.arg) ::
     Option(cls.getAnnotation(classOf[WithClassDefaultName])).map(_.value) ::

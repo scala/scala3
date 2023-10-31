@@ -6,7 +6,7 @@ case class Tested(foo: Int, bar: String, baz: Double):
   def target(abc: Tested, efg: Tested) = ()
   def symbolic(`def`: Int, *** : Int, `unary_!`: Int) = ()
 
-def run(cls: Class[_]) =
+def run(cls: Class[?]) =
   extension(m: Executable) def parameters: List[String] = m.getParameters.toList.map(_.getName)
 
   val ctorParams = cls.getConstructors.head.parameters

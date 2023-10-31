@@ -24,7 +24,7 @@ class MapReduceJob {
   trait DataSource
 
   import scala.collection.mutable.{ Set as MSet, Map as MMap }
-  private val mappers: MMap[DataSource, MSet[TaggedMapper[_, _, _]]] = MMap.empty
+  private val mappers: MMap[DataSource, MSet[TaggedMapper[?, ?, ?]]] = MMap.empty
 
   def addTaggedMapper[A, K, V](input: DataSource, m: TaggedMapper[A, K, V]): Unit = {
     if (!mappers.contains(input))

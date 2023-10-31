@@ -45,7 +45,7 @@ object Ref {
   object Make extends MakeInstances
 
   trait MakeInstances extends MakeLowPriorityInstances {
-    implicit def concurrentInstance[F[_]](implicit F: Concurrent[F, _]): Make[F] = ???
+    implicit def concurrentInstance[F[_]](implicit F: Concurrent[F, ?]): Make[F] = ???
   }
 
   trait MakeLowPriorityInstances {

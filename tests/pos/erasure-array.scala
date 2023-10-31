@@ -2,7 +2,7 @@
 package hello
 
 object world {
-  def mkArray(atype: Int): Array[_ <: AnyVal] = {
+  def mkArray(atype: Int): Array[? <: AnyVal] = {
     (if (atype == 1) new Array[Int](10) else new Array[Float](10))
   }
 

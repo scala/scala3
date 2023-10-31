@@ -8,7 +8,7 @@ final case class VarDoubles(arr: Array[Double]) extends VarValues[Double, VarDou
 final case class VarInts(arr: Array[Int]) extends VarValues[Int, VarInts]
 final case class VarStrs(arr: Array[String]) extends VarValues[String, VarStrs]
 
-def check7(a: VarValues[_,_], b: VarValues[_,_]): Unit = {
+def check7(a: VarValues[?,?], b: VarValues[?,?]): Unit = {
   (a,b) match {
     case (x:(VarDoubles|VarInts), y:(VarDoubles|VarInts)) =>
       val x0: Iterator[Numeric] = x.arr.iterator

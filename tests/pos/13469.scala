@@ -11,7 +11,7 @@ object Meta:
 
   type Contains[T <: Tuple, X] <: Boolean = T match
     case X *: r => true
-    case _ *: r => Contains[r, X]
+    case ? *: r => Contains[r, X]
     case _ => false
 
   type RemoveStrict[T <: Tuple, X] <: Tuple = T match

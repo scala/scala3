@@ -14,7 +14,7 @@ object lib {
       // case ex: ReturnThrowable[_] => throw ex      // bug #7041
       case ex: E =>
         // user should never match `ReturnThrowable`, which breaks semantics of non-local return
-        if (fallback.isDefinedAt(ex) && !ex.isInstanceOf[ReturnThrowable[_]]) fallback(ex) else throw ex
+        if (fallback.isDefinedAt(ex) && !ex.isInstanceOf[ReturnThrowable[?]]) fallback(ex) else throw ex
     }
 }
 

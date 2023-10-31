@@ -398,7 +398,7 @@ object CollectionStrawMan5 {
     case class Concat[A](underlying: Iterable[A], other: IterableOnce[A]) extends View[A] {
       def iterator = underlying.iterator ++ other
       override def knownLength = other match {
-        case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
+        case other: Iterable[?] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
           underlying.knownLength + other.knownLength
         case _ =>
           -1
@@ -407,7 +407,7 @@ object CollectionStrawMan5 {
     case class Zip[A, B](underlying: Iterable[A], other: IterableOnce[B]) extends View[(A, B)] {
       def iterator = underlying.iterator.zip(other)
       override def knownLength = other match {
-        case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
+        case other: Iterable[?] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
           underlying.knownLength min other.knownLength
         case _ =>
           -1

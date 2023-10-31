@@ -7,9 +7,9 @@ final class Bla[X]
 object Test1 {
 
   type Foo[X] = X match
-    case Two[Blaaa, _] =>
+    case Two[Blaaa, ?] =>
       String
-    case Two[String, _] =>
+    case Two[String, ?] =>
       Int
 
   def test: Foo[Two[String, String]] = 1
@@ -17,9 +17,9 @@ object Test1 {
 
 object Test2 {
   type Foo[X] = X match
-    case Two[Bla[_], _] =>
+    case Two[Bla[?], ?] =>
       String
-    case Two[String, _] =>
+    case Two[String, ?] =>
       Int
 
   def test: Foo[Two[String, String]] = 1
@@ -32,7 +32,7 @@ object Test3 {
   type M[X, Y] = X match {
     case Int   => String
     case Id[x] => Y match {
-      case Two[Bla[a], _] => Int
+      case Two[Bla[a], ?] => Int
       case _ => String
     }
   }
@@ -45,7 +45,7 @@ object Test4 {
   type M[X, Y] = X match {
     case Int   => String
     case Id[x] => Y match {
-      case Two[Bla[`x`], _] => Int
+      case Two[Bla[`x`], ?] => Int
       case _ => String
     }
   }

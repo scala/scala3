@@ -1,3 +1,4 @@
+import scala.language.`3.4-migration`
 import scala.{collection => coll, runtime=>_, _}
 import coll._
 

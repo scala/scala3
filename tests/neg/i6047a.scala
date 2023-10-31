@@ -9,11 +9,11 @@ class C[+X] {
     case _ => String
   }
   type T2[Y] = Y match { // error: covariant type X appears in invariant position
-    case List[_ >: X] => Int
+    case List[? >: X] => Int
     case _ => String
   }
   type T3[Y] = Y match { // error: covariant type X appears in invariant position
-    case List[_ <: X] => Int
+    case List[? <: X] => Int
     case _ => String
   }
 
@@ -31,15 +31,15 @@ class D[-X] {
     case _ => String
   }
   type T5[Y] = Y match { // error: contravariant type X appears in invariant position
-    case List[_ >: X] => Int
+    case List[? >: X] => Int
     case _ => String
   }
   type T6[Y] = Y match { // error: contravariant type X appears in invariant position
-    case List[_ <: X] => Int
+    case List[? <: X] => Int
     case _ => String
   }
   type T7[Y] = Y match { // error: contravariant type X appears in covariant position
-    case List[_] => X
+    case List[?] => X
     case _ => String
   }
 }

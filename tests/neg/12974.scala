@@ -9,8 +9,8 @@ object RecMap {
     object Rec {
       type HasKey[A <: Tuple, K] =
         A match
-          case (K, t) *: _ => t
-          case _ *: t => HasKey[t, K]
+          case (K, t) *: ? => t
+          case ? *: t => HasKey[t, K]
 
       val empty: Rec[EmptyTuple] = Map.empty
 

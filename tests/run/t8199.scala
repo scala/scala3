@@ -35,7 +35,7 @@ trait trt01234567890 { def x = Test.checkCallerImplClassName() }
 }
 
 object Test extends App {
-  def check(c: Class[_]): Unit = {
+  def check(c: Class[?]): Unit = {
     checkClassName(c.getName)
   }
   def checkClassName(name: String): Unit = {

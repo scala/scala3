@@ -12,7 +12,7 @@ object Test {
   def test1(): Unit = {
     val fooInt = new Foo(1)
     val fooString = new Foo("")
-    val pair: (Foo[_], Foo[_]) = (fooInt, fooString)
+    val pair: (Foo[?], Foo[?]) = (fooInt, fooString)
     setFirstInPair(pair) // error
     println(fooInt.elem + 1)
   }
@@ -20,7 +20,7 @@ object Test {
   def test2(): Unit = {
     val fooInt = new Foo(1)
     val fooString = new Foo("")
-    val list: List[Foo[_]] = List(fooInt, fooString)
+    val list: List[Foo[?]] = List(fooInt, fooString)
     setFirstInList(list) // error
     println(fooInt.elem + 1)
   }

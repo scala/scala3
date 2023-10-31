@@ -78,13 +78,13 @@ def noManifest[A: OptManifest] =
 def interopOpt[A: ClassTag: OptManifest] =
   assert(classTag[A] == optManifest[A])
   optManifest[A] match
-    case optA: ClassTag[_] =>
+    case optA: ClassTag[?] =>
       assert(classTag[A].runtimeClass == optA.runtimeClass)
 
 def sameClassEqualOpt[A: OptManifest, B: OptManifest] =
   assert(optManifest[A] == optManifest[B])
   (optManifest[A], optManifest[B]) match
-    case (a: ClassTag[_], b: ClassTag[_]) =>
+    case (a: ClassTag[?], b: ClassTag[?]) =>
       assert(a.runtimeClass == b.runtimeClass)
 
 def sameClassMan[A: Manifest, B: Manifest] =

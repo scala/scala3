@@ -7,9 +7,10 @@
   |
   |                                    trying to reduce  Tuple.Tail[X]
   |                                    failed since selector X
-  |                                    does not uniquely determine parameter xs in
-  |                                      case _ *: xs => xs
-  |                                    The computed bounds for the parameter are:
+  |                                    does not uniquely determine parameters x, xs in
+  |                                      case x *: xs => xs
+  |                                    The computed bounds for the parameters are:
+  |                                      x >: Any
   |                                      xs >: Any *: EmptyTuple.type <: Tuple
   |
   | longer explanation available when compiling with `-explain`
@@ -22,9 +23,10 @@
    |
    |                                        trying to reduce  Tuple.Tail[X]
    |                                        failed since selector X
-   |                                        does not uniquely determine parameter xs in
-   |                                          case _ *: xs => xs
-   |                                        The computed bounds for the parameter are:
+   |                                        does not uniquely determine parameters x, xs in
+   |                                          case x *: xs => xs
+   |                                        The computed bounds for the parameters are:
+   |                                          x >: Any
    |                                          xs >: Any *: EmptyTuple.type <: Tuple
    |
    | longer explanation available when compiling with `-explain`
@@ -37,9 +39,10 @@
    |
    |                           trying to reduce  Tuple.Tail[X]
    |                           failed since selector X
-   |                           does not uniquely determine parameter xs in
-   |                             case _ *: xs => xs
-   |                           The computed bounds for the parameter are:
+   |                           does not uniquely determine parameters x, xs in
+   |                             case x *: xs => xs
+   |                           The computed bounds for the parameters are:
+   |                             x >: Any
    |                             xs >: Any *: EmptyTuple.type <: Tuple
    |
    | longer explanation available when compiling with `-explain`

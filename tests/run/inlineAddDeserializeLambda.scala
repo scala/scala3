@@ -18,5 +18,5 @@ object Test extends App {
 
   def serializeDeserialize[T <: AnyRef](obj: T) = deserialize(serialize(obj)).asInstanceOf[T]
 
-  assert(serializeDeserialize((new C).f).isInstanceOf[Function1[_, _]])
+  assert(serializeDeserialize((new C).f).isInstanceOf[Function1[?, ?]])
 }

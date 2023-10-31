@@ -22,7 +22,7 @@ object ToExprMaker {
   // TODO hide from users
   class SumToExpr[T, MElemTypes](
     mirror: Mirror.Sum { type MirroredElemTypes = MElemTypes; type MirroredMonoType = T },
-    liftables: Int => ToExpr[_]
+    liftables: Int => ToExpr[?]
   )(using Type[T]) extends ToExpr[T]:
       def apply(x: T)(using Quotes): Expr[T] =
         val ordinal = mirror.ordinal(x)
@@ -33,7 +33,7 @@ object ToExprMaker {
   // TODO hide from users
   class ProductToExpr[T, MElemTypes](
     mirror: Mirror.Product { type MirroredElemTypes = MElemTypes; type MirroredMonoType = T },
-    liftables: Seq[ToExpr[_]]
+    liftables: Seq[ToExpr[?]]
   )(using Type[T]) extends ToExpr[T]:
       def apply(x: T)(using Quotes): Expr[T] =
         val mirrorExpr = summonExprOrError[Mirror.ProductOf[T]]
@@ -47,12 +47,12 @@ object ToExprMaker {
         '{ $mirrorExpr.fromProduct($elemsTupleExpr) }
   end ProductToExpr
 
-  private def elemTypesToExprs[X: Type](using Quotes): List[Expr[ToExpr[_]]] =
+  private def elemTypesToExprs[X: Type](using Quotes): List[Expr[ToExpr[?]]] =
     Type.of[X] match
       case '[ head *: tail ] => summonExprOrError[ToExpr[head]] :: elemTypesToExprs[tail]
       case '[ EmptyTuple ] => Nil
 
-  private def elemType[X: Type](ordinal: Int)(using Quotes): Type[_] =
+  private def elemType[X: Type](ordinal: Int)(using Quotes): Type[?] =
     Type.of[X] match
       case '[ head *: tail ] =>
         if ordinal == 0 then Type.of[head]
@@ -64,11 +64,11 @@ object ToExprMaker {
       case None =>
         quotes.reflect.report.errorAndAbort(s"Could not find implicit ${Type.show[T]}")
 
-  private def switchExpr(scrutinee: Expr[Int], seq: List[Expr[ToExpr[_]]])(using Quotes): Expr[ToExpr[_]] =
+  private def switchExpr(scrutinee: Expr[Int], seq: List[Expr[ToExpr[?]]])(using Quotes): Expr[ToExpr[?]] =
     import quotes.reflect._
     val cases = seq.zipWithIndex.map {
       (expr, i) => CaseDef(Literal(IntConstant(i)), None, expr.asTerm)
     }
-    Match(scrutinee.asTerm, cases).asExprOf[ToExpr[_]]
+    Match(scrutinee.asTerm, cases).asExprOf[ToExpr[?]]
 
 }

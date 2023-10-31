@@ -1,5 +1,5 @@
 abstract class Error {
-    val c: Cycle[_]
+    val c: Cycle[?]
 }
 
 object Test {

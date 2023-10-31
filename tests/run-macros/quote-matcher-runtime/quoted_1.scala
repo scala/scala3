@@ -9,9 +9,9 @@ object Macros {
 
     val res = quotes.asInstanceOf[scala.quoted.runtime.QuoteMatching].ExprMatch.unapply[Tuple, Tuple](a)(using b).map { tup =>
       tup.toArray.toList.map {
-        case r: Expr[_] =>
+        case r: Expr[?] =>
           s"Expr(${r.show})"
-        case t: Type[_] =>
+        case t: Type[?] =>
           s"Type(${Type.show(using t)})"
       }
     }

@@ -12,7 +12,7 @@ trait WithInit {
 trait Bar(x: Int)
 
 object Test {
-  def hasInit(cls: Class[_]) = cls.getMethods.map(_.toString).exists(_.contains("$init$"))
+  def hasInit(cls: Class[?]) = cls.getMethods.map(_.toString).exists(_.contains("$init$"))
   def main(args: Array[String]): Unit = {
     assert(!hasInit(classOf[NoInit]))
     assert(hasInit(classOf[WithInit]))

@@ -1,9 +1,9 @@
 trait T[U] {
-  def x: T[_ <: U]
+  def x: T[? <: U]
 }
 
 object T {
-  def unapply[U](t: T[U]): Option[T[_ <: U]] = Some(t.x)
+  def unapply[U](t: T[U]): Option[T[? <: U]] = Some(t.x)
 }
 
 object Test {

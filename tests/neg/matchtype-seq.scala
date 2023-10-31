@@ -106,8 +106,8 @@ object Test {
   identity[T9[Tuple2[String, Nothing]]]("1") // error
   identity[T9[Tuple2[Int, Nothing]]](1) // error
   identity[T9[Tuple2[Nothing, Int]]]("1") // error
-  identity[T9[Tuple2[_, _]]]("") // error
-  identity[T9[Tuple2[_, _]]](1) // error
+  identity[T9[Tuple2[?, ?]]]("") // error
+  identity[T9[Tuple2[?, ?]]](1) // error
   identity[T9[Tuple2[Any, Any]]]("") // error
   identity[T9[Tuple2[Any, Any]]](1) // error
 
@@ -147,7 +147,7 @@ object Test {
 object Test2 {
   type M[A] = A match {
     case Option[Int] => String
-    case Some[_]     => Int
+    case Some[?]     => Int
   }
 
   def a[A]: M[Some[A]] = 1  // error

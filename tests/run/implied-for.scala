@@ -14,14 +14,14 @@ object A {
 
 object Test extends App {
   import A.*
-  import A.{t, given B, given D[_]}
+  import A.{t, given B, given D[?]}
 
   val x1: B = b
   val x2: T = t
   val x3: D[Int] = d
 
   assert(summon[T].isInstanceOf[B])
-  assert(summon[D[Int]].isInstanceOf[D[_]])
+  assert(summon[D[Int]].isInstanceOf[D[?]])
 }
 
 class Ordering[T]
@@ -37,7 +37,7 @@ object Instances {
 }
 
 object Test2 {
-  import Instances.{given Ordering[_], given ExecutionContext}
+  import Instances.{given Ordering[?], given ExecutionContext}
   val x = intOrd
   val y = listOrd[Int]
   val z = ec
@@ -47,7 +47,7 @@ object Test2 {
 }
 
 object Test3 {
-  import Instances.{im, given Ordering[_]}
+  import Instances.{im, given Ordering[?]}
   val x = intOrd
   val y = listOrd[Int]
   val z = im

@@ -250,7 +250,7 @@ object Eq {
         case _: Shape.Cases[alts] =>
           xm.ordinal == ym.ordinal &&
           eqlCases[alts](xm, ym, 0)
-        case _: Shape.Case[_, elems] =>
+        case _: Shape.Case[?, elems] =>
           eqlElems[elems](xm, ym, 0)
       }
     }
@@ -314,7 +314,7 @@ object Pickler {
 
   inline def unpickleCases[T, Alts <: Tuple](r: Generic[T], buf: mutable.ListBuffer[Int], ordinal: Int, n: Int): T =
     inline erasedValue[Alts] match {
-      case _: (Shape.Case[_, elems] *: alts1) =>
+      case _: (Shape.Case[?, elems] *: alts1) =>
         if (n == ordinal) unpickleCase[T, elems](r, buf, ordinal)
         else unpickleCases[T, alts1](r, buf, ordinal, n + 1)
       case _ =>
@@ -328,14 +328,14 @@ object Pickler {
         case _: Shape.Cases[alts] =>
           buf += xm.ordinal
           pickleCases[alts](buf, xm, 0)
-        case _: Shape.Case[_, elems] =>
+        case _: Shape.Case[?, elems] =>
           pickleElems[elems](buf, xm, 0)
       }
     }
     def unpickle(buf: mutable.ListBuffer[Int]): T = inline erasedValue[ev.Shape] match {
       case _: Shape.Cases[alts] =>
         unpickleCases[T, alts](ev, buf, nextInt(buf), 0)
-      case _: Shape.Case[_, elems] =>
+      case _: Shape.Case[?, elems] =>
         unpickleCase[T, elems](ev, buf, 0)
     }
   }
@@ -381,7 +381,7 @@ object Show {
       val args = inline erasedValue[ev.Shape] match {
         case _: Shape.Cases[alts] =>
           showCases[alts](xm, 0)
-        case _: Shape.Case[_, elems] =>
+        case _: Shape.Case[?, elems] =>
           showElems[elems](xm, 0).mkString(", ")
       }
       s"${xm.caseLabel}($args)"

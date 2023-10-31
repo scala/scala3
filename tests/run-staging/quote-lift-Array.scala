@@ -5,7 +5,7 @@ object Test {
   def main(args: Array[String]): Unit = run {
     '{
       def p[T](arr: Array[T]): Unit = {
-        println(arr.asInstanceOf[Array[_]].mkString("[", ", ", "]"))
+        println(arr.asInstanceOf[Array[?]].mkString("[", ", ", "]"))
       }
       p(${Expr(Array.empty[Boolean])})
       p(${Expr(Array.empty[Byte])})

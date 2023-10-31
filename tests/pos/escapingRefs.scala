@@ -34,9 +34,9 @@ object Test {
       new Bar[Int]
     }
 */
-    val e: Foo[_] = {
+    val e: Foo[?] = {
       class Bar[B11] extends Foo[B11]
-      new Bar[Int]: Bar[_ <: Int]
+      new Bar[Int]: Bar[? <: Int]
     }
   }
 }

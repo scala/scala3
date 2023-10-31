@@ -38,7 +38,7 @@ object Test extends App {
     }
   }
 
-  def check[A](clazz: Class[_], list: List[_], m1: String, m2: String, l1: List[A], l2: List[A]): Unit = {
+  def check[A](clazz: Class[?], list: List[?], m1: String, m2: String, l1: List[A], l2: List[A]): Unit = {
     assertEquals(s"$clazz: `$m1` didn't match `$m2` on list $list", l1, l2)
   }
 

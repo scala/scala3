@@ -1,4 +1,4 @@
-trait Fooz[Q <: Array[_]] {
+trait Fooz[Q <: Array[?]] {
   def f0(x: Q) = x.length
 }
 
@@ -6,7 +6,7 @@ object Test extends Fooz[Array[Int]] {
   val f1 = new Fooz[Array[String]] { }
   val f2 = new Fooz[Array[Int]] { }
   val f3 = new Fooz[Array[Any]] { }
-  val f4 = new Fooz[Array[_]] { }
+  val f4 = new Fooz[Array[?]] { }
 
   def main(args: Array[String]): Unit = {
     println(f1.f0(Array[String]("a", "b")))

@@ -16,7 +16,7 @@ trait DeliteDSL {
         // Test.xAlready below: DeliteCollection[T=DeliteInt] -> P=DeliteInt <: Forcible[T=DeliteInt], as T=DeliteInt <~< P=DeliteInt
         // this would required DeliteInt <: Forcible[Int] with Forcible[DeliteInt]
 
-    def headProxy[P <: Forcible[_]](implicit w: T <~< P): P = w(xs.head)
+    def headProxy[P <: Forcible[?]](implicit w: T <~< P): P = w(xs.head)
   }
   // If T is already a proxy (it is forcible), the compiler should use
   // forcibleIdentity to deduce that P=T.  If T is Int, the compiler

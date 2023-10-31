@@ -1,6 +1,6 @@
 class Test {
   // Any
-  override def getClass(): Class[_] = ??? // error
+  override def getClass(): Class[?] = ??? // error
   override def ==(that: Any): Boolean = ??? // error
   override def != (that: Any): Boolean = ??? // error
   override def ##(): Int = ??? // error

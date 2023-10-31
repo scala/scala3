@@ -1,5 +1,5 @@
 type HEAD[X <: NonEmptyTuple] = X match {
-  case x *: (_ <: NonEmptyTuple) => x
+  case x *: (? <: NonEmptyTuple) => x
 }
 
 inline def head[A <: NonEmptyTuple](x: A): HEAD[A] = null.asInstanceOf[HEAD[A]]

@@ -5,7 +5,7 @@ object test1 {
 
 
   def f(x: Any): Tree[Null] = x match {
-    case y: Tree[_] => y
+    case y: Tree[?] => y
   }
 }
 object test2 {
@@ -13,7 +13,7 @@ object test2 {
 
 
   def f(x: Any): Tree[Null] = x match {
-    case y: Tree[_] => y                              // error
+    case y: Tree[?] => y                              // error
   }
 }
 object test3 {
@@ -21,7 +21,7 @@ object test3 {
 
 
   def f(x: Any): Tree[Null] = x match {
-    case y: Tree[_] => y                              // error
+    case y: Tree[?] => y                              // error
   }
 }
 

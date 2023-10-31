@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     def res(using Quotes) = '{
       val x: Option[Int] = Option(3)
-      if (x.isInstanceOf[Some[_]]) Option(1)
+      if (x.isInstanceOf[Some[?]]) Option(1)
       else None
     }
     println("show0 : " + withQuotes(res.show))

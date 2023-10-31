@@ -5,7 +5,7 @@ object Test {
 
   abstract class MyRelation [R <: Row, +Relation <: MyRelation[R, Relation]]
 
-  type M = MyRelation[_ <: Row, _ <: MyRelation[_, _]]
+  type M = MyRelation[? <: Row, ? <: MyRelation[?, ?]]
 
   val (x,y): (String, M) = null
 }

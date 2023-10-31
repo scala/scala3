@@ -2,7 +2,7 @@ import scala.quoted.*
 
 object Main {
 
-  def myMacroImpl(body: Expr[_])(using Quotes) : Expr[_] = {
+  def myMacroImpl(body: Expr[?])(using Quotes) : Expr[?] = {
     import quotes.reflect.*
     val bodyTerm = underlyingArgument(body).asTerm
     val showed = bodyTerm.show

@@ -41,10 +41,10 @@ class SelectedDataset[T, A](ds: Dataset[T], val col: Column[T, A]) extends Datas
       case SeqDataset(data) =>
         println(s"selecting `${col.label}` from $data")
         col.label match {
-          case "a" => data.map(_.asInstanceOf[X4[A,_,_,_]].a).toVector
-          case "b" => data.map(_.asInstanceOf[X4[_,A,_,_]].b).toVector
-          case "c" => data.map(_.asInstanceOf[X4[_,_,A,_]].c).toVector
-          case "d" => data.map(_.asInstanceOf[X4[_,_,_,A]].d).toVector
+          case "a" => data.map(_.asInstanceOf[X4[A,?,?,?]].a).toVector
+          case "b" => data.map(_.asInstanceOf[X4[?,A,?,?]].b).toVector
+          case "c" => data.map(_.asInstanceOf[X4[?,?,A,?]].c).toVector
+          case "d" => data.map(_.asInstanceOf[X4[?,?,?,A]].d).toVector
         }
     }
   }

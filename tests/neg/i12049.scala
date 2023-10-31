@@ -6,7 +6,7 @@ type M[X] = X match
 val x: String = ??? : M[B] // error
 
 type Last[X <: Tuple] = X match
-  case _ *: _ *: t => Last[t]
+  case ? *: ? *: t => Last[t]
   case t *: EmptyTuple => t
 
 val y1: Int = ??? : Last[Int *: EmptyTuple]

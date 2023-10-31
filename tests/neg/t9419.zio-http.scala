@@ -2,9 +2,9 @@
 import java.util.concurrent.Future as JFuture
 
 trait Test:
-  def shutdownGracefully(): JFuture[_]
+  def shutdownGracefully(): JFuture[?]
 
-  def executedWildcard(jFuture: => JFuture[_]): Unit
+  def executedWildcard(jFuture: => JFuture[?]): Unit
   def executedGeneric[A](jFuture: => JFuture[A]): Unit
   def executedWildGen[A](jFuture: => JFuture[? <: A]): Unit
 

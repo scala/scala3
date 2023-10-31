@@ -321,7 +321,7 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
     *  is `O(this.size min that.size)` instead of `O(this.size + that.size)`.
     *  The method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
     */
-  def sizeCompare(that: Iterable[_]^): Int = {
+  def sizeCompare(that: Iterable[?]^): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this sizeCompare thatKnownSize
@@ -869,7 +869,7 @@ object IterableOps {
     * These operations are implemented in terms of
     * [[scala.collection.IterableOps.sizeCompare(Int) `sizeCompare(Int)`]].
     */
-  final class SizeCompareOps private[collection](val it: IterableOps[_, AnyConstr, _]^) extends AnyVal {
+  final class SizeCompareOps private[collection](val it: IterableOps[?, AnyConstr, ?]^) extends AnyVal {
     this: SizeCompareOps^{it} =>
     /** Tests if the size of the collection is less than some value. */
     @inline def <(size: Int): Boolean = it.sizeCompare(size) < 0
@@ -895,7 +895,7 @@ object IterableOps {
     */
   @SerialVersionUID(3L)
   class WithFilter[+A, +CC[_]](
-    self: IterableOps[A, CC, _]^,
+    self: IterableOps[A, CC, ?]^,
     p: A => Boolean
   ) extends collection.WithFilter[A, CC] with Serializable {
 
@@ -986,7 +986,7 @@ trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], E
 trait SortedSetFactoryDefaults[+A,
     +CC[X] <: SortedSet[X] with SortedSetOps[X, CC, CC[X]],
     +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Set[x]] extends SortedSetOps[A @uncheckedVariance, CC, CC[A @uncheckedVariance]] {
-  self: IterableOps[A, WithFilterCC, _] =>
+  self: IterableOps[A, WithFilterCC, ?] =>
 
   override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll}    = sortedIterableFactory.from(coll)(ordering)
   override protected def newSpecificBuilder: mutable.Builder[A @uncheckedVariance, CC[A @uncheckedVariance]] = sortedIterableFactory.newBuilder[A](ordering)
@@ -1017,7 +1017,7 @@ trait MapFactoryDefaults[K, +V,
   override protected def newSpecificBuilder: mutable.Builder[(K, V @uncheckedVariance), CC[K, V @uncheckedVariance]] = mapFactory.newBuilder[K, V]
   override def empty: CC[K, V @uncheckedVariance] = (this: AnyRef) match {
     // Implemented here instead of in TreeSeqMap since overriding empty in TreeSeqMap is not forwards compatible (should be moved)
-    case self: immutable.TreeSeqMap[_, _] => immutable.TreeSeqMap.empty(self.orderedBy).asInstanceOf[CC[K, V]]
+    case self: immutable.TreeSeqMap[?, ?] => immutable.TreeSeqMap.empty(self.orderedBy).asInstanceOf[CC[K, V]]
     case _ => mapFactory.empty
   }
 
@@ -1041,7 +1041,7 @@ trait SortedMapFactoryDefaults[K, +V,
     +CC[x, y] <:  Map[x, y] with SortedMapOps[x, y, CC, CC[x, y]] with UnsortedCC[x, y],
     +WithFilterCC[x] <: IterableOps[x, WithFilterCC, WithFilterCC[x]] with Iterable[x],
     +UnsortedCC[x, y] <: Map[x, y]] extends SortedMapOps[K, V, CC, CC[K, V @uncheckedVariance]] with MapOps[K, V, UnsortedCC, CC[K, V @uncheckedVariance]] {
-  self: IterableOps[(K, V), WithFilterCC, _] =>
+  self: IterableOps[(K, V), WithFilterCC, ?] =>
 
   override def empty: CC[K, V @uncheckedVariance] = sortedMapFactory.empty(ordering)
   override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance]^{coll} = sortedMapFactory.from(coll)(ordering)

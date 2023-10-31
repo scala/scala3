@@ -21,4 +21,4 @@ class UpRelation extends Relation [UpRow]
 class Correspondence [R <: Row]
 class UpCorrespondence extends Correspondence [UpRow]
 
-class Mapping[MC <: Correspondence[_]]
+class Mapping[MC <: Correspondence[?]]

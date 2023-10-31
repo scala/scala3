@@ -23,7 +23,7 @@ class JVMReflection[Q <: Quotes & Singleton](using val q: Q) {
     }
   }
 
-  def getClassOf(sym: Symbol): Class[_] = {
+  def getClassOf(sym: Symbol): Class[?] = {
     sym.fullName match {
       case "scala.Boolean" => classOf[java.lang.Boolean]
       case "scala.Short" => classOf[java.lang.Short]
@@ -36,7 +36,7 @@ class JVMReflection[Q <: Quotes & Singleton](using val q: Q) {
     }
   }
 
-  def loadClass(name: String): Class[_] = {
+  def loadClass(name: String): Class[?] = {
     try classLoader.loadClass(name)
     catch {
       case _: ClassNotFoundException =>
@@ -70,7 +70,7 @@ class JVMReflection[Q <: Quotes & Singleton](using val q: Q) {
     constr.newInstance(args*).asInstanceOf[Object]
   }
 
-  def getMethod(clazz: Class[_], name: String, paramClasses: List[Class[_]]): Method = {
+  def getMethod(clazz: Class[?], name: String, paramClasses: List[Class[?]]): Method = {
     try clazz.getMethod(name, paramClasses*)
     catch {
       case _: NoSuchMethodException =>
@@ -79,7 +79,7 @@ class JVMReflection[Q <: Quotes & Singleton](using val q: Q) {
     }
   }
 
-  private def paramsSig(sym: Symbol): List[Class[_]] = {
+  private def paramsSig(sym: Symbol): List[Class[?]] = {
     sym.signature.paramSigs.collect {
       case param: String =>
         def javaArraySig(name: String): String = {

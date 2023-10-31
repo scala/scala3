@@ -6,7 +6,7 @@ object Test {
   import Hoge.*
 
   A == A
-  A == (B: Hoge[_])
+  A == (B: Hoge[?])
 
   A == B // should be error: cannot be compared, needs proper type class drivation of `CanEqual` to get there.
 
@@ -25,7 +25,7 @@ object Test2 {
   import Hoge.*
 
   A == A
-  A == (B: Hoge[_])
+  A == (B: Hoge[?])
 
   A == B
 
@@ -44,7 +44,7 @@ object Test3 {
   import Hoge.*
 
   A == A
-  A == (B: Hoge[_])
+  A == (B: Hoge[?])
 
   A == B
 

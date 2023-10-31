@@ -24,5 +24,5 @@ object Test {
 
   println("\nDoesn't compile:")
   val a3 = FNil.chain("a").chain("a").chain("a")
-  val a4: FConstant[_ <: FConstant[_ <: FConstant[FNil.type]]] = a3
+  val a4: FConstant[? <: FConstant[? <: FConstant[FNil.type]]] = a3
 }

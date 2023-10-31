@@ -4,7 +4,7 @@ object Box:
   def unapply[U](b: Box[U]): Box[U] = b
 
 class Test:
-  def value: Box[_ <: String] = Box("text")
+  def value: Box[? <: String] = Box("text")
 
   def test: String = value match
     case Box(text) => text: String

@@ -12,7 +12,7 @@ trait Clock
 
 type ConsoleWithClock = Has[Console] with Has[Clock]
 
-class Spec[R <: Has[_]]
+class Spec[R <: Has[?]]
 
 object MySpec1 extends Spec[Has[Console] with Has[Clock]] // does not compile
 object MySpec2 extends Spec[ConsoleWithClock] // okay

@@ -866,7 +866,7 @@ object CollectionStrawMan6 extends LowPriority {
     case class Concat[A](underlying: Iterable[A], other: IterableOnce[A]) extends View[A] {
       def iterator = underlying.iterator ++ other
       override def knownSize = other match {
-        case other: Iterable[_] if underlying.knownSize >= 0 && other.knownSize >= 0 =>
+        case other: Iterable[?] if underlying.knownSize >= 0 && other.knownSize >= 0 =>
           underlying.knownSize + other.knownSize
         case _ =>
           -1
@@ -879,7 +879,7 @@ object CollectionStrawMan6 extends LowPriority {
     case class Zip[A, B](underlying: Iterable[A], other: IterableOnce[B]) extends View[(A, B)] {
       def iterator = underlying.iterator.zip(other)
       override def knownSize = other match {
-        case other: Iterable[_] if underlying.knownSize >= 0 && other.knownSize >= 0 =>
+        case other: Iterable[?] if underlying.knownSize >= 0 && other.knownSize >= 0 =>
           underlying.knownSize min other.knownSize
         case _ =>
           -1

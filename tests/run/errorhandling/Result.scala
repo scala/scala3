@@ -10,23 +10,23 @@ object Result:
 
     /** `_.?` propagates Err to current Label */
     transparent inline def ? (using Label[Err[E]]): T = r match
-      case r: Ok[_] => r.value
+      case r: Ok[?] => r.value
       case err => break(err.asInstanceOf[Err[E]])
 
     /** If this is an `Err`, map its value */
     def mapErr[E1](f: E => E1): Result[T, E1] = r match
-      case err: Err[_] => Err(f(err.value))
-      case ok: Ok[_] => ok
+      case err: Err[?] => Err(f(err.value))
+      case ok: Ok[?] => ok
 
     /** Map Ok values, propagate Errs */
     def map[U](f: T => U): Result[U, E] = r match
       case Ok(x) => Ok(f(x))
-      case err: Err[_] => err
+      case err: Err[?] => err
 
     /** Flatmap Ok values, propagate Errs */
     def flatMap[U](f: T => Result[U, E]): Result[U, E] = r match
       case Ok(x) => f(x)
-      case err: Err[_] => err
+      case err: Err[?] => err
 
     /** Validate both `r` and `other`; return a pair of successes or a list of failures. */
     def zip[U](other: Result[U, E]): Result[(T, U), List[E]] = (r, other) match

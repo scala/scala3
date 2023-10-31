@@ -1,1 +1,1 @@
-val a = implicitly[ValueOf[_]] // error
+val a = implicitly[ValueOf[?]] // error

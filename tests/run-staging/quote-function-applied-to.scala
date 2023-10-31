@@ -4,7 +4,7 @@ import scala.quoted.staging.*
 object Test {
   def main(args: Array[String]): Unit = {
     given Compiler = Compiler.make(getClass.getClassLoader)
-    def show(expr: Quotes ?=> Expr[_]): String = withQuotes(expr.show)
+    def show(expr: Quotes ?=> Expr[?]): String = withQuotes(expr.show)
     println(show(Expr.betaReduce('{ (() => x(0))() })))
     println(show(Expr.betaReduce('{ ((x1: Int) => x1)(x(1)) })))
     println(show(Expr.betaReduce('{ ((x1: Int, x2: Int) => x1 + x2)(x(1), x(2)) })))

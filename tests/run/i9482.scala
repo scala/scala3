@@ -5,7 +5,7 @@ object Ref {
   object Sentinel
 
   def makeWithArr[A: OptManifest]: String = optManifest[A] match {
-    case m: ClassTag[_] => m.newArray(0).asInstanceOf[AnyRef] match {
+    case m: ClassTag[?] => m.newArray(0).asInstanceOf[AnyRef] match {
       // these can be reordered, so long as Unit comes before AnyRef
       case _: Array[Boolean] => "bool"
       case _: Array[Byte]    => "byte"

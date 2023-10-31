@@ -5,7 +5,7 @@ trait GenTraversable[+A]
 trait Traversable[+A] extends GenTraversable[A]
 trait Vector[A] extends Traversable[A]
 object Vector {
-  implicit def cbf[A]: CBF[Vector[_], A, Vector[A]] = ???
+  implicit def cbf[A]: CBF[Vector[?], A, Vector[A]] = ???
 }
 
 package object foo {

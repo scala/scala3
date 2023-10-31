@@ -10,8 +10,8 @@ object Test {
 
  def main(args:Array[String]) = {
 
-   assert(y("msg").isInstanceOf[Array[_]])
-   assert(z("msg").isInstanceOf[Array[_]])
+   assert(y("msg").isInstanceOf[Array[?]])
+   assert(z("msg").isInstanceOf[Array[?]])
 
    // these work, without producing a match error
 

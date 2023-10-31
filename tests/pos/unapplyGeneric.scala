@@ -3,7 +3,7 @@ object Bar {
 }
 
 class Bar[A,B](val _1:A, val _2:B) extends Product2[A,B] {
-  def canEqual(other: Any) = other.isInstanceOf[Bar[_,_]]
+  def canEqual(other: Any) = other.isInstanceOf[Bar[?,?]]
 }
 
 object Test {

@@ -1,5 +1,5 @@
 class Test {
-  def f(a: Array[_]|Null): Unit  = a match {
+  def f(a: Array[?]|Null): Unit  = a match {
    case x: Array[Int] =>
   }
 }

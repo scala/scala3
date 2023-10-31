@@ -1,11 +1,11 @@
 object Test {
   type StrHead[X <: Tuple] = X match {
-    case (x <: String) *: _ => x // error
+    case (x <: String) *: ? => x // error
   }
 
   // Futher minimized
   type M[X] = X match {
-    case (x) *: _ => Int
+    case (x) *: ? => Int
   }
 
   // The exception can also be reached with normal pattern matching

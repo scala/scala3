@@ -11,7 +11,7 @@ trait TupleK
 
 object TupleK {
   type Tail[X <: NonEmptyTupleK] <: TupleK = X match {
-    case _ #: xs => xs
+    case ? #: xs => xs
   }
 }
 

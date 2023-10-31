@@ -26,7 +26,7 @@ object Lft {
 
   class LiftableSum[T, MElemTypes](
     mirror: Mirror.Sum { type MirroredElemTypes = MElemTypes; type MirroredMonoType = T },
-    liftables: Int => Lft[_]
+    liftables: Int => Lft[?]
   )(using Type[T]) extends Lft[T]:
       def toExpr(x: T)(using Quotes): Expr[T] =
         val ordinal = mirror.ordinal(x)
@@ -36,7 +36,7 @@ object Lft {
 
   class LiftableProduct[T, MElemTypes](
     mirror: Mirror.Product { type MirroredElemTypes = MElemTypes; type MirroredMonoType = T },
-    liftables: Seq[Lft[_]]
+    liftables: Seq[Lft[?]]
   )(using Type[T]) extends Lft[T]:
       def toExpr(x: T)(using Quotes): Expr[T] =
         val mirrorExpr = summonExprOrError[Mirror.ProductOf[T]]
@@ -50,12 +50,12 @@ object Lft {
         '{ $mirrorExpr.fromProduct($elemsTupleExpr) }
   end LiftableProduct
 
-  private def elemTypesLfts[X: Type](using Quotes): List[Expr[Lft[_]]] =
+  private def elemTypesLfts[X: Type](using Quotes): List[Expr[Lft[?]]] =
     Type.of[X] match
       case '[ head *: tail ] => summonExprOrError[Lft[head]] :: elemTypesLfts[tail]
       case '[ EmptyTuple ] => Nil
 
-  private def elemType[X: Type](ordinal: Int)(using Quotes): Type[_] =
+  private def elemType[X: Type](ordinal: Int)(using Quotes): Type[?] =
     Type.of[X] match
       case '[ head *: tail ] =>
         if ordinal == 0 then Type.of[head]
@@ -67,11 +67,11 @@ object Lft {
       case None =>
         quotes.reflect.report.errorAndAbort(s"Could not find implicit ${Type.show[T]}")
 
-  private def switchExpr(scrutinee: Expr[Int], seq: List[Expr[Lft[_]]])(using Quotes): Expr[Lft[_]] =
+  private def switchExpr(scrutinee: Expr[Int], seq: List[Expr[Lft[?]]])(using Quotes): Expr[Lft[?]] =
     import quotes.reflect._
     val cases = seq.zipWithIndex.map {
       (expr, i) => CaseDef(Literal(IntConstant(i)), None, expr.asTerm)
     }
-    Match(scrutinee.asTerm, cases).asExprOf[Lft[_]]
+    Match(scrutinee.asTerm, cases).asExprOf[Lft[?]]
 
 }

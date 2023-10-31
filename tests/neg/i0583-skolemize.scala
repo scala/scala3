@@ -10,7 +10,7 @@ object Test1 {
   val c: C[Int] = ???
   val d: C[Float] = ???
 
-  val xs: List[C[_]] = List(c, d)
+  val xs: List[C[?]] = List(c, d)
 
   xs(0).x = xs(1).x                                   // error
 
@@ -19,7 +19,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     val f: ListBuffer[Int] = ListBuffer(1,2)
     val g: ListBuffer[Double] = ListBuffer(3.0,4.0)
-    val lb: ListBuffer[ListBuffer[_]] = ListBuffer(f, g)
+    val lb: ListBuffer[ListBuffer[?]] = ListBuffer(f, g)
     lb(0)(0) = lb(1)(0)                               // error
     val x: Int = f(0)
   }

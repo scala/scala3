@@ -1,3 +1,3 @@
 object i4372 {
-  class X[A >: X[_ <: X[_]] <: X[A]] // error: too deep
+  class X[A >: X[? <: X[?]] <: X[A]] // error: too deep
 }

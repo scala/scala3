@@ -6,8 +6,8 @@ object SkipList {
 sealed trait SkipList[T <: Txn[T], A, E]
 
 object HASkipList {
-  def debug[T <: Txn[T], A](in: SkipList[T, A, _], key: A)(implicit tx: T): Int = in match {
-    case impl: Impl[T, A, _] => impl.foo(key)
+  def debug[T <: Txn[T], A](in: SkipList[T, A, ?], key: A)(implicit tx: T): Int = in match {
+    case impl: Impl[T, A, ?] => impl.foo(key)
     case _ => -1
   }
 

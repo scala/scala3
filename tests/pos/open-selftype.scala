@@ -5,4 +5,4 @@ trait Z
 
 package squants:
   trait Quantity[A <: Quantity[A]] { self: A => }
-  trait TimeDerivative[A <: Quantity[A]] { self: Quantity[_] => }
+  trait TimeDerivative[A <: Quantity[A]] { self: Quantity[?] => }

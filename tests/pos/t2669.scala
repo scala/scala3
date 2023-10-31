@@ -2,7 +2,7 @@
 // dies in classfile parser while parsing java.util.Vector(requested by bakend)
 object Test2669 {
 
-  def test[T](l: java.util.ArrayList[_ <: T]) = 1
+  def test[T](l: java.util.ArrayList[? <: T]) = 1
   test(new java.util.ArrayList[String]())
 
 }

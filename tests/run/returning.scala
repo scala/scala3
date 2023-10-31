@@ -18,7 +18,7 @@ object NonLocalReturns {
     val returner = new ReturnThrowable[T]
     try op(using returner)
     catch {
-      case ex: ReturnThrowable[_] =>
+      case ex: ReturnThrowable[?] =>
        if (ex `eq` returner) ex.result.asInstanceOf[T] else throw ex
     }
   }

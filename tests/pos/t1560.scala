@@ -4,7 +4,7 @@ object Test extends App {
     def t: T
   }
 
-  def b: Option[C[_]] = null
+  def b: Option[C[?]] = null
 
   def c = b match {
     case Some(b) => b.t

@@ -1,9 +1,9 @@
 trait TypedArray[T, Repr]
 
-trait Ops[T <: TypedArray[_, T]] {
+trait Ops[T <: TypedArray[?, T]] {
   def typedArray(): T
 }
 
 object Test {
-  def test(ops: Ops[_ <: TypedArray[_ <: AnyRef, _]]) = ops.typedArray()  // error: Recursion limit exceeded.
+  def test(ops: Ops[_ <: TypedArray[? <: AnyRef, ?]]) = ops.typedArray()  // error: Recursion limit exceeded.
 }

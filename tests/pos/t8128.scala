@@ -1,9 +1,9 @@
 object G {
-  def unapply(m: Any): Option[_] = Some("")
+  def unapply(m: Any): Option[?] = Some("")
 }
 
 object H {
-  def unapplySeq(m: Any): Option[Seq[_]] = None
+  def unapplySeq(m: Any): Option[Seq[?]] = None
 }
 
 object Test {

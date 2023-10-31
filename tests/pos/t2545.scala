@@ -4,7 +4,7 @@ trait Frog[T] {
     }
 
     trait OnlyWithFrogs {
-      self: Frog[_] =>
+      self: Frog[?] =>
 
         def sizeStr = size.toString
     }

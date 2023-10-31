@@ -24,13 +24,13 @@ trait M2[F] { self: M1[F] =>
 abstract class C extends M1[Float] with M2[Float]
 
 object Test {
-  def t(c: Class[_]) = {
+  def t(c: Class[?]) = {
     val ms = c.getMethods.filter(_.getName.startsWith("category"))
     println(ms.map(_.toGenericString).sorted.mkString("\n"))
   }
   def main(args: Array[String]): Unit = {
     t(classOf[C])
-    t(classOf[M1[_]])
-    t(classOf[M2[_]])
+    t(classOf[M1[?]])
+    t(classOf[M2[?]])
   }
 }

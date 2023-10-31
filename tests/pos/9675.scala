@@ -5,8 +5,8 @@ sealed trait TNil extends TList
 sealed trait ++:[H[_], T <: TList] extends TList
 
 type IndexOf[H[_], T <: TList] <: Int = T match
-  case H ++: _ => 0
-  case _ ++: t => S[IndexOf[H, t]]
+  case H ++: ? => 0
+  case ? ++: t => S[IndexOf[H, t]]
 
 // compiles fine
 val a = summon[ValueOf[IndexOf[List, List ++: Option ++: TNil]]].value

@@ -85,7 +85,7 @@ object Test {
     // scala.tools.nsc.symtab.Flags.flagsToString(flags)
   }
 
-  def show(clazz: Class[_]): Unit = {
+  def show(clazz: Class[?]): Unit = {
     print(clazz.toString + " {")
     clazz.getMethods.sortBy(x => (x.getName, x.isBridge, x.toString)) filter (_.getName.length == 1) foreach { m =>
       print("\n  " + m + flagsString(m))

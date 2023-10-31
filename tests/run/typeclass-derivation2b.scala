@@ -26,7 +26,7 @@ object TypeLevel {
 
   abstract class GenericSum[S] extends Generic[S] {
     def ordinal(x: S): Int
-    inline def alternative(inline n: Int): GenericProduct[_ <: S]
+    inline def alternative(inline n: Int): GenericProduct[? <: S]
   }
 
   abstract class GenericProduct[P] extends Generic[P] {
@@ -46,10 +46,10 @@ object Lst {
   class GenericLst[T] extends GenericSum[Lst[T]] {
     override type Shape = (Cons[T], Nil.type)
     def ordinal(x: Lst[T]) = x match {
-      case x: Cons[_] => 0
+      case x: Cons[?] => 0
       case Nil => 1
     }
-    transparent inline def alternative(inline n: Int): GenericProduct[_ <: Lst[T]] =
+    transparent inline def alternative(inline n: Int): GenericProduct[? <: Lst[T]] =
       inline n match {
         case 0 => Cons.GenericCons[T]
         case 1 => Nil.GenericNil

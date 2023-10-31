@@ -1,7 +1,7 @@
 import scala.compiletime.ops.int
 
 type Count0[N,T] <: Tuple = (N,T) match
-  case (0,_)      => EmptyTuple
+  case (0,?)      => EmptyTuple
   case (N,String) => String *: Count0[int.-[N, 1], String]
   case (N,Int)    => Int *: Count0[int.-[N, 1], Int]
   case (N,Float)  => Float *: Count0[int.-[N, 1], Float]

@@ -8,7 +8,7 @@ object Test extends App {
 
   def typed[T](t : => T): Unit = {}
   def testIterableOps = {
-    class FilterMapImpl[A, Repr](r: Repr, it: IterableOps[A, Iterable, _]) {
+    class FilterMapImpl[A, Repr](r: Repr, it: IterableOps[A, Iterable, ?]) {
       final def filterMap[B, That](f: A => Option[B])(implicit bf: BuildFrom[Repr, B, That]): That =
         bf.fromSpecific(r)(it.flatMap(f(_)))
     }

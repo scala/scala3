@@ -97,12 +97,12 @@ trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeq
     else loop(0, coll)
   }
 
-  override def lengthCompare(that: Iterable[_]^): Int = {
+  override def lengthCompare(that: Iterable[?]^): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this lengthCompare thatKnownSize
     else that match {
-      case that: LinearSeq[_] =>
+      case that: LinearSeq[?] =>
         var thisSeq = this
         var thatSeq = that
         while (thisSeq.nonEmpty && thatSeq.nonEmpty) {

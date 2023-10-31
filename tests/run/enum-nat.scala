@@ -7,7 +7,7 @@ enum Nat:
   case Succ[N <: Nat.Refract](n: N)
 
 object Nat:
-  type Refract = Zero.type | Succ[_]
+  type Refract = Zero.type | Succ[?]
 
 inline def toIntTypeLevel[N <: Nat]: Int = inline erasedValue[N] match
   case _: Zero.type => 0

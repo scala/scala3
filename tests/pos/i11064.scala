@@ -1,9 +1,9 @@
 trait TypedArray[T, Repr]
 
-trait Ops[T <: TypedArray[_, T]] {
+trait Ops[T <: TypedArray[?, T]] {
   def typedArray(): T
 }
 
 object Test {
-  def test(ops: Ops[_ <: TypedArray[_, _]]) = ops.typedArray()
+  def test(ops: Ops[? <: TypedArray[?, ?]]) = ops.typedArray()
 }

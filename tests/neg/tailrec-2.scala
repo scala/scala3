@@ -2,7 +2,7 @@ import annotation.tailrec
 
 sealed abstract class Super[+A] {
   def f[B >: A](mem: List[B]) : List[B]
-  def g(mem: List[_]) = ???
+  def g(mem: List[?]) = ???
 }
 // This one should fail, target is a supertype
 class Bop1[+A](val element: A) extends Super[A] {

@@ -7,7 +7,7 @@ trait A {
   }
 }
 class B extends A {
-  def foo(x: Inner[_]): Unit = {
+  def foo(x: Inner[?]): Unit = {
     val a = x.get
   }
 }

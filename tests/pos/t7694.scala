@@ -7,7 +7,7 @@ trait L[A2, B2 <: A2] {
 
 object Lub {
   // use named args transforms to include TypeTree(<lub.tpe>) in the AST before refchecks.
-  def foo(a: L[_, _], b: Any) = 0
+  def foo(a: L[?, ?], b: Any) = 0
 
   foo(b = 0, a = if (true) (null: L[A, A]) else (null: L[B, B]))
 

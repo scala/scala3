@@ -10,7 +10,7 @@ object Test {
 
   def e = xs
 
-  val zs: StringlyHistogram[_] = e
+  val zs: StringlyHistogram[?] = e
 
   type IntMap[Y] = Map[Int, Y]
 
@@ -18,7 +18,7 @@ object Test {
 
   val js: IntMap[Boolean] = is
 
-  val ks: IntMap[_] = is
+  val ks: IntMap[?] = is
 
   type RMap[X, Y] = Map[Y, X]
 

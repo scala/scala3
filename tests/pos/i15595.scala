@@ -1,7 +1,7 @@
 trait MatchResult[+T]
 
 @main def Test() = {
-  def convert[T <: Seq[_], U <: MatchResult[_]](fn: T => U)(implicit x: Seq[_] = Seq.empty): U = ???
+  def convert[T <: Seq[?], U <: MatchResult[?]](fn: T => U)(implicit x: Seq[?] = Seq.empty): U = ???
   def resultOf[T](v: T): MatchResult[T] = ???
 
   convert { _ =>

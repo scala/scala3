@@ -45,7 +45,7 @@ object ValueOpt {
   //       73: areturn
   def unapply(x: Any): Opt[String] = x match {
     case _: String  => Opt("String")
-    case _: List[_] => Opt("List")
+    case _: List[?] => Opt("List")
     case _: Int     => Opt("Int")
     case _          => Opt.None
   }
@@ -85,7 +85,7 @@ object RegularOpt {
   //       65: areturn
   def unapply(x: Any): Option[String] = x match {
     case _: String  => Some("String")
-    case _: List[_] => Some("List")
+    case _: List[?] => Some("List")
     case _: Int     => Some("Int")
     case _          => None
   }

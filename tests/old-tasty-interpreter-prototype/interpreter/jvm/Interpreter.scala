@@ -41,7 +41,7 @@ class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[
                 }
               }
             }
-            val proxyClass: Class[_] = Proxy.getProxyClass(getClass.getClassLoader, jvmReflection.loadClass(parentSymbols.fullName))
+            val proxyClass: Class[?] = Proxy.getProxyClass(getClass.getClassLoader, jvmReflection.loadClass(parentSymbols.fullName))
             proxyClass.getConstructor(classOf[InvocationHandler]).newInstance(handler);
       }
     }

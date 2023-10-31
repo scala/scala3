@@ -3,7 +3,7 @@ import scala.compiletime.{erasedValue, summonInline}
 
 // File that breaks the infinite loop caused by implicit search in i13146.scala
 
-inline def summonAll[P, T <: Tuple]: List[Eq[_]] =
+inline def summonAll[P, T <: Tuple]: List[Eq[?]] =
   inline erasedValue[T] match
     case _: EmptyTuple => Nil
     case _: (t *: ts) => loopBreaker[P, t] :: summonAll[P, ts]
@@ -29,18 +29,18 @@ object Eq:
   given Eq[Int] with
     def eqv(x: Int, y: Int) = x == y
 
-  def check(elem: Eq[_])(x: Any, y: Any): Boolean =
+  def check(elem: Eq[?])(x: Any, y: Any): Boolean =
     elem.asInstanceOf[Eq[Any]].eqv(x, y)
 
   def iterator[T](p: T) = p.asInstanceOf[Product].productIterator
 
-  def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[_]]): Eq[T] =
+  def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[?]]): Eq[T] =
     new Eq[T]:
       def eqv(x: T, y: T): Boolean =
         val ordx = s.ordinal(x)
         (s.ordinal(y) == ordx) && check(elems(ordx))(x, y)
 
-  def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[_]]): Eq[T] =
+  def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[?]]): Eq[T] =
     new Eq[T]:
       def eqv(x: T, y: T): Boolean =
         iterator(x).zip(iterator(y)).zip(elems.iterator).forall {

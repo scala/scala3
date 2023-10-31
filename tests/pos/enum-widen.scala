@@ -15,7 +15,7 @@ object test:
 
   enum Nat:
     case Z
-    case S[N <: Z.type | S[_]](pred: N)
+    case S[N <: Z.type | S[?]](pred: N)
   import Nat.*
 
   val two = S(S(Z))

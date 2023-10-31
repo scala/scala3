@@ -5,9 +5,9 @@ object Test {
   class Boppy extends Immutable
 
   def f[T](x: Iterable[T]) = x match {
-    case _: Map[_, _]   => 3
-    case _: Seq[_]      => 2
-    case _: Iterable[_] => 1
+    case _: Map[?, ?]   => 3
+    case _: Seq[?]      => 2
+    case _: Iterable[?] => 1
     case _              => 4
   }
   def g(x: Bippy) = x match {

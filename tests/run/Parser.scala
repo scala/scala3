@@ -22,7 +22,7 @@ class ParserOps[T](p: Parser[T]):
     )
   def | [U](q: => into Parser[T]): Parser[T] = Parser(in =>
       p.parse(in) match
-        case s: Success[_] => s
+        case s: Success[?] => s
         case fail: Failure => q.parse(in)
     )
   def map[U](f: T => U): Parser[U] = Parser(in =>

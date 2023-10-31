@@ -30,7 +30,7 @@ object i3666 {
     def eval[T](e: Exp[T])(env: Env): T = e match {
       case Num(n) => n
       case Plus(e1, e2) => eval(e1)(env) + eval(e2)(env)
-      case v: Var[_] => env(v)
+      case v: Var[?] => env(v)
       case Lambda(x: Var[s], e) => ((y: s) => eval(e)(env + (x -> y)))
       case App(f, e) => eval(f)(env)(eval(e)(env))
     }

@@ -5,7 +5,7 @@ class Foo {
 
   def test = {
     // accept any array of string
-    def f(xs: Array[_ >: String <: String | Null] | Null): Unit = ???
+    def f(xs: Array[? >: String <: String | Null] | Null): Unit = ???
 
     val a1: Array[String] = ???
     val a2: Array[String] | Null = ???

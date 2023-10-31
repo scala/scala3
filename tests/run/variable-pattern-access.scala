@@ -4,9 +4,9 @@ class A {
   val (a, b) = (1, 2)
 }
 object Test {
-  def printFields(cls: Class[_]) =
+  def printFields(cls: Class[?]) =
     println(cls.getDeclaredFields.map(_.toString).sorted.toList.mkString("\n"))
-  def printMethods(cls: Class[_]) =
+  def printMethods(cls: Class[?]) =
     println(cls.getDeclaredMethods.map(_.toString).sorted.toList.mkString("\n"))
 
   def main(args: Array[String]): Unit = {

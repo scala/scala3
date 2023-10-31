@@ -97,25 +97,25 @@ object Tuple {
 
   /** Type of the head of a tuple */
   type Head[X <: NonEmptyTuple] = X match {
-    case x *: _ => x
+    case x *: xs => x
   }
 
   /** Type of the initial part of the tuple without its last element */
   type Init[X <: Tuple] <: Tuple = X match {
-    case _ *: EmptyTuple => EmptyTuple
+    case x *: EmptyTuple => EmptyTuple
     case x *: xs =>
       x *: Init[xs]
   }
 
   /** Type of the tail of a tuple */
   type Tail[X <: NonEmptyTuple] <: Tuple = X match {
-    case _ *: xs => xs
+    case x *: xs => xs
   }
 
   /** Type of the last element of a tuple */
   type Last[X <: Tuple] = X match {
     case x *: EmptyTuple => x
-    case _ *: xs => Last[xs]
+    case x *: xs => Last[xs]
   }
 
   /** Type of the concatenation of two tuples */
@@ -182,8 +182,8 @@ object Tuple {
    */
   type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match {
     case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
-    case (EmptyTuple, _) => EmptyTuple
-    case (_, EmptyTuple) => EmptyTuple
+    case (EmptyTuple, ?) => EmptyTuple
+    case (?, EmptyTuple) => EmptyTuple
     case _ => Tuple
   }
 

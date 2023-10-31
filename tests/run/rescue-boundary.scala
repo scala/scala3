@@ -5,7 +5,7 @@ object lib:
   extension [T](op: => T) inline def rescue (fallback: => T) =
     try op
     catch
-      case ex: boundary.Break[_] => throw ex
+      case ex: boundary.Break[?] => throw ex
       case NonFatal(_) => fallback
 
   extension [T, E <: Throwable](op: => T) inline def rescue (fallback: PartialFunction[E, T]) =
@@ -13,7 +13,7 @@ object lib:
     catch
       case ex: E =>
         // user should never match `ReturnThrowable`, which breaks semantics of non-local return
-        if fallback.isDefinedAt(ex) && !ex.isInstanceOf[boundary.Break[_]] then fallback(ex) else throw ex
+        if fallback.isDefinedAt(ex) && !ex.isInstanceOf[boundary.Break[?]] then fallback(ex) else throw ex
 end lib
 
 import lib.*

@@ -3,7 +3,7 @@ class Foo[A]
 object Test {
   def foo[T](x: Foo[T]) = x
 
-  foo((new Foo[Int]: Foo[_]))
+  foo((new Foo[Int]: Foo[?]))
 }
 
 import java.nio.file.*

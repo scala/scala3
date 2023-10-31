@@ -6,5 +6,5 @@ object Test {
   import Hoge.*
 
   A == A
-  A == (B: Hoge[_])
+  A == (B: Hoge[?])
 }

@@ -185,7 +185,7 @@ object CollectionStrawMan1 {
 
   object ArrayBuffer extends IterableFactory[ArrayBuffer] {
     def fromIterator[B](it: Iterator[B]): ArrayBuffer[B] = it match {
-      case Iterator.Concat(fst: ArrayBufferIterator[_], snd: ArrayBufferIterator[_]) =>
+      case Iterator.Concat(fst: ArrayBufferIterator[?], snd: ArrayBufferIterator[?]) =>
         val elems = new Array[AnyRef](fst.remaining + snd.remaining)
         Array.copy(fst.elems, fst.start, elems, 0, fst.remaining)
         Array.copy(snd.elems, snd.start, elems, fst.remaining, snd.remaining)
@@ -311,7 +311,7 @@ object CollectionStrawMan1 {
     /** If this iterator results from applying a transfomation to another iterator,
      *  that other iterator, otherwise the iterator itself.
      */
-    def underlying: Iterator[_] = this
+    def underlying: Iterator[?] = this
 
     /** If the number of elements still to be returned by this iterator is known,
      *  that number, otherwise -1.

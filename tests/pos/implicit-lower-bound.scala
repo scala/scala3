@@ -6,8 +6,8 @@ object Bar {
 }
 
 class Test {
-  def get1(implicit lf: List[_ <: Bar]) = {}
-  def get2(implicit lf: List[_ >: Bar]) = {}
+  def get1(implicit lf: List[? <: Bar]) = {}
+  def get2(implicit lf: List[? >: Bar]) = {}
 
   get1
   get2

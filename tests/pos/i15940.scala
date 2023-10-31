@@ -13,7 +13,7 @@ import Ops._
 
 val test: Either[BuildException, Seq[ActionableDiagnostic]] =
   // Can be replaced with Seq[Either[BuildException, Seq[ _ <: ActionableDiagnostic]]] , but current version matches better type of missing implicit
-  Seq.empty[ActionableHandler[_]].map(_.exec)
+  Seq.empty[ActionableHandler[?]].map(_.exec)
     .sequence
     .left.map(_.head)
     .map(_.flatten) // error

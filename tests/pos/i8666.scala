@@ -1,7 +1,7 @@
 class Foo[A, B]()
 
 type FooSnd[X] = X match
-  case Foo[_, b] => b
+  case Foo[?, b] => b
 
 trait Bar[A]:
   def bar(h: FooSnd[A]): Int

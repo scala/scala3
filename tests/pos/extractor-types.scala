@@ -1,5 +1,5 @@
 package p1 {
-  object Ex  { def unapply(p: Any): Option[_ <: Int] = null }
+  object Ex  { def unapply(p: Any): Option[? <: Int] = null }
   object Foo { val Ex(_) = null }
 }
 // a.scala:2: error: error during expansion of this match (this is a scalac bug).

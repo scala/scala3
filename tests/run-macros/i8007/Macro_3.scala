@@ -25,7 +25,7 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[?]]] = Type.of[T] match {
     case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
     case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
     case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]

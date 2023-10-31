@@ -7,13 +7,13 @@ object foo{
 
 object bar {
 
-  class C[T <: Seq[_]]
+  class C[T <: Seq[?]]
 
   val x: AnyRef = new C
 
   x match {
     case x: C[u] =>
       def x: u = x
-      val s: Seq[_] = x
+      val s: Seq[?] = x
   }
 }

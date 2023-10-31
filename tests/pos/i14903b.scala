@@ -31,7 +31,7 @@ sealed trait TailSwitch[L <: HList, T <: HList, R <: HList]:
 object TailSwitch:
   type TS[L <: HList, T <: HList, R <: HList] <: HList =
     StripSuffix[T, L] match
-      case Some[_] => R
+      case Some[?] => R
       case _ => StripSuffix[L, T] match
         case Some[x] => Concat[x, R]
 

@@ -55,7 +55,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     implicit val imp1: Numeric.BigDecimalAsIfIntegral = Numeric.BigDecimalAsIfIntegral
 
-    val _grs = List[GR[_]](
+    val _grs = List[GR[?]](
       GR(BigDecimal(5.0)),
       GR(BigDecimal(0.25)),  // scala/bug#9348
       GR(BigInt(5)),

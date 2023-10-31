@@ -1008,7 +1008,10 @@ object Build {
         Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions += "-Ycompile-scala2-library",
+      scalacOptions ++= Seq(
+        "-Ycompile-scala2-library",
+        "-language:deprecated.underscoreWildcards",
+      ),
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -1292,6 +1295,7 @@ object Build {
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq
       }.taskValue,
+      scalacOptions += "-language:deprecated.underscoreWildcards",
     )
   }
 
@@ -1361,6 +1365,7 @@ object Build {
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
       bspEnabled := false,
+      scalacOptions += "-language:deprecated.underscoreWildcards",
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
 
       // Required to run Scala.js tests.

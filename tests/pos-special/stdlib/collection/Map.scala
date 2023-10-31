@@ -63,7 +63,7 @@ trait Map[K, +V]
    */
   override def equals(o: Any): Boolean =
     (this eq o.asInstanceOf[AnyRef]) || (o match {
-      case map: Map[K @unchecked, _] if map.canEqual(this) =>
+      case map: Map[K @unchecked, ?] if map.canEqual(this) =>
         (this.size == map.size) && {
           try this.forall(kv => map.getOrElse(kv._1, Map.DefaultSentinelFn()) == kv._2)
           catch { case _: ClassCastException => false } // PR #9565 / scala/bug#12228
@@ -99,14 +99,14 @@ trait Map[K, +V]
   */
 // Note: the upper bound constraint on CC is useful only to
 // erase CC to IterableOps instead of Object
-trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
+trait MapOps[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C]
   extends IterableOps[(K, V), Iterable, C]
     with PartialFunction[K, V] {
 
   override def view: MapView[K, V] = new MapView.Id(this)
 
   /** Returns a [[Stepper]] for the keys of this map. See method [[stepper]]. */
-  def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S = {
+  def keyStepper[S <: Stepper[?]](implicit shape: StepperShape[K, S]): S = {
     import convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntIteratorStepper   (keysIterator.asInstanceOf[Iterator[Int]])
@@ -118,7 +118,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   }
 
   /** Returns a [[Stepper]] for the values of this map. See method [[stepper]]. */
-  def valueStepper[S <: Stepper[_]](implicit shape: StepperShape[V, S]): S = {
+  def valueStepper[S <: Stepper[?]](implicit shape: StepperShape[V, S]): S = {
     import convert.impl._
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntIteratorStepper   (valuesIterator.asInstanceOf[Iterator[Int]])
@@ -373,8 +373,8 @@ object MapOps {
     * @define coll map collection
     */
   @SerialVersionUID(3L)
-  class WithFilter[K, +V, +IterableCC[_], +CC[_, _] <: IterableOps[_, AnyConstr, _]](
-    self: MapOps[K, V, CC, _] with IterableOps[(K, V), IterableCC, _],
+  class WithFilter[K, +V, +IterableCC[_], +CC[_, _] <: IterableOps[?, AnyConstr, ?]](
+    self: MapOps[K, V, CC, ?] with IterableOps[(K, V), IterableCC, ?],
     p: ((K, V)) => Boolean
   ) extends IterableOps.WithFilter[(K, V), IterableCC](self, p) with Serializable {
 

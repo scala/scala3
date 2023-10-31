@@ -3,5 +3,5 @@ object A {
   // This wasn't happening since e28c3edda4. That commit encoded upper/lower
   // bounds of Any/Nothing as EmptyTree, which were triggering an .isEmpty
   // check in Namers#TypeTreeSubstitutor
-  def x(f: List[_] => Int = _ => 3) = 9
+  def x(f: List[?] => Int = _ => 3) = 9
 }

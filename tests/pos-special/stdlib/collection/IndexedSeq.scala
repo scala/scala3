@@ -37,12 +37,12 @@ trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self =>
 
   def iterator: Iterator[A] = view.iterator
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
-      case StepperShape.IntShape    => new IntIndexedSeqStepper   (this.asInstanceOf[IndexedSeqOps[Int, AnyConstr, _]],    0, length)
-      case StepperShape.LongShape   => new LongIndexedSeqStepper  (this.asInstanceOf[IndexedSeqOps[Long, AnyConstr, _]],   0, length)
-      case StepperShape.DoubleShape => new DoubleIndexedSeqStepper(this.asInstanceOf[IndexedSeqOps[Double, AnyConstr, _]], 0, length)
+      case StepperShape.IntShape    => new IntIndexedSeqStepper   (this.asInstanceOf[IndexedSeqOps[Int, AnyConstr, ?]],    0, length)
+      case StepperShape.LongShape   => new LongIndexedSeqStepper  (this.asInstanceOf[IndexedSeqOps[Long, AnyConstr, ?]],   0, length)
+      case StepperShape.DoubleShape => new DoubleIndexedSeqStepper(this.asInstanceOf[IndexedSeqOps[Double, AnyConstr, ?]], 0, length)
       case _                        => shape.parUnbox(new AnyIndexedSeqStepper[A](this, 0, length))
     }
     s.asInstanceOf[S with EfficientSplit]
@@ -104,7 +104,7 @@ trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self =>
 
   override def knownSize: Int = length
 
-  override final def lengthCompare(that: Iterable[_]^): Int = {
+  override final def lengthCompare(that: Iterable[?]^): Int = {
     val res = that.sizeCompare(length)
     // can't just invert the result, because `-Int.MinValue == Int.MinValue`
     if (res == Int.MinValue) 1 else -res

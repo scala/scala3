@@ -13,7 +13,7 @@ trait Mixin extends reflect.Enum:
 enum EM extends Mixin:
   case C
 
-enum ET[T] extends java.lang.Enum[ET[_]]:
+enum ET[T] extends java.lang.Enum[ET[?]]:
   case D extends ET[Unit]
   override def toString: String = "overridden"
 

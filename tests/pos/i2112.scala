@@ -2,6 +2,6 @@ import scala.jdk.CollectionConverters.*
 
 object Test {
   def test(x: Any): Unit = {
-    x.asInstanceOf[java.util.List[_]].asScala.toList
+    x.asInstanceOf[java.util.List[?]].asScala.toList
   }
 }

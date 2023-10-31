@@ -14,6 +14,6 @@ object Test {
   test[Unit, Nothing] // error
   test[Int, Nothing] // error
   test[8, Nothing] // error
-  test[List[_], Nothing] // error
+  test[List[?], Nothing] // error
   test[Nothing, Nothing] // error
 }

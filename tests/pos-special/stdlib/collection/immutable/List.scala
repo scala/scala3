@@ -597,7 +597,7 @@ sealed abstract class List[+A]
 
   // Override for performance
   override def equals(o: scala.Any): Boolean = {
-    @tailrec def listEq(a: List[_], b: List[_]): Boolean =
+    @tailrec def listEq(a: List[?], b: List[?]): Boolean =
       (a eq b) || {
         val aEmpty = a.isEmpty
         val bEmpty = b.isEmpty
@@ -610,7 +610,7 @@ sealed abstract class List[+A]
       }
 
     o match {
-      case that: List[_] => listEq(this, that)
+      case that: List[?] => listEq(this, that)
       case _ => super.equals(o)
     }
   }

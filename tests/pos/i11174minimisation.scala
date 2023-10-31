@@ -11,7 +11,7 @@ object EnumerateNames {
           case m: Mirror.ProductOf[T] => ???
           case m: Mirror.SumOf[T] =>
             inline erasedValue[m.MirroredElemTypes] match
-              case _: (tpe *: _) => summonInline[EnumerateNames[tpe]]
+              case _: (tpe *: ?) => summonInline[EnumerateNames[tpe]]
               case _: EmptyTuple =>
         ???
     }

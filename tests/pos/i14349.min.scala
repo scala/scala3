@@ -10,4 +10,4 @@ class Module:
   def expose = new Inv[M]
   def test                  = this match { case m => m.expose }
   // was: leak: `(m : Module)` in `m.expose: Inv[? <: Module { X = m.X }]`
-  def res: Inv[_ <: Module] = this match { case m => m.expose }
+  def res: Inv[? <: Module] = this match { case m => m.expose }

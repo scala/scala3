@@ -84,13 +84,13 @@ object StagedTuple {
     else {
       val resVal = size match {
         case Some(1) =>
-          '{${ tup.as[Tuple1[_]] }._1}
+          '{${ tup.as[Tuple1[?]] }._1}
         case Some(2) =>
-          '{${ tup.as[Tuple2[_, _]] }._1}
+          '{${ tup.as[Tuple2[?, ?]] }._1}
         case Some(3) =>
-          '{${ tup.as[Tuple3[_, _, _]]}._1}
+          '{${ tup.as[Tuple3[?, ?, ?]]}._1}
         case Some(4) =>
-          '{${ tup.as[Tuple4[_, _, _, _]] }._1}
+          '{${ tup.as[Tuple4[?, ?, ?, ?]] }._1}
         case Some(n) if n > 4 && n <= MaxSpecialized =>
           '{${ tup.as[Product] }.productElement(0)}
         case Some(n) if n > MaxSpecialized =>
@@ -109,13 +109,13 @@ object StagedTuple {
         case Some(1) =>
           '{Tuple()}
         case Some(2) =>
-          tup.as[Tuple2[_, _]].bind(t => '{Tuple1($t._2)})
+          tup.as[Tuple2[?, ?]].bind(t => '{Tuple1($t._2)})
         case Some(3) =>
-          tup.as[Tuple3[_, _, _]].bind(t => '{Tuple2($t._2, $t._3)})
+          tup.as[Tuple3[?, ?, ?]].bind(t => '{Tuple2($t._2, $t._3)})
         case Some(4) =>
-          tup.as[Tuple4[_, _, _, _]].bind(t => '{Tuple3($t._2, $t._3, $t._4)})
+          tup.as[Tuple4[?, ?, ?, ?]].bind(t => '{Tuple3($t._2, $t._3, $t._4)})
         case Some(5) =>
-          tup.as[Tuple5[_, _, _, _, _]].bind(t => '{Tuple4($t._2, $t._3, $t._4, $t._5)})
+          tup.as[Tuple5[?, ?, ?, ?, ?]].bind(t => '{Tuple4($t._2, $t._3, $t._4, $t._5)})
         case Some(n) if n > 5 =>
           val arr = toArrayStaged(tup, size)
           fromArrayStaged[Tail[Tup]]('{ $arr.tail }, Some(n - 1))
@@ -138,20 +138,20 @@ object StagedTuple {
       }
       val res = size match {
         case Some(1) =>
-          val t = tup.as[Tuple1[_]]
+          val t = tup.as[Tuple1[?]]
           nValue match {
             case Some(0) => '{$t._1}
             case _ => fallbackApply()
           }
         case Some(2) =>
-          val t = tup.as[Tuple2[_, _]]
+          val t = tup.as[Tuple2[?, ?]]
           nValue match {
             case Some(0) => '{$t._1}
             case Some(1) => '{$t._2}
             case _ => fallbackApply()
           }
         case Some(3) =>
-          val t = tup.as[Tuple3[_, _, _]]
+          val t = tup.as[Tuple3[?, ?, ?]]
           nValue match {
             case Some(0) => '{$t._1}
             case Some(1) => '{$t._2}
@@ -159,7 +159,7 @@ object StagedTuple {
             case _ => fallbackApply()
           }
         case Some(4) =>
-          val t = tup.as[Tuple4[_, _, _, _]]
+          val t = tup.as[Tuple4[?, ?, ?, ?]]
           nValue match {
             case Some(0) => '{$t._1}
             case Some(1) => '{$t._2}
@@ -192,13 +192,13 @@ object StagedTuple {
       case Some(0) =>
         '{Tuple1($x)}
       case Some(1) =>
-        self.as[Tuple1[_]].bind(t => '{Tuple2($x, $t._1)})
+        self.as[Tuple1[?]].bind(t => '{Tuple2($x, $t._1)})
       case Some(2) =>
-        self.as[Tuple2[_, _]].bind(t => '{Tuple3($x, $t._1, $t._2)})
+        self.as[Tuple2[?, ?]].bind(t => '{Tuple3($x, $t._1, $t._2)})
       case Some(3) =>
-        self.as[Tuple3[_, _, _]].bind(t => '{Tuple4($x, $t._1, $t._2, $t._3)})
+        self.as[Tuple3[?, ?, ?]].bind(t => '{Tuple4($x, $t._1, $t._2, $t._3)})
       case Some(4) =>
-        self.as[Tuple4[_, _, _, _]].bind(t => '{Tuple5($x, $t._1, $t._2, $t._3, $t._4)})
+        self.as[Tuple4[?, ?, ?, ?]].bind(t => '{Tuple5($x, $t._1, $t._2, $t._3, $t._4)})
       case _ =>
         '{scala.runtime.Tuples.cons($x, $self)}
     }
@@ -217,29 +217,29 @@ object StagedTuple {
           that
         case Some(1) =>
           if (thatSize.contains(0)) self
-          else consStaged(that, '{$self.asInstanceOf[Tuple1[_]]._1}, thatSize)
+          else consStaged(that, '{$self.asInstanceOf[Tuple1[?]]._1}, thatSize)
         case Some(2) =>
-          val self2 = self.as[Tuple2[_, _]]
+          val self2 = self.as[Tuple2[?, ?]]
           thatSize match {
             case Some(0) => self
             case Some(1) =>
               self2.bind { t =>
-                that.as[Tuple1[_]].bind(u => '{Tuple3($t._1, $t._2, $u._1)})
+                that.as[Tuple1[?]].bind(u => '{Tuple3($t._1, $t._2, $u._1)})
               }
             case Some(2) =>
               self2.bind { t =>
-                that.as[Tuple2[_, _]].bind(u => '{Tuple4($t._1, $t._2, $u._1, $u._2)})
+                that.as[Tuple2[?, ?]].bind(u => '{Tuple4($t._1, $t._2, $u._1, $u._2)})
               }
             case _ =>
               genericConcat(self, that)
           }
         case Some(3) =>
-          val self2 = self.as[Tuple3[_, _, _]]
+          val self2 = self.as[Tuple3[?, ?, ?]]
           thatSize match {
             case Some(0) => self
             case Some(1) =>
               self2.bind { t =>
-                that.as[Tuple1[_]].bind(u => '{Tuple4($t._1, $t._2, $t._3, $u._1)})
+                that.as[Tuple1[?]].bind(u => '{Tuple4($t._1, $t._2, $t._3, $u._1)})
               }
             case _ =>
               genericConcat(self, that)

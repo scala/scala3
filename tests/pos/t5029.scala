@@ -1,3 +1,3 @@
 object Test {
-    (Vector(): Seq[_]) match { case List() => true; case Nil => false }
+    (Vector(): Seq[?]) match { case List() => true; case Nil => false }
 }

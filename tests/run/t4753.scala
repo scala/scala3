@@ -1,5 +1,5 @@
 trait A {
-  val actualType: Class[_]
+  val actualType: Class[?]
 }
 trait B extends A {
   final val actualType = classOf[Boolean]

@@ -12,7 +12,7 @@ trait U {
 class C extends T
 
 object Test extends App {
-  def check(c: Class[_], e: String) = {
+  def check(c: Class[?], e: String) = {
     val s = c.getDeclaredMethods.sortBy(_.getName).map(m => s"${m.getName} - ${m.getDeclaredAnnotations.mkString(", ")}").mkString(";")
     assert(s == e, s"found: $s\nexpected: $e")
   }

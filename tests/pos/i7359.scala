@@ -112,10 +112,10 @@ object Main:
     val samPlainWithExtends : SAMPlainWithExtends = () => "Hello, World!"
     val samPlainWithExtendsAndOverride : SAMPlainWithExtendsAndOverride = () => "Hello, World!"
 
-    val samPlainCovariantOut : SAMPlainCovariantOut[_] = () => "Hello, World!"
-    val samCovariantOut : SAMCovariantOut[_] = () => "Hello, World!"
-    val samCovariantOutExtends : SAMCovariantOutExtends[_] = () => "Hello, World!"
-    val samCovariantOutExtendsAndOverride : SAMCovariantOutExtendsAndOverride[_] = () => "Hello, World!"
+    val samPlainCovariantOut : SAMPlainCovariantOut[?] = () => "Hello, World!"
+    val samCovariantOut : SAMCovariantOut[?] = () => "Hello, World!"
+    val samCovariantOutExtends : SAMCovariantOutExtends[?] = () => "Hello, World!"
+    val samCovariantOutExtendsAndOverride : SAMCovariantOutExtendsAndOverride[?] = () => "Hello, World!"
 
     val samPlainContravariantIn : SAMPlainContravariantIn[Int] = (x: Int) => ()
     val samContravariantIn : SAMContravariantIn[Int] = (x: Int) => ()

@@ -334,7 +334,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |  def test =
         |    try print("foo")
         |    catch {
-        |      case _: scala.runtime.NonLocalReturnControl[_] => ()
+        |      case _: scala.runtime.NonLocalReturnControl[?] => ()
         |    }
         |}
       """.stripMargin

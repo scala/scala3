@@ -2,7 +2,7 @@ abstract sealed class List[T] extends reflect.Enum
 object List {
   final class Cons[T](x: T, xs: List[T]) extends List[T] {
     def ordinal = 0
-    def canEqual(that: Any): Boolean = that.isInstanceOf[Cons[_]]
+    def canEqual(that: Any): Boolean = that.isInstanceOf[Cons[?]]
     def productArity: Int = 2
     def productElement(n: Int): Any = n match
       case 0 => x

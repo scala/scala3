@@ -7,7 +7,7 @@ type AnyInt[A <: Int] <: Int = A match {
 type IndexOf[A, T <: Tuple] <: Int = T match {
   case EmptyTuple => -1
   case A *: t     => 0
-  case _ *: t =>
+  case ? *: t =>
     IndexOf[A, t] match {
       case -1        => -1
       case AnyInt[a] => S[a]

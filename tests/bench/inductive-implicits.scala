@@ -25,7 +25,7 @@ package shapeless {
     def ::[HH](h : HH) : HH :: H :: T = shapeless.::(h, this)
 
     override def toString = head match {
-      case _: ::[_, _] => "("+head.toString+") :: "+tail.toString
+      case _: ::[?, ?] => "("+head.toString+") :: "+tail.toString
       case _ => head.toString+" :: "+tail.toString
     }
   }

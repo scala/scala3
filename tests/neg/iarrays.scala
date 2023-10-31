@@ -6,7 +6,7 @@ object Test {
   val xs = IArray(1, 2, 3)
 
   // Can't have a wildcard IArray
-  val ys: IArray[_] = xs
+  val ys: IArray[?] = xs
 
   // Can't update an IArray
   xs(0) = 1    // error: value update is not a member

@@ -7,8 +7,8 @@ class logged extends EntryPoint.Adapter:
   class LoggedWrapper(val wrapped: EntryPoint.Wrapper) extends Wrapper:
     def adapt[A, R](op: A => R)(args: A): R =
       val argsString: String = args match
-        case args: Array[_] => args.mkString(", ")
-        case args: Seq[_] => args.mkString(", ")
+        case args: Array[?] => args.mkString(", ")
+        case args: Seq[?] => args.mkString(", ")
         case args: Unit => "()"
         case args => args.toString
       val result = op(args)

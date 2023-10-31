@@ -35,7 +35,7 @@ object Typeable:
 
   given list[T: Typeable]: Typeable[List[T]] with
     def cast(x: Any): Option[List[T]] = x match
-      case x: List[_] if x.forall(Typeable[T].cast(_).isDefined) => Some(x.asInstanceOf[List[T]])
+      case x: List[?] if x.forall(Typeable[T].cast(_).isDefined) => Some(x.asInstanceOf[List[T]])
       case _ => None
     def describe = s"List[${Typeable[T].describe}]"
 end Typeable

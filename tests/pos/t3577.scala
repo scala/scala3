@@ -1,6 +1,6 @@
 case class Check[A](val value: A)
 
-case class C2(checks: Check[_]*);
+case class C2(checks: Check[?]*);
 
 object C {
   def m(x : C2): Any = (null: Any) match {

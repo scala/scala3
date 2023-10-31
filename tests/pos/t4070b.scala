@@ -10,16 +10,16 @@ package a {
   }
 
   object Test {
-    def f(x: DeliteOp[_]) = x match {
-      case map: DeliteOpMap[_,_,_] => map.alloc.Type
+    def f(x: DeliteOp[?]) = x match {
+      case map: DeliteOpMap[?,?,?] => map.alloc.Type
     }
   }
 }
 
 package b {
   object Test {
-    def f(x: DeliteOp[_]) = x match {
-      case map: DeliteOpMap[_,_,_] => map.alloc.Type
+    def f(x: DeliteOp[?]) = x match {
+      case map: DeliteOpMap[?,?,?] => map.alloc.Type
     }
   }
 

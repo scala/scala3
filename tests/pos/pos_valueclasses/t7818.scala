@@ -1,6 +1,6 @@
 package t7818
 
-class Observable1[+T](val asJava: JObservable[_ <: T]) extends AnyVal {
+class Observable1[+T](val asJava: JObservable[? <: T]) extends AnyVal {
   private def foo[X](a: JObservable[X]): JObservable[X] = ???
   // was generating a type error as the type of the RHS included an existential
   // skolem based on the class type parameter `T`, which did not conform
@@ -10,7 +10,7 @@ class Observable1[+T](val asJava: JObservable[_ <: T]) extends AnyVal {
 
   // Was generating a Ycheck error after ExtensionMethods.
   // Fixed by having TypeMap go over info of SkolemTypes
-  private[this] def id(x: JObservable[_ <: T]) = x
+  private[this] def id(x: JObservable[? <: T]) = x
   def synchronize2: Observable1[T] = new Observable1(foo(id(asJava)))
 }
 

@@ -5,7 +5,7 @@ object Test {
    val s = new Box[String]("")
    val i = new Box[Int](3)
 
-   var box: Box[_] = s
+   var box: Box[?] = s
    val sv = box.v
    box = i
    box.v = sv // error

@@ -285,7 +285,7 @@
     |
     | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:109:29 ----------------------------------------------------
-109 |  identity[T9[Tuple2[_, _]]]("") // error
+109 |  identity[T9[Tuple2[?, ?]]]("") // error
     |                             ^^
     |                             Found:    ("" : String)
     |                             Required: Test.T9[(?, ?)]
@@ -302,7 +302,7 @@
     |
     | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:110:29 ----------------------------------------------------
-110 |  identity[T9[Tuple2[_, _]]](1) // error
+110 |  identity[T9[Tuple2[?, ?]]](1) // error
     |                             ^
     |                             Found:    (1 : Int)
     |                             Required: Test.T9[(?, ?)]

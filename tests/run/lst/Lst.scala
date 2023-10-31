@@ -451,7 +451,7 @@ class Lst[+T](val elems: Any) extends AnyVal { self =>
     }
 
   override def equals(that: Any) = that match {
-    case that: Lst[_] =>
+    case that: Lst[?] =>
       (this `eqLst` that) || {
         elems match {
           case elems1: Arr =>

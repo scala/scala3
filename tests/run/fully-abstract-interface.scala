@@ -232,7 +232,7 @@ object ListImplementation extends Arithmetic {
   type Number = List[Any]
 
   def numberClassTag: ClassTag[Number] = new ClassTag[Number] {
-    def runtimeClass: Class[_] = classOf[List[_]]
+    def runtimeClass: Class[?] = classOf[List[?]]
     override def unapply(x: Any): Option[List[Any]] = x match {
       case ls: List[Any] if ls.length == 3 || (ls.length == 1 && ls(0).isInstanceOf[Int]) =>
         // Test that it is one of:
@@ -251,7 +251,7 @@ object ListImplementation extends Arithmetic {
 
   type Constant = List[Any] // List(n: Int)
   def constantClassTag: ClassTag[Constant] = new ClassTag[Constant] {
-    def runtimeClass: Class[_] = classOf[List[_]]
+    def runtimeClass: Class[?] = classOf[List[?]]
     override def unapply(x: Any): Option[List[Any]] = x match {
       case ls: List[Any] if ls.length == 1 && ls(0).isInstanceOf[Int] =>
         // Test that it is:
@@ -280,7 +280,7 @@ object ListImplementation extends Arithmetic {
 
   type AppliedOp = List[Any] // List(op: Op, lhs: Number, rhs: Number)
   def appliedOpClassTag: ClassTag[AppliedOp] = new ClassTag[AppliedOp] {
-    def runtimeClass: Class[_] = classOf[List[_]]
+    def runtimeClass: Class[?] = classOf[List[?]]
     override def unapply(x: Any): Option[List[Any]] = x match {
       case ls: List[Any] if ls.length == 3 =>
         // Test that it is:
@@ -302,7 +302,7 @@ object ListImplementation extends Arithmetic {
 
   type Op = List[Any]
   def opClassTag: ClassTag[Op] = new ClassTag[Constant] {
-    def runtimeClass: Class[_] = classOf[List[_]]
+    def runtimeClass: Class[?] = classOf[List[?]]
     override def unapply(x: Any): Option[List[Any]] = x match {
       case op @ (("+" | "*") :: Nil) =>
       // Test that it is:

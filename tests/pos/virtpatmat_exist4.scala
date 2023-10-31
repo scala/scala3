@@ -27,7 +27,7 @@ object Test {
 }
 
 object Test2 {
-  type JClass = java.lang.Class[_]
+  type JClass = java.lang.Class[?]
 
   def tvarString(bounds: List[AnyRef]) = {
     bounds collect { case x: JClass => x }

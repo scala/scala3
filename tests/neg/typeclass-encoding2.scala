@@ -21,6 +21,6 @@ object runtime1 {
   }
 
   implicit def inject[A, From[_]](x: From[A])
-      (implicit ev: Extension1[From, _]): ev.Instance[A] { type This[X] = From[X] } =
+      (implicit ev: Extension1[From, ?]): ev.Instance[A] { type This[X] = From[X] } =
     ev.inject(x) // error: found: ev.To[A], required: ev.To[A]{This = From}
 }

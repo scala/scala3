@@ -1,16 +1,16 @@
 object Test {
 
-  def hasGenericSignature(cls: Class[_], methName: String): Boolean = {
+  def hasGenericSignature(cls: Class[?], methName: String): Boolean = {
     cls.getDeclaredMethods().find(_.getName.contains(methName)) match {
       case None => throw new NoSuchMethodError(s"No $methName in ${cls.getName}")
       case Some(meth) => meth.getTypeParameters.nonEmpty
     }
   }
 
-  def checkHasGenericSignature(cls: Class[_], methName: String): Unit =
+  def checkHasGenericSignature(cls: Class[?], methName: String): Unit =
     assert(hasGenericSignature(cls, methName))
 
-  def checkDoesntHaveGenericSignature(cls: Class[_], methName: String): Unit =
+  def checkDoesntHaveGenericSignature(cls: Class[?], methName: String): Unit =
     assert(!hasGenericSignature(cls, methName))
 
   def main(args: Array[String]): Unit = {
@@ -35,21 +35,21 @@ object Test {
 object TopLevelObject {
   def meth[T](x: T): T = x
 
-  def localObject: Class[_] = {
+  def localObject: Class[?] = {
     object LocalObject {
       def meth[T](x: T): T = x
     }
     LocalObject.getClass
   }
 
-  def localClass: Class[_] = {
+  def localClass: Class[?] = {
     class LocalClass {
       def meth[T](x: T): T = x
     }
     classOf[LocalClass]
   }
 
-  val otherLocalClass: Class[_] = {
+  val otherLocalClass: Class[?] = {
     class LocalClass {
       def meth[T](x: T): T = x
     }
@@ -69,14 +69,14 @@ class TopLevelClass {
 
   def meth[T](x: T): T = x
 
-  def localClass: Class[_] = {
+  def localClass: Class[?] = {
     class LocalClass {
       def meth[T](x: T): T = x
     }
     classOf[LocalClass]
   }
 
-  val otherLocalClass: Class[_] = {
+  val otherLocalClass: Class[?] = {
     class LocalClass {
       def meth[T](x: T): T = x
     }

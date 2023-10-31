@@ -16,7 +16,7 @@ object handler:
       HandlerSingle[API]
 
   type HandlerSingle[X] = X match
-    case OK[_, response] =>
+    case OK[?, response] =>
       IO[response]
 
 object Minimized {

@@ -151,7 +151,7 @@ object LazyRuntime {
     f.get(null).asInstanceOf[sun.misc.Unsafe]
   }
 
-  def fieldOffset(cls: Class[_], name: String): Long = {
+  def fieldOffset(cls: Class[?], name: String): Long = {
     val fld = cls.getDeclaredField(name)
     fld.setAccessible(true)
     unsafe.objectFieldOffset(fld)

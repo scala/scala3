@@ -20,7 +20,7 @@ given FromExpr[Error] with {
   }
 }
 
-private def assertCompilesImpl(self: Expr[_], typeChecked: Expr[List[Error]])(using Quotes): Expr[Unit] = {
+private def assertCompilesImpl(self: Expr[?], typeChecked: Expr[List[Error]])(using Quotes): Expr[Unit] = {
   import quotes.reflect._
 
   def checkCompile(code: String): Expr[Unit] = {

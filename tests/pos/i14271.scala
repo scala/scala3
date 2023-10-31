@@ -7,7 +7,7 @@ class Container[V] {
 }
 
 def bug() = {
-  val m = new Container[MyClass[_]]
+  val m = new Container[MyClass[?]]
   if (true) {
     m.doSth()
   }

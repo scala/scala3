@@ -25,17 +25,17 @@ transparent inline def transparentInlineMod2(inline n: NatT):  NatT = inline n m
 def dependentlyTypedMod2[N <: NatT](n: N): Mod2[N] = n match
   case Zero(): Zero => Zero() // warning
   case Succ(Zero()): Succ[Zero] => Succ(Zero()) // warning
-  case Succ(Succ(predPredN)): Succ[Succ[_]] => dependentlyTypedMod2(predPredN) // warning
+  case Succ(Succ(predPredN)): Succ[Succ[?]] => dependentlyTypedMod2(predPredN) // warning
 
 inline def inlineDependentlyTypedMod2[N <: NatT](inline n: N): Mod2[N] = inline n match
   case Zero(): Zero => Zero() // warning
   case Succ(Zero()): Succ[Zero] => Succ(Zero()) // warning
-  case Succ(Succ(predPredN)): Succ[Succ[_]] => inlineDependentlyTypedMod2(predPredN) // warning
+  case Succ(Succ(predPredN)): Succ[Succ[?]] => inlineDependentlyTypedMod2(predPredN) // warning
 
 transparent inline def transparentInlineDependentlyTypedMod2[N <: NatT](inline n: N): Mod2[N] = inline n match
   case Zero(): Zero => Zero() // warning
   case Succ(Zero()): Succ[Zero] => Succ(Zero()) // warning
-  case Succ(Succ(predPredN)): Succ[Succ[_]] => transparentInlineDependentlyTypedMod2(predPredN) // warning
+  case Succ(Succ(predPredN)): Succ[Succ[?]] => transparentInlineDependentlyTypedMod2(predPredN) // warning
 
 def foo(n: NatT): NatT = mod2(n) match
   case Succ(Zero()) => Zero()

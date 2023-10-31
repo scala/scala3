@@ -16,7 +16,7 @@ object Test {
     convert(new SubclassProperty)
   }
 
-  def convert(prop: TopProperty): MyProp[_] = {
+  def convert(prop: TopProperty): MyProp[?] = {
     prop match {
 
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

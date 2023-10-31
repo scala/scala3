@@ -1,6 +1,6 @@
 object Test {
   trait A[T]
-  def f(implicit p: A[_]) = null
-  implicit val x: A[_] = null
+  def f(implicit p: A[?]) = null
+  implicit val x: A[?] = null
   println(f)
 }

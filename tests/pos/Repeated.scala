@@ -119,7 +119,7 @@ object Repeated:
     def segmentLength(p: (A) => Boolean, from: Int): Int = xs.segmentLength(p, from)
     def segmentLength(p: (A) => Boolean): Int = xs.segmentLength(p)
     def size: Int = xs.size
-    def sizeCompare(that: Iterable[_]): Int = xs.sizeCompare(that)
+    def sizeCompare(that: Iterable[?]): Int = xs.sizeCompare(that)
     def sizeCompare(otherSize: Int): Int = xs.sizeCompare(otherSize)
     def sizeIs: SizeCompareOps = xs.sizeIs
     def slice(from: Int, until: Int): Repeated[A] = xs.slice(from, until)
@@ -130,7 +130,7 @@ object Repeated:
     def span(p: A => Boolean): (Repeated[A], Repeated[A]) = xs.span(p)
     def splitAt(n: Int): (Repeated[A], Repeated[A]) = xs.splitAt(n)
     def startsWith[B >: A](that: IterableOnce[B], offset: Int): Boolean = xs.startsWith(that, offset)
-    def stepper[S <: Stepper[_]](using StepperShape[A, S]): S = xs.stepper[S]
+    def stepper[S <: Stepper[?]](using StepperShape[A, S]): S = xs.stepper[S]
     def sum[B >: A](using math.Numeric[B]): B = xs.sum[B]
     def tail: Repeated[A] = xs.tail
     def tails: Iterator[Repeated[A]] = xs.tails

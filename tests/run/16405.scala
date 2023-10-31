@@ -9,7 +9,7 @@ object TypeDesc {
 
 def exampleFn(s: String, i: Int): Unit = ()
 
-inline def argumentTypesOf[R](fun: (_, _) => R): (TypeDesc[?], TypeDesc[?]) = {
+inline def argumentTypesOf[R](fun: (?, ?) => R): (TypeDesc[?], TypeDesc[?]) = {
   inline fun match {
     case x: ((a, b) => R) =>
       (scala.compiletime.summonInline[TypeDesc[a]], scala.compiletime.summonInline[TypeDesc[b]])

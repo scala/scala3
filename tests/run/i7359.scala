@@ -32,7 +32,7 @@ object Test:
 
   def main(args: Array[String]): Unit =
     val samPlainWithExtends : SAMPlainWithExtends = () => "o"
-    val samCovariantOutExtends : SAMCovariantOutExtends[_] = () => "o"
+    val samCovariantOutExtends : SAMCovariantOutExtends[?] = () => "o"
     val samContravariantInExtends : SAMContravariantInExtends[Int] = (x: Int) => ()
     val samInvariantExtends : SAMInvariantExtends[String] = (x: String) => x
     val samInOutExtends : SAMInOutExtends[Int, String] = (x: Int) => x.toString

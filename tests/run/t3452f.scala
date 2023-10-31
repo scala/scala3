@@ -14,6 +14,6 @@ abstract class Set[A] extends GenSet[A] with SetLike[A,Set[A]] with GenSetTempla
 
 object Test {
   def main(args: Array[String]): Unit = {
-    locally(classOf[Set[_]]) // trigger classloading to verify class
+    locally(classOf[Set[?]]) // trigger classloading to verify class
   }
 }

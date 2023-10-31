@@ -813,7 +813,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
     */
   def lengthCompare(len: Int): Int = super.sizeCompare(len)
 
-  override final def sizeCompare(that: Iterable[_]^): Int = lengthCompare(that)
+  override final def sizeCompare(that: Iterable[?]^): Int = lengthCompare(that)
 
   /** Compares the length of this $coll to the size of another `Iterable`.
     *
@@ -828,7 +828,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
     *  is `O(this.length min that.size)` instead of `O(this.length + that.size)`.
     *  The method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
     */
-  def lengthCompare(that: Iterable[_]^): Int = super.sizeCompare(that)
+  def lengthCompare(that: Iterable[?]^): Int = super.sizeCompare(that)
 
   /** Returns a value class containing operations for comparing the length of this $coll to a test value.
     *
@@ -1067,7 +1067,7 @@ object SeqOps {
     }
     // Now we know we actually need KMP search, so do it
     else S match {
-      case xs: scala.collection.IndexedSeq[_] =>
+      case xs: scala.collection.IndexedSeq[?] =>
         // We can index into S directly; it should be adequately fast
         val Wopt = kmpOptimizeWord(W, n0, n1, forward)
         val T = kmpJumpTable(Wopt, n1-n0)

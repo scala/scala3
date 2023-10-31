@@ -2,19 +2,19 @@ val a1 = {
   object O1 extends AnyRef
   Array(O1)
 }
-val a2: Array[_ <: AnyRef] = aa1
+val a2: Array[? <: AnyRef] = aa1
 
 val aa1 = {
   object O1 extends AnyRef
   Array(Array(O1))
 }
-val aa2: Array[_ <: Array[_ <: AnyRef]] = aa1
+val aa2: Array[? <: Array[? <: AnyRef]] = aa1
 
 val aaa1 = {
   object O1 extends AnyRef
   Array(Array(Array(O1)))
 }
-val aaa2: Array[_ <: Array[_ <: Array[_ <: AnyRef]]] = aaa1
+val aaa2: Array[? <: Array[? <: Array[? <: AnyRef]]] = aaa1
 
 
 // Let's make sure avoidance still does the right thing given abstract type constructors

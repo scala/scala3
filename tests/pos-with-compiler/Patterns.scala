@@ -97,8 +97,8 @@ object Patterns {
   class caseWithPatternVariableHelper2[A]
 
   def caseWithPatternVariable(x: Any) = x match {
-    case a: caseWithPatternVariableHelper1[_] => ()
-    case b: caseWithPatternVariableHelper2[_] => ()
+    case a: caseWithPatternVariableHelper1[?] => ()
+    case b: caseWithPatternVariableHelper2[?] => ()
   }
 
 }

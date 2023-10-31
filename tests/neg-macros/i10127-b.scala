@@ -1,6 +1,6 @@
 import scala.quoted.*
 
-case class T(x: Type[_ <: Any])
+case class T(x: Type[? <: Any])
 
 object T {
   def impl[A](t: T)(using ctx: Quotes): Expr[Unit] = {

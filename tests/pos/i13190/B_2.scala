@@ -3,7 +3,7 @@ import Opaque.*
 object Test {
   type FindField[R <: scala.Tuple, K] = R match {
     case FieldType[K, f] *: t => f
-    case _ *: t => FindField[t, K]
+    case ? *: t => FindField[t, K]
   }
 
   val f: FieldType["A", Int] = ???

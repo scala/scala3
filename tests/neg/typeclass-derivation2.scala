@@ -116,8 +116,8 @@ object TypeLevel {
 
   // substitute for erasedValue that allows precise matching
   final abstract class Type[-A, +B]
-  type Subtype[t] = Type[_, t]
-  type Supertype[t] = Type[t, _]
+  type Subtype[t] = Type[?, t]
+  type Supertype[t] = Type[t, ?]
   type Exactly[t] = Type[t, t]
   erased def typeOf[T]: Type[T, T] = compiletime.erasedValue
 }
@@ -253,7 +253,7 @@ object Show {
     def show(x: T): String = inline erasedValue[S] match {
       case _: Shape.Cases[alts] =>
         showCases[T, alts](ev, x)
-      case _: Shape.Case[_, elems] =>
+      case _: Shape.Case[?, elems] =>
         showCase[T, elems](ev, x)
     }
   }

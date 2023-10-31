@@ -16,11 +16,11 @@ type Bar = [Q] =>> x1.Y[Q]
     case _: a1.B => println("ok")
   }
   y match {
-    case _: x2.Y[_] => println("wrong")
-    case _: x1.Y[_] => println("ok")
+    case _: x2.Y[?] => println("wrong")
+    case _: x1.Y[?] => println("ok")
   }
   y match {
-    case _: Foo[_] => println("wrong")
-    case _: Bar[_] => println("ok")
+    case _: Foo[?] => println("wrong")
+    case _: Bar[?] => println("ok")
   }
 }

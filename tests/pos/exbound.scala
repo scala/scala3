@@ -3,5 +3,5 @@ class A[T <: A[T]] {
 }
 
 object Test {
-  val x: A[_] = null
+  val x: A[?] = null
 }

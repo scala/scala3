@@ -15,5 +15,5 @@ trait Expose[
     M <: Module { type X = X0; type Y = Y0 }
 ]
 
-def test(ms: Seq[Option[Module]]): Seq[Expose[_, _, _]] =
+def test(ms: Seq[Option[Module]]): Seq[Expose[?, ?, ?]] =
   ms.collect { case Some(module) => module.expose }

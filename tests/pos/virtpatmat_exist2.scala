@@ -1,9 +1,9 @@
 class ParseResult[+T]
-case class MemoEntry[+T](var r: Either[Nothing,ParseResult[_]])
+case class MemoEntry[+T](var r: Either[Nothing,ParseResult[?]])
 
 object Test {
   def grow[T]: ParseResult[T] = (null: MemoEntry[T]) match {
-    case MemoEntry(Right(x: ParseResult[_])) => x.asInstanceOf[ParseResult[T]]
+    case MemoEntry(Right(x: ParseResult[?])) => x.asInstanceOf[ParseResult[T]]
   }
 
   // what's the _$1 doing there?

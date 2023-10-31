@@ -4,7 +4,7 @@ def test[A](as: List[A]) = println(as)
 def tost[A](a: Class[A]) = println(a)
 
 @main def main() = {
-  val one: One[_] = new One()
+  val one: One[?] = new One()
   test(one.getClass(): Class[?]) //this fails
   val cls = one.getClass()
   test(cls) //this is ok

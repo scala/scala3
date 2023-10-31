@@ -484,7 +484,7 @@ object CollectionStrawMan5 {
       this: Concat[A]^{underlying, other} =>
       def iterator: Iterator[A]^{this} = underlying.iterator ++ other
       override def knownLength = other match {
-        case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
+        case other: Iterable[?] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
           underlying.knownLength + other.knownLength
         case _ =>
           -1
@@ -495,7 +495,7 @@ object CollectionStrawMan5 {
       this: Zip[A, B]^{underlying, other} =>
       def iterator: Iterator[(A, B)]^{this} = underlying.iterator.zip(other)
       override def knownLength = other match {
-        case other: Iterable[_] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
+        case other: Iterable[?] if underlying.knownLength >= 0 && other.knownLength >= 0 =>
           underlying.knownLength min other.knownLength
         case _ =>
           -1

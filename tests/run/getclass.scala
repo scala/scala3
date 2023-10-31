@@ -5,8 +5,8 @@ class SomeClass
 
 object Test {
   def main(args: Array[String]): Unit = {
-    val cls: Predef.Class[_] = new SomeClass().getClass
-    val valCls: Predef.Class[_] = new ValueClass(1).getClass
+    val cls: Predef.Class[?] = new SomeClass().getClass
+    val valCls: Predef.Class[?] = new ValueClass(1).getClass
     val iCls: Class[Int] = 1.getClass
     val f1: Function2[Int, Int, Unit] = (a: Int, b: Int) => println(a + b)
     val f2: Function1[Int, Boolean] = (a: Int) => a % 2 == 0

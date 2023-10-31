@@ -11,7 +11,7 @@ object WithExtraParent:
 
   object Tup {
     type Tail[X <: NonEmptyTup] <: Tup = X match {
-      case _ **: xs => xs
+      case ? **: xs => xs
     }
   }
 
@@ -38,7 +38,7 @@ object WithNonAbstractParent:
 
   object Tup {
     type Tail[X <: NonEmptyTup] <: Tup = X match {
-      case _ **: xs => xs
+      case ? **: xs => xs
     }
   }
 
@@ -64,8 +64,8 @@ object WithExhaustiveMatch:
 
   object Tup {
     type Tail[X <: NonEmptyTup] <: Tup = X match {
-      case _ **: xs => xs
-      case _ *+: xs => xs
+      case ? **: xs => xs
+      case ? *+: xs => xs
     }
   }
 

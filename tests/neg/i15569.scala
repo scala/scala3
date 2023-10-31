@@ -20,7 +20,7 @@ def andThenSub[A, B, C](f: A <:< B, g: B <:< C): A <:< C =
 }
 
 @main def Test3ok = (None: Option[Foo[?]]) match {
-  case _: Option[Foo[_]] =>  // ok
+  case _: Option[Foo[?]] =>  // ok
 }
 
 @main def Test4 =

@@ -7,7 +7,7 @@ class Spec[-R] {
   def foo[R1 <: R](aspect: TestAspect[R1, R1]): Unit = {}
 }
 
-class SuiteBuilder[R <: Has[_]] {
+class SuiteBuilder[R <: Has[?]] {
   def toSpec(
     spec: Spec[R & Has[Foo]],
     aspect: TestAspect[

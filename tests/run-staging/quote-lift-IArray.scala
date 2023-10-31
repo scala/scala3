@@ -6,7 +6,7 @@ object Test {
   def main(args: Array[String]): Unit = run {
     '{
       def p[T](arr: IArray[T]): Unit = {
-        println(arr.asInstanceOf[Array[_]].mkString("[", ", ", "]"))
+        println(arr.asInstanceOf[Array[?]].mkString("[", ", ", "]"))
       }
       p(${Expr(IArray.empty[Boolean])})
       p(${Expr(IArray.empty[Byte])})

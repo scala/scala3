@@ -1,5 +1,5 @@
 class T {
   def foo(any: AnyRef): Unit = {
-    any.asInstanceOf[Array[_]].iterator
+    any.asInstanceOf[Array[?]].iterator
   }
 }

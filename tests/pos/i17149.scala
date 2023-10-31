@@ -1,4 +1,4 @@
-type Ext[S <: Seq[_]] = S match {
+type Ext[S <: Seq[?]] = S match {
   case Seq[t] => t
 }
 

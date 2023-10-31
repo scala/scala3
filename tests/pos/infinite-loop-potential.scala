@@ -5,6 +5,6 @@ object InfiniteSubtypingLoopPossibility {
 
   def c: Any = ???
   c match {
-    case pc: Min[_] =>
+    case pc: Min[?] =>
   }
 }

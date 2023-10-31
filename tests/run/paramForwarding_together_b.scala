@@ -14,7 +14,7 @@ class A(val member: Int) {
 
 
 object Test {
-  def printFields(cls: Class[_]) =
+  def printFields(cls: Class[?]) =
     println(cls.getDeclaredFields.map(_.toString).sorted.toList.mkString("\n"))
 
   def main(args: Array[String]): Unit = {

@@ -1,1 +1,1 @@
-class A [ T <: A[_] & Number]
+class A [ T <: A[?] & Number]

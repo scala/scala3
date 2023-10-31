@@ -9,7 +9,7 @@ object Macros {
 
     val res = quotes.asInstanceOf[scala.quoted.runtime.QuoteMatching].TypeMatch.unapply[Tuple, Tuple](a)(using b).map { tup =>
       tup.toArray.toList.map {
-        case r: Type[_] =>
+        case r: Type[?] =>
           s"Type(${TypeTree.of(using r).show})"
       }
     }

@@ -18,8 +18,8 @@ class Structural {
 }
 
 class Wildcards {
-  def e1: List[_] = ???
-  def e2: List[_ <: Int] = ???
+  def e1: List[?] = ???
+  def e2: List[? <: Int] = ???
 }
 
 object Test {
@@ -37,7 +37,7 @@ object Test {
 
   {
     (??? : Any) match {
-      case e3: List[_] =>
+      case e3: List[?] =>
         val e3x = e3.head
         ()
     }

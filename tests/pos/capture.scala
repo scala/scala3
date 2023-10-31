@@ -29,7 +29,7 @@ class Test {
     def toExpr(implicit ev: Liftable[T]): Expr[T] = ???
   }
 
-  def runtimeClass: Class[_] = ???
+  def runtimeClass: Class[?] = ???
 
   runtimeClass.toExpr(ClassIsLiftable) // OK for skolemization-as-a-whole and skolemization-of-each-param
 

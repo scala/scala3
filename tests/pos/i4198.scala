@@ -1,9 +1,9 @@
 class Foo {
   def foo(x: Any): Unit = {
     x match {
-      case y: Bar[_] =>
+      case y: Bar[?] =>
         y.value match {
-          case value: Bar[_] => // here x is an instance of Bar[Bar[_]]
+          case value: Bar[?] => // here x is an instance of Bar[Bar[_]]
           case _ =>
         }
     }

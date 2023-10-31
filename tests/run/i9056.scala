@@ -12,8 +12,8 @@
   assert(!("": Any).isInstanceOf[NonEmptyTuple])
   assert(!(Some(""): Any).isInstanceOf[NonEmptyTuple])
 
-  assert(!((): Any).isInstanceOf[_ *: _])
-  assert((1, 2).isInstanceOf[_ *: _])
-  assert((1, 2, 3).isInstanceOf[_ *: _])
-  assert(!("": Any).isInstanceOf[_ *: _])
-  assert(!(Some(""): Any).isInstanceOf[_ *: _])
+  assert(!((): Any).isInstanceOf[? *: ?])
+  assert((1, 2).isInstanceOf[? *: ?])
+  assert((1, 2, 3).isInstanceOf[? *: ?])
+  assert(!("": Any).isInstanceOf[? *: ?])
+  assert(!(Some(""): Any).isInstanceOf[? *: ?])

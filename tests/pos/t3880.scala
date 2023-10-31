@@ -8,10 +8,10 @@ final class C1[+B] extends Bar[B] {
   // (That is good news, but is sound only because C1 is final; see #3989
   // and compare with i3989a.scala.
   private[this] def f1(x: Bar[B]): Unit = x match {
-    case x: C1[_] => g(x)
+    case x: C1[?] => g(x)
   }
   // this one crashes.
   private[this] def f2(x: Bar[B]): Unit = x match {
-    case x: C1[_] => f2(x)
+    case x: C1[?] => f2(x)
   }
 }

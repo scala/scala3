@@ -3,7 +3,7 @@ package p
 class X[T]
 
 trait A {
-  def m(s:X[_]): Unit = {}
+  def m(s:X[?]): Unit = {}
 }
 
 trait B extends A {

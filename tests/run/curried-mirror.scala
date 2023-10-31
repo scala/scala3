@@ -22,7 +22,7 @@ object Test extends App {
   {
     val v0 = summon[Mirror.Product { type MirroredType = [T, U] =>> Prod1[U] }]
     val v1 = v0.fromProduct(Tuple1(13))
-    val v2: Prod1[_] = v1
+    val v2: Prod1[?] = v1
     assert(v2 == Prod1(13))
   }
 
@@ -31,14 +31,14 @@ object Test extends App {
   {
     val v0 = summon[Mirror.Product { type MirroredType[X, Y] = Prod2[X, Y] }]
     val v1 = v0.fromProduct((23, "foo"))
-    val v2: Prod2[_, _] = v1
+    val v2: Prod2[?, ?] = v1
     assert(v2 == Prod2(23, "foo"))
   }
 
   {
     val v0 = summon[Mirror.Product { type MirroredType = [B] =>> Prod2[Int, B] }]
     val v1 = v0.fromProduct((23, "foo"))
-    val v2: Prod2[Int, _] = v1
+    val v2: Prod2[Int, ?] = v1
     assert(v2 == Prod2(23, "foo"))
   }
 
@@ -54,7 +54,7 @@ object Test extends App {
   {
     val v0 = summon[Mirror.Product { type MirroredType = [T, U] =>> ProdV1[U] }]
     val v1 = v0.fromProduct(Tuple1(13))
-    val v2: ProdV1[_] = v1
+    val v2: ProdV1[?] = v1
     assert(v2 == ProdV1(13))
   }
 
@@ -63,14 +63,14 @@ object Test extends App {
   {
     val v0 = summon[Mirror.Product { type MirroredType[+X, +Y] = ProdV2[X, Y] }]
     val v1 = v0.fromProduct((23, "foo"))
-    val v2: ProdV2[_, _] = v1
+    val v2: ProdV2[?, ?] = v1
     assert(v2 == ProdV2(23, "foo"))
   }
 
   {
     val v0 = summon[Mirror.Product { type MirroredType = [B] =>> ProdV2[Int, B] }]
     val v1 = v0.fromProduct((23, "foo"))
-    val v2: ProdV2[Int, _] = v1
+    val v2: ProdV2[Int, ?] = v1
     assert(v2 == ProdV2(23, "foo"))
   }
 

@@ -6,7 +6,7 @@ sealed trait HList extends Product with Serializable {
 
 final case class ::[+H, +T <: HList](head : H, tail : T) extends HList {
   override def toString = head match {
-    case _: ::[_, _] => s"($head) :: $tail"
+    case _: ::[?, ?] => s"($head) :: $tail"
     case _ => s"$head :: $tail"
   }
 }

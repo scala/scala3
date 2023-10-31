@@ -5,7 +5,7 @@ object E {
 }
 
 object Bug {
-  def bug[A](e: Either[W[_], A]) = e match {
+  def bug[A](e: Either[W[?], A]) = e match {
     case Left(E(x)) => 1
     case Right(x)   => 2
     case _          => 3

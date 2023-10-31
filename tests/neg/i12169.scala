@@ -14,7 +14,7 @@ private final class FlatVarCellView[T <: Txn[T], B](
 def Test =
   val opt: Option[Form[TT]] = ???
   val firstVr = opt match
-    case Some(ex: Var.Expanded[TT, _]) => Some(ex)
+    case Some(ex: Var.Expanded[TT, ?]) => Some(ex)
     case _                            => None
   new FlatVarCellView(firstVr)  // error
    //                      Found:    (firstVr : Option[Var.Expanded[TT, ?]])
@@ -28,7 +28,7 @@ def Test =
 
   // Remedy:
   opt match
-    case Some(ex: Var.Expanded[TT, _]) => new FlatVarCellView(Some(ex))
+    case Some(ex: Var.Expanded[TT, ?]) => new FlatVarCellView(Some(ex))
       // here, we instantiate `B` with the unnamed second parameter of `Var.Expanded`
     case _                             => new FlatVarCellView(None)
   opt match

@@ -16,7 +16,7 @@ object Test {
 
     '{
       // class Object
-      ${test(classOf[Array[_]])}
+      ${test(classOf[Array[?]])}
 
       // class Array[Foo]
       ${test(classOf[Array[Foo]])}

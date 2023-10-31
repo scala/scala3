@@ -114,6 +114,10 @@ object language:
      */
     @compileTimeOnly("`symbolLiterals` can only be used at compile time in import statements")
     object symbolLiterals
+
+    /** TODO */
+    @compileTimeOnly("`underscoreWildcards` can only be used at compile time in import statements")
+    object underscoreWildcards
   end deprecated
 
   /** Where imported, auto-tupling is disabled.

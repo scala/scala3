@@ -2,7 +2,7 @@ trait Template[+T <: Template[T]]:
    type Clone <: T { type Clone = Template.this.Clone }
    val self :Clone
 
-type Food = Template[_]
+type Food = Template[?]
 
 class Ham extends Template[Ham]:
    type Clone = Ham

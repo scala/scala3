@@ -45,8 +45,8 @@ object approximateUnion2 {
     val x = if (coin) new A{} else new B{}
     val y = Some(if (coin) new A{} else new B{})
 
-    val xtest: C[_ >: A & B <: A | B] & D = x
-    val ytest: Some[C[_ >: A & B <: A | B] & D] = y
+    val xtest: C[? >: A & B <: A | B] & D = x
+    val ytest: Some[C[? >: A & B <: A | B] & D] = y
   }
 
   {
@@ -57,8 +57,8 @@ object approximateUnion2 {
     val x = if (coin) new A{} else new B{}
     val y = Some(if (coin) new A{} else new B{})
 
-    val xtest: C[_ >: X[A | B] <: X[A & B]] & D = x
-    val ytest: Some[C[_ >: X[A | B] <: X[A & B]]] = y
+    val xtest: C[? >: X[A | B] <: X[A & B]] & D = x
+    val ytest: Some[C[? >: X[A | B] <: X[A & B]]] = y
   }
 }
 

@@ -204,7 +204,7 @@ object IntImplementation extends Numbers {
   }
 
   private def intClassTag(cond: Int => Boolean): ClassTag[Int] = new ClassTag[Int] {
-    def runtimeClass: Class[_] = classOf[Int]
+    def runtimeClass: Class[?] = classOf[Int]
     override def unapply(x: Any): Option[Int] = x match {
       case i: Int if cond(i) => Some(i)
       case _ => None
@@ -220,7 +220,7 @@ object UnboundedIntImplementation extends Numbers {
   type Nat = Any // Int | BigInt
 
   def natClassTag: ClassTag[Nat] = new ClassTag[Any] {
-    def runtimeClass: Class[_] = classOf[Any]
+    def runtimeClass: Class[?] = classOf[Any]
     override def unapply(x: Any): Option[Nat] = x match {
       case i: Int if i >= 0 => Some(i)
       case i: BigInt if i > Int.MaxValue => Some(i)
@@ -246,7 +246,7 @@ object UnboundedIntImplementation extends Numbers {
   type Zero = Int
 
   def zeroClassTag: ClassTag[Zero] = new ClassTag[Int] {
-    def runtimeClass: Class[_] = classOf[Int]
+    def runtimeClass: Class[?] = classOf[Int]
     override def unapply(x: Any): Option[Int] = if (x == 0) Some(0) else None
   }
 
@@ -260,7 +260,7 @@ object UnboundedIntImplementation extends Numbers {
   type Succ = Any // Int | BigInt
 
   def succClassTag: ClassTag[Succ] = new ClassTag[Any] {
-    def runtimeClass: Class[_] = classOf[Any]
+    def runtimeClass: Class[?] = classOf[Any]
     override def unapply(x: Any): Option[Succ] = x match {
       case i: Int if i > 0 => Some(i)
       case i: BigInt if i > Int.MaxValue => Some(i)

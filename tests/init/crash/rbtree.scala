@@ -27,9 +27,9 @@ import scala.annotation.meta.getter
 private[collection]
 object RedBlackTree {
 
-  def isEmpty(tree: Tree[_, _]): Boolean = tree eq null
+  def isEmpty(tree: Tree[?, ?]): Boolean = tree eq null
 
-  def contains[A: Ordering](tree: Tree[A, _], x: A): Boolean = lookup(tree, x) ne null
+  def contains[A: Ordering](tree: Tree[A, ?], x: A): Boolean = lookup(tree, x) ne null
   def get[A: Ordering, B](tree: Tree[A, B], x: A): Option[B] = lookup(tree, x) match {
     case null => None
     case tree => Some(tree.value)
@@ -43,12 +43,12 @@ object RedBlackTree {
     else tree
   }
 
-  def count(tree: Tree[_, _]) = if (tree eq null) 0 else tree.count
+  def count(tree: Tree[?, ?]) = if (tree eq null) 0 else tree.count
   /**
    * Count all the nodes with keys greater than or equal to the lower bound and less than the upper bound.
    * The two bounds are optional.
    */
-  def countInRange[A](tree: Tree[A, _], from: Option[A], to:Option[A])(implicit ordering: Ordering[A]) : Int =
+  def countInRange[A](tree: Tree[A, ?], from: Option[A], to:Option[A])(implicit ordering: Ordering[A]) : Int =
     if (tree eq null) 0 else
     (from, to) match {
       // with no bounds use this node's count
@@ -102,16 +102,16 @@ object RedBlackTree {
     if (tree.right ne null) _foreach(tree.right, f)
   }
 
-  def foreachKey[A, U](tree:Tree[A,_], f: A => U):Unit = if (tree ne null) _foreachKey(tree,f)
+  def foreachKey[A, U](tree:Tree[A, ?], f: A => U):Unit = if (tree ne null) _foreachKey(tree,f)
 
-  private[this] def _foreachKey[A, U](tree: Tree[A, _], f: A => U): Unit = {
+  private[this] def _foreachKey[A, U](tree: Tree[A, ?], f: A => U): Unit = {
     if (tree.left ne null) _foreachKey(tree.left, f)
     f((tree.key))
     if (tree.right ne null) _foreachKey(tree.right, f)
   }
 
   def iterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None): Iterator[(A, B)] = new EntriesIterator(tree, start)
-  def keysIterator[A: Ordering](tree: Tree[A, _], start: Option[A] = None): Iterator[A] = new KeysIterator(tree, start)
+  def keysIterator[A: Ordering](tree: Tree[A, ?], start: Option[A] = None): Iterator[A] = new KeysIterator(tree, start)
   def valuesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None): Iterator[B] = new ValuesIterator(tree, start)
 
   @tailrec
@@ -122,10 +122,10 @@ object RedBlackTree {
     else tree
   }
 
-  def isBlack(tree: Tree[_, _]) = (tree eq null) || isBlackTree(tree)
+  def isBlack(tree: Tree[?, ?]) = (tree eq null) || isBlackTree(tree)
 
-  private[this] def isRedTree(tree: Tree[_, _]) = tree.isInstanceOf[RedTree[_, _]]
-  private[this] def isBlackTree(tree: Tree[_, _]) = tree.isInstanceOf[BlackTree[_, _]]
+  private[this] def isRedTree(tree: Tree[?, ?]) = tree.isInstanceOf[RedTree[?, ?]]
+  private[this] def isBlackTree(tree: Tree[?, ?]) = tree.isInstanceOf[BlackTree[?, ?]]
 
   private[this] def blacken[A, B](t: Tree[A, B]): Tree[A, B] = if (t eq null) null else t.black
 
@@ -192,7 +192,7 @@ object RedBlackTree {
       BlackTree(x, xv, tl, tr)
     }
     def subl(t: Tree[A, B]) =
-      if (t.isInstanceOf[BlackTree[_, _]]) t.red
+      if (t.isInstanceOf[BlackTree[?, ?]]) t.red
       else sys.error("Defect: invariance violation; expected black, got "+t)
 
     def balLeft(x: A, xv: B, tl: Tree[A, B], tr: Tree[A, B]) = if (isRedTree(tl)) {

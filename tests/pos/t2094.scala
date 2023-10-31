@@ -17,7 +17,7 @@ object Test extends App {
   // one error found
 }
 sealed trait Value {
-  def getType: Option[Class[_]]
+  def getType: Option[Class[?]]
 }
 
 case class UnknownValue() extends Value {
@@ -26,6 +26,6 @@ case class UnknownValue() extends Value {
   // def getType: Option[Class[_]] = None
 }
 
-case class KnownType(typ: Class[_]) extends Value {
+case class KnownType(typ: Class[?]) extends Value {
   def getType = Some(typ)
 }

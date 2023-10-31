@@ -3,14 +3,14 @@ object Example extends App {
   trait Has[A]
 
   trait ZIO[-R] {
-    def provideLayer[R0, R1 <: Has[_]](
+    def provideLayer[R0, R1 <: Has[?]](
         layer: ZLayer[R0, R1]
     )(implicit ev: R1 <:< R): ZIO[R0] =
       ???
   }
 
-  trait ZLayer[-RIn, +ROut <: Has[_]] {
-    def ++[RIn2, ROut1 >: ROut <: Has[_], ROut2 <: Has[_]](
+  trait ZLayer[-RIn, +ROut <: Has[?]] {
+    def ++[RIn2, ROut1 >: ROut <: Has[?], ROut2 <: Has[?]](
         that: ZLayer[RIn2, ROut2]
     ): ZLayer[RIn with RIn2, ROut1 with ROut2] = ???
   }

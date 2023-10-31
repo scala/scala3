@@ -7,18 +7,18 @@ abstract class Test {
   def x: Has[X] | (Has[Y] & Has[Z])
   val y: Has[? >: (X & Y) | (X & Z) <: (X | Y) & (X | Z)] = x
 
-  def foo[T <: Has[_]](has: T): T = has
+  def foo[T <: Has[?]](has: T): T = has
   foo(x)
 }
 
 // -------------------------------------------
 
-trait ZLayer[-RIn, +E, +ROut <: Has[_]] {
-  def >>>[E1 >: E, ROut2 <: Has[_]](that: ZLayer[ROut, E1, ROut2]): ZLayer[RIn, E1, ROut2]
-  def ++[E1 >: E, RIn2, ROut1 >: ROut <: Has[_], ROut2 <: Has[_]](that: ZLayer[RIn2, E1, ROut2]): ZLayer[RIn with RIn2, E1, ROut1 with ROut2]
+trait ZLayer[-RIn, +E, +ROut <: Has[?]] {
+  def >>>[E1 >: E, ROut2 <: Has[?]](that: ZLayer[ROut, E1, ROut2]): ZLayer[RIn, E1, ROut2]
+  def ++[E1 >: E, RIn2, ROut1 >: ROut <: Has[?], ROut2 <: Has[?]](that: ZLayer[RIn2, E1, ROut2]): ZLayer[RIn with RIn2, E1, ROut1 with ROut2]
 }
 object ZLayer {
-  type NoDeps[+E, +B <: Has[_]] = ZLayer[Any, E, B]
+  type NoDeps[+E, +B <: Has[?]] = ZLayer[Any, E, B]
 }
 
 type ServiceA = Has[ServiceA.Service]

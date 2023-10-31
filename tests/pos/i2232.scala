@@ -16,7 +16,7 @@ object Cats {
   }
 
   object Category {
-    type ByF[F[_, _]] = Category[_] { type -> [X, Y] = F[X, Y] }
+    type ByF[F[_, _]] = Category[?] { type -> [X, Y] = F[X, Y] }
   }
 
   type Scal[f[_[_], _[_, _]]] = f[Trivial, Function1]

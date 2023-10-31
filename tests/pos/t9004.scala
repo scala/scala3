@@ -1,7 +1,7 @@
 object Main {
   trait AA[RR] { type R = RR; def r: R }
 
-  def test1(a: AA[_]) = {
+  def test1(a: AA[?]) = {
     val f = () => a.r
     // The tree a.r is given the type `a.R` which normalizes
     // to B', where B' is a distinct symbol ("captured existential skolem")

@@ -28,14 +28,14 @@ object TestThrows {
     def readNoEx(): Int
   }
 
-  def checkMethod(cls: Class[_], name: String): Unit = {
+  def checkMethod(cls: Class[?], name: String): Unit = {
     val method = cls.getMethod(name)
     println(name + " throws: " + method.getExceptionTypes.mkString("", ", ", ""))
     val annots = method.getDeclaredAnnotations.map(_.annotationType)
     println(name + " annotations: " + annots.mkString("", ", ", ""))
   }
 
-  def run(cls: Class[_]): Unit = {
+  def run(cls: Class[?]): Unit = {
     checkMethod(cls, "read")
     checkMethod(cls, "readWith2")
     checkMethod(cls, "readMixed")

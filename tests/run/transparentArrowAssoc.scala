@@ -4,7 +4,7 @@ import scala.collection.mutable.{ Builder, ListBuffer }
 
 object Test {
 
-  private val defaultOrdering = Map[Numeric[_], Ordering[_]](
+  private val defaultOrdering = Map[Numeric[?], Ordering[?]](
     Numeric.BigIntIsIntegral -> Ordering.BigInt,
     Numeric.IntIsIntegral -> Ordering.Int
   )

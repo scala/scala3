@@ -1,4 +1,4 @@
-class Schema(impl: Class[_]) extends scala.annotation.StaticAnnotation
+class Schema(impl: Class[?]) extends scala.annotation.StaticAnnotation
 
 class Ann[A] extends scala.annotation.StaticAnnotation
 
