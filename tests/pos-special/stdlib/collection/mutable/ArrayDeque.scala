@@ -18,6 +18,7 @@ import scala.annotation.nowarn
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.reflect.ClassTag
+import language.experimental.captureChecking
 
 /** An implementation of a double-ended queue that internally uses a resizable circular buffer.
   *
@@ -36,7 +37,7 @@ import scala.reflect.ClassTag
   *  @define mayNotTerminateInf
   *  @define willNotTerminateInf
   */
-class ArrayDeque[A] protected (
+class ArrayDeque[sealed A] protected (
     protected var array: Array[AnyRef],
     private[ArrayDeque] var start: Int,
     private[ArrayDeque] var end: Int
@@ -99,7 +100,7 @@ class ArrayDeque[A] protected (
     this
   }
 
-  override def prependAll(elems: IterableOnce[A]): this.type = {
+  override def prependAll(elems: IterableOnce[A]^): this.type = {
     val it = elems.iterator
     if (it.nonEmpty) {
       val n = length
@@ -130,7 +131,7 @@ class ArrayDeque[A] protected (
     this
   }
 
-  override def addAll(elems: IterableOnce[A]): this.type = {
+  override def addAll(elems: IterableOnce[A]^): this.type = {
     elems.knownSize match {
       case srcLength if srcLength > 0 =>
         ensureSize(srcLength + length)
@@ -176,7 +177,7 @@ class ArrayDeque[A] protected (
     }
   }
 
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit = {
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
     requireBounds(idx, length+1)
     val n = length
     if (idx == 0) {
@@ -462,7 +463,7 @@ class ArrayDeque[A] protected (
   protected def ofArray(array: Array[AnyRef], end: Int): ArrayDeque[A] =
     new ArrayDeque[A](array, start = 0, end)
 
-  override def copyToArray[B >: A](dest: Array[B], destStart: Int, len: Int): Int = {
+  override def copyToArray[sealed B >: A](dest: Array[B], destStart: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, dest.length, destStart, len)
     if (copied > 0) {
       copySliceToArray(srcStart = 0, dest = dest, destStart = destStart, maxItems = len)
@@ -470,7 +471,7 @@ class ArrayDeque[A] protected (
     copied
   }
 
-  override def toArray[B >: A: ClassTag]: Array[B] =
+  override def toArray[sealed B >: A: ClassTag]: Array[B] =
     copySliceToArray(srcStart = 0, dest = new Array[B](length), destStart = 0, maxItems = length)
 
   /**
@@ -525,7 +526,7 @@ class ArrayDeque[A] protected (
 @SerialVersionUID(3L)
 object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
 
-  def from[B](coll: collection.IterableOnce[B]): ArrayDeque[B] = {
+  def from[sealed B](coll: collection.IterableOnce[B]): ArrayDeque[B] = {
     val s = coll.knownSize
     if (s >= 0) {
       val array = alloc(s)
@@ -535,14 +536,14 @@ object ArrayDeque extends StrictOptimizedSeqFactory[ArrayDeque] {
     } else new ArrayDeque[B]() ++= coll
   }
 
-  def newBuilder[A]: Builder[A, ArrayDeque[A]] =
+  def newBuilder[sealed A]: Builder[A, ArrayDeque[A]] =
     new GrowableBuilder[A, ArrayDeque[A]](empty) {
       override def sizeHint(size: Int): Unit = {
         elems.ensureSize(size)
       }
     }
 
-  def empty[A]: ArrayDeque[A] = new ArrayDeque[A]()
+  def empty[sealed A]: ArrayDeque[A] = new ArrayDeque[A]()
 
   final val DefaultInitialSize = 16
 
