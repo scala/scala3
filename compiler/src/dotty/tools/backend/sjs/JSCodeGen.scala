@@ -1089,7 +1089,7 @@ class JSCodeGen()(using genCtx: Context) {
       val exports = List.newBuilder[jsExportsGen.Exported]
       val jsClassCaptures = List.newBuilder[js.ParamDef]
 
-      def add(tree: ConstructorTree[_ <: JSCtor]): Unit = {
+      def add(tree: ConstructorTree[? <: JSCtor]): Unit = {
         val (e, c) = genJSClassCtorDispatch(tree.ctor.sym,
             tree.ctor.paramsAndInfo, tree.overloadNum)
         exports += e
@@ -1270,7 +1270,7 @@ class JSCodeGen()(using genCtx: Context) {
      * here we use the property from building the trees, that a set of
      * descendants always has a range of overload numbers.
      */
-    def ifOverload(tree: ConstructorTree[_], body: js.Tree): js.Tree = body match {
+    def ifOverload(tree: ConstructorTree[?], body: js.Tree): js.Tree = body match {
       case js.Skip() => js.Skip()
 
       case body =>

@@ -160,7 +160,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       core ~ cs.optionalInfo
 
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
-    case ref: RefTree[_] if ref.typeOpt.exists =>
+    case ref: RefTree[?] if ref.typeOpt.exists =>
       toTextCaptureRef(ref.typeOpt)
     case Apply(fn, Literal(str) :: Nil) if fn.symbol == defn.Caps_capIn =>
       s"cap[${str.stringValue}]"

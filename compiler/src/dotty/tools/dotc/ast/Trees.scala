@@ -31,7 +31,7 @@ object Trees {
 
   /** Property key for backquoted identifiers and definitions */
   val Backquoted: Property.StickyKey[Unit] = Property.StickyKey()
-  
+
   val SyntheticUnit: Property.StickyKey[Unit] = Property.StickyKey()
 
   /** Trees take a parameter indicating what the type of their `tpe` field
@@ -932,11 +932,11 @@ object Trees {
     def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
 
     def leadingTypeParams(using Context): List[TypeDef[T]] = paramss match
-      case (tparams @ (tparam: TypeDef[_]) :: _) :: _ => tparams.asInstanceOf[List[TypeDef[T]]]
+      case (tparams @ (tparam: TypeDef[?]) :: _) :: _ => tparams.asInstanceOf[List[TypeDef[T]]]
       case _ => Nil
 
     def trailingParamss(using Context): List[ParamClause[T]] = paramss match
-      case ((tparam: TypeDef[_]) :: _) :: paramss1 => paramss1
+      case ((tparam: TypeDef[?]) :: _) :: paramss1 => paramss1
       case _ => paramss
 
     def termParamss(using Context): List[List[ValDef[T]]] =

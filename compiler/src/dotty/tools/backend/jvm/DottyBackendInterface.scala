@@ -93,7 +93,7 @@ class DottyBackendInterface(val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymb
 
 object DottyBackendInterface {
 
-  private def erasureString(clazz: Class[_]): String = {
+  private def erasureString(clazz: Class[?]): String = {
     if (clazz.isArray) "Array[" + erasureString(clazz.getComponentType) + "]"
     else clazz.getName
   }

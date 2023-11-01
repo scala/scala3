@@ -1779,7 +1779,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def show(using printer: Printer[TypeRepr]): String = printer.show(self)
 
-        def seal: scala.quoted.Type[_] = self.asType
+        def seal: scala.quoted.Type[?] = self.asType
 
         def asType: scala.quoted.Type[?] =
           new TypeImpl(Inferred(self), SpliceScope.getCurrent)

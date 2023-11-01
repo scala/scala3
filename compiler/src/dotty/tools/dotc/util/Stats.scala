@@ -32,7 +32,7 @@ import collection.mutable
       hits(name) += n
     }
 
-  def doRecordSize(fn: String, coll: scala.collection.Iterable[_]): coll.type =
+  def doRecordSize(fn: String, coll: scala.collection.Iterable[?]): coll.type =
     doRecord(fn, coll.size)
     coll
 
