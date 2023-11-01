@@ -25,7 +25,8 @@ trait Set[A]
   extends Iterable[A]
     with SetOps[A, Set, Set[A]]
     with Equals
-    with IterableFactoryDefaults[A, Set] {
+    with IterableFactoryDefaults[A, Set]
+    with Pure {
   self: Set[A] =>
 
   def canEqual(that: Any) = true
