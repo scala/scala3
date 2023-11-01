@@ -197,7 +197,7 @@ object ArrayOps {
   *
   *  @tparam A   type of the elements contained in this array.
   */
-final class ArrayOps[sealed A](private val xs: Array[A]) /*extends AnyVal*/ {
+final class ArrayOps[sealed A](private val xs: Array[A]) extends AnyVal {
 
   @`inline` private[this] implicit def elemTag: ClassTag[A] = ClassTag(xs.getClass.getComponentType)
 
