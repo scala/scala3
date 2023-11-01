@@ -2343,12 +2343,13 @@ object Parsers {
           val isVarargSplice = location.inArgs && followingIsVararg()
           in.nextToken()
           if isVarargSplice then
-            report.errorOrMigrationWarning(
-              em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice(`future-migration`)}",
-              in.sourcePos(uscoreStart),
-              future)
-            if sourceVersion == `future-migration` then
-              patch(source, Span(t.span.end, in.lastOffset), "*")
+            if !in.featureEnabled(Feature.ascriptionVarargsUnpacking) then
+              report.errorOrMigrationWarning(
+                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice(`3.4-migration`)}",
+                in.sourcePos(uscoreStart),
+                `3.4`)
+              if sourceVersion == `3.4-migration` then
+                patch(source, Span(t.span.end, in.lastOffset), "*")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.

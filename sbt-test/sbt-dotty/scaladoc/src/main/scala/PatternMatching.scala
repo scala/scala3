@@ -70,8 +70,8 @@ object PatternMatching {
 
     // http://dotty.epfl.ch/docs/reference/changed/vararg-patterns.html
     def containsConsecutive(list: List[Int]): Boolean = list match {
-      case List(a, b, xs: _ *) => if (a == b) true else containsConsecutive(b :: xs.toList)
-      case List(a, _ : _*) => false
+      case List(a, b, xs*) => if (a == b) true else containsConsecutive(b :: xs.toList)
+      case List(a, _*) => false
       case Nil => false
     }
 
@@ -86,7 +86,7 @@ object PatternMatching {
     import seqPattern._
 
     def greet(fullName: String) = fullName match {
-      case Names(lastName, firstName, _: _*) => "Good morning, " + firstName + " " + lastName + "!"
+      case Names(lastName, firstName, _*) => "Good morning, " + firstName + " " + lastName + "!"
       case _ => "Welcome! Please make sure to fill in your name!"
     }
 

@@ -80,7 +80,7 @@ object View extends IterableFactory[View] {
 
   def newBuilder[A]: Builder[A, View[A]] = ArrayBuffer.newBuilder[A].mapResult(from)
 
-  override def apply[A](xs: A*): View[A] = new Elems(xs: _*)
+  override def apply[A](xs: A*): View[A] = new Elems(xs*)
 
   /** The empty view */
   @SerialVersionUID(3L)

@@ -28,7 +28,7 @@ object Test extends App {
     }
 
     check(TreeSet[Int](), List[Int]())
-    val set = TreeSet(list:_*)
+    val set = TreeSet(list*)
     check(set, distinct)
     check(set.clone, distinct)
 
@@ -49,7 +49,7 @@ object Test extends App {
       assert(!(nonlist exists set.contains), s"$set had an element from $nonlist using contains")
     }
 
-    val set = TreeSet(list:_*)
+    val set = TreeSet(list*)
     check(set, list, nonlist)
     check(set.clone, list, nonlist)
 
@@ -102,7 +102,7 @@ object Test extends App {
         assert(builtList.size == set.size, s"$set had size $set.size while $builtList had size $builtList.size")
       }
     }
-    val set = TreeSet(list:_*)
+    val set = TreeSet(list*)
     val clone = set.clone
     val subset = set.clone from (min + 1) until max
     val subclone = subset.clone

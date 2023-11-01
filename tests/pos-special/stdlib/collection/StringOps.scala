@@ -862,7 +862,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *  @param groupNames The names of the groups in the pattern, in the order they appear.
     */
   @deprecated("use inline group names like (?<year>X) instead", "2.13.7")
-  def r(groupNames: String*): Regex = new Regex(s, groupNames: _*)
+  def r(groupNames: String*): Regex = new Regex(s, groupNames*)
 
   /**
    * @throws java.lang.IllegalArgumentException  If the string does not contain a parsable `Boolean`.
@@ -987,7 +987,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *  @throws java.lang.IllegalArgumentException
     */
   def format(args : Any*): String =
-    java.lang.String.format(s, args map unwrapArg: _*)
+    java.lang.String.format(s, args map unwrapArg*)
 
   /** Like `format(args*)` but takes an initial `Locale` parameter
     *  which influences formatting as in `java.lang.String`'s format.
@@ -1003,7 +1003,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *  @throws java.lang.IllegalArgumentException
     */
   def formatLocal(l: java.util.Locale, args: Any*): String =
-    java.lang.String.format(l, s, args map unwrapArg: _*)
+    java.lang.String.format(l, s, args map unwrapArg*)
 
   def compare(that: String): Int = s.compareTo(that)
 

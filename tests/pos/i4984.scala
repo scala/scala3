@@ -17,10 +17,10 @@ class Test {
   }
 
   def test2(xs: Array[Int]): Seq[Int] = xs match {
-    case Array2(x, y, xs:_*) => xs
+    case Array2(x, y, xs*) => xs
   }
 
   def test3(xs: Array[Int]): Seq[Int] = xs match {
-    case Array2(xs:_*) => xs
+    case Array2(xs*) => xs
   }
 }

@@ -17,7 +17,7 @@ object Macro2 {
     inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl[R]('elems) }
 
     def applyImpl[R <: Record: Type](elems: Expr[Seq[(String, Any)]])(using Quotes) = {
-      '{ new Record($elems:_*).asInstanceOf[R] }
+      '{ new Record($elems*).asInstanceOf[R] }
     }
 
     def fromUntypedTuple(elems: (String, Any)*): Record = new Record(elems*)

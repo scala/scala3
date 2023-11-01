@@ -21,5 +21,5 @@ object Test:
     callMain(Array())
     callMain(Array("1"))
     callMain(Array("1", "2", "3"))
-    callMain(Array((1 to 10).toArray.map(_.toString): _*))
+    callMain(Array((1 to 10).toArray.map(_.toString)*))
 end Test

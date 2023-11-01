@@ -24,15 +24,15 @@ def test2 = {
   val ys3: Array[String | Null] | Null = ???
   val ys4: Array[String] | Null = ???
 
-  Paths.get("", xs1: _*)
-  Paths.get("", xs2: _*)
-  Paths.get("", xs3: _*) // error
-  Paths.get("", xs4: _*) // error
+  Paths.get("", xs1*)
+  Paths.get("", xs2*)
+  Paths.get("", xs3*) // error
+  Paths.get("", xs4*) // error
 
-  Paths.get("", ys1: _*)
-  Paths.get("", ys2: _*)
-  Paths.get("", ys3: _*) // error
-  Paths.get("", ys4: _*) // error
+  Paths.get("", ys1*)
+  Paths.get("", ys2*)
+  Paths.get("", ys3*) // error
+  Paths.get("", ys4*) // error
 
-  Paths.get("", null: _*) // error
+  Paths.get("", null*) // error
 }

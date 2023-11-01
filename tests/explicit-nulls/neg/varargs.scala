@@ -17,17 +17,17 @@ class Varargs {
     f1(null) // error
     f1("")
     f1("", null) // error
-    f1(null: _*) // error
+    f1(null*) // error
 
-    f1(xs1: _*)
-    f1(xs2: _*) // error
-    f1(xs3: _*) // error
-    f1(xs4: _*) // error
+    f1(xs1*)
+    f1(xs2*) // error
+    f1(xs3*) // error
+    f1(xs4*) // error
 
-    f1(ys1: _*)
-    f1(ys2: _*) // error
-    f1(ys3: _*) // error
-    f1(ys4: _*) // error
+    f1(ys1*)
+    f1(ys2*) // error
+    f1(ys3*) // error
+    f1(ys4*) // error
   }
 
   def test2 = {
@@ -35,16 +35,16 @@ class Varargs {
     f2(null)
     f2("")
     f2("", null)
-    f2(null: _*) // error
+    f2(null*) // error
 
-    f2(xs1: _*)
-    f2(xs2: _*)
-    f2(xs3: _*) // error
-    f2(xs4: _*) // error
+    f2(xs1*)
+    f2(xs2*)
+    f2(xs3*) // error
+    f2(xs4*) // error
 
-    f2(ys1: _*)
-    f2(ys2: _*)
-    f2(ys3: _*) // error
-    f2(ys4: _*) // error
+    f2(ys1*)
+    f2(ys2*)
+    f2(ys3*) // error
+    f2(ys4*) // error
   }
 }

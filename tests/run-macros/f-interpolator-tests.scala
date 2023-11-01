@@ -401,7 +401,7 @@ object StringContextTestUtils:
     // Use this String interpolator to avoid problems with a locale-dependent decimal mark.
     def locally(numbers: String*): String =
       val numbersWithCorrectLocale = numbers.map(applyProperLocale)
-      sc.s(numbersWithCorrectLocale: _*)
+      sc.s(numbersWithCorrectLocale*)
 
     // Handles cases like locally"3.14" - it's prettier than locally"${"3.14"}".
     def locally(): String = sc.parts.map(applyProperLocale).mkString

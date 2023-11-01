@@ -1008,7 +1008,10 @@ object Build {
         Seq("-sourcepath", ((Compile/sourceManaged).value / "scala-library-src").toString)
       },
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
-      scalacOptions += "-Ycompile-scala2-library",
+      scalacOptions ++= Seq(
+        "-Ycompile-scala2-library",
+        "-language:deprecated.ascriptionVarargsUnpacking",
+      ),
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -1361,6 +1364,7 @@ object Build {
     dependsOn(`scala3-library-bootstrappedJS`).
     settings(
       bspEnabled := false,
+      scalacOptions += "-language:deprecated.ascriptionVarargsUnpacking",
       scalacOptions --= Seq("-Xfatal-warnings", "-deprecation"),
 
       // Required to run Scala.js tests.

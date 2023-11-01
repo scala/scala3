@@ -56,13 +56,13 @@ object Test extends App {
   0 until maxLength foreach {length =>
     val keyValues = (0 until length map {_ => (R nextInt maxKey, R nextInt maxValue)}).toList
     val keys = keyValues map (_._2)
-    testSet(immutable.BitSet(keys:_*), keys)
-    testSet(immutable.TreeSet(keys:_*), keys)
-    testSet(mutable.TreeSet(keys:_*), keys)
+    testSet(immutable.BitSet(keys*), keys)
+    testSet(immutable.TreeSet(keys*), keys)
+    testSet(mutable.TreeSet(keys*), keys)
     val days = keys map {n => Weekday(n % Weekday.values.size)}
-    testSet(Weekday.ValueSet(days:_*), days)
+    testSet(Weekday.ValueSet(days*), days)
 
-    val treeMap = immutable.TreeMap(keyValues:_*)
+    val treeMap = immutable.TreeMap(keyValues*)
     testMap(treeMap, keyValues)
     testMap(treeMap.view.filterKeys(_ % 2 == 0).to(SortedMap), keyValues  filter (_._1 % 2 == 0))
     testMap(treeMap.view.mapValues(_ + 1).to(SortedMap), keyValues map {case (k,v) => (k, v + 1)})
