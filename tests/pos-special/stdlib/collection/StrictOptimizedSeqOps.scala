@@ -12,6 +12,7 @@
 
 package scala.collection
 import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /**
   * Trait that overrides operations on sequences in order
@@ -79,7 +80,7 @@ trait StrictOptimizedSeqOps [+A, +CC[_], +C]
   override def diff[B >: A](that: Seq[B]): C =
     if (isEmpty || that.isEmpty) coll
     else {
-      val occ = occCounts(that)
+      val occ = occCounts[B @uncheckedCaptures](that)
       val b = newSpecificBuilder
       for (x <- this) {
         occ.updateWith(x) {
@@ -97,7 +98,7 @@ trait StrictOptimizedSeqOps [+A, +CC[_], +C]
   override def intersect[B >: A](that: Seq[B]): C =
     if (isEmpty || that.isEmpty) empty
     else {
-      val occ = occCounts(that)
+      val occ = occCounts[B @uncheckedCaptures](that)
       val b = newSpecificBuilder
       for (x <- this) {
         occ.updateWith(x) {

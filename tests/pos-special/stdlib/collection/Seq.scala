@@ -893,7 +893,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                part of the result, but any following occurrences will.
     */
   def diff[B >: A](that: Seq[B]): C = {
-    val occ = occCounts(that)
+    val occ = occCounts[B @uncheckedCaptures](that)
     fromSpecific(iterator.filter { x =>
       var include = false
       occ.updateWith(x) {
@@ -918,7 +918,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                in the result, but any following occurrences will be omitted.
     */
   def intersect[B >: A](that: Seq[B]): C = {
-    val occ = occCounts(that)
+    val occ = occCounts[B @uncheckedCaptures](that)
     fromSpecific(iterator.filter { x =>
       var include = true
       occ.updateWith(x) {
@@ -966,7 +966,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     iterableFactory.from(new View.Updated(this, index, elem))
   }
 
-  protected[collection] def occCounts[B](sq: Seq[B]): mutable.Map[B, Int] = {
+  protected[collection] def occCounts[sealed B](sq: Seq[B]): mutable.Map[B, Int] = {
     val occ = new mutable.HashMap[B, Int]()
     for (y <- sq) occ.updateWith(y) {
       case None => Some(1)
