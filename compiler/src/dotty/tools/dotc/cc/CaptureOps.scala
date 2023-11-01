@@ -231,7 +231,11 @@ extension (cls: ClassSymbol)
           && bc.givenSelfType.dealiasKeepAnnots.match
             case CapturingType(_, refs) => refs.isAlwaysEmpty
             case RetainingType(_, refs) => refs.isEmpty
-            case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
+            case selfType =>
+              isCaptureChecking  // At Setup we have not processed self types yet, so
+                                 // unless a self type is explicitly given, we can't tell
+                                 // and err on the side of impure.
+              && selfType.exists && selfType.captureSet.isAlwaysEmpty
 
 extension (sym: Symbol)
 
