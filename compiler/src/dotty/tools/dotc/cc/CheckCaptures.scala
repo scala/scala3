@@ -21,7 +21,7 @@ import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
 import StdNames.nme
-import NameKinds.DefaultGetterName
+import NameKinds.{DefaultGetterName, WildcardParamName}
 import reporting.trace
 
 /** The capture checker */
@@ -1318,7 +1318,9 @@ class CheckCaptures extends Recheck, SymTransformer:
         def traverse(t: Type): Unit =
           t match
             case AppliedType(tycon, arg :: Nil) if tycon.typeSymbol == defn.ArrayClass =>
-              if !(pos.span.isSynthetic && ctx.reporter.errorsReported) then
+              if !(pos.span.isSynthetic && ctx.reporter.errorsReported)
+                && !arg.typeSymbol.name.is(WildcardParamName)
+              then
                 CheckCaptures.disallowRootCapabilitiesIn(arg, NoSymbol,
                   "Array", "have element type",
                   "Since arrays are mutable, they have to be treated like variables,\nso their element type must be sealed.",
@@ -1341,10 +1343,11 @@ class CheckCaptures extends Recheck, SymTransformer:
           val lctx = tree match
             case _: DefTree | _: TypeDef if tree.symbol.exists => ctx.withOwner(tree.symbol)
             case _ => ctx
-          traverseChildren(tree)(using lctx)
-          check(tree)
+          trace(i"post check $tree"):
+            traverseChildren(tree)(using lctx)
+            check(tree)
         def check(tree: Tree)(using Context) = tree match
-          case t @ TypeApply(fun, args) =>
+          case TypeApply(fun, args) =>
             fun.knownType.widen match
               case tl: PolyType =>
                 val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
