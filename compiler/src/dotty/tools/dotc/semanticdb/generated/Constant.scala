@@ -58,8 +58,8 @@ final case class ConstantMessage(
     sealedValue: dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue = dotty.tools.dotc.semanticdb.ConstantMessage.SealedValue.Empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (sealedValue.unitConstant.isDefined) {
         val __value = sealedValue.unitConstant.get
@@ -442,8 +442,8 @@ final case class BooleanConstant(
     value: _root_.scala.Boolean = false
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -520,8 +520,8 @@ final case class ByteConstant(
     value: _root_.scala.Int = 0
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -598,8 +598,8 @@ final case class ShortConstant(
     value: _root_.scala.Int = 0
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -676,8 +676,8 @@ final case class CharConstant(
     value: _root_.scala.Int = 0
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -754,8 +754,8 @@ final case class IntConstant(
     value: _root_.scala.Int = 0
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -832,8 +832,8 @@ final case class LongConstant(
     value: _root_.scala.Long = 0L
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -910,8 +910,8 @@ final case class FloatConstant(
     value: _root_.scala.Float = 0.0f
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -988,8 +988,8 @@ final case class DoubleConstant(
     value: _root_.scala.Double = 0.0
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -1066,8 +1066,8 @@ final case class StringConstant(
     value: _root_.scala.Predef.String = ""
     )  extends dotty.tools.dotc.semanticdb.Constant.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {

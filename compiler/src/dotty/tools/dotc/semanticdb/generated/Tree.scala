@@ -52,8 +52,8 @@ final case class TreeMessage(
     sealedValue: dotty.tools.dotc.semanticdb.TreeMessage.SealedValue = dotty.tools.dotc.semanticdb.TreeMessage.SealedValue.Empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (sealedValue.applyTree.isDefined) {
         val __value = sealedValue.applyTree.get
@@ -324,8 +324,8 @@ final case class ApplyTree(
     arguments: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Tree] = _root_.scala.Seq.empty
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -431,8 +431,8 @@ final case class FunctionTree(
     body: dotty.tools.dotc.semanticdb.Tree = dotty.tools.dotc.semanticdb.FunctionTree._typemapper_body.toCustom(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       parameters.foreach { __item =>
         val __value = __item
@@ -535,8 +535,8 @@ final case class IdTree(
     symbol: _root_.scala.Predef.String = ""
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -613,8 +613,8 @@ final case class LiteralTree(
     constant: dotty.tools.dotc.semanticdb.Constant = dotty.tools.dotc.semanticdb.LiteralTree._typemapper_constant.toCustom(dotty.tools.dotc.semanticdb.ConstantMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -696,8 +696,8 @@ final case class MacroExpansionTree(
     tpe: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.MacroExpansionTree._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -804,8 +804,8 @@ final case class OriginalTree(
     range: _root_.scala.Option[dotty.tools.dotc.semanticdb.Range] = _root_.scala.None
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (range.isDefined) {
         val __value = range.get
@@ -882,8 +882,8 @@ final case class SelectTree(
     id: _root_.scala.Option[dotty.tools.dotc.semanticdb.IdTree] = _root_.scala.None
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {
@@ -986,8 +986,8 @@ final case class TypeApplyTree(
     typeArguments: _root_.scala.Seq[dotty.tools.dotc.semanticdb.Type] = _root_.scala.Seq.empty
     )  extends dotty.tools.dotc.semanticdb.Tree.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {

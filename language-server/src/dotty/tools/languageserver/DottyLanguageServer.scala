@@ -54,14 +54,14 @@ class DottyLanguageServer extends LanguageServer
   import lsp4j.jsonrpc.messages.{Either => JEither}
   import lsp4j._
 
-  private[this] var rootUri: String = _
+  private var rootUri: String = _
 
-  private[this] var myClient: DottyClient = _
+  private var myClient: DottyClient = _
   def client: DottyClient = myClient
 
-  private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
+  private var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
 
-  private[this] var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = _
+  private var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = _
 
   def drivers: Map[ProjectConfig, InteractiveDriver] = thisServer.synchronized {
     if myDrivers == null then

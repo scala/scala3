@@ -4,7 +4,7 @@ import java.io.{InputStream, IOException}
 import java.util.Scanner
 
 class InputStreamConsumer(in: InputStream) {
-  private[this] val scanner =
+  private val scanner =
     new Scanner(in).useDelimiter(InputStreamConsumer.delimiter)
 
   /** Finds and returns the next complete token from this input stream.

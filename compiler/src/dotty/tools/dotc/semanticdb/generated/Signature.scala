@@ -44,8 +44,8 @@ final case class SignatureMessage(
     sealedValue: dotty.tools.dotc.semanticdb.SignatureMessage.SealedValue = dotty.tools.dotc.semanticdb.SignatureMessage.SealedValue.Empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (sealedValue.classSignature.isDefined) {
         val __value = sealedValue.classSignature.get
@@ -222,8 +222,8 @@ final case class ClassSignature(
     declarations: _root_.scala.Option[dotty.tools.dotc.semanticdb.Scope] = _root_.scala.None
     )  extends dotty.tools.dotc.semanticdb.Signature.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (typeParameters.isDefined) {
         val __value = typeParameters.get
@@ -372,8 +372,8 @@ final case class MethodSignature(
     returnType: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.MethodSignature._typemapper_returnType.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Signature.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (typeParameters.isDefined) {
         val __value = typeParameters.get
@@ -499,8 +499,8 @@ final case class TypeSignature(
     upperBound: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.TypeSignature._typemapper_upperBound.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Signature.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (typeParameters.isDefined) {
         val __value = typeParameters.get
@@ -628,8 +628,8 @@ final case class ValueSignature(
     tpe: dotty.tools.dotc.semanticdb.Type = dotty.tools.dotc.semanticdb.ValueSignature._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
     )  extends dotty.tools.dotc.semanticdb.Signature.NonEmpty with SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {

@@ -25,12 +25,12 @@ object LazyVals {
       throwInitializationException()
   }
 
-  private[this] val base: Int = {
+  private val base: Int = {
     val processors = java.lang.Runtime.getRuntime.nn.availableProcessors()
     8 * processors * processors
   }
 
-  private[this] val monitors: Array[Object] =
+  private val monitors: Array[Object] =
     Array.tabulate(base)(_ => new Object)
 
   private def getMonitor(obj: Object, fieldId: Int = 0) = {

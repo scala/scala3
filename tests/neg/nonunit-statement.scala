@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wnonunit-statement -Wvalue-discard
+//> using options -Xfatal-warnings -Wnonunit-statement -Wvalue-discard -source:3.3
 import collection.ArrayOps
 import collection.mutable.{ArrayBuilder, LinkedHashSet, ListBuffer}
 import concurrent._

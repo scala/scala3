@@ -163,7 +163,7 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
   def table(foo: String) = ???
 
   protected[example] val valWithScopeModifier = ???
-  protected[this] val valWithScopeModifierThis = ???
+  protected val valWithScopeModifierThis = ???
 
   var iAmAVar = ???
 }

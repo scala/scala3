@@ -22,8 +22,8 @@ final case class SymbolInformation(
     documentation: _root_.scala.Option[dotty.tools.dotc.semanticdb.Documentation] = _root_.scala.None
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {

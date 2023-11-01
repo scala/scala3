@@ -10,7 +10,7 @@ lazy val resetMessages = taskKey[Unit]("empties the messages list")
 
 lazy val root = (project in file("."))
   .settings(
-    scalacOptions += "-source:future",
+    scalacOptions += "-source:future-migration",
     extraAppenders := { s => Seq(ConsoleAppender(FakePrintWriter)) },
     assertFeatureSummary := {
       assert {
@@ -24,7 +24,7 @@ lazy val root = (project in file("."))
     },
     assertDeprecationSummary := {
       assert {
-        FakePrintWriter.messages.exists(_.contains("there were 3 deprecation warnings; re-run with -deprecation for details"))
+        FakePrintWriter.messages.exists(_.contains("there were 2 deprecation warnings; re-run with -deprecation for details"))
       }
     },
     assertNoDeprecationSummary := {
