@@ -26,7 +26,7 @@ object EndpointInput {
 object Test extends App {
   import EndpointInput._
 
-  def compare(left: EndpointInput[_], right: EndpointInput[_]): Boolean =
+  def compare(left: EndpointInput[?], right: EndpointInput[?]): Boolean =
     (left, right) match {
       case (Pair(), Pair()) => true
       case (MappedPair(), MappedPair()) => true
@@ -50,7 +50,7 @@ object Test extends App {
       case (_, _) => false
     }
 
-  def compare2(left: EndpointInput[_], right: EndpointInput[_]): Boolean =
+  def compare2(left: EndpointInput[?], right: EndpointInput[?]): Boolean =
     (left, right) match {
       case (Pair(), Pair()) => true
       case (MappedPair(), MappedPair()) => true

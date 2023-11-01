@@ -25,7 +25,7 @@ case class CaseDef[-T >: Untyped]() extends Tree[T]
 def test[T >: Untyped](tree: Tree[T], tp: Type) = tree.withType(tp) match {
   case Ident()       => 1
   case DefDef()      => 2
-  case _: Inlined[_] => 3
+  case _: Inlined[?] => 3
   case CaseDef()     => 4
   case _             => 5
 }

@@ -9,7 +9,7 @@ import Length.*
 
 case class Indent[T <: Length](length: T)
 
-def withIndent[T <: Length](indent: => Indent[_]): Unit =
+def withIndent[T <: Length](indent: => Indent[?]): Unit =
   indent match {
     case Indent(Num(0)) => println("this")
     case x              => println(x) // "unreachable"

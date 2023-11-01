@@ -14,7 +14,7 @@ object Test1 {
 
   def foo3(myTree: Tree | (Context => Tree)) =
     myTree match
-      case treeFn: (_ => _) =>       // ok
+      case treeFn: (? => ?) =>       // ok
       case _ =>
 }
 
@@ -35,6 +35,6 @@ object Test2 {
 
   def foo3(myTree: Tree[Type] | (Context => Tree[Type])) =
     myTree match
-      case treeFn: (_ => _) =>       // ok
+      case treeFn: (? => ?) =>       // ok
       case _ =>
 }

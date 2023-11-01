@@ -62,7 +62,7 @@ Text => empty
 Language => Scala
 Symbols => 61 entries
 Occurrences => 143 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -274,6 +274,12 @@ Occurrences:
 [53:39..53:47): toString -> scala/Tuple2#toString().
 
 Diagnostics:
+[20:15..20:15): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[21:15..21:15): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[39:20..39:20): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [40:12..40:15): [warning] unused local definition
 
 Synthetics:
@@ -389,7 +395,7 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 50 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -470,6 +476,12 @@ Occurrences:
 [23:42..23:45): ??? -> scala/Predef.`???`().
 
 Diagnostics:
+[9:14..9:14): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[9:22..9:22): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[11:29..11:29): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [14:8..14:9): [warning] unused local definition
 
 Synthetics:
@@ -5064,7 +5076,7 @@ Text => empty
 Language => Scala
 Symbols => 143 entries
 Occurrences => 246 entries
-Diagnostics => 3 entries
+Diagnostics => 4 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -5465,6 +5477,8 @@ Diagnostics:
 [62:25..62:29): [warning] with as a type operator has been deprecated; use & instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [63:25..63:29): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[71:31..71:31): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 Synthetics:

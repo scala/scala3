@@ -5,7 +5,7 @@ object Test {
   case object Bar3 extends Foo[AnyRef]
 
   def ex1[T](xs: List[T]) = xs match {
-    case ys: List[_]  => "ok"
+    case ys: List[?]  => "ok"
   }
   def ex2[T](xx: (Foo[T], Foo[T])) = xx match {
     case (Bar1, Bar1) => ()
@@ -14,7 +14,7 @@ object Test {
     case (_, Bar2) => ()
   }
   def ex3[T](xx: (Foo[T], Foo[T])) = xx match {
-    case (_: Foo[_], _: Foo[_]) => ()
+    case (_: Foo[?], _: Foo[?]) => ()
   }
 
   // fails for: ::(_, Nil), ::(_, ::(_, ::(_, _))), ...

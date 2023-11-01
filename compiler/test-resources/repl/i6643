@@ -1,10 +1,10 @@
 scala> import scala.collection._
 scala>:type 1
 Int
-scala> object IterableTest { def g[CC[_] <: Iterable[_] with IterableOps[_, _, _]](from: CC[Int]): IterableFactory[CC] = ??? }
+scala> object IterableTest { def g[CC[_] <: Iterable[?] with IterableOps[?, ?, ?]](from: CC[Int]): IterableFactory[CC] = ??? }
 1 warning found
 -- [E003] Syntax Warning: ------------------------------------------------------
-1 | object IterableTest { def g[CC[_] <: Iterable[_] with IterableOps[_, _, _]](from: CC[Int]): IterableFactory[CC] = ??? }
+1 | object IterableTest { def g[CC[_] <: Iterable[?] with IterableOps[?, ?, ?]](from: CC[Int]): IterableFactory[CC] = ??? }
   |                                                  ^^^^
   |                with as a type operator has been deprecated; use & instead
   |

@@ -114,7 +114,7 @@ private class QuoteCompiler extends Compiler:
     /** Unpickle and optionally compile the expression.
      *  Returns either `Left` with name of the classfile generated or `Right` with the value contained in the expression.
      */
-    def compileExpr(exprBuilder:  Quotes => Expr[_]): Either[String, Any] =
+    def compileExpr(exprBuilder:  Quotes => Expr[?]): Either[String, Any] =
       val units = new ExprCompilationUnit(exprBuilder) :: Nil
       compileUnits(units)
       result

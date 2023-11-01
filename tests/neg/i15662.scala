@@ -2,12 +2,12 @@
 
 case class Composite[T](v: T)
 
-def m(composite: Composite[_]): Unit =
+def m(composite: Composite[?]): Unit =
   composite match {
     case Composite[Int](v) => println(v)  // error: cannot be checked at runtime
   }
 
-def m2(composite: Composite[_]): Unit =
+def m2(composite: Composite[?]): Unit =
   composite match {
     case Composite(v) => println(v)  // ok
   }

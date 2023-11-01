@@ -106,8 +106,8 @@ object Test {
   identity[T9[Tuple2[String, Nothing]]]("1") // error
   identity[T9[Tuple2[Int, Nothing]]](1) // error
   identity[T9[Tuple2[Nothing, Int]]]("1") // error
-  identity[T9[Tuple2[_, _]]]("") // error
-  identity[T9[Tuple2[_, _]]](1) // error
+  identity[T9[Tuple2[?, ?]]]("") // error
+  identity[T9[Tuple2[?, ?]]](1) // error
   identity[T9[Tuple2[Any, Any]]]("") // error
   identity[T9[Tuple2[Any, Any]]](1) // error
 
