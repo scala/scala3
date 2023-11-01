@@ -2648,7 +2648,7 @@ class ExtensionCanOnlyHaveDefs(mdef: untpd.Tree)(using Context)
         |"""
 }
 
-class UnexpectedPatternForSummonFrom(tree: Tree[_])(using Context)
+class UnexpectedPatternForSummonFrom(tree: Tree[?])(using Context)
   extends SyntaxMsg(UnexpectedPatternForSummonFromID) {
   def msg(using Context) = i"Unexpected pattern for summonFrom. Expected ${hl("`x: T`")} or ${hl("`_`")}"
   def explain(using Context) =

@@ -28,7 +28,7 @@ object ScopedVar {
 
   implicit def toValue[T](scVar: ScopedVar[T]): T = scVar.get
 
-  def withScopedVars[T](ass: Assignment[_]*)(body: => T): T = {
+  def withScopedVars[T](ass: Assignment[?]*)(body: => T): T = {
     val stack = ass.map(_.push())
     try body
     finally stack.reverse.foreach(_.pop())

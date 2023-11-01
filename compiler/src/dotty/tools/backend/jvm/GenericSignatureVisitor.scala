@@ -315,7 +315,7 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     if (annot.values != null) annot.values.asScala foreach visitConstant
   }
 
-  def visitAnnotations(annots: java.util.List[_ <: AnnotationNode]) = if (annots != null) annots.asScala foreach visitAnnotation
+  def visitAnnotations(annots: java.util.List[? <: AnnotationNode]) = if (annots != null) annots.asScala foreach visitAnnotation
   def visitAnnotationss(annotss: Array[java.util.List[AnnotationNode]]) = if (annotss != null) annotss foreach visitAnnotations
 
   def visitHandle(handle: Handle): Unit = {

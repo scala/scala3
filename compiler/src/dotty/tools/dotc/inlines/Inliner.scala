@@ -649,13 +649,13 @@ class Inliner(val call: tpd.Tree)(using Context):
     def treeSize(x: Any): Int =
       var siz = 0
       x match
-        case x: Trees.Inlined[_] =>
+        case x: Trees.Inlined[?] =>
         case x: Positioned =>
           var i = 0
           while i < x.productArity do
             siz += treeSize(x.productElement(i))
             i += 1
-        case x: List[_] =>
+        case x: List[?] =>
           var xs = x
           while xs.nonEmpty do
             siz += treeSize(xs.head)
