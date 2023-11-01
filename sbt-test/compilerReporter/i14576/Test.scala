@@ -10,8 +10,5 @@ object Test:
   def f(x: Text) = println(x.str)
   f("abc")
 
-  // private[this] and = _ are deprecated under -source:future
-  private[this] var x: AnyRef = _
-
   // under -source:future, `_` is deprecated for wildcard arguments of types: use `?` instead
   val xs: List[_] = Nil

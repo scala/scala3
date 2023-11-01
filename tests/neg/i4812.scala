@@ -1,6 +1,6 @@
 //> using options -Werror
 object Test:
-  var prev: Any = _
+  var prev: Any = scala.compiletime.uninitialized
 
   def test[T](x: T): T =
     class A(val elem: (T, Boolean))
@@ -55,7 +55,7 @@ object Test:
 
   def test6[T](x: T): T =
     class A { var b: B = null }
-    class B { var a: A = null; var elem: T = _ }
+    class B { var a: A = null; var elem: T = scala.compiletime.uninitialized }
     prev match
       case prev: A => // error: the type test for A cannot be checked at runtime
         prev.b.elem
@@ -88,7 +88,7 @@ object Test:
       case x: B => x
 
   sealed class A
-  var prevA: A = _
+  var prevA: A = scala.compiletime.uninitialized
   def test10: A =
     val methodCallId = System.nanoTime()
     class B(val id: Long) extends A

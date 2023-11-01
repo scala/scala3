@@ -7,6 +7,8 @@ import java.nio.file.{Files, Path}
 import java.nio.charset.StandardCharsets
 import java.util
 
+import scala.compiletime.uninitialized
+
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.reporting.{Reporter, ThrowingReporter}
 import dotty.tools.io.Directory
@@ -17,7 +19,7 @@ import org.eclipse.lsp4j.{ DidOpenTextDocumentParams, InitializeParams, Initiali
 class TestServer(testFolder: Path, projects: List[Project]) {
 
   val server = new DottyLanguageServer
-  var client: TestClient = _
+  var client: TestClient = uninitialized
 
   init()
 

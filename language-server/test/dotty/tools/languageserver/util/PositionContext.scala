@@ -3,9 +3,11 @@ package dotty.tools.languageserver.util
 import dotty.tools.languageserver.util.embedded.CodeMarker
 import dotty.tools.languageserver.util.server.TestFile
 
+import scala.compiletime.uninitialized
+
 class PositionContext(positionMap: Map[CodeMarker, (TestFile, Int, Int)]) {
-  private var lastKey: CodeMarker = _
-  private var lastValue: (TestFile, Int, Int) = _
+  private var lastKey: CodeMarker = uninitialized
+  private var lastValue: (TestFile, Int, Int) = uninitialized
   def positionOf(pos: CodeMarker): (TestFile, Int, Int) = {
     if (lastKey eq pos) lastValue
     else {
