@@ -66,24 +66,25 @@ At the end of their supervision period, the supervisor reports to the team durin
 The following is the list of all the principal areas of the compiler and the core team members who are responsible for their maintenance:
 
 ### Compiler
-- Parser: @odersky
-- Typer: @odersky, @smarter, (@dwijnand)
+- Parser: @odersky, @hamzaremmal
+- Typer: @odersky, @smarter, (@dwijnand), @noti0nal
 - Erasure: @smarter, @odersky
 - Enums: @bishabosha
-- Derivation & Mirrors: @bishabosha, (@dwijnand)
+- Derivation & Mirrors: @bishabosha, (@dwijnand), @EugeneFlesselle
 - Export: @bishabosha, @odersky
 - Pattern Matching: @dwijnand, (@liufengyun), @sjrd
-- Inline: @nicolasstucki, @odersky
-- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb
-- Match types: @sjrd, @dwijnand, @Decel
+- Inline: @nicolasstucki, @odersky, @hamzaremmal
+- Metaprogramming (Quotes, Reflect, Staging): @nicolasstucki, @jchyb, @hamzaremmal
+- Match types: @sjrd, @dwijnand, @Decel, @Linyxus
 - GADT: @dwijnand, @Linyxus
 - Initialization checker: @olhotak, @liufengyun
 - Safe nulls: @noti0na1, @olhotak
-- Lazy vals: @szymon-rd, @sjrd
+- Transforms: @szymon-rd, @sjrd, @odersky, @smarter
 - tailrec: @sjrd, @mbovel
 - JS backend: @sjrd
 - JVM backend: @sjrd
-- Java-compat: @smarter
+- Java-compat: @smarter, @dwijnand
+- Capture checker: @odersky, @Linyxus
 
 ### Tooling
 - REPL: @dwijnand, @prolativ
