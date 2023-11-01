@@ -25,7 +25,7 @@ trait StrictOptimizedSeqOps [+A, +CC[_], +C]
 
   override def distinctBy[B](f: A -> B): C = {
     val builder = newSpecificBuilder
-    val seen = mutable.HashSet.empty[B]
+    val seen = mutable.HashSet.empty[B @uncheckedCaptures]
     val it = this.iterator
     while (it.hasNext) {
       val next = it.next()

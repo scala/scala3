@@ -562,7 +562,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def distinctBy[B](f: A -> B): Iterator[A]^{this} = new AbstractIterator[A] {
 
-    private[this] val traversedValues = mutable.HashSet.empty[B]
+    private[this] val traversedValues = mutable.HashSet.empty[B @uncheckedCaptures]
     private[this] var nextElementDefined: Boolean = false
     private[this] var nextElement: A = _
 
