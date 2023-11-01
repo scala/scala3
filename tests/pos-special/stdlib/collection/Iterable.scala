@@ -905,7 +905,7 @@ object IterableOps {
     def map[B](f: A => B): CC[B]^{this, f} =
       self.iterableFactory.from(new View.Map(filtered, f))
 
-    def flatMap[B](f: A => IterableOnce[B]): CC[B]^{this, f} =
+    def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} =
       self.iterableFactory.from(new View.FlatMap(filtered, f))
 
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
