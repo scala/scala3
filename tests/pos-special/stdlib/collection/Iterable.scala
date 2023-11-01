@@ -96,7 +96,7 @@ trait Iterable[+A] extends IterableOnce[A]
     * @return a decorator `LazyZip2` that allows strict operations to be performed on the lazily evaluated pairs
     *         or chained calls to `lazyZip`. Implicit conversion to `Iterable[(A, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]): LazyZip2[A, B, this.type] = new LazyZip2(this, this, that)
+  def lazyZip[B](that: Iterable[B]^): LazyZip2[A, B, this.type]^{this, that} = new LazyZip2(this, this, that)
 }
 
 /** Base trait for Iterable operations
