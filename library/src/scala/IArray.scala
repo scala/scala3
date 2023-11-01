@@ -5,7 +5,7 @@ import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{ArrayBuilder, Builder}
 
-opaque type IArray[+T] = Array[_ <: T]
+opaque type IArray[+T] = Array[? <: T]
 
 /** An immutable array. An `IArray[T]` has the same representation as an `Array[T]`,
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
@@ -298,10 +298,10 @@ object IArray:
     def search[U >: T](elem: U)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem)
     def search[U >: T](elem: U, from: Int, to: Int)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem, from, to)
     def sizeCompare(that: IArray[Any]): Int = arr.toSeq.sizeCompare(that)
-    def sizeCompare(that: Iterable[_]): Int = arr.toSeq.sizeCompare(that)
+    def sizeCompare(that: Iterable[?]): Int = arr.toSeq.sizeCompare(that)
     def sizeCompare(otherSize: Int): Int = genericArrayOps(arr).sizeCompare(otherSize)
     def sliding(size: Int, step: Int = 1): Iterator[IArray[T]] = genericArrayOps(arr).sliding(size, step)
-    def stepper[S <: Stepper[_]](using StepperShape[T, S]): S = genericArrayOps(arr).stepper[S]
+    def stepper[S <: Stepper[?]](using StepperShape[T, S]): S = genericArrayOps(arr).stepper[S]
     def tails: Iterator[IArray[T]] = genericArrayOps(arr).tails
     def tapEach[U](f: (T) => U): IArray[T] =
       arr.toSeq.foreach(f)
@@ -615,7 +615,7 @@ object IArray:
    *  @param x the selector value
    *  @return  sequence wrapped in a [[scala.Some]], if `x` is a Seq, otherwise `None`
    */
-  def unapplySeq[T](x: IArray[T]): Array.UnapplySeqWrapper[_ <: T] =
+  def unapplySeq[T](x: IArray[T]): Array.UnapplySeqWrapper[? <: T] =
     Array.unapplySeq(x)
 
   /** A lazy filtered array. No filtering is applied until one of `foreach`, `map` or `flatMap` is called. */

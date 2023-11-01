@@ -63,112 +63,112 @@ object Tuples {
     case 0  => EmptyTuple
     case 1 =>
       xs match {
-        case xs: Tuple1[_] => xs
+        case xs: Tuple1[?] => xs
         case xs => Tuple1(xs.productElement(0))
       }
     case 2 =>
       xs match {
-        case xs: Tuple2[_, _] => xs
+        case xs: Tuple2[?, ?] => xs
         case xs => Tuple2(xs.productElement(0), xs.productElement(1))
       }
     case 3 =>
       xs match {
-        case xs: Tuple3[_, _, _] => xs
+        case xs: Tuple3[?, ?, ?] => xs
         case xs => Tuple3(xs.productElement(0), xs.productElement(1), xs.productElement(2))
       }
     case 4 =>
       xs match {
-        case xs: Tuple4[_, _, _, _] => xs
+        case xs: Tuple4[?, ?, ?, ?] => xs
         case xs => Tuple4(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3))
       }
     case 5 =>
       xs match {
-        case xs: Tuple5[_, _, _, _, _] => xs
+        case xs: Tuple5[?, ?, ?, ?, ?] => xs
         case xs => Tuple5(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4))
       }
     case 6 =>
       xs match {
-        case xs: Tuple6[_, _, _, _, _, _] => xs
+        case xs: Tuple6[?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple6(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5))
       }
     case 7 =>
       xs match {
-        case xs: Tuple7[_, _, _, _, _, _, _] => xs
+        case xs: Tuple7[?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple7(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6))
       }
     case 8 =>
       xs match {
-        case xs: Tuple8[_, _, _, _, _, _, _, _] => xs
+        case xs: Tuple8[?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple8(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7))
       }
     case 9 =>
       xs match {
-        case xs: Tuple9[_, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple9(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8))
       }
     case 10 =>
       xs match {
-        case xs: Tuple10[_, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple10(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9))
       }
     case 11 =>
       xs match {
-        case xs: Tuple11[_, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple11(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10))
       }
     case 12 =>
       xs match {
-        case xs: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple12(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11))
       }
     case 13 =>
       xs match {
-        case xs: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple13(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12))
       }
     case 14 =>
       xs match {
-        case xs: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple14(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13))
       }
     case 15 =>
       xs match {
-        case xs: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple15(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14))
       }
     case 16 =>
       xs match {
-        case xs: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple16(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15))
       }
     case 17 =>
       xs match {
-        case xs: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple17(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16))
       }
     case 18 =>
       xs match {
-        case xs: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple18(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17))
       }
     case 19 =>
       xs match {
-        case xs: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple19(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18))
       }
     case 20 =>
       xs match {
-        case xs: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple20(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19))
       }
     case 21 =>
       xs match {
-        case xs: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple21(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19), xs.productElement(20))
       }
     case 22 =>
       xs match {
-        case xs: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] => xs
+        case xs: Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] => xs
         case xs => Tuple22(xs.productElement(0), xs.productElement(1), xs.productElement(2), xs.productElement(3), xs.productElement(4), xs.productElement(5), xs.productElement(6), xs.productElement(7), xs.productElement(8), xs.productElement(9), xs.productElement(10), xs.productElement(11), xs.productElement(12), xs.productElement(13), xs.productElement(14), xs.productElement(15), xs.productElement(16), xs.productElement(17), xs.productElement(18), xs.productElement(19), xs.productElement(20), xs.productElement(21))
       }
     case _ =>
@@ -183,49 +183,49 @@ object Tuples {
     (self: Any) match {
       case EmptyTuple =>
         Tuple1(x)
-      case self: Tuple1[_] =>
+      case self: Tuple1[?] =>
         Tuple2(x, self._1)
-      case self: Tuple2[_, _] =>
+      case self: Tuple2[?, ?] =>
         Tuple3(x, self._1, self._2)
-      case self: Tuple3[_, _, _] =>
+      case self: Tuple3[?, ?, ?] =>
         Tuple4(x, self._1, self._2, self._3)
-      case self: Tuple4[_, _, _, _] =>
+      case self: Tuple4[?, ?, ?, ?] =>
         Tuple5(x, self._1, self._2, self._3, self._4)
-      case self: Tuple5[_, _, _, _, _] =>
+      case self: Tuple5[?, ?, ?, ?, ?] =>
         Tuple6(x, self._1, self._2, self._3, self._4, self._5)
-      case self: Tuple6[_, _, _, _, _, _] =>
+      case self: Tuple6[?, ?, ?, ?, ?, ?] =>
         Tuple7(x, self._1, self._2, self._3, self._4, self._5, self._6)
-      case self: Tuple7[_, _, _, _, _, _, _] =>
+      case self: Tuple7[?, ?, ?, ?, ?, ?, ?] =>
         Tuple8(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7)
-      case self: Tuple8[_, _, _, _, _, _, _, _] =>
+      case self: Tuple8[?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple9(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8)
-      case self: Tuple9[_, _, _, _, _, _, _, _, _] =>
+      case self: Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple10(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9)
-      case self: Tuple10[_, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple11(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10)
-      case self: Tuple11[_, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple12(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11)
-      case self: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple13(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12)
-      case self: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple14(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13)
-      case self: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple15(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14)
-      case self: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple16(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15)
-      case self: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple17(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16)
-      case self: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple18(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17)
-      case self: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple19(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18)
-      case self: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple20(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19)
-      case self: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple21(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20)
-      case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple22(x, self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
-      case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         val arr: Array[Object] = Array(
           x.asInstanceOf[Object], self._1.asInstanceOf[Object], self._2.asInstanceOf[Object],
           self._3.asInstanceOf[Object], self._4.asInstanceOf[Object], self._5.asInstanceOf[Object],
@@ -288,49 +288,49 @@ object Tuples {
   // Tail for Tuple1 to Tuple22
   private def specialCaseTail(self: Tuple): Tuple = {
     (self: Any) match {
-      case self: Tuple1[_] =>
+      case self: Tuple1[?] =>
         EmptyTuple
-      case self: Tuple2[_, _] =>
+      case self: Tuple2[?, ?] =>
         Tuple1(self._2)
-      case self: Tuple3[_, _, _] =>
+      case self: Tuple3[?, ?, ?] =>
         Tuple2(self._2, self._3)
-      case self: Tuple4[_, _, _, _] =>
+      case self: Tuple4[?, ?, ?, ?] =>
         Tuple3(self._2, self._3, self._4)
-      case self: Tuple5[_, _, _, _, _] =>
+      case self: Tuple5[?, ?, ?, ?, ?] =>
         Tuple4(self._2, self._3, self._4, self._5)
-      case self: Tuple6[_, _, _, _, _, _] =>
+      case self: Tuple6[?, ?, ?, ?, ?, ?] =>
         Tuple5(self._2, self._3, self._4, self._5, self._6)
-      case self: Tuple7[_, _, _, _, _, _, _] =>
+      case self: Tuple7[?, ?, ?, ?, ?, ?, ?] =>
         Tuple6(self._2, self._3, self._4, self._5, self._6, self._7)
-      case self: Tuple8[_, _, _, _, _, _, _, _] =>
+      case self: Tuple8[?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple7(self._2, self._3, self._4, self._5, self._6, self._7, self._8)
-      case self: Tuple9[_, _, _, _, _, _, _, _, _] =>
+      case self: Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple8(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9)
-      case self: Tuple10[_, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple9(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10)
-      case self: Tuple11[_, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple10(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11)
-      case self: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple11(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12)
-      case self: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple12(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13)
-      case self: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple13(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14)
-      case self: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple14(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15)
-      case self: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple15(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16)
-      case self: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple16(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17)
-      case self: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple17(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18)
-      case self: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple18(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19)
-      case self: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple19(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20)
-      case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple20(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
-      case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple21(self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, self._22)
     }
   }
@@ -370,49 +370,49 @@ object Tuples {
     (self: Any) match {
       case EmptyTuple =>
         Tuple1(x)
-      case self: Tuple1[_] =>
+      case self: Tuple1[?] =>
         Tuple2(self._1, x)
-      case self: Tuple2[_, _] =>
+      case self: Tuple2[?, ?] =>
         Tuple3(self._1, self._2, x)
-      case self: Tuple3[_, _, _] =>
+      case self: Tuple3[?, ?, ?] =>
         Tuple4(self._1, self._2, self._3, x)
-      case self: Tuple4[_, _, _, _] =>
+      case self: Tuple4[?, ?, ?, ?] =>
         Tuple5(self._1, self._2, self._3, self._4, x)
-      case self: Tuple5[_, _, _, _, _] =>
+      case self: Tuple5[?, ?, ?, ?, ?] =>
         Tuple6(self._1, self._2, self._3, self._4, self._5, x)
-      case self: Tuple6[_, _, _, _, _, _] =>
+      case self: Tuple6[?, ?, ?, ?, ?, ?] =>
         Tuple7(self._1, self._2, self._3, self._4, self._5, self._6, x)
-      case self: Tuple7[_, _, _, _, _, _, _] =>
+      case self: Tuple7[?, ?, ?, ?, ?, ?, ?] =>
         Tuple8(self._1, self._2, self._3, self._4, self._5, self._6, self._7, x)
-      case self: Tuple8[_, _, _, _, _, _, _, _] =>
+      case self: Tuple8[?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple9(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, x)
-      case self: Tuple9[_, _, _, _, _, _, _, _, _] =>
+      case self: Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple10(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, x)
-      case self: Tuple10[_, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple11(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, x)
-      case self: Tuple11[_, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple12(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, x)
-      case self: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple13(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, x)
-      case self: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple14(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, x)
-      case self: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple15(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, x)
-      case self: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple16(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, x)
-      case self: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple17(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, x)
-      case self: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple18(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, x)
-      case self: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple19(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, x)
-      case self: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple20(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, x)
-      case self: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple21(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, x)
-      case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple22(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21, x)
-      case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         val arr: Array[Object] = Array(
           self._1.asInstanceOf[Object], self._2.asInstanceOf[Object],
           self._3.asInstanceOf[Object], self._4.asInstanceOf[Object], self._5.asInstanceOf[Object],
@@ -458,49 +458,49 @@ object Tuples {
     (self: Any) match {
       case EmptyTuple =>
         EmptyTuple
-      case self: Tuple1[_] =>
+      case self: Tuple1[?] =>
         self
-      case self: Tuple2[_, _] =>
+      case self: Tuple2[?, ?] =>
         Tuple2(self._2, self._1)
-      case self: Tuple3[_, _, _] =>
+      case self: Tuple3[?, ?, ?] =>
         Tuple3(self._3, self._2, self._1)
-      case self: Tuple4[_, _, _, _] =>
+      case self: Tuple4[?, ?, ?, ?] =>
         Tuple4(self._4, self._3, self._2, self._1)
-      case self: Tuple5[_, _, _, _, _] =>
+      case self: Tuple5[?, ?, ?, ?, ?] =>
         Tuple5(self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple6[_, _, _, _, _, _] =>
+      case self: Tuple6[?, ?, ?, ?, ?, ?] =>
         Tuple6(self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple7[_, _, _, _, _, _, _] =>
+      case self: Tuple7[?, ?, ?, ?, ?, ?, ?] =>
         Tuple7(self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple8[_, _, _, _, _, _, _, _] =>
+      case self: Tuple8[?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple8(self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple9[_, _, _, _, _, _, _, _, _] =>
+      case self: Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple9(self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple10[_, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple10(self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple11[_, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple11(self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple12(self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple13(self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple14(self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple15(self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple16(self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple17(self._17, self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple18(self._18, self._17, self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple19(self._19, self._18, self._17, self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple20(self._20, self._19, self._18, self._17, self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple21(self._21, self._20, self._19, self._18, self._17, self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
-      case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple22(self._22, self._21, self._20, self._19, self._18, self._17, self._16, self._15, self._14, self._13, self._12, self._11, self._10, self._9, self._8, self._7, self._6, self._5, self._4, self._3, self._2, self._1)
     }
   }
@@ -514,49 +514,49 @@ object Tuples {
   // Init for Tuple1 to Tuple22
   private def specialCaseInit(self: Tuple): Tuple = {
     (self: Any) match {
-      case _: Tuple1[_] =>
+      case _: Tuple1[?] =>
         EmptyTuple
-      case self: Tuple2[_, _] =>
+      case self: Tuple2[?, ?] =>
         Tuple1(self._1)
-      case self: Tuple3[_, _, _] =>
+      case self: Tuple3[?, ?, ?] =>
         Tuple2(self._1, self._2)
-      case self: Tuple4[_, _, _, _] =>
+      case self: Tuple4[?, ?, ?, ?] =>
         Tuple3(self._1, self._2, self._3)
-      case self: Tuple5[_, _, _, _, _] =>
+      case self: Tuple5[?, ?, ?, ?, ?] =>
         Tuple4(self._1,self._2, self._3, self._4)
-      case self: Tuple6[_, _, _, _, _, _] =>
+      case self: Tuple6[?, ?, ?, ?, ?, ?] =>
         Tuple5(self._1, self._2, self._3, self._4, self._5)
-      case self: Tuple7[_, _, _, _, _, _, _] =>
+      case self: Tuple7[?, ?, ?, ?, ?, ?, ?] =>
         Tuple6(self._1, self._2, self._3, self._4, self._5, self._6)
-      case self: Tuple8[_, _, _, _, _, _, _, _] =>
+      case self: Tuple8[?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple7(self._1, self._2, self._3, self._4, self._5, self._6, self._7)
-      case self: Tuple9[_, _, _, _, _, _, _, _, _] =>
+      case self: Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple8(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8)
-      case self: Tuple10[_, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple9(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9)
-      case self: Tuple11[_, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple10(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10)
-      case self: Tuple12[_, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple11(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11)
-      case self: Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple12(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12)
-      case self: Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple13(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13)
-      case self: Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple14(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14)
-      case self: Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple15(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15)
-      case self: Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple16(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16)
-      case self: Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple17(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17)
-      case self: Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple18(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18)
-      case self: Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple19(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19)
-      case self: Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple20(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20)
-      case self: Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] =>
+      case self: Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?] =>
         Tuple21(self._1, self._2, self._3, self._4, self._5, self._6, self._7, self._8, self._9, self._10, self._11, self._12, self._13, self._14, self._15, self._16, self._17, self._18, self._19, self._20, self._21)
     }
   }
@@ -680,28 +680,28 @@ object Tuples {
       case x: Product =>
         x.productArity match
           case 0 => x == EmptyTuple
-          case 1 => x.isInstanceOf[Tuple1[_]]
-          case 2 => x.isInstanceOf[Tuple2[_, _]]
-          case 3 => x.isInstanceOf[Tuple3[_, _, _]]
-          case 4 => x.isInstanceOf[Tuple4[_, _, _, _]]
-          case 5 => x.isInstanceOf[Tuple5[_, _, _, _, _]]
-          case 6 => x.isInstanceOf[Tuple6[_, _, _, _, _, _]]
-          case 7 => x.isInstanceOf[Tuple7[_, _, _, _, _, _, _]]
-          case 8 => x.isInstanceOf[Tuple8[_, _, _, _, _, _, _, _]]
-          case 9 => x.isInstanceOf[Tuple9[_, _, _, _, _, _, _, _, _]]
-          case 10 => x.isInstanceOf[Tuple10[_, _, _, _, _, _, _, _, _, _]]
-          case 11 => x.isInstanceOf[Tuple11[_, _, _, _, _, _, _, _, _, _, _]]
-          case 12 => x.isInstanceOf[Tuple12[_, _, _, _, _, _, _, _, _, _, _, _]]
-          case 13 => x.isInstanceOf[Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 14 => x.isInstanceOf[Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 15 => x.isInstanceOf[Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 16 => x.isInstanceOf[Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 17 => x.isInstanceOf[Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 18 => x.isInstanceOf[Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 19 => x.isInstanceOf[Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 20 => x.isInstanceOf[Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 21 => x.isInstanceOf[Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 22 => x.isInstanceOf[Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 1 => x.isInstanceOf[Tuple1[?]]
+          case 2 => x.isInstanceOf[Tuple2[?, ?]]
+          case 3 => x.isInstanceOf[Tuple3[?, ?, ?]]
+          case 4 => x.isInstanceOf[Tuple4[?, ?, ?, ?]]
+          case 5 => x.isInstanceOf[Tuple5[?, ?, ?, ?, ?]]
+          case 6 => x.isInstanceOf[Tuple6[?, ?, ?, ?, ?, ?]]
+          case 7 => x.isInstanceOf[Tuple7[?, ?, ?, ?, ?, ?, ?]]
+          case 8 => x.isInstanceOf[Tuple8[?, ?, ?, ?, ?, ?, ?, ?]]
+          case 9 => x.isInstanceOf[Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 10 => x.isInstanceOf[Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 11 => x.isInstanceOf[Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 12 => x.isInstanceOf[Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 13 => x.isInstanceOf[Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 14 => x.isInstanceOf[Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 15 => x.isInstanceOf[Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 16 => x.isInstanceOf[Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 17 => x.isInstanceOf[Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 18 => x.isInstanceOf[Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 19 => x.isInstanceOf[Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 20 => x.isInstanceOf[Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 21 => x.isInstanceOf[Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 22 => x.isInstanceOf[Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
           case _ => x.isInstanceOf[TupleXXL]
       case _ =>
         false
@@ -712,28 +712,28 @@ object Tuples {
     x match
       case x: Product =>
         x.productArity match
-          case 1 => x.isInstanceOf[Tuple1[_]]
-          case 2 => x.isInstanceOf[Tuple2[_, _]]
-          case 3 => x.isInstanceOf[Tuple3[_, _, _]]
-          case 4 => x.isInstanceOf[Tuple4[_, _, _, _]]
-          case 5 => x.isInstanceOf[Tuple5[_, _, _, _, _]]
-          case 6 => x.isInstanceOf[Tuple6[_, _, _, _, _, _]]
-          case 7 => x.isInstanceOf[Tuple7[_, _, _, _, _, _, _]]
-          case 8 => x.isInstanceOf[Tuple8[_, _, _, _, _, _, _, _]]
-          case 9 => x.isInstanceOf[Tuple9[_, _, _, _, _, _, _, _, _]]
-          case 10 => x.isInstanceOf[Tuple10[_, _, _, _, _, _, _, _, _, _]]
-          case 11 => x.isInstanceOf[Tuple11[_, _, _, _, _, _, _, _, _, _, _]]
-          case 12 => x.isInstanceOf[Tuple12[_, _, _, _, _, _, _, _, _, _, _, _]]
-          case 13 => x.isInstanceOf[Tuple13[_, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 14 => x.isInstanceOf[Tuple14[_, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 15 => x.isInstanceOf[Tuple15[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 16 => x.isInstanceOf[Tuple16[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 17 => x.isInstanceOf[Tuple17[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 18 => x.isInstanceOf[Tuple18[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 19 => x.isInstanceOf[Tuple19[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 20 => x.isInstanceOf[Tuple20[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 21 => x.isInstanceOf[Tuple21[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
-          case 22 => x.isInstanceOf[Tuple22[_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _]]
+          case 1 => x.isInstanceOf[Tuple1[?]]
+          case 2 => x.isInstanceOf[Tuple2[?, ?]]
+          case 3 => x.isInstanceOf[Tuple3[?, ?, ?]]
+          case 4 => x.isInstanceOf[Tuple4[?, ?, ?, ?]]
+          case 5 => x.isInstanceOf[Tuple5[?, ?, ?, ?, ?]]
+          case 6 => x.isInstanceOf[Tuple6[?, ?, ?, ?, ?, ?]]
+          case 7 => x.isInstanceOf[Tuple7[?, ?, ?, ?, ?, ?, ?]]
+          case 8 => x.isInstanceOf[Tuple8[?, ?, ?, ?, ?, ?, ?, ?]]
+          case 9 => x.isInstanceOf[Tuple9[?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 10 => x.isInstanceOf[Tuple10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 11 => x.isInstanceOf[Tuple11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 12 => x.isInstanceOf[Tuple12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 13 => x.isInstanceOf[Tuple13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 14 => x.isInstanceOf[Tuple14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 15 => x.isInstanceOf[Tuple15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 16 => x.isInstanceOf[Tuple16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 17 => x.isInstanceOf[Tuple17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 18 => x.isInstanceOf[Tuple18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 19 => x.isInstanceOf[Tuple19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 20 => x.isInstanceOf[Tuple20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 21 => x.isInstanceOf[Tuple21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
+          case 22 => x.isInstanceOf[Tuple22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]]
           case _ => x.isInstanceOf[TupleXXL]
       case _ =>
         false

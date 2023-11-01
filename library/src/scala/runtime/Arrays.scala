@@ -18,7 +18,7 @@ object Arrays {
     tag.newArray(length)
 
   /** Convert a sequence to a Java array with element type given by `clazz`. */
-  def seqToArray[T](xs: Seq[T], clazz: Class[_]): Array[T] = {
+  def seqToArray[T](xs: Seq[T], clazz: Class[?]): Array[T] = {
     val arr = java.lang.reflect.Array.newInstance(clazz, xs.length).asInstanceOf[Array[T]]
     xs.copyToArray(arr)
     arr
@@ -26,6 +26,6 @@ object Arrays {
 
   /** Create an array of a reference type T.
    */
-  def newArray[Arr](componentType: Class[_], returnType: Class[Arr], dimensions: Array[Int]): Arr =
+  def newArray[Arr](componentType: Class[?], returnType: Class[Arr], dimensions: Array[Int]): Arr =
     jlr.Array.newInstance(componentType, dimensions: _*).asInstanceOf[Arr]
 }
