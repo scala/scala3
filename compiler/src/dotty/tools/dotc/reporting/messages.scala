@@ -138,10 +138,10 @@ extends EmptyCatchOrFinallyBlock(tryBody, EmptyCatchAndFinallyBlockID) {
         |its body in a block; no exceptions are handled."""
 }
 
-class DeprecatedWithOperator()(using Context)
+class DeprecatedWithOperator(rewrite: String)(using Context)
 extends SyntaxMsg(DeprecatedWithOperatorID) {
   def msg(using Context) =
-    i"""${hl("with")} as a type operator has been deprecated; use ${hl("&")} instead"""
+    i"""${hl("with")} as a type operator has been deprecated; use ${hl("&")} instead$rewrite"""
   def explain(using Context) =
     i"""|Dotty introduces intersection types - ${hl("&")} types. These replace the
         |use of the ${hl("with")} keyword. There are a few differences in
