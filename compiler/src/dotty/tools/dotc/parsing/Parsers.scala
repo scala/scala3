@@ -3525,7 +3525,8 @@ object Parsers {
             em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
             from = future)
-          patch(source, Span(in.offset, in.offset + 1), "*")
+          if sourceVersion == `future-migration` then
+            patch(source, Span(in.offset, in.offset + 1), "*")
         ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
 
       /** 'given [InfixType]' */
@@ -3544,9 +3545,10 @@ object Parsers {
               em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
               from = future)
-            patch(source, Span(in.offset, in.offset + 2),
-                if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
-                else " as ")
+            if sourceVersion == `future-migration` then
+              patch(source, Span(in.offset, in.offset + 2),
+                  if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
+                  else " as ")
           atSpan(startOffset(from), in.skipToken()) {
             val to = if in.token == USCORE then wildcardIdent() else termIdent()
             ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)
