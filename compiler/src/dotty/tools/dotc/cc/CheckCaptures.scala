@@ -14,7 +14,7 @@ import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPa
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, err}
 import typer.ProtoTypes.{AnySelectionProto, LhsProto}
-import util.{SimpleIdentitySet, EqHashMap, SrcPos, Property}
+import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.SymUtils.*
 import transform.{Recheck, PreRecheck}
 import Recheck.*
@@ -147,6 +147,8 @@ object CheckCaptures:
   private def disallowRootCapabilitiesIn(tp: Type, carrier: Symbol, what: String, have: String, addendum: String, pos: SrcPos)(using Context) =
     val check = new TypeTraverser:
 
+      private val seen = new EqHashSet[TypeRef]
+
       extension (tparam: Symbol) def isParametricIn(carrier: Symbol): Boolean =
         val encl = carrier.maybeOwner.enclosingMethodOrClass
         if encl.isClass then tparam.isParametricIn(encl)
@@ -160,19 +162,21 @@ object CheckCaptures:
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
           case t: TypeRef =>
-            capt.println(i"disallow $t, $tp, $what, ${t.isSealed}")
-            t.info match
-              case TypeBounds(_, hi) if !t.isSealed && !t.symbol.isParametricIn(carrier) =>
-                if hi.isAny then
-                  report.error(
-                    em"""$what cannot $have $tp since
-                        |that type refers to the type variable $t, which is not sealed.
-                        |$addendum""",
-                    pos)
-                else
-                  traverse(hi)
-              case _ =>
-            traverseChildren(t)
+            if !seen.contains(t) then
+              capt.println(i"disallow $t, $tp, $what, ${t.isSealed}")
+              seen += t
+              t.info match
+                case TypeBounds(_, hi) if !t.isSealed && !t.symbol.isParametricIn(carrier) =>
+                  if hi.isAny then
+                    report.error(
+                      em"""$what cannot $have $tp since
+                          |that type refers to the type variable $t, which is not sealed.
+                          |$addendum""",
+                      pos)
+                  else
+                    traverse(hi)
+                case _ =>
+              traverseChildren(t)
           case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
           case t =>
