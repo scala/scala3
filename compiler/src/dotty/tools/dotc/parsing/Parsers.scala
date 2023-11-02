@@ -2344,7 +2344,7 @@ object Parsers {
               in.sourcePos(uscoreStart),
               future)
             if sourceVersion == `future-migration` then
-              patch(source, Span(t.span.end, in.lastOffset), " *")
+              patch(source, Span(t.span.end, in.lastOffset), "*")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.
@@ -2972,12 +2972,6 @@ object Parsers {
         }
       case p =>
         p
-
-    private def warnStarMigration(p: Tree) =
-      report.errorOrMigrationWarning(
-        em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
-        in.sourcePos(startOffset(p)),
-        from = future)
 
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */

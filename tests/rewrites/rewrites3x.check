@@ -1,0 +1,10 @@
+import scala.{collection as coll, runtime as _, *}
+import coll.*
+
+def f(xs: Int*) = xs.sum
+def test =
+  f(List(1, 2, 3)*)
+
+def g = { implicit (x: Int) =>
+  x + 1
+}
