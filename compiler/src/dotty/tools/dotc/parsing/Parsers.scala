@@ -2973,12 +2973,6 @@ object Parsers {
       case p =>
         p
 
-    private def warnStarMigration(p: Tree) =
-      report.errorOrMigrationWarning(
-        em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
-        in.sourcePos(startOffset(p)),
-        from = future)
-
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
