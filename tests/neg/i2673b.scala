@@ -2,5 +2,7 @@
 
 package Foos
 
-class Bar // error
+class Bar // warn
 object bar
+
+// nopos-error: No warnings can be incurred under -Werror.

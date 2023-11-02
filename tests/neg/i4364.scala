@@ -6,6 +6,8 @@ object Test {
 
   def main(args: Array[String]) = {
     foo(f) // Ok: Consumer is @FunctionalInterface
-    new java.io.ObjectOutputStream(f) // error: OutputStream is not @FunctionalInterface
+    new java.io.ObjectOutputStream(f) // warn: OutputStream is not @FunctionalInterface
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

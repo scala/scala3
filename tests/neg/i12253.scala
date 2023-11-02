@@ -10,7 +10,7 @@ object MacroUtils:
     import quotes.reflect.*
     val extractors = new Extractors
     code.asTerm match
-     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // error // error
+     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // warn // warn
      case t => report.throwError(s"Illegal argument to extractor: ${code.show}, in tasty: $t")
 
   class Extractors(using val q2: Quotes):
@@ -27,4 +27,5 @@ object MacroUtils:
 
   end Extractors
 end MacroUtils
-// nopos-error
+
+// nopos-error: No warnings can be incurred under -Werror.

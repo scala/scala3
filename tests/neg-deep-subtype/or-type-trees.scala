@@ -9,7 +9,7 @@ object Test1 {
 
   def foo2(myTree: Tree | (Context => Tree)) =
     myTree match
-      case treeFn: (Context => Tree) =>  // error
+      case treeFn: (Context => Tree) =>  // warn
       case _ =>
 
   def foo3(myTree: Tree | (Context => Tree)) =
@@ -25,12 +25,12 @@ object Test2 {
   trait Type
 
   def foo1(myTree: Tree[Type] | (Context => Tree[Type])) =
-    println(myTree.isInstanceOf[Tree[Type]])   // error
+    println(myTree.isInstanceOf[Tree[Type]])   // warn
     /* class DummyTree extends Tree[Nothing] with (Context => Tree[Type]) */
 
   def foo2(myTree: Tree[Type] | (Context => Tree[Type])) =
     myTree match
-      case treeFn: (Context => Tree[Type]) =>  // error
+      case treeFn: (Context => Tree[Type]) =>  // warn
       case _ =>
 
   def foo3(myTree: Tree[Type] | (Context => Tree[Type])) =
@@ -38,3 +38,4 @@ object Test2 {
       case treeFn: (_ => _) =>       // ok
       case _ =>
 }
+// nopos-error: No warnings can be incurred under -Werror.

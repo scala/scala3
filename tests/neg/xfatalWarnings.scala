@@ -3,7 +3,7 @@
 object xfatalWarnings {
   val opt:Option[String] = Some("test")
 
-  opt match { // error when running with -Xfatal-warnings
+  opt match { // warn
     case None =>
   }
 
@@ -11,3 +11,6 @@ object xfatalWarnings {
     while (true) {} // should be ok. no "pure expression does nothing in statement position" issued.
   }
 }
+
+// When running with fatal warnings:
+// nopos-error: No warnings can be incurred under -Werror.

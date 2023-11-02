@@ -5,25 +5,25 @@ class A:
   class B:
     private[A] val a = 1 // OK
     private[B] val b = 1 // OK
-    private[this] val c = 1 // error
-    private val d = 1 // error
+    private[this] val c = 1 // warn
+    private val d = 1 // warn
 
     private[A] val e = 1 // OK
     private[this] val f = e // OK
     private val g = f // OK
 
     private[A] var h = 1 // OK
-    private[this] var i = h // error not set
-    private var j = i // error not set
+    private[this] var i = h // warn not set
+    private var j = i // warn not set
 
     private[this] var k = 1 // OK
     private var l = 2 // OK
-    private val m = // error
+    private val m = // warn
       k = l
       l = k
       l
 
-    private def fac(x: Int): Int = // error
+    private def fac(x: Int): Int = // warn
       if x == 0 then 1 else x * fac(x - 1)
 
     val x = 1 // OK
@@ -34,10 +34,10 @@ class A:
 package foo.test.contructors:
   case class A private (x:Int) // OK
   class B private (val x: Int) // OK
-  class C private (private val x: Int) // error
+  class C private (private val x: Int) // warn
   class D private (private val x: Int): // OK
     def y = x
-  class E private (private var x: Int): // error not set
+  class E private (private var x: Int): // warn not set
     def y = x
   class F private (private var x: Int): // OK
     def y =
@@ -55,3 +55,4 @@ package test.foo.i16682:
     }
 
   def f = myPackage.isInt("42")
+// nopos-error: No warnings can be incurred under -Werror.

@@ -12,10 +12,10 @@ def secondThing(): Either[Failed, Unit] =
   Left(Failed("whoops you should have flatMapped me"))
 
 def singleExpr(): Either[Failed, Unit] =
-  firstThing().map(_ => secondThing()) // error
+  firstThing().map(_ => secondThing()) // warn
 
 def block(): Either[Failed, Unit] = {
-  firstThing().map(_ => secondThing()) // error
+  firstThing().map(_ => secondThing()) // warn
 }
 
 class ValueDiscardTest:
@@ -24,7 +24,7 @@ class ValueDiscardTest:
   def remove(): Unit =
     // Set#remove returns a Boolean, not this.type
     // --> Warning
-    mutable.Set.empty[String].remove("") // error
+    mutable.Set.empty[String].remove("") // warn
 
   // TODO IMHO we don't need to support this,
   // as it's just as easy to add a @nowarn annotation as a Unit ascription
@@ -36,7 +36,7 @@ class ValueDiscardTest:
     // - Set#subtractOne returns this.type
     // - receiver is not a field or a local variable (not quite sure what you'd call it)
     // --> Warning
-    mutable.Set.empty[String].subtractOne("") // error
+    mutable.Set.empty[String].subtractOne("") // warn
 
   def mutateLocalVariable(): Unit = {
     // - Set#subtractOne returns this.type
@@ -56,7 +56,7 @@ class ValueDiscardTest:
     // - += returns this.type
     // - receiver is not a field or a local variable
     // --> Warning
-    mutable.Set.empty[String] += "" // error
+    mutable.Set.empty[String] += "" // warn
 
   def assignmentOperatorLocalVariable(): Unit =
     // - += returns this.type
@@ -64,3 +64,4 @@ class ValueDiscardTest:
     // --> No warning
     val s: mutable.Set[String] = mutable.Set.empty[String]
     s += ""
+// nopos-error: No warnings can be incurred under -Werror.

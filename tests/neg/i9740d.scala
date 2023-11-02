@@ -9,5 +9,6 @@ class Foo[U <: Int, T <: U] {
   def bar[A <: T](x: Exp[A]): Unit = x match
     case IntExp(x) =>
     case StrExp(x) =>
-    case UnitExp => // error
+    case UnitExp => // warn
 }
+// nopos-error: No warnings can be incurred under -Werror.

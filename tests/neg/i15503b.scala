@@ -5,13 +5,13 @@ val a = 1 // OK
 var cs = 3 // OK
 
 val b = // OK
-  var e3 = 2 // error
-  val e1 = 1 // error
-  def e2 = 2 // error
+  var e3 = 2 // warn
+  val e1 = 1 // warn
+  def e2 = 2 // warn
   1
 
 val c = // OK
-  var e1 = 1 // error not set
+  var e1 = 1 // warn not set
   def e2 = e1 // OK
   val e3 = e2 // OK
     e3
@@ -26,14 +26,14 @@ val g = // OK
 def d = 1 // OK
 
 def e = // OK
-  val e1 = 1 // error
-  def e2 = 2 // error
-  var e3 = 4 // error
+  val e1 = 1 // warn
+  def e2 = 2 // warn
+  var e3 = 4 // warn
   1
 
 def f = // OK
   val f1 = 1 // OK
-  var f2 = f1 // error not set
+  var f2 = f1 // warn not set
   def f3 = f2 // OK
   f3
 
@@ -50,13 +50,13 @@ class Foo {
   var cs = 3 // OK
 
   val b = // OK
-    var e3 = 2 // error
-    val e1 = 1 // error
-    def e2 = 2 // error
+    var e3 = 2 // warn
+    val e1 = 1 // warn
+    def e2 = 2 // warn
     1
 
   val c = // OK
-    var e1 = 1 // error not set
+    var e1 = 1 // warn not set
     def e2 = e1 // OK
     val e3 = e2 // OK
     e3
@@ -71,14 +71,14 @@ class Foo {
   def d = 1 // OK
 
   def e = // OK
-    val e1 = 1 // error
-    def e2 = 2 // error
-    var e3 = 4 // error
+    val e1 = 1 // warn
+    def e2 = 2 // warn
+    var e3 = 4 // warn
     1
 
   def f = // OK
     val f1 = 1 // OK
-    var f2 = f1 // error not set
+    var f2 = f1 // warn not set
     def f3 = f2 // OK
     f3
 
@@ -99,18 +99,18 @@ package foo.scala2.tests:
 
   trait Locals {
     def f0 = {
-      var x = 1 // error
+      var x = 1 // warn
       var y = 2 // OK
       y = 3
       y + y
     }
     def f1 = {
       val a = new Outer // OK
-      val b = new Outer // error
+      val b = new Outer // warn
       new a.Inner
     }
     def f2 = {
-      var x = 100 // error not set
+      var x = 100 // warn not set
       x
     }
   }
@@ -118,14 +118,14 @@ package foo.scala2.tests:
   object Types {
     def l1() = {
       object HiObject { def f = this } // OK
-      class Hi { // error
+      class Hi { // warn
         def f1: Hi = new Hi
         def f2(x: Hi) = x
       }
-      class DingDongDoobie // error
+      class DingDongDoobie // warn
       class Bippy // OK
       type Something = Bippy // OK
-      type OtherThing = String // error
+      type OtherThing = String // warn
       (new Bippy): Something
     }
   }
@@ -142,3 +142,4 @@ package test.foo.twisted.i16682:
     isInt
 
   def f = myPackage("42")
+// nopos-error: No warnings can be incurred under -Werror.

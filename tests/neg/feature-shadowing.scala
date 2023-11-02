@@ -8,8 +8,9 @@ object a:
 
   object b:
     import language.implicitConversions as _
-    val s: String = 2   // error
+    val s: String = 2   // warn
 
     object c:
       import language.implicitConversions
       val s: String = 3   // OK again
+// nopos-error: No warnings can be incurred under -Werror.

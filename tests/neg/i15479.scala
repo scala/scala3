@@ -8,7 +8,7 @@ package deptest {
 }
 
 package depuser {
-  import deptest.DeprecatedThing.* // error
+  import deptest.DeprecatedThing.* // warn
 
   object DepUser {
     def main(args: Array[String]): Unit = println {
@@ -16,3 +16,5 @@ package depuser {
     }
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

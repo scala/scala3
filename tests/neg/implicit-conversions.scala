@@ -25,7 +25,8 @@ object D {
 object Test {
   import D.given
 
-  val x1: A = new B  // error under -Xfatal-warnings -feature
-  val x2: B = new A  // error under -Xfatal-warnings -feature
-  val x3: C = new A  // error under -Xfatal-warnings -feature
+  val x1: A = new B  // warn under -Xfatal-warnings -feature
+  val x2: B = new A  // warn under -Xfatal-warnings -feature
+  val x3: C = new A  // warn under -Xfatal-warnings -feature
 }
+// nopos-error: No warnings can be incurred under -Werror.

@@ -12,9 +12,11 @@ object HTML:
       attrs.filter(_ != Nil).foreach{
         case s: Seq[AppliedAttr] =>
           s.foreach(sb.append(" ").append)
-        case s: Seq[Int] => // error
+        case s: Seq[Int] => // warn
         case e: AppliedAttr =>
           sb.append(" ").append(e)
       }
       sb
     }
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -15,7 +15,7 @@ object Test {
     val b0x : A[?]#X = new b0.X
 
     def test = b0x match {
-      case tx : C[Int]#X => // error
+      case tx : C[Int]#X => // warn
         val c : C[Int] = tx.outer
         c
       case _ =>
@@ -32,3 +32,5 @@ object Test {
 
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

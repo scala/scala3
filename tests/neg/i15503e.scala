@@ -5,10 +5,10 @@ object Foo {
   val default_val = 1
 
   private def f1(a: Int) = a // OK
-  private def f2(a: Int) = default_val // error
+  private def f2(a: Int) = default_val // warn
   private def f3(a: Int)(using Int) = a // OK
-  private def f4(a: Int)(using Int) = default_val // error
-  private def f6(a: Int)(using Int) = summon[Int] // error
+  private def f4(a: Int)(using Int) = default_val // warn
+  private def f6(a: Int)(using Int) = summon[Int] // warn
   private def f7(a: Int)(using Int) = summon[Int] + a // OK
 }
 
@@ -49,9 +49,9 @@ package foo.test.trivial:
     private def f6(x: Int) = X // OK
     private def f7(x: Int) = Y // OK
     private def f8(x: Int): List[C] = Nil // OK
-    private def f9(x: Int): List[Int] = List(1,2,3,4) // error
+    private def f9(x: Int): List[Int] = List(1,2,3,4) // warn
     private def foo:Int = 32  // OK
-    private def f77(x: Int) = foo // error
+    private def f77(x: Int) = foo // warn
   }
   object Y
 
@@ -68,4 +68,4 @@ package foo.test.i16865:
 
   object Ex2 extends Bar:
     override def fn(a: Int, b: Int): Int = b + 3 // OK
-
+// nopos-error: No warnings can be incurred under -Werror.

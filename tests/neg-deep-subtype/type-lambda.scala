@@ -10,7 +10,9 @@ object Test {
   }
 
   def bar(x: ([X] =>> A[X])[Any]) = x match {
-    case x: ([X] =>> B[Nothing])[Any] => // error
+    case x: ([X] =>> B[Nothing])[Any] => // warn
     case _ =>
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

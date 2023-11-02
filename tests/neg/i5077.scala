@@ -12,7 +12,7 @@ def Test = {
 
   // Case 1: error
   c_string match {
-    case C(IsInt, _) => println(s"An Int") // error
+    case C(IsInt, _) => println(s"An Int") // warn
     case C(IsString, s) => println(s"A String with length ${s.length}")
     case _ => println("No match")
   }
@@ -31,3 +31,4 @@ def Test = {
     case _ => println("No match")
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

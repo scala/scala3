@@ -8,8 +8,10 @@ class Test {
   class D extends C
 
   def quux(a: A[C]): Unit = a match {
-    case _: B[C] => // error!!
+    case _: B[C] => // warn
   }
 
   quux(new B[D])
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

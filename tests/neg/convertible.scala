@@ -11,9 +11,9 @@ object Test:
   def f(x: Text, y: => Text, zs: Text*) =
     println(s"${x.str} ${y.str} ${zs.map(_.str).mkString(" ")}")
 
-  f("abc", "def")  // error // error
-  f("abc", "def", "xyz", "uvw")  // error // error // error // error
-  f("abc", "def", "xyz", Text("uvw"))  // error // error // error
+  f("abc", "def")  // warn // warn
+  f("abc", "def", "xyz", "uvw")  // warn // warn // warn // warn
+  f("abc", "def", "xyz", Text("uvw"))  // warn // warn // warn
 
   def g(x: into Text) =
     println(x.str)
@@ -27,5 +27,5 @@ object Test:
 
   def h(x: into Text) =
     val y = h1(x)
-    y("abc")  // error, inference through type variable does not propagate
-
+    y("abc")  // warn, inference through type variable does not propagate
+// nopos-error: No warnings can be incurred under -Werror.

@@ -6,9 +6,10 @@ object Test {
   case object Bar3 extends Foo[AnyRef]
 
   def fail4[T <: AnyRef](xx: (Foo[T], Foo[T])) = xx match {
-    case (Bar1, Bar1) => () // error // error
+    case (Bar1, Bar1) => () // warn // warn
     case (Bar2, Bar3) => ()
     case (Bar3, _) => ()
   }
 
 }
+// nopos-error: No warnings can be incurred under -Werror.

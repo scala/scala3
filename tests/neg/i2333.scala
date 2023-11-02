@@ -6,6 +6,7 @@
 }
 
 object Test {
-  new Foo // error: deprecated
-  new Foo(1) // error: deprecated
+  new Foo // warn: deprecated
+  new Foo(1) // warn: deprecated
 }
+// nopos-error: No warnings can be incurred under -Werror.

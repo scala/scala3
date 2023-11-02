@@ -42,7 +42,8 @@ def braced() =
   s"""begin
   ${
       val level = 10
-    val msg = "hello, world"  // error he lets me off with a warning
-    log(level, msg)           // error
+    val msg = "hello, world"  // warn he lets me off with a warning
+    log(level, msg)           // warn
    }
    end"""
+// nopos-error: No warnings can be incurred under -Werror.

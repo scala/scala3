@@ -2,10 +2,11 @@
 
 class C[T] {
   val x: Any = ???
-  if (x.isInstanceOf[List[String]]) // error: unchecked
-    if (x.isInstanceOf[T])          // error: unchecked
+  if (x.isInstanceOf[List[String]]) // warn: unchecked
+    if (x.isInstanceOf[T])          // warn: unchecked
       x match {
-        case x: List[String] =>     // error: unchecked
-        case x: T =>                // error: unchecked
+        case x: List[String] =>     // warn: unchecked
+        case x: T =>                // warn: unchecked
       }
 }
+// nopos-error: No warnings can be incurred under -Werror.

@@ -10,11 +10,12 @@ import TypedRecovery.*
 
 class Test {
   TypedRecoveryCompleted match {
-    case RecoveryCompleted => println("Recovery completed")            // error
+    case RecoveryCompleted => println("Recovery completed")            // warn
     case TypedRecoveryCompleted => println("Typed recovery completed")
   }
 
   def foo(x: TypedRecovery) = x match
-    case RecoveryCompleted =>             // error
+    case RecoveryCompleted =>             // warn
     case TypedRecoveryCompleted =>
 }
+// nopos-error: No warnings can be incurred under -Werror.

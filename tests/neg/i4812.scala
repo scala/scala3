@@ -5,7 +5,7 @@ object Test:
   def test[T](x: T): T =
     class A(val elem: (T, Boolean))
     prev match
-      case prev: A => // error: the type test for A cannot be checked at runtime
+      case prev: A => // warn: the type test for A cannot be checked at runtime
         prev.elem._1
       case _ =>
         prev = new A((x, true))
@@ -15,7 +15,7 @@ object Test:
     abstract class Parent(_elem: T) { def elem: T = _elem }
     class A extends Parent(x)
     prev match
-      case prev: A => // error: the type test for A cannot be checked at runtime
+      case prev: A => // warn: the type test for A cannot be checked at runtime
         prev.elem
       case _ =>
         prev = new A
@@ -25,7 +25,7 @@ object Test:
     class Holder(val elem: T)
     class A(val holder: Holder)
     prev match
-      case prev: A => // error: the type test for A cannot be checked at runtime
+      case prev: A => // warn: the type test for A cannot be checked at runtime
         prev.holder.elem
       case _ =>
         prev = new A(new Holder(x))
@@ -35,7 +35,7 @@ object Test:
     class Holder(val elem: (Int, (Unit, (T, Boolean))))
     class A { var holder: Holder = null }
     prev match
-      case prev: A => // error: the type test for A cannot be checked at runtime
+      case prev: A => // warn: the type test for A cannot be checked at runtime
         prev.holder.elem._2._2._1
       case _ =>
         val a = new A
@@ -47,7 +47,7 @@ object Test:
     def test5(x: U): U =
       class A(val elem: U)
       prev match
-        case prev: A => // error: the type test for A cannot be checked at runtime
+        case prev: A => // warn: the type test for A cannot be checked at runtime
           prev.elem
         case _ =>
           prev = new A(x)
@@ -57,7 +57,7 @@ object Test:
     class A { var b: B = null }
     class B { var a: A = null; var elem: T = _ }
     prev match
-      case prev: A => // error: the type test for A cannot be checked at runtime
+      case prev: A => // warn: the type test for A cannot be checked at runtime
         prev.b.elem
       case _ =>
         val a = new A
@@ -93,7 +93,7 @@ object Test:
     val methodCallId = System.nanoTime()
     class B(val id: Long) extends A
     prevA match
-      case x: B => // error: the type test for B cannot be checked at runtime
+      case x: B => // warn: the type test for B cannot be checked at runtime
         x.ensuring(x.id == methodCallId, s"Method call id $methodCallId != ${x.id}")
       case _    =>
         val x = new B(methodCallId)
@@ -117,3 +117,4 @@ object Test:
   def main(args: Array[String]): Unit =
     test(1)
     val x: String = test("") // was: ClassCastException: java.lang.Integer cannot be cast to java.lang.String
+// nopos-error: No warnings can be incurred under -Werror.

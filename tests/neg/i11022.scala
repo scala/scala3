@@ -7,7 +7,8 @@ case class CaseClass(rgb: Int):
 object CaseClass:
   def notDeprecated(): Unit = ()
 
-val a: CaseClass = CaseClass(42)        // error: deprecated type // error: deprecated apply method
-val b: CaseClass = new CaseClass(42)    // error: deprecated type // error: deprecated class
-val c: Unit = CaseClass(42).magic()     // error: deprecated apply method
+val a: CaseClass = CaseClass(42)        // warn: deprecated type // warn: deprecated apply method
+val b: CaseClass = new CaseClass(42)    // warn: deprecated type // warn: deprecated class
+val c: Unit = CaseClass(42).magic()     // warn: deprecated apply method
 val d: Unit = CaseClass.notDeprecated() // compiles
+// nopos-error: No warnings can be incurred under -Werror.

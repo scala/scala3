@@ -15,26 +15,26 @@ object Test2 {
 
 object Test3 {
   implicit val implicitLength: String => Int = _.length
-  val length: Int = "qwerty" // error
+  val length: Int = "qwerty" // warn
 }
 
 object Test4 {
   implicit def implicitLength: String => Int = _.length
-  val length: Int = "qwerty" // error
+  val length: Int = "qwerty" // warn
 }
 
 object Test5 {
   implicit def implicitLength[A]: String => Int = _.length
-  val length: Int = "qwerty" // error
+  val length: Int = "qwerty" // warn
 }
 
 object Test6 {
   implicit val implicitLength: Map[String, Int] = Map("qwerty" -> 6)
-  val length: Int = "qwerty" // error
+  val length: Int = "qwerty" // warn
 }
 
 object Test7 {
-  implicit def a2int[A](a: A)(implicit ev: A => Int): Int = a // error
+  implicit def a2int[A](a: A)(implicit ev: A => Int): Int = a // warn
 }
 
 object Test8 {
@@ -58,7 +58,7 @@ object Test11 {
     def foo = "foo"
   }
   implicit def a2foo[A]: A => Foo = _ => new Foo {}
-  123.foo // error
+  123.foo // warn
 }
 
 object Test12 {
@@ -86,3 +86,4 @@ object Test15 {
   def foo(implicit ev: Seq[Int]): Unit = ???
   foo
 }
+// nopos-error: No warnings can be incurred under -Werror.

@@ -18,7 +18,8 @@ def bl(x: AA) = x.isInstanceOf[BL] // was: the type test for BL cannot be checke
 def bu(x: AA) = x.isInstanceOf[BU] // was: the type test for BU cannot be checked at runtime
 
 // but static knowledge of only one bound makes checking against an alias unchecked:
-def al_ba(x: AL) = x.isInstanceOf[BA] // error: the type test for BA cannot be checked at runtime
-def au_ba(x: AU) = x.isInstanceOf[BA] // error: the type test for BA cannot be checked at runtime
-def al_bu(x: AL) = x.isInstanceOf[BU] // error: the type test for BU cannot be checked at runtime
-def au_bl(x: AU) = x.isInstanceOf[BL] // error: the type test for BL cannot be checked at runtime
+def al_ba(x: AL) = x.isInstanceOf[BA] // warn: the type test for BA cannot be checked at runtime
+def au_ba(x: AU) = x.isInstanceOf[BA] // warn: the type test for BA cannot be checked at runtime
+def al_bu(x: AL) = x.isInstanceOf[BU] // warn: the type test for BU cannot be checked at runtime
+def au_bl(x: AU) = x.isInstanceOf[BL] // warn: the type test for BL cannot be checked at runtime
+// nopos-error: No warnings can be incurred under -Werror.

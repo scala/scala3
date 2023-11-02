@@ -25,19 +25,19 @@ transparent inline def transparentInlineMod2(inline n: NatT):  NatT = inline n m
   case Succ(Succ(predPredN)) => transparentInlineMod2(predPredN)
 
 def dependentlyTypedMod2[N <: NatT](n: N): Mod2[N] = n match
-  case Zero(): Zero => Zero() // error
-  case Succ(Zero()): Succ[Zero] => Succ(Zero()) // error
-  case Succ(Succ(predPredN)): Succ[Succ[_]] => dependentlyTypedMod2(predPredN) // error
+  case Zero(): Zero => Zero() // warn
+  case Succ(Zero()): Succ[Zero] => Succ(Zero()) // warn
+  case Succ(Succ(predPredN)): Succ[Succ[_]] => dependentlyTypedMod2(predPredN) // warn
 
 inline def inlineDependentlyTypedMod2[N <: NatT](inline n: N): Mod2[N] = inline n match
-  case Zero(): Zero => Zero() // error
-  case Succ(Zero()): Succ[Zero] => Succ(Zero()) // error
-  case Succ(Succ(predPredN)): Succ[Succ[_]] => inlineDependentlyTypedMod2(predPredN) // error
+  case Zero(): Zero => Zero() // warn
+  case Succ(Zero()): Succ[Zero] => Succ(Zero()) // warn
+  case Succ(Succ(predPredN)): Succ[Succ[_]] => inlineDependentlyTypedMod2(predPredN) // warn
 
 transparent inline def transparentInlineDependentlyTypedMod2[N <: NatT](inline n: N): Mod2[N] = inline n match
-  case Zero(): Zero => Zero() // error
-  case Succ(Zero()): Succ[Zero] => Succ(Zero()) // error
-  case Succ(Succ(predPredN)): Succ[Succ[_]] => transparentInlineDependentlyTypedMod2(predPredN) // error
+  case Zero(): Zero => Zero() // warn
+  case Succ(Zero()): Succ[Zero] => Succ(Zero()) // warn
+  case Succ(Succ(predPredN)): Succ[Succ[_]] => transparentInlineDependentlyTypedMod2(predPredN) // warn
 
 def foo(n: NatT): NatT = mod2(n) match
   case Succ(Zero()) => Zero()
@@ -61,3 +61,4 @@ inline def transparentInlineFoo(inline n: NatT): NatT = inline transparentInline
   println(dependentlyTypedMod2(Succ(Succ(Succ(Zero()))))) // runtime error; unexpected
   println(inlineDependentlyTypedMod2(Succ(Succ(Succ(Zero()))))) // prints Succ(Zero()), as expected
   println(transparentInlineDependentlyTypedMod2(Succ(Succ(Succ(Zero()))))) // prints Succ(Zero()), as expected
+// nopos-error: No warnings can be incurred under -Werror.

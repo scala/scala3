@@ -6,4 +6,6 @@ class C:
   def test: Unit =
     try op
     catch case _: NullPointerException =>
-    handler   // error
+    handler   // warn
+
+// nopos-error: No warnings can be incurred under -Werror.

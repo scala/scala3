@@ -8,7 +8,7 @@ object Test {
     val p2: T = T1
 
     (p1.y: p1.X) match {
-      case x: p2.Y => // error: unchecked
+      case x: p2.Y => // warn: unchecked
       case x: p1.Y =>
       case _ =>
     }
@@ -37,3 +37,5 @@ object T1 extends T {
   }
 
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

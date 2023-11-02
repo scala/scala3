@@ -1,11 +1,11 @@
 //> using options -Xfatal-warnings -Wunused:all
 
-import collection.mutable.{Map => MutMap} // error
-import collection.mutable.Set // error
+import collection.mutable.{Map => MutMap} // warn
+import collection.mutable.Set // warn
 
 class A {
   import collection.mutable.{Map => MutMap} // OK
-  private val a = 1 // error
+  private val a = 1 // warn
   val b = 2 // OK
 
   /* This goes around the trivial method detection */
@@ -13,7 +13,7 @@ class A {
 
   val someMap = MutMap()
 
-  private def c1 = 2 // error
+  private def c1 = 2 // warn
   private def c2 = 2 // OK
   def c3 = c2
 
@@ -23,8 +23,8 @@ class A {
   def e1(x: Int) = default_int // ok
   def e2(x: Int) = x // OK
   def f =
-    val x = 1 // error
-    def f = 2 // error
+    val x = 1 // warn
+    def f = 2 // warn
     val y = 3 // OK
     def g = 4 // OK
     y + g
@@ -49,7 +49,7 @@ package foo.test.scala.annotation:
   def a3(@unused a: Int) = default_int //OK
 
   def b1 =
-    def f = 1 // error
+    def f = 1 // warn
     1
 
   def b2 =
@@ -61,7 +61,7 @@ package foo.test.scala.annotation:
     1
 
   object Foo:
-    private def a = 1 // error
+    private def a = 1 // warn
     private def b = 2 // OK
     @unused private def c = 3 // OK
 
@@ -81,8 +81,8 @@ package foo.test.i16678:
 
   def run =
     println(foo(number => number.toString, value = 5)) // OK
-    println(foo(number => "<number>", value = 5)) // error
-    println(foo(func = number => "<number>", value = 5)) // error
+    println(foo(number => "<number>", value = 5)) // warn
+    println(foo(func = number => "<number>", value = 5)) // warn
     println(foo(func = number => number.toString, value = 5)) // OK
     println(foo(func = _.toString, value = 5)) // OK
 
@@ -93,7 +93,7 @@ package foo.test.possibleclasses:
   )(
     s: Int,
     val t: Int, // OK
-    private val z: Int // error
+    private val z: Int // warn
   )
 
   case class AllCaseUsed(
@@ -108,12 +108,12 @@ package foo.test.possibleclasses:
   }
 
   class AllClass(
-    k: Int, // error
-    private val y: Int // error
+    k: Int, // warn
+    private val y: Int // warn
   )(
-    s: Int, // error
+    s: Int, // warn
     val t: Int, // OK
-    private val z: Int // error
+    private val z: Int // warn
   )
 
   class AllUsed(
@@ -134,7 +134,7 @@ package foo.test.possibleclasses.withvar:
   )(
     s: Int,
     var t: Int, // OK
-    private var z: Int // error
+    private var z: Int // warn
   )
 
   case class AllCaseUsed(
@@ -143,27 +143,27 @@ package foo.test.possibleclasses.withvar:
   )(
     s: Int, // OK
     var t: Int, // OK global scope can be set somewhere else
-    private var z: Int // error not set
+    private var z: Int // warn not set
   ) {
     def a = k + y + s + t + z
   }
 
   class AllClass(
-    k: Int, // error
-    private var y: Int // error
+    k: Int, // warn
+    private var y: Int // warn
   )(
-    s: Int, // error
+    s: Int, // warn
     var t: Int, // OK
-    private var z: Int // error
+    private var z: Int // warn
   )
 
   class AllUsed(
     k: Int, // OK
-    private var y: Int // error not set
+    private var y: Int // warn not set
   )(
     s: Int, // OK
     var t: Int, // OK global scope can be set somewhere else
-    private var z: Int // error not set
+    private var z: Int // warn not set
   ) {
     def a = k + y + s + t + z
   }
@@ -313,3 +313,4 @@ package foo.test.i17117:
       val test = t1.test
     }
   }
+// nopos-error: No warnings can be incurred under -Werror.

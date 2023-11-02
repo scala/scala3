@@ -16,7 +16,7 @@ object MyXObject {
   def anX: MyX = XObject.anX
 
   given ops: Object with {
-    extension (x: MyX) def + (y: MyX): MyX = x + y // error: warring: Infinite recursive call
+    extension (x: MyX) def + (y: MyX): MyX = x + y // warn: warring: Infinite recursive call
   }
 }
 
@@ -24,3 +24,4 @@ object Main extends App {
   println(XObject.anX + XObject.anX) // prints 10
   println(MyXObject.anX + MyXObject.anX) // infinite loop
 }
+// nopos-error: No warnings can be incurred under -Werror.

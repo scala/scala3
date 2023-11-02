@@ -10,7 +10,7 @@ trait InterFace {
 
 trait BadAPI extends InterFace {
   private def f(a: Int,
-        b: String,               // error
+        b: String,               // warn
         c: Double): Int = {
     println(c)
     a
@@ -50,7 +50,7 @@ trait PoorClient extends BadAPI {
   override def f(a: Int, b: String, c: Double): Int = a + b.toInt + c.toInt
 }
 
-class Unusing(u: Int) {       // error
+class Unusing(u: Int) {       // warn
   def f = ???
 }
 
@@ -108,3 +108,5 @@ object Answers {
 }
 
 val a$1 = 2
+
+// nopo-error: No warnings can be incurred under -Werror.

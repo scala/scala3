@@ -9,38 +9,38 @@ class C {
   def c = {
     def improved = Future(42)
     def stale = Future(27)
-    improved              // error
+    improved              // warn
     stale
   }
 }
 class D {
   def d = {
     class E
-    new E().toString      // error
+    new E().toString      // warn
     new E().toString * 2
   }
 }
 class F {
   import ExecutionContext.Implicits._
-  Future(42)              // error
+  Future(42)              // warn
 }
 // unused template expression uses synthetic method of class
 case class K(s: String) {
-  copy()                  // error
+  copy()                  // warn
 }
 // mutations returning this are ok
 class Mutate {
   val b = ListBuffer.empty[Int]
   b += 42                 // nowarn, returns this.type
   val xs = List(42)
-  27 +: xs                // error
+  27 +: xs                // warn
 
   def f(x: Int): this.type = this
   def g(): Unit = f(42)   // nowarn
 }
 // some uninteresting expressions may warn for other reasons
 class WhoCares {
-  null                    // error for purity
+  null                    // warn for purity
   ???                     // nowarn for impurity
 }
 // explicit Unit ascription to opt out of warning, even for funky applies
@@ -54,11 +54,11 @@ class Absolution {
 class Boxed[A](a: A) {
   def isEmpty = false
   def foreach[U](f: A => U): Unit =
-    if (!isEmpty) f(a)      // error (if)
+    if (!isEmpty) f(a)      // warn (if)
   def forall(f: A => Boolean): Unit =
     if (!isEmpty) {
       println(".")
-      f(a)                  // error (if)
+      f(a)                  // warn (if)
     }
   def take(p: A => Boolean): Option[A] = {
     while (isEmpty || !p(a)) ()
@@ -69,20 +69,20 @@ class Unibranch[A, B] {
   def runWith[U](action: B => U): A => Boolean = { x =>
     val z = null.asInstanceOf[B]
     val fellback = false
-    if (!fellback) action(z)  // error (if)
+    if (!fellback) action(z)  // warn (if)
     !fellback
   }
   def f(i: Int): Int = {
     def g = 17
     if (i < 42) {
-      g   // error block statement
+      g   // warn block statement
       println("uh oh")
-      g   // error (if)
+      g   // warn (if)
     }
     while (i < 42) {
-      g   // error
+      g   // warn
       println("uh oh")
-      g   // error
+      g   // warn
     }
     42
   }
@@ -92,7 +92,7 @@ class Dibranch {
   def j: Int = ???
   def f(b: Boolean): Int = {
     // if-expr might have an uninteresting LUB
-    if (b) {          // error, at least one branch looks interesting
+    if (b) {          // warn, at least one branch looks interesting
       println("true")
       i
     }
@@ -112,7 +112,7 @@ class Next[A] {
 class Setting[A] {
   def set = LinkedHashSet.empty[A]
   def f(a: A): Unit = {
-    set += a     // error because cannot know whether the `set` was supposed to be consumed or assigned
+    set += a     // warn because cannot know whether the `set` was supposed to be consumed or assigned
     println(set)
   }
 }
@@ -122,27 +122,27 @@ class Strung {
   def iterator = Iterator.empty[String]
   def addString(b: StringBuilder, start: String, sep: String, end: String): StringBuilder = {
     val jsb = b.underlying
-    if (start.length != 0) jsb.append(start) // error (value-discard)
+    if (start.length != 0) jsb.append(start) // warn (value-discard)
     val it = iterator
     if (it.hasNext) {
       jsb.append(it.next())
       while (it.hasNext) {
         jsb.append(sep) // nowarn (java)
-        jsb.append(it.next()) // error (value-discard)
+        jsb.append(it.next()) // warn (value-discard)
       }
     }
-    if (end.length != 0) jsb.append(end) // error (value-discard)
+    if (end.length != 0) jsb.append(end) // warn (value-discard)
     b
   }
   def f(b: java.lang.StringBuilder, it: Iterator[String]): String = {
     while (it.hasNext) {
       b.append("\n") // nowarn (java)
-      b.append(it.next()) // error (value-discard)
+      b.append(it.next()) // warn (value-discard)
     }
     b.toString
   }
   def g(b: java.lang.StringBuilder, it: Iterator[String]): String = {
-    while (it.hasNext) it.next()  // error
+    while (it.hasNext) it.next()  // warn
     b.toString
   }
 }
@@ -196,3 +196,4 @@ class Depends {
     ()
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

@@ -1,5 +1,5 @@
--- [E187] Potential Issue Error: tests/neg/17284.scala:4:6 -------------------------------------------------------------
-4 |  451.synchronized {} // error
+-- [E187] Potential Issue Warning: tests/neg/17284.scala:4:6 -----------------------------------------------------------
+4 |  451.synchronized {} // warn
   |  ^^^^^^^^^^^^^^^^
   |  Suspicious synchronized call on boxed class
   |---------------------------------------------------------------------------------------------------------------------
@@ -8,8 +8,8 @@
   | You called the synchronized method on a boxed primitive. This might not be what
   | you intended.
    ---------------------------------------------------------------------------------------------------------------------
--- [E187] Potential Issue Error: tests/neg/17284.scala:8:4 -------------------------------------------------------------
-8 |  x.synchronized {} // error
+-- [E187] Potential Issue Warning: tests/neg/17284.scala:8:4 -----------------------------------------------------------
+8 |  x.synchronized {} // warn
   |  ^^^^^^^^^^^^^^
   |  Suspicious synchronized call on boxed class
   |---------------------------------------------------------------------------------------------------------------------
@@ -18,8 +18,8 @@
   | You called the synchronized method on a boxed primitive. This might not be what
   | you intended.
    ---------------------------------------------------------------------------------------------------------------------
--- [E187] Potential Issue Error: tests/neg/17284.scala:11:7 ------------------------------------------------------------
-11 |  true.synchronized {} // error
+-- [E187] Potential Issue Warning: tests/neg/17284.scala:11:7 ----------------------------------------------------------
+11 |  true.synchronized {} // warn
    |  ^^^^^^^^^^^^^^^^^
    |  Suspicious synchronized call on boxed class
    |--------------------------------------------------------------------------------------------------------------------
@@ -28,3 +28,4 @@
    | You called the synchronized method on a boxed primitive. This might not be what
    | you intended.
     --------------------------------------------------------------------------------------------------------------------
+No warnings can be incurred under -Werror.

@@ -5,7 +5,8 @@ class D[T]
 
 class Test {
   def foo[T](x: C[T]) = x match {
-    case _: D[T] =>    // error
-    case _: C[Int] =>  // error
+    case _: D[T] =>    // warn
+    case _: C[Int] =>  // warn
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

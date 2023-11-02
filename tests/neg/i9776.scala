@@ -12,7 +12,7 @@ object Fruit {
   case object Orange extends Fruit
 
   def isCitrus(fruit: Fruit): Boolean =
-    (fruit: @switch) match {  // error Could not emit switch for @switch annotated match
+    (fruit: @switch) match {  // warn Could not emit switch for @switch annotated match
       case Orange => true
       case Lemon  => true
       case Lime   => true
@@ -37,7 +37,7 @@ object TaggedFruit {
   }
 
   def isCitrus(fruit: TaggedFruit): Boolean =
-    (fruit.tag: @switch) match {  // error Could not emit switch for @switch annotated match
+    (fruit.tag: @switch) match {  // warn Could not emit switch for @switch annotated match
       case Apple.tag => true
       case 2         => true
       case 3         => true
@@ -59,3 +59,4 @@ object TaggedFruit {
       case Apple.tag  => true
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

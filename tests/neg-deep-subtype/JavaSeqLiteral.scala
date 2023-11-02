@@ -10,7 +10,7 @@ object Test1 {
   class DummyTree extends JavaSeqLiteral[Any]
 
   def foo1(tree: Tree[Type]) =
-    tree.isInstanceOf[JavaSeqLiteral[Type]]   // error
+    tree.isInstanceOf[JavaSeqLiteral[Type]]   // warn
 
   foo1(new DummyTree)
 }
@@ -29,3 +29,5 @@ object Test2 {
 
   foo1(new DummyTree)
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

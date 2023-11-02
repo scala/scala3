@@ -3,13 +3,14 @@
 @deprecated trait Exp
 @deprecated val exp = 1
 
-def test1 = exp // error
-def test2(a: Exp) = () // error
+def test1 = exp // warn
+def test2(a: Exp) = () // warn
 
-type Foo0 = Exp // error
-type Foo = Option[Exp] // error
-type Bar = Option[exp.type] // error
-type Baz = Exp | Int // error
+type Foo0 = Exp // warn
+type Foo = Option[Exp] // warn
+type Bar = Option[exp.type] // warn
+type Baz = Exp | Int // warn
 type Quux = [X] =>> X match
-  case Exp => Int // error
-type Quuz[A <: Exp] = Int // error
+  case Exp => Int // warn
+type Quuz[A <: Exp] = Int // warn
+// nopos-error: No warnings can be incurred under -Werror.

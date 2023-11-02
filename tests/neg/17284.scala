@@ -1,14 +1,15 @@
 //> using options -Werror -explain
 
 def test =
-  451.synchronized {} // error
+  451.synchronized {} // warn
 
 def test2 =
   val x: Integer = 451
-  x.synchronized {} // error
+  x.synchronized {} // warn
 
 def test3 =
-  true.synchronized {} // error
+  true.synchronized {} // warn
 
 def test4 =
   true.hashCode() // success
+// nopos-error: No warnings can be incurred under -Werror.

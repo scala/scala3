@@ -29,15 +29,16 @@ object Test {
   val r2: R = RI
 
   r1.n match {
-    case n: r2.Nat => // error: the type test for Test.r2.Nat cannot be checked at runtime
-    case n: r1.Idx => // error: the type test for Test.r1.Idx cannot be checked at runtime
+    case n: r2.Nat => // warn: the type test for Test.r2.Nat cannot be checked at runtime
+    case n: r1.Idx => // warn: the type test for Test.r1.Idx cannot be checked at runtime
     case n: r1.Succ => // Ok
     case n: r1.Nat => // Ok
   }
 
   r1.one match {
-    case n: r2.Nat => // error: the type test for Test.r2.Nat cannot be checked at runtime
-    case n: r1.Idx => // error: the type test for Test.r1.Idx cannot be checked at runtime
+    case n: r2.Nat => // warn: the type test for Test.r2.Nat cannot be checked at runtime
+    case n: r1.Idx => // warn: the type test for Test.r1.Idx cannot be checked at runtime
     case n: r1.Nat => // Ok
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

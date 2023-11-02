@@ -1,11 +1,12 @@
 //> using options -Xfatal-warnings
 
 def f(): Unit = {
-  () // error
+  () // warn
   ()
 }
 
 inline def g(): Unit = {
-  () // error
+  () // warn
   ()
 }
+// nopos-error: No warnings can be incurred under -Werror.

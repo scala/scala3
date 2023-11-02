@@ -3,7 +3,7 @@
 opaque type Bytes = Array[Byte]
 object Bytes:
   extension (self: Bytes)
-    def size: Int = (self: Array[Byte]).size  // error
+    def size: Int = (self: Array[Byte]).size  // warn
 
 //
 
@@ -20,7 +20,7 @@ object Module2:
   object Gen:
     extension [A](self: Gen[A])
       def map[B](f: A => B): Gen[B] =
-        self.map(f)  // error
+        self.map(f)  // warn
 
 //
 
@@ -30,3 +30,4 @@ extension (sym: Sym)
   def isSomething: Boolean = false
   def isFoo: Boolean       = sym.isSomething && sym.owner.isFoo // was: Infinite loop in function body
   def isBar: Boolean       = sym.isSomething || sym.owner.isBar // was: Infinite loop in function body
+// nopos-error: No warnings can be incurred under -Werror.

@@ -19,9 +19,9 @@ object Test {
   test[Any, Array[Int]]
   test[Seq[Int], List[Int]]
 
-  test[Any, Some[Int]] // error
-  test[Any, a.X] // error
-  test[a.X, a.Y] // error
+  test[Any, Some[Int]] // warn
+  test[Any, a.X] // warn
+  test[a.X, a.Y] // warn
 
 }
 
@@ -29,3 +29,4 @@ class A {
   type X
   type Y <: X
 }
+// nopos-error: No warnings can be incurred under -Werror.

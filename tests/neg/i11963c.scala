@@ -2,7 +2,9 @@
 
 object Test {
   def foo: Any = {
-    open class Bar // error
+    open class Bar // warn
     new Bar
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

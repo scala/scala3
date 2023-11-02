@@ -2,12 +2,12 @@
 
 
 object FooUnused:
-  import collection.mutable.Set // error
-  import collection.mutable.{Map => MutMap} // error
-  import collection.mutable._ // error
+  import collection.mutable.Set // warn
+  import collection.mutable.{Map => MutMap} // warn
+  import collection.mutable._ // warn
 
 object FooWildcardUnused:
-  import collection.mutable._ // error
+  import collection.mutable._ // warn
 
 object Foo:
   import collection.mutable.Set // OK
@@ -22,7 +22,7 @@ object FooWildcard:
   val bar = Set() // OK
 
 object FooNestedUnused:
-  import collection.mutable.Set // error
+  import collection.mutable.Set // warn
   object Nested:
     def hello = 1
 
@@ -32,11 +32,11 @@ object FooNested:
     def hello = Set()
 
 object FooGivenUnused:
-  import SomeGivenImports.given // error
+  import SomeGivenImports.given // warn
 
 object FooGiven:
   import SomeGivenImports.given // OK
-  import SomeGivenImports._ // error
+  import SomeGivenImports._ // warn
 
   val foo = summon[Int]
 
@@ -52,7 +52,7 @@ object FooTypeName:
   import collection.mutable.Map // OK
   import collection.mutable.Seq // OK
   import collection.mutable.ArrayBuilder // OK
-  import collection.mutable.ListBuffer // error
+  import collection.mutable.ListBuffer // warn
 
   def checkImplicit[A](using Set[A]) = ()
   def checkParamType[B](a: Map[B,B]): Seq[B] = ???
@@ -64,12 +64,12 @@ object FooTypeName:
 object InlineChecks:
   object InlineFoo:
     import collection.mutable.Set // ok
-    import collection.mutable.Map // error
+    import collection.mutable.Map // warn
     inline def getSet = Set(1)
 
   object InlinedBar:
     import collection.mutable.Set // ok
-    import collection.mutable.Map // error
+    import collection.mutable.Map // warn
     val a = InlineFoo.getSet
 
 object MacroChecks:
@@ -80,7 +80,7 @@ object MacroChecks:
 
 
 object InnerMostCheck:
-  import collection.mutable.* // error
+  import collection.mutable.* // warn
   def check =
     import collection.mutable.* //OK
     val a = Set(1)
@@ -88,7 +88,7 @@ object InnerMostCheck:
 object IgnoreExclusion:
   import collection.mutable.{Set => _} // OK
   import collection.mutable.{Map => _} // OK
-  import collection.mutable.{ListBuffer} // error
+  import collection.mutable.{ListBuffer} // warn
   def check =
     val a = Set(1)
     val b = Map(1 -> 2)
@@ -106,7 +106,7 @@ package testsamepackageimport:
   }
 
   package p {
-    import p._ // error
+    import p._ // warn
     package q {
       class U {
         def f = new C
@@ -120,7 +120,7 @@ package testpackageimport:
     val x: Int = 0
 
   package b:
-    import a._ // error
+    import a._ // warn
 
 
 /* END : Check on packages*/
@@ -149,7 +149,7 @@ object GivenImportOrderAtoB:
   object A { implicit val x: X = new X }
   object B { implicit val y: Y = new Y }
   class C {
-    import A._ // error
+    import A._ // warn
     import B._ // OK
     def t = implicitly[X]
   }
@@ -161,7 +161,7 @@ object GivenImportOrderBtoA:
   object B { implicit val y: Y = new Y }
   class C {
     import B._ // OK
-    import A._ // error
+    import A._ // warn
     def t = implicitly[X]
   }
 /* END : tests on given import order */
@@ -174,19 +174,19 @@ object Scala2ImplicitsGiven:
     import A.given  // OK
     val b = summon[Int]
   object C:
-    import A.given  // error
+    import A.given  // warn
     val b = 1
   object D:
     import A._  // OK
     val b = summon[Int]
   object E:
-    import A._  // error
+    import A._  // warn
     val b = 1
   object F:
     import A.x  // OK
     val b = summon[Int]
   object G:
-    import A.x  // error
+    import A.x  // warn
     val b = 1
 
 // -------------------------------------
@@ -226,7 +226,7 @@ package testOnOverloadedMethodsImports:
   package b:
     object D extends a.C
   package c:
-    import b.D.foo // error
+    import b.D.foo // warn
   package d:
     import b.D.foo // OK
     def bar = foo((??? : a.A))
@@ -242,13 +242,13 @@ package testOnOverloadedMethodsImports:
 package foo.testing.rename.imports:
   import collection.mutable.{Set => MutSet1} // OK
   import collection.mutable.{Set => MutSet2} // OK
-  import collection.mutable.{Set => MutSet3} // error
+  import collection.mutable.{Set => MutSet3} // warn
   type A[X] = MutSet1[X]
   val a = MutSet2(1)
 
 //-------------------------------------
 package foo.testing.imports.precedence:
-  import scala.collection.immutable.{BitSet => _, _} // error
+  import scala.collection.immutable.{BitSet => _, _} // warn
   import scala.collection.immutable.BitSet // OK
   def t = BitSet.empty
 
@@ -266,3 +266,4 @@ package foo.test.typeapply.hklamdba.i16680:
 
     def f[F[_]]: String = "hello"
     def go = f[IO]
+// nopos-error: No warnings can be incurred under -Werror.

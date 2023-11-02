@@ -12,17 +12,14 @@ def Test[T] =
   O.x match
     case _: C => ???   // ok
   C() match
-    case _: O.T => ???  // error
+    case _: O.T => ???  // warn
   C() match
-    case _: T => ???   // error
+    case _: T => ???   // warn
 
   (??? : Any) match
-    case _: List[O.T] => ???  // error
+    case _: List[O.T] => ???  // warn
   (??? : Any) match
     case _: List[O.T @unchecked] => ???  // OK
   (??? : Any) match
-    case _: List[T] => ???  // error
-
-
-
-
+    case _: List[T] => ???  // warn
+// nopos-error: No warnings can be incurred under -Werror.

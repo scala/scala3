@@ -1,3 +1,5 @@
 //> using options -Xfatal-warnings
 
-open trait Foo // error
+open trait Foo // warn
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -6,9 +6,11 @@ package foo:
 
 
 package bar:
-  import foo.{given foo.Foo[Int]} // error
+  import foo.{given foo.Foo[Int]} // warn
   import foo.Foo
 
   given Foo[Int] = ???
 
   val repro: Foo[Int] = summon[Foo[Int]]
+
+// nopos-error: No warnings can be incurred under -Werror.

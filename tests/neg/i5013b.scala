@@ -11,8 +11,10 @@ class Foo {
 
   val c: Unit = ()
 
-  def foo1: Unit = a // error: A pure expression does nothing in statement position
+  def foo1: Unit = a // warn: A pure expression does nothing in statement position
   def foo2: Unit = b
   def foo3: Unit = c // Not addapted to { c; () } and hence c is not a statement
 
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -16,12 +16,12 @@ def lazyIdentity[T](x: => T): T = x
 def repIdentity[T](x: T*): T = x(0)
 
 val x1 =
-  implicit def barToFoo(bar: Bar): Foo = bar.toFoo // error: infinite loop in function body
+  implicit def barToFoo(bar: Bar): Foo = bar.toFoo // warn: infinite loop in function body
   val foo: Foo = Bar(1)
 
 val x2 =
   implicit def barToFoo2(bar: Bar): Foo =
-    identity(bar.toFoo)  // error
+    identity(bar.toFoo)  // warn
   val foo: Foo = Bar(1)
 
 val x3 =
@@ -31,12 +31,12 @@ val x3 =
 
 val x4 =
   implicit def barToFoo4(bar: Bar): Foo =
-    repIdentity(bar.toFoo)  // error
+    repIdentity(bar.toFoo)  // warn
   val foo: Foo = Bar(1)
 
 val x5 =
   implicit def barToFoo4(bar: Bar): Foo =
-    val y = bar.toFoo  // error
+    val y = bar.toFoo  // warn
     y
   val foo: Foo = Bar(1)
 
@@ -45,8 +45,4 @@ val x6 =
     lazy val y = bar.toFoo
     if false then y else ???
   val foo: Foo = Bar(1)
-
-
-
-
-
+// nopos-error: No warnings can be incurred under -Werror.

@@ -1,10 +1,10 @@
 //> using options -Xfatal-warnings
 
 class Foo {
-  def unary_~() : Foo = this // error
-  def unary_-(using Int)(): Foo = this // error
-  def unary_+()(implicit i: Int): Foo = this // error
-  def unary_![T](): Foo = this // error
+  def unary_~() : Foo = this // warn
+  def unary_-(using Int)(): Foo = this // warn
+  def unary_+()(implicit i: Int): Foo = this // warn
+  def unary_![T](): Foo = this // warn
 }
 
 class Bar {
@@ -17,27 +17,28 @@ class Bar {
 final class Baz private (val x: Int) extends AnyVal {
   def unary_- : Baz = ???
   def unary_+[T] : Baz = ???
-  def unary_!() : Baz = ??? // error
+  def unary_!() : Baz = ??? // warn
   def unary_~(using Int) : Baz = ???
 }
 
 extension (x: Int)
   def unary_- : Int = ???
   def unary_+[T] : Int = ???
-  def unary_!() : Int = ??? // error
+  def unary_!() : Int = ??? // warn
   def unary_~(using Int) : Int = ???
 end extension
 
 extension [T](x: Short)
   def unary_- : Int = ???
   def unary_+[U] : Int = ???
-  def unary_!() : Int = ??? // error
+  def unary_!() : Int = ??? // warn
   def unary_~(using Int) : Int = ???
 end extension
 
 extension (using Int)(x: Byte)
   def unary_- : Int = ???
   def unary_+[U] : Int = ???
-  def unary_!() : Int = ??? // error
+  def unary_!() : Int = ??? // warn
   def unary_~(using Int) : Int = ???
 end extension
+// nopos-error: No warnings can be incurred under -Werror.

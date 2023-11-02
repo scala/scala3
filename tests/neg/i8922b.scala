@@ -33,7 +33,7 @@ object Interpreter {
             case Binary(left, op, right) =>
                 val l = eval(left)
                 val r = eval(right)
-                (l, r, op.tokenType) match {    // error
+                (l, r, op.tokenType) match {    // warn
                     case (l: DoubleV, r: DoubleV, PLUS)          => ???
                     case (l: IntV, r: IntV, PLUS)                => ???
                     case (l: DoubleV, r: IntV, PLUS)             => ???
@@ -76,3 +76,5 @@ object Interpreter {
         }
 
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

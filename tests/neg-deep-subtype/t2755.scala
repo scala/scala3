@@ -19,7 +19,7 @@ object Test {
     case x: Array[String]   => x.size
     case x: Array[AnyRef]   => 5
     case x: Array[_]        => 6
-    case _                  => 7   // error: only null is matched
+    case _                  => 7   // warn: only null is matched
   }
   def f3[T](a: Array[T]) = a match {
     case x: Array[Int]      => x(0)
@@ -28,7 +28,7 @@ object Test {
     case x: Array[String]   => x.size
     case x: Array[AnyRef]   => 5
     case x: Array[_]        => 6
-    case _                  => 7   // error: only null is matched
+    case _                  => 7   // warn: only null is matched
   }
 
 
@@ -58,3 +58,4 @@ object Test {
     println(f3(null))
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

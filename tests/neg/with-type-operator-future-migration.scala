@@ -2,4 +2,6 @@
 
 import scala.language.`future-migration`
 
-def foo: Int with String = ??? // error
+def foo: Int with String = ??? // warn
+
+// nopos-error: No warnings can be incurred under -Werror.

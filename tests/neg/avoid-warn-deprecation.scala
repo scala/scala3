@@ -8,4 +8,5 @@ object A {
 object B {
   A.foo
 }
-// nopos-error there was 1 deprecation warning; re-run with -deprecation for details
+// nopos-warn there was 1 deprecation warning; re-run with -deprecation for details
+// nopos-error: No warnings can be incurred under -Werror.

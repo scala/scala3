@@ -12,8 +12,8 @@ package foo.unused.strict.test:
     import a.* // OK
     import a.x // OK
     import a.y // OK
-    import a.z // error
-    import a.f // error
+    import a.z // warn
+    import a.f // warn
   package c:
     import a.given // OK
     import a.x // OK
@@ -57,3 +57,4 @@ package foo.unused.summon.inlines:
 
     val b: B = summon[B]
     val c: C = summon[C]
+// nopos-error: No warnings can be incurred under -Werror.

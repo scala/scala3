@@ -11,7 +11,7 @@ object IsInstanceOfClassTag {
   }
 
   def main(args: Array[String]): Unit = {
-    safeCast[List[String]](List[Int](1)) match { // error
+    safeCast[List[String]](List[Int](1)) match { // warn
       case None =>
       case Some(xs) =>
     }
@@ -22,3 +22,5 @@ object IsInstanceOfClassTag {
     }
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

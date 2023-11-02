@@ -2,7 +2,9 @@
 
 def f: List[Int] = {
   List(1, 2, 3).map  // no newline inserted here in Scala-2 compat mode
-  { x =>    // error (migration)
+  { x =>    // warn (migration)
     x + 1
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

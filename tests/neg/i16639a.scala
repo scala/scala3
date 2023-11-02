@@ -2,34 +2,34 @@
 //
 class Bippy(a: Int, b: Int) {
   private def this(c: Int) = this(c, c)           // warn /Dotty:NoWarn
-  private def boop(x: Int)            = x+a+b     // error
-    private def bippy(x: Int): Int      = bippy(x)  // error TODO: could warn
-  final private val MILLIS1           = 2000      // error no warn, /Dotty:Warn
-  final private val MILLIS2: Int      = 1000      // error
+  private def boop(x: Int)            = x+a+b     // warn
+    private def bippy(x: Int): Int      = bippy(x)  // warn TODO: could warn
+  final private val MILLIS1           = 2000      // warn no warn, /Dotty:Warn
+  final private val MILLIS2: Int      = 1000      // warn
   final private val HI_COMPANION: Int = 500       // no warn, accessed from companion
   def hi() = Bippy.HI_INSTANCE
 }
 object Bippy {
   def hi(x: Bippy) = x.HI_COMPANION
   private val HI_INSTANCE: Int = 500      // no warn, accessed from instance
-  private val HEY_INSTANCE: Int = 1000    // error warn
-  private lazy val BOOL: Boolean = true   // error warn
+  private val HEY_INSTANCE: Int = 1000    // warn warn
+  private lazy val BOOL: Boolean = true   // warn warn
 }
 
 class A(val msg: String)
 class B1(msg: String) extends A(msg)
 class B2(msg0: String) extends A(msg0)
-class B3(msg0: String) extends A("msg") // error /Dotty: unused explicit parameter
+class B3(msg0: String) extends A("msg") // warn /Dotty: unused explicit parameter
 
 trait Bing
 
 trait Accessors {
-  private var v1: Int = 0 // error warn
-  private var v2: Int = 0 // error warn, never set
+  private var v1: Int = 0 // warn warn
+  private var v2: Int = 0 // warn warn, never set
   private var v3: Int = 0
   private var v4: Int = 0 // no warn
 
-  private[this] var v5 = 0 // error warn, never set
+  private[this] var v5 = 0 // warn warn, never set
   private[this] var v6 = 0
   private[this] var v7 = 0 // no warn
 
@@ -43,12 +43,12 @@ trait Accessors {
 }
 
 class StableAccessors {
-  private var s1: Int = 0 // error warn
-  private var s2: Int = 0 // error warn, never set
+  private var s1: Int = 0 // warn warn
+  private var s2: Int = 0 // warn warn, never set
   private var s3: Int = 0 // warn, never got /Dotty: no warn even if not usued
   private var s4: Int = 0 // no warn
 
-  private[this] var s5 = 0 // error warn, never set
+  private[this] var s5 = 0 // warn warn, never set
   private[this] var s6 = 0 // no warn, limitation /Dotty: Why limitation ?
   private[this] var s7 = 0 // no warn
 
@@ -75,27 +75,27 @@ class Outer {
 
 trait Locals {
   def f0 = {
-    var x = 1 // error warn
+    var x = 1 // warn warn
     var y = 2
     y = 3
     y + y
   }
   def f1 = {
     val a = new Outer // no warn
-    val b = new Outer // error warn
+    val b = new Outer // warn warn
     new a.Inner
   }
   def f2 = {
-    var x = 100 // error warn about it being a var, var not set
+    var x = 100 // warn warn about it being a var, var not set
     x
   }
 }
 
 object Types {
   private object Dongo { def f = this } // no more warn since #17061
-  private class Bar1 // error warn
+  private class Bar1 // warn warn
   private class Bar2 // no warn
-  private type Alias1 = String // error warn
+  private type Alias1 = String // warn warn
   private type Alias2 = String // no warn
   def bippo = (new Bar2).toString
 
@@ -103,14 +103,14 @@ object Types {
 
   def l1() = {
     object HiObject { def f = this } // no more warn since #17061
-    class Hi { // error warn
+    class Hi { // warn warn
       def f1: Hi = new Hi
       def f2(x: Hi) = x
     }
-    class DingDongDoobie // error warn
+    class DingDongDoobie // warn warn
     class Bippy // no warn
     type Something = Bippy // no warn
-    type OtherThing = String // error warn
+    type OtherThing = String // warn warn
     (new Bippy): Something
   }
 }
@@ -126,7 +126,7 @@ trait Underwarn {
 
 class OtherNames {
   private def x_=(i: Int): Unit = () // no more warn since #17061
-  private def x: Int = 42 // error Dotty triggers unused private member : To investigate
+  private def x: Int = 42 // warn Dotty triggers unused private member : To investigate
   private def y_=(i: Int): Unit = () // // no more warn since #17061
   private def y: Int = 42
 
@@ -152,7 +152,7 @@ trait Forever {
 }
 
 trait Ignorance {
-  private val readResolve = 42      // error ignore /dotty triggers unused private member/ why should we ignore ?
+  private val readResolve = 42      // warn ignore /dotty triggers unused private member/ why should we ignore ?
 }
 
 trait CaseyKasem {
@@ -190,7 +190,7 @@ class `no warn in patmat anonfun isDefinedAt` {
 class `nonprivate alias is enclosing` {
   class C
   type C2 = C
-  private class D extends C2   // error warn
+  private class D extends C2   // warn warn
 }
 
 object `classof something` {
@@ -200,8 +200,8 @@ object `classof something` {
 
 trait `short comings` {
   def f: Int = {
-    val x = 42 // error /Dotty only triggers in dotty
+    val x = 42 // warn /Dotty only triggers in dotty
     17
   }
 }
-
+// nopos-error: No warnings can be incurred under -Werror.

@@ -6,7 +6,7 @@ class Test {
   class C[T] extends B[Any] with A[T]
 
   def foo[T](c: C[T]): Unit = c match {
-    case _: B[T] => // error
+    case _: B[T] => // warn
   }
 
   def bar[T](b: B[T]): Unit = b match {
@@ -14,8 +14,9 @@ class Test {
   }
 
   def quux[T](a: A[T]): Unit = a match {
-    case _: B[T] => // error!!
+    case _: B[T] => // warn!!
   }
 
   quux(new C[Int])
 }
+// nopos-error: No warnings can be incurred under -Werror.

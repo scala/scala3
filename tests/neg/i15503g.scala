@@ -5,10 +5,10 @@ object Foo {
   val default_int = 1
 
   private def f1(a: Int) = a // OK
-  private def f2(a: Int) = default_int // error
+  private def f2(a: Int) = default_int // warn
   private def f3(a: Int)(using Int) = a // OK
-  private def f4(a: Int)(using Int) = default_int // error
-  private def f6(a: Int)(using Int) = summon[Int] // error
+  private def f4(a: Int)(using Int) = default_int // warn
+  private def f6(a: Int)(using Int) = summon[Int] // warn
   private def f7(a: Int)(using Int) = summon[Int] + a // OK
   /* --- Trivial method check --- */
   private def g1(x: Int) = 1 // OK
@@ -21,3 +21,4 @@ package foo.test.i17101:
     def value: A = x
     def causesIssue: Unit = println("oh no")
   }
+// nopos-error: No warnings can be incurred under -Werror.
