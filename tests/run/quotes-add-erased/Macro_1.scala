@@ -15,7 +15,7 @@ class erasedParamsMethod extends MacroAnnotation:
         assert(methType.hasErasedParams)
         assert(methType.erasedParams == List(true, false))
 
-        val methSym = Symbol.newMethod(tree.symbol, "takesErased", methType, Flags.EmptyFlags, Symbol.noSymbol)
+        val methSym = Symbol.newMethod(tree.symbol, "takesErased", methType, Flags.Override, Symbol.noSymbol)
         val methDef = DefDef(methSym, _ => Some(Literal(IntConstant(1))))
 
         val clsDef = ClassDef.copy(tree)(name, ctr, parents, self, methDef :: body)
