@@ -3,6 +3,7 @@ package dotty.tools.tasty
 import java.util.UUID
 
 import TastyFormat.{MajorVersion, MinorVersion, ExperimentalVersion, header}
+import TastyHeaderUnpickler.TastyVersion
 
 /**
  * The Tasty Header consists of four fields:
@@ -27,11 +28,98 @@ sealed abstract case class TastyHeader(
   toolingVersion: String
 )
 
-class TastyHeaderUnpickler(reader: TastyReader) {
+trait UnpicklerConfig {
+  /** The TASTy major version that this reader supports */
+  def majorVersion: Int
+  /** The TASTy minor version that this reader supports */
+  def minorVersion: Int
+  /** The TASTy experimental version that this reader supports */
+  def experimentalVersion: Int
+  /** The description of the upgraded tool that can read the given TASTy version */
+  def upgradedReaderTool(version: TastyVersion): String
+  /** The description of the upgraded tool that can produce the given TASTy version */
+  def upgradedProducerTool(version: TastyVersion): String
+  /** Additional information to help a user fix the outdated TASTy problem */
+  def recompileAdditionalInfo: String
+  /** Additional information to help a user fix the more recent TASTy problem */
+  def upgradeAdditionalInfo(fileVersion: TastyVersion): String
+}
+
+object UnpicklerConfig {
+
+  /** A config where its major, minor and experimental versions are fixed to those in TastyFormat */
+  trait DefaultTastyVersion extends UnpicklerConfig {
+    override final def majorVersion: Int = MajorVersion
+    override final def minorVersion: Int = MinorVersion
+    override final def experimentalVersion: Int = ExperimentalVersion
+  }
+
+  trait Scala3Compiler extends UnpicklerConfig {
+    private def asScala3Compiler(version: TastyVersion): String =
+      if (version.major == 28) {
+        // scala 3.x.y series
+        if (version.experimental > 0)
+          // scenario here is someone using 3.4.0 to read 3.4.1-RC1-NIGHTLY, in this case, we should show 3.4 nightly.
+          s"the same nightly or snapshot Scala 3.${version.minor - 1} compiler"
+        else s"a Scala 3.${version.minor}.0 compiler or newer"
+      }
+      else if (version.experimental > 0) "the same Scala compiler" // unknown major version, just say same
+      else "a more recent Scala compiler" // unknown major version, just say later
+
+    /** The description of the upgraded scala compiler that can read the given TASTy version */
+    final def upgradedReaderTool(version: TastyVersion): String = asScala3Compiler(version)
+
+    /** The description of the upgraded scala compiler that can produce the given TASTy version */
+    final def upgradedProducerTool(version: TastyVersion): String = asScala3Compiler(version)
+
+    final def recompileAdditionalInfo: String = """
+      |  Usually this means that the library dependency containing this file should be updated.""".stripMargin
+
+    final def upgradeAdditionalInfo(fileVersion: TastyVersion): String =
+      if (fileVersion.isExperimental && experimentalVersion == 0) {
+        """
+          |  Note that you are using a stable compiler, which can not read experimental TASTy.""".stripMargin
+      }
+      else ""
+  }
+
+  trait Generic extends UnpicklerConfig {
+    final def upgradedProducerTool(version: TastyVersion): String =
+      "a later version"
+
+    final def upgradedReaderTool(version: TastyVersion): String =
+      if (version.isExperimental) s"the version of this tool compatible with TASTy ${version.show}"
+      else s"a newer version of this tool compatible with TASTy ${version.show}"
+
+    final def recompileAdditionalInfo: String = """
+      |  Usually this means that the classpath entry of this file should be updated.""".stripMargin
+
+    final def upgradeAdditionalInfo(fileVersion: TastyVersion): String =
+      if (fileVersion.isExperimental && experimentalVersion == 0) {
+        """
+          |  Note that this tool does not support reading experimental TASTy.""".stripMargin
+      }
+      else ""
+  }
+
+  /** A config for the TASTy reader of a scala 3 compiler */
+  val scala3Compiler = new UnpicklerConfig with Scala3Compiler with DefaultTastyVersion {}
+
+  /** A config for the TASTy reader of a generic tool */
+  val generic = new UnpicklerConfig with Generic with DefaultTastyVersion {}
+}
+
+class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
   import TastyHeaderUnpickler._
   import reader._
 
+  def this(config: UnpicklerConfig, bytes: Array[Byte]) = this(config, new TastyReader(bytes))
+  def this(reader: TastyReader) = this(UnpicklerConfig.generic, reader)
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
+
+  private val toolMajor: Int = config.majorVersion
+  private val toolMinor: Int = config.minorVersion
+  private val toolExperimental: Int = config.experimentalVersion
 
   /** reads and verifies the TASTy version, extracting the UUID */
   def readHeader(): UUID =
@@ -45,8 +133,11 @@ class TastyHeaderUnpickler(reader: TastyReader) {
     val fileMajor = readNat()
     if (fileMajor <= 27) { // old behavior before `tasty-core` 3.0.0-M4
       val fileMinor = readNat()
-      val signature = signatureString(fileMajor, fileMinor, 0)
-      throw new UnpickleException(signature + backIncompatAddendum + toolingAddendum)
+      val fileVersion = TastyVersion(fileMajor, fileMinor, 0)
+      val toolVersion = TastyVersion(toolMajor, toolMinor, toolExperimental)
+      val signature = signatureString(fileVersion, toolVersion, what = "backward", tool = None)
+      val fix = recompileFix(toolVersion.minStable)
+      throw new UnpickleException(signature + fix)
     }
     else {
       val fileMinor = readNat()
@@ -63,20 +154,38 @@ class TastyHeaderUnpickler(reader: TastyReader) {
         fileMajor            = fileMajor,
         fileMinor            = fileMinor,
         fileExperimental     = fileExperimental,
-        compilerMajor        = MajorVersion,
-        compilerMinor        = MinorVersion,
-        compilerExperimental = ExperimentalVersion
+        compilerMajor        = toolMajor,
+        compilerMinor        = toolMinor,
+        compilerExperimental = toolExperimental
       )
 
       check(validVersion, {
-        val signature = signatureString(fileMajor, fileMinor, fileExperimental)
-        val producedByAddendum = s"\nThe TASTy file was produced by $toolingVersion.$toolingAddendum"
-        val msg = (
-          if (fileExperimental != 0) unstableAddendum
-          else if (fileMajor < MajorVersion) backIncompatAddendum
-          else forwardIncompatAddendum
+        // failure means that the TASTy file is can not be read, therefore it is either:
+        // - backwards incompatible major, in which case the library should be recompiled by the minimum stable minor
+        //   version supported by this compiler
+        // - any experimental in an older minor, in which case the library should be recompiled by the stable
+        //   compiler in the same minor.
+        // - older experimental in the same minor, in which case the compiler is also experimental, and the library
+        //   should be recompiled by the current compiler
+        // - forward incompatible, in which case the compiler must be upgraded to the same version as the file.
+        val fileVersion = TastyVersion(fileMajor, fileMinor, fileExperimental)
+        val toolVersion = TastyVersion(toolMajor, toolMinor, toolExperimental)
+
+        val compat = Compatibility.failReason(file = fileVersion, read = toolVersion)
+
+        val what = if (compat < 0) "backward" else "forward"
+        val signature = signatureString(fileVersion, toolVersion, what, tool = Some(toolingVersion))
+        val fix = (
+          if (compat < 0) {
+            val newCompiler =
+              if (compat == Compatibility.BackwardIncompatibleMajor) toolVersion.minStable
+              else if (compat == Compatibility.BackwardIncompatibleExperimental) fileVersion.nextStable
+              else toolVersion // recompile the experimental library with the current experimental compiler
+            recompileFix(newCompiler)
+          }
+          else upgradeFix(fileVersion)
         )
-        signature + msg + producedByAddendum
+        signature + fix
       })
 
       val uuid = new UUID(readUncompressedLong(), readUncompressedLong())
@@ -89,40 +198,71 @@ class TastyHeaderUnpickler(reader: TastyReader) {
   private def check(cond: Boolean, msg: => String): Unit = {
     if (!cond) throw new UnpickleException(msg)
   }
+
+  private def signatureString(
+      fileVersion: TastyVersion, toolVersion: TastyVersion, what: String, tool: Option[String]) = {
+    val optProducedBy = tool.fold("")(t => s" produced by $t")
+    s"""TASTy file$optProducedBy has a $what incompatible TASTy version ${fileVersion.show},
+      |  expected ${toolVersion.validRange}.
+      |""".stripMargin
+  }
+
+  private def recompileFix(producerVersion: TastyVersion) = {
+    val addendum = config.recompileAdditionalInfo
+    val newTool = config.upgradedProducerTool(producerVersion)
+    s"""  The source of this file should be recompiled by $newTool.$addendum""".stripMargin
+  }
+
+  private def upgradeFix(fileVersion: TastyVersion) = {
+    val addendum = config.upgradeAdditionalInfo(fileVersion)
+    val newTool = config.upgradedReaderTool(fileVersion)
+    s"""  To read this ${fileVersion.kind} file, use $newTool.$addendum""".stripMargin
+  }
 }
 
 object TastyHeaderUnpickler {
 
-  private def toolingAddendum = (
-    if (ExperimentalVersion > 0)
-      "\nNote that your tooling is currently using an unstable TASTy version."
-    else
-      ""
-  )
+  private object Compatibility {
+    final val BackwardIncompatibleMajor = -3
+    final val BackwardIncompatibleExperimental = -2
+    final val ExperimentalRecompile = -1
+    final val ExperimentalUpgrade = 1
+    final val ForwardIncompatible = 2
 
-  private def signatureString(fileMajor: Int, fileMinor: Int, fileExperimental: Int) = {
-    def showMinorVersion(min: Int, exp: Int) = {
-      val expStr = if (exp == 0) "" else s" [unstable release: $exp]"
-      s"$min$expStr"
-    }
-    val minorVersion = showMinorVersion(MinorVersion, ExperimentalVersion)
-    val fileMinorVersion = showMinorVersion(fileMinor, fileExperimental)
-    s"""TASTy signature has wrong version.
-      | expected: {majorVersion: $MajorVersion, minorVersion: $minorVersion}
-      | found   : {majorVersion: $fileMajor, minorVersion: $fileMinorVersion}
-      |
-      |""".stripMargin
+    /** Given that file can't be read, extract the reason */
+    def failReason(file: TastyVersion, read: TastyVersion): Int =
+      if (file.major == read.major && file.minor == read.minor && file.isExperimental && read.isExperimental) {
+        if (file.experimental < read.experimental) ExperimentalRecompile // recompile library as compiler is too new
+        else ExperimentalUpgrade // they should upgrade compiler as library is too new
+      }
+      else if (file.major < read.major)
+        BackwardIncompatibleMajor // pre 3.0.0
+      else if (file.isExperimental && file.major == read.major && file.minor <= read.minor)
+        // e.g. 3.4.0 reading 3.4.0-RC1-NIGHTLY, or 3.3.0 reading 3.0.2-RC1-NIGHTLY
+        BackwardIncompatibleExperimental
+      else ForwardIncompatible
   }
 
-  private def unstableAddendum =
-    """This TASTy file was produced by an unstable release.
-      |To read this TASTy file, your tooling must be at the same version.""".stripMargin
+  case class TastyVersion(major: Int, minor: Int, experimental: Int) {
+    def isExperimental: Boolean = experimental > 0
 
-  private def backIncompatAddendum =
-    """This TASTy file was produced by an earlier release that is not supported anymore.
-      |Please recompile this TASTy with a later version.""".stripMargin
+    def nextStable: TastyVersion = copy(experimental = 0)
 
-  private def forwardIncompatAddendum =
-    """This TASTy file was produced by a more recent, forwards incompatible release.
-      |To read this TASTy file, please upgrade your tooling.""".stripMargin
+    def minStable: TastyVersion = copy(minor = 0, experimental = 0)
+
+    def show: String = {
+      val suffix = if (isExperimental) s"-experimental-$experimental" else ""
+      s"$major.$minor$suffix"
+    }
+
+    def kind: String =
+      if (isExperimental) "experimental TASTy" else "TASTy"
+
+    def validRange: String = {
+      val min = TastyVersion(major, 0, 0)
+      val max = if (experimental == 0) this else TastyVersion(major, minor - 1, 0)
+      val extra = Option.when(experimental > 0)(this)
+      s"stable TASTy from ${min.show} to ${max.show}${extra.fold("")(e => s", or exactly ${e.show}")}"
+    }
+  }
 }

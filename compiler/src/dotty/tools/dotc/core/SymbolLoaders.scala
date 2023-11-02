@@ -24,7 +24,7 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException}
+import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig}
 
 
 object SymbolLoaders {
@@ -447,7 +447,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val className = tastyFile.name.stripSuffix(".tasty")
       tastyFile.resolveSibling(className + ".class")
     if classfile != null then
-      val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+      val tastyUUID = new TastyHeaderUnpickler(UnpicklerConfig.scala3Compiler, tastyBytes).readHeader()
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
       // This will be the case in any of our tests that compile with `-Youtput-only-tasty`
