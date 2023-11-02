@@ -31,7 +31,7 @@ trait BuildFrom[-From, -A, +C] extends Any { self =>
   def fromSpecific(from: From)(it: IterableOnce[A]^): C
     // !!! this is wrong, we need two versions of fromSpecific; one mapping
     // to C^{it} when C is an Iterable, and one mapping to C when C is a Seq, Map, or Set.
-    // But that requires a lareg scale refactoring of BuildFrom. The unsafeAssumePure
+    // But that requires a large scale refactoring of BuildFrom. The unsafeAssumePure
     // calls in this file are needed to sweep that problem under the carpet.
 
   /** Get a Builder for the collection. For non-strict collection types this will use an intermediate buffer.
