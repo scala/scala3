@@ -137,7 +137,7 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
       val toolVersion = TastyVersion(toolMajor, toolMinor, toolExperimental)
       val signature = signatureString(fileVersion, toolVersion, what = "backward", tool = None)
       val fix = recompileFix(toolVersion.minStable)
-      throw new UnpickleException(signature + fix)
+      throw new UnpickleException(signature + fix + tastyAddendum)
     }
     else {
       val fileMinor = readNat()
@@ -185,7 +185,7 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
           }
           else upgradeFix(fileVersion)
         )
-        signature + fix
+        signature + fix + tastyAddendum
       })
 
       val uuid = new UUID(readUncompressedLong(), readUncompressedLong())
@@ -218,6 +218,10 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
     val newTool = config.upgradedReaderTool(fileVersion)
     s"""  To read this ${fileVersion.kind} file, use $newTool.$addendum""".stripMargin
   }
+
+  private def tastyAddendum: String = """
+  |  Please refer to the documentation for information on TASTy versioning:
+  |  https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html""".stripMargin
 }
 
 object TastyHeaderUnpickler {
