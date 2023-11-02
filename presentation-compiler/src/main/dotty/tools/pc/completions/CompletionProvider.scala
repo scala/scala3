@@ -170,9 +170,7 @@ class CompletionProvider(
       val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
-      val textEdit = range
-        .map(lspRange => new TextEdit(lspRange, newText))
-        .getOrElse(new TextEdit(editRange, newText))
+      val textEdit = new TextEdit(range.getOrElse(editRange), newText)
 
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")

@@ -1522,7 +1522,18 @@ class CompletionSuite extends BaseCompletionSuite:
       assertSingleItem = false
     )
 
-  @Test def `prepend-instead-of-replace-exact-same` =
+  @Test def `replace-when-inside` =
+    checkEdit(
+      """|object O:
+         |  print@@ln()
+         |""".stripMargin,
+      """|object O:
+         |  println()
+         |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `replace-exact-same` =
     checkEdit(
       """|object O:
          |  println@@()
