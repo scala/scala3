@@ -128,7 +128,7 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
       )
 
       check(validVersion, {
-        // failure means that the TASTy file is can not be read, therefore it is either:
+        // failure means that the TASTy file cannot be read, therefore it is either:
         // - backwards incompatible major, in which case the library should be recompiled by the minimum stable minor
         //   version supported by this compiler
         // - any experimental in an older minor, in which case the library should be recompiled by the stable
