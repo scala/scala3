@@ -74,7 +74,7 @@ object UnpicklerConfig {
   }
 
   /** A config for the TASTy reader of a generic tool */
-  val generic = new UnpicklerConfig with Generic with DefaultTastyVersion {}
+  val generic: UnpicklerConfig = new UnpicklerConfig with Generic with DefaultTastyVersion {}
 }
 
 class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {

@@ -56,7 +56,7 @@ object TastyUnpickler {
   end Scala3CompilerConfig
 
   /** A config for the TASTy reader of a scala 3 compiler */
-  val scala3CompilerConfig = new Scala3CompilerConfig with UnpicklerConfig.DefaultTastyVersion {}
+  val scala3CompilerConfig: UnpicklerConfig = new Scala3CompilerConfig with UnpicklerConfig.DefaultTastyVersion {}
 
 }
 
