@@ -54,35 +54,6 @@ object UnpicklerConfig {
     override final def experimentalVersion: Int = ExperimentalVersion
   }
 
-  trait Scala3Compiler extends UnpicklerConfig {
-    private def asScala3Compiler(version: TastyVersion): String =
-      if (version.major == 28) {
-        // scala 3.x.y series
-        if (version.experimental > 0)
-          // scenario here is someone using 3.4.0 to read 3.4.1-RC1-NIGHTLY, in this case, we should show 3.4 nightly.
-          s"the same nightly or snapshot Scala 3.${version.minor - 1} compiler"
-        else s"a Scala 3.${version.minor}.0 compiler or newer"
-      }
-      else if (version.experimental > 0) "the same Scala compiler" // unknown major version, just say same
-      else "a more recent Scala compiler" // unknown major version, just say later
-
-    /** The description of the upgraded scala compiler that can read the given TASTy version */
-    final def upgradedReaderTool(version: TastyVersion): String = asScala3Compiler(version)
-
-    /** The description of the upgraded scala compiler that can produce the given TASTy version */
-    final def upgradedProducerTool(version: TastyVersion): String = asScala3Compiler(version)
-
-    final def recompileAdditionalInfo: String = """
-      |  Usually this means that the library dependency containing this file should be updated.""".stripMargin
-
-    final def upgradeAdditionalInfo(fileVersion: TastyVersion): String =
-      if (fileVersion.isExperimental && experimentalVersion == 0) {
-        """
-          |  Note that you are using a stable compiler, which can not read experimental TASTy.""".stripMargin
-      }
-      else ""
-  }
-
   trait Generic extends UnpicklerConfig {
     final def upgradedProducerTool(version: TastyVersion): String =
       "a later version"
@@ -101,9 +72,6 @@ object UnpicklerConfig {
       }
       else ""
   }
-
-  /** A config for the TASTy reader of a scala 3 compiler */
-  val scala3Compiler = new UnpicklerConfig with Scala3Compiler with DefaultTastyVersion {}
 
   /** A config for the TASTy reader of a generic tool */
   val generic = new UnpicklerConfig with Generic with DefaultTastyVersion {}

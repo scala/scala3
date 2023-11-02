@@ -24,7 +24,8 @@ import StdNames.nme
 import java.io.DataOutputStream
 import java.nio.channels.ClosedByInterruptException
 
-import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler, UnpicklerConfig }
+import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
+import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 import scala.tools.asm
 import scala.tools.asm.tree._
@@ -94,7 +95,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
       for (binary <- unit.pickled.get(claszSymbol.asClass)) {
         generatedTasty += GeneratedTasty(store, binary)
         val tasty =
-          val uuid = new TastyHeaderUnpickler(UnpicklerConfig.scala3Compiler, binary()).readHeader()
+          val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
           val lo = uuid.getMostSignificantBits
           val hi = uuid.getLeastSignificantBits
 

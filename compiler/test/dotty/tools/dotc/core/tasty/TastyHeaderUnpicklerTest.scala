@@ -1,11 +1,16 @@
-package dotty.tools.tasty
+package dotty.tools.dotc.core.tasty
 
 import org.junit.Assert._
 import org.junit.{Test, Ignore}
 
-import TastyFormat._
-import TastyBuffer._
-import TastyHeaderUnpickler.TastyVersion
+import dotty.tools.tasty.TastyFormat._
+import dotty.tools.tasty.TastyBuffer._
+import dotty.tools.tasty.TastyBuffer
+import dotty.tools.tasty.TastyReader
+import dotty.tools.tasty.UnpickleException
+import dotty.tools.tasty.TastyHeaderUnpickler
+import dotty.tools.tasty.TastyHeaderUnpickler.TastyVersion
+import dotty.tools.tasty.UnpicklerConfig
 
 class TastyHeaderUnpicklerTest {
 
@@ -260,7 +265,7 @@ class TastyHeaderUnpicklerTest {
 object TastyHeaderUnpicklerTest {
 
   def fillHeader(maj: Int, min: Int, exp: Int, compiler: String): TastyBuffer = {
-    val compilerBytes = compiler.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val compilerBytes = compiler.getBytes(java.nio.charset.StandardCharsets.UTF_8).nn
     val buf = new TastyBuffer(header.length + 32 + compilerBytes.length)
     for (ch <- header) buf.writeByte(ch.toByte)
     buf.writeNat(maj)
@@ -273,7 +278,7 @@ object TastyHeaderUnpicklerTest {
     buf
   }
 
-  case class CustomScalaConfig(compilerVersion: TastyVersion) extends UnpicklerConfig.Scala3Compiler {
+  case class CustomScalaConfig(compilerVersion: TastyVersion) extends TastyUnpickler.Scala3CompilerConfig {
     override def majorVersion: Int = compilerVersion.major
     override def minorVersion: Int = compilerVersion.minor
     override def experimentalVersion: Int = compilerVersion.experimental
@@ -299,7 +304,7 @@ object TastyHeaderUnpicklerTest {
       fail()
     }
     catch {
-      case err: UnpickleException => assert(err.getMessage.contains(message))
+      case err: UnpickleException => assert(err.getMessage.nn.contains(message))
     }
   }
 

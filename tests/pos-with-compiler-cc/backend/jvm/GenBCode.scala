@@ -27,6 +27,7 @@ import java.io.DataOutputStream
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler, UnpicklerConfig }
+import dotty.tools.tasty.core.TastyUnpickler
 
 import scala.tools.asm
 import scala.tools.asm.Handle
@@ -285,7 +286,7 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
               throw ex
             finally outstream.close()
 
-            val uuid = new TastyHeaderUnpickler(UnpicklerConfig.scala3Compiler, binary()).readHeader()
+            val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
             val lo = uuid.getMostSignificantBits
             val hi = uuid.getLeastSignificantBits
 
