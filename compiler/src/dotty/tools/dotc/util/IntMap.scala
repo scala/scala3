@@ -1,5 +1,7 @@
 package dotty.tools.dotc.util
 
+import scala.compiletime.uninitialized
+
 /** A dense map from some `Key` type to `Int. Dense means: All keys and values
  *  are stored in arrays from 0 up to the size of the map. Keys and values
  *  can be obtained by index using `key(index)` and `value(index)`. Values
@@ -19,7 +21,7 @@ package dotty.tools.dotc.util
  */
 final class IntMap[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends PerfectHashing[Key](initialCapacity, capacityMultiple):
-  private var values: Array[Int] = _
+  private var values: Array[Int] = uninitialized
 
   def default: Int = -1
 

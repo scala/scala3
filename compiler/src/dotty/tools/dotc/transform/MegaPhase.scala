@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package transform
 
+import scala.compiletime.uninitialized
+
 import core._
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
@@ -31,8 +33,8 @@ object MegaPhase {
    */
   abstract class MiniPhase extends Phase {
 
-    private[MegaPhase] var superPhase: MegaPhase = _
-    private[MegaPhase] var idxInGroup: Int = _
+    private[MegaPhase] var superPhase: MegaPhase = uninitialized
+    private[MegaPhase] var idxInGroup: Int = uninitialized
 
     /** List of names of phases that should have finished their processing of all compilation units
      *  before this phase starts
@@ -151,7 +153,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     else
       s"MegaPhase{${miniPhases.head.phaseName},...,${miniPhases.last.phaseName}}"
 
-  private var relaxedTypingCache: Boolean = _
+  private var relaxedTypingCache: Boolean = uninitialized
   private var relaxedTypingKnown = false
 
   override final def relaxedTyping: Boolean = {

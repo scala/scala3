@@ -65,7 +65,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   private var myUnits: List[CompilationUnit] = Nil
   private var myUnitsCached: List[CompilationUnit] = Nil
-  private var myFiles: Set[AbstractFile] = _
+  private var myFiles: Set[AbstractFile] = uninitialized
 
   // `@nowarn` annotations by source file, populated during typer
   private val mySuppressions: mutable.LinkedHashMap[SourceFile, mutable.ListBuffer[Suppression]] = mutable.LinkedHashMap.empty
@@ -511,7 +511,7 @@ object Run {
     var currentCompletedSubtraversalCount: Int = 0 // completed subphases in the current phase
     var seenPhaseCount: Int = 0 // how many phases we've seen so far
 
-    private var currPhase: Phase = uninitialized  // initialized by enterPhase
+    private var currPhase: Phase = uninitialized      // initialized by enterPhase
     private var subPhases: SubPhases = uninitialized  // initialized by enterPhase
     private var currPhaseName: String = uninitialized // initialized by enterPhase
     private var nextPhaseName: String = uninitialized // initialized by enterPhase

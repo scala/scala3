@@ -19,6 +19,7 @@ import printing.Printer
 import SymDenotations.NoDenotation
 
 import collection.mutable
+import scala.compiletime.uninitialized
 
 object Scopes {
 

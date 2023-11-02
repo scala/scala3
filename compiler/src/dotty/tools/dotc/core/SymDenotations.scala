@@ -27,6 +27,7 @@ import transform.TypeUtils._
 import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
+import scala.compiletime.uninitialized
 
 object SymDenotations {
 
@@ -2431,7 +2432,7 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
-    private var packageObjsCache: List[ClassDenotation] = _
+    private var packageObjsCache: List[ClassDenotation] = uninitialized
     private var packageObjsRunId: RunId = NoRunId
     private var ambiguityWarningIssued: Boolean = false
 

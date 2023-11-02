@@ -25,6 +25,8 @@ import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
 import dotty.tools.dotc.classpath.FileUtils.classToTasty
 
+import scala.compiletime.uninitialized
+
 object ClassfileParser {
 
   import ClassfileConstants._
@@ -237,11 +239,11 @@ class ClassfileParser(
 
   protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 
-  protected val instanceScope: MutableScope = newScope(0)     // the scope of all instance definitions
-  protected val staticScope: MutableScope = newScope(0)       // the scope of all static definitions
-  protected var pool: ConstantPool = _              // the classfile's constant pool
+  protected val instanceScope: MutableScope = newScope(0) // the scope of all instance definitions
+  protected val staticScope: MutableScope = newScope(0)   // the scope of all static definitions
+  protected var pool: ConstantPool = uninitialized        // the classfile's constant pool
 
-  protected var currentClassName: SimpleName = _      // JVM name of the current class
+  protected var currentClassName: SimpleName = uninitialized // JVM name of the current class
   protected var classTParams: Map[Name, Symbol] = Map()
 
   private var Scala2UnpicklingMode = Mode.Scala2Unpickling

@@ -21,6 +21,7 @@ import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
 import scala.util.control.NonFatal
+import scala.compiletime.uninitialized
 
 object Phases {
 
@@ -205,30 +206,30 @@ object Phases {
         if nextDenotTransformerId(i) == phase.id then
           nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
 
-    private var myParserPhase: Phase = _
-    private var myTyperPhase: Phase = _
-    private var myPostTyperPhase: Phase = _
-    private var mySbtExtractDependenciesPhase: Phase = _
-    private var myPicklerPhase: Phase = _
-    private var myInliningPhase: Phase = _
-    private var myStagingPhase: Phase = _
-    private var mySplicingPhase: Phase = _
-    private var myFirstTransformPhase: Phase = _
-    private var myCollectNullableFieldsPhase: Phase = _
-    private var myRefChecksPhase: Phase = _
-    private var myPatmatPhase: Phase = _
-    private var myElimRepeatedPhase: Phase = _
-    private var myElimByNamePhase: Phase = _
-    private var myExtensionMethodsPhase: Phase = _
-    private var myExplicitOuterPhase: Phase = _
-    private var myGettersPhase: Phase = _
-    private var myErasurePhase: Phase = _
-    private var myElimErasedValueTypePhase: Phase = _
-    private var myLambdaLiftPhase: Phase = _
-    private var myCountOuterAccessesPhase: Phase = _
-    private var myFlattenPhase: Phase = _
-    private var myGenBCodePhase: Phase = _
-    private var myCheckCapturesPhase: Phase = _
+    private var myParserPhase: Phase = uninitialized
+    private var myTyperPhase: Phase = uninitialized
+    private var myPostTyperPhase: Phase = uninitialized
+    private var mySbtExtractDependenciesPhase: Phase = uninitialized
+    private var myPicklerPhase: Phase = uninitialized
+    private var myInliningPhase: Phase = uninitialized
+    private var myStagingPhase: Phase = uninitialized
+    private var mySplicingPhase: Phase = uninitialized
+    private var myFirstTransformPhase: Phase = uninitialized
+    private var myCollectNullableFieldsPhase: Phase = uninitialized
+    private var myRefChecksPhase: Phase = uninitialized
+    private var myPatmatPhase: Phase = uninitialized
+    private var myElimRepeatedPhase: Phase = uninitialized
+    private var myElimByNamePhase: Phase = uninitialized
+    private var myExtensionMethodsPhase: Phase = uninitialized
+    private var myExplicitOuterPhase: Phase = uninitialized
+    private var myGettersPhase: Phase = uninitialized
+    private var myErasurePhase: Phase = uninitialized
+    private var myElimErasedValueTypePhase: Phase = uninitialized
+    private var myLambdaLiftPhase: Phase = uninitialized
+    private var myCountOuterAccessesPhase: Phase = uninitialized
+    private var myFlattenPhase: Phase = uninitialized
+    private var myGenBCodePhase: Phase = uninitialized
+    private var myCheckCapturesPhase: Phase = uninitialized
 
     final def parserPhase: Phase = myParserPhase
     final def typerPhase: Phase = myTyperPhase
@@ -389,7 +390,7 @@ object Phases {
     def printingContext(ctx: Context): Context = ctx
 
     private var myPeriod: Period = Periods.InvalidPeriod
-    private var myBase: ContextBase = _
+    private var myBase: ContextBase = uninitialized
     private var myErasedTypes = false
     private var myFlatClasses = false
     private var myRefChecked = false

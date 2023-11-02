@@ -10,6 +10,8 @@ import collection.immutable.BitSet
 import scala.annotation.tailrec
 import cc.isCaptureChecking
 
+import scala.compiletime.uninitialized
+
 /** A module that can produce a kind of iterator (`Cursor`),
  *  which yields all pairs of overriding/overridden symbols
  *  that are visible in some baseclass, unless there's a parent class
@@ -118,10 +120,10 @@ object OverridingPairs:
     private var nextEntry = curEntry
 
     /** The current candidate symbol for overriding */
-    var overriding: Symbol = _
+    var overriding: Symbol = uninitialized
 
     /** If not null: The symbol overridden by overriding */
-    var overridden: Symbol = _
+    var overridden: Symbol = uninitialized
 
     //@M: note that next is called once during object initialization
     final def hasNext: Boolean = nextEntry != null

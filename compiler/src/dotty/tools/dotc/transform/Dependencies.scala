@@ -6,6 +6,7 @@ import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
 import SymUtils.*
 import collection.mutable.{LinkedHashMap, LinkedHashSet}
 import annotation.constructorOnly
+import scala.compiletime.uninitialized
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
@@ -51,10 +52,10 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
   private val logicOwner = new LinkedHashMap[Symbol, Symbol]
 
   /** A flag to indicate whether new free variables have been found */
-  private var changedFreeVars: Boolean = _
+  private var changedFreeVars: Boolean = uninitialized
 
   /** A flag to indicate whether lifted owners have changed */
-  private var changedLogicOwner: Boolean = _
+  private var changedLogicOwner: Boolean = uninitialized
 
   private def newSymSet: LinkedHashSet[Symbol] = new LinkedHashSet[Symbol]
 

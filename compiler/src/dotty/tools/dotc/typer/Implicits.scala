@@ -37,6 +37,7 @@ import annotation.tailrec
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import scala.compiletime.uninitialized
 
 /** Implicit resolution */
 object Implicits:
@@ -620,7 +621,7 @@ trait ImplicitRunInfo:
 
     object collectParts extends TypeTraverser:
 
-      private var parts: mutable.LinkedHashSet[Type] = _
+      private var parts: mutable.LinkedHashSet[Type] = uninitialized
       private val partSeen = util.HashSet[Type]()
 
       def traverse(t: Type) = try

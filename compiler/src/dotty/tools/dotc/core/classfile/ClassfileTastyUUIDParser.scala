@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core.classfile
 
 import scala.language.unsafeNulls
+import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
@@ -21,7 +22,7 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
 
   import ClassfileConstants._
 
-  private var pool: ConstantPool = _              // the classfile's constant pool
+  private var pool: ConstantPool = uninitialized // the classfile's constant pool
 
   def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)

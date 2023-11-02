@@ -3,10 +3,11 @@ package core
 
 import Contexts._
 import config.Printers.{default, typr}
+import scala.compiletime.uninitialized
 
 trait ConstraintRunInfo { self: Run =>
   private var maxSize = 0
-  private var maxConstraint: Constraint | Null = _
+  private var maxConstraint: Constraint | Null = uninitialized
   def recordConstraintSize(c: Constraint, size: Int): Unit =
     if (size > maxSize) {
       maxSize = size

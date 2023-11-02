@@ -13,6 +13,7 @@ import Chars._
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.compiletime.uninitialized
 import scala.util.chaining.given
 
 import java.io.File.separator
@@ -137,7 +138,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     buf.toArray
   }
 
-  private var lineIndicesCache: Array[Int] = _
+  private var lineIndicesCache: Array[Int] = uninitialized
   private def lineIndices: Array[Int] =
     if lineIndicesCache eq null then
       lineIndicesCache = calculateLineIndicesFromContents()
