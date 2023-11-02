@@ -33,7 +33,7 @@ final class RichClassLoader(private val self: ClassLoader) extends AnyVal {
     val method = clsToRun.getMethod("main", classOf[Array[String]])
     if !Modifier.isStatic(method.getModifiers) then
       throw new NoSuchMethodException(s"$objectName.main is not static")
-    try asContext(method.invoke(null, Array(arguments.toArray: AnyRef): _*))
+    try asContext(method.invoke(null, Array(arguments.toArray: AnyRef)*))
     catch unwrapHandler({ case ex => throw ex })
   }
 

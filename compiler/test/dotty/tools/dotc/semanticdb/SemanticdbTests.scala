@@ -130,7 +130,7 @@ class SemanticdbTests:
     val target = Files.createTempDirectory("semanticdb")
     val javaArgs = Array("-d", target.toString) ++ javaFiles().map(_.toString)
     val javac = ToolProvider.getSystemJavaCompiler
-    val exitJava = javac.run(null, null, null, javaArgs:_*)
+    val exitJava = javac.run(null, null, null, javaArgs*)
     assert(exitJava == 0, "java compiler has errors")
     val args = Array(
       "-Xsemanticdb",

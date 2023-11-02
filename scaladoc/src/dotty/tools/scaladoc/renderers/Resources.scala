@@ -20,7 +20,7 @@ enum Resource(val path: String):
 trait Resources(using ctx: DocContext) extends Locations, Writer:
   private def dynamicJsData =
     val str = jsonObject("filterDefaults" -> jsonObject(
-      FilterAttributes.defaultValues.toSeq.map { case  (n, v) => n -> jsonString(v) }:_*
+      FilterAttributes.defaultValues.toSeq.map { case  (n, v) => n -> jsonString(v) }*
     ))
     Resource.Text("scripts/data.js", s"var scaladocData = $str")
 

@@ -32,8 +32,8 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
       case _ => Nil)
       :+ (Attr("data-pathToRoot") := pathToRoot(page.link.dri))
 
-    val htmlTag = html(attrs: _*)(
-      head((mkHead(page) :+ docHead):_*),
+    val htmlTag = html(attrs*)(
+      head((mkHead(page) :+ docHead)*),
       body(
         if !page.hasFrame then docBody
         else mkFrame(page.link, parents, docBody, toc)
@@ -216,7 +216,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
           a(href := pathToPage(link.dri, b.dri))(b.name),
           "/"
         )).dropRight(1)
-      div(cls := "breadcrumbs container")(innerTags:_*)
+      div(cls := "breadcrumbs container")(innerTags*)
 
     val (apiNavOpt, docsNavOpt): (Option[(Boolean, Seq[AppliedTag])], Option[(Boolean, Seq[AppliedTag])]) = buildNavigation(link)
 

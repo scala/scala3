@@ -66,7 +66,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml}
 
   // convenience methods
-  private def LL[A](x: A*): List[List[A]] = List(List(x:_*))
+  private def LL[A](x: A*): List[List[A]] = List(x.toList)
   private def const(x: Any) = Literal(Constant(x))
   private def wild                          = Ident(nme.WILDCARD)
   private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
@@ -220,7 +220,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
         if (pre == null) (_scala_xml_UnprefixedAttribute, baseArgs)
                     else (_scala_xml_PrefixedAttribute  , const(pre) :: baseArgs)
 
-      Assign(Ident(_md), New(clazz, LL(attrArgs: _*)))
+      Assign(Ident(_md), New(clazz, LL(attrArgs*)))
     }
 
     def handlePrefixedAttribute(pre: String, key: String, value: Tree)  = mkAttributeTree(pre, key, value)

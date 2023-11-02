@@ -73,7 +73,7 @@ object Main:
     )
     import dotty.tools.io.{Jar, Directory}
     val jar = new Jar(jarPath)
-    val writer = jar.jarWriter(manifestAttributes:_*)
+    val writer = jar.jarWriter(manifestAttributes*)
     try
       writer.writeAllFrom(Directory(outDir))
     finally

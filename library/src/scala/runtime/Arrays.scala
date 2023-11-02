@@ -27,5 +27,5 @@ object Arrays {
   /** Create an array of a reference type T.
    */
   def newArray[Arr](componentType: Class[?], returnType: Class[Arr], dimensions: Array[Int]): Arr =
-    jlr.Array.newInstance(componentType, dimensions: _*).asInstanceOf[Arr]
+    jlr.Array.newInstance(componentType, dimensions*).asInstanceOf[Arr]
 }

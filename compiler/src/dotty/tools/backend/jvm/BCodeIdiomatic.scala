@@ -247,9 +247,9 @@ trait BCodeIdiomatic {
     ): Unit = {
       jmethod.visitInvokeDynamicInsn(
         "makeConcatWithConstants",
-        asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes:_*),
+        asm.Type.getMethodDescriptor(StringRef.toASMType, argTypes*),
         coreBTypes.jliStringConcatFactoryMakeConcatWithConstantsHandle,
-        (recipe +: constants):_*
+        (recipe +: constants)*
       )
     }
 
@@ -522,7 +522,7 @@ trait BCodeIdiomatic {
           i += 1
         }
         assert(oldPos == keys.length, "emitSWITCH")
-        jmethod.visitTableSwitchInsn(keyMin, keyMax, defaultBranch, newBranches: _*)
+        jmethod.visitTableSwitchInsn(keyMin, keyMax, defaultBranch, newBranches*)
       } else {
         jmethod.visitLookupSwitchInsn(defaultBranch, keys, branches)
       }

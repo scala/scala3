@@ -43,7 +43,7 @@ class ClasspathTests:
       // cwd: <current-working-directory-seen-by-the-script>
       // classpath: <classpath-seen-by-the-script>
 
-      val scriptOutput: Seq[String] = exec(cmd:_*)
+      val scriptOutput: Seq[String] = exec(cmd*)
       val scriptCwd: String = findTaggedLine("cwd", scriptOutput) // the value tagged "cwd: "
       printf("script ran in directory [%s]\n", scriptCwd)
       val scriptCp = findTaggedLine("classpath", scriptOutput) // the value tagged "classpath: "
@@ -94,7 +94,7 @@ class ClasspathTests:
       cmd.foreach { printf("[%s]\n", _) }
 
       // test script reports the classpath it sees
-      val scriptOutput = exec(cmd:_*)
+      val scriptOutput = exec(cmd*)
       val scriptCp = findTaggedLine("unglobbed classpath", scriptOutput)
       printf("%s\n", scriptCp)
       val classpathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct

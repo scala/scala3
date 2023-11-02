@@ -62,7 +62,7 @@ class Jar(file: File) {
     finally in.close()
   }
   def jarWriter(mainAttrs: (Attributes.Name, String)*): JarWriter = {
-    new JarWriter(file, Jar.WManifest.apply(mainAttrs: _*).underlying)
+    new JarWriter(file, Jar.WManifest.apply(mainAttrs*).underlying)
   }
 
   def toList: List[JarEntry] = withJarInput { in =>

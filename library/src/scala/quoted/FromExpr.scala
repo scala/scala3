@@ -133,13 +133,13 @@ object FromExpr {
   }
 
   /** Default implementation of `FromExpr[StringContext]`
-   *  - Transform `'{StringContext(args: _*)}` into `Some(StringContext(args: _*))` if `args` is explicit and each one is liftable
+   *  - Transform `'{StringContext(args*)}` into `Some(StringContext(args*))` if `args` is explicit and each one is liftable
    *  - Otherwise returns `None`
    */
   given StringContextFromExpr: FromExpr[StringContext] with {
     def unapply(x: Expr[StringContext])(using Quotes) = x match {
-      case '{ new StringContext(${Varargs(Exprs(args))}: _*) } => Some(StringContext(args: _*))
-      case '{     StringContext(${Varargs(Exprs(args))}: _*) } => Some(StringContext(args: _*))
+      case '{ new StringContext(${Varargs(Exprs(args))}*) } => Some(StringContext(args*))
+      case '{     StringContext(${Varargs(Exprs(args))}*) } => Some(StringContext(args*))
       case _ => None
     }
   }
@@ -428,8 +428,8 @@ object FromExpr {
   given SeqFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Seq[T]] with {
     def unapply(x: Expr[Seq[T]])(using Quotes) = x match {
       case Varargs(Exprs(elems)) => Some(elems)
-      case '{ scala.Seq[T](${Varargs(Exprs(elems))}: _*) } => Some(elems)
-      case '{ scala.collection.immutable.Seq[T](${Varargs(Exprs(elems))}: _*) } => Some(elems)
+      case '{ scala.Seq[T](${Varargs(Exprs(elems))}*) } => Some(elems)
+      case '{ scala.collection.immutable.Seq[T](${Varargs(Exprs(elems))}*) } => Some(elems)
       case '{  ${Expr(x)}: List[T] } => Some(x)
       case _ => None
     }
@@ -454,10 +454,10 @@ object FromExpr {
    */
   given ListFromExpr[T](using Type[T], FromExpr[T]): FromExpr[List[T]] with {
     def unapply(x: Expr[List[T]])(using Quotes) = x match {
-      case '{ scala.List[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toList)
+      case '{ scala.List[T](${Varargs(Exprs(elems))}*) } => Some(elems.toList)
       case '{ scala.List.empty[T] } => Some(Nil)
       case '{ Nil } => Some(Nil)
-      case '{ scala.collection.immutable.List[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toList)
+      case '{ scala.collection.immutable.List[T](${Varargs(Exprs(elems))}*) } => Some(elems.toList)
       case '{ scala.collection.immutable.List.empty[T] } => Some(Nil)
       case _ => None
     }
@@ -470,9 +470,9 @@ object FromExpr {
    */
   given SetFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Set[T]] with {
     def unapply(x: Expr[Set[T]])(using Quotes) = x match {
-      case '{ Set[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toSet)
+      case '{ Set[T](${Varargs(Exprs(elems))}*) } => Some(elems.toSet)
       case '{ Set.empty[T] } => Some(Set.empty[T])
-      case '{ scala.collection.immutable.Set[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toSet)
+      case '{ scala.collection.immutable.Set[T](${Varargs(Exprs(elems))}*) } => Some(elems.toSet)
       case '{ scala.collection.immutable.Set.empty[T] } => Some(Set.empty[T])
       case _ => None
     }
@@ -485,9 +485,9 @@ object FromExpr {
    */
   given MapFromExpr[T, U](using Type[T], Type[U], FromExpr[T], FromExpr[U]): FromExpr[Map[T, U]] with {
     def unapply(x: Expr[Map[T, U]])(using Quotes) = x match {
-      case '{ Map[T, U](${Varargs(Exprs(elems))}: _*) } => Some(elems.toMap)
+      case '{ Map[T, U](${Varargs(Exprs(elems))}*) } => Some(elems.toMap)
       case '{ Map.empty[T, U] } => Some(Map.empty)
-      case '{ scala.collection.immutable.Map[T, U](${Varargs(Exprs(elems))}: _*) } => Some(elems.toMap)
+      case '{ scala.collection.immutable.Map[T, U](${Varargs(Exprs(elems))}*) } => Some(elems.toMap)
       case '{ scala.collection.immutable.Map.empty[T, U] } => Some(Map.empty)
       case _ => None
     }

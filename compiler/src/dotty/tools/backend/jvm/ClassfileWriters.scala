@@ -201,7 +201,7 @@ class ClassfileWriters(frontendAccess: PostProcessorFrontendAccess) {
       val parent = filePath.getParent
       if (!builtPaths.containsKey(parent)) {
         parent.iterator.forEachRemaining(checkName)
-        try Files.createDirectories(parent, noAttributes: _*)
+        try Files.createDirectories(parent, noAttributes*)
         catch {
           case e: FileAlreadyExistsException =>
             // `createDirectories` reports this exception if `parent` is an existing symlink to a directory

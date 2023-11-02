@@ -245,7 +245,7 @@ object ASMConverters {
     case Jump(op, label)                             => method.visitJumpInsn(op, asmLabel(label))
     case Ldc(op, cst)                                => method.visitLdcInsn(cst)
     case LookupSwitch(op, dflt, keys, labels)        => method.visitLookupSwitchInsn(asmLabel(dflt), keys.toArray, (labels map asmLabel).toArray)
-    case TableSwitch(op, min, max, dflt, labels)     => method.visitTableSwitchInsn(min, max, asmLabel(dflt), (labels map asmLabel).toArray: _*)
+    case TableSwitch(op, min, max, dflt, labels)     => method.visitTableSwitchInsn(min, max, asmLabel(dflt), (labels map asmLabel).toArray*)
     case Invoke(op, owner, name, desc, itf)          => method.visitMethodInsn(op, owner, name, desc, itf)
     case InvokeDynamic(op, name, desc, bsm, bsmArgs) => method.visitInvokeDynamicInsn(name, desc, unconvertMethodHandle(bsm), unconvertBsmArgs(bsmArgs))
     case NewArray(op, desc, dims)                    => method.visitMultiANewArrayInsn(desc, dims)

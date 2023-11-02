@@ -26,7 +26,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val headNode = m.inheritedFrom.map(form => signatureRenderer.renderLink(form.name, form.dri))
       val tailNodes = defs.flatMap(renderDef)
       val nodes = headNode.fold(tailNodes.drop(1))(_ +: tailNodes)
-      tableRow("Definition Classes", div(nodes:_*))
+      tableRow("Definition Classes", div(nodes*))
 
     case _ => Nil
 
@@ -250,7 +250,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val memberInf = memberInfo(member, withBrief = true)
     val annots = annotations(member)
 
-    div(topLevelAttr:_*)(
+    div(topLevelAttr*)(
       div(cls := "documentableElement-expander")(
         Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button ar show-content")).toList,
         annots.map(div(_)).toList,
