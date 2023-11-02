@@ -566,7 +566,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>
-        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType): _*)
+        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType)*)
         withMarker(s, matchMarker)
       case ConstantType(constant) =>
         api.Constant.of(apiType(constant.tpe), constant.stringValue)

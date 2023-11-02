@@ -411,25 +411,25 @@ object IArray:
   def emptyObjectIArray: IArray[Object]  = Array.emptyObjectArray
 
   /** An immutable array with given elements. */
-  def apply[T](xs: T*)(using ct: ClassTag[T]): IArray[T] = Array(xs: _*)
+  def apply[T](xs: T*)(using ct: ClassTag[T]): IArray[T] = Array(xs*)
   /** An immutable array with given elements. */
-  def apply(x: Boolean, xs: Boolean*): IArray[Boolean] = Array(x, xs: _*)
+  def apply(x: Boolean, xs: Boolean*): IArray[Boolean] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Byte, xs: Byte*): IArray[Byte] = Array(x, xs: _*)
+  def apply(x: Byte, xs: Byte*): IArray[Byte] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Short, xs: Short*): IArray[Short] = Array(x, xs: _*)
+  def apply(x: Short, xs: Short*): IArray[Short] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Char, xs: Char*): IArray[Char] = Array(x, xs: _*)
+  def apply(x: Char, xs: Char*): IArray[Char] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Int, xs: Int*): IArray[Int] = Array(x, xs: _*)
+  def apply(x: Int, xs: Int*): IArray[Int] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Long, xs: Long*): IArray[Long] = Array(x, xs: _*)
+  def apply(x: Long, xs: Long*): IArray[Long] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Float, xs: Float*): IArray[Float] = Array(x, xs: _*)
+  def apply(x: Float, xs: Float*): IArray[Float] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Double, xs: Double*): IArray[Double] = Array(x, xs: _*)
+  def apply(x: Double, xs: Double*): IArray[Double] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs: _*)
+  def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs*)
 
   /** Build an array from the iterable collection.
    *
@@ -459,7 +459,7 @@ object IArray:
     // `Array.concat` should arguably take in a `Seq[Array[_ <: T]]`,
     // but since it currently takes a `Seq[Array[T]]` we have to perform a cast,
     // knowing tacitly that `concat` is not going to do the wrong thing.
-    Array.concat[T](xss.asInstanceOf[Seq[Array[T]]]: _*)
+    Array.concat[T](xss.asInstanceOf[Seq[Array[T]]]*)
 
   /** Returns an immutable array that contains the results of some element computation a number
    *  of times. Each element is determined by a separate computation.

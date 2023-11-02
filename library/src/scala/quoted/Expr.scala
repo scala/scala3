@@ -69,7 +69,7 @@ object Expr {
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
   def ofList[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[List[T]] =
-    if (xs.isEmpty) Expr(Nil) else '{ List(${Varargs(xs)}: _*) }
+    if xs.isEmpty then Expr(Nil) else '{ List(${Varargs(xs)}*) }
 
   /** Creates an expression that will construct a copy of this tuple
    *

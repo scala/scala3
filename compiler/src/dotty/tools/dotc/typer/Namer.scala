@@ -1297,7 +1297,7 @@ class Namer { typer: Typer =>
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
-        val nonContextual = mutable.HashSet(seen: _*)
+        val nonContextual = mutable.HashSet(seen*)
         val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)

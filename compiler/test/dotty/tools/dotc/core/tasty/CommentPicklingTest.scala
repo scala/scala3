@@ -92,7 +92,7 @@ class CommentPicklingTest {
       val out = tmp./("out")
       out.createDirectory()
 
-      val options = compileOptions.and("-d", out.toAbsolute.toString).and(sourceFiles: _*)
+      val options = compileOptions.and("-d", out.toAbsolute.toString).and(sourceFiles*)
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)

@@ -107,7 +107,7 @@ class BackendUtils(val postProcessor: PostProcessor) {
     val mv = cw.visitMethod(ACC_PRIVATE + ACC_STATIC + ACC_SYNTHETIC, "$deserializeLambda$", serializedLamdaObjDesc, null, null)
     def emitLambdaDeserializeIndy(targetMethods: Seq[Handle]): Unit = {
       mv.visitVarInsn(ALOAD, 0)
-      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLamdaObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods: _*)
+      mv.visitInvokeDynamicInsn("lambdaDeserialize", serializedLamdaObjDesc, jliLambdaDeserializeBootstrapHandle, targetMethods*)
     }
 
     val targetMethodGroupLimit = 255 - 1 - 3 // JVM limit. See See MAX_MH_ARITY in CallSite.java

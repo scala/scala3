@@ -144,7 +144,7 @@ object Formatting {
         case Nil => ("", Nil)
       }
       val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
+      new StringContext(prefix :: suffixes1.toList*).s(args1*)
     }
   }
 

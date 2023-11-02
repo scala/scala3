@@ -5956,7 +5956,7 @@ object Types {
       val elems = scope.toList
       val elems1 = mapOver(elems)
       if (elems1 eq elems) scope
-      else newScopeWith(elems1: _*)
+      else newScopeWith(elems1*)
     }
 
     def mapOver(tree: Tree): Tree = treeTypeMap(tree)

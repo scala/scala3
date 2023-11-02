@@ -35,9 +35,9 @@ trait Selectable extends scala.Selectable:
    */
   final def applyDynamic(name: String, paramTypes: Class[?]*)(args: Any*): Any =
     val rcls = selectedValue.getClass
-    val mth = rcls.getMethod(name, paramTypes: _*).nn
+    val mth = rcls.getMethod(name, paramTypes*).nn
     ensureAccessible(mth)
-    mth.invoke(selectedValue, args.asInstanceOf[Seq[AnyRef]]: _*)
+    mth.invoke(selectedValue, args.asInstanceOf[Seq[AnyRef]]*)
 
 object Selectable:
 

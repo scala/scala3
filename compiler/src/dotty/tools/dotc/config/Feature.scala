@@ -26,6 +26,7 @@ object Feature:
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals = deprecated("symbolLiterals")
+  val ascriptionVarargsUnpacking = deprecated("ascriptionVarargsUnpacking")
   val fewerBraces = experimental("fewerBraces")
   val saferExceptions = experimental("saferExceptions")
   val clauseInterleaving = experimental("clauseInterleaving")

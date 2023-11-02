@@ -414,7 +414,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 

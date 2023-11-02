@@ -94,7 +94,7 @@ trait ClassPath {
 
   /** The whole classpath in the form of one String.
     */
-  def asClassPathString: String = ClassPath.join(asClassPathStrings: _*)
+  def asClassPathString: String = ClassPath.join(asClassPathStrings*)
   // for compatibility purposes
   @deprecated("use asClassPathString instead of this one", "2.11.5")
   def asClasspathString: String = asClassPathString
@@ -152,7 +152,7 @@ object ClassPath {
   def join(paths: String*): String  = paths.filterNot(_ == "").mkString(pathSeparator)
 
   /** Split the classpath, apply a transformation function, and reassemble it. */
-  def map(cp: String, f: String => String): String = join(split(cp) map f: _*)
+  def map(cp: String, f: String => String): String = join(split(cp).map(f)*)
 
   /** Expand path and possibly expanding stars */
   def expandPath(path: String, expandStar: Boolean = true): List[String] =

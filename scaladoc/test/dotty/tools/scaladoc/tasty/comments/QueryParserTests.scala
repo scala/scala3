@@ -13,8 +13,8 @@ class QueryParserTests {
         val head = shorthand.head
         val tail = shorthand.tail
         head match {
-          case ((id: String), ch) => Query.QualifiedId(Query.Qual.Id(id), ch, l2q(tail : _*)(last))
-          case ((qual: Qual), ch) => Query.QualifiedId(qual, ch, l2q(tail : _*)(last))
+          case ((id: String), ch) => Query.QualifiedId(Query.Qual.Id(id), ch, l2q(tail*)(last))
+          case ((qual: Qual), ch) => Query.QualifiedId(qual, ch, l2q(tail*)(last))
         }
       }
     }

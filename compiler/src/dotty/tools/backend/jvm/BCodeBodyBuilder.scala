@@ -1825,7 +1825,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         else
           jliLambdaMetaFactoryMetafactoryHandle
 
-      bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs: _*)
+      bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
 
       generatedType
     }
