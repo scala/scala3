@@ -19,7 +19,7 @@ import scala.annotation.unchecked.uncheckedCaptures
   * to take advantage of strict builders.
   */
 trait StrictOptimizedSeqOps [+A, +CC[_], +C]
-  extends AnyRef
+  extends Any
     with SeqOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 
