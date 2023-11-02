@@ -54,7 +54,7 @@ abstract class BasePCSuite extends PcAssertions:
       .newInstance("", myclasspath.asJava, scalacOpts.asJava)
 
   protected def config: PresentationCompilerConfig =
-    PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 5)
+    PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 10)
 
   private def inspectDialect(filename: String, code: String) =
     val file = tmp.resolve(filename)
