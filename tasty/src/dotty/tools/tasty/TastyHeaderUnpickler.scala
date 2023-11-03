@@ -103,7 +103,7 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
       val fileMinor = readNat()
       val fileVersion = TastyVersion(fileMajor, fileMinor, 0)
       val toolVersion = TastyVersion(toolMajor, toolMinor, toolExperimental)
-      val signature = signatureString(fileVersion, toolVersion, what = "backward", tool = None)
+      val signature = signatureString(fileVersion, toolVersion, what = "Backward", tool = None)
       val fix = recompileFix(toolVersion.minStable)
       throw new UnpickleException(signature + fix + tastyAddendum)
     }
@@ -141,7 +141,7 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
 
         val compat = Compatibility.failReason(file = fileVersion, read = toolVersion)
 
-        val what = if (compat < 0) "backward" else "forward"
+        val what = if (compat < 0) "Backward" else "Forward"
         val signature = signatureString(fileVersion, toolVersion, what, tool = Some(toolingVersion))
         val fix = (
           if (compat < 0) {
@@ -169,8 +169,8 @@ class TastyHeaderUnpickler(config: UnpicklerConfig, reader: TastyReader) {
 
   private def signatureString(
       fileVersion: TastyVersion, toolVersion: TastyVersion, what: String, tool: Option[String]) = {
-    val optProducedBy = tool.fold("")(t => s" produced by $t")
-    s"""TASTy file$optProducedBy has a $what incompatible TASTy version ${fileVersion.show},
+    val optProducedBy = tool.fold("")(t => s", produced by $t")
+    s"""$what incompatible TASTy file has version ${fileVersion.show}$optProducedBy,
       |  expected ${toolVersion.validRange}.
       |""".stripMargin
   }
