@@ -48,10 +48,31 @@ def foo: Int && Boolean & String
 scala> def foo: Int && (Boolean & String) = ???
 def foo: Int && (Boolean & String)
 scala> def foo: Int && (Boolean with String) = ???
+1 warning found
+-- [E003] Syntax Warning: ------------------------------------------------------
+1 | def foo: Int && (Boolean with String) = ???
+  |                          ^^^^
+  |                with as a type operator has been deprecated; use & instead
+  |
+  | longer explanation available when compiling with `-explain`
 def foo: Int && (Boolean & String)
 scala> def foo: (Int && Boolean) with String = ???
+1 warning found
+-- [E003] Syntax Warning: ------------------------------------------------------
+1 | def foo: (Int && Boolean) with String = ???
+  |                           ^^^^
+  |                with as a type operator has been deprecated; use & instead
+  |
+  | longer explanation available when compiling with `-explain`
 def foo: Int && Boolean & String
 scala> def foo: Int && Boolean with String = ???
+1 warning found
+-- [E003] Syntax Warning: ------------------------------------------------------
+1 | def foo: Int && Boolean with String = ???
+  |                         ^^^^
+  |                with as a type operator has been deprecated; use & instead
+  |
+  | longer explanation available when compiling with `-explain`
 def foo: Int && (Boolean & String)
 scala> def foo: Int && Boolean | String = ???
 def foo: Int && Boolean | String

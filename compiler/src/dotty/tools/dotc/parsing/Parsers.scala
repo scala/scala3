@@ -1757,11 +1757,12 @@ object Parsers {
           t
         else
           val withSpan = Span(withOffset, withOffset + 4)
-          report.errorOrMigrationWarning(
-            DeprecatedWithOperator(rewriteNotice(`future-migration`)),
+          report.gradualErrorOrMigrationWarning(
+            DeprecatedWithOperator(rewriteNotice(`3.4-migration`)),
             source.atSpan(withSpan),
-            from = future)
-          if sourceVersion == `future-migration` then
+            warnFrom = `3.4`,
+            errorFrom = future)
+          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
             patch(source, withSpan, "&")
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t

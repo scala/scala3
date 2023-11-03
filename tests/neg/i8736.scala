@@ -14,13 +14,13 @@ object App extends App {
   def field[V](s: String)(v: V): Rec[s.type, V] = Rec0(Map(s -> v)).asInstanceOf[Rec[s.type, V]]
 
   implicit class RecOps[R <: Rec0[_]](has: R) {
-    def +[K1 <: String, V1](that: Rec[K1, V1]): R with Rec[K1, V1] = Rec0(has.map ++ that.map).asInstanceOf[R with Rec[K1, V1]]
+    def +[K1 <: String, V1](that: Rec[K1, V1]): R & Rec[K1, V1] = Rec0(has.map ++ that.map).asInstanceOf[R & Rec[K1, V1]]
   }
 
   def rec:
     Rec["k", String]
-      with Rec["v", Int]
-      with Rec["z", Boolean]
+      & Rec["v", Int]
+      & Rec["z", Boolean]
     = {
     field("k")("Str") +
       field("v")(0) +
