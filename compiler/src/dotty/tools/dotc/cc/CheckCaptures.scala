@@ -263,11 +263,12 @@ class CheckCaptures extends Recheck, SymTransformer:
           pos, provenance)
 
     /** Check subcapturing `cs1 <: cs2`, report error on failure */
-    def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos, provenance: => String = "")(using Context) =
+    def checkSubset(cs1: CaptureSet, cs2: CaptureSet, pos: SrcPos,
+        provenance: => String = "", cs1description: String = "")(using Context) =
       checkOK(
           cs1.subCaptures(cs2, frozen = false),
-          if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head} is not"
-          else i"references $cs1 are not all",
+          if cs1.elems.size == 1 then i"reference ${cs1.elems.toList.head}$cs1description is not"
+          else i"references $cs1$cs1description are not all",
           pos, provenance)
 
     /** The current environment */
@@ -683,9 +684,15 @@ class CheckCaptures extends Recheck, SymTransformer:
           if !param.hasAnnotation(defn.ConstructorOnlyAnnot) then
             checkSubset(param.termRef.captureSet, thisSet, param.srcPos) // (3)
         for pureBase <- cls.pureBaseClass do // (4)
+          def selfType = impl.body
+            .collect:
+              case TypeDef(tpnme.SELF, rhs) => rhs
+            .headOption
+            .getOrElse(tree)
+            .orElse(tree)
           checkSubset(thisSet,
             CaptureSet.empty.withDescription(i"of pure base class $pureBase"),
-            tree.srcPos)
+            selfType.srcPos, cs1description = " captured by this self type")
         super.recheckClassDef(tree, impl, cls)
       finally
         curEnv = saved
