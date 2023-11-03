@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.PcCollector
+import dotty.tools.pc.EndMarker
 
 final class DefSymbolCollector(
     driver: InteractiveDriver,
@@ -15,7 +16,7 @@ final class DefSymbolCollector(
 ) extends PcCollector[Option[Symbol]](driver, params):
 
   def collect(parent: Option[Tree])(
-      tree: Tree,
+      tree: Tree | EndMarker,
       toAdjust: SourcePosition,
       sym: Option[Symbol]
   ): Option[Symbol] =
