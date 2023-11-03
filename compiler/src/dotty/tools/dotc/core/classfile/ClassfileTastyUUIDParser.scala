@@ -14,6 +14,8 @@ import dotty.tools.dotc.util._
 import dotty.tools.io.AbstractFile
 import dotty.tools.tasty.TastyReader
 
+import ClassfileParser.Header
+
 import java.io.IOException
 import java.lang.Integer.toHexString
 import java.util.UUID
@@ -23,10 +25,11 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   import ClassfileConstants._
 
   private var pool: ConstantPool = uninitialized // the classfile's constant pool
+  private var classfileVersion: Header.Version = Header.Version.Unknown
 
   def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try ctx.base.reusableDataReader.withInstance { reader =>
     implicit val reader2 = reader.reset(classfile)
-    parseHeader()
+    this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
     this.pool =  null
@@ -34,22 +37,11 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   catch {
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
+      val addendum = Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
-        i"""class file ${classfile.canonicalPath} is broken, reading aborted with ${e.getClass}
-           |${Option(e.getMessage).getOrElse("")}""")
-  }
-
-  private def parseHeader()(using in: DataReader): Unit = {
-    val magic = in.nextInt
-    if (magic != JAVA_MAGIC)
-      throw new IOException(s"class file '${classfile}' has wrong magic number 0x${toHexString(magic)}, should be 0x${toHexString(JAVA_MAGIC)}")
-    val minorVersion = in.nextChar.toInt
-    val majorVersion = in.nextChar.toInt
-    if ((majorVersion < JAVA_MAJOR_VERSION) ||
-        ((majorVersion == JAVA_MAJOR_VERSION) &&
-         (minorVersion < JAVA_MINOR_VERSION)))
-      throw new IOException(
-        s"class file '${classfile}' has unknown version $majorVersion.$minorVersion, should be at least $JAVA_MAJOR_VERSION.$JAVA_MINOR_VERSION")
+        i"""  class file ${classfile.canonicalPath} is broken$addendum,
+          |  reading aborted with ${e.getClass}:
+          |  ${Option(e.getMessage).getOrElse("")}""")
   }
 
   private def checkTastyAttr(tastyUUID: UUID)(using ctx: Context, in: DataReader): Unit = {
