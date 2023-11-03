@@ -17,7 +17,6 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import scala.runtime.Statics
 import language.experimental.captureChecking
-import caps.unsafe.unsafeAssumePure
 import annotation.unchecked.uncheckedCaptures
 
 
@@ -1146,9 +1145,7 @@ object Iterator extends IterableFactory[Iterator] {
    *  Nested ConcatIterators are merged to avoid blowing the stack.
    */
   private final class ConcatIterator[+A](val from: Iterator[A]^) extends AbstractIterator[A] {
-    private var current: Iterator[A @uncheckedCaptures] = from.unsafeAssumePure
-      // This should be Iteratpr[A]^, but fails since mutable variables can't capture cap.
-      // To do better we'd need to track nesting levels for universal capabiltities.
+    private var current: Iterator[A @uncheckedCaptures]^{cap[ConcatIterator]} = from
     private var tail: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var last: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var currentHasNextChecked = false
