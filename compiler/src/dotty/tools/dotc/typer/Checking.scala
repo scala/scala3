@@ -1081,8 +1081,7 @@ trait Checking {
              !name.isOperatorName &&
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
-             !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(future) =>
+             !infixOKSinceFollowedBy(tree.right) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -1090,12 +1089,13 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
-            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
-            report.deprecationWarning(
+            def rewriteMsg = Message.rewriteNotice("The latter", version = `future-migration`)
+            report.errorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
-              tree.op.srcPos)
-            if (ctx.settings.deprecation.value) {
+              tree.op.srcPos,
+              from = future)
+            if sourceVersion == `future-migration` then {
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
             }
