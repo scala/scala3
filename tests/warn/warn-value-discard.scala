@@ -1,4 +1,4 @@
-//> using options -Wvalue-discard -Werror
+//> using options -Wvalue-discard 
 
 import scala.util.{Either, Right, Left}
 import scala.collection.mutable
@@ -64,4 +64,3 @@ class ValueDiscardTest:
     // --> No warning
     val s: mutable.Set[String] = mutable.Set.empty[String]
     s += ""
-// nopos-error: No warnings can be incurred under -Werror.

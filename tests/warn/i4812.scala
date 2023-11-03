@@ -1,4 +1,4 @@
-//> using options -Werror
+
 object Test:
   var prev: Any = _
 
@@ -117,4 +117,3 @@ object Test:
   def main(args: Array[String]): Unit =
     test(1)
     val x: String = test("") // was: ClassCastException: java.lang.Integer cannot be cast to java.lang.String
-// nopos-error: No warnings can be incurred under -Werror.

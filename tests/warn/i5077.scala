@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wimplausible-patterns
+//> using options  -Wimplausible-patterns
 trait Is[A]
 case object IsInt extends Is[Int]
 case object IsString extends Is[String]
@@ -31,4 +31,3 @@ def Test = {
     case _ => println("No match")
   }
 }
-// nopos-error: No warnings can be incurred under -Werror.

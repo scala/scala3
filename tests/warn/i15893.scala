@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+
 
 sealed trait NatT
 case class Zero() extends NatT
@@ -61,4 +61,3 @@ inline def transparentInlineFoo(inline n: NatT): NatT = inline transparentInline
   println(dependentlyTypedMod2(Succ(Succ(Succ(Zero()))))) // runtime error; unexpected
   println(inlineDependentlyTypedMod2(Succ(Succ(Succ(Zero()))))) // prints Succ(Zero()), as expected
   println(transparentInlineDependentlyTypedMod2(Succ(Succ(Succ(Zero()))))) // prints Succ(Zero()), as expected
-// nopos-error: No warnings can be incurred under -Werror.

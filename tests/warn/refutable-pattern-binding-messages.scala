@@ -1,4 +1,4 @@
-//> using options -Werror
+
 object Test {
   // refutable extractor
   object Positive { def unapply(i: Int): Option[Int] = Some(i).filter(_ > 0) }
@@ -15,4 +15,3 @@ object Test {
   for none @ None <- ys do ()             // warn: pattern type does not match
   val 1 = 2                               // warn: pattern type does not match
 }
-// nopos-error: No warnings can be incurred under -Werror.

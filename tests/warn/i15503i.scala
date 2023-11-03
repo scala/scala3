@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wunused:all
+//> using options  -Wunused:all
 
 import collection.mutable.{Map => MutMap} // warn
 import collection.mutable.Set // warn
@@ -313,4 +313,3 @@ package foo.test.i17117:
       val test = t1.test
     }
   }
-// nopos-error: No warnings can be incurred under -Werror.

@@ -1,4 +1,4 @@
-//> using options -Werror -explain
+//> using options  -explain
 
 def test =
   451.synchronized {} // warn
@@ -12,4 +12,3 @@ def test3 =
 
 def test4 =
   true.hashCode() // success
-// nopos-error: No warnings can be incurred under -Werror.

@@ -1,4 +1,4 @@
-//> using options -Werror
+
 object PartialFunctionNoWarning {
   // nice warning
   "abc" match {
@@ -12,4 +12,3 @@ object PartialFunctionNoWarning {
     case "abc" => // warn
   }
 }
-// nopos-error: No warnings can be incurred under -Werror.
