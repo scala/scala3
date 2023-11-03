@@ -14,6 +14,8 @@ import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
 
+import scala.compiletime.uninitialized
+
 object OrderingConstraint {
 
   /** If true, use reverse dependencies in `replace` to avoid checking the bounds
@@ -881,7 +883,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         i += 1
     }
 
-  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = _
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = uninitialized
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {

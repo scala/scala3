@@ -10,6 +10,8 @@ import collection.immutable
 import ast.tpd
 import MegaPhase.MiniPhase
 
+import scala.compiletime.uninitialized
+
 object ForwardDepChecks:
 
   import tpd.*
@@ -37,8 +39,8 @@ object ForwardDepChecks:
         (m1, idx + 1)
       }._1
     var maxIndex: Int = Int.MinValue
-    var refSpan: Span = _
-    var refSym: Symbol = _
+    var refSpan: Span = uninitialized
+    var refSym: Symbol = uninitialized
 
     override def enterReference(sym: Symbol, span: Span): Unit =
       if (sym.exists && sym.owner.isTerm)
@@ -63,7 +65,7 @@ class ForwardDepChecks extends MiniPhase:
 
   override def runsAfter: Set[String] = Set(ElimByName.name)
 
-  private var LevelInfo: Store.Location[OptLevelInfo] = _
+  private var LevelInfo: Store.Location[OptLevelInfo] = uninitialized
   private def currentLevel(using Context): OptLevelInfo = ctx.store(LevelInfo)
 
   override def initContext(ctx: FreshContext): Unit =

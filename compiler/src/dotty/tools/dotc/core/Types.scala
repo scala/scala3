@@ -2164,7 +2164,7 @@ object Types {
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
   trait CaptureRef extends SingletonType:
-    private var myCaptureSet: CaptureSet | Null = _
+    private var myCaptureSet: CaptureSet | Null = uninitialized
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
@@ -2285,7 +2285,7 @@ object Types {
     private var lastSymbol: Symbol | Null = null
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
-    private var mySignature: Signature = _
+    private var mySignature: Signature = uninitialized
     private var mySignatureRunId: Int = NoRunId
 
     // Invariants:
@@ -2941,7 +2941,7 @@ object Types {
     type ThisName = TypeName
 
     private var myCanDropAliasPeriod: Period = Nowhere
-    private var myCanDropAlias: Boolean = _
+    private var myCanDropAlias: Boolean = uninitialized
 
     /** Given an alias type `type A = B` where a recursive comparison with `B` yields
      *  `false`, can we conclude that the comparison is definitely false?
@@ -3405,7 +3405,7 @@ object Types {
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = true
     private var myBaseClassesPeriod: Period = Nowhere
-    private var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClasses: List[ClassSymbol] = uninitialized
     /** Base classes are the merge of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -3498,7 +3498,7 @@ object Types {
     def isAnd: Boolean = false
     def isSoft: Boolean
     private var myBaseClassesPeriod: Period = Nowhere
-    private var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClasses: List[ClassSymbol] = uninitialized
     /** Base classes are the intersection of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -3527,7 +3527,7 @@ object Types {
         myFactorCount
       else 1
 
-    private var myJoin: Type = _
+    private var myJoin: Type = uninitialized
     private var myJoinPeriod: Period = Nowhere
 
     /** Replace or type by the closest non-or type above it */
@@ -3541,7 +3541,7 @@ object Types {
       myJoin
     }
 
-    private var myUnion: Type = _
+    private var myUnion: Type = uninitialized
     private var myUnionPeriod: Period = Nowhere
 
     override def widenUnionWithoutNull(using Context): Type =
@@ -3556,8 +3556,8 @@ object Types {
       myUnion
 
     private var atomsRunId: RunId = NoRunId
-    private var myAtoms: Atoms = _
-    private var myWidened: Type = _
+    private var myAtoms: Atoms = uninitialized
+    private var myWidened: Type = uninitialized
 
     private def computeAtoms()(using Context): Atoms =
       val tp1n = tp1.normalized
@@ -3797,11 +3797,11 @@ object Types {
     // (1) mySignatureRunId != NoRunId      =>  mySignature != null
     // (2) myJavaSignatureRunId != NoRunId  =>  myJavaSignature != null
 
-    private var mySignature: Signature = _
+    private var mySignature: Signature = uninitialized
     private var mySignatureRunId: Int = NoRunId
-    private var myJavaSignature: Signature = _
+    private var myJavaSignature: Signature = uninitialized
     private var myJavaSignatureRunId: Int = NoRunId
-    private var myScala2Signature: Signature = _
+    private var myScala2Signature: Signature = uninitialized
     private var myScala2SignatureRunId: Int = NoRunId
 
     /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
@@ -4993,7 +4993,7 @@ object Types {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] = _
+    private var reductionContext: util.MutableMap[Type, Type] = uninitialized
 
     override def tryNormalize(using Context): Type =
       try
@@ -5420,7 +5420,7 @@ object Types {
     override def stripped(using Context): Type = parent.stripped
 
     private var isRefiningKnown = false
-    private var isRefiningCache: Boolean = _
+    private var isRefiningCache: Boolean = uninitialized
 
     def isRefining(using Context): Boolean = {
       if (!isRefiningKnown) {

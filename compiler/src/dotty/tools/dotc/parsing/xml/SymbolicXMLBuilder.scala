@@ -4,6 +4,7 @@ package parsing
 package xml
 
 import scala.language.unsafeNulls
+import scala.compiletime.uninitialized
 
 import scala.collection.mutable
 import core._
@@ -32,7 +33,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   import parser.atSpan
 
-  private[parsing] var isPattern: Boolean = _
+  private[parsing] var isPattern: Boolean = uninitialized
 
   private object xmltypes extends ScalaTypeNames {
     val _Comment: TypeName             = "Comment"

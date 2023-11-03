@@ -19,6 +19,7 @@ import transform.MegaPhase.MiniPhase
 import transform.SymUtils.*
 
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
   import LazyVals._
@@ -47,7 +48,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val containerFlagsMask: FlagSet = Method | Lazy | Accessor | Module
 
   /** A map of lazy values to the fields they should null after initialization. */
-  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] | Null = _
+  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] | Null = uninitialized
   private def nullableFor(sym: Symbol)(using Context) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.nn.remove(sym)

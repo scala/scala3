@@ -558,7 +558,7 @@ object Contexts {
     private var _owner: Symbol = uninitialized
     final def owner: Symbol = _owner
 
-    private var _tree: Tree[?]= _
+    private var _tree: Tree[?] = uninitialized
     final def tree: Tree[?] = _tree
 
     private var _scope: Scope = uninitialized

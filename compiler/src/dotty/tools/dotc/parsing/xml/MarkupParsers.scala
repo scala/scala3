@@ -4,6 +4,7 @@ package parsing
 package xml
 
 import scala.language.unsafeNulls
+import scala.compiletime.uninitialized
 
 import scala.collection.mutable
 import scala.collection.BufferedIterator
@@ -71,7 +72,7 @@ object MarkupParsers {
       if (ch == SU) throw TruncatedXMLControl
       else reportSyntaxError(msg)
 
-    var input : CharArrayReader = _
+    var input : CharArrayReader = uninitialized
     def lookahead(): BufferedIterator[Char] =
       (input.buf drop input.charOffset).iterator.buffered
 

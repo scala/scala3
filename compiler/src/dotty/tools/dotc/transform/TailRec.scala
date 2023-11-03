@@ -13,6 +13,8 @@ import transform.MegaPhase.MiniPhase
 import util.LinearSet
 import dotty.tools.uncheckedNN
 
+import scala.compiletime.uninitialized
+
 /** A Tail Rec Transformer.
  *
  *  What it does:
@@ -232,7 +234,7 @@ class TailRec extends MiniPhase {
     var failureReported: Boolean = false
 
     /** The `tailLabelN` label symbol, used to encode a `continue` from the infinite `while` loop. */
-    private var myContinueLabel: Symbol | Null = _
+    private var myContinueLabel: Symbol | Null = uninitialized
     def continueLabel(using Context): Symbol = {
       if (myContinueLabel == null)
         myContinueLabel = newSymbol(method, TailLabelName.fresh(), Label, defn.UnitType)

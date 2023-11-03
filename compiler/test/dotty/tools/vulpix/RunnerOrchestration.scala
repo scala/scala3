@@ -14,6 +14,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 
 /** Vulpix spawns JVM subprocesses (`numberOfSlaves`) in order to run tests
  *  without compromising the main JVM
@@ -70,8 +71,8 @@ trait RunnerOrchestration {
       withRunner(_.runMain(classPath))
 
     private class Runner(private var process: Process) {
-      private var childStdout: BufferedReader = _
-      private var childStdin: PrintStream = _
+      private var childStdout: BufferedReader = uninitialized
+      private var childStdin: PrintStream = uninitialized
 
       /** Checks if `process` is still alive
        *

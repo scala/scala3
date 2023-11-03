@@ -14,6 +14,7 @@ import util.{Stats, SimpleIdentityMap}
 import Decorators._
 
 import scala.annotation.internal.sharable
+import scala.compiletime.uninitialized
 
 object TyperState {
   @sharable private var nextId: Int = 0
@@ -44,19 +45,19 @@ object TyperState {
 class TyperState() {
   import TyperState.LevelMap
 
-  private var myId: Int = _
+  private var myId: Int = uninitialized
   def id: Int = myId
 
-  private var previous: TyperState | Null = _
+  private var previous: TyperState | Null = uninitialized
 
-  private var myReporter: Reporter = _
+  private var myReporter: Reporter = uninitialized
 
   def reporter: Reporter = myReporter
 
   /** A fresh type state with the same constraint as this one and the given reporter */
   def setReporter(reporter: Reporter): this.type = { myReporter = reporter; this }
 
-  private var myConstraint: Constraint = _
+  private var myConstraint: Constraint = uninitialized
 
   def constraint: Constraint = myConstraint
   def constraint_=(c: Constraint)(using Context): Unit = {
@@ -66,9 +67,9 @@ class TyperState() {
       c.checkConsistentVars()
   }
 
-  private var previousConstraint: Constraint = _
+  private var previousConstraint: Constraint = uninitialized
 
-  private var myIsCommittable: Boolean = _
+  private var myIsCommittable: Boolean = uninitialized
 
   def isCommittable: Boolean = myIsCommittable
 
@@ -79,7 +80,7 @@ class TyperState() {
   def isGlobalCommittable: Boolean =
     isCommittable && (previous == null || previous.uncheckedNN.isGlobalCommittable)
 
-  private var isCommitted: Boolean = _
+  private var isCommitted: Boolean = uninitialized
 
   /** The set of uninstantiated type variables which have this state as their owning state.
    *
@@ -87,11 +88,11 @@ class TyperState() {
    *   if `tstate.isCommittable` then
    *     `tstate.ownedVars.contains(tvar)` iff `tvar.owningState.get eq tstate`
    */
-  private var myOwnedVars: TypeVars = _
+  private var myOwnedVars: TypeVars = uninitialized
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
 
-  private var upLevels: LevelMap = _
+  private var upLevels: LevelMap = uninitialized
 
   /** Initializes all fields except reporter, isCommittable, which need to be
    *  set separately.

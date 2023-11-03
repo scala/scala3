@@ -2,6 +2,8 @@ package dotty.tools.dotc.util
 
 import dotty.tools.uncheckedNN
 
+import scala.compiletime.uninitialized
+
 object GenericHashSet:
 
   /** The number of elements up to which dense packing is used.
@@ -24,9 +26,9 @@ object GenericHashSet:
 abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends MutableSet[T] {
   import GenericHashSet.DenseLimit
 
-  protected var used: Int = _
-  protected var limit: Int = _
-  protected var table: Array[AnyRef | Null] = _
+  protected var used: Int = uninitialized
+  protected var limit: Int = uninitialized
+  protected var table: Array[AnyRef | Null] = uninitialized
 
   clear()
 

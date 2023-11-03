@@ -11,6 +11,8 @@ import dotty.tools.io._
 import Phases._
 import config.Printers.plugins.{ println => debug }
 
+import scala.compiletime.uninitialized
+
 /** Support for run-time loading of compiler plugins.
  *
  *  @author Lex Spoon
@@ -44,7 +46,7 @@ trait Plugins {
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] = _
+  private var _roughPluginsList: List[Plugin] = uninitialized
   protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
@@ -96,7 +98,7 @@ trait Plugins {
     plugs
   }
 
-  private var _plugins: List[Plugin] = _
+  private var _plugins: List[Plugin] = uninitialized
   def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins

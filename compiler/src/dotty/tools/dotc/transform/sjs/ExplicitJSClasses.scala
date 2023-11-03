@@ -3,6 +3,7 @@ package dotc
 package transform
 package sjs
 
+import scala.compiletime.uninitialized
 
 import MegaPhase._
 import core.Annotations._
@@ -236,7 +237,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def description: String = ExplicitJSClasses.description
 
-  private var MyState: Store.Location[MyState] = _
+  private var MyState: Store.Location[MyState] = uninitialized
   private def myState(using Context) = ctx.store(MyState)
 
   override def initContext(ctx: FreshContext): Unit =

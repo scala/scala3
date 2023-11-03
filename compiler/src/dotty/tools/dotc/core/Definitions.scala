@@ -20,6 +20,7 @@ import cc.{CaptureSet, RetainingType}
 import ast.tpd.ref
 
 import scala.annotation.tailrec
+import scala.compiletime.uninitialized
 
 object Definitions {
 
@@ -44,7 +45,7 @@ object Definitions {
 class Definitions {
   import Definitions._
 
-  private var initCtx: Context = _
+  private var initCtx: Context = uninitialized
   private given currentContext[Dummy_so_its_a_def]: Context = initCtx
 
   private def newPermanentSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
@@ -2001,7 +2002,7 @@ class Definitions {
 
   class PerRun[T](generate: Context ?=> T) {
     private var current: RunId = NoRunId
-    private var cached: T = _
+    private var cached: T = uninitialized
     def apply()(using Context): T = {
       if (current != ctx.runId) {
         cached = generate

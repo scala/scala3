@@ -19,6 +19,7 @@ import StdNames.nme
 import sjs.JSSymUtils._
 
 import util.Store
+import scala.compiletime.uninitialized
 
 object Memoize {
   val name: String = "memoize"
@@ -52,7 +53,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def description: String = Memoize.description
 
-  private var MyState: Store.Location[MyState] = _
+  private var MyState: Store.Location[MyState] = uninitialized
   private def myState(using Context): MyState = ctx.store(MyState)
 
   override def initContext(ctx: FreshContext): Unit =

@@ -18,6 +18,7 @@ import typer.ConstFold
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
+import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -1309,7 +1310,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = _
+    private var myTrees: List[Tree] | Null = uninitialized
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
