@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import util.Chars._
+import util.Chars.*
 
 import scala.compiletime.uninitialized
 

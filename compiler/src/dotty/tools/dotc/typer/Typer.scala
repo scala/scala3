@@ -3,53 +3,53 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
-import ast._
-import Trees._
-import Constants._
-import StdNames._
-import Scopes._
-import Denotations._
-import ProtoTypes._
-import Contexts._
-import Symbols._
-import Types._
-import SymDenotations._
-import Annotations._
-import Names._
-import NameOps._
-import NameKinds._
-import NamerOps._
-import ContextOps._
-import Flags._
-import Decorators._
-import ErrorReporting._
-import Checking._
-import Inferencing._
+import core.*
+import ast.*
+import Trees.*
+import Constants.*
+import StdNames.*
+import Scopes.*
+import Denotations.*
+import ProtoTypes.*
+import Contexts.*
+import Symbols.*
+import Types.*
+import SymDenotations.*
+import Annotations.*
+import Names.*
+import NameOps.*
+import NameKinds.*
+import NamerOps.*
+import ContextOps.*
+import Flags.*
+import Decorators.*
+import ErrorReporting.*
+import Checking.*
+import Inferencing.*
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
-import util.Spans._
-import util.common._
+import util.Spans.*
+import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
 
 import collection.mutable
 import annotation.tailrec
-import Implicits._
+import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
-import config.SourceVersion._
+import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
-import transform.SymUtils._
-import transform.TypeUtils._
-import reporting._
-import Nullables._
-import NullOpsDecorator._
+import transform.SymUtils.*
+import transform.TypeUtils.*
+import reporting.*
+import Nullables.*
+import NullOpsDecorator.*
 import cc.CheckCaptures
 import config.Config
 
@@ -130,7 +130,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                with QuotesAndSplices
                with Deriving {
 
-  import Typer._
+  import Typer.*
   import tpd.{cpy => _, _}
   import untpd.cpy
 
@@ -217,7 +217,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *                     or else `NoContext` if nothing was found yet.
      */
     def findRefRecur(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type = {
-      import BindingPrec._
+      import BindingPrec.*
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
@@ -821,8 +821,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedNumber(tree: untpd.Number, pt: Type)(using Context): Tree = {
-    import scala.util.FromDigits._
-    import untpd.NumberKind._
+    import scala.util.FromDigits.*
+    import untpd.NumberKind.*
     record("typedNumber")
     val digits = tree.digits
     val target = pt.dealias
@@ -904,7 +904,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
     tree.tpt match {
       case templ: untpd.Template =>
-        import untpd._
+        import untpd.*
         var templ1 = templ
         def isEligible(tp: Type) =
         	tp.exists
@@ -948,7 +948,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) =>
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
-          import untpd._
+          import untpd.*
           typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withSpan(tree.span), pt)
         }
       case _ => ifExpr

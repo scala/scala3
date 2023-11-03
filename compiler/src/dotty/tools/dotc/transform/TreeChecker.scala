@@ -3,24 +3,24 @@ package dotc
 package transform
 
 import core.Names.Name
-import core.DenotTransformers._
-import core.SymDenotations._
-import core.Contexts._
-import core.Symbols._
-import core.Types._
-import core.Flags._
-import core.StdNames._
+import core.DenotTransformers.*
+import core.SymDenotations.*
+import core.Contexts.*
+import core.Symbols.*
+import core.Types.*
+import core.Flags.*
+import core.StdNames.*
 import core.NameKinds.{DocArtifactName, OuterSelectName}
-import core.Decorators._
-import core.Phases._
+import core.Decorators.*
+import core.Phases.*
 import core.Mode
-import typer._
-import reporting._
-import ast.Trees._
+import typer.*
+import reporting.*
+import ast.Trees.*
 import ast.{tpd, untpd}
-import util.Chars._
+import util.Chars.*
 import collection.mutable
-import ProtoTypes._
+import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 
@@ -39,8 +39,8 @@ import scala.util.control.NonFatal
  *     represented as TypeTrees then).
  */
 class TreeChecker extends Phase with SymTransformer {
-  import ast.tpd._
-  import TreeChecker._
+  import ast.tpd.*
+  import TreeChecker.*
 
   private val seenClasses = collection.mutable.HashMap[String, Symbol]()
   private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
@@ -186,7 +186,7 @@ object TreeChecker {
    *      tpt, SeqLiteral elemtpt, ValDef tpt, DefDef tpt, and TypeDef rhs.
    */
   object TreeNodeChecker extends untpd.TreeTraverser:
-    import untpd._
+    import untpd.*
     def traverse(tree: Tree)(using Context) = tree match
       case t: TypeTree                      => assert(assertion = false, i"TypeTree not expected: $t")
       case t @ TypeApply(fun, _targs)       => traverse(fun)
@@ -207,7 +207,7 @@ object TreeChecker {
 
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
-    import ast.tpd._
+    import ast.tpd.*
 
     protected val nowDefinedSyms = util.HashSet[Symbol]()
     private val patBoundSyms = util.HashSet[Symbol]()

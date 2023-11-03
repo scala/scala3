@@ -22,8 +22,8 @@ trait BCodeIdiomatic {
   val bTypes: BTypesFromSymbols[int.type]
 
   import int.{_, given}
-  import bTypes._
-  import coreBTypes._
+  import bTypes.*
+  import coreBTypes.*
 
 
   lazy val JavaStringBuilderClassName = jlStringBuilderRef.internalName
@@ -617,7 +617,7 @@ trait BCodeIdiomatic {
   /* Constant-valued val-members of JCodeMethodN at the companion object, so as to avoid re-initializing them multiple times. */
   object JCodeMethodN {
 
-    import asm.Opcodes._
+    import asm.Opcodes.*
 
     // ---------------- conversions ----------------
 
@@ -651,7 +651,7 @@ trait BCodeIdiomatic {
    * can-multi-thread
    */
   final def coercionFrom(code: Int): BType = {
-    import ScalaPrimitivesOps._
+    import ScalaPrimitivesOps.*
     (code: @switch) match {
       case B2B | B2C | B2S | B2I | B2L | B2F | B2D => BYTE
       case S2B | S2S | S2C | S2I | S2L | S2F | S2D => SHORT
@@ -668,7 +668,7 @@ trait BCodeIdiomatic {
    * can-multi-thread
    */
   final def coercionTo(code: Int): BType = {
-    import ScalaPrimitivesOps._
+    import ScalaPrimitivesOps.*
     (code: @switch) match {
       case B2B | C2B | S2B | I2B | L2B | F2B | D2B => BYTE
       case B2C | C2C | S2C | I2C | L2C | F2C | D2C => CHAR

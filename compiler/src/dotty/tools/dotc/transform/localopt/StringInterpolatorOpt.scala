@@ -4,12 +4,12 @@ package transform.localopt
 import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.typer.ConstFold
 

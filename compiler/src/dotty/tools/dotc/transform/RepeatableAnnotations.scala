@@ -1,16 +1,16 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import ast.tpd._
-import Contexts._
-import MegaPhase._
-import Annotations._
+import core.*
+import ast.tpd.*
+import Contexts.*
+import MegaPhase.*
+import Annotations.*
 import Symbols.defn
-import Constants._
-import Types._
-import Decorators._
-import Flags._
+import Constants.*
+import Types.*
+import Decorators.*
+import Flags.*
 
 import scala.collection.mutable
 

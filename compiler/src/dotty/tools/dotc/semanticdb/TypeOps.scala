@@ -2,9 +2,9 @@ package dotty.tools
 package dotc
 package semanticdb
 
-import core.Symbols._
+import core.Symbols.*
 import core.Contexts.Context
-import core.Types._
+import core.Types.*
 import core.Annotations.Annotation
 import core.Flags
 import core.Names.Name
@@ -18,7 +18,7 @@ import Scala3.{FakeSymbol, SemanticSymbol, WildcardTypeSymbol, TypeParamRefSymbo
 import dotty.tools.dotc.core.Names.Designator
 
 class TypeOps:
-  import SymbolScopeOps._
+  import SymbolScopeOps.*
   import Scala3.given
   private val paramRefSymtab = mutable.Map[(LambdaType, Name), Symbol]()
   private val refinementSymtab = mutable.Map[(RefinedType, Name), Symbol]()
@@ -245,7 +245,7 @@ class TypeOps:
       loop(tpe)
 
     def toSemanticType(sym: Symbol)(using LinkMode, SemanticSymbolBuilder, Context): s.Type =
-      import ConstantOps._
+      import ConstantOps.*
       def loop(tpe: Type): s.Type = tpe match {
         case t if t.isFromJavaObject =>
           loop(defn.AnyType)

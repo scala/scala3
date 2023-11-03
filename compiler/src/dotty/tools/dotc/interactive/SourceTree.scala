@@ -4,9 +4,9 @@ package interactive
 
 
 import ast.tpd
-import core._
-import Contexts._, NameOps._, Symbols._, StdNames._
-import util._, util.Spans._
+import core.*
+import Contexts.*, NameOps.*, Symbols.*, StdNames.*
+import util.*, util.Spans.*
 
 /**
  * A `tree` coming from `source`
@@ -55,7 +55,7 @@ object SourceTree {
         !sym.source.exists) // FIXME: We cannot deal with external projects yet
       Nil
     else {
-      import ast.Trees._
+      import ast.Trees.*
       def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
         case PackageDef(_, stats) =>
           stats.flatMap(sourceTreeOfClass).headOption

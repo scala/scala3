@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
+import core.*
 import TypeErasure.ErasedValueType
-import Types._
-import Contexts._
-import Symbols._
+import Types.*
+import Contexts.*
+import Symbols.*
 import Names.Name
 
 import dotty.tools.dotc.core.Decorators.*

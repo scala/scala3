@@ -1,21 +1,21 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Names._
-import dotty.tools.dotc.transform.MegaPhase._
+import core.*
+import Names.*
+import dotty.tools.dotc.transform.MegaPhase.*
 import ast.untpd
-import Flags._
-import Types._
+import Flags.*
+import Types.*
 import Constants.Constant
-import Contexts._
-import Symbols._
-import Decorators._
+import Contexts.*
+import Symbols.*
+import Decorators.*
 import scala.collection.mutable
-import DenotTransformers._
-import NameOps._
+import DenotTransformers.*
+import NameOps.*
 import NameKinds.OuterSelectName
-import StdNames._
+import StdNames.*
 import TypeUtils.isErasedValueType
 import config.Feature
 import inlines.Inlines.inInlineMethod
@@ -37,7 +37,7 @@ object FirstTransform {
  *          if (false) A else B   ==> B
  */
 class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = FirstTransform.name
 

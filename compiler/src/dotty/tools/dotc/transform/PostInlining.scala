@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import Contexts.*
 import DenotTransformers.IdentityDenotTransformer
 import SyntheticMembers.*

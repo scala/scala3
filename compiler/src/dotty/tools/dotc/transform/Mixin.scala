@@ -2,21 +2,21 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import MegaPhase._
-import Contexts._
-import Flags._
-import SymUtils._
-import Symbols._
-import SymDenotations._
-import Types._
-import Decorators._
-import DenotTransformers._
-import StdNames._
-import Names._
-import NameKinds._
-import NameOps._
-import ast.Trees._
+import core.*
+import MegaPhase.*
+import Contexts.*
+import Flags.*
+import SymUtils.*
+import Symbols.*
+import SymDenotations.*
+import Types.*
+import Decorators.*
+import DenotTransformers.*
+import StdNames.*
+import Names.*
+import NameKinds.*
+import NameOps.*
+import ast.Trees.*
 
 object Mixin {
   val name: String = "mixin"
@@ -111,7 +111,7 @@ object Mixin {
  *  are symbolic.
  */
 class Mixin extends MiniPhase with SymTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Mixin.name
 
@@ -184,7 +184,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
-    import ops._
+    import ops.*
 
     def traitDefs(stats: List[Tree]): List[Tree] = {
       stats.flatMap {

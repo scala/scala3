@@ -5,27 +5,27 @@ package sjs
 
 import scala.compiletime.uninitialized
 
-import MegaPhase._
-import core.Annotations._
-import core.Constants._
-import core.Denotations._
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Flags._
-import core.Decorators._
+import MegaPhase.*
+import core.Annotations.*
+import core.Constants.*
+import core.Denotations.*
+import core.DenotTransformers.*
+import core.Symbols.*
+import core.Contexts.*
+import core.Types.*
+import core.Flags.*
+import core.Decorators.*
 import core.StdNames.nme
 import core.SymDenotations.SymDenotation
-import core.Names._
-import core.NameKinds._
-import SymUtils._
+import core.Names.*
+import core.NameKinds.*
+import SymUtils.*
 
 import util.Store
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
-import JSSymUtils._
+import JSSymUtils.*
 
 /** This phase makes all JS classes explicit (their definitions and references to them).
  *
@@ -230,8 +230,8 @@ import JSSymUtils._
  *    created by step (C).
  */
 class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
-  import ExplicitJSClasses._
-  import ast.tpd._
+  import ExplicitJSClasses.*
+  import ast.tpd.*
 
   override def phaseName: String = ExplicitJSClasses.name
 

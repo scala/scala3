@@ -5,7 +5,7 @@ object string:
   /** Concatenation of two `String` singleton types.
    *  ```scala
    *  //{
-   *  import compiletime.ops.string._
+   *  import compiletime.ops.string.*
    *  //}
    *  val hello: "hello " + "world" = "hello world"
    *  ```
@@ -16,7 +16,7 @@ object string:
   /** Length of a `String` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.string._
+   *  import compiletime.ops.string.*
    *  //}
    *  val helloSize: Length["hello"] = 5
    *  ```
@@ -30,7 +30,7 @@ object string:
    * Thus the length of the substring is IEnd-IBeg.
    *  ```scala
    *  //{
-   *  import compiletime.ops.string._
+   *  import compiletime.ops.string.*
    *  //}
    *  val x: Substring["hamburger", 4, 8] = "urge"
    *  val y: Substring["smiles", 1, 5] = "mile"
@@ -43,7 +43,7 @@ object string:
    * regular expression `String` singleton type.
    *  ```scala
    *  //{
-   *  import compiletime.ops.string._
+   *  import compiletime.ops.string.*
    *  //}
    *  val x: Matches["unhappy", "un.*"] = true
    *  ```
@@ -56,7 +56,7 @@ object string:
    *  the sequence is at index 0, the next at index 1, and so on.
    *  ```scala
    *  //{
-   *  import string._
+   *  import string.*
    *  //}
    *  val c: CharAt["hello", 0] = 'h'
    *  ```

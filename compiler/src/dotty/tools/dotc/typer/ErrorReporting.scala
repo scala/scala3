@@ -2,22 +2,22 @@ package dotty.tools
 package dotc
 package typer
 
-import ast._
-import core._
-import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Implicits._, Flags._, Constants.Constant
-import Trees._
-import NameOps._
+import ast.*
+import core.*
+import Types.*, ProtoTypes.*, Contexts.*, Decorators.*, Denotations.*, Symbols.*
+import Implicits.*, Flags.*, Constants.Constant
+import Trees.*
+import NameOps.*
 import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
-import reporting._
+import reporting.*
 import collection.mutable
 
 
 object ErrorReporting {
 
-  import tpd._
+  import tpd.*
 
   def errorTree(tree: untpd.Tree, msg: Message, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))

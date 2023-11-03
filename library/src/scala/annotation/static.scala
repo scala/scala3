@@ -1,6 +1,6 @@
 package scala.annotation
 
-import scala.annotation.meta._
+import scala.annotation.meta.*
 
 /** https://github.com/scala/scala.github.com/pull/491 */
 

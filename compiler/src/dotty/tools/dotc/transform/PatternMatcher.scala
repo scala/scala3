@@ -2,22 +2,22 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import MegaPhase._
-import Symbols._, Contexts._, Types._, StdNames._, NameOps._
+import core.*
+import MegaPhase.*
+import Symbols.*, Contexts.*, Types.*, StdNames.*, NameOps.*
 import patmat.SpaceEngine
-import util.Spans._
+import util.Spans.*
 import typer.Applications.*
-import SymUtils._
+import SymUtils.*
 import TypeUtils.*
 import Annotations.*
-import Flags._, Constants._
-import Decorators._
+import Flags.*, Constants.*
+import Decorators.*
 import NameKinds.{PatMatStdBinderName, PatMatAltsName, PatMatResultName}
 import config.Printers.patmatch
-import reporting._
-import ast._
-import util.Property._
+import reporting.*
+import ast.*
+import util.Property.*
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -27,8 +27,8 @@ import scala.collection.mutable
  *  where every pattern is an integer or string constant
  */
 class PatternMatcher extends MiniPhase {
-  import ast.tpd._
-  import PatternMatcher._
+  import ast.tpd.*
+  import PatternMatcher.*
 
   override def phaseName: String = PatternMatcher.name
 
@@ -56,7 +56,7 @@ class PatternMatcher extends MiniPhase {
 }
 
 object PatternMatcher {
-  import ast.tpd._
+  import ast.tpd.*
 
   val name: String = "patternMatcher"
   val description: String = "compile pattern matches"

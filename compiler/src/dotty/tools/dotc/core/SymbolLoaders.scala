@@ -11,11 +11,11 @@ import dotty.tools.dotc.classpath.FileUtils.isTasty
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
-import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
-import NameOps._
-import StdNames._
+import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
+import NameOps.*
+import StdNames.*
 import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
-import Decorators._
+import Decorators.*
 
 import util.Stats
 import reporting.trace
@@ -29,7 +29,7 @@ import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 
 object SymbolLoaders {
-  import ast.untpd._
+  import ast.untpd.*
 
   /** A marker trait for a completer that replaces the original
    *  Symbol loader for an unpickled root.

@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Trees._, StdNames._, Scopes._, Denotations._, NamerOps._, ContextOps._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._
-import Decorators._, Comments.{_, given}
+import core.*
+import ast.*
+import Trees.*, StdNames.*, Scopes.*, Denotations.*, NamerOps.*, ContextOps.*
+import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*
+import Decorators.*, Comments.{_, given}
 import NameKinds.DefaultGetterName
-import ast.desugar, ast.desugar._
-import ProtoTypes._
-import util.Spans._
+import ast.desugar, ast.desugar.*
+import ProtoTypes.*
+import util.Spans.*
 import util.Property
 import collection.mutable
 import tpd.tpes
@@ -20,15 +20,15 @@ import config.Printers.typr
 import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
-import Annotations._
-import Inferencing._
-import transform.ValueClasses._
-import transform.TypeUtils._
-import transform.SymUtils._
+import Annotations.*
+import Inferencing.*
+import transform.ValueClasses.*
+import transform.TypeUtils.*
+import transform.SymUtils.*
 import TypeErasure.erasure
-import reporting._
+import reporting.*
 import config.Feature.sourceVersion
-import config.SourceVersion._
+import config.SourceVersion.*
 
 import scala.compiletime.uninitialized
 
@@ -54,7 +54,7 @@ import scala.compiletime.uninitialized
  */
 class Namer { typer: Typer =>
 
-  import untpd._
+  import untpd.*
 
   val TypedAhead      : Property.Key[tpd.Tree]            = new Property.Key
   val ExpandedTree    : Property.Key[untpd.Tree]          = new Property.Key
@@ -1260,7 +1260,7 @@ class Namer { typer: Typer =>
           if forwarder.isType then
             buf += tpd.TypeDef(forwarder.asType).withSpan(span)
           else
-            import tpd._
+            import tpd.*
             def extensionParamsCount(pt: Type): Int = pt match
               case pt: MethodOrPoly => 1 + extensionParamsCount(pt.resType)
               case _ => 0

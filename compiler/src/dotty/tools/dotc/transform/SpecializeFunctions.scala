@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package transform
 
-import ast.Trees._, ast.tpd, core._
-import Contexts._, Types._, Decorators._, Symbols._, DenotTransformers._
-import SymDenotations._, Scopes._, StdNames._, NameOps._, Names._
+import ast.Trees.*, ast.tpd, core.*
+import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
+import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 
 
@@ -11,7 +11,7 @@ import MegaPhase.MiniPhase
  *  specialized form.
  */
 class SpecializeFunctions extends MiniPhase {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = SpecializeFunctions.name
 

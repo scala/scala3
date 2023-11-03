@@ -107,7 +107,7 @@ import scala.compiletime.uninitialized
  *    moved after erasure and adapted to emit `Labeled` blocks by Sébastien Doeraene
  */
 class TailRec extends MiniPhase {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = TailRec.name
 

@@ -9,7 +9,7 @@ package dotty.tools.dotc
 package parsing
 package xml
 
-import Utility._
+import Utility.*
 import util.Chars.SU
 import scala.collection.BufferedIterator
 

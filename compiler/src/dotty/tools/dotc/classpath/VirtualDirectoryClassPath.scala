@@ -4,7 +4,7 @@ import scala.language.unsafeNulls
 
 import dotty.tools.io.{ClassPath, ClassRepresentation}
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import FileUtils._
+import FileUtils.*
 import java.net.{URI, URL}
 
 case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath with DirectoryLookup[ClassFileEntryImpl] with NoSourcePaths {

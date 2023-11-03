@@ -138,7 +138,7 @@ class CheckShadowing extends MiniPhase:
     }
 
   private def nestedTypeTraverser(parent: Symbol) = new TreeTraverser:
-    import tpd._
+    import tpd.*
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
@@ -154,7 +154,7 @@ class CheckShadowing extends MiniPhase:
 
   // To reach the imports during a miniphase traversal
   private def importTraverser = new TreeTraverser:
-    import tpd._
+    import tpd.*
 
     override def traverse(tree: tpd.Tree)(using Context): Unit =
       tree match
@@ -173,7 +173,7 @@ object CheckShadowing:
   val description = "check for elements shadowing other elements in scope"
 
   private class ShadowingData:
-    import dotty.tools.dotc.transform.CheckShadowing.ShadowingData._
+    import dotty.tools.dotc.transform.CheckShadowing.ShadowingData.*
     import collection.mutable.{Set => MutSet, Map => MutMap, Stack => MutStack}
 
     private val rootImports = MutSet[SingleDenotation]()

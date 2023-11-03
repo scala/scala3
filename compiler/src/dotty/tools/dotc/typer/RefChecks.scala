@@ -2,27 +2,27 @@ package dotty.tools
 package dotc
 package typer
 
-import transform._
-import core._
-import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._, NameKinds._
-import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
+import transform.*
+import core.*
+import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, NameOps.*, NameKinds.*
+import StdNames.*, Denotations.*, SymUtils.*, Phases.*, SymDenotations.*
 import NameKinds.DefaultGetterName
-import util.Spans._
+import util.Spans.*
 import scala.collection.mutable
-import ast._
-import MegaPhase._
+import ast.*
+import MegaPhase.*
 import config.Printers.{checks, noPrinter, capt}
-import Decorators._
+import Decorators.*
 import OverridingPairs.isOverridingPair
-import typer.ErrorReporting._
+import typer.ErrorReporting.*
 import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
-import reporting._
+import reporting.*
 import Constants.Constant
 
 object RefChecks {
-  import tpd._
+  import tpd.*
 
   val name: String = "refchecks"
   val description: String = "checks related to abstract members and overriding"
@@ -1131,7 +1131,7 @@ object RefChecks {
       report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
 
 }
-import RefChecks._
+import RefChecks.*
 
 /** Post-attribution checking and transformation, which fulfills the following roles
  *
@@ -1165,7 +1165,7 @@ import RefChecks._
  */
 class RefChecks extends MiniPhase { thisPhase =>
 
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = RefChecks.name
 

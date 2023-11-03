@@ -3,28 +3,28 @@ package dotc
 package core
 
 import interfaces.CompilerCallback
-import Decorators._
-import Periods._
-import Names._
-import Phases._
-import Types._
-import Symbols._
-import Scopes._
-import Uniques._
-import ast.Trees._
+import Decorators.*
+import Periods.*
+import Names.*
+import Phases.*
+import Types.*
+import Symbols.*
+import Scopes.*
+import Uniques.*
+import ast.Trees.*
 import ast.untpd
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
-import Nullables._
+import Nullables.*
 import Implicits.ContextualImplicits
-import config.Settings._
+import config.Settings.*
 import config.Config
-import reporting._
+import reporting.*
 import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
-import printing._
+import printing.*
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
 import StdNames.nme
@@ -37,7 +37,7 @@ import dotty.tools.dotc.profile.Profiler
 import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
-import plugins._
+import plugins.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
@@ -915,7 +915,7 @@ object Contexts {
 
     def next()(using Context): FreshContext =
       val base = ctx.base
-      import base._
+      import base.*
       val nestedCtx =
         if inUse < pool.size then
           pool(inUse).reuseIn(ctx)

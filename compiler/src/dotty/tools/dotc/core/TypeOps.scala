@@ -2,21 +2,21 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Types._, Symbols._, Names._, NameKinds.*, Flags._
-import SymDenotations._
-import util.Spans._
+import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
+import SymDenotations.*
+import util.Spans.*
 import util.Stats
-import Decorators._
-import StdNames._
+import Decorators.*
+import StdNames.*
 import collection.mutable
-import ast.tpd._
+import ast.tpd.*
 import reporting.trace
 import config.Printers.typr
 import config.Feature
 import transform.SymUtils.*
-import typer.ProtoTypes._
+import typer.ProtoTypes.*
 import typer.ForceDegree
-import typer.Inferencing._
+import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
 import cc.{CapturingType, derivedCapturingType, CaptureSet, isBoxed, isBoxedCapturing}

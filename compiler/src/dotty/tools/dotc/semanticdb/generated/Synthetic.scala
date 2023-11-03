@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -21,7 +21,7 @@ final case class Synthetic(
         val __value = range.get
         __size += 1 + SemanticdbOutputStream.computeUInt32SizeNoTag(__value.serializedSize) + __value.serializedSize
       };
-      
+
       {
         val __value = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toBase(tree)
         if (__value.serializedSize != 0) {
@@ -37,7 +37,7 @@ final case class Synthetic(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       range.foreach { __v =>
@@ -59,10 +59,10 @@ final case class Synthetic(
     def clearRange: Synthetic = copy(range = _root_.scala.None)
     def withRange(__v: dotty.tools.dotc.semanticdb.Range): Synthetic = copy(range = Option(__v))
     def withTree(__v: dotty.tools.dotc.semanticdb.Tree): Synthetic = copy(tree = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Synthetic])
 }
 
@@ -88,12 +88,12 @@ object Synthetic  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.s
         tree = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toCustom(__tree.getOrElse(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance))
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.Synthetic(
     range = _root_.scala.None,
     tree = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toCustom(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance)

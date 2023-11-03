@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
+import core.*
+import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*
+import SymDenotations.*, Symbols.*, StdNames.*, Annotations.*, Trees.*
 
 // TODO: revise, integrate in a checking phase.
 object CheckTrees {
 
-  import tpd._
+  import tpd.*
 
   def check(p: Boolean, msg: => String = "")(using Context): Unit = assert(p, msg)
 

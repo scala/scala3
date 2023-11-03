@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
  */
 private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
-  import Rendering._
+  import Rendering.*
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 

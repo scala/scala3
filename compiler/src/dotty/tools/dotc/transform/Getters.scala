@@ -1,17 +1,17 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import DenotTransformers.SymTransformer
-import Contexts._
+import Contexts.*
 import SymDenotations.SymDenotation
-import Types._
-import Symbols._
-import MegaPhase._
-import Flags._
-import ValueClasses._
-import SymUtils._
-import NameOps._
+import Types.*
+import Symbols.*
+import MegaPhase.*
+import Flags.*
+import ValueClasses.*
+import SymUtils.*
+import NameOps.*
 
 
 /** Performs the following rewritings for fields of a class:
@@ -57,7 +57,7 @@ import NameOps._
  *  This allows subsequent code motions in Flatten.
  */
 class Getters extends MiniPhase with SymTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Getters.name
 

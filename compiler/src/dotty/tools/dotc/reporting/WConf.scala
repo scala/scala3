@@ -4,7 +4,7 @@ package reporting
 
 import scala.language.unsafeNulls
 
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.SourcePosition
 
 import java.util.regex.PatternSyntaxException
@@ -36,8 +36,8 @@ final case class WConf(confs: List[(List[MessageFilter], Action)]):
   }.getOrElse(Action.Warning)
 
 object WConf:
-  import Action._
-  import MessageFilter._
+  import Action.*
+  import MessageFilter.*
 
   private type Conf = (List[MessageFilter], Action)
 

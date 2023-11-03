@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -34,7 +34,7 @@ final case class Scope(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       symlinks.foreach { __v =>
@@ -56,10 +56,10 @@ final case class Scope(
     def addHardlinks(__vs: dotty.tools.dotc.semanticdb.SymbolInformation *): Scope = addAllHardlinks(__vs)
     def addAllHardlinks(__vs: Iterable[dotty.tools.dotc.semanticdb.SymbolInformation]): Scope = copy(hardlinks = hardlinks ++ __vs)
     def withHardlinks(__v: _root_.scala.Seq[dotty.tools.dotc.semanticdb.SymbolInformation]): Scope = copy(hardlinks = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Scope])
 }
 
@@ -85,12 +85,12 @@ object Scope  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.seman
         hardlinks = __hardlinks.result()
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.Scope(
     symlinks = _root_.scala.Seq.empty,
     hardlinks = _root_.scala.Seq.empty

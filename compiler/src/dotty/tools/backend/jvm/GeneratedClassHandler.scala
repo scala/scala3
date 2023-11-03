@@ -2,7 +2,7 @@ package dotty.tools.backend.jvm
 
 import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
-import java.util.concurrent._
+import java.util.concurrent.*
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration

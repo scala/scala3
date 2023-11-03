@@ -1,8 +1,8 @@
 package dotty.tools.dotc.util
 
-import dotty.tools.dotc.parsing._
-import Scanners._
-import Tokens._
+import dotty.tools.dotc.parsing.*
+import Scanners.*
+import Tokens.*
 
 object kwords {
   println("Welcome to the Scala worksheet")       //> Welcome to the Scala worksheet

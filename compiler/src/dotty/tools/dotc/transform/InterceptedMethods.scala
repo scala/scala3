@@ -3,11 +3,11 @@ package transform
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
@@ -23,7 +23,7 @@ object InterceptedMethods {
   *     using the most precise overload available
   */
 class InterceptedMethods extends MiniPhase {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = InterceptedMethods.name
 

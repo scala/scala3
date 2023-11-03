@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package ast
 
-import util.Spans._
+import util.Spans.*
 import util.{SourceFile, SourcePosition, SrcPos}
-import core.Contexts._
-import core.Decorators._
-import core.NameOps._
+import core.Contexts.*
+import core.Decorators.*
+import core.NameOps.*
 import core.Flags.{JavaDefined, ExtensionMethod}
 import core.StdNames.nme
 import ast.Trees.mods
@@ -165,7 +165,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  - If item is a non-empty tree, it has a position
    */
   def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
-    import untpd._
+    import untpd.*
     val last = LastPosRef()
     def check(p: Any): Unit = p match {
       case p: Positioned =>

@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -16,7 +16,7 @@ final case class Annotation(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-      
+
       {
         val __value = dotty.tools.dotc.semanticdb.Annotation._typemapper_tpe.toBase(tpe)
         if (__value.serializedSize != 0) {
@@ -32,7 +32,7 @@ final case class Annotation(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -45,10 +45,10 @@ final case class Annotation(
       };
     }
     def withTpe(__v: dotty.tools.dotc.semanticdb.Type): Annotation = copy(tpe = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Annotation])
 }
 
@@ -70,12 +70,12 @@ object Annotation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.dotc.
         tpe = dotty.tools.dotc.semanticdb.Annotation._typemapper_tpe.toCustom(__tpe.getOrElse(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance))
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.Annotation(
     tpe = dotty.tools.dotc.semanticdb.Annotation._typemapper_tpe.toCustom(dotty.tools.dotc.semanticdb.TypeMessage.defaultInstance)
   )

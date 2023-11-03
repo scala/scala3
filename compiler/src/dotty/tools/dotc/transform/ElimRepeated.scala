@@ -2,17 +2,17 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
+import core.*
 import StdNames.nme
-import Types._
-import transform.MegaPhase._
-import Flags._
-import Contexts._
-import Symbols._
-import Decorators._
-import Denotations._, SymDenotations._
-import DenotTransformers._
-import NullOpsDecorator._
+import Types.*
+import transform.MegaPhase.*
+import Flags.*
+import Contexts.*
+import Symbols.*
+import Decorators.*
+import Denotations.*, SymDenotations.*
+import DenotTransformers.*
+import NullOpsDecorator.*
 
 object ElimRepeated {
   val name: String = "elimRepeated"
@@ -24,7 +24,7 @@ object ElimRepeated {
  *  the transformed type if needed.
  */
 class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ElimRepeated.name
 

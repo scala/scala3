@@ -5,9 +5,9 @@ package tasty
 
 import scala.language.unsafeNulls
 
-import Contexts._, SymDenotations._,  Decorators._
+import Contexts.*, SymDenotations.*,  Decorators.*
 import dotty.tools.dotc.ast.tpd
-import TastyUnpickler._
+import TastyUnpickler.*
 import classfile.ClassfileParser
 import Names.SimpleName
 import TreeUnpickler.UnpickleMode
@@ -42,8 +42,8 @@ object DottyUnpickler {
  *  @param mode          the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
 class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLevel) extends ClassfileParser.Embedded with tpd.TreeProvider {
-  import tpd._
-  import DottyUnpickler._
+  import tpd.*
+  import DottyUnpickler.*
 
   val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   private val posUnpicklerOpt = unpickler.unpickle(new PositionsSectionUnpickler)

@@ -6,12 +6,12 @@ import scala.language.unsafeNulls
 
 import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler, UnpicklerConfig}
 import TastyHeaderUnpickler.TastyVersion
-import TastyFormat.NameTags._, TastyFormat.nameTagToString
+import TastyFormat.NameTags.*, TastyFormat.nameTagToString
 import TastyBuffer.NameRef
 
 import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
-import NameKinds._
+import NameKinds.*
 
 object TastyUnpickler {
 
@@ -60,10 +60,10 @@ object TastyUnpickler {
 
 }
 
-import TastyUnpickler._
+import TastyUnpickler.*
 
 class TastyUnpickler(reader: TastyReader) {
-  import reader._
+  import reader.*
 
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
 

@@ -15,7 +15,7 @@ object CheckNoSuperThis:
 /** Checks that super and this calls do not pass `this` as (part of) an argument. */
 class CheckNoSuperThis extends MiniPhase:
   thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = CheckNoSuperThis.name
 

@@ -3,20 +3,20 @@ package dotc
 package inlines
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
-import Trees._
-import core._
-import Flags._
-import Symbols._
-import Flags._
-import Types._
-import Decorators._
+import Trees.*
+import core.*
+import Flags.*
+import Symbols.*
+import Flags.*
+import Types.*
+import Decorators.*
 import StdNames.nme
-import Contexts._
+import Contexts.*
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import inlines.Inlines
-import NameOps._
-import Annotations._
+import NameOps.*
+import Annotations.*
 import transform.{AccessProxies, Splicer}
 import staging.CrossStageSafety
 import transform.SymUtils.*
@@ -25,7 +25,7 @@ import util.Property
 import staging.StagingLevel
 
 object PrepareInlineable {
-  import tpd._
+  import tpd.*
 
   private val InlineAccessorsKey = new Property.Key[InlineAccessors]
 

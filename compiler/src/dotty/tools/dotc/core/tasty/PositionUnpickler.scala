@@ -9,12 +9,12 @@ import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader}
 import TastyFormat.SOURCE
 import TastyBuffer.{Addr, NameRef}
 
-import util.Spans._
+import util.Spans.*
 import Names.TermName
 
 /** Unpickler for tree positions */
 class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
-  import reader._
+  import reader.*
 
   private var myLineSizes: Array[Int] = uninitialized
   private var mySpans: util.HashMap[Addr, Span] = uninitialized

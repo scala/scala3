@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package cc
 
-import core._
+import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*

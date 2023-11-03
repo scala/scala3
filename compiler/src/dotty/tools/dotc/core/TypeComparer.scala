@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
-import Decorators._
+import Types.*, Contexts.*, Symbols.*, Flags.*, Names.*, NameOps.*, Denotations.*
+import Decorators.*
 import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
@@ -13,11 +13,11 @@ import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
-import TypeApplications._
+import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import transform.TypeUtils._
-import transform.SymUtils._
+import transform.TypeUtils.*
+import transform.SymUtils.*
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
@@ -29,7 +29,7 @@ import NameKinds.WildcardParamName
 /** Provides methods to compare types.
  */
 class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling, PatternTypeConstrainer {
-  import TypeComparer._
+  import TypeComparer.*
   Stats.record("TypeComparer")
 
   private var myContext: Context = initctx
@@ -3342,7 +3342,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
  *                subtraces; never print backtraces starting with `<==`.
  */
 class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {
-  import TypeComparer._
+  import TypeComparer.*
 
   init(initctx)
 

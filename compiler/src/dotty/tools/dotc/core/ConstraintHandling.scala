@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
-import Contexts._
-import Symbols._
-import Decorators._
-import Flags._
+import Types.*
+import Contexts.*
+import Symbols.*
+import Decorators.*
+import Flags.*
 import config.Config
 import config.Printers.typr
 import typer.ProtoTypes.{newTypeVar, representedParamRef}

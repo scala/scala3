@@ -7,11 +7,11 @@ import scala.language.unsafeNulls
 
 import dotty.tools.tasty.{ TastyReader, TastyHeaderUnpickler }
 
-import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
-import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Spans._
-import Phases._
+import Contexts.*, Symbols.*, Types.*, Names.*, StdNames.*, NameOps.*, Scopes.*, Decorators.*
+import SymDenotations.*, unpickleScala2.Scala2Unpickler.*, Constants.*, Annotations.*, util.Spans.*
+import Phases.*
 import ast.{ tpd, untpd }
-import ast.tpd._, util._
+import ast.tpd.*, util.*
 import java.io.IOException
 
 import java.lang.Integer.toHexString
@@ -51,7 +51,7 @@ object ClassfileParser {
         def majorVersion: Int = (version >> 32).toInt
         def minorVersion: Int = (version & 0xFFFFFFFFL).toInt
 
-  import ClassfileConstants._
+  import ClassfileConstants.*
 
   /** Marker trait for unpicklers that can be embedded in classfiles. */
   trait Embedded
@@ -270,8 +270,8 @@ class ClassfileParser(
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(ictx: Context) {
 
-  import ClassfileConstants._
-  import ClassfileParser._
+  import ClassfileConstants.*
+  import ClassfileParser.*
 
   protected val staticModule: Symbol = moduleRoot.sourceModule(using ictx)
 

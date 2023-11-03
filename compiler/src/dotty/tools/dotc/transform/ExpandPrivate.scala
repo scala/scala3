@@ -1,18 +1,18 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import Contexts._
-import Symbols._
-import Flags._
-import SymDenotations._
+import Contexts.*
+import Symbols.*
+import Flags.*
+import SymDenotations.*
 
-import Decorators._
-import MegaPhase._
+import Decorators.*
+import MegaPhase.*
 import java.io.File.separatorChar
 
-import ValueClasses._
+import ValueClasses.*
 
 /** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
@@ -29,7 +29,7 @@ import ValueClasses._
  *  and https://github.com/lampepfl/dotty/issues/783
  */
 class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ExpandPrivate.name
 

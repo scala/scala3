@@ -2,7 +2,7 @@
 package scala
 package annotation
 
-import scala.quoted._
+import scala.quoted.*
 
 /** Base trait for macro annotation implementation.
  *  Macro annotations can transform definitions and add new definitions.
@@ -46,7 +46,7 @@ definition that is owned by the package or package object.
    *
    *  class memoize extends MacroAnnotation:
    *    def transform(using Quotes)(tree: quotes.reflect.Definition): List[quotes.reflect.Definition] =
-   *      import quotes.reflect._
+   *      import quotes.reflect.*
    *      tree match
    *        case DefDef(name, TermParamClause(param  :: Nil) :: Nil, tpt, Some(rhsTree)) =>
    *          (param.tpt.tpe.asType, tpt.tpe.asType) match

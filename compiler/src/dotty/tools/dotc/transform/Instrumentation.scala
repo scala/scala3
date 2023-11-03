@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
-import Contexts._
-import Symbols._
-import Flags._
+import core.*
+import Contexts.*
+import Symbols.*
+import Flags.*
 
-import Decorators._
-import MegaPhase._
-import Names._
+import Decorators.*
+import MegaPhase.*
+import Names.*
 import Constants.Constant
 
 import scala.compiletime.uninitialized
@@ -20,7 +20,7 @@ import scala.compiletime.uninitialized
  *  It does this by generating a call to dotty.tools.dotc.util.Stats.doRecord.
  */
 class Instrumentation extends MiniPhase { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = Instrumentation.name
 

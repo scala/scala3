@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import MegaPhase._
-import Contexts._
-import Symbols._
-import Flags._
-import StdNames._
+import core.*
+import MegaPhase.*
+import Contexts.*
+import Symbols.*
+import Flags.*
+import StdNames.*
 import dotty.tools.dotc.ast.tpd
 
 
@@ -16,7 +16,7 @@ import dotty.tools.dotc.ast.tpd
  *  Transforms `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
  */
 class ArrayApply extends MiniPhase {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = ArrayApply.name
 

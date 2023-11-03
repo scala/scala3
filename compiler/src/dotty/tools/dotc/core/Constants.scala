@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Symbols._, Contexts._
+import Types.*, Symbols.*, Contexts.*
 import printing.Printer
 import printing.Texts.Text
 
@@ -210,7 +210,7 @@ object Constants {
     }
 
     override def hashCode: Int = {
-      import scala.util.hashing.MurmurHash3._
+      import scala.util.hashing.MurmurHash3.*
       val seed = 17
       var h = seed
       h = mix(h, tag.##) // include tag in the hash, otherwise 0, 0d, 0L, 0f collide.

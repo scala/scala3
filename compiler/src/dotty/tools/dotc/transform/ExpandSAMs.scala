@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
+import core.*
 import Scopes.newScope
-import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
-import MegaPhase._
+import Contexts.*, Symbols.*, Types.*, Flags.*, Decorators.*, StdNames.*, Constants.*
+import MegaPhase.*
 import Names.TypeName
-import SymUtils._
-import NullOpsDecorator._
+import SymUtils.*
+import NullOpsDecorator.*
 import ast.untpd
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
@@ -38,7 +38,7 @@ object ExpandSAMs:
       case _ => false
 
 class ExpandSAMs extends MiniPhase:
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ExpandSAMs.name
 

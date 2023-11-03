@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package ast
 
-import Trees._
-import core.Contexts._
+import Trees.*
+import core.Contexts.*
 import core.ContextOps.enter
-import core.Flags._
-import core.Symbols._
+import core.Flags.*
+import core.Symbols.*
 import core.TypeError
 
 /** A TreeMap that maintains the necessary infrastructure to support
@@ -14,7 +14,7 @@ import core.TypeError
  *  This incudes implicits defined in scope as well as imported implicits.
  */
 class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
-  import tpd._
+  import tpd.*
 
   def transformSelf(vd: ValDef)(using Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))

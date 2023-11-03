@@ -1,19 +1,19 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import MegaPhase._
-import Contexts._
-import Flags._
-import SymUtils._
-import Symbols._
-import Decorators._
-import DenotTransformers._
-import Names._
-import NameOps._
-import NameKinds._
-import NullOpsDecorator._
-import ResolveSuper._
+import core.*
+import MegaPhase.*
+import Contexts.*
+import Flags.*
+import SymUtils.*
+import Symbols.*
+import Decorators.*
+import DenotTransformers.*
+import Names.*
+import NameOps.*
+import NameKinds.*
+import NullOpsDecorator.*
+import ResolveSuper.*
 import reporting.IllegalSuperAccessor
 
 /** This phase implements super accessors in classes that need them.
@@ -31,7 +31,7 @@ import reporting.IllegalSuperAccessor
  *  Mixin, which runs after erasure.
  */
 class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = ResolveSuper.name
 
@@ -45,7 +45,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
-    import ops._
+    import ops.*
 
     def superAccessors(mixin: ClassSymbol): List[Tree] =
       for superAcc <- mixin.info.decls.filter(_.isSuperAccessor)
@@ -66,7 +66,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
       assert(ddef.rhs.isEmpty, ddef.symbol)
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisPhase)
-      import ops._
+      import ops.*
       DefDef(meth, forwarderRhsFn(rebindSuper(cls, meth)))
     }
     else ddef

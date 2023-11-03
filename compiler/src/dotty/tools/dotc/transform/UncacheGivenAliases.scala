@@ -1,12 +1,12 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
+import MegaPhase.*
 import core.DenotTransformers.{IdentityDenotTransformer}
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Flags._
+import core.Symbols.*
+import core.Contexts.*
+import core.Types.*
+import core.Flags.*
 import ast.tpd
 
 object UncacheGivenAliases:
@@ -23,7 +23,7 @@ object UncacheGivenAliases:
  */
 class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = UncacheGivenAliases.name
 

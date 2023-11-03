@@ -3,23 +3,23 @@ package dotc
 package transform
 package patmat
 
-import core._
-import Types._
-import TypeUtils._
-import Contexts._
-import Flags._
-import ast._
+import core.*
+import Types.*
+import TypeUtils.*
+import Contexts.*
+import Flags.*
+import ast.*
 import Decorators.{ show => _, * }
-import Symbols._
-import StdNames._
-import NameOps._
-import Constants._
-import typer._
-import Applications._
-import Inferencing._
-import ProtoTypes._
-import transform.SymUtils._
-import reporting._
+import Symbols.*
+import StdNames.*
+import NameOps.*
+import Constants.*
+import typer.*
+import Applications.*
+import Inferencing.*
+import ProtoTypes.*
+import transform.SymUtils.*
+import reporting.*
 import config.Printers.{exhaustivity => debug}
 import util.{SrcPos, NoSourcePosition}
 
@@ -116,7 +116,7 @@ case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
 case class Or(spaces: Seq[Space]) extends Space
 
 object SpaceEngine {
-  import tpd._
+  import tpd.*
 
   def simplify(space: Space)(using Context): Space           = space.simplify
   def isSubspace(a: Space, b: Space)(using Context): Boolean = a.isSubspace(b)

@@ -22,8 +22,8 @@ import scala.collection.mutable
 import scala.compiletime.uninitialized
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
-  import LazyVals._
-  import tpd._
+  import LazyVals.*
+  import tpd.*
 
   /**
    * The map contains the list of the offset trees.
@@ -456,8 +456,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
   def transformMemberDefThreadSafeNew(x: ValOrDefDef)(using Context): Thicket = {
-    import dotty.tools.dotc.core.Types._
-    import dotty.tools.dotc.core.Flags._
+    import dotty.tools.dotc.core.Types.*
+    import dotty.tools.dotc.core.Flags.*
 
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))

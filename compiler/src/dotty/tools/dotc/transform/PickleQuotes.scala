@@ -1,25 +1,25 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Decorators._
-import Flags._
-import Types._
-import Contexts._
-import Symbols._
-import Constants._
-import ast.Trees._
+import core.*
+import Decorators.*
+import Flags.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import Constants.*
+import ast.Trees.*
 import ast.untpd
 import ast.TreeTypeMap
-import SymUtils._
-import NameKinds._
+import SymUtils.*
+import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.config.ScalaRelease.*
 
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.inlines.Inlines
 
 import scala.annotation.constructorOnly
@@ -69,8 +69,8 @@ import scala.collection.mutable
  *
  */
 class PickleQuotes extends MacroTransform {
-  import PickleQuotes._
-  import tpd._
+  import PickleQuotes.*
+  import tpd.*
 
   override def phaseName: String = PickleQuotes.name
 
@@ -207,7 +207,7 @@ class PickleQuotes extends MacroTransform {
 }
 
 object PickleQuotes {
-  import tpd._
+  import tpd.*
 
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"

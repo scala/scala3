@@ -3,7 +3,7 @@ package dotc
 package printing
 
 import scala.collection.mutable
-import core.Contexts._
+import core.Contexts.*
 
 object Highlighting {
 
