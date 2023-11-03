@@ -14,6 +14,9 @@ package scala.collection
 package generic
 
 import scala.reflect.ClassTag
+import language.experimental.captureChecking
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** Type class witnessing that a collection representation type `Repr` has
   * elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
@@ -51,23 +54,26 @@ object IsSeq {
   implicit def seqOpsIsSeq[CC0[X] <: SeqOps[X, Iterable, CC0[X]], A0]: IsSeq[CC0[A0]] { type A = A0; type C = CC0[A0] } =
     seqOpsIsSeqVal.asInstanceOf[IsSeq[CC0[A0]] { type A = A0; type C = CC0[A0] }]
 
-/* Under cc, views are not Seqs and can't use SeqOps.
-
-  implicit def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsSeq[CC0[A0]] { type A = A0; type C = View[A0] } =
-    new IsSeq[CC0[A0]] {
+  /** !!! Under cc, views are not Seqs and can't use SeqOps.
+   *  So this should be renamed to seqViewIsIterable
+   */
+  implicit def seqViewIsSeq[CC0[X] <: SeqView[X], A0]: IsIterable[CC0[A0]] { type A = A0; type C = View[A0] } =
+    new IsIterable[CC0[A0]] {
       type A = A0
       type C = View[A]
-      def apply(coll: CC0[A0]): SeqOps[A0, View, View[A0]] = coll
+      def apply(coll: CC0[A0]): IterableOps[A0, View, View[A0]] = coll
     }
 
-  implicit val stringViewIsSeq: IsSeq[StringView] { type A = Char; type C = View[Char] } =
-    new IsSeq[StringView] {
+  /** !!! Under cc, views are not Seqs and can't use SeqOps.
+   *  So this should be renamed to stringViewIsIterable
+   */
+  implicit val stringViewIsSeq: IsIterable[StringView] { type A = Char; type C = View[Char] } =
+    new IsIterable[StringView] {
       type A = Char
       type C = View[Char]
-      def apply(coll: StringView): SeqOps[Char, View, View[Char]] = coll
+      def apply(coll: StringView): IterableOps[Char, View, View[Char]] = coll
     }
 
-*/
   implicit val stringIsSeq: IsSeq[String] { type A = Char; type C = String } =
     new IsSeq[String] {
       type A = Char
@@ -78,7 +84,7 @@ object IsSeq {
           def apply(i: Int): Char = s.charAt(i)
           def toIterable: Iterable[Char] = new immutable.WrappedString(s)
           protected[this] def coll: String = s
-          protected[this] def fromSpecific(coll: IterableOnce[Char]): String = coll.iterator.mkString
+          protected[this] def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
           def iterableFactory: FreeSeqFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
           override def empty: String = ""
           protected[this] def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
@@ -86,7 +92,7 @@ object IsSeq {
         }
     }
 
-  implicit def arrayIsSeq[A0 : ClassTag]: IsSeq[Array[A0]] { type A = A0; type C = Array[A0] } =
+  implicit def arrayIsSeq[sealed A0 : ClassTag]: IsSeq[Array[A0]] { type A = A0; type C = Array[A0] } =
     new IsSeq[Array[A0]] {
       type A = A0
       type C = Array[A0]
@@ -94,9 +100,9 @@ object IsSeq {
         new SeqOps[A, mutable.ArraySeq, Array[A]] {
           def apply(i: Int): A = a(i)
           def length: Int = a.length
-          def toIterable: Iterable[A] = mutable.ArraySeq.make(a)
+          def toIterable: Iterable[A] = mutable.ArraySeq.make[A @uncheckedCaptures](a)
           protected def coll: Array[A] = a
-          protected def fromSpecific(coll: IterableOnce[A]): Array[A] = Array.from(coll)
+          protected def fromSpecific(coll: IterableOnce[A]^): Array[A] = Array.from(coll)
           def iterableFactory: FreeSeqFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder
