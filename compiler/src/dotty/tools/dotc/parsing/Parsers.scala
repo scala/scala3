@@ -3518,7 +3518,7 @@ object Parsers {
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
-        if in.token == USCORE && sourceVersion.isAtLeast(future) then
+        if in.token == USCORE then
           report.errorOrMigrationWarning(
             em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
@@ -3538,7 +3538,7 @@ object Parsers {
       /** id [‘as’ (id | ‘_’) */
       def namedSelector(from: Ident) =
         if in.token == ARROW || isIdent(nme.as) then
-          if in.token == ARROW && sourceVersion.isAtLeast(future) then
+          if in.token == ARROW then
             report.errorOrMigrationWarning(
               em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
