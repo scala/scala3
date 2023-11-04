@@ -1,8 +1,8 @@
 -- Error: tests/neg-custom-args/captures/levels.scala:6:16 -------------------------------------------------------------
 6 |    private var v: T = init  // error
   |                ^
-  |                mutable variable v cannot have type T since
-  |                that type refers to the type variable T, which is not sealed.
+  |                Mutable variable v cannot have type T since
+  |                that type variable is not sealed.
 -- Error: tests/neg-custom-args/captures/levels.scala:17:13 ------------------------------------------------------------
 17 |  val _ = Ref[String => String]((x: String) => x) // error
    |          ^^^^^^^^^^^^^^^^^^^^^

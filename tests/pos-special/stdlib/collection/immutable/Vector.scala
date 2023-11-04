@@ -229,7 +229,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     // k >= 0, k = suffix.knownSize
     val tinyAppendLimit = 4 + vectorSliceCount
     if (k < tinyAppendLimit) {
-      var v: Vector[B] = this
+      var v: Vector[B @uncheckedCaptures] = this
       suffix match {
         case it: Iterable[_] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
         case _ => suffix.iterator.foreach(x => v = v.appended(x))

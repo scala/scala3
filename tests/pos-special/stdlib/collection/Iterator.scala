@@ -868,7 +868,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def duplicate: (Iterator[A]^{this}, Iterator[A]^{this}) = {
     val gap = new scala.collection.mutable.Queue[A @uncheckedCaptures]
-    var ahead: Iterator[A] = null
+    var ahead: Iterator[A @uncheckedCaptures] = null // ahead is captured by Partner, so A is not recognized as parametric
     class Partner extends AbstractIterator[A] {
       override def knownSize: Int = self.synchronized {
         val thisSize = self.knownSize

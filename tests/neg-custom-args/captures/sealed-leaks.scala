@@ -19,3 +19,33 @@ def Test2 =
   usingLogFile { f => x = f }  // error
 
   later()
+
+def Test3 =
+  def f[T](y: T) =
+    var x: T = y
+    ()
+
+  class C[T](y: T):
+    object o:
+      var x: T = y    // error
+      ()
+
+  class C2[T](y: T):
+    def f =
+      var x: T = y    // ok
+      ()
+
+  def g1[T](y: T): T => Unit =
+    var x: T = y     // error
+    y => x = y
+
+  def g2[T](y: T): T => Unit =
+    var x: T = y     // error
+    identity(y => x = y)
+
+  def g3[T](y: T): Unit =
+    var x: T = y     // error
+    def foo =
+      x = y
+    ()
+

@@ -609,7 +609,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     }
 
     final def splitAt(n: Int): (Ordering[T], Ordering[T]) = {
-      var rear = Ordering.empty[T]
+      var rear: Ordering[T @uncheckedCaptures] = Ordering.empty[T]
       var i = n
       (modifyOrRemove { (o, v) =>
         i -= 1
