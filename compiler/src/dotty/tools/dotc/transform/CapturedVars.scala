@@ -26,7 +26,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 
   override def description: String = CapturedVars.description
 
-  private var captured = util.HashSet[Symbol]()
+  private val captured = util.HashSet[Symbol]()
 
   private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
@@ -116,7 +116,7 @@ object CapturedVars:
   val name: String = "capturedVars"
   val description: String = "represent vars captured by closures as heap objects"
 
-  def collect(captured: util.HashSet[Symbol]): TreeTraverser = new:
+  private def collect(captured: util.HashSet[Symbol]): TreeTraverser = new:
     def traverse(tree: Tree)(using Context) = tree match
       case id: Ident =>
         val sym = id.symbol
