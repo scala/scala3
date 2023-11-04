@@ -16,7 +16,7 @@ import typer.ErrorReporting.{Addenda, err}
 import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
 import transform.SymUtils.*
-import transform.{Recheck, PreRecheck}
+import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
 import CaptureSet.{withCaptureSetsExplained, IdempotentCaptRefMap, CompareResult}
@@ -149,15 +149,25 @@ object CheckCaptures:
 
       private val seen = new EqHashSet[TypeRef]
 
+      /** Check that there is at least one method containing carrier and defined
+       *  in the scope of tparam. E.g. this is OK:
+       *    def f[T] = { ... var x: T ... }
+       *  So is this:
+       *    class C[T] { def f() = { class D { var x: T }}}
+       *  But this is not OK:
+       *    class C[T] { object o { var x: T }}
+       */
       extension (tparam: Symbol) def isParametricIn(carrier: Symbol): Boolean =
-        val encl = carrier.maybeOwner.enclosingMethodOrClass
-        if encl.isClass then tparam.isParametricIn(encl)
-        else
-          def recur(encl: Symbol): Boolean =
-            if tparam.owner == encl then true
-            else if encl.isStatic || !encl.exists then false
-            else recur(encl.owner.enclosingMethodOrClass)
-          recur(encl)
+        carrier.exists && {
+          val encl = carrier.owner.enclosingMethodOrClass
+          if encl.isClass then tparam.isParametricIn(encl)
+          else
+            def recur(encl: Symbol): Boolean =
+              if tparam.owner == encl then true
+              else if encl.isStatic || !encl.exists then false
+              else recur(encl.owner.enclosingMethodOrClass)
+            recur(encl)
+        }
 
       def traverse(t: Type) =
         t.dealiasKeepAnnots match
@@ -168,9 +178,12 @@ object CheckCaptures:
               t.info match
                 case TypeBounds(_, hi) if !t.isSealed && !t.symbol.isParametricIn(carrier) =>
                   if hi.isAny then
+                    val detailStr =
+                      if t eq tp then "variable"
+                      else i"refers to the type variable $t, which"
                     report.error(
                       em"""$what cannot $have $tp since
-                          |that type refers to the type variable $t, which is not sealed.
+                          |that type $detailStr is not sealed.
                           |$addendum""",
                       pos)
                   else
@@ -549,7 +562,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case (arg: TypeTree, formal, pname) <- args.lazyZip(polyType.paramRefs).lazyZip((polyType.paramNames)) do
           if formal.isSealed then
             def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
-            disallowRootCapabilitiesIn(arg.knownType, fn.symbol,
+            disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
               i"Sealed type variable $pname", "be instantiated to",
               i"This is often caused by a local capability$where\nleaking as part of its result.",
               tree.srcPos)
@@ -590,13 +603,58 @@ class CheckCaptures extends Recheck, SymTransformer:
         openClosures = openClosures.tail
     end recheckClosureBlock
 
+    /** Maps mutable variables to the symbols that capture them (in the
+     *  CheckCaptures sense, i.e. symbol is referred to from a different method
+     *  than the one it is defined in).
+     */
+    private val capturedBy = util.HashMap[Symbol, Symbol]()
+
+    /** Maps anonymous functions appearing as function arguments to
+     *  the function that is called.
+     */
+    private val anonFunCallee = util.HashMap[Symbol, Symbol]()
+
+    /** Populates `capturedBy` and `anonFunCallee`. Called by `checkUnit`.
+     */
+    private def collectCapturedMutVars(using Context) = new TreeTraverser:
+      def traverse(tree: Tree)(using Context) = tree match
+        case id: Ident =>
+          val sym = id.symbol
+          if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
+            val enclMeth = ctx.owner.enclosingMethod
+            if sym.enclosingMethod != enclMeth then
+              capturedBy(sym) = enclMeth
+        case Apply(fn, args) =>
+          for case closureDef(mdef) <- args do
+            anonFunCallee(mdef.symbol) = fn.symbol
+          traverseChildren(tree)
+        case Inlined(_, bindings, expansion) =>
+          traverse(bindings)
+          traverse(expansion)
+        case mdef: DefDef =>
+          if !mdef.symbol.isInlineMethod then traverseChildren(tree)
+        case _ =>
+          traverseChildren(tree)
+
     override def recheckValDef(tree: ValDef, sym: Symbol)(using Context): Type =
       try
         if sym.is(Module) then sym.info // Modules are checked by checking the module class
         else
           if sym.is(Mutable) && !sym.hasAnnotation(defn.UncheckedCapturesAnnot) then
-            disallowRootCapabilitiesIn(tree.tpt.knownType, sym,
-              i"mutable $sym", "have type", "", sym.srcPos)
+            val (carrier, addendum) = capturedBy.get(sym) match
+              case Some(encl) =>
+                val enclStr =
+                  if encl.isAnonymousFunction then
+                    val location = anonFunCallee.get(encl) match
+                      case Some(meth) if meth.exists => i" argument in a call to $meth"
+                      case _ => ""
+                    s"an anonymous function$location"
+                  else encl.show
+                (NoSymbol, i"\nNote that $sym does not count as local since it is captured by $enclStr")
+              case _ =>
+                (sym, "")
+            disallowRootCapabilitiesIn(
+              tree.tpt.knownType, carrier, i"Mutable $sym", "have type", addendum, sym.srcPos)
           checkInferredResult(super.recheckValDef(tree, sym), tree)
       finally
         if !sym.is(Param) then
@@ -1168,11 +1226,12 @@ class CheckCaptures extends Recheck, SymTransformer:
     private val setup: SetupAPI = thisPhase.prev.asInstanceOf[Setup]
 
     override def checkUnit(unit: CompilationUnit)(using Context): Unit =
-      setup.setupUnit(ctx.compilationUnit.tpdTree, completeDef)
+      setup.setupUnit(unit.tpdTree, completeDef)
+      collectCapturedMutVars.traverse(unit.tpdTree)
 
       if ctx.settings.YccPrintSetup.value then
         val echoHeader = "[[syntax tree at end of cc setup]]"
-        val treeString = show(ctx.compilationUnit.tpdTree)
+        val treeString = show(unit.tpdTree)
         report.echo(s"$echoHeader\n$treeString\n")
 
       withCaptureSetsExplained:
