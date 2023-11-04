@@ -14,7 +14,7 @@ abstract class TokensCommon {
   type Token = Int
   type TokenSet = BitSet
 
-  def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi: _*)
+  def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi *)
 
   val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
 

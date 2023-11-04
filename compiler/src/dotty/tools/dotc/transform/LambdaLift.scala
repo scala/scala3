@@ -18,6 +18,8 @@ import ExplicitOuter.outer
 import util.Store
 import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}
 
+import scala.compiletime.uninitialized
+
 object LambdaLift:
   import ast.tpd._
 
@@ -266,7 +268,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // lambda lift for super calls right. Witness the implementation restrictions to
     // this effect in scalac.
 
-  private var Lifter: Store.Location[Lifter] = _
+  private var Lifter: Store.Location[Lifter] = uninitialized
   private def lifter(using Context) = ctx.store(Lifter)
 
   override def initContext(ctx: FreshContext): Unit =

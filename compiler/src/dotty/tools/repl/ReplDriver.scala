@@ -36,6 +36,7 @@ import org.jline.reader._
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 import scala.util.Using
@@ -116,10 +117,10 @@ class ReplDriver(settings: Array[String],
     rendering = new Rendering(classLoader)
   }
 
-  private var rootCtx: Context = _
-  private var shouldStart: Boolean = _
-  private var compiler: ReplCompiler = _
-  protected var rendering: Rendering = _
+  private var rootCtx: Context = uninitialized
+  private var shouldStart: Boolean = uninitialized
+  private var compiler: ReplCompiler = uninitialized
+  protected var rendering: Rendering = uninitialized
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business

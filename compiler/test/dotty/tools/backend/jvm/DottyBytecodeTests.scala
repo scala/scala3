@@ -308,7 +308,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |import java.nio.file._
         |class Test {
         |  def test(xs: Array[String]) = {
-        |     val p4 = Paths.get("Hello", xs: _*)
+        |     val p4 = Paths.get("Hello", xs*)
         |  }
         |}
       """.stripMargin

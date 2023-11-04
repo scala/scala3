@@ -33,11 +33,11 @@ trait Selectable extends scala.Selectable:
    *  @param paramTypes The class tags of the selected method's formal parameter types
    *  @param args       The arguments to pass to the selected method
    */
-  final def applyDynamic(name: String, paramTypes: Class[_]*)(args: Any*): Any =
+  final def applyDynamic(name: String, paramTypes: Class[?]*)(args: Any*): Any =
     val rcls = selectedValue.getClass
-    val mth = rcls.getMethod(name, paramTypes: _*).nn
+    val mth = rcls.getMethod(name, paramTypes*).nn
     ensureAccessible(mth)
-    mth.invoke(selectedValue, args.asInstanceOf[Seq[AnyRef]]: _*)
+    mth.invoke(selectedValue, args.asInstanceOf[Seq[AnyRef]]*)
 
 object Selectable:
 

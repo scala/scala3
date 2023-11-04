@@ -13,12 +13,14 @@ import ast.Trees.mods
 import annotation.constructorOnly
 import annotation.internal.sharable
 
+import scala.compiletime.uninitialized
+
 /** A base class for things that have positions (currently: modifiers and trees)
  */
 abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
   import Positioned.{ids, nextId, debugId}
 
-  private var mySpan: Span = _
+  private var mySpan: Span = uninitialized
 
   private var mySource: SourceFile = src
 

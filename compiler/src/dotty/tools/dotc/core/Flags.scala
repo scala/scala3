@@ -188,7 +188,7 @@ object Flags {
     flag
   }
 
-  def commonFlags(flagss: FlagSet*): FlagSet = union(flagss.map(_.toCommonFlags): _*)
+  def commonFlags(flagss: FlagSet*): FlagSet = union(flagss.map(_.toCommonFlags)*)
 
   /** The empty flag set */
   val EmptyFlags: FlagSet = FlagSet(0)

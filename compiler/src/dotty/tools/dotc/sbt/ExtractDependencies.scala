@@ -29,7 +29,7 @@ import xsbti.api.DependencyContext._
 import scala.jdk.CollectionConverters.*
 
 import scala.collection.{Set, mutable}
-
+import scala.compiletime.uninitialized
 
 /** This phase sends information on classes' dependencies to sbt via callbacks.
  *
@@ -519,9 +519,9 @@ class DependencyRecorder {
     }
   }
 
-  private var lastOwner: Symbol = _
-  private var lastDepSource: Symbol = _
-  private var lastFoundCache: FoundDepsInClass | Null = _
+  private var lastOwner: Symbol = uninitialized
+  private var lastDepSource: Symbol = uninitialized
+  private var lastFoundCache: FoundDepsInClass | Null = uninitialized
 
   /** The source of the dependency according to `nonLocalEnclosingClass`
    *  if it exists, otherwise fall back to `responsibleForImports`.
@@ -558,7 +558,7 @@ class DependencyRecorder {
     clazz
   }
 
-  private var _responsibleForImports: Symbol = _
+  private var _responsibleForImports: Symbol = uninitialized
 
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.

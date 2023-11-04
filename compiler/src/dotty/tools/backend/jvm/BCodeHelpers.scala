@@ -9,6 +9,7 @@ import scala.tools.asm
 import scala.tools.asm.AnnotationVisitor
 import scala.tools.asm.ClassWriter
 import scala.collection.mutable
+import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
@@ -576,7 +577,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
   /* builder of mirror classes */
   class JMirrorBuilder extends JCommonBuilder {
 
-    private var cunit: CompilationUnit = _
+    private var cunit: CompilationUnit = uninitialized
     def getCurrentCUnit(): CompilationUnit = cunit;
 
     /* Generate a mirror class for a top-level module. A mirror class is a class

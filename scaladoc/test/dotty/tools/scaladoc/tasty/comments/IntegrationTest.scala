@@ -8,7 +8,7 @@ abstract class BaseIntegrationTest(pck: String) extends BaseHtmlTest:
   @Test
   def testLinks: Unit =  withGeneratedDoc(pcks = Seq(pck, "commonlinks")) {
     def checkDocLinks(links: String*)(ctx: DocumentContext): Unit =
-      ctx.assertAttr(".documentableBrief a, .cover a", "href", links:_*)
+      ctx.assertAttr(".documentableBrief a, .cover a", "href", links*)
       ctx.assertNotExists("unresolvedLinkSelector")
 
     def checkUnresolved(ctx: DocumentContext): Unit =

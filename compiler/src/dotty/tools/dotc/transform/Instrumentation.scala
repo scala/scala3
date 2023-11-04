@@ -12,6 +12,8 @@ import MegaPhase._
 import Names._
 import Constants.Constant
 
+import scala.compiletime.uninitialized
+
 
 /** The phase is enabled if the -Yinstrument option is set.
  *  If enabled, it counts the number of closures or allocations for each source position.
@@ -40,11 +42,11 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
     "slice", "staticRef", "requiredClass")
 
-  private var namesToRecord: Set[Name] = _
-  private var collectionNamesToRecord: Set[Name] = _
-  private var Stats_doRecord: Symbol = _
-  private var Stats_doRecordSize: Symbol = _
-  private var CollectionIterableClass: ClassSymbol = _
+  private var namesToRecord: Set[Name] = uninitialized
+  private var collectionNamesToRecord: Set[Name] = uninitialized
+  private var Stats_doRecord: Symbol = uninitialized
+  private var Stats_doRecordSize: Symbol = uninitialized
+  private var CollectionIterableClass: ClassSymbol = uninitialized
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
     namesToRecord = namesOfInterest.map(_.toTermName).toSet

@@ -46,6 +46,7 @@ import dotty.tools.tasty.TastyFormat._
 
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
+import scala.compiletime.uninitialized
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
@@ -88,7 +89,7 @@ class TreeUnpickler(reader: TastyReader,
   private var seenRoots: Set[Symbol] = Set()
 
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
-  private var ownerTree: OwnerTree = _
+  private var ownerTree: OwnerTree = uninitialized
 
   /** Was unpickled class compiled with pureFunctions? */
   private var withPureFuns: Boolean = false

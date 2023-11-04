@@ -1756,8 +1756,12 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          if sourceVersion.isAtLeast(future) then
-            deprecationWarning(DeprecatedWithOperator(), withOffset)
+          report.errorOrMigrationWarning(
+            DeprecatedWithOperator(rewriteNotice(`future-migration`)),
+            in.sourcePos(withOffset),
+            from = future)
+          if sourceVersion == `future-migration` then
+            patch(source, Span(withOffset, withOffset + 4), "&")
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
 
@@ -2344,7 +2348,7 @@ object Parsers {
               in.sourcePos(uscoreStart),
               future)
             if sourceVersion == `future-migration` then
-              patch(source, Span(t.span.end, in.lastOffset), " *")
+              patch(source, Span(t.span.end, in.lastOffset), "*")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.
@@ -2973,12 +2977,6 @@ object Parsers {
       case p =>
         p
 
-    private def warnStarMigration(p: Tree) =
-      report.errorOrMigrationWarning(
-        em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
-        in.sourcePos(startOffset(p)),
-        from = future)
-
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
@@ -3520,12 +3518,13 @@ object Parsers {
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
-        if in.token == USCORE && sourceVersion.isAtLeast(future) then
+        if in.token == USCORE then
           report.errorOrMigrationWarning(
             em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
             from = future)
-          patch(source, Span(in.offset, in.offset + 1), "*")
+          if sourceVersion == `future-migration` then
+            patch(source, Span(in.offset, in.offset + 1), "*")
         ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
 
       /** 'given [InfixType]' */
@@ -3539,14 +3538,15 @@ object Parsers {
       /** id [‘as’ (id | ‘_’) */
       def namedSelector(from: Ident) =
         if in.token == ARROW || isIdent(nme.as) then
-          if in.token == ARROW && sourceVersion.isAtLeast(future) then
+          if in.token == ARROW then
             report.errorOrMigrationWarning(
               em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
               from = future)
-            patch(source, Span(in.offset, in.offset + 2),
-                if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
-                else " as ")
+            if sourceVersion == `future-migration` then
+              patch(source, Span(in.offset, in.offset + 2),
+                  if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
+                  else " as ")
           atSpan(startOffset(from), in.skipToken()) {
             val to = if in.token == USCORE then wildcardIdent() else termIdent()
             ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)

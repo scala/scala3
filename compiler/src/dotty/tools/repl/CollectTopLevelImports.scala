@@ -4,6 +4,8 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 
+import scala.compiletime.uninitialized
+
 /** A phase that collects user defined top level imports.
  *
  *  These imports must be collected as typed trees and therefore
@@ -14,7 +16,7 @@ class CollectTopLevelImports extends Phase {
 
   def phaseName: String = "collectTopLevelImports"
 
-  private var myImports: List[Import] = _
+  private var myImports: List[Import] = uninitialized
   def imports: List[Import] = myImports
 
   def run(using Context): Unit = {

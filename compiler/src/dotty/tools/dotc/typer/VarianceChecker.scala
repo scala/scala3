@@ -13,6 +13,8 @@ import config.Feature.migrateTo3
 import reporting.trace
 import printing.Formatting.hl
 
+import scala.compiletime.uninitialized
+
 /** Provides `check` method to check that all top-level definitions
  *  in tree are variance correct. Does not recurse inside methods.
  *  The method should be invoked once for each Template.
@@ -67,7 +69,7 @@ class VarianceChecker(using Context) {
   import tpd._
 
   private object Validator extends TypeAccumulator[Option[VarianceError]] {
-    private var base: Symbol = _
+    private var base: Symbol = uninitialized
 
     /** The variance of a symbol occurrence of `tvar` seen at the level of the definition of `base`.
      *  The search proceeds from `base` to the owner of `tvar`.

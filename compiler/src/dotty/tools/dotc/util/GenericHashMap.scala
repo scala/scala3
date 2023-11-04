@@ -1,6 +1,8 @@
 package dotty.tools
 package dotc.util
 
+import scala.compiletime.uninitialized
+
 object GenericHashMap:
 
   /** The number of elements up to which dense packing is used.
@@ -27,9 +29,9 @@ abstract class GenericHashMap[Key, Value]
     (initialCapacity: Int, capacityMultiple: Int) extends MutableMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
-  protected var used: Int = _
-  protected var limit: Int = _
-  protected var table: Array[AnyRef | Null] = _
+  protected var used: Int = uninitialized
+  protected var limit: Int = uninitialized
+  protected var table: Array[AnyRef | Null] = uninitialized
   clear()
 
   private def allocate(capacity: Int) =

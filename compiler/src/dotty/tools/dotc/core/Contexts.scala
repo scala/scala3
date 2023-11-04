@@ -414,7 +414,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 
@@ -558,7 +558,7 @@ object Contexts {
     private var _owner: Symbol = uninitialized
     final def owner: Symbol = _owner
 
-    private var _tree: Tree[?]= _
+    private var _tree: Tree[?] = uninitialized
     final def tree: Tree[?] = _tree
 
     private var _scope: Scope = uninitialized

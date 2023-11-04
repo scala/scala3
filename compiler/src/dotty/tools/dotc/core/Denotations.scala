@@ -24,6 +24,8 @@ import util.common._
 import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
 
+import scala.compiletime.uninitialized
+
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
  *  and their denoting entities relate to each other. Lines ending in
@@ -121,8 +123,8 @@ object Denotations {
     /** Map `f` over all single denotations and aggregate the results with `g`. */
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T
 
-    private var cachedPrefix: Type = _
-    private var cachedAsSeenFrom: AsSeenFromResult = _
+    private var cachedPrefix: Type = uninitialized
+    private var cachedAsSeenFrom: AsSeenFromResult = uninitialized
     private var validAsSeenFrom: Period = Nowhere
 
     type AsSeenFromResult <: PreDenotation

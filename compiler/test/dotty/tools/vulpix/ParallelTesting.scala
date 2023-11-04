@@ -85,18 +85,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val newFlags = newFlags0.toArray
       if (!flags.options.containsSlice(newFlags)) self match {
         case self: JointCompilationSource =>
-          self.copy(flags = flags.and(newFlags:_*))
+          self.copy(flags = flags.and(newFlags*))
         case self: SeparateCompilationSource =>
-          self.copy(flags = flags.and(newFlags:_*))
+          self.copy(flags = flags.and(newFlags*))
       }
       else self
     }
 
     def withoutFlags(flags1: String*): TestSource = self match {
       case self: JointCompilationSource =>
-        self.copy(flags = flags.without(flags1: _*))
+        self.copy(flags = flags.without(flags1*))
       case self: SeparateCompilationSource =>
-        self.copy(flags = flags.without(flags1: _*))
+        self.copy(flags = flags.without(flags1*))
     }
 
     lazy val allToolArgs: ToolArgs =
@@ -490,7 +490,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
 
       val flags = flags0
-        .and(scalacOptions: _*)
+        .and(scalacOptions*)
         .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
 

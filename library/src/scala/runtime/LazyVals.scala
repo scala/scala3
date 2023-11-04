@@ -135,7 +135,7 @@ object LazyVals {
   }
 
   // kept for backward compatibility
-  def getOffset(clz: Class[_], name: String): Long = {
+  def getOffset(clz: Class[?], name: String): Long = {
     @nowarn
     val r = unsafe.objectFieldOffset(clz.getDeclaredField(name))
     if (debug)

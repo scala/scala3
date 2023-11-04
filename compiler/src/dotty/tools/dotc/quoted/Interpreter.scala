@@ -171,7 +171,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     val clazz = inst.getClass
     val name = fn.name.asTermName
     val method = getMethod(clazz, name, paramsSig(fn))
-    stopIfRuntimeException(method.invoke(inst, args: _*), method)
+    stopIfRuntimeException(method.invoke(inst, args*), method)
   }
 
   private def interpretedStaticFieldAccess(sym: Symbol): Object = {
@@ -186,8 +186,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
   private def interpretNew(fn: Symbol, args: List[Object]): Object = {
     val className = fn.owner.fullName.mangledString.replaceAll("\\$\\.", "\\$")
     val clazz = loadClass(className)
-    val constr = clazz.getConstructor(paramsSig(fn): _*)
-    constr.newInstance(args: _*).asInstanceOf[Object]
+    val constr = clazz.getConstructor(paramsSig(fn)*)
+    constr.newInstance(args*).asInstanceOf[Object]
   }
 
   private def unexpectedTree(tree: Tree): Object =
@@ -218,7 +218,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
 
   private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
-    try clazz.getMethod(name.toString, paramClasses: _*)
+    try clazz.getMethod(name.toString, paramClasses*)
     catch {
       case _: NoSuchMethodException =>
         val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"

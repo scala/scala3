@@ -24,7 +24,8 @@ import ast.desugar
 
 import parsing.JavaParsers.OutlineJavaParser
 import parsing.Parsers.OutlineParser
-import dotty.tools.tasty.TastyHeaderUnpickler
+import dotty.tools.tasty.{TastyHeaderUnpickler, UnpickleException, UnpicklerConfig}
+import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 
 object SymbolLoaders {
@@ -421,14 +422,25 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "TASTy file " + tastyFile.toString
 
   override def doComplete(root: SymDenotation)(using Context): Unit =
-    val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    val tastyBytes = tastyFile.toByteArray
-    val unpickler = new tasty.DottyUnpickler(tastyBytes)
-    unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
-    if mayLoadTreesFromTasty then
-      classRoot.classSymbol.rootTreeOrProvider = unpickler
-      moduleRoot.classSymbol.rootTreeOrProvider = unpickler
-    checkTastyUUID(tastyFile, tastyBytes)
+    try
+      val (classRoot, moduleRoot) = rootDenots(root.asClass)
+      val tastyBytes = tastyFile.toByteArray
+      val unpickler = new tasty.DottyUnpickler(tastyBytes)
+      unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
+      if mayLoadTreesFromTasty then
+        classRoot.classSymbol.rootTreeOrProvider = unpickler
+        moduleRoot.classSymbol.rootTreeOrProvider = unpickler
+      checkTastyUUID(tastyFile, tastyBytes)
+    catch case e: RuntimeException =>
+      val message = e match
+        case e: UnpickleException =>
+          i"""TASTy file ${tastyFile.canonicalPath} could not be read, failing with:
+            |  ${Option(e.getMessage).getOrElse("")}"""
+        case _ =>
+          i"""TASTy file ${tastyFile.canonicalPath} is broken, reading aborted with ${e.getClass}
+            |  ${Option(e.getMessage).getOrElse("")}"""
+      if (ctx.debug) e.printStackTrace()
+      throw IOException(message)
 
 
   private def checkTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
@@ -436,7 +448,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val className = tastyFile.name.stripSuffix(".tasty")
       tastyFile.resolveSibling(className + ".class")
     if classfile != null then
-      val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
+      val tastyUUID = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, tastyBytes).readHeader()
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
       // This will be the case in any of our tests that compile with `-Youtput-only-tasty`

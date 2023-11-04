@@ -149,7 +149,7 @@ object SpaceEngine {
     if (spaces.lengthCompare(1) <= 0 || spaces.lengthCompare(10) >= 0) spaces
     else {
       val res = spaces.map(sp => (sp, spaces.filter(_ ne sp))).find {
-        case (sp, sps) => isSubspace(sp, Or(LazyList(sps: _*)))
+        case (sp, sps) => isSubspace(sp, Or(LazyList(sps*)))
       }
       if (res.isEmpty) spaces
       else res.get._2
@@ -158,7 +158,7 @@ object SpaceEngine {
   /** Flatten space to get rid of `Or` for pretty print */
   def flatten(space: Space)(using Context): Seq[Space] = space match {
     case Prod(tp, fun, spaces) =>
-      val ss = LazyList(spaces: _*).map(flatten)
+      val ss = LazyList(spaces*).map(flatten)
 
       ss.foldLeft(LazyList(Nil : List[Space])) { (acc, flat) =>
         for { sps <- acc; s <- flat }
@@ -168,7 +168,7 @@ object SpaceEngine {
       }
 
     case Or(spaces) =>
-      LazyList(spaces: _*).flatMap(flatten)
+      LazyList(spaces*).flatMap(flatten)
 
     case _ =>
       List(space)
@@ -272,7 +272,7 @@ object SpaceEngine {
         else if cache.forall(sub => isSubspace(sub.nn, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
-          val spaces = LazyList(range: _*).flatMap { i =>
+          val spaces = LazyList(range*).flatMap { i =>
             flatten(sub(i)).map(s => Prod(tp1, fun1, ss1.updated(i, s)))
           }
           Or(spaces)
@@ -483,7 +483,7 @@ object SpaceEngine {
       case _ => tp
     })
 
-  /** Space of the pattern: unapplySeq(a, b, c: _*)
+  /** Space of the pattern: unapplySeq(a, b, c*)
    */
   def projectSeq(pats: List[Tree])(using Context): Space = {
     if (pats.isEmpty) return Typ(defn.NilType, false)

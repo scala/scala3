@@ -242,7 +242,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   /** Does this list contain a named argument tree? */
   def hasNamedArg(args: List[Any]): Boolean = args exists isNamedArg
-  val isNamedArg: Any => Boolean = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
+  val isNamedArg: Any => Boolean = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[?]]
 
   /** Is this pattern node a catch-all (wildcard or variable) pattern? */
   def isDefaultCase(cdef: CaseDef): Boolean = cdef match {
@@ -1060,7 +1060,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   def assertAllPositioned(tree: Tree)(using Context): Unit =
     tree.foreachSubTree {
-      case t: WithoutTypeOrPos[_] =>
+      case t: WithoutTypeOrPos[?] =>
       case t => assert(t.span.exists, i"$t")
     }
 

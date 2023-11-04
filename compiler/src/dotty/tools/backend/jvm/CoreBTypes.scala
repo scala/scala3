@@ -138,7 +138,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
   lazy val jlStringBuilderRef       : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
   lazy val jlStringBufferRef        : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
   lazy val jlCharSequenceRef        : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.CharSequence])
-  lazy val jlClassRef               : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.Class[_]])
+  lazy val jlClassRef               : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.lang.Class[?]])
   lazy val jlThrowableRef           : ClassBType = synchClassBTypeFromSymbol(defn.ThrowableClass)
   lazy val jlCloneableRef           : ClassBType = synchClassBTypeFromSymbol(defn.JavaCloneableClass)
   lazy val jiSerializableRef        : ClassBType = synchClassBTypeFromSymbol(requiredClass[java.io.Serializable])
@@ -233,7 +233,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
         (List(LARRAY_LENGTH, LARRAY_GET, LARRAY_SET) map (_ -> LONG))   ++
         (List(FARRAY_LENGTH, FARRAY_GET, FARRAY_SET) map (_ -> FLOAT))  ++
         (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
-        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) : _*
+        (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectRef)) *
     )
   }
 }

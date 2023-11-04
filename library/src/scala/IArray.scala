@@ -5,7 +5,7 @@ import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{ArrayBuilder, Builder}
 
-opaque type IArray[+T] = Array[_ <: T]
+opaque type IArray[+T] = Array[? <: T]
 
 /** An immutable array. An `IArray[T]` has the same representation as an `Array[T]`,
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
@@ -298,10 +298,10 @@ object IArray:
     def search[U >: T](elem: U)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem)
     def search[U >: T](elem: U, from: Int, to: Int)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem, from, to)
     def sizeCompare(that: IArray[Any]): Int = arr.toSeq.sizeCompare(that)
-    def sizeCompare(that: Iterable[_]): Int = arr.toSeq.sizeCompare(that)
+    def sizeCompare(that: Iterable[?]): Int = arr.toSeq.sizeCompare(that)
     def sizeCompare(otherSize: Int): Int = genericArrayOps(arr).sizeCompare(otherSize)
     def sliding(size: Int, step: Int = 1): Iterator[IArray[T]] = genericArrayOps(arr).sliding(size, step)
-    def stepper[S <: Stepper[_]](using StepperShape[T, S]): S = genericArrayOps(arr).stepper[S]
+    def stepper[S <: Stepper[?]](using StepperShape[T, S]): S = genericArrayOps(arr).stepper[S]
     def tails: Iterator[IArray[T]] = genericArrayOps(arr).tails
     def tapEach[U](f: (T) => U): IArray[T] =
       arr.toSeq.foreach(f)
@@ -411,25 +411,25 @@ object IArray:
   def emptyObjectIArray: IArray[Object]  = Array.emptyObjectArray
 
   /** An immutable array with given elements. */
-  def apply[T](xs: T*)(using ct: ClassTag[T]): IArray[T] = Array(xs: _*)
+  def apply[T](xs: T*)(using ct: ClassTag[T]): IArray[T] = Array(xs*)
   /** An immutable array with given elements. */
-  def apply(x: Boolean, xs: Boolean*): IArray[Boolean] = Array(x, xs: _*)
+  def apply(x: Boolean, xs: Boolean*): IArray[Boolean] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Byte, xs: Byte*): IArray[Byte] = Array(x, xs: _*)
+  def apply(x: Byte, xs: Byte*): IArray[Byte] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Short, xs: Short*): IArray[Short] = Array(x, xs: _*)
+  def apply(x: Short, xs: Short*): IArray[Short] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Char, xs: Char*): IArray[Char] = Array(x, xs: _*)
+  def apply(x: Char, xs: Char*): IArray[Char] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Int, xs: Int*): IArray[Int] = Array(x, xs: _*)
+  def apply(x: Int, xs: Int*): IArray[Int] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Long, xs: Long*): IArray[Long] = Array(x, xs: _*)
+  def apply(x: Long, xs: Long*): IArray[Long] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Float, xs: Float*): IArray[Float] = Array(x, xs: _*)
+  def apply(x: Float, xs: Float*): IArray[Float] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Double, xs: Double*): IArray[Double] = Array(x, xs: _*)
+  def apply(x: Double, xs: Double*): IArray[Double] = Array(x, xs*)
   /** An immutable array with given elements. */
-  def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs: _*)
+  def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs*)
 
   /** Build an array from the iterable collection.
    *
@@ -459,7 +459,7 @@ object IArray:
     // `Array.concat` should arguably take in a `Seq[Array[_ <: T]]`,
     // but since it currently takes a `Seq[Array[T]]` we have to perform a cast,
     // knowing tacitly that `concat` is not going to do the wrong thing.
-    Array.concat[T](xss.asInstanceOf[Seq[Array[T]]]: _*)
+    Array.concat[T](xss.asInstanceOf[Seq[Array[T]]]*)
 
   /** Returns an immutable array that contains the results of some element computation a number
    *  of times. Each element is determined by a separate computation.
@@ -615,7 +615,7 @@ object IArray:
    *  @param x the selector value
    *  @return  sequence wrapped in a [[scala.Some]], if `x` is a Seq, otherwise `None`
    */
-  def unapplySeq[T](x: IArray[T]): Array.UnapplySeqWrapper[_ <: T] =
+  def unapplySeq[T](x: IArray[T]): Array.UnapplySeqWrapper[? <: T] =
     Array.unapplySeq(x)
 
   /** A lazy filtered array. No filtering is applied until one of `foreach`, `map` or `flatMap` is called. */

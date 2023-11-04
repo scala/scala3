@@ -30,6 +30,7 @@ import reporting._
 import config.Feature.sourceVersion
 import config.SourceVersion._
 
+import scala.compiletime.uninitialized
 
 /** This class creates symbols from definitions and imports and gives them
  *  lazy types.
@@ -1078,7 +1079,7 @@ class Namer { typer: Typer =>
 
     protected implicit val completerCtx: Context = localContext(cls)
 
-    private var localCtx: Context = _
+    private var localCtx: Context = uninitialized
 
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo | Null = null
@@ -1297,7 +1298,7 @@ class Namer { typer: Typer =>
           .foreach(addForwarder(name, _, span)) // ignore if any are not added
 
       def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
-        val nonContextual = mutable.HashSet(seen: _*)
+        val nonContextual = mutable.HashSet(seen*)
         val fromCaseClass = pathType.widen.classSymbols.exists(_.is(Case))
         def isCaseClassSynthesized(mbr: Symbol) =
           fromCaseClass && defn.caseClassSynthesized.contains(mbr)

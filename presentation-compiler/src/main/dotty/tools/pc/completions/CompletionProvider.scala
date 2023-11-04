@@ -151,10 +151,7 @@ class CompletionProvider(
       indexedContext: IndexedContext
   )(using ctx: Context): CompletionItem =
     val printer =
-      ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using
-        indexedContext
-      )
-    val editRange = completionPos.toEditRange
+      ShortenedTypePrinter(search, IncludeDefaultParam.ResolveLater)(using indexedContext)
 
     // For overloaded signatures we get multiple symbols, so we need
     // to recalculate the description
@@ -165,24 +162,22 @@ class CompletionProvider(
     val ident = completion.insertText.getOrElse(completion.label)
 
     def mkItem(
-        insertText: String,
+        newText: String,
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val nameEdit = new TextEdit(
-        range.getOrElse(editRange),
-        insertText
-      )
+      val oldText = params.text.substring(completionPos.start, completionPos.end)
+      val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
+        else completionPos.toEditRange
+
+      val textEdit = new TextEdit(range.getOrElse(editRange), newText)
+
       val item = new CompletionItem(label)
       item.setSortText(f"${idx}%05d")
       item.setDetail(description)
-      item.setFilterText(
-        completion.filterText.getOrElse(completion.label)
-      )
-      item.setTextEdit(nameEdit)
-      item.setAdditionalTextEdits(
-        (completion.additionalEdits ++ additionalEdits).asJava
-      )
+      item.setFilterText(completion.filterText.getOrElse(completion.label))
+      item.setTextEdit(textEdit)
+      item.setAdditionalTextEdits((completion.additionalEdits ++ additionalEdits).asJava)
       completion.insertMode.foreach(item.setInsertTextMode)
 
       completion

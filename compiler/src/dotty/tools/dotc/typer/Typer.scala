@@ -3625,8 +3625,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val remembered = // report AmbiguousReferences as priority, otherwise last error
         (errs.filter(_.msg.isInstanceOf[AmbiguousReference]) ++ errs).take(1)
       for err <- remembered do
+        val tree = if app.isEmpty then qual else app
         rememberSearchFailure(qual,
-          SearchFailure(app.withType(FailedExtension(app, selectionProto, err.msg))))
+          SearchFailure(tree.withType(FailedExtension(tree, selectionProto, err.msg))))
     catch case ex: TypeError => nestedFailure(ex)
 
     // try an implicit conversion or given extension

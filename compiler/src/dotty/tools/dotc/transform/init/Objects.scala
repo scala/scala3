@@ -1418,7 +1418,7 @@ object Objects:
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
       val applyRes = call(scrutinee, applyDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
-      if isWildcardStarArg(pats.last) then
+      if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
           val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
@@ -1433,7 +1433,8 @@ object Objects:
         end if
       else
         // no patterns like `xs*`
-      for pat <- pats do evalPattern(applyRes, pat)
+        for pat <- pats do evalPattern(applyRes, pat)
+      end if
     end evalSeqPatterns
 
 

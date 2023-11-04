@@ -33,6 +33,8 @@ import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
+import scala.compiletime.uninitialized
+
 object Symbols {
 
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
@@ -88,7 +90,7 @@ object Symbols {
       ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
-    private var lastDenot: SymDenotation = _
+    private var lastDenot: SymDenotation = uninitialized
     private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }

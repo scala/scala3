@@ -14,6 +14,8 @@ import core.Constants._
 import util.Store
 import dotty.tools.uncheckedNN
 
+import scala.compiletime.uninitialized
+
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
  */
@@ -25,7 +27,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 
   override def description: String = CapturedVars.description
 
-  private[this] var Captured: Store.Location[util.ReadOnlySet[Symbol]] = _
+  private[this] var Captured: Store.Location[util.ReadOnlySet[Symbol]] = uninitialized
   private def captured(using Context) = ctx.store(Captured)
 
   override def initContext(ctx: FreshContext): Unit =

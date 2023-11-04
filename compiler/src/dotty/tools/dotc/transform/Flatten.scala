@@ -10,6 +10,8 @@ import collection.mutable
 import MegaPhase.MiniPhase
 import util.Store
 
+import scala.compiletime.uninitialized
+
 /** Lift nested classes to toplevel */
 class Flatten extends MiniPhase with SymTransformer {
   import ast.tpd._
@@ -24,7 +26,7 @@ class Flatten extends MiniPhase with SymTransformer {
 
   override def changesMembers: Boolean = true // the phase removes inner classes
 
-  private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree] | Null] = _
+  private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree] | Null] = uninitialized
   private def liftedDefs(using Context) = ctx.store(LiftedDefs)
 
   override def initContext(ctx: FreshContext): Unit =
