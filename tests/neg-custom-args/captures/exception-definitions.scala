@@ -1,6 +1,6 @@
 
-class Err extends Exception: // error
-  self: Err^ =>
+class Err extends Exception:
+  self: Err^ => // error
 
 def test(c: Any^) =
   class Err2 extends Exception:
