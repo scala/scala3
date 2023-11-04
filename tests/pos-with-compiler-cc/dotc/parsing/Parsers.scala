@@ -1730,9 +1730,6 @@ object Parsers {
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
-          if sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
-            patch(source, Span(in.offset, in.offset + 1), "?")
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
