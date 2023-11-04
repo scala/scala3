@@ -1,3 +1,3 @@
 
 class D extends C: // error
-  this: D^ =>
+  this: D^ => // error
