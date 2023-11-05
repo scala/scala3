@@ -3,8 +3,8 @@
 object Monomorphic2:
 
   class Pair(x: Cap => Unit, y: Cap => Unit):
-    def fst: Cap^{cap[Pair]} ->{x} Unit = x
-    def snd: Cap^{cap[Pair]} ->{y} Unit = y
+    def fst: Cap^{cap[Pair]} ->{x} Unit = x  // error
+    def snd: Cap^{cap[Pair]} ->{y} Unit = y  // error
 
   def test(c: Cap, d: Cap) =
     def f(x: Cap): Unit = if c == x then ()

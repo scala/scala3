@@ -267,6 +267,9 @@ object RefChecks {
             if !other.is(Deferred) then
               checkOverride(subtypeChecker, dcl, other)
     end checkAll
+
+    // Disabled for capture checking since traits can get different parameter refinements
+    def checkInheritedTraitParameters: Boolean = true
   end OverridingPairsChecker
 
   /** 1. Check all members of class `clazz` for overriding conditions.
@@ -851,7 +854,7 @@ object RefChecks {
       checkCaseClassInheritanceInvariant()
     }
 
-    if (!clazz.is(Trait)) {
+    if (!clazz.is(Trait) && checker.checkInheritedTraitParameters) {
       // check that parameterized base classes and traits are typed in the same way as from the superclass
       // I.e. say we have
       //
