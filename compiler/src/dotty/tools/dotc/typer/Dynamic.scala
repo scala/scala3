@@ -148,6 +148,9 @@ trait Dynamic {
     untpd.Apply(selectWithTypes, Literal(Constant(name.toString)))
   }
 
+  extension (tpe: Type)
+    def isReflectSelectableTypeRef(using Context): Boolean = tpe <:< defn.ReflectSelectableTypeRef
+
   /** Handle reflection-based dispatch for members of structural types.
    *
    *  Given `x.a`, where `x` is of (widened) type `T` (a value type or a nullary method type),
@@ -181,20 +184,25 @@ trait Dynamic {
     val fun @ Select(qual, name) = funPart(tree): @unchecked
     val vargss = termArgss(tree)
 
-    def handleRepeated(base: untpd.Tree, possiblyCurried: List[List[Tree]]) =
-      possiblyCurried.map { args =>
+    def handleRepeated(base: untpd.Tree, possiblyCurried: List[List[Tree]], isReflectSelectable: Boolean) = {
+      val handled = possiblyCurried.map { args =>
         val isRepeated = args.exists(_.tpe.widen.isRepeatedParam)
-        if isRepeated && qual.tpe <:< defn.ReflectSelectableTypeRef then
+        if isRepeated && isReflectSelectable then
           List(untpd.TypedSplice(tpd.repeatedSeq(args, TypeTree(defn.AnyType))))
         else args.map { t =>
           val clzSym = t.tpe.resultType.classSymbol.asClass
-          if ValueClasses.isDerivedValueClass(clzSym) && qual.tpe <:< defn.ReflectSelectableTypeRef then
+          if ValueClasses.isDerivedValueClass(clzSym) && isReflectSelectable then
             val underlying = ValueClasses.valueClassUnbox(clzSym).asTerm
             tpd.Select(t, underlying.name)
           else
             t
         }.map(untpd.TypedSplice(_))
-      }.foldLeft(base)((base, args) => untpd.Apply(base, args))
+      }
+
+      if isReflectSelectable
+      then untpd.Apply(base, handled.flatten)
+      else handled.foldLeft(base)((base, args) => untpd.Apply(base, args))
+    }
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef | defn.DynamicClass.typeRef)
@@ -207,7 +215,11 @@ trait Dynamic {
 
       val scall =
         if (vargss.isEmpty) base
-        else handleRepeated(base, vargss)
+        else handleRepeated(
+          base,
+          vargss,
+          qual.tpe.isReflectSelectableTypeRef || selectable.tpe.isReflectSelectableTypeRef
+        )
 
       // If function is an `applyDynamic` that takes a Class* parameter,
       // add `classOfs`.
