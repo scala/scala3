@@ -12,13 +12,15 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 /** This class provides a simple FIFO queue of data objects,
  *  which are read by one or more reader threads.
  *
  *  @tparam A type of data exchanged
  */
 @deprecated("Use `java.util.concurrent.LinkedTransferQueue` instead.", since = "2.13.0")
-class Channel[A] {
+class Channel[sealed A] {
   private class LinkedList {
     var elem: A = _
     var next: LinkedList = _
