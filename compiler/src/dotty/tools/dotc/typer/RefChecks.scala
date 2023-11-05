@@ -372,7 +372,7 @@ object RefChecks {
      */
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
       def memberTp(self: Type) =
-        if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
+        if (member.isClass) TypeAlias(member.typeRef.etaExpand(member.typeParams))
         else self.memberInfo(member)
       def otherTp(self: Type) =
         self.memberInfo(other)
