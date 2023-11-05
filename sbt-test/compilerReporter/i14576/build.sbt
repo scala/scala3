@@ -24,7 +24,7 @@ lazy val root = (project in file("."))
     },
     assertDeprecationSummary := {
       assert {
-        FakePrintWriter.messages.exists(_.contains("there were 2 deprecation warnings; re-run with -deprecation for details"))
+        FakePrintWriter.messages.exists(_.contains("there were 3 deprecation warnings; re-run with -deprecation for details"))
       }
     },
     assertNoDeprecationSummary := {
