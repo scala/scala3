@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 
 
 import scala.concurrent.duration.Duration
@@ -27,6 +29,7 @@ import scala.concurrent.duration.Duration
  * occurred.
  */
 trait Awaitable[+T] {
+  this: Awaitable[T]^ =>
 
   /**
    * Await the "completed" state of this `Awaitable`.
