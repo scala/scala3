@@ -11,6 +11,8 @@ class Attributes private[tasty](
   def explicitNulls: Boolean = booleanTags(EXPLICITNULLSattr)
   def captureChecked: Boolean = booleanTags(CAPTURECHECKEDattr)
   def withPureFuns: Boolean = booleanTags(WITHPUREFUNSattr)
+  def isJava: Boolean = booleanTags(JAVAattr)
+  def isOutline: Boolean = booleanTags(OUTLINEattr)
 }
 
 object Attributes:
@@ -19,12 +21,16 @@ object Attributes:
     explicitNulls: Boolean,
     captureChecked: Boolean,
     withPureFuns: Boolean,
+    isJava: Boolean,
+    isOutline: Boolean,
   ): Attributes =
     val booleanTags = BitSet.newBuilder
     if scala2StandardLibrary then booleanTags += SCALA2STANDARDLIBRARYattr
     if explicitNulls then booleanTags += EXPLICITNULLSattr
     if captureChecked then booleanTags += CAPTURECHECKEDattr
     if withPureFuns then booleanTags += WITHPUREFUNSattr
+    if isJava then booleanTags += JAVAattr
+    if isOutline then booleanTags += OUTLINEattr
     new Attributes(booleanTags.result())
   end apply
 

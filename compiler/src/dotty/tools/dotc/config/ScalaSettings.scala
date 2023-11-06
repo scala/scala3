@@ -8,7 +8,7 @@ import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
+import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory, NoAbstractFile}
 import Setting.ChoiceWithHelp
 
 import scala.util.chaining.*
@@ -433,4 +433,9 @@ private sealed trait YSettings:
   val YforceInlineWhileTyping: Setting[Boolean] = BooleanSetting("-Yforce-inline-while-typing", "Make non-transparent inline methods inline when typing. Emulates the old inlining behavior of 3.0.0-M3.")
 
   val YdebugMacros: Setting[Boolean] = BooleanSetting("-Ydebug-macros", "Show debug info when quote pattern match fails")
+
+  // Pipeline compilation options
+  val YjavaTasty: Setting[Boolean] = BooleanSetting("-Yjava-tasty", "Pickler phase should compute pickles for .java defined symbols for use by build tools")
+  val YjavaTastyOutput: Setting[AbstractFile] = OutputSetting("-Yjava-tasty-output", "directory|jar", "(Internal use only!) destination for generated .tasty files containing Java type signatures.", NoAbstractFile)
+  val YallowOutlineFromTasty: Setting[Boolean] = BooleanSetting("-Yallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.")
 end YSettings

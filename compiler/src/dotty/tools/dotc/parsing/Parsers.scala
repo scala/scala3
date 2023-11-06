@@ -97,6 +97,9 @@ object Parsers {
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
 
+  def unimplementedExpr(using Context): Select =
+    Select(scalaDot(nme.Predef), nme.???)
+
   abstract class ParserCommon(val source: SourceFile)(using Context) {
 
     val in: ScannerCommon
@@ -164,9 +167,6 @@ object Parsers {
      */
     def syntaxError(msg: Message, span: Span): Unit =
       report.error(msg, source.atSpan(span))
-
-    def unimplementedExpr(using Context): Select =
-      Select(scalaDot(nme.Predef), nme.???)
   }
 
   trait OutlineParserCommon extends ParserCommon {

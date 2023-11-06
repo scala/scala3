@@ -46,9 +46,16 @@ class ReadTasty extends Phase {
             case unpickler: tasty.DottyUnpickler =>
               if (cls.rootTree.isEmpty) None
               else {
-                val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
-                unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
-                Some(unit)
+                val attributes = unpickler.tastyAttributes
+                if attributes.isJava && !ctx.settings.YjavaTasty.value then
+                  // filter out Java compilation units if -Yjava-tasty is not set
+                  None
+                else if attributes.isOutline && !ctx.settings.YallowOutlineFromTasty.value then
+                  cannotUnpickle("it contains outline signatures and -Yallow-outline-from-tasty is not set.")
+                else
+                  val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
+                  unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
+                  Some(unit)
               }
             case tree: Tree[?] =>
               // TODO handle correctly this case correctly to get the tree or avoid it completely.

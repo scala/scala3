@@ -1,0 +1,3 @@
+> a/compile
+# test depending on a java compiled enum through TASTy
+> b/compile

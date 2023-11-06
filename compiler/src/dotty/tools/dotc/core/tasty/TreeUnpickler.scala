@@ -104,6 +104,11 @@ class TreeUnpickler(reader: TastyReader,
   private val explicitNulls =
     attributeUnpicklerOpt.exists(_.attributes.explicitNulls)
 
+  private val unpicklingJava =
+    attributeUnpicklerOpt.exists(_.attributes.isJava)
+
+  private val isOutline = attributeUnpicklerOpt.exists(_.attributes.isOutline)
+
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
 
@@ -609,7 +614,10 @@ class TreeUnpickler(reader: TastyReader,
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
-      val givenFlags = if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty else givenFlags0
+      val givenFlags =
+        if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty
+        else if unpicklingJava then givenFlags0 | JavaDefined
+        else givenFlags0
       pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -1037,6 +1045,8 @@ class TreeUnpickler(reader: TastyReader,
       val parentReader = fork
       val parents = readParents(withArgs = false)(using parentCtx)
       val parentTypes = parents.map(_.tpe.dealias)
+      if cls.is(JavaDefined) && parentTypes.exists(_.derivesFrom(defn.JavaAnnotationClass)) then
+        cls.setFlag(JavaAnnotation)
       val self =
         if (nextByte == SELFDEF) {
           readByte()
@@ -1197,7 +1207,12 @@ class TreeUnpickler(reader: TastyReader,
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
         val qual = readTree()
-        val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
+        val denot0 = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
+        val denot =
+          if unpicklingJava && name == tpnme.Object && denot0.symbol == defn.ObjectClass then
+            defn.FromJavaObjectType.denot
+          else
+            denot0
         makeSelect(qual, name, denot)
 
       def readQualId(): (untpd.Ident, TypeRef) =
@@ -1216,6 +1231,11 @@ class TreeUnpickler(reader: TastyReader,
           forkAt(readAddr()).readTree()
         case IDENT =>
           untpd.Ident(readName()).withType(readType())
+        case ELIDED =>
+          if !isOutline then
+            report.error(
+              s"Illegal elided tree in unpickler without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}")
+          untpd.Ident(nme.WILDCARD).withType(readType())
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>

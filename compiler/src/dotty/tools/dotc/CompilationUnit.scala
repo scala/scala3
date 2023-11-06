@@ -30,6 +30,13 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Is this the compilation unit of a Java file */
   def isJava: Boolean = source.file.name.endsWith(".java")
 
+  /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
+  def typedAsJava = isJava || {
+    val infoNN = info
+    infoNN != null && infoNN.tastyInfo.exists(_.attributes.isJava)
+  }
+
+
   /** The source version for this unit, as determined by a language import */
   var sourceVersion: Option[SourceVersion] = None
 

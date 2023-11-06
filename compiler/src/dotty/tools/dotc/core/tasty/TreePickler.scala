@@ -23,7 +23,7 @@ import quoted.QuotePatterns
 object TreePickler:
   class StackSizeExceeded(val mdef: tpd.MemberDef) extends Exception
 
-class TreePickler(pickler: TastyPickler) {
+class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   val buf: TreeBuffer = new TreeBuffer
   pickler.newSection(ASTsSection, buf)
   import buf.*
@@ -322,6 +322,11 @@ class TreePickler(pickler: TastyPickler) {
     if (!tree.isEmpty) pickleTree(tree)
   }
 
+  def pickleElidedUnlessEmpty(tree: Tree, tp: Type)(using Context): Unit =
+    if !tree.isEmpty then
+      writeByte(ELIDED)
+      pickleType(tp)
+
   def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
     val sym = mdef.symbol
 
@@ -337,7 +342,12 @@ class TreePickler(pickler: TastyPickler) {
           case _: Template | _: Hole => pickleTree(tpt)
           case _ if tpt.isType => pickleTpt(tpt)
         }
-        pickleTreeUnlessEmpty(rhs)
+        if attributes.isOutline && sym.isTerm && attributes.isJava then
+          // TODO: if we introduce outline typing for Scala definitions
+          // then we will need to update the check here
+          pickleElidedUnlessEmpty(rhs, tpt.tpe)
+        else
+          pickleTreeUnlessEmpty(rhs)
         pickleModifiers(sym, mdef)
       }
     catch

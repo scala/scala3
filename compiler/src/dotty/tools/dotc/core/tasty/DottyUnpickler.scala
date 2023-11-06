@@ -36,6 +36,7 @@ object DottyUnpickler {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): CommentUnpickler =
       new CommentUnpickler(reader)
   }
+
   class AttributesSectionUnpickler extends SectionUnpickler[AttributeUnpickler](AttributesSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): AttributeUnpickler =
       new AttributeUnpickler(reader)

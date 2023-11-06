@@ -89,6 +89,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature (see note below)
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
+                  ELIDED                exprType_Type                              -- elided expression of the given type
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
                   NAMEDARG              paramName_NameRef arg_Term                 -- paramName = arg
                   APPLY          Length fn_Term arg_Term*                          -- fn(args)
@@ -275,6 +276,8 @@ Standard Section: "Attributes" Attribute*
                   EXPLICITNULLSattr
                   CAPTURECHECKEDattr
                   WITHPUREFUNSattr
+                  JAVAattr
+                  OUTLINEattr
 ```
 
 **************************************************************************************/
@@ -525,6 +528,7 @@ object TastyFormat {
   final val SINGLETONtpt = 101
   final val BOUNDED = 102
   final val EXPLICITtpt = 103
+  final val ELIDED = 104
 
 
   // Cat. 4:    tag Nat AST
@@ -615,6 +619,8 @@ object TastyFormat {
   final val EXPLICITNULLSattr = 2
   final val CAPTURECHECKEDattr = 3
   final val WITHPUREFUNSattr = 4
+  final val JAVAattr = 5
+  final val OUTLINEattr = 6
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
@@ -622,7 +628,7 @@ object TastyFormat {
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
-    firstLengthTreeTag <= tag && tag <= MATCHtpt ||
+    firstLengthTreeTag <= tag && tag <= MATCHCASEtype ||
     tag == HOLE
 
   def isParamTag(tag: Int): Boolean = tag == PARAM || tag == TYPEPARAM
@@ -828,6 +834,7 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case EXPLICITtpt => "EXPLICITtpt"
+    case ELIDED => "ELIDED"
     case HOLE => "HOLE"
   }
 
@@ -836,6 +843,8 @@ object TastyFormat {
     case EXPLICITNULLSattr => "EXPLICITNULLSattr"
     case CAPTURECHECKEDattr => "CAPTURECHECKEDattr"
     case WITHPUREFUNSattr => "WITHPUREFUNSattr"
+    case JAVAattr => "JAVAattr"
+    case OUTLINEattr => "OUTLINEattr"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.

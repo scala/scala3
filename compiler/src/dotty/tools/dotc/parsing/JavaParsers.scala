@@ -136,7 +136,7 @@ object JavaParsers {
       ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
-      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
+      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p).withMods(Modifiers(flags)) }
       DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), EmptyTree).withMods(Modifiers(flags))
     }
 

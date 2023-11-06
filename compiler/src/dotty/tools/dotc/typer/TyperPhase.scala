@@ -57,7 +57,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   }
 
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
-    unit.isJava || unit.suspended
+    (unit.isJava && !ctx.settings.YjavaTasty.value) || unit.suspended
 
   override val subPhases: List[SubPhase] = List(
     SubPhase("indexing"), SubPhase("typechecking"), SubPhase("checkingJava"))

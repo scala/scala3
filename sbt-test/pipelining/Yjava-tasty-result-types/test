@@ -1,0 +1,3 @@
+> a/compile
+# Test depending on a java static final result, and method result through TASTy
+> b/compile
