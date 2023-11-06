@@ -209,6 +209,10 @@ jobs:
         run: sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test"
         shell: cmd
 
+      - name: Test with Scala 2 library TASTy
+        run: sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation i5" # only test a subset of test to avoid doubling the CI execution time
+        shell: cmd
+
       - name: Scala.js Test
         run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
