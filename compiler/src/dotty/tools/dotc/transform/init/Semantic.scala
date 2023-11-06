@@ -1383,11 +1383,11 @@ object Semantic:
       case tpl: Template =>
         init(tpl, thisV, klass)
 
-      case _: Import | _: Export =>
+      case _: Import | _: Export | _: Quote | _: Splice | _: QuotePattern | _: SplicePattern =>
         Hot
 
       case _ =>
-        report.warning("[Internal error] unexpected tree" + Trace.show, expr)
+        report.warning("[Internal error] unexpected tree: " + expr.getClass + ", trace:\n" + Trace.show, expr)
         Hot
 
   /** Handle semantics of leaf nodes
