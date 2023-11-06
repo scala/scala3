@@ -1190,6 +1190,8 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         override def needsCheck(overriding: Symbol, overridden: Symbol)(using Context): Boolean =
           !setup.isPreCC(overriding) && !setup.isPreCC(overridden)
+
+        override def checkInheritedTraitParameters: Boolean = false
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
