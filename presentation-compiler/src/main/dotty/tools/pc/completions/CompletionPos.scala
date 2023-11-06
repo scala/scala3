@@ -41,7 +41,7 @@ object CompletionPos:
       offsetParams: OffsetParams,
       treePath: List[Tree]
   )(using Context): CompletionPos =
-    infer(cursorPos, offsetParams.uri.nn, offsetParams.text.nn, treePath)
+    infer(cursorPos, offsetParams.uri().nn, offsetParams.text().nn, treePath)
 
   def infer(
       cursorPos: SourcePosition,

@@ -28,8 +28,8 @@ object SignatureHelpProvider:
       params: OffsetParams,
       search: SymbolSearch
   ) =
-    val uri = params.uri
-    val sourceFile = SourceFile.virtual(params.uri.nn, params.text.nn)
+    val uri = params.uri()
+    val sourceFile = SourceFile.virtual(params.uri().nn, params.text().nn)
     driver.run(uri.nn, sourceFile)
 
     given ctx: Context = driver.currentCtx
@@ -101,7 +101,7 @@ object SignatureHelpProvider:
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
   ): Option[Signature] =
-    val allParams = info.parameters.nn.asScala
+    val allParams = info.parameters().nn.asScala
     def updateParams(
         params: List[Signatures.Param],
         index: Int
@@ -114,7 +114,7 @@ object SignatureHelpProvider:
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
-                  paramDoc.nn.displayName
+                  paramDoc.nn.displayName()
                 else head.name
               head.copy(
                 doc = Some(paramDoc.docstring.nn),
@@ -132,7 +132,7 @@ object SignatureHelpProvider:
           val updated = updateParams(head, index)
           updated :: updateParamss(tail, index + head.size)
     val updatedParams = updateParamss(signature.paramss, 0)
-    Some(signature.copy(doc = Some(info.docstring.nn), paramss = updatedParams))
+    Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
   end withDocumentation
 
   private def signatureToSignatureInformation(

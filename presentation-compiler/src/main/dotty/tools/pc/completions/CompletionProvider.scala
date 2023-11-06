@@ -41,8 +41,8 @@ class CompletionProvider(
     folderPath: Option[Path]
 )(using reports: ReportContext):
   def completions(): CompletionList =
-    val uri = params.uri.nn
-    val text = params.text.nn
+    val uri = params.uri().nn
+    val text = params.text().nn
 
     val code = applyCompletionCursor(params)
     val sourceFile = SourceFile.virtual(uri, code)
@@ -125,8 +125,8 @@ class CompletionProvider(
    * because scala parser trim end position to the last statement pos.
    */
   private def applyCompletionCursor(params: OffsetParams): String =
-    val text = params.text.nn
-    val offset = params.offset.nn
+    val text = params.text().nn
+    val offset = params.offset().nn
 
     val isStartMultilineComment =
       val i = params.offset()
@@ -187,7 +187,7 @@ class CompletionProvider(
 
       item.setTags(completion.lspTags.asJava)
 
-      if config.isCompletionSnippetsEnabled then
+      if config.isCompletionSnippetsEnabled() then
         item.setInsertTextFormat(InsertTextFormat.Snippet)
 
       completion.command.foreach { command =>
@@ -231,7 +231,7 @@ class CompletionProvider(
             case Some(edits) =>
               edits match
                 case AutoImportEdits(Some(nameEdit), other) =>
-                  mkItem(nameEdit.getNewText.nn, other.toList, range = Some(nameEdit.getRange.nn))
+                  mkItem(nameEdit.getNewText().nn, other.toList, range = Some(nameEdit.getRange().nn))
                 case _ =>
                   mkItem(
                     v.insertText.getOrElse( ident.backticked(backtickSoftKeyword) + completionTextSuffix),

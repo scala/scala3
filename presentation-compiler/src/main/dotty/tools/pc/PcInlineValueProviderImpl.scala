@@ -27,9 +27,9 @@ final class PcInlineValueProviderImpl(
 ) extends PcCollector[Option[Occurence]](driver, params)
     with InlineValueProvider:
 
-  val text = params.text.nn.toCharArray().nn
+  val text = params.text().nn.toCharArray().nn
 
-  val position: l.Position = pos.toLsp.getStart.nn
+  val position: l.Position = pos.toLsp.getStart().nn
 
   override def collect(parent: Option[Tree])(
       tree: Tree | EndMarker,

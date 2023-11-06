@@ -32,8 +32,8 @@ object HoverProvider:
       driver: InteractiveDriver,
       search: SymbolSearch
   )(implicit reportContext: ReportContext): ju.Optional[HoverSignature] =
-    val uri = params.uri.nn
-    val text = params.text.nn
+    val uri = params.uri().nn
+    val text = params.text().nn
     val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri, sourceFile)
 
@@ -126,7 +126,7 @@ object HoverProvider:
 
           val docString = symbolTpes
             .flatMap(symTpe => search.symbolDocumentation(symTpe._1))
-            .map(_.docstring)
+            .map(_.docstring())
             .mkString("\n")
           printer.expressionType(exprTpw) match
             case Some(expressionType) =>

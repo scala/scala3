@@ -30,7 +30,7 @@ object CompletionItemResolver extends ItemResolver:
           .orElse(
             search.symbolDocumentation(gsym.companion)
           ) match
-          case Some(info) if item.getDetail != null =>
+          case Some(info) if item.getDetail() != null =>
             enrichDocs(
               item,
               info,

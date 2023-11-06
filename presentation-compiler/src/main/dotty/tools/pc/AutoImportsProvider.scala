@@ -29,8 +29,8 @@ final class AutoImportsProvider(
 )(using ReportContext):
 
   def autoImports(isExtension: Boolean): List[AutoImportsResult] =
-    val uri = params.uri.nn
-    val text = params.text.nn
+    val uri = params.uri().nn
+    val text = params.text().nn
     val filePath = Paths.get(uri)
     driver.run(uri, SourceFile.virtual(filePath.toString, text))
 

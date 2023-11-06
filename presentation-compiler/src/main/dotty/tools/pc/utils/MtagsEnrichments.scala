@@ -38,19 +38,19 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def sourcePosition(
         params: OffsetParams
     ): SourcePosition =
-      val uri = params.uri
+      val uri = params.uri()
       val source = driver.openedFiles(uri.nn)
       val span = params match
-        case p: RangeParams if p.offset != p.endOffset =>
+        case p: RangeParams if p.offset() != p.endOffset() =>
           p.trimWhitespaceInRange.fold {
-            Spans.Span(p.offset, p.endOffset)
+            Spans.Span(p.offset(), p.endOffset())
           } {
             case trimmed: RangeParams =>
-              Spans.Span(trimmed.offset, trimmed.endOffset)
+              Spans.Span(trimmed.offset(), trimmed.endOffset())
             case offset =>
-              Spans.Span(p.offset, p.offset)
+              Spans.Span(p.offset(), p.offset())
           }
-        case _ => Spans.Span(params.offset)
+        case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
     end sourcePosition

@@ -201,7 +201,7 @@ class Completions(
           paramss match
             case Nil => suffix
             case List(Nil) => suffix.withNewSuffix(SuffixKind.Brace)
-            case _ if config.isCompletionSnippetsEnabled =>
+            case _ if config.isCompletionSnippetsEnabled() =>
               val onlyParameterless = paramss.forall(_.isEmpty)
               lazy val onlyImplicitOrTypeParams = paramss.forall(
                 _.exists { sym =>
@@ -452,7 +452,7 @@ class Completions(
           pos,
           path,
           indexedContext,
-          config.isCompletionSnippetsEnabled
+          config.isCompletionSnippetsEnabled()
         )
         (args, false)
     end match

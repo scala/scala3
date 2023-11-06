@@ -33,9 +33,9 @@ abstract class PcCollector[T](
     params: VirtualFileParams
 ):
   private val caseClassSynthetics: Set[Name] = Set(nme.apply, nme.copy)
-  val uri = params.uri.nn
+  val uri = params.uri().nn
   val filePath = Paths.get(uri).nn
-  val sourceText = params.text.nn
+  val sourceText = params.text().nn
   val source =
     SourceFile.virtual(filePath.toString(), sourceText)
   driver.run(uri, source)
@@ -49,7 +49,7 @@ abstract class PcCollector[T](
   val offsetParams =
     params match
       case op: OffsetParams => op
-      case _ => CompilerOffsetParams(uri, sourceText, 0, params.token.nn)
+      case _ => CompilerOffsetParams(uri, sourceText, 0, params.token().nn)
   val pos = driver.sourcePosition(offsetParams)
   val rawPath =
     Interactive

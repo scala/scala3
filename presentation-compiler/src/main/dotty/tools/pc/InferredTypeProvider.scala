@@ -62,10 +62,10 @@ final class InferredTypeProvider(
       adjustOpt: Option[AdjustTypeOpts] = None
   ): List[TextEdit] =
     val retryType = adjustOpt.isEmpty
-    val uri = params.uri.nn
+    val uri = params.uri().nn
     val filePath = Paths.get(uri).nn
 
-    val sourceText = adjustOpt.map(_.text).getOrElse(params.text.nn)
+    val sourceText = adjustOpt.map(_.text).getOrElse(params.text().nn)
     val source =
       SourceFile.virtual(filePath.toString(), sourceText)
     driver.run(uri, source)
@@ -187,7 +187,7 @@ final class InferredTypeProvider(
               Some(
                 AdjustTypeOpts(
                   removeType(vl.namePos.end, tpt.sourcePos.end - 1),
-                  tpt.sourcePos.toLsp.getEnd.nn
+                  tpt.sourcePos.toLsp.getEnd().nn
                 )
               )
             )
@@ -226,7 +226,7 @@ final class InferredTypeProvider(
               Some(
                 AdjustTypeOpts(
                   removeType(lastColon, tpt.sourcePos.end - 1),
-                  tpt.sourcePos.toLsp.getEnd.nn
+                  tpt.sourcePos.toLsp.getEnd().nn
                 )
               )
             )
@@ -255,7 +255,7 @@ final class InferredTypeProvider(
             val firstEnd = patterns(0).endPos.end
             val secondStart = patterns(1).startPos.start
             val hasDot = params
-              .text.nn
+              .text().nn
               .substring(firstEnd, secondStart).nn
               .exists(_ == ',')
             if !hasDot then

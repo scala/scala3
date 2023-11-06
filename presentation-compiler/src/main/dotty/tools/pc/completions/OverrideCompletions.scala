@@ -173,8 +173,8 @@ object OverrideCompletions:
         case _ => None
     end FindTypeDef
 
-    val uri = params.uri.nn
-    val text = params.text.nn
+    val uri = params.uri().nn
+    val text = params.text().nn
     driver.run(uri, SourceFile.virtual(uri.toASCIIString().nn, text))
 
     val unit = driver.currentCtx.run.nn.units.headOption
@@ -442,7 +442,7 @@ object OverrideCompletions:
 
     val label = s"$overrideDefLabel$signature"
     val stub =
-      if config.isCompletionSnippetsEnabled && shouldMoveCursor then "${0:???}"
+      if config.isCompletionSnippetsEnabled() && shouldMoveCursor then "${0:???}"
       else "???"
     val value = s"$signature = $stub"
 

@@ -38,8 +38,8 @@ final class ExtractMethodProvider(
     extends ExtractMethodUtils:
 
   def extractMethod(): List[TextEdit] =
-    val text = range.text.nn
-    val uri = range.uri.nn
+    val text = range.text().nn
+    val uri = range.uri().nn
     val filePath = Paths.get(uri)
     val source = SourceFile.virtual(filePath.toString, text)
     driver.run(uri, source)
