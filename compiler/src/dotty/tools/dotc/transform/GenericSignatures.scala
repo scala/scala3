@@ -258,7 +258,7 @@ object GenericSignatures {
           if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
             jsig(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
-            assert(!sym.isAliasType, "Unexpected alias type: " + sym)
+            assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
@@ -407,7 +407,6 @@ object GenericSignatures {
 
 
   // only refer to type params that will actually make it into the sig, this excludes:
-  // * higher-order type parameters
   // * type parameters appearing in method parameters
   // * type members not visible in an enclosing template
   private def isTypeParameterInSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
