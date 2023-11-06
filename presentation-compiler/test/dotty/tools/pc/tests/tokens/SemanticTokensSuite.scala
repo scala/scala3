@@ -343,3 +343,11 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
            |}
           |""".stripMargin,
     )
+
+  @Test def `end-marker` =
+    check(
+        """|def <<foo>>/*method,definition*/ =
+           |  1
+           |end <<foo>>/*method,definition*/
+           |""".stripMargin,
+    )
