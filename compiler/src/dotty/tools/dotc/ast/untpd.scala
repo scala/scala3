@@ -42,7 +42,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   /** mods object name impl */
   case class ModuleDef(name: TermName, impl: Template)(implicit @constructorOnly src: SourceFile)
     extends MemberDef {
-    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
+    type ThisTree[+T <: Untyped] <: Trees.NameTree[T] & Trees.MemberDef[T] & ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
