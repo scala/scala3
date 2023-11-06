@@ -1,83 +1,154 @@
-class Foo(val i: Int) extends AnyVal
-class Argument(val x: String) extends AnyVal
-class Reflective extends reflect.Selectable
+import scala.language.dynamics
+import scala.reflect.Selectable.reflectiveSelectable
 
-type ReflectiveType = {
-  def reflectiveCall(arg1: Int)(arg2: Int): Int
-}
+object Test {
+  class Num(val i: Int) extends AnyVal
 
-class ClassWithReflectiveCall {
-  def reflectiveCall(x: Int)(y: Int): Int = x + y
-}
+  def show(x: Int | Num | Seq[Int | Num]): String = x match
+    case i: Int => i.toString
+    case num: Num => num.i.toString
+    case seq: Seq[Int | Num] => seq.map(show).mkString(" ")
 
-class ScalaSelectable(values: Map[String, Any], methods: Map[String, (Int, Seq[Foo]) => Int]) extends Selectable {
-  def selectDynamic(name: String): Any = values(name)
+  trait Nonreflective extends Selectable:
+    def selectDynamic(name: String): String = name
+    def applyDynamic(name: String)(args: (Int | Num | Seq[Int | Num])*): String =
+      val argsString = args.map(show).mkString(" ", " ", "")
+      s"${name}${argsString}"
 
-  def applyDynamic(name: String)(i: Int, foos: Foo*): Int = methods(name)(i, foos)
+  trait Dynamic0 extends Dynamic:
+    def selectDynamic(name: String): String = name
 
-  def applyDynamic(name: String)(foo: Foo)(argument: Argument)(someInt: Int): Int = foo.i + argument.x.length + someInt
-}
+  trait Dynamic1 extends Dynamic:
+    def applyDynamic(name: String)(args1: (Int | Num | Seq[Int | Num])*): String =
+      val argsString = args1.map(show).mkString(" ", " ", "")
+      s"${name}${argsString}"
 
-@main def Test: Unit =
-  val reflective = new Reflective {
-    def bar(foo: Foo) = foo.i
-    def fun(argument: Argument) = argument
-    def manyArgs(argument: Argument, foo: Foo, someInt: Int) = foo.i + someInt + argument.x.length
-    def varargs(x: Int, foo: Foo*) = foo.map(_.i).sum + x
-    def letsHaveSeq(args: Seq[Argument]) = args.map(_.x.length).sum
-    def curried(foo: Foo)(arg1: Argument)(someInt: Int): Int = foo.i + arg1.x.length + someInt
+  trait Dynamic2 extends Dynamic:
+    def applyDynamic(name: String)(args1: (Int | Num)*)(args2: (Int | Num)*): String =
+      val argsString = (args1 ++ args2).map(show).mkString(" ", " ", "")
+      s"${name}${argsString}"
+
+  trait Dynamic3 extends Dynamic:
+    def applyDynamic(name: String)(args1: (Int | Num)*)(args2: (Int | Num)*)(args3: (Int | Num)*): String =
+      val argsString = (args1 ++ args2 ++ args3).map(show).mkString(" ", " ", "")
+      s"${name}${argsString}"
+
+  type Api = {
+    def foo: String
+    def foo0(): String
+    def fooI(i: Int): String
+    def fooN(n: Num): String
+    def fooII(i1: Int, i2: Int): String
+    def fooNN(n1: Num, n2: Num): String
+    def fooIvarargs(is: Int*): String
+    def fooNvarargs(ns: Num*): String
+    def fooIseq(is: Seq[Int]): String
+    def fooNseq(ns: Seq[Num]): String
+    def fooIIvarargs(i1: Int, is: Int*): String
+    def fooNNvarargs(n1: Num, ns: Num*): String
+    def fooI_I(i1: Int)(i2: Int): String
+    def fooN_N(n1: Num)(n2: Num): String
+    def foo0_II()(i1: Int, i2: Int): String
+    def foo0_NN()(n1: Num, n2: Num): String
+    def foo0_Ivarargs()(is: Int*): String
+    def foo0_Nvarargs()(ns: Num*): String
+    def foo0_I_I()(i1: Int)(i2: Int): String
+    def foo0_N_N()(n1: Num)(n2: Num): String
   }
-  
-  val i = reflective.bar(Foo(1))
-  println(i)
-  
-  val arg = Argument("check")
-  val k = reflective.fun(arg).x
-  println(k)
-  
-  val length4 = Argument("four")
-  val foo = Foo(1)
-  val x = 1
-  val j = reflective.manyArgs(length4, foo, x)
-  println(j)
 
-  val varargs = List(Foo(1), Foo(2), Foo(3))
-  val m = reflective.varargs(1, varargs:_*)
-  println(m)
-
-  val foo1 = Foo(1)
-  val foo2 = Foo(2)
-  val foo3 = Foo(3)
-  val n = reflective.varargs(2, foo1, foo2)
-  println(n)
-
-  val arg1 = Argument("1")
-  val seq = Seq(arg1, arg1, arg1)
-  val p = reflective.letsHaveSeq(seq)
-  println(p)
-
-  println(reflective.curried(foo1)(arg1)(1))
-
-  val cont2values = Map.empty[String, Any]
-
-  val cont2methods = Map[String, (Int, Seq[Foo]) => Int](
-    "varargs" -> { (i: Int, foos: Seq[Foo]) => foos.map(_.i).sum + i }
-  )
-
-  val cont2 = ScalaSelectable(cont2values, cont2methods).asInstanceOf[ScalaSelectable {
-    def varargs(i: Int, foos: Foo*): Int
-    def curried(foo: Foo)(argument: Argument)(someInt: Int): Int
-  }]
-
-  println(cont2.varargs(1, Foo(1), Foo(1)))
-
-  println(cont2.curried(Foo(1))(Argument("123"))(3))
-
-  {
-    import scala.reflect.Selectable.reflectiveSelectable
-    val obj = new ClassWithReflectiveCall()
-    def instantiate(): ReflectiveType = obj
-
-    val rtype = instantiate()
-    println(rtype.reflectiveCall(1)(2))
+  class ClassImpl {
+    def foo: String = "foo"
+    def foo0(): String = "foo0"
+    def fooI(i: Int): String = s"fooI ${i}"
+    def fooN(n: Num): String = s"fooN ${n.i}"
+    def fooII(i1: Int, i2: Int): String = s"fooII ${i1} ${i2}"
+    def fooNN(n1: Num, n2: Num): String = s"fooNN ${n1.i} ${n2.i}"
+    def fooIvarargs(is: Int*): String = s"fooIvarargs${is.mkString(" ", " ", "")}"
+    def fooNvarargs(ns: Num*): String = s"fooNvarargs${ns.map(_.i).mkString(" ", " ", "")}"
+    def fooIseq(is: Seq[Int]): String = s"fooIseq${is.mkString(" ", " ", "")}"
+    def fooNseq(ns: Seq[Num]): String = s"fooNseq${ns.map(_.i).mkString(" ", " ", "")}"
+    def fooIIvarargs(i1: Int, is: Int*): String = s"fooIIvarargs ${i1}${is.mkString(" ", " ", "")}"
+    def fooNNvarargs(n1: Num, ns: Num*): String = s"fooNNvarargs ${n1.i}${ns.map(_.i).mkString(" ", " ", "")}"
+    def fooI_I(i1: Int)(i2: Int): String = s"fooI_I ${i1} ${i2}"
+    def fooN_N(n1: Num)(n2: Num): String = s"fooN_N ${n1.i} ${n2.i}"
+    def foo0_II()(i1: Int, i2: Int): String = s"foo0_II ${i1} ${i2}"
+    def foo0_NN()(n1: Num, n2: Num): String = s"foo0_NN ${n1.i} ${n2.i}"
+    def foo0_Ivarargs()(is: Int*): String = s"foo0_Ivarargs${is.mkString(" ", " ", "")}"
+    def foo0_Nvarargs()(ns: Num*): String = s"foo0_Nvarargs${ns.map(_.i).mkString(" ", " ", "")}"
+    def foo0_I_I()(i1: Int)(i2: Int): String = s"foo0_I_I ${i1} ${i2}"
+    def foo0_N_N()(n1: Num)(n2: Num): String = s"foo0_N_N ${n1.i} ${n2.i}"
   }
+
+
+  def main(args: Array[String]): Unit = {
+    val reflective: Api = new ClassImpl()
+    val nonreflective: Nonreflective & Api = (new Nonreflective {}).asInstanceOf[Nonreflective & Api]
+    val dynamic0 = new Dynamic0 {}
+    val dynamic1 = new Dynamic1 {}
+    val dynamic2 = new Dynamic2 {}
+    val dynamic3 = new Dynamic3 {}
+
+    println(reflective.foo)
+    println(reflective.foo0())
+    println(reflective.fooI(1))
+    println(reflective.fooN(new Num(1)))
+    println(reflective.fooII(1, 2))
+    println(reflective.fooNN(new Num(1), new Num(2)))
+    println(reflective.fooIvarargs(1, 2))
+    println(reflective.fooNvarargs(new Num(1), new Num(2)))
+    println(reflective.fooIseq(Seq(1, 2)))
+    println(reflective.fooNseq(Seq(new Num(1), new Num(2))))
+    println(reflective.fooIIvarargs(1, 2))
+    println(reflective.fooNNvarargs(new Num(1), new Num(2)))
+    println(reflective.fooI_I(1)(2))
+    println(reflective.fooN_N(new Num(1))(new Num(2)))
+    println(reflective.foo0_II()(1, 2))
+    println(reflective.foo0_NN()(new Num(1), new Num(2)))
+    println(reflective.foo0_Ivarargs()(1, 2))
+    println(reflective.foo0_Nvarargs()(new Num(1), new Num(2)))
+    println(reflective.foo0_I_I()(1)(2))
+    println(reflective.foo0_N_N()(new Num(1))(new Num(2)))
+    println()
+    println(nonreflective.foo)
+    println(nonreflective.foo0())
+    println(nonreflective.fooI(1))
+    println(nonreflective.fooN(new Num(1)))
+    println(nonreflective.fooII(1, 2))
+    println(nonreflective.fooNN(new Num(1), new Num(2)))
+    println(nonreflective.fooIvarargs(1, 2))
+    println(nonreflective.fooNvarargs(new Num(1), new Num(2)))
+    println(nonreflective.fooIseq(Seq(1, 2)))
+    println(nonreflective.fooNseq(Seq(new Num(1), new Num(2))))
+    println(nonreflective.fooIIvarargs(1, 2, 3))
+    println(nonreflective.fooNNvarargs(new Num(1), new Num(2)))
+    println(nonreflective.fooI_I(1)(2))
+    println(nonreflective.fooN_N(new Num(1))(new Num(2)))
+    println(nonreflective.foo0_II()(1, 2))
+    println(nonreflective.foo0_NN()(new Num(1), new Num(2)))
+    println(nonreflective.foo0_Ivarargs()(1, 2))
+    println(nonreflective.foo0_Nvarargs()(new Num(1), new Num(2)))
+    println(nonreflective.foo0_I_I()(1)(2))
+    println(nonreflective.foo0_N_N()(new Num(1))(new Num(2)))
+    println()
+    println(dynamic0.foo)
+    println(dynamic1.foo0())
+    println(dynamic1.fooI(1))
+    println(dynamic1.fooN(new Num(1)))
+    println(dynamic1.fooII(1, 2))
+    println(dynamic1.fooNN(new Num(1), new Num(2)))
+    println(dynamic1.fooIvarargs(1, 2))
+    println(dynamic1.fooNvarargs(new Num(1), new Num(2)))
+    println(dynamic1.fooIseq(Seq(1, 2)))
+    println(dynamic1.fooNseq(Seq(new Num(1), new Num(2))))
+    println(dynamic1.fooIIvarargs(1, 2))
+    println(dynamic1.fooNNvarargs(new Num(1), new Num(2)))
+    println(dynamic2.fooI_I(1)(2))
+    println(dynamic2.fooN_N(new Num(1))(new Num(2)))
+    println(dynamic2.foo0_II()(1, 2))
+    println(dynamic2.foo0_NN()(new Num(1), new Num(2)))
+    println(dynamic2.foo0_Ivarargs()(1, 2))
+    println(dynamic2.foo0_Nvarargs()(new Num(1), new Num(2)))
+    println(dynamic3.foo0_I_I()(1)(2))
+    println(dynamic3.foo0_N_N()(new Num(1))(new Num(2)))
+  }
+}

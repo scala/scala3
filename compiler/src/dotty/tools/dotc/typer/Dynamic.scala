@@ -185,23 +185,20 @@ trait Dynamic {
     val vargss = termArgss(tree)
 
     def handleRepeated(base: untpd.Tree, possiblyCurried: List[List[Tree]], isReflectSelectable: Boolean) = {
-      val handled = possiblyCurried.map { args =>
-        val isRepeated = args.exists(_.tpe.widen.isRepeatedParam)
-        if isRepeated && isReflectSelectable then
-          List(untpd.TypedSplice(tpd.repeatedSeq(args, TypeTree(defn.AnyType))))
-        else args.map { t =>
-          val clzSym = t.tpe.resultType.classSymbol.asClass
-          if ValueClasses.isDerivedValueClass(clzSym) && isReflectSelectable then
-            val underlying = ValueClasses.valueClassUnbox(clzSym).asTerm
-            tpd.Select(t, underlying.name)
-          else
-            t
-        }.map(untpd.TypedSplice(_))
+      val args = possiblyCurried.flatten.map { t =>
+        val clzSym = t.tpe.resultType.classSymbol.asClass
+        if clzSym.isDerivedValueClass && isReflectSelectable then
+          val underlying = ValueClasses.valueClassUnbox(clzSym).asTerm
+          tpd.Select(t, underlying.name)
+        else
+          t
       }
+      val handledFlat =
+        if isReflectSelectable then List(untpd.TypedSplice(tpd.repeatedSeq(args, TypeTree(defn.AnyType))))
+        else if args.isEmpty then List()
+        else List(untpd.TypedSplice(tpd.repeatedSeq(args, TypeTree(args.map(_.tpe).reduce(_ | _)))))
 
-      if isReflectSelectable
-      then untpd.Apply(base, handled.flatten)
-      else handled.foldLeft(base)((base, args) => untpd.Apply(base, args))
+      untpd.Apply(base, handledFlat)
     }
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
@@ -265,7 +262,7 @@ trait Dynamic {
        */
       def maybeBoxingCast(tpe: Type) =
         val maybeBoxed =
-          if tpe.classSymbol.isDerivedValueClass && qual.tpe <:< defn.ReflectSelectableTypeRef then
+          if tpe.classSymbol.isDerivedValueClass && qual.tpe.isReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
             New(tpe.widen, tree.cast(underlying) :: Nil)
@@ -295,7 +292,7 @@ trait Dynamic {
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
               TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map { tpe =>
-                if ValueClasses.isDerivedValueClass(tpe.widen.classSymbol) then
+                if tpe.widen.classSymbol.isDerivedValueClass then
                   clsOf(ValueClasses.valueClassUnbox(tpe.classSymbol.asClass).info)
                 else
                   clsOf(tpe)

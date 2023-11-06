@@ -1,10 +1,62 @@
-1
-check
-6
-7
-5
-3
-3
-3
-7
-3
+foo
+foo0
+fooI 1
+fooN 1
+fooII 1 2
+fooNN 1 2
+fooIvarargs 1 2
+fooNvarargs 1 2
+fooIseq 1 2
+fooNseq 1 2
+fooIIvarargs 1 2
+fooNNvarargs 1 2
+fooI_I 1 2
+fooN_N 1 2
+foo0_II 1 2
+foo0_NN 1 2
+foo0_Ivarargs 1 2
+foo0_Nvarargs 1 2
+foo0_I_I 1 2
+foo0_N_N 1 2
+
+foo
+foo0 
+fooI 1
+fooN 1
+fooII 1 2
+fooNN 1 2
+fooIvarargs 1 2
+fooNvarargs 1 2
+fooIseq 1 2
+fooNseq 1 2
+fooIIvarargs 1 2 3
+fooNNvarargs 1 2
+fooI_I 1 2
+fooN_N 1 2
+foo0_II 1 2
+foo0_NN 1 2
+foo0_Ivarargs 1 2
+foo0_Nvarargs 1 2
+foo0_I_I 1 2
+foo0_N_N 1 2
+
+foo
+foo0 
+fooI 1
+fooN 1
+fooII 1 2
+fooNN 1 2
+fooIvarargs 1 2
+fooNvarargs 1 2
+fooIseq 1 2
+fooNseq 1 2
+fooIIvarargs 1 2
+fooNNvarargs 1 2
+fooI_I 1 2
+fooN_N 1 2
+foo0_II 1 2
+foo0_NN 1 2
+foo0_Ivarargs 1 2
+foo0_Nvarargs 1 2
+foo0_I_I 1 2
+foo0_N_N 1 2

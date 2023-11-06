@@ -34,8 +34,12 @@ class CustomReflectSelectableTestScala3 {
 
   @Test def callSelectableWithVarargs(): Unit = {
     val cont2values = Map.empty[String, Any]
-    val cont2methods = Map[String, (Int, Seq[Bar]) => Int](
-      "varargs" -> { (i: Int, bars: Seq[Bar]) => bars.map(_.x).sum + i }
+    val cont2methods = Map[String, Seq[(Int | Bar | Seq[Bar])] => Int](
+      "varargs" -> { (args: Seq[(Int | Bar | Seq[Bar])]) => args.map {
+        case x: Int => x
+        case b: Bar => b.x
+        case bs: Seq[Bar] => bs.map(_.x).sum
+      } .sum }
     )
     val cont = ScalaSelectable(cont2values, cont2methods).asInstanceOf[ScalaSelectable {
       def varargs(i: Int, foos: Bar*): Int
@@ -45,8 +49,14 @@ class CustomReflectSelectableTestScala3 {
 
   @Test def callSelectableWithVarargsExpansion(): Unit = {
     val cont2values = Map.empty[String, Any]
-    val cont2methods = Map[String, (Int, Seq[Bar]) => Int](
-      "varargs" -> { (i: Int, bars: Seq[Bar]) => bars.map(_.x).sum + i }
+    val cont2methods = Map[String, Seq[(Int | Bar | Seq[Bar])] => Int](
+      "varargs" -> {
+        (args: Seq[(Int | Bar | Seq[Bar])]) => args.map {
+          case x: Int => x
+          case b: Bar => b.x
+          case bs: Seq[Bar] => bs.map(_.x).sum
+        }.sum
+      }
     )
     val cont = ScalaSelectable(cont2values, cont2methods).asInstanceOf[ScalaSelectable {
       def varargs(i: Int, foos: Bar*): Int
@@ -68,9 +78,9 @@ object CustomReflectSelectableTestScala3 {
     def varargs(x: Int, args: Bar*) = args.map(_.x).sum + x
   }
 
-  class ScalaSelectable(values: Map[String, Any], methods: Map[String, (Int, Seq[Bar]) => Int]) extends Selectable {
+  class ScalaSelectable(values: Map[String, Any], methods: Map[String, Seq[(Int | Bar | Seq[Bar])] => Int]) extends Selectable {
     def selectDynamic(name: String): Any = values(name)
 
-    def applyDynamic(name: String)(i: Int, bars: Bar*): Int = methods(name)(i, bars)
+    def applyDynamic(name: String)(args: (Int | Bar | Seq[Bar])*): Int = methods(name)(args)
   }
 }
