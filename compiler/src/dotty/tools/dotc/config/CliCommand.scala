@@ -12,7 +12,7 @@ import scala.PartialFunction.cond
 
 trait CliCommand:
 
-  type ConcreteSettings <: CommonScalaSettings with Settings.SettingGroup
+  type ConcreteSettings <: CommonScalaSettings & Settings.SettingGroup
 
   def versionMsg: String
 
