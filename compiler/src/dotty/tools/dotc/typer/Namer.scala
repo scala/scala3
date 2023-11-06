@@ -1197,7 +1197,7 @@ class Namer { typer: Typer =>
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
               var target = pathType.select(sym)
               if target.typeParams.nonEmpty then
-                target = target.EtaExpand(target.typeParams)
+                target = target.etaExpand(target.typeParams)
               newSymbol(
                 cls, forwarderName,
                 Exported | Final,
@@ -1518,7 +1518,7 @@ class Namer { typer: Typer =>
 
         def typedParentType(tree: untpd.Tree): tpd.Tree =
           val parentTpt = typer.typedType(parent, AnyTypeConstructorProto)
-          val ptpe = parentTpt.tpe
+          val ptpe = parentTpt.tpe.dealias.etaCollapse
           if ptpe.typeParams.nonEmpty
               && ptpe.underlyingClassRef(refinementOK = false).exists
           then

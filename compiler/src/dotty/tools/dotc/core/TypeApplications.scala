@@ -36,7 +36,7 @@ object TypeApplications {
 
     def apply(tycon: Type)(using Context): Type =
       assert(tycon.typeParams.nonEmpty, tycon)
-      tycon.EtaExpand(tycon.typeParamSymbols)
+      tycon.etaExpand(tycon.typeParamSymbols)
 
     /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
      *  contain the bounds of the type parameters of `C`. This is necessary to be able to
@@ -71,7 +71,7 @@ object TypeApplications {
    */
   def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(using Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.EtaExpandIfHK(tparam.paramInfoOrCompleter))
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
@@ -245,7 +245,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def topType(using Context): Type =
     if self.hasSimpleKind then
       defn.AnyType
-    else EtaExpand(self.typeParams) match
+    else etaExpand(self.typeParams) match
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resultType.topType)
       case _ =>
@@ -302,7 +302,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def EtaExpand(tparams: List[TypeParamInfo])(using Context): Type =
+  def etaExpand(tparams: List[TypeParamInfo])(using Context): Type =
     HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.paramRef)))
       //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
 
@@ -311,7 +311,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (isLambdaSub) self else EtaExpansion(self)
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
-  def EtaExpandIfHK(bound: Type)(using Context): Type = {
+  def etaExpandIfHK(bound: Type)(using Context): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
@@ -320,6 +320,11 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ => self
     }
   }
+
+  /** Maps [Ts] => C[Ts] to C */
+  def etaCollapse(using Context): Type = self match
+    case EtaExpansion(classType) => classType
+    case _ => self
 
   /** The type representing
    *
