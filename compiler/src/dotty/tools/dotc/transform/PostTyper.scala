@@ -4,20 +4,20 @@ package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
-import core._
+import core.*
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.typer.VarianceChecker
 import typer.ErrorReporting.errorTree
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
-import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
-import Decorators._
-import Symbols._, SymUtils._, NameOps._
+import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
+import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
+import Decorators.*
+import Symbols.*, SymUtils.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
 import util.SrcPos
-import reporting._
+import reporting.*
 import NameKinds.WildcardParamName
 
 object PostTyper {
@@ -61,7 +61,7 @@ object PostTyper {
  *  they do not warrant their own group of miniphases before pickling.
  */
 class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = PostTyper.name
 

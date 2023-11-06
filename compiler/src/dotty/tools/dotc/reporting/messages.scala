@@ -2,17 +2,17 @@ package dotty.tools
 package dotc
 package reporting
 
-import core._
-import Contexts._
-import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
+import core.*
+import Contexts.*
+import Decorators.*, Symbols.*, Names.*, NameOps.*, Types.*, Flags.*, Phases.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
 import NameKinds.{WildcardParamName, ContextFunctionParamName}
 import parsing.Scanners.Token
 import parsing.Tokens
-import printing.Highlighting._
+import printing.Highlighting.*
 import printing.Formatting
-import ErrorMessageID._
+import ErrorMessageID.*
 import ast.Trees
 import config.{Feature, ScalaVersion}
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
@@ -22,10 +22,10 @@ import typer.Inferencing
 import scala.util.control.NonFatal
 import StdNames.nme
 import printing.Formatting.hl
-import ast.Trees._
+import ast.Trees.*
 import ast.untpd
 import ast.tpd
-import transform.SymUtils._
+import transform.SymUtils.*
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet.IdentityCaptRefMap
@@ -1699,7 +1699,7 @@ class JavaEnumParentArgs(parent: Type)(using Context)
 
 class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using Context)
   extends NamingMsg(CannotHaveSameNameAsID) {
-  import CannotHaveSameNameAs._
+  import CannotHaveSameNameAs.*
   def reasonMessage(using Context): String = reason match {
     case CannotBeOverridden => "class definitions cannot be overridden"
     case DefinedInSelf(self) =>
@@ -2268,7 +2268,7 @@ extends NamingMsg(DoubleDefinitionID) {
     def erasedType = if ctx.erasedTypes then i" ${decl.info}" else ""
     def details(using Context): String =
       if (decl.isRealMethod && previousDecl.isRealMethod) {
-        import Signature.MatchDegree._
+        import Signature.MatchDegree.*
 
         // compare the signatures when both symbols represent methods
         decl.signature.matchDegree(previousDecl.signature) match {

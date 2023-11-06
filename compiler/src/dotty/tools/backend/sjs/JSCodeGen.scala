@@ -8,20 +8,20 @@ import scala.collection.mutable
 import dotty.tools.FatalError
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core._
-import Contexts._
-import Decorators._
-import Flags._
-import Names._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Decorators.*
+import Flags.*
+import Names.*
 import NameKinds.DefaultGetterName
-import Types._
-import Symbols._
-import Phases._
-import StdNames._
+import Types.*
+import Symbols.*
+import Phases.*
+import StdNames.*
 import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.report
 
@@ -32,9 +32,9 @@ import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
 
-import dotty.tools.dotc.transform.sjs.JSSymUtils._
+import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
-import JSEncoding._
+import JSEncoding.*
 import ScopedVar.withScopedVars
 
 /** Main codegen for Scala.js IR.
@@ -54,15 +54,15 @@ import ScopedVar.withScopedVars
  *  - `genStatOrExpr()` and everything else generate the bodies of methods.
  */
 class JSCodeGen()(using genCtx: Context) {
-  import JSCodeGen._
-  import tpd._
+  import JSCodeGen.*
+  import tpd.*
 
   val sjsPlatform = dotty.tools.dotc.config.SJSPlatform.sjsPlatform
   val jsdefn = JSDefinitions.jsdefn
   private val primitives = new JSPrimitives(genCtx)
 
   val positionConversions = new JSPositions()(using genCtx)
-  import positionConversions._
+  import positionConversions.*
 
   private val jsExportsGen = new JSExportsGen(this)
 
@@ -1827,7 +1827,7 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case Literal(value) =>
-        import Constants._
+        import Constants.*
         value.tag match {
           case UnitTag =>
             js.Skip()
@@ -2525,7 +2525,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   /** Gen JS code for a primitive method call. */
   private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
-    import dotty.tools.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps.*
 
     implicit val pos = tree.span
 
@@ -2565,7 +2565,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   /** Gen JS code for a simple unary operation. */
   private def genSimpleUnaryOp(tree: Apply, arg: Tree, code: Int): js.Tree = {
-    import dotty.tools.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps.*
 
     implicit val pos = tree.span
 
@@ -2606,7 +2606,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   /** Gen JS code for a simple binary operation. */
   private def genSimpleBinaryOp(tree: Apply, lhs: Tree, rhs: Tree, code: Int): js.Tree = {
-    import dotty.tools.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps.*
 
     implicit val pos: SourcePosition = tree.sourcePos
 
@@ -2646,7 +2646,7 @@ class JSCodeGen()(using genCtx: Context) {
     } else if (code == ZAND) {
       js.If(lsrc, rsrc, js.BooleanLiteral(false))(jstpe.BooleanType)
     } else {
-      import js.BinaryOp._
+      import js.BinaryOp.*
 
       (opType: @unchecked) match {
         case jstpe.IntType =>
@@ -2768,7 +2768,7 @@ class JSCodeGen()(using genCtx: Context) {
     */
   private def genConversion(from: jstpe.Type, to: jstpe.Type, value: js.Tree)(
       implicit pos: Position): js.Tree = {
-    import js.UnaryOp._
+    import js.UnaryOp.*
 
     if (from == to || from == jstpe.NothingType) {
       value
@@ -2823,7 +2823,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genUniversalEqualityOp(ltpe: Type, rtpe: Type, lhs: js.Tree, rhs: js.Tree, code: Int)(
       implicit pos: SourcePosition): js.Tree = {
 
-    import dotty.tools.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps.*
 
     val bypassEqEq = {
       // Do not call equals if we have a literal null at either side.
@@ -2931,7 +2931,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   /** Gen JS code for an array operation (get, set or length) */
   private def genArrayOp(tree: Tree, code: Int): js.Tree = {
-    import dotty.tools.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps.*
 
     implicit val pos = tree.span
 
@@ -3766,7 +3766,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genJSPrimitive(tree: Apply, args: List[Tree], code: Int,
       isStat: Boolean): js.Tree = {
 
-    import JSPrimitives._
+    import JSPrimitives.*
 
     implicit val pos = tree.span
 
@@ -4696,7 +4696,7 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private def computeJSNativeLoadSpecOfInPhase(sym: Symbol)(using Context): js.JSNativeLoadSpec = {
-    import js.JSNativeLoadSpec._
+    import js.JSNativeLoadSpec.*
 
     val symOwner = sym.owner
 

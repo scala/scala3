@@ -12,13 +12,13 @@ import core.Contexts.Context
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
 import util.Chars.SU
-import Parsers._
-import util.Spans._
-import core._
-import Constants._
+import Parsers.*
+import util.Spans.*
+import core.*
+import Constants.*
 import Decorators.{em, toMessage}
 import util.SourceFile
-import Utility._
+import Utility.*
 
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
@@ -39,7 +39,7 @@ import Utility._
  */
 object MarkupParsers {
 
-  import ast.untpd._
+  import ast.untpd.*
 
   case object MissingEndTagControl extends ControlThrowable {
     override def getMessage: String = "start tag was here: "

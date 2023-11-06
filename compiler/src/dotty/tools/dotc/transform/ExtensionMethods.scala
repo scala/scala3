@@ -5,17 +5,17 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.MegaPhase._
-import ValueClasses._
+import dotty.tools.dotc.transform.MegaPhase.*
+import ValueClasses.*
 import dotty.tools.dotc.ast.tpd
 import scala.collection.mutable
-import core._
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
-import SymDenotations._, Symbols._, StdNames._, Denotations._
+import core.*
+import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
+import SymDenotations.*, Symbols.*, StdNames.*, Denotations.*
 import TypeErasure.{ valueErasure, ErasedValueType }
 import NameKinds.{ExtMethName, BodyRetainerName}
-import Decorators._
-import TypeUtils._
+import Decorators.*
+import TypeUtils.*
 
 /**
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
@@ -38,8 +38,8 @@ import TypeUtils._
  */
 class ExtensionMethods extends MiniPhase with DenotTransformer with FullParameterization { thisPhase =>
 
-  import tpd._
-  import ExtensionMethods._
+  import tpd.*
+  import ExtensionMethods.*
 
   override def phaseName: String = ExtensionMethods.name
 

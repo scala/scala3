@@ -1,11 +1,11 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import DenotTransformers.IdentityDenotTransformer
-import Contexts._
-import Symbols._
-import Scopes._
+import Contexts.*
+import Symbols.*
+import Scopes.*
 import MegaPhase.MiniPhase
 
 /** The preceding lambda lift and flatten phases move symbols to different scopes
@@ -13,7 +13,7 @@ import MegaPhase.MiniPhase
  *  class scopes contain the symbols defined in them.
  */
 class RestoreScopes extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = RestoreScopes.name
 

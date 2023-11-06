@@ -9,7 +9,7 @@ import scala.tools.asm
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd
 
 /*
@@ -20,9 +20,9 @@ import dotty.tools.dotc.ast.tpd
  */
 trait BCodeSyncAndTry extends BCodeBodyBuilder {
   import int.given
-  import tpd._
-  import bTypes._
-  import coreBTypes._
+  import tpd.*
+  import bTypes.*
+  import coreBTypes.*
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */

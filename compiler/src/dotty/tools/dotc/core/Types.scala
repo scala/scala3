@@ -2,32 +2,32 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._
-import Flags._
-import Names._
-import StdNames._, NameOps._
-import NullOpsDecorator._
+import Symbols.*
+import Flags.*
+import Names.*
+import StdNames.*, NameOps.*
+import NullOpsDecorator.*
 import NameKinds.SkolemName
-import Scopes._
-import Constants._
-import Contexts._
-import Phases._
-import Annotations._
-import SymDenotations._
-import Decorators._
-import Denotations._
-import Periods._
-import CheckRealizable._
+import Scopes.*
+import Constants.*
+import Contexts.*
+import Phases.*
+import Annotations.*
+import SymDenotations.*
+import Decorators.*
+import Denotations.*
+import Periods.*
+import CheckRealizable.*
 import Variances.{Variance, setStructuralVariances, Invariant}
 import typer.Nullables
-import util.Stats._
+import util.Stats.*
 import util.{SimpleIdentityMap, SimpleIdentitySet}
-import ast.tpd._
+import ast.tpd.*
 import ast.TreeTypeMap
-import printing.Texts._
+import printing.Texts.*
 import printing.Printer
-import Hashable._
-import Uniques._
+import Hashable.*
+import Uniques.*
 import collection.mutable
 import config.Config
 import annotation.{tailrec, constructorOnly}
@@ -42,7 +42,7 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
 object Types {
@@ -3882,7 +3882,7 @@ object Types {
   }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
-    import DepStatus._
+    import DepStatus.*
     type ThisName = TermName
     type PInfo = Type
     type This >: this.type <: TermLambda

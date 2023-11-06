@@ -7,12 +7,12 @@ import scala.annotation.threadUnsafe
 import scala.collection.mutable
 import scala.collection.mutable.Clearable
 
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Phases._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Phases.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Phases
 
@@ -29,12 +29,12 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
   lazy val VolatileAttr = requiredClass[scala.volatile]
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type ] = new BCodeAsmCommon(int)
-  import bCodeAsmCommon._
+  import bCodeAsmCommon.*
 
   val coreBTypes = new CoreBTypesFromSymbols[I]{
     val bTypes: BTypesFromSymbols.this.type = BTypesFromSymbols.this
   }
-  import coreBTypes._
+  import coreBTypes.*
 
   @threadUnsafe protected lazy val classBTypeFromInternalNameMap =
     collection.concurrent.TrieMap.empty[String, ClassBType]
@@ -286,7 +286,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
 
     val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable, butNot = Accessor) && !sym.enclosingClass.is(Trait)
 
-    import asm.Opcodes._
+    import asm.Opcodes.*
     import GenBCodeOps.addFlagIf
     0 .addFlagIf(privateFlag, ACC_PRIVATE)
       .addFlagIf(!privateFlag, ACC_PUBLIC)
@@ -312,7 +312,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
   }
 
   def javaFieldFlags(sym: Symbol) = {
-    import asm.Opcodes._
+    import asm.Opcodes.*
     import GenBCodeOps.addFlagIf
     javaFlags(sym)
       .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)

@@ -1,14 +1,14 @@
 package dotty.tools.dotc.quoted
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
-import dotty.tools.dotc.config.Printers._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.config.Printers.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
@@ -16,14 +16,14 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
-import scala.quoted.runtime.impl._
+import scala.quoted.runtime.impl.*
 
 import scala.collection.mutable
 
-import QuoteUtils._
+import QuoteUtils.*
 
 object PickledQuotes {
-  import tpd._
+  import tpd.*
 
   /** Pickle the tree of the quote into strings */
   def pickleQuote(tree: Tree)(using Context): List[String] =

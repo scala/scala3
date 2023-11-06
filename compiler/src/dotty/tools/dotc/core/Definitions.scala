@@ -3,8 +3,8 @@ package dotc
 package core
 
 import scala.annotation.{threadUnsafe => tu}
-import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._, Phases._
-import Flags._, Scopes._, Decorators._, NameOps._, Periods._, NullOpsDecorator._
+import Types.*, Contexts.*, Symbols.*, SymDenotations.*, StdNames.*, Names.*, Phases.*
+import Flags.*, Scopes.*, Decorators.*, NameOps.*, Periods.*, NullOpsDecorator.*
 import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
@@ -43,7 +43,7 @@ object Definitions {
  *
  */
 class Definitions {
-  import Definitions._
+  import Definitions.*
 
   private var initCtx: Context = uninitialized
   private given currentContext[Dummy_so_its_a_def]: Context = initCtx

@@ -7,12 +7,12 @@ import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import scala.collection.mutable
-import core._
-import Decorators._
+import core.*
+import Decorators.*
 import Flags.Mutable
-import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
-import Symbols._, Contexts._
-import util.Spans._
+import Names.*, StdNames.*, ast.Trees.*, ast.{tpd, untpd}
+import Symbols.*, Contexts.*
+import util.Spans.*
 import Parsers.Parser
 
 /** This class builds instance of `Tree` that represent XML.
@@ -29,7 +29,7 @@ import Parsers.Parser
 class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   import Constants.Constant
-  import untpd._
+  import untpd.*
 
   import parser.atSpan
 

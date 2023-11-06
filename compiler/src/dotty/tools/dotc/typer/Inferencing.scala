@@ -2,23 +2,23 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._, Types._, Flags._, Symbols._
-import ProtoTypes._
+import core.*
+import ast.*
+import Contexts.*, Types.*, Flags.*, Symbols.*
+import ProtoTypes.*
 import NameKinds.UniqueName
-import util.Spans._
+import util.Spans.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet, SrcPos}
-import Decorators._
+import Decorators.*
 import config.Printers.{gadts, typr}
 import annotation.tailrec
-import reporting._
+import reporting.*
 import collection.mutable
 import scala.annotation.internal.sharable
 
 object Inferencing {
 
-  import tpd._
+  import tpd.*
 
   /** Is type fully defined, meaning the type does not contain wildcard types
    *  or uninstantiated type variables. As a side effect, this will minimize
@@ -550,8 +550,8 @@ object Inferencing {
 }
 
 trait Inferencing { this: Typer =>
-  import Inferencing._
-  import tpd._
+  import Inferencing.*
+  import tpd.*
 
   /** Interpolate undetermined type variables in the widened type of this tree.
    *  @param tree    the tree whose type is interpolated

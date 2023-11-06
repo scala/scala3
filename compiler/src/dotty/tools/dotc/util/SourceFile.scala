@@ -4,12 +4,12 @@ package util
 
 import scala.language.unsafeNulls
 
-import dotty.tools.io._
-import Spans._
-import core.Contexts._
+import dotty.tools.io.*
+import Spans.*
+import core.Contexts.*
 
 import scala.io.Codec
-import Chars._
+import Chars.*
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -62,7 +62,7 @@ object ScriptSourceFile {
 }
 
 class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
-  import SourceFile._
+  import SourceFile.*
 
   private var myContent: Array[Char] | Null = null
 
@@ -260,7 +260,7 @@ object SourceFile {
         // and use both slashes as separators, or on other OS and use forward slash
         // as separator, backslash as file name character.
 
-        import scala.jdk.CollectionConverters._
+        import scala.jdk.CollectionConverters.*
         val path = refPath.relativize(sourcePath)
         path.iterator.asScala.mkString("/")
       else

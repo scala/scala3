@@ -3,7 +3,7 @@ package dotc
 package core
 package unpickleScala2
 
-import Flags._
+import Flags.*
 
 /** Variable length byte arrays, with methods for basic pickling and unpickling.
  *
@@ -195,7 +195,7 @@ object PickleBuffer {
   private type FlagMap = Array[Array[Long]]
 
   private val (scalaTermFlagMap, scalaTypeFlagMap) = {
-    import Scala2Flags._
+    import Scala2Flags.*
 
     val corr = Map(
       PROTECTED_PKL -> Protected,

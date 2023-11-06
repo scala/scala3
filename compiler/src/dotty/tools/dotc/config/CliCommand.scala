@@ -3,8 +3,8 @@ package config
 
 import scala.language.unsafeNulls
 
-import Settings._
-import core.Contexts._
+import Settings.*
+import core.Contexts.*
 import printing.Highlighting
 
 import scala.util.chaining.given

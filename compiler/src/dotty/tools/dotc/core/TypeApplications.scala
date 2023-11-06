@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
-import Contexts._
-import Symbols._
+import Types.*
+import Contexts.*
+import Symbols.*
 import SymDenotations.LazyType
-import Decorators._
-import util.Stats._
-import Names._
+import Decorators.*
+import util.Stats.*
+import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
@@ -154,7 +154,7 @@ object TypeApplications {
   }
 }
 
-import TypeApplications._
+import TypeApplications.*
 
 /** A decorator that provides methods for modeling type application */
 class TypeApplications(val self: Type) extends AnyVal {

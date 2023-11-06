@@ -1,8 +1,8 @@
 package dotty.tools.dotc.semanticdb
 
-import dotty.tools.dotc.ast.tpd._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.{semanticdb => s}

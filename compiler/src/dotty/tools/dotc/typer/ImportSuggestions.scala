@@ -3,11 +3,11 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
-import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
-import Flags._, SymDenotations._
+import core.*
+import Contexts.*, Types.*, Symbols.*, Names.*, Decorators.*, ProtoTypes.*
+import Flags.*, SymDenotations.*
 import NameKinds.FlatName
-import StdNames._
+import StdNames.*
 import config.Printers.{implicits, implicitsDetailed}
 import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
@@ -25,7 +25,7 @@ trait ImportSuggestions:
   /** The maximal number of suggested imports to make */
   inline val MaxSuggestions = 10
 
-  import tpd._
+  import tpd.*
 
   /** Timeout to test a single implicit value as a suggestion, in ms */
   private inline val testOneImplicitTimeOut = 500

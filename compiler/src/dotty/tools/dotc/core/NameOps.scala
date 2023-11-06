@@ -6,11 +6,11 @@ import java.security.MessageDigest
 import java.nio.CharBuffer
 import scala.io.Codec
 import Int.MaxValue
-import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
+import Names.*, StdNames.*, Contexts.*, Symbols.*, Flags.*, NameKinds.*, Types.*
 import util.Chars.{isOperatorPart, digit2int}
 import Decorators.*
-import Definitions._
-import nme._
+import Definitions.*
+import nme.*
 
 object NameOps {
 

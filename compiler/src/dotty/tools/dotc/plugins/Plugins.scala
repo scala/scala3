@@ -3,12 +3,12 @@ package plugins
 
 import scala.language.unsafeNulls
 
-import core._
-import Contexts._
+import core.*
+import Contexts.*
 import Decorators.em
 import config.{ PathResolver, Feature }
-import dotty.tools.io._
-import Phases._
+import dotty.tools.io.*
+import Phases.*
 import config.Printers.plugins.{ println => debug }
 
 import scala.compiletime.uninitialized

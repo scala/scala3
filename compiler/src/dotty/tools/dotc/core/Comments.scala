@@ -5,10 +5,10 @@ package core
 import scala.language.unsafeNulls
 
 import ast.{ untpd, tpd }
-import Symbols._, Contexts._
+import Symbols.*, Contexts.*
 import util.{SourceFile, ReadOnlyMap}
-import util.Spans._
-import util.CommentParsing._
+import util.Spans.*
+import util.CommentParsing.*
 import util.Property.Key
 import parsing.Parsers.Parser
 import reporting.ProperDefinitionNotFound

@@ -9,30 +9,30 @@ import java.io.IOException
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
-import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
-import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._, Phases._
+import Contexts.*, Symbols.*, Types.*, Scopes.*, SymDenotations.*, Names.*, NameOps.*
+import StdNames.*, Denotations.*, NameOps.*, Flags.*, Constants.*, Annotations.*, Phases.*
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
-import util.Spans._
-import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
+import util.Spans.*
+import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
-import printing.Texts._
+import printing.Texts.*
 import printing.Printer
 import io.AbstractFile
-import util.common._
+import util.common.*
 import util.NoSourcePosition
 import typer.Checking.checkNonCyclic
-import typer.Nullables._
-import transform.SymUtils._
-import PickleBuffer._
-import PickleFormat._
-import Decorators._
-import TypeApplications._
+import typer.Nullables.*
+import transform.SymUtils.*
+import PickleBuffer.*
+import PickleFormat.*
+import Decorators.*
+import TypeApplications.*
 import classfile.ClassfileParser
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
-import reporting._
+import reporting.*
 
 object Scala2Unpickler {
 
@@ -146,7 +146,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   // print("unpickling "); showPickled() // !!! DEBUG
 
-  import Scala2Unpickler._
+  import Scala2Unpickler.*
 
   val moduleRoot: SymDenotation = inContext(ictx) { moduleClassRoot.sourceModule.denot }
   assert(moduleRoot.isTerm)

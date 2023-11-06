@@ -2,16 +2,16 @@ package dotty.tools
 package dotc
 package core
 
-import Types._
-import Contexts._
+import Types.*
+import Contexts.*
 import util.SimpleIdentitySet
-import reporting._
+import reporting.*
 import config.Config
 import config.Printers.constr
 import collection.mutable
 import java.lang.ref.WeakReference
 import util.{Stats, SimpleIdentityMap}
-import Decorators._
+import Decorators.*
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized

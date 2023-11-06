@@ -2,10 +2,10 @@ package dotty.tools
 package dotc
 package semanticdb
 
-import core._
-import Contexts._
-import Symbols._
-import Flags._
+import core.*
+import Contexts.*
+import Symbols.*
+import Flags.*
 import Names.Name
 
 import scala.annotation.tailrec

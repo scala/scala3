@@ -3,11 +3,11 @@ package dotty.tools.backend.jvm
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core._
+import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
-import Contexts._
-import Symbols._
-import dotty.tools.io._
+import Contexts.*
+import Symbols.*
+import dotty.tools.io.*
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 

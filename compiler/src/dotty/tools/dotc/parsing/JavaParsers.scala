@@ -6,31 +6,31 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.FlagSet
 
-import JavaTokens._
-import JavaScanners._
+import JavaTokens.*
+import JavaScanners.*
 import Scanners.Offset
-import Parsers._
-import core._
-import Contexts._
-import Names._
-import Types._
-import ast.Trees._
-import Decorators._
-import StdNames._
-import reporting._
+import Parsers.*
+import core.*
+import Contexts.*
+import Names.*
+import Types.*
+import ast.Trees.*
+import Decorators.*
+import StdNames.*
+import reporting.*
 import dotty.tools.dotc.util.SourceFile
-import util.Spans._
+import util.Spans.*
 
 import scala.collection.mutable.{ListBuffer, LinkedHashMap}
 
 object JavaParsers {
 
-  import ast.untpd._
+  import ast.untpd.*
 
   class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val definitions: Definitions = ctx.definitions
-    import definitions._
+    import definitions.*
 
     val in: JavaScanner = new JavaScanner(source)
 

@@ -5,7 +5,7 @@ import scala.tools.asm.Handle
 import scala.tools.asm.tree.InvokeDynamicInsnNode
 import asm.tree.ClassNode
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.report
 
 import scala.language.unsafeNulls
@@ -92,9 +92,9 @@ class BackendUtils(val postProcessor: PostProcessor) {
   * methods.
   */
   def addLambdaDeserialize(classNode: ClassNode, implMethodsArray: Array[Handle]): Unit = {
-    import asm.Opcodes._
-    import bTypes._
-    import coreBTypes._
+    import asm.Opcodes.*
+    import bTypes.*
+    import coreBTypes.*
 
     val cw = classNode
 

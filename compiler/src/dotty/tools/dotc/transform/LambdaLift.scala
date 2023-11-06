@@ -1,19 +1,19 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
+import MegaPhase.*
 import core.Denotations.NonSymSingleDenotation
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Flags._
-import core.Decorators._
+import core.DenotTransformers.*
+import core.Symbols.*
+import core.Contexts.*
+import core.Types.*
+import core.Flags.*
+import core.Decorators.*
 import core.StdNames.nme
-import core.Names._
-import core.NameOps._
+import core.Names.*
+import core.NameOps.*
 import core.NameKinds.ExpandPrefixName
-import SymUtils._
+import SymUtils.*
 import ExplicitOuter.outer
 import util.Store
 import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}
@@ -21,7 +21,7 @@ import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}
 import scala.compiletime.uninitialized
 
 object LambdaLift:
-  import ast.tpd._
+  import ast.tpd.*
 
   val name: String = "lambdaLift"
   val description: String = "lifts out nested functions to class scope"
@@ -251,8 +251,8 @@ end LambdaLift
  *     }
  */
 class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
-  import LambdaLift._
-  import ast.tpd._
+  import LambdaLift.*
+  import ast.tpd.*
 
   override def phaseName: String = LambdaLift.name
 

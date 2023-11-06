@@ -4,12 +4,12 @@ import scala.language.unsafeNulls
 
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.core._
-import Names._
-import Types._
-import Contexts._
-import Symbols._
-import StdNames._
+import dotty.tools.dotc.core.*
+import Names.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import StdNames.*
 
 import dotty.tools.dotc.config.SJSPlatform
 import scala.compiletime.uninitialized

@@ -8,35 +8,35 @@ import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition, NoSourcePosition }
-import Tokens._
-import Scanners._
+import Tokens.*
+import Scanners.*
 import xml.MarkupParsers.MarkupParser
-import core._
-import Flags._
-import Contexts._
-import Names._
+import core.*
+import Flags.*
+import Contexts.*
+import Names.*
 import NameKinds.{WildcardParamName, QualifiedName}
-import NameOps._
+import NameOps.*
 import ast.{Positioned, Trees}
-import ast.Trees._
-import StdNames._
-import util.Spans._
-import Constants._
+import ast.Trees.*
+import StdNames.*
+import util.Spans.*
+import Constants.*
 import Symbols.NoSymbol
-import ScriptParsers._
-import Decorators._
+import ScriptParsers.*
+import Decorators.*
 import util.Chars
 import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
-import reporting._
+import reporting.*
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
-import config.SourceVersion._
+import config.SourceVersion.*
 import config.SourceVersion
 
 object Parsers {
 
-  import ast.untpd._
+  import ast.untpd.*
 
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
@@ -1233,7 +1233,7 @@ object Parsers {
             case EXPOLIT => return Number(digits, NumberKind.Floating)
             case _ =>
           }
-        import scala.util.FromDigits._
+        import scala.util.FromDigits.*
         val value =
           try token match {
             case INTLIT                        => intFromDigits(digits, in.base)

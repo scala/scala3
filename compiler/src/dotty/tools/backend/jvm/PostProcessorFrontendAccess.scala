@@ -14,7 +14,7 @@ import dotty.tools.dotc.core.Phases
  * frontend. All methods are synchronized.
  */
 sealed abstract class PostProcessorFrontendAccess {
-  import PostProcessorFrontendAccess._
+  import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
 

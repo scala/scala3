@@ -1,19 +1,19 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import ast.tpd._
-import Annotations._
-import Contexts._
+import core.*
+import ast.tpd.*
+import Annotations.*
+import Contexts.*
 import Symbols.*
 import SymUtils.*
-import Decorators._
-import Flags._
-import Names._
-import Types._
-import util.Spans._
+import Decorators.*
+import Flags.*
+import Names.*
+import Types.*
+import util.Spans.*
 
-import DenotTransformers._
+import DenotTransformers.*
 
 class BeanProperties(thisPhase: DenotTransformer):
   def addBeanMethods(impl: Template)(using Context): Template =

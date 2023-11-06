@@ -19,7 +19,7 @@ object SourceCode {
     symbol.fullName
 
   def showFlags(using Quotes)(flags: quotes.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
@@ -64,8 +64,8 @@ object SourceCode {
   }
 
   private class SourceCodePrinter[Q <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight, fullNames: Boolean)(using val quotes: Q) {
-    import syntaxHighlight._
-    import quotes.reflect._
+    import syntaxHighlight.*
+    import quotes.reflect.*
 
     private[this] val sb: StringBuilder = new StringBuilder
 

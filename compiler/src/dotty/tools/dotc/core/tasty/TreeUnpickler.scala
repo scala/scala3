@@ -6,43 +6,43 @@ package tasty
 import scala.language.unsafeNulls
 
 import Comments.CommentsContext
-import Contexts._
-import Symbols._
-import Types._
-import Scopes._
-import SymDenotations._
-import Denotations._
-import Names._
-import NameOps._
-import StdNames._
-import Flags._
-import Constants._
-import Annotations._
-import NameKinds._
-import NamerOps._
-import ContextOps._
+import Contexts.*
+import Symbols.*
+import Types.*
+import Scopes.*
+import SymDenotations.*
+import Denotations.*
+import Names.*
+import NameOps.*
+import StdNames.*
+import Flags.*
+import Constants.*
+import Annotations.*
+import NameKinds.*
+import NamerOps.*
+import ContextOps.*
 import Variances.Invariant
 import TastyUnpickler.NameTable
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
-import typer.Nullables._
-import util.Spans._
+import typer.Nullables.*
+import util.Spans.*
 import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
-import Trees._
-import Decorators._
-import transform.SymUtils._
+import Trees.*
+import Decorators.*
+import transform.SymUtils.*
 import dotty.tools.dotc.quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
-import TastyBuffer._
+import TastyBuffer.*
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
 
-import dotty.tools.tasty.TastyFormat._
+import dotty.tools.tasty.TastyFormat.*
 
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
@@ -57,8 +57,8 @@ class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameTable,
                     posUnpicklerOpt: Option[PositionUnpickler],
                     commentUnpicklerOpt: Option[CommentUnpickler]) {
-  import TreeUnpickler._
-  import tpd._
+  import TreeUnpickler.*
+  import tpd.*
 
   /** A map from addresses of definition entries to the symbols they define */
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
@@ -124,7 +124,7 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context) extends LazyType {
-    import reader._
+    import reader.*
     val owner = ctx.owner
     val mode = ctx.mode
     val source = ctx.source
@@ -151,7 +151,7 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   class TreeReader(val reader: TastyReader) {
-    import reader._
+    import reader.*
 
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)

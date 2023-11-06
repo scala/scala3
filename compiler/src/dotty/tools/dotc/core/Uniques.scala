@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Contexts._, util.Stats._, Hashable._, Names._
+import Types.*, Contexts.*, util.Stats.*, Hashable.*, Names.*
 import config.Config
-import Decorators._
+import Decorators.*
 import util.{WeakHashSet, Stats}
 import WeakHashSet.Entry
 import scala.annotation.tailrec

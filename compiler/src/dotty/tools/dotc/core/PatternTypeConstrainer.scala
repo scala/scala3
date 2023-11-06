@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package core
 
-import Decorators._
-import Symbols._
-import Types._
-import Flags._
+import Decorators.*
+import Symbols.*
+import Types.*
+import Flags.*
 import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
-import config.Printers._
+import config.Printers.*
 
 trait PatternTypeConstrainer { self: TypeComparer =>
 
@@ -76,7 +76,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
   def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
-      import Flags._
+      import Flags.*
       val patCls = pat.classSymbol
       val scrCls = scrut.classSymbol
       !patCls.exists || !scrCls.exists || {

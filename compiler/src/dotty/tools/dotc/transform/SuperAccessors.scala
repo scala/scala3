@@ -5,13 +5,13 @@ package transform
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.mutable
 import ValueClasses.isMethodWithExtension
-import core._
-import Contexts._, Flags._, Symbols._, Names._, StdNames._, NameOps._, Trees._
-import TypeUtils._, SymUtils._
+import core.*
+import Contexts.*, Flags.*, Symbols.*, Names.*, StdNames.*, NameOps.*, Trees.*
+import TypeUtils.*, SymUtils.*
 import DenotTransformers.DenotTransformer
-import Symbols._
-import util.Spans._
-import Decorators._
+import Symbols.*
+import util.Spans.*
+import Decorators.*
 import NameKinds.{ SuperAccessorName, ExpandPrefixName }
 
 /** This class adds super accessors for all super calls that either
@@ -32,7 +32,7 @@ import NameKinds.{ SuperAccessorName, ExpandPrefixName }
  */
 class SuperAccessors(thisPhase: DenotTransformer) {
 
-  import tpd._
+  import tpd.*
 
   /** Some parts of trees will get a new owner in subsequent phases.
     *  These are value class methods, which will become extension methods.

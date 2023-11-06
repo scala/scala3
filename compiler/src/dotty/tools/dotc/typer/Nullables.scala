@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import Types._, Contexts._, Symbols._, Decorators._, Constants._
+import core.*
+import Types.*, Contexts.*, Symbols.*, Decorators.*, Constants.*
 import annotation.tailrec
 import StdNames.nme
 import util.Property
 import Names.Name
 import util.Spans.Span
-import Flags._
-import NullOpsDecorator._
+import Flags.*
+import NullOpsDecorator.*
 import collection.mutable
 import config.Printers.nullables
 import ast.{tpd, untpd}
@@ -18,7 +18,7 @@ import ast.Trees.mods
 
 /** Operations for implementing a flow analysis for nullability */
 object Nullables:
-  import ast.tpd._
+  import ast.tpd.*
 
   def importUnsafeNulls(using Context): Import = Import(
     ref(defn.LanguageModule),
@@ -422,7 +422,7 @@ object Nullables:
    *  because of shadowing.
    */
   def assignmentSpans(using Context): Map[Int, List[Span]] =
-    import ast.untpd._
+    import ast.untpd.*
 
     object populate extends UntypedTreeTraverser:
 

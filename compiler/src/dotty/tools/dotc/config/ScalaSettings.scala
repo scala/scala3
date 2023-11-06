@@ -6,12 +6,12 @@ import scala.language.unsafeNulls
 import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingGroup}
 import dotty.tools.dotc.config.SourceVersion
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.rewrites.Rewrites
 import dotty.tools.io.{AbstractFile, Directory, JDK9Reflectors, PlainDirectory}
 import Setting.ChoiceWithHelp
 
-import scala.util.chaining._
+import scala.util.chaining.*
 
 import java.util.zip.Deflater
 

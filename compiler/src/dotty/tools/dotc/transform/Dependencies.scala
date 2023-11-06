@@ -14,7 +14,7 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
  *  `freeVars`, `tracked`, and `logicalOwner`.
  */
 abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Context):
-  import ast.tpd._
+  import ast.tpd.*
 
   /** The symbol is a method or a lazy val that will be mapped to a method */
   protected def isExpr(sym: Symbol)(using Context): Boolean

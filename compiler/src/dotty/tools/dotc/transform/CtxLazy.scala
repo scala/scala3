@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import core.Contexts._
+import core.Contexts.*
 
 import scala.compiletime.uninitialized
 

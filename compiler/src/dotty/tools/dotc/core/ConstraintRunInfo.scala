@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Contexts._
+import Contexts.*
 import config.Printers.{default, typr}
 import scala.compiletime.uninitialized
 

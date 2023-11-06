@@ -1,12 +1,12 @@
 package scala
 
 import annotation.{experimental, showAsInfix}
-import compiletime._
-import compiletime.ops.int._
+import compiletime.*
+import compiletime.ops.int.*
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
-  import Tuple._
+  import Tuple.*
 
   /** Create a copy of this tuple as an Array */
   inline def toArray: Array[Object] =
@@ -292,7 +292,7 @@ case object EmptyTuple extends Tuple {
 
 /** Tuple of arbitrary non-zero arity */
 sealed trait NonEmptyTuple extends Tuple {
-  import Tuple._
+  import Tuple.*
 
   /** Get the i-th element of this tuple.
    *  Equivalent to productElement but with a precise return type.

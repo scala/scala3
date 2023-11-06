@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, Names._, NameOps._
+import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
 import TypeApplications.EtaExpansion
 

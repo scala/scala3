@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package reporting
 
-import core._
-import Contexts._
+import core.*
+import Contexts.*
 import Decorators.*, Symbols.*, Names.*, Types.*, Flags.*
 import typer.ProtoTypes.{FunProto, SelectionProto}
 import transform.SymUtils.isNoValue

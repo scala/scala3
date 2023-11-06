@@ -1,15 +1,15 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Symbols._, Types._, Contexts._, DenotTransformers._, Flags._
-import util.Spans._
-import SymUtils._
-import StdNames._, NameOps._
+import core.*
+import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import util.Spans.*
+import SymUtils.*
+import StdNames.*, NameOps.*
 import typer.Nullables
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
-  import ast.tpd._
+  import ast.tpd.*
 
   val superCls: Symbol = cls.superClass
   val mixins: List[ClassSymbol] = cls.mixins

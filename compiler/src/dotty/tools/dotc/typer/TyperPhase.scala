@@ -2,16 +2,16 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
+import core.*
 import Run.SubPhase
-import Phases._
-import Contexts._
-import Symbols._
+import Phases.*
+import Contexts.*
+import Symbols.*
 import ImportInfo.withRootImports
 import parsing.{Parser => ParserPhase}
 import config.Printers.typr
 import inlines.PrepareInlineable
-import util.Stats._
+import util.Stats.*
 
 /**
  *

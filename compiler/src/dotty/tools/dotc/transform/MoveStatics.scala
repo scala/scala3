@@ -1,26 +1,26 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Flags._
-import Contexts._
-import Symbols._
+import core.*
+import Flags.*
+import Contexts.*
+import Symbols.*
 import DenotTransformers.SymTransformer
 import Types.MethodType
 import Annotations.Annotation
 import SymDenotations.SymDenotation
 import Names.Name
 import StdNames.nme
-import NameOps._
+import NameOps.*
 
-import ast._
+import ast.*
 
-import SymUtils._
-import MegaPhase._
+import SymUtils.*
+import MegaPhase.*
 
 /** Move static methods from companion to the class itself */
 class MoveStatics extends MiniPhase with SymTransformer {
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = MoveStatics.name
 

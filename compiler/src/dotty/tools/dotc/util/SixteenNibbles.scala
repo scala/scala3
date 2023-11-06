@@ -5,7 +5,7 @@ package dotty.tools.dotc.util
  *
  */
 class SixteenNibbles(val bits: Long) extends AnyVal {
-  import SixteenNibbles._
+  import SixteenNibbles.*
 
   def apply(idx: Int): Int =
     (bits >>> (idx * Width)).toInt & Mask

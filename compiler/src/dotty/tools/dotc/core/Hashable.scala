@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._
+import Types.*
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import annotation.tailrec
 
@@ -40,7 +40,7 @@ object Hashable {
 }
 
 trait Hashable {
-  import Hashable._
+  import Hashable.*
 
   protected def hashSeed: Int = getClass.hashCode
 

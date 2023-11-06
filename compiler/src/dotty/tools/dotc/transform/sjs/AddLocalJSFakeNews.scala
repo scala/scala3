@@ -3,12 +3,12 @@ package dotc
 package transform
 package sjs
 
-import MegaPhase._
+import MegaPhase.*
 import core.Constants
-import core.Contexts._
-import core.Decorators._
+import core.Contexts.*
+import core.Decorators.*
 import core.StdNames.nme
-import core.Symbols._
+import core.Symbols.*
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
@@ -46,7 +46,7 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
  */
 class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
   import ExplicitOuter.outer
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = AddLocalJSFakeNews.name
 

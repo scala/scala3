@@ -13,7 +13,7 @@ import util.{LinearMap, HashSet}
 import scala.annotation.internal.sharable
 
 object Names {
-  import NameKinds._
+  import NameKinds.*
 
   /** Things that can be turned into names with `toTermName` and `toTypeName`.
    *  Decorators implements these as extension methods for strings.

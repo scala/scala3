@@ -1,7 +1,7 @@
 package dotty.tools.repl
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.Phase
 
 import scala.compiletime.uninitialized
@@ -12,7 +12,7 @@ import scala.compiletime.uninitialized
  *  after Typer.
  */
 class CollectTopLevelImports extends Phase {
-  import tpd._
+  import tpd.*
 
   def phaseName: String = "collectTopLevelImports"
 

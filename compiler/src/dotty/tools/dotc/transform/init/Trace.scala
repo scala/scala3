@@ -7,7 +7,7 @@ import Contexts.*
 import ast.tpd.*
 import util.SourcePosition
 
-import Decorators._, printing.SyntaxHighlighting
+import Decorators.*, printing.SyntaxHighlighting
 
 import scala.collection.mutable
 

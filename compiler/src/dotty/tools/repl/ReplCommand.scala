@@ -1,6 +1,6 @@
 package dotty.tools.repl
 
-import dotty.tools.dotc.config.Properties._
+import dotty.tools.dotc.config.Properties.*
 import dotty.tools.dotc.config.CompilerCommand
 
 object ReplCommand extends CompilerCommand:

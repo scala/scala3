@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Flags._, Trees._, Types._, Contexts._
-import Names._, StdNames._, NameOps._, Symbols._
+import core.*
+import Flags.*, Trees.*, Types.*, Contexts.*
+import Names.*, StdNames.*, NameOps.*, Symbols.*
 import typer.ConstFold
 import reporting.trace
-import dotty.tools.dotc.transform.SymUtils._
-import Decorators._
+import dotty.tools.dotc.transform.SymUtils.*
+import Decorators.*
 import Constants.Constant
 import scala.collection.mutable
 
@@ -390,7 +390,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
-  import untpd._
+  import untpd.*
 
   /** The underlying tree when stripping any TypedSplice or Parens nodes */
   override def unsplice(tree: Tree): Tree = tree match {
@@ -495,8 +495,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
-  import TreeInfo._
-  import tpd._
+  import TreeInfo.*
+  import tpd.*
 
   /** The purity level of this statement.
    *  @return   Pure        if statement has no side effects

@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Decorators._, TypeApplications._
+import Types.*, Contexts.*, Symbols.*, Decorators.*, TypeApplications.*
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 import collection.mutable
 import printing.Printer
-import printing.Texts._
+import printing.Texts.*
 import config.Config
 import config.Printers.constr
 import reflect.ClassTag
@@ -126,7 +126,7 @@ object OrderingConstraint {
   val empty = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentitySet.empty)
 }
 
-import OrderingConstraint._
+import OrderingConstraint.*
 
 /** Constraint over undetermined type parameters that keeps separate maps to
  *  reflect parameter orderings.

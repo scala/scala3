@@ -206,7 +206,7 @@ class CheckUnused private (phaseMode: CheckUnused.PhaseMode, suffix: String, _ke
    * corresponding context property
    */
   private def traverser = new TreeTraverser:
-    import tpd._
+    import tpd.*
     import UnusedData.ScopeType
 
     /* Register every imports, definition and usage */
@@ -607,14 +607,14 @@ object CheckUnused:
      * package a:
      *   val x: Int = 0
      * package b:
-     *   import a._ // no warning
+     *   import a.* // no warning
      * }}}
      * --- WITH OBJECT : OK ---
      * {{{
      * object a:
      *   val x: Int = 0
      * object b:
-     *   import a._ // unused warning
+     *   import a.* // unused warning
      * }}}
      */
     private def isConstructorOfSynth(sym: Symbol)(using Context): Boolean =
@@ -643,8 +643,8 @@ object CheckUnused:
         sel.isWildcard ||
         imp.expr.tpe.member(sel.name.toTermName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit)) ||
         imp.expr.tpe.member(sel.name.toTypeName).alternatives.exists(_.symbol.isOneOf(GivenOrImplicit))
-      ) 
-    
+      )
+
     /**
      * Ignore CanEqual imports
      */
@@ -655,7 +655,7 @@ object CheckUnused:
 
     /**
      * Ignore definitions of CanEqual given
-     */ 
+     */
     private def isDefIgnored(memDef: tpd.MemberDef)(using Context): Boolean =
       memDef.symbol.isOneOf(GivenOrImplicit) && memDef.symbol.typeRef.baseClasses.exists(_.derivesFrom(defn.CanEqualClass))
 

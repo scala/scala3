@@ -5,7 +5,7 @@
 // Protofile syntax: PROTO3
 
 package dotty.tools.dotc.semanticdb
-import dotty.tools.dotc.semanticdb.internal._
+import dotty.tools.dotc.semanticdb.internal.*
 import scala.annotation.internal.sharable
 
 @SerialVersionUID(0L)
@@ -17,14 +17,14 @@ final case class Documentation(
     private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
     private[this] def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
-      
+
       {
         val __value = message
         if (!__value.isEmpty) {
           __size += SemanticdbOutputStream.computeStringSize(1, __value)
         }
       };
-      
+
       {
         val __value = format.value
         if (__value != 0) {
@@ -40,7 +40,7 @@ final case class Documentation(
         __serializedSizeMemoized = __size
       }
       __size - 1
-      
+
     }
     def writeTo(`_output__`: SemanticdbOutputStream): _root_.scala.Unit = {
       {
@@ -58,10 +58,10 @@ final case class Documentation(
     }
     def withMessage(__v: _root_.scala.Predef.String): Documentation = copy(message = __v)
     def withFormat(__v: dotty.tools.dotc.semanticdb.Documentation.Format): Documentation = copy(format = __v)
-    
-    
-    
-    
+
+
+
+
     // @@protoc_insertion_point(GeneratedMessage[dotty.tools.dotc.semanticdb.Documentation])
 }
 
@@ -87,12 +87,12 @@ object Documentation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
         format = __format
     )
   }
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
   lazy val defaultInstance = dotty.tools.dotc.semanticdb.Documentation(
     message = "",
     format = dotty.tools.dotc.semanticdb.Documentation.Format.HTML
@@ -104,49 +104,49 @@ object Documentation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
     def isJavadoc: _root_.scala.Boolean = false
     def isScaladoc: _root_.scala.Boolean = false
     def isKdoc: _root_.scala.Boolean = false
-    
+
     final def asRecognized: _root_.scala.Option[dotty.tools.dotc.semanticdb.Documentation.Format.Recognized] = if (isUnrecognized) _root_.scala.None else _root_.scala.Some(this.asInstanceOf[dotty.tools.dotc.semanticdb.Documentation.Format.Recognized])
   }
-  
+
   object Format  {
     sealed trait Recognized extends Format
-    
-    
+
+
     @SerialVersionUID(0L)
     case object HTML extends Format(0) with Format.Recognized {
       val index = 0
       val name = "HTML"
       override def isHtml: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object MARKDOWN extends Format(1) with Format.Recognized {
       val index = 1
       val name = "MARKDOWN"
       override def isMarkdown: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object JAVADOC extends Format(2) with Format.Recognized {
       val index = 2
       val name = "JAVADOC"
       override def isJavadoc: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object SCALADOC extends Format(3) with Format.Recognized {
       val index = 3
       val name = "SCALADOC"
       override def isScaladoc: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     case object KDOC extends Format(4) with Format.Recognized {
       val index = 4
       val name = "KDOC"
       override def isKdoc: _root_.scala.Boolean = true
     }
-    
+
     @SerialVersionUID(0L)
     final case class Unrecognized(unrecognizedValue: _root_.scala.Int)  extends Format(unrecognizedValue) with SemanticdbUnrecognizedEnum
     lazy val values = scala.collection.immutable.Seq(HTML, MARKDOWN, JAVADOC, SCALADOC, KDOC)
@@ -158,8 +158,8 @@ object Documentation  extends SemanticdbGeneratedMessageCompanion[dotty.tools.do
       case 4 => KDOC
       case __other => Unrecognized(__other)
     }
-    
-    
+
+
   }
   final val MESSAGE_FIELD_NUMBER = 1
   final val FORMAT_FIELD_NUMBER = 2
