@@ -16,6 +16,7 @@ package collection.mutable
 import scala.annotation.tailrec
 import collection.{AbstractIterator, Iterator}
 import java.lang.String
+import language.experimental.captureChecking
 
 /**
  * An object containing the red-black tree implementation used by mutable `TreeMaps`.
@@ -31,25 +32,25 @@ private[collection] object RedBlackTree {
   // Therefore, while obtaining the size of the whole tree is O(1), knowing the number of entries inside a range is O(n)
   // on the size of the range.
 
-  final class Tree[A, B](var root: Node[A, B], var size: Int) {
+  final class Tree[sealed A, sealed B](var root: Node[A, B], var size: Int) {
     def treeCopy(): Tree[A, B] = new Tree(copyTree(root), size)
   }
 
-  final class Node[A, B](var key: A, var value: B, var red: Boolean, var left: Node[A, B], var right: Node[A, B], var parent: Node[A, B]) {
+  final class Node[sealed A, sealed B](var key: A, var value: B, var red: Boolean, var left: Node[A, B], var right: Node[A, B], var parent: Node[A, B]) {
     override def toString: String = "Node(" + key + ", " + value + ", " + red + ", " + left + ", " + right + ")"
   }
 
   object Tree {
-    def empty[A, B]: Tree[A, B] = new Tree(null, 0)
+    def empty[sealed A, sealed B]: Tree[A, B] = new Tree(null, 0)
   }
 
   object Node {
 
-    @`inline` def apply[A, B](key: A, value: B, red: Boolean,
+    @`inline` def apply[sealed A, sealed B](key: A, value: B, red: Boolean,
                             left: Node[A, B], right: Node[A, B], parent: Node[A, B]): Node[A, B] =
       new Node(key, value, red, left, right, parent)
 
-    @`inline` def leaf[A, B](key: A, value: B, red: Boolean, parent: Node[A, B]): Node[A, B] =
+    @`inline` def leaf[sealed A, sealed B](key: A, value: B, red: Boolean, parent: Node[A, B]): Node[A, B] =
       new Node(key, value, red, null, null, parent)
 
     def unapply[A, B](t: Node[A, B]) = Some((t.key, t.value, t.left, t.right, t.parent))
@@ -180,7 +181,7 @@ private[collection] object RedBlackTree {
 
   // ---- insertion ----
 
-  def insert[A, B](tree: Tree[A, B], key: A, value: B)(implicit ord: Ordering[A]): Unit = {
+  def insert[sealed A, sealed B](tree: Tree[A, B], key: A, value: B)(implicit ord: Ordering[A]): Unit = {
     var y: Node[A, B] = null
     var x = tree.root
     var cmp = 1
@@ -476,16 +477,16 @@ private[collection] object RedBlackTree {
     if (node.right ne null) transformNodeNonNull(node.right, f)
   }
 
-  def iterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None, end: Option[A] = None): Iterator[(A, B)] =
+  def iterator[sealed A: Ordering, sealed B](tree: Tree[A, B], start: Option[A] = None, end: Option[A] = None): Iterator[(A, B)] =
     new EntriesIterator(tree, start, end)
 
-  def keysIterator[A: Ordering](tree: Tree[A, _], start: Option[A] = None, end: Option[A] = None): Iterator[A] =
+  def keysIterator[sealed A: Ordering](tree: Tree[A, _], start: Option[A] = None, end: Option[A] = None): Iterator[A] =
     new KeysIterator(tree, start, end)
 
-  def valuesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A] = None, end: Option[A] = None): Iterator[B] =
+  def valuesIterator[sealed A: Ordering, sealed B](tree: Tree[A, B], start: Option[A] = None, end: Option[A] = None): Iterator[B] =
     new ValuesIterator(tree, start, end)
 
-  private[this] abstract class TreeIterator[A, B, R](tree: Tree[A, B], start: Option[A], end: Option[A])
+  private[this] abstract class TreeIterator[sealed A, sealed B, R](tree: Tree[A, B], start: Option[A], end: Option[A])
                                                     (implicit ord: Ordering[A]) extends AbstractIterator[R] {
 
     protected def nextResult(node: Node[A, B]): R
@@ -513,19 +514,19 @@ private[collection] object RedBlackTree {
     setNullIfAfterEnd()
   }
 
-  private[this] final class EntriesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A], end: Option[A])
+  private[this] final class EntriesIterator[sealed A: Ordering, sealed B](tree: Tree[A, B], start: Option[A], end: Option[A])
     extends TreeIterator[A, B, (A, B)](tree, start, end) {
 
     def nextResult(node: Node[A, B]) = (node.key, node.value)
   }
 
-  private[this] final class KeysIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A], end: Option[A])
+  private[this] final class KeysIterator[sealed A: Ordering, sealed B](tree: Tree[A, B], start: Option[A], end: Option[A])
     extends TreeIterator[A, B, A](tree, start, end) {
 
     def nextResult(node: Node[A, B]) = node.key
   }
 
-  private[this] final class ValuesIterator[A: Ordering, B](tree: Tree[A, B], start: Option[A], end: Option[A])
+  private[this] final class ValuesIterator[sealed A: Ordering, sealed B](tree: Tree[A, B], start: Option[A], end: Option[A])
     extends TreeIterator[A, B, B](tree, start, end) {
 
     def nextResult(node: Node[A, B]) = node.value
@@ -603,7 +604,7 @@ private[collection] object RedBlackTree {
   // building
 
   /** Build a Tree suitable for a TreeSet from an ordered sequence of keys */
-  def fromOrderedKeys[A](xs: Iterator[A], size: Int): Tree[A, Null] = {
+  def fromOrderedKeys[sealed A](xs: Iterator[A], size: Int): Tree[A, Null] = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Node[A, Null] = size match {
       case 0 => null
@@ -622,7 +623,7 @@ private[collection] object RedBlackTree {
   }
 
   /** Build a Tree suitable for a TreeMap from an ordered sequence of key/value pairs */
-  def fromOrderedEntries[A, B](xs: Iterator[(A, B)], size: Int): Tree[A, B] = {
+  def fromOrderedEntries[sealed A, sealed B](xs: Iterator[(A, B)], size: Int): Tree[A, B] = {
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size) // maximum depth of non-leaf nodes
     def f(level: Int, size: Int): Node[A, B] = size match {
       case 0 => null
@@ -642,7 +643,7 @@ private[collection] object RedBlackTree {
     new Tree(f(1, size), size)
   }
 
-  def copyTree[A, B](n: Node[A, B]): Node[A, B] =
+  def copyTree[sealed A, sealed B](n: Node[A, B]): Node[A, B] =
     if(n eq null) null else {
       val c = new Node(n.key, n.value, n.red, copyTree(n.left), copyTree(n.right), null)
       if(c.left != null) c.left.parent = c

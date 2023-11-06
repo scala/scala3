@@ -18,6 +18,7 @@ import java.util.{concurrent => juc}
 import java.{lang => jl, util => ju}
 
 import scala.{unchecked => uc}
+import language.experimental.captureChecking
 
 /** Defines converter methods from Scala to Java collections.
   * These methods are available through the [[scala.jdk.javaapi.CollectionConverters]] object.

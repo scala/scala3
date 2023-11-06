@@ -20,6 +20,8 @@ import scala.collection.mutable.{Builder, ImmutableBuilder, ListBuffer}
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.language.implicitConversions
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** Utility class for long maps.
   */
@@ -52,7 +54,7 @@ object LongMap {
   def apply[T](elems: (Long, T)*): LongMap[T] =
     elems.foldLeft(empty[T])((x, y) => x.updated(y._1, y._2))
 
-  def from[V](coll: IterableOnce[(Long, V)]): LongMap[V] =
+  def from[V](coll: IterableOnce[(Long, V)]^): LongMap[V] =
     newBuilder[V].addAll(coll).result()
 
   def newBuilder[V]: Builder[(Long, V), LongMap[V]] =
@@ -86,13 +88,13 @@ object LongMap {
 
   @SerialVersionUID(3L)
   private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
-    def fromSpecific(it: IterableOnce[(Long, AnyRef)]): LongMap[AnyRef] = LongMap.from[AnyRef](it)
+    def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: LongMap.type): BuildFrom[Any, (Long, V), LongMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Long, V), LongMap[V]]]
   private[this] object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
-    def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]) = LongMap.from(it)
+    def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]^) = LongMap.from(it)
     def newBuilder(from: Any) = LongMap.newBuilder[AnyRef]
   }
 
@@ -176,7 +178,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   with StrictOptimizedMapOps[Long, T, Map, LongMap[T]]
   with Serializable {
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Long, T)] @uncheckedVariance): LongMap[T] = {
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Long, T) @uncheckedVariance]^): LongMap[T] = {
     //TODO should this be the default implementation of this method in StrictOptimizedIterableOps?
     val b = newSpecificBuilder
     b.sizeHint(coll)
@@ -191,7 +193,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   override def empty: LongMap[T] = LongMap.Nil
 
   override def toList = {
-    val buffer = new ListBuffer[(Long, T)]
+    val buffer = new ListBuffer[(Long, T) @uncheckedCaptures]
     foreach(buffer += _)
     buffer.toList
   }
@@ -478,10 +480,10 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
 
   def flatMap[V2](f: ((Long, T)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
 
-  override def concat[V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]): LongMap[V1] =
+  override def concat[V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] =
     super.concat(that).asInstanceOf[LongMap[V1]] // Already has correct type but not declared as such
 
-  override def ++ [V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]): LongMap[V1] = concat(that)
+  override def ++ [V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = concat(that)
 
   def collect[V2](pf: PartialFunction[(Long, T), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)

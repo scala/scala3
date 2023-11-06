@@ -15,6 +15,7 @@ package impl
 
 import scala.collection.Stepper.EfficientSplit
 import scala.collection._
+// import language.experimental.captureChecking // TODO enable
 
 private[collection] abstract class TableStepperBase[A, I >: Null <: AnyRef, Sub >: Null, Semi <: Sub with TableStepperBase[A, I, _, _]](
   protected var maxLength: Int, protected val table: Array[I], protected var i0: Int, protected val iN: Int

@@ -19,6 +19,7 @@ import java.{lang => jl, util => ju}
 
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
+import language.experimental.captureChecking
 
 /** Defines implicit converter methods from Java to Scala collections. */
 @deprecated("Use `scala.jdk.CollectionConverters` instead", "2.13.0")

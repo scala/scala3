@@ -14,12 +14,13 @@ package scala.collection
 
 import java.{lang => jl}
 
+import language.experimental.captureChecking
 import scala.collection.Stepper.EfficientSplit
 
 /** An implicit StepperShape instance is used in the [[IterableOnce.stepper]] to return a possibly
   * specialized Stepper `S` according to the element type `T`.
   */
-sealed trait StepperShape[-T, S <: Stepper[_]] {
+sealed trait StepperShape[-T, S <: Stepper[_]^] extends Pure {
   /** Return the Int constant (as defined in the `StepperShape` companion object) for this `StepperShape`. */
   def shape: StepperShape.Shape
 

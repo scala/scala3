@@ -17,6 +17,7 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.convert.impl.RangeStepper
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
 
 /** The `Range` class represents integer values in range
   *  ''[start;end)'' with non-zero step value `step`.
@@ -213,7 +214,7 @@ sealed abstract class Range(
   private[this] def posOf(i: Int): Int =
     if (contains(i)) (i - start) / step else -1
 
-  override def sameElements[B >: Int](that: IterableOnce[B]): Boolean = that match {
+  override def sameElements[B >: Int](that: IterableOnce[B]^): Boolean = that match {
     case other: Range =>
       (this.length : @annotation.switch) match {
         case 0 => other.isEmpty
@@ -613,7 +614,7 @@ object Range {
 
   // As there is no appealing default step size for not-really-integral ranges,
   // we offer a partially constructed object.
-  class Partial[T, U](private val f: T => U) extends AnyVal {
+  class Partial[T, U](private val f: T -> U) extends AnyVal {
     def by(x: T): U = f(x)
     override def toString = "Range requires step"
   }

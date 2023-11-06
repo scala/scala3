@@ -25,6 +25,8 @@ import scala.collection.{Iterator, MapFactory, MapFactoryDefaults, Stepper, Step
 import scala.runtime.AbstractFunction2
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements immutable maps using a Compressed Hash-Array Mapped Prefix-tree.
   * See paper https://michael.steindorfer.name/publications/oopsla15.pdf for more details.
@@ -161,7 +163,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     newHashMapOrThis(rootNode.removed(key, keyUnimprovedHash, improve(keyUnimprovedHash), 0))
   }
 
-  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]): HashMap[K, V1] = that match {
+  override def concat[V1 >: V](that: scala.IterableOnce[(K, V1)]^): HashMap[K, V1] = that match {
     case hm: HashMap[K, V1] =>
       if (isEmpty) hm
       else {
@@ -384,7 +386,7 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     else new HashMap(newRootNode)
   }
 
-  override def removedAll(keys: IterableOnce[K]): HashMap[K, V] = {
+  override def removedAll(keys: IterableOnce[K]^): HashMap[K, V] = {
     if (isEmpty) {
       this
     } else {
@@ -1766,7 +1768,7 @@ private final class BitmapIndexedMapNode[K, +V](
             } else {
               mapOfNewNodes |= bitpos
               if (newNodes eq null) {
-                newNodes = mutable.Queue.empty
+                newNodes = mutable.Queue.empty[MapNode[K, V] @uncheckedCaptures]
               }
               newNodes += newSubNode
             }
@@ -1851,7 +1853,7 @@ private final class BitmapIndexedMapNode[K, +V](
 private final class HashCollisionMapNode[K, +V ](
   val originalHash: Int,
   val hash: Int,
-  var content: Vector[(K, V @uV)]
+  var content: Vector[(K, V @uV) @uncheckedCaptures]
   ) extends MapNode[K, V] {
 
   import Node._
@@ -2155,7 +2157,7 @@ private final class MapKeyValueTupleReverseIterator[K, V](rootNode: MapNode[K, V
 private final class MapKeyValueTupleHashIterator[K, V](rootNode: MapNode[K, V])
   extends ChampBaseReverseIterator[MapNode[K, V]](rootNode) with Iterator[Any] {
   private[this] var hash = 0
-  private[this] var value: V = _
+  private[this] var value: V @uncheckedCaptures = _
   override def hashCode(): Int = MurmurHash3.tuple2Hash(hash, value.##, MurmurHash3.productSeed)
   def next() = {
     if (!hasNext)
@@ -2202,7 +2204,7 @@ object HashMap extends MapFactory[HashMap] {
   def empty[K, V]: HashMap[K, V] =
     EmptyMap.asInstanceOf[HashMap[K, V]]
 
-  def from[K, V](source: collection.IterableOnce[(K, V)]): HashMap[K, V] =
+  def from[K, V](source: collection.IterableOnce[(K, V)]^): HashMap[K, V] =
     source match {
       case hs: HashMap[K, V] => hs
       case _ => (newBuilder[K, V] ++= source).result()
@@ -2227,12 +2229,12 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
   /** The last given out HashMap as a return value of `result()`, if any, otherwise null.
     * Indicates that on next add, the elements should be copied to an identical structure, before continuing
     * mutations. */
-  private var aliased: HashMap[K, V] = _
+  private var aliased: HashMap[K, V] @uncheckedCaptures = _
 
   private def isAliased: Boolean = aliased != null
 
   /** The root node of the partially build hashmap */
-  private var rootNode: BitmapIndexedMapNode[K, V] = newEmptyRootNode
+  private var rootNode: BitmapIndexedMapNode[K, V] @uncheckedCaptures = newEmptyRootNode
 
   private[immutable] def getOrElse[V0 >: V](key: K, value: V0): V0 =
     if (rootNode.size == 0) value
@@ -2366,7 +2368,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     this
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     ensureUnaliased()
     xs match {
       case hm: HashMap[K, V] =>
@@ -2383,7 +2385,7 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
             )
             currentValueCursor += 1
           }
-        }
+        }.asInstanceOf // !!! cc gets confused with representation of capture sets in invariant position
       case hm: collection.mutable.HashMap[K, V] =>
         val iter = hm.nodeIterator
         while (iter.hasNext) {

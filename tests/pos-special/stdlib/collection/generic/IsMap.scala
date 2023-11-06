@@ -15,6 +15,7 @@ package generic
 
 import IsMap.Tupled
 import scala.collection.immutable.{IntMap, LongMap}
+import language.experimental.captureChecking
 
 /**
   * Type class witnessing that a collection type `Repr`

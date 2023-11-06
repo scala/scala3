@@ -13,6 +13,7 @@
 package scala
 package collection
 package generic
+import language.experimental.captureChecking
 
 /** Type class witnessing that a collection representation type `Repr` has
  *  elements of type `A` and has a conversion to `IterableOnce[A]`.

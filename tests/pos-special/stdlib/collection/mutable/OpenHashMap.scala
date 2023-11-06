@@ -16,6 +16,7 @@ package mutable
 import java.lang.Integer.numberOfLeadingZeros
 import java.util.ConcurrentModificationException
 import scala.collection.generic.DefaultSerializable
+import language.experimental.captureChecking
 
 /**
   *  @define Coll `OpenHashMap`
@@ -25,10 +26,10 @@ import scala.collection.generic.DefaultSerializable
 @SerialVersionUID(3L)
 object OpenHashMap extends MapFactory[OpenHashMap] {
 
-  def empty[K, V] = new OpenHashMap[K, V]
-  def from[K, V](it: IterableOnce[(K, V)]): OpenHashMap[K,V] = empty ++= it
+  def empty[sealed K, sealed V] = new OpenHashMap[K, V]
+  def from[sealed K, sealed V](it: IterableOnce[(K, V)]^): OpenHashMap[K,V] = empty ++= it
 
-  def newBuilder[K, V]: Builder[(K, V), OpenHashMap[K,V]] =
+  def newBuilder[sealed K, sealed V]: Builder[(K, V), OpenHashMap[K,V]] =
     new GrowableBuilder[(K, V), OpenHashMap[K, V]](empty)
 
   /** A hash table entry.
@@ -38,7 +39,7 @@ object OpenHashMap extends MapFactory[OpenHashMap] {
     * If its `key` is not the default value of type `Key`, the entry is occupied.
     * If the entry is occupied, `hash` contains the hash value of `key`.
     */
-  final private class OpenEntry[Key, Value](var key: Key,
+  final private class OpenEntry[sealed Key, sealed Value](var key: Key,
                                             var hash: Int,
                                             var value: Option[Value])
 
@@ -61,7 +62,7 @@ object OpenHashMap extends MapFactory[OpenHashMap] {
   *  @define willNotTerminateInf
   */
 @deprecated("Use HashMap or one of the specialized versions (LongMap, AnyRefMap) instead of OpenHashMap", "2.13.0")
-class OpenHashMap[Key, Value](initialSize : Int)
+class OpenHashMap[sealed Key, sealed Value](initialSize : Int)
   extends AbstractMap[Key, Value]
     with MapOps[Key, Value, OpenHashMap, OpenHashMap[Key, Value]]
     with StrictOptimizedIterableOps[(Key, Value), Iterable, OpenHashMap[Key, Value]]

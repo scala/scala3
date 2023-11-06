@@ -16,6 +16,7 @@ package impl
 import java.util.Spliterator
 
 import scala.collection.Stepper.EfficientSplit
+// import language.experimental.captureChecking // TODO enable
 
 /** Abstracts all the generic operations of stepping over an indexable collection */
 private[convert] abstract class IndexedStepperBase[Sub >: Null, Semi <: Sub](protected var i0: Int, protected var iN: Int)

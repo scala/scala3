@@ -11,6 +11,7 @@
  */
 
 package scala
+import language.experimental.captureChecking
 
 package object collection {
   @deprecated("Use Iterable instead of Traversable", "2.13.0")

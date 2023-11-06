@@ -14,10 +14,12 @@ package scala.collection
 package mutable
 
 import scala.annotation.nowarn
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 
 /** A `Buffer` is a growable and shrinkable `Seq`. */
-trait Buffer[A]
+trait Buffer[sealed A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]
@@ -48,19 +50,19 @@ trait Buffer[A]
   /** Appends the elements contained in a iterable object to this buffer.
     *  @param xs  the iterable object containing the elements to append.
     */
-  @`inline` final def appendAll(xs: IterableOnce[A]): this.type = addAll(xs)
+  @`inline` final def appendAll(xs: IterableOnce[A]^): this.type = addAll(xs)
 
 
   /** Alias for `prepend` */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
 
-  def prependAll(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
+  def prependAll(elems: IterableOnce[A]^): this.type = { insertAll(0, elems); this }
 
   @deprecated("Use prependAll instead", "2.13.0")
   @`inline` final def prepend(elems: A*): this.type = prependAll(elems)
 
   /** Alias for `prependAll` */
-  @inline final def ++=:(elems: IterableOnce[A]): this.type = prependAll(elems)
+  @inline final def ++=:(elems: IterableOnce[A]^): this.type = prependAll(elems)
 
   /** Inserts a new element at a given index into this buffer.
     *
@@ -81,7 +83,7 @@ trait Buffer[A]
     *  @throws IndexOutOfBoundsException if `idx` is out of bounds.
     */
   @throws[IndexOutOfBoundsException]
-  def insertAll(idx: Int, elems: IterableOnce[A]): Unit
+  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit
 
   /** Removes the element at a given index position.
     *
@@ -103,7 +105,7 @@ trait Buffer[A]
   @throws[IndexOutOfBoundsException]
   @throws[IllegalArgumentException]
   def remove(idx: Int, count: Int): Unit
-  
+
   /** Removes a single element from this buffer, at its first occurrence.
     *  If the buffer does not contain that element, it is unchanged.
     *
@@ -132,7 +134,7 @@ trait Buffer[A]
   @deprecated("use dropRightInPlace instead", since = "2.13.4")
   def trimEnd(n: Int): Unit = dropRightInPlace(n)
 
-  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type
 
   // +=, ++=, clear inherited from Growable
   // Per remark of @ichoran, we should preferably not have these:
@@ -180,11 +182,11 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
 
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
-  def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
+  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
     // There's scope for a better implementation which copies elements in place.
     var i = 0
     val s = size
-    val newElems = new Array[IterableOnce[A]](s)
+    val newElems = new Array[(IterableOnce[A]^) @uncheckedCaptures](s)
     while (i < s) { newElems(i) = f(this(i)); i += 1 }
     clear()
     i = 0
@@ -207,7 +209,7 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     if (i == j) this else takeInPlace(j)
   }
 
-  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
     val replaced0 = math.min(math.max(replaced, 0), length)
     val i = math.min(math.max(from, 0), length)
     var j = 0

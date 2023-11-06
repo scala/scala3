@@ -12,6 +12,7 @@
 
 package scala.collection.mutable
 
+import language.experimental.captureChecking
 
 /** A trait for mutable maps with multiple values assigned to a key.
   *
@@ -51,7 +52,7 @@ package scala.collection.mutable
   *  @define Coll `MultiMap`
   */
 @deprecated("Use a scala.collection.mutable.MultiDict in the scala-collection-contrib module", "2.13.0")
-trait MultiMap[K, V] extends Map[K, Set[V]] {
+trait MultiMap[K, sealed V] extends Map[K, Set[V]] {
   /** Creates a new set.
     *
     *  Classes that use this trait as a mixin can override this method

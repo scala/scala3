@@ -15,6 +15,7 @@ package mutable
 
 import scala.collection.generic.DefaultSerializationProxy
 import scala.language.implicitConversions
+import language.experimental.captureChecking
 
 /** This class implements mutable maps with `Long` keys based on a hash table with open addressing.
   *
@@ -36,7 +37,7 @@ import scala.language.implicitConversions
   *  rapidly as 2^30 is approached.
   *
   */
-final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBufferSize: Int, initBlank: Boolean)
+final class LongMap[sealed V] private[collection] (defaultEntry: Long -> V, initialBufferSize: Int, initBlank: Boolean)
   extends AbstractMap[Long, V]
     with MapOps[Long, V, Map, LongMap[V]]
     with StrictOptimizedIterableOps[(Long, V), Iterable, LongMap[V]]
@@ -46,7 +47,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBuff
   def this() = this(LongMap.exceptionDefault, 16, true)
 
   // TODO: override clear() with an optimization more tailored for efficiency.
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Long, V)]): LongMap[V] = {
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Long, V)]^): LongMap[V] = {
     //TODO should this be the default implementation of this method in StrictOptimizedIterableOps?
     val b = newSpecificBuilder
     b.sizeHint(coll)
@@ -56,7 +57,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBuff
   override protected def newSpecificBuilder: Builder[(Long, V),LongMap[V]] = new GrowableBuilder(LongMap.empty[V])
 
   /** Creates a new `LongMap` that returns default values according to a supplied key-value mapping. */
-  def this(defaultEntry: Long => V) = this(defaultEntry, 16, true)
+  def this(defaultEntry: Long -> V) = this(defaultEntry, 16, true)
 
   /** Creates a new `LongMap` with an initial buffer of specified size.
     *
@@ -66,7 +67,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBuff
   def this(initialBufferSize: Int) = this(LongMap.exceptionDefault, initialBufferSize, true)
 
   /** Creates a new `LongMap` with specified default values and initial buffer size. */
-  def this(defaultEntry: Long => V,  initialBufferSize: Int) = this(defaultEntry,  initialBufferSize,  true)
+  def this(defaultEntry: Long -> V,  initialBufferSize: Int) = this(defaultEntry,  initialBufferSize,  true)
 
   private[this] var mask = 0
   private[this] var extraKeys: Int = 0
@@ -468,18 +469,18 @@ final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBuff
   }
 
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
-  override def + [V1 >: V](elem1: (Long, V1), elem2: (Long, V1), elems: (Long, V1)*): LongMap[V1] = {
+  override def + [sealed V1 >: V](elem1: (Long, V1), elem2: (Long, V1), elems: (Long, V1)*): LongMap[V1] = {
     val m = this + elem1 + elem2
     if(elems.isEmpty) m else m.concat(elems)
   }
 
-  override def concat[V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]): LongMap[V1] = {
+  override def concat[sealed V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = {
     val lm = clone().asInstanceOf[LongMap[V1]]
     xs.iterator.foreach(kv => lm += kv)
     lm
   }
 
-  override def ++ [V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]): LongMap[V1] = concat(xs)
+  override def ++ [sealed V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = concat(xs)
 
   @deprecated("Use m.clone().addOne(k,v) instead of m.updated(k, v)", "2.13.0")
   override def updated[V1 >: V](key: Long, value: V1): LongMap[V1] =
@@ -519,7 +520,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBuff
     *  Unlike `mapValues`, this method generates a new
     *  collection immediately.
     */
-  def mapValuesNow[V1](f: V => V1): LongMap[V1] = {
+  def mapValuesNow[sealed V1](f: V => V1): LongMap[V1] = {
     val zv = if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef] else null
     val mv = if ((extraKeys & 2) == 2) f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef] else null
     val lm = new LongMap[V1](LongMap.exceptionDefault,  1,  false)
@@ -562,11 +563,11 @@ final class LongMap[V] private[collection] (defaultEntry: Long => V, initialBuff
     this
   }
 
-  def map[V2](f: ((Long, V)) => (Long, V2)): LongMap[V2] = LongMap.from(new View.Map(coll, f))
+  def map[sealed V2](f: ((Long, V)) => (Long, V2)): LongMap[V2] = LongMap.from(new View.Map(coll, f))
 
-  def flatMap[V2](f: ((Long, V)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
+  def flatMap[sealed V2](f: ((Long, V)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
 
-  def collect[V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
+  def collect[sealed V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
 
   protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[V](LongMap), this)
@@ -580,13 +581,13 @@ object LongMap {
   private final val VacantBit  = 0x40000000
   private final val MissVacant = 0xC0000000
 
-  private val exceptionDefault: Long => Nothing = (k: Long) => throw new NoSuchElementException(k.toString)
+  private val exceptionDefault: Long -> Nothing = (k: Long) => throw new NoSuchElementException(k.toString)
 
   /** A builder for instances of `LongMap`.
     *
     *  This builder can be reused to create multiple instances.
     */
-  final class LongMapBuilder[V] extends ReusableBuilder[(Long, V), LongMap[V]] {
+  final class LongMapBuilder[sealed V] extends ReusableBuilder[(Long, V), LongMap[V]] {
     private[collection] var elems: LongMap[V] = new LongMap[V]
     override def addOne(entry: (Long, V)): this.type = {
       elems += entry
@@ -598,9 +599,9 @@ object LongMap {
   }
 
   /** Creates a new `LongMap` with zero or more key/value pairs. */
-  def apply[V](elems: (Long, V)*): LongMap[V] = buildFromIterableOnce(elems)
+  def apply[sealed V](elems: (Long, V)*): LongMap[V] = buildFromIterableOnce(elems)
 
-  private def buildFromIterableOnce[V](elems: IterableOnce[(Long, V)]): LongMap[V] = {
+  private def buildFromIterableOnce[sealed V](elems: IterableOnce[(Long, V)]^): LongMap[V] = {
     var sz = elems.knownSize
     if(sz < 0) sz = 4
     val lm = new LongMap[V](sz * 2)
@@ -610,10 +611,10 @@ object LongMap {
   }
 
   /** Creates a new empty `LongMap`. */
-  def empty[V]: LongMap[V] = new LongMap[V]
+  def empty[sealed V]: LongMap[V] = new LongMap[V]
 
   /** Creates a new empty `LongMap` with the supplied default */
-  def withDefault[V](default: Long => V): LongMap[V] = new LongMap[V](default)
+  def withDefault[sealed V](default: Long -> V): LongMap[V] = new LongMap[V](default)
 
   /** Creates a new `LongMap` from an existing source collection. A source collection
     * which is already a `LongMap` gets cloned.
@@ -622,17 +623,17 @@ object LongMap {
     * @tparam A the type of the collection’s elements
     * @return a new `LongMap` with the elements of `source`
     */
-  def from[V](source: IterableOnce[(Long, V)]): LongMap[V] = source match {
+  def from[sealed V](source: IterableOnce[(Long, V)]^): LongMap[V] = source match {
     case source: LongMap[_] => source.clone().asInstanceOf[LongMap[V]]
     case _ => buildFromIterableOnce(source)
   }
 
-  def newBuilder[V]: ReusableBuilder[(Long, V), LongMap[V]] = new LongMapBuilder[V]
+  def newBuilder[sealed V]: ReusableBuilder[(Long, V), LongMap[V]] = new LongMapBuilder[V]
 
   /** Creates a new `LongMap` from arrays of keys and values.
     *  Equivalent to but more efficient than `LongMap((keys zip values): _*)`.
     */
-  def fromZip[V](keys: Array[Long], values: Array[V]): LongMap[V] = {
+  def fromZip[sealed V](keys: Array[Long], values: Array[V]): LongMap[V] = {
     val sz = math.min(keys.length, values.length)
     val lm = new LongMap[V](sz * 2)
     var i = 0
@@ -644,7 +645,7 @@ object LongMap {
   /** Creates a new `LongMap` from keys and values.
     *  Equivalent to but more efficient than `LongMap((keys zip values): _*)`.
     */
-  def fromZip[V](keys: scala.collection.Iterable[Long], values: scala.collection.Iterable[V]): LongMap[V] = {
+  def fromZip[sealed V](keys: scala.collection.Iterable[Long], values: scala.collection.Iterable[V]): LongMap[V] = {
     val sz = math.min(keys.size, values.size)
     val lm = new LongMap[V](sz * 2)
     val ki = keys.iterator
@@ -654,20 +655,20 @@ object LongMap {
     lm
   }
 
-  implicit def toFactory[V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
+  implicit def toFactory[sealed V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
 
   @SerialVersionUID(3L)
   private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
-    def fromSpecific(it: IterableOnce[(Long, AnyRef)]): LongMap[AnyRef] = LongMap.from[AnyRef](it)
+    def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: LongMap.type): BuildFrom[Any, (Long, V), LongMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Long, V), LongMap[V]]]
   private object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
-    def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]) = LongMap.from(it)
+    def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]^) = LongMap.from(it)
     def newBuilder(from: Any) = LongMap.newBuilder[AnyRef]
   }
 
-  implicit def iterableFactory[V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
+  implicit def iterableFactory[sealed V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
   implicit def buildFromLongMap[V]: BuildFrom[LongMap[_], (Long, V), LongMap[V]] = toBuildFrom(this)
 }

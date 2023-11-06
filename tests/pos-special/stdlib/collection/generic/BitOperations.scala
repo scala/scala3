@@ -12,6 +12,7 @@
 
 package scala.collection
 package generic
+import language.experimental.captureChecking
 
 
 /** Some bit operations.

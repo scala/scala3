@@ -12,7 +12,7 @@
 
 package scala
 package collection.mutable
-
+import language.experimental.captureChecking
 
 /** The canonical builder for collections that are growable, i.e. that support an
   * efficient `+=` method which adds an element to the collection.
@@ -31,7 +31,7 @@ class GrowableBuilder[Elem, To <: Growable[Elem]](protected val elems: To)
 
   def addOne(elem: Elem): this.type = { elems += elem; this }
 
-  override def addAll(xs: IterableOnce[Elem]): this.type = { elems.addAll(xs); this }
+  override def addAll(xs: IterableOnce[Elem]^): this.type = { elems.addAll(xs); this }
 
   override def knownSize: Int = elems.knownSize
 }

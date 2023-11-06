@@ -17,6 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializationProxy
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
 
 /** This class implements mutable sets using a hashtable.
   *
@@ -28,7 +29,7 @@ import scala.util.hashing.MurmurHash3
   * @define mayNotTerminateInf
   * @define willNotTerminateInf
   */
-final class HashSet[A](initialCapacity: Int, loadFactor: Double)
+final class HashSet[sealed A](initialCapacity: Int, loadFactor: Double)
   extends AbstractSet[A]
     with SetOps[A, HashSet, HashSet[A]]
     with StrictOptimizedIterableOps[A, HashSet, HashSet[A]]
@@ -90,7 +91,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     addElem(elem, computeHash(elem))
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type = {
+  override def addAll(xs: IterableOnce[A]^): this.type = {
     sizeHint(xs.knownSize)
     xs match {
       case hs: immutable.HashSet[A] =>
@@ -114,7 +115,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  override def subtractAll(xs: IterableOnce[A]): this.type = {
+  override def subtractAll(xs: IterableOnce[A]^): this.type = {
     if (size == 0) {
       return this
     }
@@ -406,17 +407,17 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 @SerialVersionUID(3L)
 object HashSet extends IterableFactory[HashSet] {
 
-  def from[B](it: scala.collection.IterableOnce[B]): HashSet[B] = {
+  def from[sealed B](it: scala.collection.IterableOnce[B]^): HashSet[B] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new HashSet[B](cap, defaultLoadFactor) ++= it
   }
 
-  def empty[A]: HashSet[A] = new HashSet[A]
+  def empty[sealed A]: HashSet[A] = new HashSet[A]
 
-  def newBuilder[A]: Builder[A, HashSet[A]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
+  def newBuilder[sealed A]: Builder[A, HashSet[A]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
 
-  def newBuilder[A](initialCapacity: Int, loadFactor: Double): Builder[A, HashSet[A]] =
+  def newBuilder[sealed A](initialCapacity: Int, loadFactor: Double): Builder[A, HashSet[A]] =
     new GrowableBuilder[A, HashSet[A]](new HashSet[A](initialCapacity, loadFactor)) {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
@@ -428,8 +429,8 @@ object HashSet extends IterableFactory[HashSet] {
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
-  private final class DeserializationFactory[A](val tableLength: Int, val loadFactor: Double) extends Factory[A, HashSet[A]] with Serializable {
-    def fromSpecific(it: IterableOnce[A]): HashSet[A] = new HashSet[A](tableLength, loadFactor) ++= it
+  private final class DeserializationFactory[sealed A](val tableLength: Int, val loadFactor: Double) extends Factory[A, HashSet[A]] with Serializable {
+    def fromSpecific(it: IterableOnce[A]^): HashSet[A] = new HashSet[A](tableLength, loadFactor) ++= it
     def newBuilder: Builder[A, HashSet[A]] = HashSet.newBuilder(tableLength, loadFactor)
   }
 

@@ -17,6 +17,7 @@ import scala.annotation.{nowarn, tailrec}
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializationProxy
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
 
 /** This class implements mutable maps using a hashtable.
   *
@@ -32,7 +33,7 @@ import scala.util.hashing.MurmurHash3
   *  @define willNotTerminateInf
   */
 @deprecatedInheritance("HashMap will be made final; use .withDefault for the common use case of computing a default value", "2.13.0")
-class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
+class HashMap[sealed K, sealed V](initialCapacity: Int, loadFactor: Double)
   extends AbstractMap[K, V]
     with MapOps[K, V, HashMap, HashMap[K, V]]
     with StrictOptimizedIterableOps[(K, V), Iterable, HashMap[K, V]]
@@ -94,7 +95,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     if(target > table.length) growTable(target)
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     sizeHint(xs.knownSize)
 
     xs match {
@@ -182,7 +183,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     }
   }
 
-  override def subtractAll(xs: IterableOnce[K]): this.type = {
+  override def subtractAll(xs: IterableOnce[K]^): this.type = {
     if (size == 0) {
       return this
     }
@@ -596,17 +597,17 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 @SerialVersionUID(3L)
 object HashMap extends MapFactory[HashMap] {
 
-  def empty[K, V]: HashMap[K, V] = new HashMap[K, V]
+  def empty[sealed K, sealed V]: HashMap[K, V] = new HashMap[K, V]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): HashMap[K, V] = {
+  def from[sealed K, sealed V](it: collection.IterableOnce[(K, V)]^): HashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new HashMap[K, V](cap, defaultLoadFactor).addAll(it)
   }
 
-  def newBuilder[K, V]: Builder[(K, V), HashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
+  def newBuilder[sealed K, sealed V]: Builder[(K, V), HashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
 
-  def newBuilder[K, V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), HashMap[K, V]] =
+  def newBuilder[sealed K, sealed V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), HashMap[K, V]] =
     new GrowableBuilder[(K, V), HashMap[K, V]](new HashMap[K, V](initialCapacity, loadFactor)) {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
@@ -618,8 +619,8 @@ object HashMap extends MapFactory[HashMap] {
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
-  private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double) extends Factory[(K, V), HashMap[K, V]] with Serializable {
-    def fromSpecific(it: IterableOnce[(K, V)]): HashMap[K, V] = new HashMap[K, V](tableLength, loadFactor).addAll(it)
+  private final class DeserializationFactory[sealed K, sealed V](val tableLength: Int, val loadFactor: Double) extends Factory[(K, V), HashMap[K, V]] with Serializable {
+    def fromSpecific(it: IterableOnce[(K, V)]^): HashMap[K, V] = new HashMap[K, V](tableLength, loadFactor).addAll(it)
     def newBuilder: Builder[(K, V), HashMap[K, V]] = HashMap.newBuilder(tableLength, loadFactor)
   }
 

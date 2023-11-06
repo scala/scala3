@@ -13,6 +13,7 @@
 package scala
 package collection.concurrent
 
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 
 /** A template trait for mutable maps that allow concurrent access.

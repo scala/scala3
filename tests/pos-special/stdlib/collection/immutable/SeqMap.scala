@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.collection.mutable.{Builder, ReusableBuilder}
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** A base trait for ordered, immutable maps.
  *
@@ -44,7 +46,7 @@ trait SeqMap[K, +V]
 object SeqMap extends MapFactory[SeqMap] {
   def empty[K, V]: SeqMap[K, V] = EmptySeqMap.asInstanceOf[SeqMap[K, V]]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): SeqMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): SeqMap[K, V] =
     it match {
       case sm: SeqMap[K, V] => sm
       case _ => (newBuilder[K, V] ++= it).result()
@@ -228,9 +230,9 @@ object SeqMap extends MapFactory[SeqMap] {
   }
 
   private final class SeqMapBuilderImpl[K, V] extends ReusableBuilder[(K, V), SeqMap[K, V]] {
-    private[this] var elems: SeqMap[K, V] = SeqMap.empty
+    private[this] var elems: SeqMap[K, V] @uncheckedCaptures = SeqMap.empty
     private[this] var switchedToVectorMapBuilder: Boolean = false
-    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] = _
+    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] @uncheckedCaptures = _
 
     override def clear(): Unit = {
       elems = SeqMap.empty
@@ -265,7 +267,7 @@ object SeqMap extends MapFactory[SeqMap] {
       this
     }
 
-    override def addAll(xs: IterableOnce[(K, V)]): this.type =
+    override def addAll(xs: IterableOnce[(K, V)]^): this.type =
       if (switchedToVectorMapBuilder) {
         vectorMapBuilder.addAll(xs)
         this

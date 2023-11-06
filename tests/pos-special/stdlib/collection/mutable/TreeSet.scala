@@ -17,6 +17,7 @@ import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{RedBlackTree => RB}
 import scala.collection.{SortedIterableFactory, SortedSetFactoryDefaults, Stepper, StepperShape, StrictOptimizedIterableOps, StrictOptimizedSortedSetOps, mutable}
+import language.experimental.captureChecking
 
 /**
   * A mutable sorted set implemented using a mutable red-black tree as underlying data structure.
@@ -28,7 +29,7 @@ import scala.collection.{SortedIterableFactory, SortedSetFactoryDefaults, Steppe
   * @define coll mutable tree set
   */
 // Original API designed in part by Lucien Pereira
-sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit val ordering: Ordering[A])
+sealed class TreeSet[sealed A] private (private val tree: RB.Tree[A, Null])(implicit val ordering: Ordering[A])
   extends AbstractSet[A]
     with SortedSet[A]
     with SortedSetOps[A, TreeSet, TreeSet[A]]
@@ -191,9 +192,9 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
 @SerialVersionUID(3L)
 object TreeSet extends SortedIterableFactory[TreeSet] {
 
-  def empty[A : Ordering]: TreeSet[A] = new TreeSet[A]()
+  def empty[sealed A : Ordering]: TreeSet[A] = new TreeSet[A]()
 
-  def from[E](it: IterableOnce[E])(implicit ordering: Ordering[E]): TreeSet[E] =
+  def from[sealed E](it: IterableOnce[E]^)(implicit ordering: Ordering[E]): TreeSet[E] =
     it match {
       case ts: TreeSet[E] if ordering == ts.ordering =>
         new TreeSet[E](ts.tree.treeCopy())
@@ -209,7 +210,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
         new TreeSet[E](t)
     }
 
-  def newBuilder[A](implicit ordering: Ordering[A]): Builder[A, TreeSet[A]] = new ReusableBuilder[A, TreeSet[A]] {
+  def newBuilder[sealed A](implicit ordering: Ordering[A]): Builder[A, TreeSet[A]] = new ReusableBuilder[A, TreeSet[A]] {
     private[this] var tree: RB.Tree[A, Null] = RB.Tree.empty
     def addOne(elem: A): this.type = { RB.insert(tree, elem, null); this }
     def result(): TreeSet[A] = new TreeSet[A](tree)

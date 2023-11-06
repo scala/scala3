@@ -22,6 +22,7 @@ import scala.collection._
 import scala.collection.convert.StreamExtensions.{AccumulatorFactoryInfo, StreamShape, StreamUnboxer}
 import scala.jdk.CollectionConverters._
 import scala.jdk._
+import language.experimental.captureChecking
 
 /** Defines extension methods to create Java Streams for Scala collections, available through
   * [[scala.jdk.javaapi.StreamConverters]].

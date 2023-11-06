@@ -17,13 +17,16 @@ import scala.annotation.nowarn
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.StringBuilder
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
+import caps.unsafe.unsafeAssumePure
 
 /** Base Map type */
 trait Map[K, +V]
   extends Iterable[(K, V)]
     with MapOps[K, V, Map, Map[K, V]]
     with MapFactoryDefaults[K, V, Map, Iterable]
-    with Equals {
+    with Equals
+    with Pure {
 
   def mapFactory: scala.collection.MapFactory[Map] = Map
 
@@ -101,8 +104,9 @@ trait Map[K, +V]
 trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   extends IterableOps[(K, V), Iterable, C]
     with PartialFunction[K, V] {
+  this: MapOps[K, V, CC, C]^ =>
 
-  override def view: MapView[K, V] = new MapView.Id(this)
+  override def view: MapView[K, V]^{this} = new MapView.Id(this)
 
   /** Returns a [[Stepper]] for the keys of this map. See method [[stepper]]. */
   def keyStepper[S <: Stepper[_]](implicit shape: StepperShape[K, S]): S = {
@@ -131,7 +135,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   /** Similar to `fromIterable`, but returns a Map collection type.
     * Note that the return type is now `CC[K2, V2]`.
     */
-  @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]): CC[K2, V2] = mapFactory.from(it)
+  @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2] = mapFactory.from(it)
 
   /** The companion object of this map, providing various factory methods.
     *
@@ -251,7 +255,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     *          the predicate `p`. The resulting map wraps the original map without copying any elements.
     */
   @deprecated("Use .view.filterKeys(f). A future version will include a strict version of this method (for now, .view.filterKeys(p).toMap).", "2.13.0")
-  def filterKeys(p: K => Boolean): MapView[K, V] = new MapView.FilterKeys(this, p)
+  def filterKeys(p: K => Boolean): MapView[K, V]^{this, p} = new MapView.FilterKeys(this, p)
 
   /** Transforms this map by applying a function to every retrieved value.
     *  @param  f   the function used to transform values of this map.
@@ -259,7 +263,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     *          to `f(this(key))`. The resulting map wraps the original map without copying any elements.
     */
   @deprecated("Use .view.mapValues(f). A future version will include a strict version of this method (for now, .view.mapValues(f).toMap).", "2.13.0")
-  def mapValues[W](f: V => W): MapView[K, W] = new MapView.MapValues(this, f)
+  def mapValues[W](f: V => W): MapView[K, W]^{this, f} = new MapView.MapValues(this, f)
 
   /** Defines the default value computation for the map,
     *  returned when a key is not found
@@ -318,7 +322,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     *  @return       a new $coll resulting from applying the given collection-valued function
     *                `f` to each element of this $coll and concatenating the results.
     */
-  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): CC[K2, V2] = mapFactory.from(new View.FlatMap(this, f))
+  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] = mapFactory.from(new View.FlatMap(this, f))
 
   /** Returns a new $coll containing the elements from the left hand operand followed by the elements from the
     *  right hand operand. The element type of the $coll is the most specific superclass encompassing
@@ -328,7 +332,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     *  @return       a new $coll which contains all elements
     *                of this $coll followed by all elements of `suffix`.
     */
-  def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]): CC[K, V2] = mapFactory.from(suffix match {
+  def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): CC[K, V2] = mapFactory.from(suffix match {
     case it: Iterable[(K, V2)] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
@@ -336,7 +340,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   // Not final because subclasses refine the result type, e.g. in SortedMap, the result type is
   // SortedMap's CC, while Map's CC is fixed to Map
   /** Alias for `concat` */
-  /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]): CC[K, V2] = concat(xs)
+  /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
 
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =
     iterator.map { case (k, v) => s"$k -> $v" }.addString(sb, start, sep, end)
@@ -350,14 +354,14 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     mapFactory.from(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
 
   @deprecated("Consider requiring an immutable Map.", "2.13.0")
-  @`inline` def -- (keys: IterableOnce[K]): C = {
+  @`inline` def -- (keys: IterableOnce[K]^): C = {
     lazy val keysSet = keys.iterator.to(immutable.Set)
-    fromSpecific(this.view.filterKeys(k => !keysSet.contains(k)))
+    fromSpecific(this.view.filterKeys(k => !keysSet.contains(k))).unsafeAssumePure
   }
 
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
-  def ++: [V1 >: V](that: IterableOnce[(K,V1)]): CC[K,V1] = {
-    val thatIterable: Iterable[(K, V1)] = that match {
+  def ++: [V1 >: V](that: IterableOnce[(K,V1)]^): CC[K,V1] = {
+    val thatIterable: Iterable[(K, V1)]^{that} = that match {
       case that: Iterable[(K, V1)] => that
       case that => View.from(that)
     }
@@ -373,17 +377,17 @@ object MapOps {
     */
   @SerialVersionUID(3L)
   class WithFilter[K, +V, +IterableCC[_], +CC[_, _] <: IterableOps[_, AnyConstr, _]](
-    self: MapOps[K, V, CC, _] with IterableOps[(K, V), IterableCC, _],
+    self: (MapOps[K, V, CC, _] with IterableOps[(K, V), IterableCC, _])^,
     p: ((K, V)) => Boolean
   ) extends IterableOps.WithFilter[(K, V), IterableCC](self, p) with Serializable {
 
-    def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
+    def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2]^{this, f} =
       self.mapFactory.from(new View.Map(filtered, f))
 
-    def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): CC[K2, V2] =
+    def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2]^{this, f} =
       self.mapFactory.from(new View.FlatMap(filtered, f))
 
-    override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC] =
+    override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC]^{this, q} =
       new WithFilter[K, V, IterableCC, CC](self, (kv: (K, V)) => p(kv) && q(kv))
 
   }

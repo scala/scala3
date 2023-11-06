@@ -15,6 +15,7 @@ package mutable
 
 import scala.annotation.nowarn
 import scala.collection.generic.DefaultSerializable
+import language.experimental.captureChecking
 
 
 /** `Queue` objects implement data structures that allow to
@@ -27,7 +28,7 @@ import scala.collection.generic.DefaultSerializable
   *  @define mayNotTerminateInf
   *  @define willNotTerminateInf
   */
-class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
+class Queue[sealed A] protected (array: Array[AnyRef], start: Int, end: Int)
   extends ArrayDeque[A](array, start, end)
     with IndexedSeqOps[A, Queue, Queue[A]]
     with StrictOptimizedSeqOps[A, Queue, Queue[A]]
@@ -129,10 +130,10 @@ class Queue[A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
 
-  def from[A](source: IterableOnce[A]): Queue[A] = empty ++= source
+  def from[sealed A](source: IterableOnce[A]^): Queue[A] = empty ++= source
 
-  def empty[A]: Queue[A] = new Queue
+  def empty[sealed A]: Queue[A] = new Queue
 
-  def newBuilder[A]: Builder[A, Queue[A]] = new GrowableBuilder[A, Queue[A]](empty)
+  def newBuilder[sealed A]: Builder[A, Queue[A]] = new GrowableBuilder[A, Queue[A]](empty)
 
 }

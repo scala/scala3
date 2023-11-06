@@ -14,6 +14,8 @@ package scala
 package collection
 package mutable
 
+import language.experimental.captureChecking
+
 /** Base type of mutable Maps */
 trait Map[K, V]
   extends Iterable[(K, V)]
@@ -44,7 +46,7 @@ trait Map[K, V]
     *  @param d     the function mapping keys to values, used for non-present keys
     *  @return      a wrapper of the map with a default value
     */
-  def withDefault(d: K => V): Map[K, V] = new Map.WithDefault[K, V](this, d)
+  def withDefault(d: K -> V): Map[K, V] = new Map.WithDefault[K, V](this, d)
 
   /** The same map with a given default value.
     *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
@@ -68,7 +70,8 @@ trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
     with Cloneable[C]
     with Builder[(K, V), C]
     with Growable[(K, V)]
-    with Shrinkable[K] {
+    with Shrinkable[K]
+    with Pure {
 
   def result(): C = coll
 
@@ -231,7 +234,7 @@ trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, _], +C <: MapOps[K, V, CC, C]]
 object Map extends MapFactory.Delegate[Map](HashMap) {
 
   @SerialVersionUID(3L)
-  class WithDefault[K, V](val underlying: Map[K, V], val defaultValue: K => V)
+  class WithDefault[K, V](val underlying: Map[K, V], val defaultValue: K -> V)
     extends AbstractMap[K, V]
       with MapOps[K, V, Map, WithDefault[K, V]] with Serializable {
 
@@ -250,12 +253,12 @@ object Map extends MapFactory.Delegate[Map](HashMap) {
 
     def addOne(elem: (K, V)): WithDefault.this.type = { underlying.addOne(elem); this }
 
-    override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]): Map[K, V2] =
+    override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): Map[K, V2] =
       underlying.concat(suffix).withDefault(defaultValue)
 
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
-    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]): WithDefault[K, V] =
+    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]^): WithDefault[K, V] =
       new WithDefault[K, V](mapFactory.from(coll), defaultValue)
 
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] =

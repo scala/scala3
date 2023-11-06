@@ -11,6 +11,7 @@
  */
 
 package scala.collection
+import language.experimental.captureChecking
 
 
 package object generic {

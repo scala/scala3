@@ -14,6 +14,7 @@ package scala.collection.convert
 package impl
 
 import scala.collection._
+// import language.experimental.captureChecking // TODO enable
 
 private[collection] class AnyIndexedSeqStepper[A](underlying: collection.IndexedSeqOps[A, AnyConstr, _], _i0: Int, _iN: Int)
   extends IndexedStepperBase[AnyStepper[A], AnyIndexedSeqStepper[A]](_i0, _iN)

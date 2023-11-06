@@ -14,6 +14,7 @@ package scala
 package collection
 package mutable
 
+import language.experimental.captureChecking
 
 /** `ReusableBuilder` is a marker trait that indicates that a `Builder`
   *  can be reused to build more than one instance of a collection.  In

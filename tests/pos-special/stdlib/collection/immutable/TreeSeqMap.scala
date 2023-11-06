@@ -15,6 +15,8 @@ package collection
 package immutable
 
 import scala.annotation.tailrec
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements an immutable map that preserves order using
   * a hash map for the key to value mapping to provide efficient lookup,
@@ -204,7 +206,7 @@ final class TreeSeqMap[K, +V] private (
         new TreeSeqMap(ong, mng, ordinal, orderedBy)
       } else {
         // Populate with builder otherwise
-        val bdr = newBuilder[K, V](orderedBy)
+        val bdr = newBuilder[K @uncheckedCaptures, V @uncheckedCaptures](orderedBy)
         val iter = ordering.iterator
         var i = 0
         while (i < f) {
@@ -222,7 +224,7 @@ final class TreeSeqMap[K, +V] private (
   }
 
   override def map[K2, V2](f: ((K, V)) => (K2, V2)): TreeSeqMap[K2, V2] = {
-    val bdr = newBuilder[K2, V2](orderedBy)
+    val bdr = newBuilder[K2 @uncheckedCaptures, V2 @uncheckedCaptures](orderedBy)
     val iter = ordering.iterator
     while (iter.hasNext) {
       val k = iter.next()
@@ -233,8 +235,8 @@ final class TreeSeqMap[K, +V] private (
     bdr.result()
   }
 
-  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): TreeSeqMap[K2, V2] = {
-    val bdr = newBuilder[K2, V2](orderedBy)
+  override def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): TreeSeqMap[K2, V2] = {
+    val bdr = newBuilder[K2 @uncheckedCaptures, V2 @uncheckedCaptures](orderedBy)
     val iter = ordering.iterator
     while (iter.hasNext) {
       val k = iter.next()
@@ -249,7 +251,7 @@ final class TreeSeqMap[K, +V] private (
   }
 
   override def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]): TreeSeqMap[K2, V2] = {
-    val bdr = newBuilder[K2, V2](orderedBy)
+    val bdr = newBuilder[K2 @uncheckedCaptures, V2 @uncheckedCaptures](orderedBy)
     val iter = ordering.iterator
     while (iter.hasNext) {
       val k = iter.next()
@@ -259,7 +261,7 @@ final class TreeSeqMap[K, +V] private (
     bdr.result()
   }
 
-  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]): TreeSeqMap[K, V2] = {
+  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): TreeSeqMap[K, V2] = {
     var ong: Ordering[K] = ordering
     var mng: Mapping[K, V2] = mapping
     var ord = increment(ordinal)
@@ -302,7 +304,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     else EmptyByInsertion
   }.asInstanceOf[TreeSeqMap[K, V]]
 
-  def from[K, V](it: collection.IterableOnce[(K, V)]): TreeSeqMap[K, V] =
+  def from[sealed K, sealed V](it: collection.IterableOnce[(K, V)]^): TreeSeqMap[K, V] =
     it match {
       case om: TreeSeqMap[K, V] => om
       case _ => (newBuilder[K, V] ++= it).result()
@@ -310,10 +312,10 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
 
   @inline private def increment(ord: Int) = if (ord == Int.MaxValue) Int.MinValue else ord + 1
 
-  def newBuilder[K, V]: mutable.Builder[(K, V), TreeSeqMap[K, V]] = newBuilder(OrderBy.Insertion)
-  def newBuilder[K, V](orderedBy: OrderBy): mutable.Builder[(K, V), TreeSeqMap[K, V]] = new Builder[K, V](orderedBy)
+  def newBuilder[sealed K, sealed V]: mutable.Builder[(K, V), TreeSeqMap[K, V]] = newBuilder(OrderBy.Insertion)
+  def newBuilder[sealed K, sealed V](orderedBy: OrderBy): mutable.Builder[(K, V), TreeSeqMap[K, V]] = new Builder[K, V](orderedBy)
 
-  final class Builder[K, V](orderedBy: OrderBy) extends mutable.Builder[(K, V), TreeSeqMap[K, V]] {
+  final class Builder[sealed K, sealed V](orderedBy: OrderBy) extends mutable.Builder[(K, V), TreeSeqMap[K, V]] {
     private[this] val bdr = new MapBuilderImpl[K, (Int, V)]
     private[this] var ong = Ordering.empty[K]
     private[this] var ord = 0
@@ -435,7 +437,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       protected def format(sb: StringBuilder, prefix: String, subPrefix: String): Unit = sb ++= s"${prefix}Tip(${toBinaryString(ord)} -> $value)\n"
     }
 
-    final case class Bin[+T](prefix: Int, mask: Int, left: Ordering[T], var right: Ordering[T] @scala.annotation.unchecked.uncheckedVariance) extends Ordering[T] {
+    final case class Bin[+T](prefix: Int, mask: Int, left: Ordering[T], var right: Ordering[T @uncheckedCaptures] @scala.annotation.unchecked.uncheckedVariance) extends Ordering[T] {
       def bin[S](left: Ordering[S], right: Ordering[S]): Ordering[S] = {
         if ((this.left eq left) && (this.right eq right)) this.asInstanceOf[Bin[S]]
         else Bin[S](prefix, mask, left, right)
@@ -607,7 +609,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     }
 
     final def splitAt(n: Int): (Ordering[T], Ordering[T]) = {
-      var rear = Ordering.empty[T]
+      var rear: Ordering[T @uncheckedCaptures] = Ordering.empty[T]
       var i = n
       (modifyOrRemove { (o, v) =>
         i -= 1

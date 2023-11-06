@@ -18,7 +18,7 @@ import java.io.{ObjectInputStream, ObjectOutputStream}
 import scala.annotation.nowarn
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.mutable.Builder
-
+import language.experimental.captureChecking
 
 /** Base type of bitsets.
   *
@@ -33,7 +33,7 @@ import scala.collection.mutable.Builder
   * @define Coll `BitSet`
   */
 trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] {
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
@@ -48,7 +48,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   def empty: BitSet = immutable.BitSet.empty
   def newBuilder: Builder[Int, BitSet] = immutable.BitSet.newBuilder
-  def fromSpecific(it: IterableOnce[Int]): BitSet = immutable.BitSet.fromSpecific(it)
+  def fromSpecific(it: IterableOnce[Int]^): BitSet = immutable.BitSet.fromSpecific(it)
 
   @SerialVersionUID(3L)
   private[collection] abstract class SerializationProxy(@transient protected val coll: BitSet) extends Serializable {

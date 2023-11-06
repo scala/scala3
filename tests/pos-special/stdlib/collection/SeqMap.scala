@@ -11,6 +11,7 @@
  */
 
 package scala.collection
+import language.experimental.captureChecking
 
 import scala.annotation.nowarn
 

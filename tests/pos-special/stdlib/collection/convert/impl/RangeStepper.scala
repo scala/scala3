@@ -14,6 +14,7 @@ package scala.collection.convert
 package impl
 
 import scala.collection.{IntStepper, Stepper}
+// import language.experimental.captureChecking // TODO enable
 
 /** Implements Stepper on an integer Range.  You don't actually need the Range to do this,
   * so only the relevant parts are included.  Because the arguments are protected, they are
@@ -27,7 +28,7 @@ with IntStepper {
       val ans = myNext
       myNext += myStep
       i0 += 1
-      ans 
+      ans
     }
     else Stepper.throwNSEE()
   protected def semiclone(half: Int): RangeStepper = new RangeStepper(myNext, myStep, i0, half)

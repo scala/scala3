@@ -12,6 +12,7 @@
 
 package scala.collection
 package generic
+import language.experimental.captureChecking
 
 /** A trait which can be used to avoid code duplication when defining extension
  *  methods that should be applicable both to existing Scala collections (i.e.,

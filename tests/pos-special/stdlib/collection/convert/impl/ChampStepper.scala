@@ -16,6 +16,7 @@ package impl
 import scala.collection.Stepper.EfficientSplit
 import scala.collection._
 import scala.collection.immutable.Node
+// import language.experimental.captureChecking // TODO enable
 
 /** A stepper that is a slightly elaborated version of the ChampBaseIterator;
   * the main difference is that it knows when it should stop instead of running

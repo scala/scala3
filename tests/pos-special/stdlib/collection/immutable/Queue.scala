@@ -15,6 +15,7 @@ package immutable
 
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{Builder, ListBuffer}
+import language.experimental.captureChecking
 
 /** `Queue` objects implement data structures that allow to
   *  insert and retrieve elements in a first-in-first-out (FIFO) manner.
@@ -119,7 +120,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
 
   override def appended[B >: A](elem: B): Queue[B] = enqueue(elem)
 
-  override def appendedAll[B >: A](that: scala.collection.IterableOnce[B]): Queue[B] = {
+  override def appendedAll[B >: A](that: scala.collection.IterableOnce[B]^): Queue[B] = {
     val newIn = that match {
       case that: Queue[B] => that.in ++ (that.out reverse_::: this.in)
       case that: List[B] => that reverse_::: this.in
@@ -200,9 +201,9 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
   */
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
-  def newBuilder[A]: Builder[A, Queue[A]] = new ListBuffer[A] mapResult (x => new Queue[A](Nil, x))
+  def newBuilder[sealed A]: Builder[A, Queue[A]] = new ListBuffer[A] mapResult (x => new Queue[A](Nil, x))
 
-  def from[A](source: IterableOnce[A]): Queue[A] = source match {
+  def from[A](source: IterableOnce[A]^): Queue[A] = source match {
     case q: Queue[A] => q
     case _ =>
       val list = List.from(source)

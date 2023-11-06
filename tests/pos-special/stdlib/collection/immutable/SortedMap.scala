@@ -16,6 +16,7 @@ package immutable
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.Builder
+import language.experimental.captureChecking
 
 /** An immutable map whose key-value pairs are sorted according to an [[scala.math.Ordering]] on the keys.
   *
@@ -69,7 +70,7 @@ trait SortedMap[K, +V]
     *  @param d     the function mapping keys to values, used for non-present keys
     *  @return      a wrapper of the map with a default value
     */
-  override def withDefault[V1 >: V](d: K => V1): SortedMap[K, V1] = new SortedMap.WithDefault[K, V1](this, d)
+  override def withDefault[V1 >: V](d: K -> V1): SortedMap[K, V1] = new SortedMap.WithDefault[K, V1](this, d)
 
   /** The same map with a given default value.
     *  Note: The default is only used for `apply`. Other methods like `get`, `contains`, `iterator`, `keys`, etc.
@@ -123,7 +124,7 @@ trait StrictOptimizedSortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] with SortedMapO
     with collection.StrictOptimizedSortedMapOps[K, V, CC, C]
     with StrictOptimizedMapOps[K, V, Map, C] {
 
-  override def concat[V2 >: V](xs: collection.IterableOnce[(K, V2)]): CC[K, V2] = {
+  override def concat[V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2] = {
     var result: CC[K, V2] = coll
     val it = xs.iterator
     while (it.hasNext) result = result + it.next()
@@ -134,12 +135,12 @@ trait StrictOptimizedSortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] with SortedMapO
 @SerialVersionUID(3L)
 object SortedMap extends SortedMapFactory.Delegate[SortedMap](TreeMap) {
 
-  override def from[K: Ordering, V](it: IterableOnce[(K, V)]): SortedMap[K, V] = it match {
+  override def from[K: Ordering, V](it: IterableOnce[(K, V)]^): SortedMap[K, V] = it match {
     case sm: SortedMap[K, V] if Ordering[K] == sm.ordering => sm
     case _ => super.from(it)
   }
 
-  final class WithDefault[K, +V](underlying: SortedMap[K, V], defaultValue: K => V)
+  final class WithDefault[K, +V](underlying: SortedMap[K, V], defaultValue: K -> V)
     extends Map.WithDefault[K, V](underlying, defaultValue)
       with SortedMap[K, V]
       with SortedMapOps[K, V, SortedMap, WithDefault[K, V]] with Serializable {
@@ -161,14 +162,14 @@ object SortedMap extends SortedMapFactory.Delegate[SortedMap](TreeMap) {
     override def updated[V1 >: V](key: K, value: V1): WithDefault[K, V1] =
       new WithDefault[K, V1](underlying.updated(key, value), defaultValue)
 
-    override def concat [V2 >: V](xs: collection.IterableOnce[(K, V2)]): WithDefault[K, V2] =
+    override def concat [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): WithDefault[K, V2] =
       new WithDefault( underlying.concat(xs) , defaultValue)
 
     override def removed(key: K): WithDefault[K, V] = new WithDefault[K, V](underlying.removed(key), defaultValue)
 
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
-    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)] @uncheckedVariance): WithDefault[K, V] =
+    override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V) @uncheckedVariance]^): WithDefault[K, V] =
       new WithDefault[K, V](sortedMapFactory.from(coll), defaultValue)
 
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] @uncheckedVariance =

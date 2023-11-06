@@ -13,6 +13,7 @@
 package scala.collection.mutable
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults, IterableOps}
+import language.experimental.captureChecking
 
 /** Base trait for mutable sets */
 trait Set[A]

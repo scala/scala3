@@ -16,6 +16,9 @@ import scala.collection.immutable.Range
 import scala.util.hashing.MurmurHash3
 import Searching.{Found, InsertionPoint, SearchResult}
 import scala.annotation.nowarn
+import language.experimental.captureChecking
+import caps.unsafe.unsafeAssumePure
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** Base trait for sequence collections
   *
@@ -27,6 +30,7 @@ trait Seq[+A]
     with SeqOps[A, Seq, Seq[A]]
     with IterableFactoryDefaults[A, Seq]
     with Equals {
+  this: Seq[A] =>
 
   override def iterableFactory: SeqFactory[Seq] = Seq
 
@@ -74,10 +78,11 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
   * @define coll sequence
   * @define Coll `Seq`
   */
-trait SeqOps[+A, +CC[_], +C] extends Any
-  with IterableOps[A, CC, C] { self =>
+trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
+
+  def iterableFactory: FreeSeqFactory[CC]
 
   /** Get the element at the specified index. This operation is provided for convenience in `Seq`. It should
     * not be assumed to be efficient unless you have an `IndexedSeq`. */
@@ -160,13 +165,13 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *  @return       a new $coll which contains all elements of `prefix` followed
     *                  by all the elements of this $coll.
     */
-  def prependedAll[B >: A](prefix: IterableOnce[B]): CC[B] = iterableFactory.from(prefix match {
+  def prependedAll[B >: A](prefix: IterableOnce[B]^): CC[B] = iterableFactory.from(prefix match {
     case prefix: Iterable[B] => new View.Concat(prefix, this)
     case _ => prefix.iterator ++ iterator
   })
 
   /** Alias for `prependedAll` */
-  @`inline` override final def ++: [B >: A](prefix: IterableOnce[B]): CC[B] = prependedAll(prefix)
+  @`inline` override final def ++: [B >: A](prefix: IterableOnce[B]^): CC[B] = prependedAll(prefix)
 
   /** Returns a new $coll containing the elements from the left hand operand followed by the elements from the
     *  right hand operand. The element type of the $coll is the most specific superclass encompassing
@@ -177,14 +182,15 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *  @return       a new collection of type `CC[B]` which contains all elements
     *                of this $coll followed by all elements of `suffix`.
     */
-  def appendedAll[B >: A](suffix: IterableOnce[B]): CC[B] = super.concat(suffix)
+  def appendedAll[B >: A](suffix: IterableOnce[B]^): CC[B] =
+    super.concat(suffix).unsafeAssumePure
 
   /** Alias for `appendedAll` */
-  @`inline` final def :++ [B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
+  @`inline` final def :++ [B >: A](suffix: IterableOnce[B]^): CC[B] = appendedAll(suffix)
 
   // Make `concat` an alias for `appendedAll` so that it benefits from performance
   // overrides of this method
-  @`inline` final override def concat[B >: A](suffix: IterableOnce[B]): CC[B] = appendedAll(suffix)
+  @`inline` final override def concat[B >: A](suffix: IterableOnce[B]^): CC[B] = appendedAll(suffix)
 
  /** Produces a new sequence which contains all elements of this $coll and also all elements of
    *  a given sequence. `xs union ys`  is equivalent to `xs ++ ys`.
@@ -212,7 +218,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     * @tparam B the type of the elements after being transformed by `f`
     * @return a new $coll consisting of all the elements of this $coll without duplicates.
     */
-  def distinctBy[B](f: A => B): C = fromSpecific(new View.DistinctBy(this, f))
+  def distinctBy[B](f: A -> B): C = fromSpecific(new View.DistinctBy(this, f))
 
   /** Returns new $coll with elements in reversed order.
    *
@@ -231,7 +237,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
    *
    *  @return  an iterator yielding the elements of this $coll in reversed order
    */
-  def reverseIterator: Iterator[A] = reversed.iterator
+  override def reverseIterator: Iterator[A] = reversed.iterator
 
   /** Tests whether this $coll contains the given sequence at a given index.
     *
@@ -243,7 +249,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     * @return `true` if the sequence `that` is contained in this $coll at
     *         index `offset`, otherwise `false`.
     */
-  def startsWith[B >: A](that: IterableOnce[B], offset: Int = 0): Boolean = {
+  def startsWith[B >: A](that: IterableOnce[B]^, offset: Int = 0): Boolean = {
     val i = iterator drop offset
     val j = that.iterator
     while (j.hasNext && i.hasNext)
@@ -258,7 +264,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *  @param  that    the sequence to test
     *  @return `true` if this $coll has `that` as a suffix, `false` otherwise.
     */
-  def endsWith[B >: A](that: Iterable[B]): Boolean = {
+  def endsWith[B >: A](that: Iterable[B]^): Boolean = {
     if (that.isEmpty) true
     else {
       val i = iterator.drop(length - that.size)
@@ -595,7 +601,8 @@ trait SeqOps[+A, +CC[_], +C] extends Any
       if (!hasNext)
         Iterator.empty.next()
 
-      val forcedElms = new mutable.ArrayBuffer[A](elms.size) ++= elms
+      val forcedElms = new mutable.ArrayBuffer[A @uncheckedCaptures](elms.size) ++= elms
+        // uncheckedCaptures OK since used only locally
       val result = (newSpecificBuilder ++= forcedElms).result()
       var i = idxs.length - 2
       while(i >= 0 && idxs(i) >= idxs(i+1))
@@ -628,6 +635,9 @@ trait SeqOps[+A, +CC[_], +C] extends Any
 
     private[this] def init() = {
       val m = mutable.HashMap[A, Int]()
+      //val s1 = self.toGenericSeq map (e => (e, m.getOrElseUpdate(e, m.size)))
+      //val s2: Seq[(A, Int)] = s1 sortBy (_._2)
+      //val (es, is) = s2.unzip(using Predef.$conforms[(A, Int)])
       val (es, is) = (self.toGenericSeq map (e => (e, m.getOrElseUpdate(e, m.size))) sortBy (_._2)).unzip
 
       (es.to(mutable.ArrayBuffer), is.toArray)
@@ -807,7 +817,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     */
   def lengthCompare(len: Int): Int = super.sizeCompare(len)
 
-  override final def sizeCompare(that: Iterable[_]): Int = lengthCompare(that)
+  override final def sizeCompare(that: Iterable[_]^): Int = lengthCompare(that)
 
   /** Compares the length of this $coll to the size of another `Iterable`.
     *
@@ -822,7 +832,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *  is `O(this.length min that.size)` instead of `O(this.length + that.size)`.
     *  The method should be overridden if computing `size` is cheap and `knownSize` returns `-1`.
     */
-  def lengthCompare(that: Iterable[_]): Int = super.sizeCompare(that)
+  def lengthCompare(that: Iterable[_]^): Int = super.sizeCompare(that)
 
   /** Returns a value class containing operations for comparing the length of this $coll to a test value.
     *
@@ -845,7 +855,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
   /** Are the elements of this collection the same (and in the same order)
     * as those of `that`?
     */
-  def sameElements[B >: A](that: IterableOnce[B]): Boolean = {
+  def sameElements[B >: A](that: IterableOnce[B]^): Boolean = {
     val thisKnownSize = knownSize
     val knownSizeDifference = thisKnownSize != -1 && {
       val thatKnownSize = that.knownSize
@@ -883,7 +893,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *                part of the result, but any following occurrences will.
     */
   def diff[B >: A](that: Seq[B]): C = {
-    val occ = occCounts(that)
+    val occ = occCounts[B @uncheckedCaptures](that)
     fromSpecific(iterator.filter { x =>
       var include = false
       occ.updateWith(x) {
@@ -908,7 +918,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *                in the result, but any following occurrences will be omitted.
     */
   def intersect[B >: A](that: Seq[B]): C = {
-    val occ = occCounts(that)
+    val occ = occCounts[B @uncheckedCaptures](that)
     fromSpecific(iterator.filter { x =>
       var include = true
       occ.updateWith(x) {
@@ -937,7 +947,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     *                   except that `replaced` elements starting from `from` are replaced
     *                   by all the elements of `other`.
     */
-  def patch[B >: A](from: Int, other: IterableOnce[B], replaced: Int): CC[B] =
+  def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] =
     iterableFactory.from(new View.Patched(this, from, other, replaced))
 
   /** A copy of this $coll with one single replaced element.
@@ -956,7 +966,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     iterableFactory.from(new View.Updated(this, index, elem))
   }
 
-  protected[collection] def occCounts[B](sq: Seq[B]): mutable.Map[B, Int] = {
+  protected[collection] def occCounts[sealed B](sq: Seq[B]): mutable.Map[B, Int] = {
     val occ = new mutable.HashMap[B, Int]()
     for (y <- sq) occ.updateWith(y) {
       case None => Some(1)
@@ -1004,11 +1014,11 @@ trait SeqOps[+A, +CC[_], +C] extends Any
     * @return a `Found` value containing the index corresponding to the element in the
     *         sequence, or the `InsertionPoint` where the element would be inserted if
     *         the element is not in the sequence.
-    * 
+    *
     * @note if `to <= from`, the search space is empty, and an `InsertionPoint` at `from`
     *       is returned
     */
-  def search[B >: A](elem: B, from: Int, to: Int) (implicit ord: Ordering[B]): SearchResult = 
+  def search[B >: A](elem: B, from: Int, to: Int) (implicit ord: Ordering[B]): SearchResult =
     linearSearch(view.slice(from, to), elem, math.max(0, from))(ord)
 
   private[this] def linearSearch[B >: A](c: View[A], elem: B, offset: Int)

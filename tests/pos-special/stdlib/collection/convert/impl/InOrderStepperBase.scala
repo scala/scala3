@@ -16,6 +16,7 @@ package impl
 import java.util.Spliterator
 
 import scala.collection.Stepper.EfficientSplit
+// import language.experimental.captureChecking // TODO enable
 
 /** Abstracts all the generic operations of stepping over a collection
   * that has an indexable ordering but may have gaps.

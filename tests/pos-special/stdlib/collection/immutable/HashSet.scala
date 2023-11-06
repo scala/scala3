@@ -23,6 +23,8 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.ReusableBuilder
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements immutable sets using a Compressed Hash-Array Mapped Prefix-tree.
   * See paper https://michael.steindorfer.name/publications/oopsla15.pdf for more details.
@@ -1152,7 +1154,7 @@ private final class BitmapIndexedSetNode[A](
             } else {
               mapOfNewNodes |= bitpos
               if (newNodes eq null) {
-                newNodes = mutable.Queue.empty
+                newNodes = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
               }
               newNodes += newSubNode
             }
@@ -1160,7 +1162,7 @@ private final class BitmapIndexedSetNode[A](
             newDataMap |= bitpos
             nodeMigrateToDataTargetMap |= bitpos
             if (nodesToMigrateToData eq null) {
-              nodesToMigrateToData = mutable.Queue.empty
+              nodesToMigrateToData = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
             }
             nodesToMigrateToData += newSubNode
           }
@@ -1267,7 +1269,7 @@ private final class BitmapIndexedSetNode[A](
               } else {
                 mapOfNewNodes |= bitpos
                 if (newNodes eq null) {
-                  newNodes = mutable.Queue.empty
+                  newNodes = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
                 }
                 newNodes += newSubNode
               }
@@ -1275,7 +1277,7 @@ private final class BitmapIndexedSetNode[A](
               newDataMap |= bitpos
               nodeMigrateToDataTargetMap |= bitpos
               if (nodesToMigrateToData eq null) {
-                nodesToMigrateToData = mutable.Queue.empty
+                nodesToMigrateToData = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
               }
               nodesToMigrateToData += newSubNode
             }
@@ -1740,7 +1742,7 @@ private final class BitmapIndexedSetNode[A](
   }
 }
 
-private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int, var content: Vector[A]) extends SetNode[A] {
+private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int, var content: Vector[A] @uncheckedCaptures) extends SetNode[A] {
 
   import Node._
 
@@ -1944,7 +1946,7 @@ object HashSet extends IterableFactory[HashSet] {
   def empty[A]: HashSet[A] =
     EmptySet.asInstanceOf[HashSet[A]]
 
-  def from[A](source: collection.IterableOnce[A]): HashSet[A] =
+  def from[A](source: collection.IterableOnce[A]^): HashSet[A] =
     source match {
       case hs: HashSet[A] => hs
       case _ if source.knownSize == 0 => empty[A]
@@ -1969,12 +1971,12 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
   /** The last given out HashSet as a return value of `result()`, if any, otherwise null.
     * Indicates that on next add, the elements should be copied to an identical structure, before continuing
     * mutations. */
-  private var aliased: HashSet[A] = _
+  private var aliased: HashSet[A] @uncheckedCaptures = _
 
   private def isAliased: Boolean = aliased != null
 
   /** The root node of the partially build hashmap */
-  private var rootNode: BitmapIndexedSetNode[A] = newEmptyRootNode
+  private var rootNode: BitmapIndexedSetNode[A] @uncheckedCaptures = newEmptyRootNode
 
   /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
@@ -2084,7 +2086,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     this
   }
 
-  override def addAll(xs: IterableOnce[A]) = {
+  override def addAll(xs: IterableOnce[A]^) = {
     ensureUnaliased()
     xs match {
       case hm: HashSet[A] =>
@@ -2100,7 +2102,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
             )
             currentValueCursor += 1
           }
-        }
+        }.asInstanceOf // !!! cc gets confused with representation of capture sets in invariant position
       case other =>
         val it = other.iterator
         while(it.hasNext) addOne(it.next())

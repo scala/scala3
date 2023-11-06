@@ -17,6 +17,7 @@ package immutable
 import BitSetOps.{LogWL, updateArray}
 import mutable.Builder
 import scala.annotation.{implicitNotFound, nowarn}
+import language.experimental.captureChecking
 
 /** A class for immutable bitsets.
   *  $bitsetinfo
@@ -37,7 +38,7 @@ sealed abstract class BitSet
 
   override def unsorted: Set[Int] = this
 
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
 
@@ -94,7 +95,7 @@ sealed abstract class BitSet
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
-  def fromSpecific(it: scala.collection.IterableOnce[Int]): BitSet =
+  def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet =
     it match {
       case bs: BitSet => bs
       case _          => (newBuilder ++= it).result()

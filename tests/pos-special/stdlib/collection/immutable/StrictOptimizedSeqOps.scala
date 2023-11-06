@@ -13,6 +13,8 @@
 package scala
 package collection
 package immutable
+import language.experimental.captureChecking
+import annotation.unchecked.uncheckedCaptures
 
 /**
   * Trait that overrides operations to take advantage of strict builders.
@@ -23,11 +25,11 @@ trait StrictOptimizedSeqOps[+A, +CC[_], +C]
     with collection.StrictOptimizedSeqOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 
-  override def distinctBy[B](f: A => B): C = {
+  override def distinctBy[B](f: A -> B): C = {
     if (lengthCompare(1) <= 0) coll
     else {
       val builder = newSpecificBuilder
-      val seen = mutable.HashSet.empty[B]
+      val seen = mutable.HashSet.empty[B @uncheckedCaptures]
       val it = this.iterator
       var different = false
       while (it.hasNext) {
@@ -57,7 +59,7 @@ trait StrictOptimizedSeqOps[+A, +CC[_], +C]
     b.result()
   }
 
-  override def patch[B >: A](from: Int, other: IterableOnce[B], replaced: Int): CC[B] = {
+  override def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] = {
     val b = iterableFactory.newBuilder[B]
     var i = 0
     val it = iterator

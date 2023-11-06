@@ -11,7 +11,7 @@
  */
 
 package scala.collection.mutable
-
+import language.experimental.captureChecking
 
 /** A trait for cloneable collections.
   *

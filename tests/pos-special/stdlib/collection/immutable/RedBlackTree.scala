@@ -17,6 +17,8 @@ package immutable
 import scala.annotation.meta.{getter, setter}
 import scala.annotation.tailrec
 import scala.runtime.Statics.releaseFence
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** An object containing the RedBlack tree implementation used by for `TreeMaps` and `TreeSets`.
   *
@@ -834,10 +836,11 @@ private[collection] object RedBlackTree {
        * we potentially do so in `startFrom`.
        */
       val maximumHeight = 2 * (32 - Integer.numberOfLeadingZeros(root.count + 2 - 1)) - 2
-      new Array[Tree[A, B]](maximumHeight)
+      new Array[Tree[A, B] @uncheckedCaptures](maximumHeight)
     }
     private[this] var index = 0
-    protected var lookahead: Tree[A, B] = if (start.isDefined) startFrom(start.get) else findLeftMostOrPopOnEmpty(root)
+    protected var lookahead: Tree[A, B] @uncheckedCaptures =
+      if (start.isDefined) startFrom(start.get) else findLeftMostOrPopOnEmpty(root)
 
     /**
       * Find the leftmost subtree whose key is equal to the given key, or if no such thing,

@@ -11,6 +11,7 @@
  */
 
 package scala.collection
+import language.experimental.captureChecking
 
 /**
   * Trait that overrides set operations to take advantage of strict builders.

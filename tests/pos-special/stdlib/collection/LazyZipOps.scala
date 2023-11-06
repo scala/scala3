@@ -13,6 +13,7 @@
 package scala.collection
 
 import scala.language.implicitConversions
+import language.experimental.captureChecking
 
 /** Decorator representing lazily zipped pairs.
   *
@@ -21,7 +22,7 @@ import scala.language.implicitConversions
   *
   *              Note: will not terminate for infinite-sized collections.
   */
-final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterable[El1], coll2: Iterable[El2]) {
+final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterable[El1]^, coll2: Iterable[El2]^) {
 
   /** Zips `that` iterable collection with an existing `LazyZip2`. The elements in each collection are
     * not consumed until a strict operation is invoked on the returned `LazyZip3` decorator.
@@ -31,7 +32,7 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     * @return a decorator `LazyZip3` that allows strict operations to be performed on the lazily evaluated tuples or
     *         chained calls to `lazyZip`. Implicit conversion to `Iterable[(El1, El2, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]): LazyZip3[El1, El2, B, C1] = new LazyZip3(src, coll1, coll2, that)
+  def lazyZip[B](that: Iterable[B]^): LazyZip3[El1, El2, B, C1]^{this, that} = new LazyZip3(src, coll1, coll2, that)
 
   def map[B, C](f: (El1, El2) => B)(implicit bf: BuildFrom[C1, B, C]): C = {
     bf.fromSpecific(src)(new AbstractView[B] {
@@ -147,9 +148,9 @@ object LazyZip2 {
   *              Note: will not terminate for infinite-sized collections.
   */
 final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
-                                                               coll1: Iterable[El1],
-                                                               coll2: Iterable[El2],
-                                                               coll3: Iterable[El3]) {
+                                                               coll1: Iterable[El1]^,
+                                                               coll2: Iterable[El2]^,
+                                                               coll3: Iterable[El3]^) {
 
   /** Zips `that` iterable collection with an existing `LazyZip3`. The elements in each collection are
     * not consumed until a strict operation is invoked on the returned `LazyZip4` decorator.
@@ -159,7 +160,7 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     * @return a decorator `LazyZip4` that allows strict operations to be performed on the lazily evaluated tuples.
     *         Implicit conversion to `Iterable[(El1, El2, El3, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]): LazyZip4[El1, El2, El3, B, C1] = new LazyZip4(src, coll1, coll2, coll3, that)
+  def lazyZip[B](that: Iterable[B]^): LazyZip4[El1, El2, El3, B, C1]^{this, that} = new LazyZip4(src, coll1, coll2, coll3, that)
 
   def map[B, C](f: (El1, El2, El3) => B)(implicit bf: BuildFrom[C1, B, C]): C = {
     bf.fromSpecific(src)(new AbstractView[B] {
@@ -288,10 +289,10 @@ object LazyZip3 {
   *              Note: will not terminate for infinite-sized collections.
   */
 final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
-                                                                     coll1: Iterable[El1],
-                                                                     coll2: Iterable[El2],
-                                                                     coll3: Iterable[El3],
-                                                                     coll4: Iterable[El4]) {
+                                                                     coll1: Iterable[El1]^,
+                                                                     coll2: Iterable[El2]^,
+                                                                     coll3: Iterable[El3]^,
+                                                                     coll4: Iterable[El4]^) {
 
   def map[B, C](f: (El1, El2, El3, El4) => B)(implicit bf: BuildFrom[C1, B, C]): C = {
     bf.fromSpecific(src)(new AbstractView[B] {

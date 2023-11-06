@@ -17,6 +17,7 @@ import java.{lang => jl, util => ju}
 
 import scala.collection.convert._
 import scala.language.implicitConversions
+import language.experimental.captureChecking
 
 /** A variety of decorators that enable converting between
  *  Scala and Java collections using extension methods, `asScala` and `asJava`.

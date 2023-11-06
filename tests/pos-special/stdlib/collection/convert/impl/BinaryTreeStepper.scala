@@ -18,6 +18,7 @@ import java.util.Spliterator
 import annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
 import scala.collection._
+// import language.experimental.captureChecking // TODO enable
 
 
 private[collection] object BinaryTreeStepper {
@@ -125,7 +126,7 @@ extends EfficientSplit {
     if (!hasStep || index < 0) null
     else {
       val root = stack(0).asInstanceOf[T]
-      val leftStack = 
+      val leftStack =
         if (index > 0) java.util.Arrays.copyOfRange(stack, 1, index+1)
         else BinaryTreeStepper.emptyStack
       val leftIndex = index - 1

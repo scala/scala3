@@ -18,6 +18,8 @@ import scala.collection.mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.language.implicitConversions
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** Utility class for integer maps.
   */
@@ -52,7 +54,7 @@ object IntMap {
   def apply[T](elems: (Int, T)*): IntMap[T] =
     elems.foldLeft(empty[T])((x, y) => x.updated(y._1, y._2))
 
-  def from[V](coll: IterableOnce[(Int, V)]): IntMap[V] =
+  def from[V](coll: IterableOnce[(Int, V)]^): IntMap[V] =
     newBuilder[V].addAll(coll).result()
 
   private[immutable] case object Nil extends IntMap[Nothing] {
@@ -89,13 +91,13 @@ object IntMap {
 
   @SerialVersionUID(3L)
   private[this] object ToFactory extends Factory[(Int, AnyRef), IntMap[AnyRef]] with Serializable {
-    def fromSpecific(it: IterableOnce[(Int, AnyRef)]): IntMap[AnyRef] = IntMap.from[AnyRef](it)
+    def fromSpecific(it: IterableOnce[(Int, AnyRef)]^): IntMap[AnyRef] = IntMap.from[AnyRef](it)
     def newBuilder: Builder[(Int, AnyRef), IntMap[AnyRef]] = IntMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: IntMap.type): BuildFrom[Any, (Int, V), IntMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Int, V), IntMap[V]]]
   private[this] object ToBuildFrom extends BuildFrom[Any, (Int, AnyRef), IntMap[AnyRef]] {
-    def fromSpecific(from: Any)(it: IterableOnce[(Int, AnyRef)]) = IntMap.from(it)
+    def fromSpecific(from: Any)(it: IterableOnce[(Int, AnyRef)]^) = IntMap.from(it)
     def newBuilder(from: Any) = IntMap.newBuilder[AnyRef]
   }
 
@@ -180,9 +182,9 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   with StrictOptimizedMapOps[Int, T, Map, IntMap[T]]
   with Serializable {
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Int, T) @uncheckedVariance]): IntMap[T] =
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Int, T) @uncheckedVariance]^): IntMap[T] =
     intMapFrom[T](coll)
-  protected def intMapFrom[V2](coll: scala.collection.IterableOnce[(Int, V2)]): IntMap[V2] = {
+  protected def intMapFrom[V2](coll: scala.collection.IterableOnce[(Int, V2)]^): IntMap[V2] = {
     val b = IntMap.newBuilder[V2]
     b.sizeHint(coll)
     b.addAll(coll)
@@ -196,7 +198,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   override def empty: IntMap[T] = IntMap.Nil
 
   override def toList = {
-    val buffer = new scala.collection.mutable.ListBuffer[(Int, T)]
+    val buffer = new scala.collection.mutable.ListBuffer[(Int, T) @uncheckedCaptures]
     foreach(buffer += _)
     buffer.toList
   }
@@ -327,10 +329,10 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
 
   def flatMap[V2](f: ((Int, T)) => IterableOnce[(Int, V2)]): IntMap[V2] = intMapFrom(new View.FlatMap(this, f))
 
-  override def concat[V1 >: T](that: collection.IterableOnce[(Int, V1)]): IntMap[V1] =
+  override def concat[V1 >: T](that: collection.IterableOnce[(Int, V1)]^): IntMap[V1] =
     super.concat(that).asInstanceOf[IntMap[V1]] // Already has correct type but not declared as such
 
-  override def ++ [V1 >: T](that: collection.IterableOnce[(Int, V1)]): IntMap[V1] = concat(that)
+  override def ++ [V1 >: T](that: collection.IterableOnce[(Int, V1)]^): IntMap[V1] = concat(that)
 
   def collect[V2](pf: PartialFunction[(Int, T), (Int, V2)]): IntMap[V2] =
     strictOptimizedCollect(IntMap.newBuilder[V2], pf)

@@ -14,11 +14,12 @@ package scala
 package collection
 package immutable
 
-import scala.annotation.unchecked.uncheckedVariance
+import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import scala.annotation.tailrec
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
+import language.experimental.captureChecking
 
 /** A class for immutable linked lists representing ordered collections
   *  of elements of type `A`.
@@ -143,7 +144,7 @@ sealed abstract class List[+A]
 
   override def prepended[B >: A](elem: B): List[B] = elem :: this
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): List[B] = prefix match {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = prefix match {
     case xs: List[B] => xs ::: this
     case _ if prefix.knownSize == 0 => this
     case b: ListBuffer[B] if this.isEmpty => b.toList
@@ -165,7 +166,7 @@ sealed abstract class List[+A]
   }
 
   // When calling appendAll with another list `suffix`, avoid copying `suffix`
-  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]): List[B] = suffix match {
+  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): List[B] = suffix match {
     case xs: List[B] => this ::: xs
     case _ => super.appendedAll(suffix)
   }
@@ -214,7 +215,7 @@ sealed abstract class List[+A]
   // dropRight is inherited from LinearSeq
 
   override def splitAt(n: Int): (List[A], List[A]) = {
-    val b = new ListBuffer[A]
+    val b = new ListBuffer[A @uncheckedCaptures]
     var i = 0
     var these = this
     while (!these.isEmpty && i < n) {
@@ -257,7 +258,7 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def collect[B](pf: PartialFunction[A, B]): List[B] = {
+  final override def collect[B](pf: PartialFunction[A, B]^): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
       var h: ::[B] = null
@@ -285,7 +286,7 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def flatMap[B](f: A => IterableOnce[B]): List[B] = {
+  final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
     var rest = this
     var h: ::[B] = null
     var t: ::[B] = null
@@ -306,7 +307,7 @@ sealed abstract class List[+A]
   }
 
   @inline final override def takeWhile(p: A => Boolean): List[A] = {
-    val b = new ListBuffer[A]
+    val b = new ListBuffer[A @uncheckedCaptures]
     var these = this
     while (!these.isEmpty && p(these.head)) {
       b += these.head
@@ -316,7 +317,7 @@ sealed abstract class List[+A]
   }
 
   @inline final override def span(p: A => Boolean): (List[A], List[A]) = {
-    val b = new ListBuffer[A]
+    val b = new ListBuffer[A @uncheckedCaptures]
     var these = this
     while (!these.isEmpty && p(these.head)) {
       b += these.head
@@ -651,7 +652,7 @@ sealed abstract class List[+A]
 
 // Internal code that mutates `next` _must_ call `Statics.releaseFence()` if either immediately, or
 // before a newly-allocated, thread-local :: instance is aliased (e.g. in ListBuffer.toList)
-final case class :: [+A](override val head: A, private[scala] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
+final case class :: [+A](override val head: A, private[scala] var next: List[A @uncheckedVariance @uncheckedCaptures]) // sound because `next` is used only locally
   extends List[A] {
   releaseFence()
   override def headOption: Some[A] = Some(head)
@@ -666,7 +667,7 @@ case object Nil extends List[Nothing] {
   override def init: Nothing = throw new UnsupportedOperationException("init of empty list")
   override def knownSize: Int = 0
   override def iterator: Iterator[Nothing] = Iterator.empty
-  override def unzip[A1, A2](implicit asPair: Nothing => (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
+  override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
   private[this] val EmptyUnzip = (Nil, Nil)
@@ -681,9 +682,9 @@ case object Nil extends List[Nothing] {
 object List extends StrictOptimizedSeqFactory[List] {
   private val TupleOfNil = (Nil, Nil)
 
-  def from[B](coll: collection.IterableOnce[B]): List[B] = Nil.prependedAll(coll)
+  def from[B](coll: collection.IterableOnce[B]^): List[B] = Nil.prependedAll(coll)
 
-  def newBuilder[A]: Builder[A, List[A]] = new ListBuffer()
+  def newBuilder[A]: Builder[A, List[A]] = new ListBuffer[A @uncheckedCaptures]()
 
   def empty[A]: List[A] = Nil
 

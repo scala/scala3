@@ -16,6 +16,8 @@ package immutable
 
 import scala.collection.immutable.Set.Set4
 import scala.collection.mutable.{Builder, ReusableBuilder}
+import language.experimental.captureChecking
+import annotation.unchecked.uncheckedCaptures
 
 /** Base trait for immutable set collections */
 trait Set[A] extends Iterable[A]
@@ -94,7 +96,7 @@ object Set extends IterableFactory[Set] {
 
   def empty[A]: Set[A] = EmptySet.asInstanceOf[Set[A]]
 
-  def from[E](it: collection.IterableOnce[E]): Set[E] =
+  def from[E](it: collection.IterableOnce[E]^): Set[E] =
     it match {
       // We want `SortedSet` (and subclasses, such as `BitSet`) to
       // rebuild themselves to avoid element type widening issues
@@ -128,7 +130,7 @@ object Set extends IterableFactory[Set] {
   private[collection] def emptyInstance: Set[Any] = EmptySet
 
   @SerialVersionUID(3L)
-  private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A] with Serializable {
+  private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A], Serializable, Pure {
     private[this] var current = 0
     private[this] var remainder = n
     override def knownSize: Int = remainder
@@ -351,9 +353,9 @@ abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A
   * $multipleResults
   */
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
-  private[this] var elems: Set[A] = Set.empty
+  private[this] var elems: Set[A @uncheckedCaptures] = Set.empty
   private[this] var switchedToHashSetBuilder: Boolean = false
-  private[this] var hashSetBuilder: HashSetBuilder[A] = _
+  private[this] var hashSetBuilder: HashSetBuilder[A @uncheckedCaptures] = _
 
   override def clear(): Unit = {
     elems = Set.empty
@@ -388,7 +390,7 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type =
+  override def addAll(xs: IterableOnce[A]^): this.type =
     if (switchedToHashSetBuilder) {
       hashSetBuilder.addAll(xs)
       this

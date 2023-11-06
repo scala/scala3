@@ -13,6 +13,7 @@
 package scala
 package collection
 package generic
+import language.experimental.captureChecking
 
 /** This trait represents collection-like objects that can be reduced
   *  using a '+' operator. It defines variants of `-` and `--`

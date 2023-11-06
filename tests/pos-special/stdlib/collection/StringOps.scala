@@ -22,6 +22,7 @@ import scala.collection.mutable.StringBuilder
 import scala.math.{ScalaNumber, max, min}
 import scala.reflect.ClassTag
 import scala.util.matching.Regex
+import language.experimental.captureChecking
 
 object StringOps {
   // just statics for companion class.
@@ -123,7 +124,7 @@ object StringOps {
       *  @return       a new collection resulting from applying the given collection-valued function
       *                `f` to each char of this string and concatenating the results.
       */
-    def flatMap[B](f: Char => IterableOnce[B]): immutable.IndexedSeq[B] = {
+    def flatMap[B](f: Char => IterableOnce[B]^): immutable.IndexedSeq[B] = {
       val len = s.length
       val b = immutable.IndexedSeq.newBuilder[B]
       var i = 0
@@ -155,7 +156,7 @@ object StringOps {
     }
 
     /** Creates a new non-strict filter which combines this filter with the given predicate. */
-    def withFilter(q: Char => Boolean): WithFilter = new WithFilter(a => p(a) && q(a), s)
+    def withFilter(q: Char => Boolean): WithFilter^{p, q} = new WithFilter(a => p(a) && q(a), s)
   }
 
   /** Avoid an allocation in [[collect]]. */
@@ -238,7 +239,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *  @return       a new collection resulting from applying the given collection-valued function
     *                `f` to each char of this string and concatenating the results.
     */
-  def flatMap[B](f: Char => IterableOnce[B]): immutable.IndexedSeq[B] = {
+  def flatMap[B](f: Char => IterableOnce[B]^): immutable.IndexedSeq[B] = {
     val len = s.length
     val b = immutable.IndexedSeq.newBuilder[B]
     var i = 0
@@ -313,7 +314,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *  @return       a new collection which contains all chars
     *                of this string followed by all elements of `suffix`.
     */
-  def concat[B >: Char](suffix: IterableOnce[B]): immutable.IndexedSeq[B] = {
+  def concat[B >: Char](suffix: IterableOnce[B]^): immutable.IndexedSeq[B] = {
     val b = immutable.IndexedSeq.newBuilder[B]
     val k = suffix.knownSize
     b.sizeHint(s.length + (if(k >= 0) k else 16))
@@ -329,7 +330,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *  @return       a new string which contains all chars
     *                of this string followed by all chars of `suffix`.
     */
-  def concat(suffix: IterableOnce[Char]): String = {
+  def concat(suffix: IterableOnce[Char]^): String = {
     val k = suffix.knownSize
     val sb = new JStringBuilder(s.length + (if(k >= 0) k else 16))
     sb.append(s)
@@ -347,10 +348,10 @@ final class StringOps(private val s: String) extends AnyVal {
   @`inline` def concat(suffix: String): String = s + suffix
 
   /** Alias for `concat` */
-  @`inline` def ++[B >: Char](suffix: Iterable[B]): immutable.IndexedSeq[B] = concat(suffix)
+  @`inline` def ++[B >: Char](suffix: Iterable[B]^): immutable.IndexedSeq[B] = concat(suffix)
 
   /** Alias for `concat` */
-  @`inline` def ++(suffix: IterableOnce[Char]): String = concat(suffix)
+  @`inline` def ++(suffix: IterableOnce[Char]^): String = concat(suffix)
 
   /** Alias for `concat` */
   def ++(xs: String): String = concat(xs)
@@ -422,7 +423,7 @@ final class StringOps(private val s: String) extends AnyVal {
   @`inline` def +: (c: Char): String = prepended(c)
 
   /** A copy of the string with all elements from a collection prepended */
-  def prependedAll[B >: Char](prefix: IterableOnce[B]): immutable.IndexedSeq[B] = {
+  def prependedAll[B >: Char](prefix: IterableOnce[B]^): immutable.IndexedSeq[B] = {
     val b = immutable.IndexedSeq.newBuilder[B]
     val k = prefix.knownSize
     b.sizeHint(s.length + (if(k >= 0) k else 16))
@@ -432,7 +433,7 @@ final class StringOps(private val s: String) extends AnyVal {
   }
 
   /** Alias for `prependedAll` */
-  @`inline` def ++: [B >: Char] (prefix: IterableOnce[B]): immutable.IndexedSeq[B] = prependedAll(prefix)
+  @`inline` def ++: [B >: Char] (prefix: IterableOnce[B]^): immutable.IndexedSeq[B] = prependedAll(prefix)
 
   /** A copy of the string with another string prepended */
   def prependedAll(prefix: String): String = prefix + s
@@ -460,11 +461,11 @@ final class StringOps(private val s: String) extends AnyVal {
   @`inline` def :+ (c: Char): String = appended(c)
 
   /** A copy of the string with all elements from a collection appended */
-  @`inline` def appendedAll[B >: Char](suffix: IterableOnce[B]): immutable.IndexedSeq[B] =
+  @`inline` def appendedAll[B >: Char](suffix: IterableOnce[B]^): immutable.IndexedSeq[B] =
     concat(suffix)
 
   /** Alias for `appendedAll` */
-  @`inline` def :++ [B >: Char](suffix: IterableOnce[B]): immutable.IndexedSeq[B] =
+  @`inline` def :++ [B >: Char](suffix: IterableOnce[B]^): immutable.IndexedSeq[B] =
     concat(suffix)
 
   /** A copy of the string with another string appended */
@@ -486,7 +487,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *                   except that `replaced` chars starting from `from` are replaced
     *                   by `other`.
     */
-  def patch[B >: Char](from: Int, other: IterableOnce[B], replaced: Int): immutable.IndexedSeq[B] = {
+  def patch[B >: Char](from: Int, other: IterableOnce[B]^, replaced: Int): immutable.IndexedSeq[B] = {
     val len = s.length
     @`inline` def slc(off: Int, length: Int): WrappedString =
       new WrappedString(s.substring(off, off+length))
@@ -515,7 +516,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *                   by `other`.
     *  @note            $unicodeunaware
     */
-  def patch(from: Int, other: IterableOnce[Char], replaced: Int): String =
+  def patch(from: Int, other: IterableOnce[Char]^, replaced: Int): String =
     patch(from, other.iterator.mkString, replaced)
 
   /** Produces a new string where a slice of characters in this string is replaced by another string.
@@ -963,7 +964,7 @@ final class StringOps(private val s: String) extends AnyVal {
     else if (s.equalsIgnoreCase("false")) false
     else throw new IllegalArgumentException("For input string: \""+s+"\"")
 
-  def toArray[B >: Char](implicit tag: ClassTag[B]): Array[B] =
+  def toArray[sealed B >: Char](implicit tag: ClassTag[B]): Array[B] =
     if (tag == ClassTag.Char) s.toCharArray.asInstanceOf[Array[B]]
     else new WrappedString(s).toArray[B]
 
@@ -1195,7 +1196,7 @@ final class StringOps(private val s: String) extends AnyVal {
     *             All these operations apply to those chars of this string
     *             which satisfy the predicate `p`.
     */
-  def withFilter(p: Char => Boolean): StringOps.WithFilter = new StringOps.WithFilter(p, s)
+  def withFilter(p: Char => Boolean): StringOps.WithFilter^{p} = new StringOps.WithFilter(p, s)
 
   /** The rest of the string without its first char.
     * @note $unicodeunaware
@@ -1246,7 +1247,7 @@ final class StringOps(private val s: String) extends AnyVal {
   def inits: Iterator[String] = iterateUntilEmpty(_.init)
 
   // A helper for tails and inits.
-  private[this] def iterateUntilEmpty(f: String => String): Iterator[String] =
+  private[this] def iterateUntilEmpty(f: String => String): Iterator[String]^{f} =
     Iterator.iterate(s)(f).takeWhile(x => !x.isEmpty) ++ Iterator.single("")
 
   /** Selects all chars of this string which satisfy a predicate. */
@@ -1464,7 +1465,7 @@ final class StringOps(private val s: String) extends AnyVal {
     * @return a decorator `LazyZip2` that allows strict operations to be performed on the lazily evaluated pairs
     *         or chained calls to `lazyZip`. Implicit conversion to `Iterable[(A, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]): LazyZip2[Char, B, String] = new LazyZip2(s, new WrappedString(s), that)
+  def lazyZip[B](that: Iterable[B]^): LazyZip2[Char, B, String]^{that} = new LazyZip2(s, new WrappedString(s), that)
 
 
   /* ************************************************************************************************************
@@ -1512,7 +1513,7 @@ final class StringOps(private val s: String) extends AnyVal {
     * @return a new string consisting of all the chars of this string without duplicates.
     * @note $unicodeunaware
     */
-  def distinctBy[B](f: Char => B): String = new WrappedString(s).distinctBy(f).unwrap
+  def distinctBy[B](f: Char -> B): String = new WrappedString(s).distinctBy(f).unwrap
 
   /** Sorts the characters of this string according to an Ordering.
     *

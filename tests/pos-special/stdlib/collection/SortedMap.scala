@@ -14,6 +14,7 @@ package scala
 package collection
 
 import scala.annotation.{implicitNotFound, nowarn}
+import language.experimental.captureChecking
 
 /** A Map whose keys are sorted according to a [[scala.math.Ordering]]*/
 trait SortedMap[K, +V]
@@ -49,7 +50,8 @@ trait SortedMap[K, +V]
 
 trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _], +C <: SortedMapOps[K, V, CC, C]]
   extends MapOps[K, V, Map, C]
-     with SortedOps[K, C] {
+     with SortedOps[K, C]
+     with Pure {
 
   /** The companion object of this sorted map, providing various factory methods.
     *
@@ -176,13 +178,13 @@ trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] with SortedMapOps[X, Y, CC, _],
   def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
-  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]): CC[K, V2] = sortedMapFactory.from(suffix match {
+  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CC[K, V2] = sortedMapFactory.from(suffix match {
     case it: Iterable[(K, V2)] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })(ordering)
 
   /** Alias for `concat` */
-  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]): CC[K, V2] = concat(xs)
+  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): CC[K, V1] = sortedMapFactory.from(new View.Appended(this, kv))(ordering)
@@ -206,10 +208,10 @@ object SortedMapOps {
     def map[K2 : Ordering, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
       self.sortedMapFactory.from(new View.Map(filtered, f))
 
-    def flatMap[K2 : Ordering, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): CC[K2, V2] =
+    def flatMap[K2 : Ordering, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
       self.sortedMapFactory.from(new View.FlatMap(filtered, f))
 
-    override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, MapCC, CC] =
+    override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, MapCC, CC]^{this, q} =
       new WithFilter[K, V, IterableCC, MapCC, CC](self, (kv: (K, V)) => p(kv) && q(kv))
 
   }

@@ -16,6 +16,8 @@ import java.io.{ObjectInputStream, ObjectOutputStream}
 
 import scala.collection.{Factory, Iterable}
 import scala.collection.mutable.Builder
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** The default serialization proxy for collection implementations.
   *
@@ -27,7 +29,8 @@ import scala.collection.mutable.Builder
 @SerialVersionUID(3L)
 final class DefaultSerializationProxy[A](factory: Factory[A, Any], @transient private[this] val coll: Iterable[A]) extends Serializable {
 
-  @transient protected var builder: Builder[A, Any] = _
+  @transient protected var builder: Builder[A @uncheckedCaptures, Any] = _
+    // @uncheckedCaptures OK since builder is used only locally when reading objects
 
   private[this] def writeObject(out: ObjectOutputStream): Unit = {
     out.defaultWriteObject()

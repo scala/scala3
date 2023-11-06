@@ -14,6 +14,7 @@ package scala.collection.convert
 package impl
 
 import scala.collection._
+// import language.experimental.captureChecking // TODO enable
 
 private[collection] class ObjectArrayStepper[A <: Object](underlying: Array[A], _i0: Int, _iN: Int)
   extends IndexedStepperBase[AnyStepper[A], ObjectArrayStepper[A]](_i0, _iN)

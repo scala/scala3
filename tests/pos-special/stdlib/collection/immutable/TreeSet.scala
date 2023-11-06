@@ -19,7 +19,8 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.ReusableBuilder
 import scala.collection.immutable.{RedBlackTree => RB}
 import scala.runtime.AbstractFunction1
-
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements immutable sorted sets using a tree.
   *
@@ -239,7 +240,7 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
 
   def empty[A: Ordering]: TreeSet[A] = new TreeSet[A]
 
-  def from[E](it: scala.collection.IterableOnce[E])(implicit ordering: Ordering[E]): TreeSet[E] =
+  def from[E](it: scala.collection.IterableOnce[E]^)(implicit ordering: Ordering[E]): TreeSet[E] =
     it match {
       case ts: TreeSet[E] if ordering == ts.ordering => ts
       case ss: scala.collection.SortedSet[E] if ordering == ss.ordering =>
@@ -262,14 +263,14 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
     extends RB.SetHelper[A]
       with ReusableBuilder[A, TreeSet[A]] {
     type Tree = RB.Tree[A, Any]
-    private [this] var tree:RB.Tree[A, Any] = null
+    private [this] var tree:RB.Tree[A @uncheckedCaptures, Any] = null
 
     override def addOne(elem: A): this.type = {
       tree = mutableUpd(tree, elem)
       this
     }
 
-    override def addAll(xs: IterableOnce[A]): this.type = {
+    override def addAll(xs: IterableOnce[A]^): this.type = {
       xs match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
         // for the moment we have to force immutability before the union

@@ -14,6 +14,7 @@ package scala
 package collection
 
 import scala.annotation.tailrec
+import language.experimental.captureChecking
 
 /** A module containing the implementations of parsers from strings to numeric types, and boolean
  */
@@ -34,7 +35,7 @@ private[scala] object StringParsers {
   @inline
   private[this] final def stepToOverflow(from: String, len: Int, agg: Int, isPositive: Boolean, min: Int): Option[Int] = {
     @tailrec
-    def rec(i: Int, agg: Int): Option[Int] = 
+    def rec(i: Int, agg: Int): Option[Int] =
       if (agg < min) None
       else if (i == len) {
         if (!isPositive) Some(agg)
@@ -131,11 +132,11 @@ private[scala] object StringParsers {
       else None
     }
   }
-    
+
   final def parseLong(from: String): Option[Long] = {
     //like parseInt, but Longer
     val len = from.length()
-  
+
     @tailrec
     def step(i: Int, agg: Long, isPositive: Boolean): Option[Long] = {
       if (i == len) {
@@ -166,7 +167,7 @@ private[scala] object StringParsers {
       else None
     }
   }
-  
+
   //floating point
   final def checkFloatFormat(format: String): Boolean = {
     //indices are tracked with a start index which points *at* the first index
@@ -192,7 +193,7 @@ private[scala] object StringParsers {
                              else i
       rec(from)
     }
-    
+
 
     def isHexFloatLiteral(startIndex: Int, endIndex: Int): Boolean = {
       def isHexDigit(ch: Char) = ((ch >= '0' && ch <= '9') ||
@@ -231,7 +232,7 @@ private[scala] object StringParsers {
       val pIndex = format.indexWhere(ch => ch == 'p' || ch == 'P', startIndex)
       (pIndex <= endIndex) && prefixOK(startIndex, pIndex) && postfixOK(pIndex + 1, endIndex)
     }
- 
+
     def isDecFloatLiteral(startIndex: Int, endIndex: Int): Boolean = {
       //invariant: endIndex > startIndex
 
@@ -278,7 +279,7 @@ private[scala] object StringParsers {
     //count 0x00 to 0x20 as "whitespace", and nothing else
     val unspacedStart = format.indexWhere(ch => ch.toInt > 0x20)
     val unspacedEnd = format.lastIndexWhere(ch => ch.toInt > 0x20) + 1
-    
+
     if (unspacedStart == -1 || unspacedStart >= unspacedEnd || unspacedEnd <= 0) false
     else {
       //all formats can have a sign
@@ -305,7 +306,7 @@ private[scala] object StringParsers {
       }
     }
   }
-    
+
   @inline
   def parseFloat(from: String): Option[Float] =
     if (checkFloatFormat(from)) Some(java.lang.Float.parseFloat(from))

@@ -16,6 +16,7 @@ package mutable
 
 import scala.annotation.nowarn
 import scala.collection.convert.JavaCollectionWrappers.{JMapWrapper, JMapWrapperLike}
+import language.experimental.captureChecking
 
 /** A hash map with references to entries which are weakly reachable. Entries are
  *  removed from this map when the key is no longer (strongly) referenced. This class wraps
@@ -33,7 +34,7 @@ import scala.collection.convert.JavaCollectionWrappers.{JMapWrapper, JMapWrapper
  *  @define willNotTerminateInf
  */
 @SerialVersionUID(3L)
-class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
+class WeakHashMap[sealed K, sealed V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
     with JMapWrapperLike[K, V, WeakHashMap, WeakHashMap[K, V]]
     with MapFactoryDefaults[K, V, WeakHashMap, Iterable] {
   override def empty = new WeakHashMap[K, V]
@@ -48,8 +49,8 @@ class WeakHashMap[K, V] extends JMapWrapper[K, V](new java.util.WeakHashMap)
  */
 @SerialVersionUID(3L)
 object WeakHashMap extends MapFactory[WeakHashMap] {
-  def empty[K, V]: WeakHashMap[K,V] = new WeakHashMap[K, V]
-  def from[K, V](it: collection.IterableOnce[(K, V)]): WeakHashMap[K,V] = Growable.from(empty[K, V], it)
-  def newBuilder[K, V]: Builder[(K, V), WeakHashMap[K,V]] = new GrowableBuilder(WeakHashMap.empty[K, V])
+  def empty[sealed K, sealed V]: WeakHashMap[K,V] = new WeakHashMap[K, V]
+  def from[sealed K, sealed V](it: collection.IterableOnce[(K, V)]^): WeakHashMap[K,V] = Growable.from(empty[K, V], it)
+  def newBuilder[sealed K, sealed V]: Builder[(K, V), WeakHashMap[K,V]] = new GrowableBuilder(WeakHashMap.empty[K, V])
 }
 

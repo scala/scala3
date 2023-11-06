@@ -17,6 +17,7 @@ import java.util.Spliterator
 
 import scala.collection.{AnyStepper, DoubleStepper, IntStepper, LongStepper, Stepper}
 import scala.jdk.{AnyAccumulator, DoubleAccumulator, IntAccumulator, LongAccumulator}
+// import language.experimental.captureChecking // TODO enable
 
 private[collection] class AnyIteratorStepper[A](_underlying: Iterator[A])
   extends IteratorStepperBase[A, AnyStepper[A], AnyIteratorStepper[A]](_underlying)

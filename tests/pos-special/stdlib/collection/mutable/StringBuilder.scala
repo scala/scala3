@@ -14,6 +14,7 @@ package scala.collection.mutable
 
 import scala.collection.{IterableFactoryDefaults, IterableOnce}
 import scala.collection.immutable.WrappedString
+import language.experimental.captureChecking
 
 import scala.Predef.{ // unimport char-related implicit conversions to avoid triggering them accidentally
   genericArrayOps => _,
@@ -81,7 +82,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
   // Methods required to make this an IndexedSeq:
   def apply(i: Int): Char = underlying.charAt(i)
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]): StringBuilder =
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[Char]^): StringBuilder =
     new StringBuilder() appendAll coll
 
   override protected def newSpecificBuilder: Builder[Char, StringBuilder] =
@@ -109,7 +110,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   override def toString: String = result()
 
-  override def toArray[B >: Char](implicit ct: scala.reflect.ClassTag[B]) =
+  override def toArray[sealed B >: Char](implicit ct: scala.reflect.ClassTag[B]) =
     ct.runtimeClass match {
       case java.lang.Character.TYPE => toCharArray.asInstanceOf[Array[B]]
       case _ => super.toArray
@@ -184,7 +185,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @param  xs  the characters to be appended.
     *  @return     this StringBuilder.
     */
-  def appendAll(xs: IterableOnce[Char]): this.type = {
+  def appendAll(xs: IterableOnce[Char]^): this.type = {
     xs match {
       case x: WrappedString => underlying append x.unwrap
       case x: ArraySeq.ofChar => underlying append x.array
@@ -313,7 +314,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
     *  @return       this StringBuilder.
     *  @throws StringIndexOutOfBoundsException  if the index is out of bounds.
     */
-  def insertAll(index: Int, xs: IterableOnce[Char]): this.type =
+  def insertAll(index: Int, xs: IterableOnce[Char]^): this.type =
     insertAll(index, (ArrayBuilder.make[Char] ++= xs).result())
 
   /** Inserts the given Array[Char] into this sequence at the given index.

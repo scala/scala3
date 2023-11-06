@@ -17,6 +17,7 @@ package mutable
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.{RedBlackTree => RB}
+import language.experimental.captureChecking
 
 /**
   * A mutable sorted map implemented using a mutable red-black tree as underlying data structure.
@@ -28,7 +29,7 @@ import scala.collection.mutable.{RedBlackTree => RB}
   * @define Coll mutable.TreeMap
   * @define coll mutable tree map
   */
-sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: Ordering[K])
+sealed class TreeMap[sealed K, sealed V] private (tree: RB.Tree[K, V])(implicit val ordering: Ordering[K])
   extends AbstractMap[K, V]
     with SortedMap[K, V]
     with SortedMapOps[K, V, TreeMap, TreeMap[K, V]]
@@ -247,11 +248,11 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
 @SerialVersionUID(3L)
 object TreeMap extends SortedMapFactory[TreeMap] {
 
-  def from[K : Ordering, V](it: IterableOnce[(K, V)]): TreeMap[K, V] =
+  def from[sealed K : Ordering, sealed V](it: IterableOnce[(K, V)]^): TreeMap[K, V] =
     Growable.from(empty[K, V], it)
 
-  def empty[K : Ordering, V]: TreeMap[K, V] = new TreeMap[K, V]()
+  def empty[sealed K : Ordering, sealed V]: TreeMap[K, V] = new TreeMap[K, V]()
 
-  def newBuilder[K: Ordering, V]: Builder[(K, V), TreeMap[K, V]] = new GrowableBuilder(empty[K, V])
+  def newBuilder[sealed K: Ordering, sealed V]: Builder[(K, V), TreeMap[K, V]] = new GrowableBuilder(empty[K, V])
 
 }

@@ -22,6 +22,8 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 import scala.util.chaining._
 import scala.util.control.ControlThrowable
+import language.experimental.captureChecking
+import annotation.unchecked.uncheckedCaptures
 
 /** Wrappers for exposing Scala collections as Java collections and vice-versa */
 @SerialVersionUID(3L)
@@ -127,7 +129,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     def prepend(elem: A) = { underlying.subList(0, 0) add elem; this }
     def addOne(elem: A): this.type = { underlying add elem; this }
     def insert(idx: Int,elem: A): Unit = underlying.subList(0, idx).add(elem)
-    def insertAll(i: Int, elems: IterableOnce[A]) = {
+    def insertAll(i: Int, elems: IterableOnce[A]^) = {
       val ins = underlying.subList(0, i)
       elems.iterator.foreach(ins.add(_))
     }
@@ -136,7 +138,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     // Note: Clone cannot just call underlying.clone because in Java, only specific collections
     // expose clone methods.  Generically, they're protected.
     override def clone(): JListWrapper[A] = new JListWrapper(new ju.ArrayList[A](underlying))
-    def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
+    def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A]^, replaced: Int): this.type = {
       remove(from, replaced)
       insertAll(from, patch)
       this
@@ -254,7 +256,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
             def getKey = k
             def getValue = v
             def setValue(v1 : V) = self.put(k, v1)
-            
+
             // It's important that this implementation conform to the contract
             // specified in the javadocs of java.util.Map.Entry.hashCode
             //
@@ -358,7 +360,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
         val result  = underlying.put(k, v)
         if (present) Some(result) else None
       } else {
-        var result: Option[V] = None
+        var result: Option[V @uncheckedCaptures] = None
         def recompute(k0: K, v0: V): V = v.tap(_ =>
           if (v0 != null) result = Some(v0)
           else if (underlying.containsKey(k0)) result = Some(null.asInstanceOf[V])
@@ -384,7 +386,7 @@ private[collection] object JavaCollectionWrappers extends Serializable {
 
     // support Some(null) if currently bound to null
     override def remove(k: K): Option[V] = {
-      var result: Option[V] = None
+      var result: Option[V @uncheckedCaptures] = None
       def recompute(k0: K, v0: V): V = {
         if (v0 != null) result = Some(v0)
         else if (underlying.containsKey(k0)) result = Some(null.asInstanceOf[V])

@@ -12,6 +12,7 @@
 
 package scala.collection
 
+import language.experimental.captureChecking
 
 /** Base trait for sorted collections */
 trait SortedOps[A, +C] {

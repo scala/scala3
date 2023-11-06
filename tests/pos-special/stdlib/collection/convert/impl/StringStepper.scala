@@ -18,6 +18,7 @@ import java.util.Spliterator
 
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{IntStepper, Stepper}
+// import language.experimental.captureChecking // TODO enable
 
 /** Implements `Stepper` on a `String` where you step through chars packed into `Int`.
   */

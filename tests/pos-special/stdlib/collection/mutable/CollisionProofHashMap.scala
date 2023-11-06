@@ -18,6 +18,7 @@ import scala.annotation.{implicitNotFound, tailrec, unused}
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.generic.DefaultSerializationProxy
 import scala.runtime.Statics
+import language.experimental.captureChecking
 
 /** This class implements mutable maps using a hashtable with red-black trees in the buckets for good
   * worst-case performance on hash collisions. An `Ordering` is required for the element type. Equality
@@ -32,7 +33,7 @@ import scala.runtime.Statics
   * @define mayNotTerminateInf
   * @define willNotTerminateInf
   */
-final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double)(implicit ordering: Ordering[K])
+final class CollisionProofHashMap[sealed K, sealed V](initialCapacity: Int, loadFactor: Double)(implicit ordering: Ordering[K])
   extends AbstractMap[K, V]
     with MapOps[K, V, Map, CollisionProofHashMap[K, V]] //--
     with StrictOptimizedIterableOps[(K, V), Iterable, CollisionProofHashMap[K, V]]
@@ -63,7 +64,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 
   @`inline` private[this] final def index(hash: Int) = hash & (table.length - 1)
 
-  override protected def fromSpecific(coll: IterableOnce[(K, V)] @uncheckedVariance): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
+  override protected def fromSpecific(coll: (IterableOnce[(K, V)]^) @uncheckedVariance): CollisionProofHashMap[K, V] @uncheckedVariance = CollisionProofHashMap.from(coll)
   override protected def newSpecificBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] @uncheckedVariance = CollisionProofHashMap.newBuilder[K, V]
 
   override def empty: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
@@ -173,7 +174,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     }
   }
 
-  override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+  override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
     val k = xs.knownSize
     if(k > 0) sizeHint(contentSize + k)
     super.addAll(xs)
@@ -442,13 +443,13 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
       (implicit @implicitNotFound(CollisionProofHashMap.ordMsg) ordering: Ordering[K2]): CollisionProofHashMap[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
-  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
+  override def concat[V2 >: V](suffix: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = sortedMapFactory.from(suffix match {
     case it: Iterable[(K, V2)] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
 
   /** Alias for `concat` */
-  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]): CollisionProofHashMap[K, V2] = concat(xs)
+  @`inline` override final def ++ [V2 >: V](xs: IterableOnce[(K, V2)]^): CollisionProofHashMap[K, V2] = concat(xs)
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): CollisionProofHashMap[K, V1] =
@@ -743,17 +744,17 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
 object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   private[collection] final val ordMsg = "No implicit Ordering[${K2}] found to build a CollisionProofHashMap[${K2}, ${V2}]. You may want to upcast to a Map[${K}, ${V}] first by calling `unsorted`."
 
-  def from[K : Ordering, V](it: scala.collection.IterableOnce[(K, V)]): CollisionProofHashMap[K, V] = {
+  def from[sealed K : Ordering, sealed V](it: scala.collection.IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new CollisionProofHashMap[K, V](cap, defaultLoadFactor) ++= it
   }
 
-  def empty[K : Ordering, V]: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
+  def empty[sealed K : Ordering, sealed V]: CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V]
 
-  def newBuilder[K : Ordering, V]: Builder[(K, V), CollisionProofHashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
+  def newBuilder[sealed K : Ordering, sealed V]: Builder[(K, V), CollisionProofHashMap[K, V]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
 
-  def newBuilder[K : Ordering, V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), CollisionProofHashMap[K, V]] =
+  def newBuilder[sealed K : Ordering, sealed V](initialCapacity: Int, loadFactor: Double): Builder[(K, V), CollisionProofHashMap[K, V]] =
     new GrowableBuilder[(K, V), CollisionProofHashMap[K, V]](new CollisionProofHashMap[K, V](initialCapacity, loadFactor)) {
       override def sizeHint(size: Int) = elems.sizeHint(size)
     }
@@ -765,8 +766,8 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
   final def defaultInitialCapacity: Int = 16
 
   @SerialVersionUID(3L)
-  private final class DeserializationFactory[K, V](val tableLength: Int, val loadFactor: Double, val ordering: Ordering[K]) extends Factory[(K, V), CollisionProofHashMap[K, V]] with Serializable {
-    def fromSpecific(it: IterableOnce[(K, V)]): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(ordering) ++= it
+  private final class DeserializationFactory[sealed K, sealed V](val tableLength: Int, val loadFactor: Double, val ordering: Ordering[K]) extends Factory[(K, V), CollisionProofHashMap[K, V]] with Serializable {
+    def fromSpecific(it: IterableOnce[(K, V)]^): CollisionProofHashMap[K, V] = new CollisionProofHashMap[K, V](tableLength, loadFactor)(ordering) ++= it
     def newBuilder: Builder[(K, V), CollisionProofHashMap[K, V]] = CollisionProofHashMap.newBuilder(tableLength, loadFactor)(ordering)
   }
 
@@ -788,7 +789,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   /////////////////////////// Red-Black Tree Node
 
-  final class RBNode[K, V](var key: K, var hash: Int, var value: V, var red: Boolean, var left: RBNode[K, V], var right: RBNode[K, V], var parent: RBNode[K, V]) extends Node {
+  final class RBNode[sealed K, sealed V](var key: K, var hash: Int, var value: V, var red: Boolean, var left: RBNode[K, V], var right: RBNode[K, V], var parent: RBNode[K, V]) extends Node {
     override def toString: String = "RBNode(" + key + ", " + hash + ", " + value + ", " + red + ", " + left + ", " + right + ")"
 
     @tailrec def getNode(k: K, h: Int)(implicit ord: Ordering[K]): RBNode[K, V] = {
@@ -819,17 +820,17 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 
-  @`inline` private def leaf[A, B](key: A, hash: Int, value: B, red: Boolean, parent: RBNode[A, B]): RBNode[A, B] =
+  @`inline` private def leaf[sealed A, sealed B](key: A, hash: Int, value: B, red: Boolean, parent: RBNode[A, B]): RBNode[A, B] =
     new RBNode(key, hash, value, red, null, null, parent)
 
-  @tailrec private def minNodeNonNull[A, B](node: RBNode[A, B]): RBNode[A, B] =
+  @tailrec private def minNodeNonNull[sealed A, sealed B](node: RBNode[A, B]): RBNode[A, B] =
     if (node.left eq null) node else minNodeNonNull(node.left)
 
   /**
     * Returns the node that follows `node` in an in-order tree traversal. If `node` has the maximum key (and is,
     * therefore, the last node), this method returns `null`.
     */
-  private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] = {
+  private def successor[sealed A, sealed B](node: RBNode[A, B]): RBNode[A, B] = {
     if (node.right ne null) minNodeNonNull(node.right)
     else {
       var x = node
@@ -842,7 +843,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     }
   }
 
-  private final class RBNodesIterator[A, B](tree: RBNode[A, B])(implicit @unused ord: Ordering[A]) extends AbstractIterator[RBNode[A, B]] {
+  private final class RBNodesIterator[sealed A, sealed B](tree: RBNode[A, B])(implicit @unused ord: Ordering[A]) extends AbstractIterator[RBNode[A, B]] {
     private[this] var nextNode: RBNode[A, B] = if(tree eq null) null else minNodeNonNull(tree)
 
     def hasNext: Boolean = nextNode ne null
@@ -858,7 +859,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
 
   /////////////////////////// Linked List Node
 
-  private final class LLNode[K, V](var key: K, var hash: Int, var value: V, var next: LLNode[K, V]) extends Node {
+  private final class LLNode[sealed K, sealed V](var key: K, var hash: Int, var value: V, var next: LLNode[K, V]) extends Node {
     override def toString = s"LLNode($key, $value, $hash) -> $next"
 
     private[this] def eq(a: Any, b: Any): Boolean =

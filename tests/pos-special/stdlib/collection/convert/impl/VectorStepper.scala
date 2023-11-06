@@ -14,6 +14,7 @@ package scala.collection.convert
 package impl
 
 import scala.collection._
+// import language.experimental.captureChecking // TODO enable
 
 private[convert] abstract class VectorStepperBase[Sub >: Null, Semi <: Sub](
   _i0: Int,
@@ -91,7 +92,7 @@ with DoubleStepper {
     index1 = 32
     i0 = half
     ans
-  }    
+  }
 }
 
 private[collection] class IntVectorStepper(_i0: Int, _iN: Int, _displayN: Int, _trunk: Array[AnyRef])
@@ -109,7 +110,7 @@ with IntStepper {
     index1 = 32
     i0 = half
     ans
-  }    
+  }
 }
 
 private[collection] class LongVectorStepper(_i0: Int, _iN: Int, _displayN: Int, _trunk: Array[AnyRef])
@@ -127,5 +128,5 @@ with LongStepper {
     index1 = 32
     i0 = half
     ans
-  }    
+  }
 }

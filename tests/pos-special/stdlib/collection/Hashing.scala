@@ -12,6 +12,7 @@
 
 package scala
 package collection
+import language.experimental.captureChecking
 
 
 protected[collection] object Hashing {

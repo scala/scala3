@@ -20,6 +20,8 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.immutable.{RedBlackTree => RB}
 import scala.collection.mutable.ReusableBuilder
 import scala.runtime.AbstractFunction2
+import language.experimental.captureChecking
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** An immutable SortedMap whose values are stored in a red-black tree.
   *
@@ -138,7 +140,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V])(implicit va
   def updated[V1 >: V](key: K, value: V1): TreeMap[K, V1] =
     newMapOrSelf(RB.update(tree, key, value, overwrite = true))
 
-  override def concat[V1 >: V](that: collection.IterableOnce[(K, V1)]): TreeMap[K, V1] =
+  override def concat[V1 >: V](that: collection.IterableOnce[(K, V1)]^): TreeMap[K, V1] =
     newMapOrSelf(that match {
       case tm: TreeMap[K, V] @unchecked if ordering == tm.ordering =>
         RB.union(tree, tm.tree)
@@ -158,7 +160,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V])(implicit va
         adder.finalTree
     })
 
-  override def removedAll(keys: IterableOnce[K]): TreeMap[K, V] = keys match {
+  override def removedAll(keys: IterableOnce[K]^): TreeMap[K, V] = keys match {
     case ts: TreeSet[K] if ordering == ts.ordering =>
       newMapOrSelf(RB.difference(tree, ts.tree))
     case _ => super.removedAll(keys)
@@ -269,7 +271,7 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V])(implicit va
 
   private final class Adder[B1 >: V]
     extends RB.MapHelper[K, B1] with Function1[(K, B1), Unit] {
-    private var currentMutableTree: RB.Tree[K,B1] = tree0
+    private var currentMutableTree: RB.Tree[K,B1] @uncheckedCaptures = tree0
     def finalTree = beforePublish(currentMutableTree)
     override def apply(kv: (K, B1)): Unit = {
       currentMutableTree = mutableUpd(currentMutableTree, kv._1, kv._2)
@@ -299,7 +301,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
 
   def empty[K : Ordering, V]: TreeMap[K, V] = new TreeMap()
 
-  def from[K, V](it: IterableOnce[(K, V)])(implicit ordering: Ordering[K]): TreeMap[K, V] =
+  def from[K, V](it: IterableOnce[(K, V)]^)(implicit ordering: Ordering[K]): TreeMap[K, V] =
     it match {
       case tm: TreeMap[K, V] if ordering == tm.ordering => tm
       case sm: scala.collection.SortedMap[K, V] if ordering == sm.ordering =>
@@ -320,7 +322,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
     extends RB.MapHelper[K, V]
       with ReusableBuilder[(K, V), TreeMap[K, V]] {
     type Tree = RB.Tree[K, V]
-    private var tree:Tree = null
+    private var tree:Tree @uncheckedCaptures = null
 
     def addOne(elem: (K, V)): this.type = {
       tree = mutableUpd(tree, elem._1, elem._2)
@@ -329,7 +331,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
     private object adder extends AbstractFunction2[K, V, Unit] {
       // we cache tree to avoid the outer access to tree
       // in the hot path (apply)
-      private[this] var accumulator :Tree = null
+      private[this] var accumulator: Tree @uncheckedCaptures = null
       def addForEach(hasForEach: collection.Map[K, V]): Unit = {
         accumulator = tree
         hasForEach.foreachEntry(this)
@@ -343,7 +345,7 @@ object TreeMap extends SortedMapFactory[TreeMap] {
       }
     }
 
-    override def addAll(xs: IterableOnce[(K, V)]): this.type = {
+    override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
       xs match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
         // for the moment we have to force immutability before the union

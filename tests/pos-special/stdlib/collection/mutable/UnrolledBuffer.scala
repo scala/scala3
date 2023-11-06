@@ -17,6 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
 import scala.reflect.ClassTag
 import scala.collection.immutable.Nil
+import language.experimental.captureChecking
 
 /** A buffer that stores elements in an unrolled linked list.
   *
@@ -45,7 +46,7 @@ import scala.collection.immutable.Nil
   *
   */
 @SerialVersionUID(3L)
-sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
+sealed class UnrolledBuffer[sealed T](implicit val tag: ClassTag[T])
   extends AbstractBuffer[T]
     with Buffer[T]
     with Seq[T]
@@ -190,7 +191,7 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
   def insert(idx: Int, elem: T): Unit =
     insertAll(idx, elem :: Nil)
 
-  def insertAll(idx: Int, elems: IterableOnce[T]): Unit =
+  def insertAll(idx: Int, elems: IterableOnce[T]^): Unit =
     if (idx >= 0 && idx <= sz) {
       sz += headptr.insertAll(idx, elems, this)
     } else throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${sz-1})")
@@ -202,7 +203,7 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
     this
   }
 
-  def patchInPlace(from: Int, patch: collection.IterableOnce[T], replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: collection.IterableOnce[T]^, replaced: Int): this.type = {
     remove(from, replaced)
     insertAll(from, patch)
     this
@@ -240,11 +241,11 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   val untagged: SeqFactory[UnrolledBuffer] = new ClassTagSeqFactory.AnySeqDelegate(self)
 
-  def empty[A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
+  def empty[sealed A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
 
-  def from[A : ClassTag](source: scala.collection.IterableOnce[A]): UnrolledBuffer[A] = newBuilder[A].addAll(source)
+  def from[sealed A : ClassTag](source: scala.collection.IterableOnce[A]^): UnrolledBuffer[A] = newBuilder[A].addAll(source)
 
-  def newBuilder[A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
+  def newBuilder[sealed A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
 
   final val waterline: Int = 50
 
@@ -257,7 +258,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   /** Unrolled buffer node.
     */
-  class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
+  class Unrolled[sealed T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)
     private[collection] def this(b: UnrolledBuffer[T]) = this(0, new Array[T](unrolledlength), null, b)
 
@@ -372,7 +373,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
       if (next eq null) true else false // checks if last node was thrown out
     } else false
 
-    @tailrec final def insertAll(idx: Int, t: scala.collection.IterableOnce[T], buffer: UnrolledBuffer[T]): Int = {
+    @tailrec final def insertAll(idx: Int, t: scala.collection.IterableOnce[T]^, buffer: UnrolledBuffer[T]): Int = {
       if (idx < size) {
         // divide this node at the appropriate position and insert all into head
         // update new next
@@ -436,7 +437,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
 // This is used by scala.collection.parallel.mutable.UnrolledParArrayCombiner:
 // Todo -- revisit whether inheritance is the best way to achieve this functionality
-private[collection] class DoublingUnrolledBuffer[T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(t) {
+private[collection] class DoublingUnrolledBuffer[sealed T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(t) {
   override def calcNextLength(sz: Int) = if (sz < 10000) sz * 2 else sz
   override protected def newUnrolled = new UnrolledBuffer.Unrolled[T](0, new Array[T](4), null, this)
 }

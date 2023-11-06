@@ -16,6 +16,7 @@ package convert
 
 import java.util.{concurrent => juc}
 import java.{lang => jl, util => ju}
+import language.experimental.captureChecking
 
 /** Defines `asScala` extension methods, available through [[scala.jdk.CollectionConverters]]. */
 trait AsScalaExtensions {

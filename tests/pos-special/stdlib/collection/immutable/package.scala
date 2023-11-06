@@ -11,7 +11,7 @@
  */
 
 package scala.collection
-
+import language.experimental.captureChecking
 
 package object immutable {
   type StringOps = scala.collection.StringOps

@@ -15,6 +15,7 @@ package impl
 
 import scala.collection.{AnyStepper, IntStepper, LongStepper, Stepper}
 import scala.collection.immutable.NumericRange
+// import language.experimental.captureChecking // TODO enable
 
 private[collection] class AnyNumericRangeStepper[A](underlying: NumericRange[A], _i0: Int, _iN: Int)
 extends IndexedStepperBase[AnyStepper[A], AnyNumericRangeStepper[A]](_i0, _iN)
