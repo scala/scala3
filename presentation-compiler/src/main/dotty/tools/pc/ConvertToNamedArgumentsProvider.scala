@@ -4,7 +4,6 @@ import java.nio.file.Paths
 
 import scala.meta.internal.pc.CodeActionErrorMessages
 import scala.meta.pc.OffsetParams
-import scala.language.unsafeNulls
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context

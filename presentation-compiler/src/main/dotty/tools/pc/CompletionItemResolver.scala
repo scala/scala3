@@ -50,7 +50,7 @@ object CompletionItemResolver extends ItemResolver:
       Context
   ): String =
     def docs(gsym: Symbol): String =
-      search.symbolDocumentation(gsym).fold("")(_.docstring.nn)
+      search.symbolDocumentation(gsym).fold("")(_.docstring().nn)
     val gsymDoc = docs(gsym)
     def keyword(gsym: Symbol): String =
       if gsym.isClass then "class"

@@ -1251,15 +1251,16 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.1.1"
+    val mtagsVersion = "1.1.0+53-af181de4-SNAPSHOT"
 
     Seq(
+      resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),

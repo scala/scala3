@@ -37,6 +37,7 @@ import org.eclipse.lsp4j as l
 
 case class ScalaPresentationCompiler(
     buildTargetIdentifier: String = "",
+    buildTargetName: Option[String] = None,
     classpath: Seq[Path] = Nil,
     options: List[String] = Nil,
     search: SymbolSearch = EmptySymbolSearch,
@@ -47,16 +48,20 @@ case class ScalaPresentationCompiler(
     reportsLevel: ReportLevel = ReportLevel.Info
 ) extends PresentationCompiler:
 
-  def this() = this("", Nil, Nil)
+  def this() = this("", None, Nil, Nil)
 
   val scalaVersion = BuildInfo.scalaVersion
 
   private val forbiddenOptions = Set("-print-lines", "-print-tasty")
   private val forbiddenDoubleOptions = Set("-release")
+
   given ReportContext =
     folderPath
-      .map(StdReportContext(_, reportsLevel))
+      .map(StdReportContext(_, _ => buildTargetName, reportsLevel))
       .getOrElse(EmptyReportContext)
+
+  override def withBuildTargetName(buildTargetName: String) =
+    copy(buildTargetName = Some(buildTargetName))
 
   override def withReportsLoggerLevel(level: String): PresentationCompiler =
     copy(reportsLevel = ReportLevel.fromString(level))

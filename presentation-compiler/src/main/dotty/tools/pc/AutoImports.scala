@@ -246,7 +246,7 @@ object AutoImports:
         // see WorksheetProvider.worksheetScala3AdjustmentsForPC
         val indent =
           if pos.source.path.isWorksheet &&
-            editPos.getStart.nn.getCharacter == 0
+            editPos.getStart().nn.getCharacter == 0
           then indent0.drop(2)
           else indent0
         val topPadding =
