@@ -3,7 +3,7 @@ package config
 
 import scala.language.unsafeNulls
 
-import dotty.tools.dotc.reporting.{ConsoleReporter}
+import dotty.tools.dotc.reporting.ConsoleReporter
 import java.io.{ BufferedReader, PrintWriter }
 import Settings._
 import core.Contexts._
