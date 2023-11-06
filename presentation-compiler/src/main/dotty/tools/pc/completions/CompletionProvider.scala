@@ -167,7 +167,7 @@ class CompletionProvider(
         additionalEdits: List[TextEdit] = Nil,
         range: Option[LspRange] = None
     ): CompletionItem =
-      val oldText = params.text.substring(completionPos.start, completionPos.end)
+      val oldText = params.text().nn.substring(completionPos.start, completionPos.end)
       val editRange = if newText.startsWith(oldText) then completionPos.stripSuffixEditRange
         else completionPos.toEditRange
 
