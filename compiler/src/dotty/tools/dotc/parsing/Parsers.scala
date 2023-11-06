@@ -1756,12 +1756,13 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
+          val withSpan = Span(withOffset, withOffset + 4)
           report.errorOrMigrationWarning(
             DeprecatedWithOperator(rewriteNotice(`future-migration`)),
-            in.sourcePos(withOffset),
+            source.atSpan(withSpan),
             from = future)
           if sourceVersion == `future-migration` then
-            patch(source, Span(withOffset, withOffset + 4), "&")
+            patch(source, withSpan, "&")
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
 
