@@ -13,20 +13,25 @@ import core.NameKinds.TempResultName
 import core.Constants._
 import util.Store
 import dotty.tools.uncheckedNN
-import ast.tpd.*
-import compiletime.uninitialized
+
+import scala.compiletime.uninitialized
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
  */
 class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
+  import ast.tpd._
 
   override def phaseName: String = CapturedVars.name
 
   override def description: String = CapturedVars.description
 
-  private val captured = util.HashSet[Symbol]()
+  private[this] var Captured: Store.Location[util.ReadOnlySet[Symbol]] = uninitialized
+  private def captured(using Context) = ctx.store(Captured)
+
+  override def initContext(ctx: FreshContext): Unit =
+    Captured = ctx.addLocation(util.ReadOnlySet.empty)
 
   private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
@@ -52,10 +57,33 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
     myRefInfo.uncheckedNN
   }
 
-  override def prepareForUnit(tree: Tree)(using Context): Context =
-    captured.clear()
-    atPhase(thisPhase)(CapturedVars.collect(captured)).traverse(tree)
-    ctx
+  private class CollectCaptured extends TreeTraverser {
+    private val captured = util.HashSet[Symbol]()
+    def traverse(tree: Tree)(using Context) = tree match {
+      case id: Ident =>
+        val sym = id.symbol
+        if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm) {
+          val enclMeth = ctx.owner.enclosingMethod
+          if (sym.enclosingMethod != enclMeth) {
+            report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
+            captured += sym
+          }
+        }
+      case _ =>
+        traverseChildren(tree)
+    }
+    def runOver(tree: Tree)(using Context): util.ReadOnlySet[Symbol] = {
+      traverse(tree)
+      captured
+    }
+  }
+
+  override def prepareForUnit(tree: Tree)(using Context): Context = {
+    val captured = atPhase(thisPhase) {
+      CollectCaptured().runOver(ctx.compilationUnit.tpdTree)
+    }
+    ctx.fresh.updateStore(Captured, captured)
+  }
 
   /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
     *  depending on whether the reference should be @volatile
@@ -115,16 +143,3 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
 object CapturedVars:
   val name: String = "capturedVars"
   val description: String = "represent vars captured by closures as heap objects"
-
-  def collect(captured: util.HashSet[Symbol]): TreeTraverser = new:
-    def traverse(tree: Tree)(using Context) = tree match
-      case id: Ident =>
-        val sym = id.symbol
-        if sym.is(Mutable, butNot = Method) && sym.owner.isTerm then
-          val enclMeth = ctx.owner.enclosingMethod
-          if sym.enclosingMethod != enclMeth then
-            report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
-            captured += sym
-      case _ =>
-        traverseChildren(tree)
-end CapturedVars

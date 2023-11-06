@@ -1042,14 +1042,7 @@ class Namer { typer: Typer =>
           tp
 
       val rhs1 = typedAheadType(rhs)
-      val rhsBodyType: TypeBounds =
-        val bounds = addVariances(rhs1.tpe).toBounds
-        if sym.is(Sealed) then
-          sym.resetFlag(Sealed)
-          bounds.derivedTypeBounds(bounds.lo,
-            AnnotatedType(bounds.hi, Annotation(defn.Caps_SealedAnnot, rhs1.span)))
-        else bounds
-
+      val rhsBodyType: TypeBounds = addVariances(rhs1.tpe).toBounds
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
 
       def opaqueToBounds(info: Type): Type =

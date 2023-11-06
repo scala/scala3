@@ -1443,7 +1443,7 @@ class Definitions {
   /** Base classes that are assumed to be pure for the purposes of capture checking.
    *  Every class inheriting from a pure baseclass is pure.
    */
-  @tu lazy val pureBaseClasses = Set(ThrowableClass, PureClass)
+  @tu lazy val pureBaseClasses = Set(defn.ThrowableClass)
 
   /** Non-inheritable lasses that are assumed to be pure for the purposes of capture checking,
    */

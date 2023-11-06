@@ -12,20 +12,19 @@
 
 package scala.collection
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /**
   * Trait that overrides operations on sequences in order
   * to take advantage of strict builders.
   */
 trait StrictOptimizedSeqOps [+A, +CC[_], +C]
-  extends Any
+  extends AnyRef
     with SeqOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 
   override def distinctBy[B](f: A -> B): C = {
     val builder = newSpecificBuilder
-    val seen = mutable.HashSet.empty[B @uncheckedCaptures]
+    val seen = mutable.HashSet.empty[B]
     val it = this.iterator
     while (it.hasNext) {
       val next = it.next()
@@ -80,7 +79,7 @@ trait StrictOptimizedSeqOps [+A, +CC[_], +C]
   override def diff[B >: A](that: Seq[B]): C =
     if (isEmpty || that.isEmpty) coll
     else {
-      val occ = occCounts[B @uncheckedCaptures](that)
+      val occ = occCounts(that)
       val b = newSpecificBuilder
       for (x <- this) {
         occ.updateWith(x) {
@@ -98,7 +97,7 @@ trait StrictOptimizedSeqOps [+A, +CC[_], +C]
   override def intersect[B >: A](that: Seq[B]): C =
     if (isEmpty || that.isEmpty) empty
     else {
-      val occ = occCounts[B @uncheckedCaptures](that)
+      val occ = occCounts(that)
       val b = newSpecificBuilder
       for (x <- this) {
         occ.updateWith(x) {

@@ -96,7 +96,7 @@ trait Iterable[+A] extends IterableOnce[A]
     * @return a decorator `LazyZip2` that allows strict operations to be performed on the lazily evaluated pairs
     *         or chained calls to `lazyZip`. Implicit conversion to `Iterable[(A, B)]` is also supported.
     */
-  def lazyZip[B](that: Iterable[B]^): LazyZip2[A, B, this.type]^{this, that} = new LazyZip2(this, this, that)
+  def lazyZip[B](that: Iterable[B]): LazyZip2[A, B, this.type] = new LazyZip2(this, this, that)
 }
 
 /** Base trait for Iterable operations
@@ -400,7 +400,7 @@ trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] with Iterable
       if (i != headSize)
         fail
     }
-    iterableFactory.from(bs.map(_.result())).asInstanceOf // !!! needed for cc
+    iterableFactory.from(bs.map(_.result()))
   }
 
   def filter(pred: A => Boolean): C^{this, pred} = fromSpecific(new View.Filter(this, pred, isFlipped = false))
@@ -902,10 +902,10 @@ object IterableOps {
     protected def filtered: Iterable[A]^{this} =
       new View.Filter(self, p, isFlipped = false)
 
-    def map[B](f: A => B): CC[B]^{this, f} =
+    def map[B](f: A => B): CC[B]^{this} =
       self.iterableFactory.from(new View.Map(filtered, f))
 
-    def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} =
+    def flatMap[B](f: A => IterableOnce[B]): CC[B]^{this} =
       self.iterableFactory.from(new View.FlatMap(filtered, f))
 
     def foreach[U](f: A => U): Unit = filtered.foreach(f)

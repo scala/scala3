@@ -30,7 +30,7 @@ trait Seq[+A] extends Iterable[A]
   * @define coll immutable sequence
   * @define Coll `immutable.Seq`
   */
-trait SeqOps[+A, +CC[_], +C] extends Any with collection.SeqOps[A, CC, C]
+trait SeqOps[+A, +CC[_], +C] extends AnyRef with collection.SeqOps[A, CC, C]
 
 /**
   * $factoryInfo

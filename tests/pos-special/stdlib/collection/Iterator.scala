@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
 import scala.runtime.Statics
 import language.experimental.captureChecking
-import annotation.unchecked.uncheckedCaptures
+import caps.unsafe.unsafeAssumePure
 
 
 /** Iterators are data structures that allow to iterate over a sequence
@@ -258,7 +258,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       }
       // segment must have data, and must be complete unless they allow partial
       val ok = index > 0 && (partial || index == size)
-      if (ok) buffer = builder.result().asInstanceOf[Array[B @uncheckedCaptures]]
+      if (ok) buffer = builder.result().asInstanceOf[Array[B]]
       else prev = null
       ok
     }
@@ -416,9 +416,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   }
 
   @deprecated("Call scanRight on an Iterable instead.", "2.13.0")
-  def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this} =
-    ArrayBuffer.from[A @uncheckedCaptures](this).scanRight(z)(op).iterator
-      // @uncheckedCaptures is safe since the ArrayBuffer is local temporrary storage
+  def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this} = ArrayBuffer.from(this).scanRight(z)(op).iterator
 
   def indexWhere(p: A => Boolean, from: Int = 0): Int = {
     var i = math.max(from, 0)
@@ -561,7 +559,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     */
   def distinctBy[B](f: A -> B): Iterator[A]^{this} = new AbstractIterator[A] {
 
-    private[this] val traversedValues = mutable.HashSet.empty[B @uncheckedCaptures]
+    private[this] val traversedValues = mutable.HashSet.empty[B]
     private[this] var nextElementDefined: Boolean = false
     private[this] var nextElement: A = _
 
@@ -704,7 +702,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
        */
       private[this] var status = 0
       private def store(a: A): Unit = {
-        if (lookahead == null) lookahead = new mutable.Queue[A @uncheckedCaptures]
+        if (lookahead == null) lookahead = new mutable.Queue[A]
         lookahead += a
       }
       def hasNext = {
@@ -867,8 +865,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     *  @note   Reuse: $consumesOneAndProducesTwoIterators
     */
   def duplicate: (Iterator[A]^{this}, Iterator[A]^{this}) = {
-    val gap = new scala.collection.mutable.Queue[A @uncheckedCaptures]
-    var ahead: Iterator[A @uncheckedCaptures] = null // ahead is captured by Partner, so A is not recognized as parametric
+    val gap = new scala.collection.mutable.Queue[A]
+    var ahead: Iterator[A] = null
     class Partner extends AbstractIterator[A] {
       override def knownSize: Int = self.synchronized {
         val thisSize = self.knownSize
@@ -1145,7 +1143,9 @@ object Iterator extends IterableFactory[Iterator] {
    *  Nested ConcatIterators are merged to avoid blowing the stack.
    */
   private final class ConcatIterator[+A](val from: Iterator[A]^) extends AbstractIterator[A] {
-    private var current: Iterator[A @uncheckedCaptures]^{cap[ConcatIterator]} = from
+    private var current: Iterator[A @uncheckedCaptures] = from.unsafeAssumePure
+      // This should be Iteratpr[A]^, but fails since mutable variables can't capture cap.
+      // To do better we'd need to track nesting levels for universal capabiltities.
     private var tail: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var last: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var currentHasNextChecked = false

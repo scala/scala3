@@ -25,14 +25,14 @@ trait UniqueMessagePositions extends Reporter {
     ||
       dia.pos.exists
       && !ctx.settings.YshowSuppressedErrors.value
-      && (dia.pos.start to dia.pos.end).exists: offset =>
-            positions.get((ctx.source, offset)).exists(_.hides(dia))
+      && (dia.pos.start to dia.pos.end).exists(pos =>
+            positions.get((ctx.source, pos)).exists(_.hides(dia)))
 
   override def markReported(dia: Diagnostic)(using Context): Unit =
     if dia.pos.exists then
-      for offset <- dia.pos.start to dia.pos.end do
-        positions.get((ctx.source, offset)) match
+      for (pos <- dia.pos.start to dia.pos.end)
+        positions.get(ctx.source, pos) match
           case Some(dia1) if dia1.hides(dia) =>
-          case _ => positions((ctx.source, offset)) = dia
+          case _ => positions((ctx.source, pos)) = dia
     super.markReported(dia)
 }

@@ -18,8 +18,6 @@ import scala.collection.Searching.{Found, InsertionPoint, SearchResult}
 import scala.collection.Stepper.EfficientSplit
 import scala.math.Ordering
 import language.experimental.captureChecking
-import caps.unsafe.unsafeAssumePure
-
 
 /** Base trait for indexed sequences that have efficient `apply` and `length` */
 trait IndexedSeq[+A] extends Seq[A]
@@ -35,7 +33,7 @@ trait IndexedSeq[+A] extends Seq[A]
 object IndexedSeq extends SeqFactory.Delegate[IndexedSeq](immutable.IndexedSeq)
 
 /** Base trait for indexed Seq operations */
-trait IndexedSeqOps[+A, +CC[_], +C] extends Any with IndexedSeqViewOps[A, CC, C] with SeqOps[A, CC, C] { self =>
+trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self =>
 
   def iterator: Iterator[A] = view.iterator
 
@@ -88,7 +86,7 @@ trait IndexedSeqOps[+A, +CC[_], +C] extends Any with IndexedSeqViewOps[A, CC, C]
 
   override def dropRight(n: Int): C = fromSpecific(new IndexedSeqView.DropRight(this, n))
 
-  override def map[B](f: A => B): CC[B] = iterableFactory.from(new IndexedSeqView.Map(this, f)).unsafeAssumePure
+  override def map[B](f: A => B): CC[B] = iterableFactory.from(new IndexedSeqView.Map(this, f))
 
   override def reverse: C = fromSpecific(new IndexedSeqView.Reverse(this))
 

@@ -1,12 +1,6 @@
 
--- Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:3:8 --------------------------------------------------------
-3 |  this: D^ => // error
-  |        ^^
-  |reference (caps.cap : caps.Cap) captured by this self type is not included in the allowed capture set {} of pure base class class C
--- [E058] Type Mismatch Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:2:6 -----------------------------------
+-- Error: tests/neg-custom-args/captures/cc-this2/D_2.scala:2:6 --------------------------------------------------------
 2 |class D extends C: // error
-  |      ^
-  |      illegal inheritance: self type D^ of class D does not conform to self type C
-  |      of parent class C
-  |
-  | longer explanation available when compiling with `-explain`
+  |^
+  |reference (caps.cap : caps.Cap) is not included in the allowed capture set {} of pure base class class C
+3 |  this: D^ =>

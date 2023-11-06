@@ -105,8 +105,7 @@ class TreeTypeMap(
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident =>
           if needsSelect(id.tpe) then
-            try ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
-            catch case ex: TypeError => super.transform(id)
+            ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
           else
             super.transform(id)
         case sel: Select =>

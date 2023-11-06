@@ -964,7 +964,7 @@ final class StringOps(private val s: String) extends AnyVal {
     else if (s.equalsIgnoreCase("false")) false
     else throw new IllegalArgumentException("For input string: \""+s+"\"")
 
-  def toArray[sealed B >: Char](implicit tag: ClassTag[B]): Array[B] =
+  def toArray[B >: Char](implicit tag: ClassTag[B]): Array[B] =
     if (tag == ClassTag.Char) s.toCharArray.asInstanceOf[Array[B]]
     else new WrappedString(s).toArray[B]
 

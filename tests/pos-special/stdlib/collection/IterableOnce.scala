@@ -162,10 +162,10 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   def to[C1](factory: Factory[A, C1]): C1 = factory.fromSpecific(it)
 
   @deprecated("Use .iterator.to(ArrayBuffer) instead", "2.13.0")
-  def toBuffer[sealed B >: A]: mutable.Buffer[B] = mutable.ArrayBuffer.from(it)
+  def toBuffer[B >: A]: mutable.Buffer[B] = mutable.ArrayBuffer.from(it)
 
   @deprecated("Use .iterator.toArray", "2.13.0")
-  def toArray[sealed B >: A: ClassTag]: Array[B] = it match {
+  def toArray[B >: A: ClassTag]: Array[B] = it match {
     case it: Iterable[B] => it.toArray[B]
     case _ => it.iterator.toArray[B]
   }
@@ -272,11 +272,10 @@ object IterableOnce {
     math.max(math.min(math.min(len, srcLen), destLen - start), 0)
 
   /** Calls `copyToArray` on the given collection, regardless of whether or not it is an `Iterable`. */
-  @inline private[collection] def copyElemsToArray[A, sealed B >: A](
-      elems: IterableOnce[A]^,
-      xs: Array[B],
-      start: Int = 0,
-      len: Int = Int.MaxValue): Int =
+  @inline private[collection] def copyElemsToArray[A, B >: A](elems: IterableOnce[A],
+                                                              xs: Array[B],
+                                                              start: Int = 0,
+                                                              len: Int = Int.MaxValue): Int =
     elems match {
       case src: Iterable[A] => src.copyToArray[B](xs, start, len)
       case src              => src.iterator.copyToArray[B](xs, start, len)
@@ -890,7 +889,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @note    Reuse: $consumesIterator
    */
   @deprecatedOverriding("This should always forward to the 3-arg version of this method", since = "2.13.4")
-  def copyToArray[sealed B >: A](xs: Array[B]): Int = copyToArray(xs, 0, Int.MaxValue)
+  def copyToArray[B >: A](xs: Array[B]): Int = copyToArray(xs, 0, Int.MaxValue)
 
   /** Copy elements to an array, returning the number of elements written.
    *
@@ -907,7 +906,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @note    Reuse: $consumesIterator
    */
   @deprecatedOverriding("This should always forward to the 3-arg version of this method", since = "2.13.4")
-  def copyToArray[sealed B >: A](xs: Array[B], start: Int): Int = copyToArray(xs, start, Int.MaxValue)
+  def copyToArray[B >: A](xs: Array[B], start: Int): Int = copyToArray(xs, start, Int.MaxValue)
 
   /** Copy elements to an array, returning the number of elements written.
    *
@@ -924,7 +923,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *
    *  @note    Reuse: $consumesIterator
    */
-  def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val it = iterator
     var i = start
     val end = start + math.min(len, xs.length - start)
@@ -1313,13 +1312,13 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   @deprecated("Use .to(LazyList) instead of .toStream", "2.13.0")
   @`inline` final def toStream: immutable.Stream[A] = to(immutable.Stream)
 
-  @`inline` final def toBuffer[sealed B >: A]: mutable.Buffer[B] = mutable.Buffer.from(this)
+  @`inline` final def toBuffer[B >: A]: mutable.Buffer[B] = mutable.Buffer.from(this)
 
   /** Convert collection to array.
     *
     * Implementation note: DO NOT call [[Array.from]] from this method.
     */
-  def toArray[sealed B >: A: ClassTag]: Array[B] =
+  def toArray[B >: A: ClassTag]: Array[B] =
     if (knownSize >= 0) {
       val destination = new Array[B](knownSize)
       copyToArray(destination, 0)
