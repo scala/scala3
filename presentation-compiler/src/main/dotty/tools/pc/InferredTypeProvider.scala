@@ -67,7 +67,7 @@ final class InferredTypeProvider(
 
     val sourceText = adjustOpt.map(_.text).getOrElse(params.text.nn)
     val source =
-      SourceFile.virtual(filePath.toString, sourceText)
+      SourceFile.virtual(filePath.toString(), sourceText)
     driver.run(uri, source)
     val unit = driver.currentCtx.run.nn.units.head
     val pos = driver.sourcePosition(params)
@@ -308,7 +308,7 @@ final class InferredTypeProvider(
           val end = if withBacktick then idx + 1 else idx
           val pos = tree.source.atSpan(Span(start, end, start))
           Some(pos)
-        case None if idx < text.length =>
+        case None if idx < text.length() =>
           val ch = text.charAt(idx)
           if ch == realName.head then
             lookup(idx + 1, Some((idx, realName.tail)), withBacktick)

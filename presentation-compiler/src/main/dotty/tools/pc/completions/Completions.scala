@@ -87,7 +87,7 @@ class Completions(
     def hasSyntheticCursorSuffix: Boolean =
       if !sym.name.endsWith(Cursor.value) then false
       else
-        val realNameLength = sym.decodedName.length - Cursor.value.length
+        val realNameLength = sym.decodedName.length() - Cursor.value.length()
         sym.source == pos.source &&
         sym.span.start + realNameLength == pos.span.end
 
@@ -571,7 +571,7 @@ class Completions(
               val nameId =
                 if sym.isClass || sym.is(Module) then
                   // drop #|. at the end to avoid duplication
-                  name.substring(0, name.length - 1).nn
+                  name.substring(0, name.length() - 1).nn
                 else name
               val suffix =
                 if symOnly.snippetSuffix.addLabelSnippet then "[]" else ""
@@ -693,7 +693,7 @@ class Completions(
         if !ov.symbol.is(Deferred) then penalty |= MemberOrdering.IsNotAbstract
         penalty
       case CompletionValue.Workspace(_, sym, _, _) =>
-        symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length)
+        symbolRelevance(sym) | (IsWorkspaceSymbol + sym.name.show.length())
       case sym: CompletionValue.Symbolic =>
         symbolRelevance(sym.symbol)
       case _ =>
@@ -782,7 +782,7 @@ class Completions(
       def fuzzyScore(o: CompletionValue.Symbolic): Int =
         fuzzyCache.getOrElseUpdate(
           o, {
-            val name = o.label.toLowerCase.nn
+            val name = o.label.toLowerCase().nn
             if name.startsWith(queryLower) then 0
             else if name.contains(queryLower) then 1
             else 2

@@ -55,7 +55,7 @@ object CompletionPos:
     val prevIsDot =
       if start - 1 >= 0 then text.charAt(start - 1) == '.' else false
     val kind =
-      if query.nn.isEmpty && !prevIsDot then CompletionKind.Empty
+      if query.nn.isEmpty() && !prevIsDot then CompletionKind.Empty
       else if prevIsDot then CompletionKind.Members
       else CompletionKind.Scope
 
@@ -73,7 +73,7 @@ object CompletionPos:
   ): (Int, Boolean) =
     var i = 0
     var tabIndented = false
-    while lineOffset + i < text.length && {
+    while lineOffset + i < text.length() && {
         val char = text.charAt(lineOffset + i)
         if char == '\t' then
           tabIndented = true
@@ -125,7 +125,7 @@ object CompletionPos:
    */
   private def inferIdentEnd(pos: SourcePosition, text: String): Int =
     var i = pos.point
-    while i < text.length && Chars.isIdentifierPart(text.charAt(i)) do i += 1
+    while i < text.length() && Chars.isIdentifierPart(text.charAt(i)) do i += 1
     i
 
 end CompletionPos

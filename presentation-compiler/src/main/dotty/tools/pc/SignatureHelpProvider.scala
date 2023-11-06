@@ -175,11 +175,11 @@ object SignatureHelpProvider:
     info
 
   private def markupContent(content: String): l.MarkupContent | Null =
-    if content.isEmpty then null
+    if content.isEmpty() then null
     else
       val markup = new l.MarkupContent
       markup.setKind("markdown")
-      markup.setValue(content.trim)
+      markup.setValue(content.trim())
       markup
 
 end SignatureHelpProvider

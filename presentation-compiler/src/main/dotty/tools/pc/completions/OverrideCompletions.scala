@@ -175,7 +175,7 @@ object OverrideCompletions:
 
     val uri = params.uri.nn
     val text = params.text.nn
-    driver.run(uri, SourceFile.virtual(uri.toASCIIString.nn, text))
+    driver.run(uri, SourceFile.virtual(uri.toASCIIString().nn, text))
 
     val unit = driver.currentCtx.run.nn.units.headOption
     unit match

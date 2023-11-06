@@ -29,7 +29,7 @@ class SemanticdbTextDocumentProvider(
     val validCode = removeMagicImports(sourceCode, filePath)
     driver.run(
       uri,
-      SourceFile.virtual(filePath.toString, validCode)
+      SourceFile.virtual(filePath.toString(), validCode)
     )
     val tree = driver.currentCtx.run.nn.units.head.tpdTree
     val extractor = ExtractSemanticDB.Extractor()
@@ -42,7 +42,7 @@ class SemanticdbTextDocumentProvider(
         if Properties.isWin then relativeUri.toString().replace("\\", "/")
         else relativeUri.toString()
       }
-      .getOrElse(filePath.toString)
+      .getOrElse(filePath.toString())
 
     val document = TextDocument(
       schema = Schema.SEMANTICDB4,
@@ -57,7 +57,7 @@ class SemanticdbTextDocumentProvider(
     val out = SemanticdbOutputStream.newInstance(byteStream)
     document.writeTo(out)
     out.flush()
-    byteStream.toByteArray.nn
+    byteStream.toByteArray().nn
   end textDocument
 
 end SemanticdbTextDocumentProvider

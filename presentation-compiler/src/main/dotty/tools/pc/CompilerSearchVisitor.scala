@@ -17,7 +17,7 @@ class CompilerSearchVisitor(
 )(using ctx: Context, reports: ReportContext)
     extends SymbolSearchVisitor:
 
-  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName.nn).nn
+  val logger: Logger = Logger.getLogger(classOf[CompilerSearchVisitor].getName().nn).nn
 
   private def isAccessible(sym: Symbol): Boolean = try
     sym != NoSymbol && sym.isPublic && sym.isStatic

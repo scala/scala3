@@ -78,7 +78,7 @@ object HoverProvider:
         )
       end report
       reportContext.unsanitized.create(report, ifVerbose = true)
-      ju.Optional.empty.nn
+      ju.Optional.empty().nn
     else
       val skipCheckOnName =
         !pos.isPoint // don't check isHoveringOnName for RangeHover
@@ -146,7 +146,7 @@ object HoverProvider:
                 )
               ).nn
             case _ =>
-              ju.Optional.empty.nn
+              ju.Optional.empty().nn
           end match
       end match
     end if
@@ -189,7 +189,7 @@ object HoverProvider:
 
       refTpe.flatMap(findRefinement).asJava
     case _ =>
-      ju.Optional.empty.nn
+      ju.Optional.empty().nn
 
 end HoverProvider
 

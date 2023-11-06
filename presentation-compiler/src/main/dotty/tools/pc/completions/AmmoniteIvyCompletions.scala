@@ -23,7 +23,7 @@ object AmmoniteIvyCompletions:
       case None => Nil
       case Some(dependency) =>
         val isInitialCompletion =
-          pos.lineContent.trim == "import $ivy."
+          pos.lineContent.trim() == "import $ivy."
         val ivyEditRange =
           if isInitialCompletion then completionPos.toEditRange
           else

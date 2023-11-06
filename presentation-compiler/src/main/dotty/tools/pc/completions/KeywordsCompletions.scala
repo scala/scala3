@@ -26,7 +26,7 @@ object KeywordsCompletions:
       checkIfNotInComment(completionPos.cursorPos, comments)
 
     path match
-      case Nil if completionPos.query.isEmpty =>
+      case Nil if completionPos.query.isEmpty() =>
         Keyword.all.collect {
           // topelevel definitions are allowed in Scala 3
           case kw if (kw.isPackage || kw.isTemplate) && notInComment =>

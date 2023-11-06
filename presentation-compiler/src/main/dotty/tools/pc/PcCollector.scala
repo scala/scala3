@@ -37,7 +37,7 @@ abstract class PcCollector[T](
   val filePath = Paths.get(uri).nn
   val sourceText = params.text.nn
   val source =
-    SourceFile.virtual(filePath.toString, sourceText)
+    SourceFile.virtual(filePath.toString(), sourceText)
   driver.run(uri, source)
   given ctx: Context = driver.currentCtx
 

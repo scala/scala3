@@ -101,7 +101,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
       for
         uri <- InteractiveDriver.toUriOption(pos.source)
         range <- if pos.exists then Some(pos.toLsp) else None
-      yield new l.Location(uri.toString, range)
+      yield new l.Location(uri.toString(), range)
 
     def encloses(other: SourcePosition): Boolean =
       pos.start <= other.start && pos.end >= other.end
