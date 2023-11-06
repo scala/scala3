@@ -1701,6 +1701,38 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
     }
   }
+
+  @Test def i18816 = {
+    // The primary goal of this test is to check that `LineNumber` have correct numbers
+    val source =
+      """trait Context
+        |
+        |class A(x: Context) extends AnyVal:
+        |  given [T]: Context = x
+        |
+        |  def m1 =
+        |    println(m3)
+        |    def m2 =
+        |      m3 // line 9
+        |    println(m2)
+        |
+        |  def m3(using Context): String = ""
+        """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn   = dir.lookupName("A$.class", directory = false).input
+      val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
+      val method  = getMethod(clsNode, "m2$1")
+      val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
+
+      // There used to be references to line 7 here
+      val expected = List(
+        LineNumber(9, Label(0)),
+      )
+
+      assertSameCode(instructions, expected)
+    }
+  }
 }
 
 object invocationReceiversTestCode {
