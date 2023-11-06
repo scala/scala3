@@ -15,7 +15,6 @@ package collection
 package mutable
 
 import java.util.ConcurrentModificationException
-import language.experimental.captureChecking
 
 /**
  * Utilities to check that mutations to a client that tracks
@@ -67,7 +66,7 @@ private object MutationTracker {
    * @param mutationCount a by-name provider of the current mutation count
    * @tparam A the type of the iterator's elements
    */
-  final class CheckedIterator[A](underlying: Iterator[A]^, mutationCount: => Int) extends AbstractIterator[A] {
+  final class CheckedIterator[A](underlying: Iterator[A], mutationCount: => Int) extends AbstractIterator[A] {
     private[this] val expectedCount = mutationCount
 
     def hasNext: Boolean = {

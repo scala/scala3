@@ -11,18 +11,17 @@
  */
 
 package scala.collection
-import language.experimental.captureChecking
 
 /**
   * Trait that overrides operations on sequences in order
   * to take advantage of strict builders.
   */
 trait StrictOptimizedSeqOps [+A, +CC[_], +C]
-  extends AnyRef
+  extends Any
     with SeqOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 
-  override def distinctBy[B](f: A -> B): C = {
+  override def distinctBy[B](f: A => B): C = {
     val builder = newSpecificBuilder
     val seen = mutable.HashSet.empty[B]
     val it = this.iterator
@@ -53,10 +52,10 @@ trait StrictOptimizedSeqOps [+A, +CC[_], +C]
     b.result()
   }
 
-  override def appendedAll[B >: A](suffix: IterableOnce[B]^): CC[B] =
+  override def appendedAll[B >: A](suffix: IterableOnce[B]): CC[B] =
     strictOptimizedConcat(suffix, iterableFactory.newBuilder)
 
-  override def prependedAll[B >: A](prefix: IterableOnce[B]^): CC[B] = {
+  override def prependedAll[B >: A](prefix: IterableOnce[B]): CC[B] = {
     val b = iterableFactory.newBuilder[B]
     b ++= prefix
     b ++= this

@@ -13,13 +13,11 @@
 package scala.collection.mutable
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults}
-import language.experimental.captureChecking
 
 trait Iterable[A]
   extends collection.Iterable[A]
     with collection.IterableOps[A, Iterable, Iterable[A]]
     with IterableFactoryDefaults[A, Iterable] {
-  this: Iterable[A]^ =>
 
   override def iterableFactory: IterableFactory[Iterable] = Iterable
 }
@@ -33,5 +31,4 @@ trait Iterable[A]
 object Iterable extends IterableFactory.Delegate[Iterable](ArrayBuffer)
 
 /** Explicit instantiation of the `Iterable` trait to reduce class file size in subclasses. */
-abstract class AbstractIterable[A] extends scala.collection.AbstractIterable[A] with Iterable[A]:
-  this: AbstractIterable[A]^ =>
+abstract class AbstractIterable[A] extends scala.collection.AbstractIterable[A] with Iterable[A]

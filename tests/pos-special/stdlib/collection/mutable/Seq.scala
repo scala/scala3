@@ -13,7 +13,6 @@
 package scala.collection.mutable
 
 import scala.collection.{IterableFactoryDefaults, SeqFactory}
-import language.experimental.captureChecking
 
 trait Seq[A]
   extends Iterable[A]

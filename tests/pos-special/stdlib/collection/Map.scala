@@ -17,7 +17,6 @@ import scala.annotation.nowarn
 import scala.collection.generic.DefaultSerializable
 import scala.collection.mutable.StringBuilder
 import scala.util.hashing.MurmurHash3
-import language.experimental.captureChecking
 
 /** Base Map type */
 trait Map[K, +V]
@@ -132,7 +131,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   /** Similar to `fromIterable`, but returns a Map collection type.
     * Note that the return type is now `CC[K2, V2]`.
     */
-  @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]^): CC[K2, V2] = mapFactory.from(it)
+  @`inline` protected final def mapFromIterable[K2, V2](it: Iterable[(K2, V2)]): CC[K2, V2] = mapFactory.from(it)
 
   /** The companion object of this map, providing various factory methods.
     *
@@ -319,7 +318,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     *  @return       a new $coll resulting from applying the given collection-valued function
     *                `f` to each element of this $coll and concatenating the results.
     */
-  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] = mapFactory.from(new View.FlatMap(this, f))
+  def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): CC[K2, V2] = mapFactory.from(new View.FlatMap(this, f))
 
   /** Returns a new $coll containing the elements from the left hand operand followed by the elements from the
     *  right hand operand. The element type of the $coll is the most specific superclass encompassing
@@ -329,7 +328,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     *  @return       a new $coll which contains all elements
     *                of this $coll followed by all elements of `suffix`.
     */
-  def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): CC[K, V2] = mapFactory.from(suffix match {
+  def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]): CC[K, V2] = mapFactory.from(suffix match {
     case it: Iterable[(K, V2)] => new View.Concat(this, it)
     case _ => iterator.concat(suffix.iterator)
   })
@@ -337,7 +336,7 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
   // Not final because subclasses refine the result type, e.g. in SortedMap, the result type is
   // SortedMap's CC, while Map's CC is fixed to Map
   /** Alias for `concat` */
-  /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]^): CC[K, V2] = concat(xs)
+  /*@`inline` final*/ def ++ [V2 >: V](xs: collection.IterableOnce[(K, V2)]): CC[K, V2] = concat(xs)
 
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =
     iterator.map { case (k, v) => s"$k -> $v" }.addString(sb, start, sep, end)
@@ -351,14 +350,14 @@ trait MapOps[K, +V, +CC[_, _] <: IterableOps[_, AnyConstr, _], +C]
     mapFactory.from(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
 
   @deprecated("Consider requiring an immutable Map.", "2.13.0")
-  @`inline` def -- (keys: IterableOnce[K]^): C = {
+  @`inline` def -- (keys: IterableOnce[K]): C = {
     lazy val keysSet = keys.iterator.to(immutable.Set)
     fromSpecific(this.view.filterKeys(k => !keysSet.contains(k)))
   }
 
   @deprecated("Use ++ instead of ++: for collections of type Iterable", "2.13.0")
-  def ++: [V1 >: V](that: IterableOnce[(K,V1)]^): CC[K,V1] = {
-    val thatIterable: Iterable[(K, V1)]^{that} = that match {
+  def ++: [V1 >: V](that: IterableOnce[(K,V1)]): CC[K,V1] = {
+    val thatIterable: Iterable[(K, V1)] = that match {
       case that: Iterable[(K, V1)] => that
       case that => View.from(that)
     }
@@ -381,10 +380,10 @@ object MapOps {
     def map[K2, V2](f: ((K, V)) => (K2, V2)): CC[K2, V2] =
       self.mapFactory.from(new View.Map(filtered, f))
 
-    def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^): CC[K2, V2] =
+    def flatMap[K2, V2](f: ((K, V)) => IterableOnce[(K2, V2)]): CC[K2, V2] =
       self.mapFactory.from(new View.FlatMap(filtered, f))
 
-    override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC]^{p, q} =
+    override def withFilter(q: ((K, V)) => Boolean): WithFilter[K, V, IterableCC, CC] =
       new WithFilter[K, V, IterableCC, CC](self, (kv: (K, V)) => p(kv) && q(kv))
 
   }

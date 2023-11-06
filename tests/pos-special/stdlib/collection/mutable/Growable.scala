@@ -14,8 +14,6 @@ package scala
 package collection
 package mutable
 
-import language.experimental.captureChecking
-
 /** This trait forms part of collections that can be augmented
   * using a `+=` operator and that can be cleared of all elements using
   * a `clear` method.
@@ -56,7 +54,7 @@ trait Growable[-A] extends Clearable {
    *  @param xs   the IterableOnce producing the elements to $add.
    *  @return  the $coll itself.
    */
-  def addAll(xs: IterableOnce[A]^): this.type = {
+  def addAll(xs: IterableOnce[A]): this.type = {
     if (xs.asInstanceOf[AnyRef] eq this) addAll(Buffer.from(xs)) // avoid mutating under our own iterator
     else {
       val it = xs.iterator
@@ -68,7 +66,7 @@ trait Growable[-A] extends Clearable {
   }
 
   /** Alias for `addAll` */
-  @`inline` final def ++= (xs: IterableOnce[A]^): this.type = addAll(xs)
+  @`inline` final def ++= (xs: IterableOnce[A]): this.type = addAll(xs)
 
   /** @return The number of elements in the collection under construction, if it can be cheaply computed,
     *  -1 otherwise. The default implementation always returns -1.
@@ -85,7 +83,7 @@ object Growable {
     * @tparam A Element type
     * @return The filled instance
     */
-  def from[A](empty: Growable[A], it: collection.IterableOnce[A]^): empty.type = empty ++= it
+  def from[A](empty: Growable[A], it: collection.IterableOnce[A]): empty.type = empty ++= it
 
 }
 

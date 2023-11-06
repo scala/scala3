@@ -14,7 +14,6 @@ package scala
 package collection
 
 import scala.annotation.{nowarn, tailrec}
-import language.experimental.captureChecking
 
 /** Base trait for linearly accessed sequences that have efficient `head` and
   *  `tail` operations.
@@ -33,7 +32,7 @@ trait LinearSeq[+A] extends Seq[A]
 object LinearSeq extends SeqFactory.Delegate[LinearSeq](immutable.LinearSeq)
 
 /** Base trait for linear Seq operations */
-trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeqOps[A, CC, C]] extends AnyRef with SeqOps[A, CC, C] {
+trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeqOps[A, CC, C]] extends Any with SeqOps[A, CC, C] {
 
   /** @inheritdoc
    *
@@ -97,7 +96,7 @@ trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeq
     else loop(0, coll)
   }
 
-  override def lengthCompare(that: Iterable[_]^): Int = {
+  override def lengthCompare(that: Iterable[_]): Int = {
     val thatKnownSize = that.knownSize
 
     if (thatKnownSize >= 0) this lengthCompare thatKnownSize
@@ -187,7 +186,7 @@ trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeq
     acc
   }
 
-  override def sameElements[B >: A](that: IterableOnce[B]^): Boolean = {
+  override def sameElements[B >: A](that: IterableOnce[B]): Boolean = {
     @tailrec def linearSeqEq(a: LinearSeq[B], b: LinearSeq[B]): Boolean =
       (a eq b) || {
         if (a.nonEmpty && b.nonEmpty && a.head == b.head) {
@@ -260,7 +259,7 @@ trait LinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with LinearSeq
   }
 }
 
-trait StrictOptimizedLinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with StrictOptimizedLinearSeqOps[A, CC, C]] extends AnyRef with LinearSeqOps[A, CC, C] with StrictOptimizedSeqOps[A, CC, C] {
+trait StrictOptimizedLinearSeqOps[+A, +CC[X] <: LinearSeq[X], +C <: LinearSeq[A] with StrictOptimizedLinearSeqOps[A, CC, C]] extends Any with LinearSeqOps[A, CC, C] with StrictOptimizedSeqOps[A, CC, C] {
   // A more efficient iterator implementation than the default LinearSeqIterator
   override def iterator: Iterator[A] = new AbstractIterator[A] {
     private[this] var current = StrictOptimizedLinearSeqOps.this

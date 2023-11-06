@@ -19,8 +19,6 @@ import java.lang.{IllegalArgumentException, IndexOutOfBoundsException}
 
 import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
-import scala.annotation.unchecked.uncheckedCaptures
-import language.experimental.captureChecking
 
 /** A `Buffer` implementation backed by a list. It provides constant time
   *  prepend and append. Most other operations are linear.
@@ -38,7 +36,7 @@ import language.experimental.captureChecking
   *  @define willNotTerminateInf
   */
 @SerialVersionUID(-8428291952499836345L)
-class ListBuffer[sealed A]
+class ListBuffer[A]
   extends AbstractBuffer[A]
      with SeqOps[A, ListBuffer, ListBuffer[A]]
      with StrictOptimizedSeqOps[A, ListBuffer, ListBuffer[A]]
@@ -123,7 +121,7 @@ class ListBuffer[sealed A]
   }
 
   // MUST only be called on fresh instances
-  private def freshFrom(xs: IterableOnce[A]^): this.type = {
+  private def freshFrom(xs: IterableOnce[A]): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
       var len = 1
@@ -142,7 +140,7 @@ class ListBuffer[sealed A]
     this
   }
 
-  override final def addAll(xs: IterableOnce[A]^): this.type = {
+  override final def addAll(xs: IterableOnce[A]): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
       val fresh = new ListBuffer[A].freshFrom(it)
@@ -250,7 +248,7 @@ class ListBuffer[sealed A]
     }
   }
 
-  def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
+  def insertAll(idx: Int, elems: IterableOnce[A]): Unit = {
     if (idx < 0 || idx > len) throw new IndexOutOfBoundsException(s"$idx is out of bounds (min 0, max ${len-1})")
     val it = elems.iterator
     if (it.hasNext) {
@@ -307,7 +305,7 @@ class ListBuffer[sealed A]
     this
   }
 
-  def flatMapInPlace(f: A => IterableOnce[A]^): this.type = {
+  def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
     mutationCount += 1
     var src = first
     var dst: List[A] = null
@@ -347,7 +345,7 @@ class ListBuffer[sealed A]
     this
   }
 
-  def patchInPlace(from: Int, patch: collection.IterableOnce[A]^, replaced: Int): this.type = {
+  def patchInPlace(from: Int, patch: collection.IterableOnce[A], replaced: Int): this.type = {
     val _len = len
     val _from = math.max(from, 0)         // normalized
     val _replaced = math.max(replaced, 0) // normalized
@@ -397,9 +395,9 @@ class ListBuffer[sealed A]
 @SerialVersionUID(3L)
 object ListBuffer extends StrictOptimizedSeqFactory[ListBuffer] {
 
-  def from[sealed A](coll: collection.IterableOnce[A]^): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
+  def from[A](coll: collection.IterableOnce[A]): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
 
-  def newBuilder[sealed A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
+  def newBuilder[A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
 
-  def empty[A]: ListBuffer[A] = new ListBuffer[A @uncheckedCaptures]
+  def empty[A]: ListBuffer[A] = new ListBuffer[A]
 }

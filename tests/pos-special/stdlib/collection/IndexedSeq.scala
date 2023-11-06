@@ -17,7 +17,6 @@ import scala.annotation.{nowarn, tailrec}
 import scala.collection.Searching.{Found, InsertionPoint, SearchResult}
 import scala.collection.Stepper.EfficientSplit
 import scala.math.Ordering
-import language.experimental.captureChecking
 
 /** Base trait for indexed sequences that have efficient `apply` and `length` */
 trait IndexedSeq[+A] extends Seq[A]
@@ -104,7 +103,7 @@ trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C] { self =>
 
   override def knownSize: Int = length
 
-  override final def lengthCompare(that: Iterable[_]^): Int = {
+  override final def lengthCompare(that: Iterable[_]): Int = {
     val res = that.sizeCompare(length)
     // can't just invert the result, because `-Int.MinValue == Int.MinValue`
     if (res == Int.MinValue) 1 else -res

@@ -14,13 +14,12 @@ package scala
 package collection
 
 import scala.annotation.tailrec
-import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
+import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.mutable.StringBuilder
 import scala.language.implicitConversions
 import scala.math.{Numeric, Ordering}
 import scala.reflect.ClassTag
 import scala.runtime.AbstractFunction2
-import language.experimental.captureChecking
 
 /**
   * A template trait for collections which can be traversed either once only
@@ -43,10 +42,8 @@ import language.experimental.captureChecking
   * @define coll collection
   */
 trait IterableOnce[+A] extends Any {
-  this: IterableOnce[A]^ =>
-
   /** Iterator can be used only once */
-  def iterator: Iterator[A]^{this}
+  def iterator: Iterator[A]
 
   /** Returns a [[scala.collection.Stepper]] for the elements of this collection.
     *
@@ -68,9 +65,9 @@ trait IterableOnce[+A] extends Any {
     * allow creating parallel streams, whereas bare Steppers can be converted only to sequential
     * streams.
     */
-  def stepper[S <: Stepper[_]^{this}](implicit shape: StepperShape[A, S]): S = {
+  def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S = {
     import convert.impl._
-    val s: Any = shape.shape match {
+    val s = shape.shape match {
       case StepperShape.IntShape    => new IntIteratorStepper   (iterator.asInstanceOf[Iterator[Int]])
       case StepperShape.LongShape   => new LongIteratorStepper  (iterator.asInstanceOf[Iterator[Long]])
       case StepperShape.DoubleShape => new DoubleIteratorStepper(iterator.asInstanceOf[Iterator[Double]])
@@ -87,7 +84,7 @@ trait IterableOnce[+A] extends Any {
 
 final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) extends AnyVal {
   @deprecated("Use .iterator.withFilter(...) instead", "2.13.0")
-  def withFilter(f: A => Boolean): Iterator[A]^{f} = it.iterator.withFilter(f)
+  def withFilter(f: A => Boolean): Iterator[A] = it.iterator.withFilter(f)
 
   @deprecated("Use .iterator.reduceLeftOption(...) instead", "2.13.0")
   def reduceLeftOption(f: (A, A) => A): Option[A] = it.iterator.reduceLeftOption(f)
@@ -105,7 +102,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   def reduceRight(f: (A, A) => A): A = it.iterator.reduceRight(f)
 
   @deprecated("Use .iterator.maxBy(...) instead", "2.13.0")
-  def maxBy[B](f: A -> B)(implicit cmp: Ordering[B]): A = it.iterator.maxBy(f)
+  def maxBy[B](f: A => B)(implicit cmp: Ordering[B]): A = it.iterator.maxBy(f)
 
   @deprecated("Use .iterator.reduceLeft(...) instead", "2.13.0")
   def reduceLeft(f: (A, A) => A): A = it.iterator.reduceLeft(f)
@@ -123,7 +120,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   def reduceOption(f: (A, A) => A): Option[A] = it.iterator.reduceOption(f)
 
   @deprecated("Use .iterator.minBy(...) instead", "2.13.0")
-  def minBy[B](f: A -> B)(implicit cmp: Ordering[B]): A = it.iterator.minBy(f)
+  def minBy[B](f: A => B)(implicit cmp: Ordering[B]): A = it.iterator.minBy(f)
 
   @deprecated("Use .iterator.size instead", "2.13.0")
   def size: Int = it.iterator.size
@@ -135,7 +132,7 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   def collectFirst[B](f: PartialFunction[A, B]): Option[B] = it.iterator.collectFirst(f)
 
   @deprecated("Use .iterator.filter(...) instead", "2.13.0")
-  def filter(f: A => Boolean): Iterator[A]^{f} = it.iterator.filter(f)
+  def filter(f: A => Boolean): Iterator[A] = it.iterator.filter(f)
 
   @deprecated("Use .iterator.exists(...) instead", "2.13.0")
   def exists(f: A => Boolean): Boolean = it.iterator.exists(f)
@@ -241,13 +238,13 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   @`inline` def :\ [B](z: B)(op: (A, B) => B): B = foldRight[B](z)(op)
 
   @deprecated("Use .iterator.map instead or consider requiring an Iterable", "2.13.0")
-  def map[B](f: A => B): IterableOnce[B]^{f} = it match {
+  def map[B](f: A => B): IterableOnce[B] = it match {
     case it: Iterable[A] => it.map(f)
     case _ => it.iterator.map(f)
   }
 
   @deprecated("Use .iterator.flatMap instead or consider requiring an Iterable", "2.13.0")
-  def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f} = it match {
+  def flatMap[B](f: A => IterableOnce[B]): IterableOnce[B] = it match {
     case it: Iterable[A] => it.flatMap(f)
     case _ => it.iterator.flatMap(f)
   }
@@ -318,10 +315,8 @@ object IterableOnce {
   * @define coll collection
   *
   */
-trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
+trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A] =>
   /////////////////////////////////////////////////////////////// Abstract methods that must be implemented
-
-  import IterableOnceOps.Maximized
 
   /** Produces a $coll containing cumulative results of applying the
    *  operator going left to right, including the initial value.
@@ -334,7 +329,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @param op      the binary operator applied to the intermediate result and the element
    *  @return        collection with intermediate results
    */
-  def scanLeft[B](z: B)(op: (B, A) => B): CC[B]^{this, op}
+  def scanLeft[B](z: B)(op: (B, A) => B): CC[B]
 
   /** Selects all elements of this $coll which satisfy a predicate.
    *
@@ -342,7 +337,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return      a new $coll consisting of all elements of this $coll that satisfy the given
    *               predicate `p`. The order of the elements is preserved.
    */
-  def filter(p: A => Boolean): C^{this, p}
+  def filter(p: A => Boolean): C
 
   /** Selects all elements of this $coll which do not satisfy a predicate.
    *
@@ -350,7 +345,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return      a new $coll consisting of all elements of this $coll that do not satisfy the given
    *               predicate `pred`. Their order may not be preserved.
    */
-  def filterNot(p: A => Boolean): C^{this, p}
+  def filterNot(pred: A => Boolean): C
 
   /** Selects the first ''n'' elements.
    *  $orderDependent
@@ -359,7 +354,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *          or else the whole $coll, if it has less than `n` elements.
    *          If `n` is negative, returns an empty $coll.
    */
-  def take(n: Int): C^{this}
+  def take(n: Int): C
 
   /** Takes longest prefix of elements that satisfy a predicate.
    *  $orderDependent
@@ -367,7 +362,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return  the longest prefix of this $coll whose elements all satisfy
    *           the predicate `p`.
    */
-  def takeWhile(p: A => Boolean): C^{this, p}
+  def takeWhile(p: A => Boolean): C
 
   /** Selects all elements except first ''n'' ones.
    *  $orderDependent
@@ -376,7 +371,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *          empty $coll, if this $coll has less than `n` elements.
    *          If `n` is negative, don't drop any elements.
    */
-  def drop(n: Int): C^{this}
+  def drop(n: Int): C
 
   /** Drops longest prefix of elements that satisfy a predicate.
    *  $orderDependent
@@ -384,7 +379,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return  the longest suffix of this $coll whose first element
    *           does not satisfy the predicate `p`.
    */
-  def dropWhile(p: A => Boolean): C^{this, p}
+  def dropWhile(p: A => Boolean): C
 
   /** Selects an interval of elements.  The returned $coll is made up
    *  of all elements `x` which satisfy the invariant:
@@ -399,7 +394,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *           index `from` extending up to (but not including) index `until`
    *           of this $coll.
    */
-  def slice(from: Int, until: Int): C^{this}
+  def slice(from: Int, until: Int): C
 
   /** Builds a new $coll by applying a function to all elements of this $coll.
    *
@@ -408,7 +403,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return       a new $coll resulting from applying the given function
    *                `f` to each element of this $coll and collecting the results.
    */
-  def map[B](f: A => B): CC[B]^{this, f}
+  def map[B](f: A => B): CC[B]
 
   /** Builds a new $coll by applying a function to all elements of this $coll
    *  and using the elements of the resulting collections.
@@ -441,7 +436,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return       a new $coll resulting from applying the given collection-valued function
    *                `f` to each element of this $coll and concatenating the results.
    */
-  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f}
+  def flatMap[B](f: A => IterableOnce[B]): CC[B]
 
   /** Converts this $coll of iterable collections into
    *  a $coll formed by the elements of these iterable
@@ -469,7 +464,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *          type of this $coll is an `Iterable`.
    *  @return a new $coll resulting from concatenating all element ${coll}s.
    */
-  def flatten[B](implicit asIterable: A -> IterableOnce[B]): CC[B]^{this}
+  def flatten[B](implicit asIterable: A => IterableOnce[B]): CC[B]
 
   /** Builds a new $coll by applying a partial function to all elements of this $coll
    *  on which the function is defined.
@@ -480,7 +475,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *                `pf` to each element on which it is defined and collecting the results.
    *                The order of the elements is preserved.
    */
-  def collect[B](pf: PartialFunction[A, B]^): CC[B]^{this, pf}
+  def collect[B](pf: PartialFunction[A, B]): CC[B]
 
   /** Zips this $coll with its indices.
    *
@@ -489,7 +484,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @example
    *    `List("a", "b", "c").zipWithIndex == List(("a", 0), ("b", 1), ("c", 2))`
    */
-  def zipWithIndex: CC[(A @uncheckedVariance, Int)]^{this}
+  def zipWithIndex: CC[(A @uncheckedVariance, Int)]
 
   /** Splits this $coll into a prefix/suffix pair according to a predicate.
    *
@@ -502,7 +497,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return  a pair consisting of the longest prefix of this $coll whose
    *           elements all satisfy `p`, and the rest of this $coll.
    */
-  def span(p: A => Boolean): (C^{this, p}, C^{this, p})
+  def span(p: A => Boolean): (C, C)
 
   /** Splits this $coll into a prefix/suffix pair at a given position.
    *
@@ -514,7 +509,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return  a pair of ${coll}s consisting of the first `n`
    *           elements of this $coll, and the other elements.
    */
-  def splitAt(n: Int): (C^{this}, C^{this}) = {
+  def splitAt(n: Int): (C, C) = {
     class Spanner extends runtime.AbstractFunction1[A, Boolean] {
       var i = 0
       def apply(a: A) = i < n && { i += 1 ; true }
@@ -532,7 +527,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
     * @tparam U the return type of f
     * @return The same logical collection as this
     */
-  def tapEach[U](f: A => U): C^{this, f}
+  def tapEach[U](f: A => U): C
 
   /////////////////////////////////////////////////////////////// Concrete methods based on iterator
 
@@ -807,7 +802,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
       case  _ => Some(reduceLeft(op))
     }
   private final def reduceLeftOptionIterator[B >: A](op: (B, A) => B): Option[B] = reduceOptionIterator[A, B](iterator)(op)
-  private final def reduceOptionIterator[X >: A, B >: X](it: Iterator[X]^)(op: (B, X) => B): Option[B] = {
+  private final def reduceOptionIterator[X >: A, B >: X](it: Iterator[X])(op: (B, X) => B): Option[B] = {
     if (it.hasNext) {
       var acc: B = it.next()
       while (it.hasNext)
@@ -1046,11 +1041,34 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return   the first element of this $coll with the largest value measured by function f
    *            with respect to the ordering `cmp`.
    */
-  def maxBy[B](f: A -> B)(implicit ord: Ordering[B]): A =
+  def maxBy[B](f: A => B)(implicit ord: Ordering[B]): A =
     knownSize match {
       case  0 => throw new UnsupportedOperationException("empty.maxBy")
       case  _ => foldLeft(new Maximized[A, B]("maxBy")(f)(ord.gt))((m, a) => m(m, a)).result
     }
+
+  private class Maximized[X, B](descriptor: String)(f: X => B)(cmp: (B, B) => Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
+    var maxElem: X = null.asInstanceOf[X]
+    var maxF: B = null.asInstanceOf[B]
+    var nonEmpty = false
+    def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
+    def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")
+    def apply(m: Maximized[X, B], a: X): Maximized[X, B] =
+      if (m.nonEmpty) {
+        val fa = f(a)
+        if (cmp(fa, maxF)) {
+          maxF = fa
+          maxElem = a
+        }
+        m
+      }
+      else {
+        m.nonEmpty = true
+        m.maxElem = a
+        m.maxF = f(a)
+        m
+      }
+  }
 
   /** Finds the first element which yields the largest value measured by function f.
    *
@@ -1062,7 +1080,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return   an option value containing the first element of this $coll with the
    *            largest value measured by function f with respect to the ordering `cmp`.
    */
-  def maxByOption[B](f: A -> B)(implicit ord: Ordering[B]): Option[A] =
+  def maxByOption[B](f: A => B)(implicit ord: Ordering[B]): Option[A] =
     knownSize match {
       case  0 => None
       case  _ => foldLeft(new Maximized[A, B]("maxBy")(f)(ord.gt))((m, a) => m(m, a)).toOption
@@ -1079,7 +1097,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *  @return   the first element of this $coll with the smallest value measured by function f
    *            with respect to the ordering `cmp`.
    */
-  def minBy[B](f: A -> B)(implicit ord: Ordering[B]): A =
+  def minBy[B](f: A => B)(implicit ord: Ordering[B]): A =
     knownSize match {
       case  0 => throw new UnsupportedOperationException("empty.minBy")
       case  _ => foldLeft(new Maximized[A, B]("minBy")(f)(ord.lt))((m, a) => m(m, a)).result
@@ -1096,7 +1114,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
    *            with the smallest value measured by function f
    *            with respect to the ordering `cmp`.
    */
-  def minByOption[B](f: A -> B)(implicit ord: Ordering[B]): Option[A] =
+  def minByOption[B](f: A => B)(implicit ord: Ordering[B]): Option[A] =
     knownSize match {
       case  0 => None
       case  _ => foldLeft(new Maximized[A, B]("minBy")(f)(ord.lt))((m, a) => m(m, a)).toOption
@@ -1292,7 +1310,7 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
   def to[C1](factory: Factory[A, C1]): C1 = factory.fromSpecific(this)
 
   @deprecated("Use .iterator instead of .toIterator", "2.13.0")
-  @`inline` final def toIterator: Iterator[A]^{this} = iterator
+  @`inline` final def toIterator: Iterator[A] = iterator
 
   def toList: immutable.List[A] = immutable.List.from(this)
 
@@ -1334,31 +1352,3 @@ trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOnce[A]^ =>
     xs
   }
 }
-
-object IterableOnceOps:
-
-  // Moved out of trait IterableOnceOps to here, since universal traits cannot
-  // have nested classes in Scala 3
-  private class Maximized[X, B](descriptor: String)(f: X -> B)(cmp: (B, B) -> Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
-    var maxElem: X @uncheckedCaptures = null.asInstanceOf[X]
-    var maxF: B @uncheckedCaptures = null.asInstanceOf[B]
-    var nonEmpty = false
-    def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
-    def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")
-    def apply(m: Maximized[X, B], a: X): Maximized[X, B] =
-      if (m.nonEmpty) {
-        val fa = f(a)
-        if (cmp(fa, maxF)) {
-          maxF = fa
-          maxElem = a
-        }
-        m
-      }
-      else {
-        m.nonEmpty = true
-        m.maxElem = a
-        m.maxF = f(a)
-        m
-      }
-  }
-end IterableOnceOps

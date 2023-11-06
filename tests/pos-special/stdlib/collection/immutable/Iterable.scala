@@ -13,7 +13,6 @@
 package scala.collection.immutable
 
 import scala.collection.{IterableFactory, IterableFactoryDefaults}
-import language.experimental.captureChecking
 
 /** A trait for collections that are guaranteed immutable.
   *
@@ -25,7 +24,6 @@ import language.experimental.captureChecking
 trait Iterable[+A] extends collection.Iterable[A]
                       with collection.IterableOps[A, Iterable, Iterable[A]]
                       with IterableFactoryDefaults[A, Iterable] {
-  this: Iterable[A]^ =>
 
   override def iterableFactory: IterableFactory[Iterable] = Iterable
 }
