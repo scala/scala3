@@ -698,13 +698,21 @@ object Objects:
 
     case Fun(code, thisV, klass, env) =>
       // meth == NoSymbol for poly functions
-      if meth.name.toString == "tupled" then
+      if meth.name == nme.tupled then
         value // a call like `fun.tupled`
       else
         code match
         case ddef: DefDef =>
-          given Env.Data = Env.of(ddef, args.map(_.value), env)
-          extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          if meth.name == nme.apply then
+            given Env.Data = Env.of(ddef, args.map(_.value), env)
+            extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          else
+            meth.owner.asType.name match
+            case tpnme.Any | tpnme.AnyRef =>
+              value
+            case _ =>
+              Cold
+          end if
 
         case _ =>
           // by-name closure
