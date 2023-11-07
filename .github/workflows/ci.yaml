@@ -45,7 +45,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -63,8 +63,8 @@ jobs:
            && github.repository == 'lampepfl/dotty'
          )"
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 21 as default
+        run: echo "/usr/lib/jvm/java-21-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
@@ -94,7 +94,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -114,8 +114,8 @@ jobs:
          )"
 
     steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 21 as default
+        run: echo "/usr/lib/jvm/java-21-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Reset existing repo
         run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
@@ -221,7 +221,7 @@ jobs:
     name: MiMa
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -267,7 +267,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -316,7 +316,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -414,7 +414,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -454,7 +454,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -508,7 +508,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -559,7 +559,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -610,7 +610,7 @@ jobs:
       contents: write  # for actions/create-release to create a release
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -698,7 +698,7 @@ jobs:
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2021-03-22
+      image: lampepfl/dotty:2023-11-07
     needs: [nightly_documentation, test_windows_full]
     # The `failure()` expression is true iff at least one of the dependencies
     # of this job (including transitive dependencies) has failed.
