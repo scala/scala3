@@ -25,7 +25,7 @@ object ScalaCompilerForUnitTesting:
 class ScalaCompilerForUnitTesting {
 
   def extractEnteredPhases(srcs: String*): Seq[List[String]] = {
-    val (tempSrcFiles, Callbacks(_, testProgress)) = compileSrcs(srcs: _*)
+    val (tempSrcFiles, Callbacks(_, testProgress)) = compileSrcs(srcs*)
     val run = testProgress.runs.head
     tempSrcFiles.map(src => run.unitPhases(src.id))
   }
@@ -37,7 +37,7 @@ class ScalaCompilerForUnitTesting {
   }
 
   def extractProgressPhases(srcs: String*): List[String] = {
-    val (_, Callbacks(_, testProgress)) = compileSrcs(srcs: _*)
+    val (_, Callbacks(_, testProgress)) = compileSrcs(srcs*)
     testProgress.runs.head.phases
   }
 
@@ -91,7 +91,7 @@ class ScalaCompilerForUnitTesting {
    * Only the names used in the last src file are returned.
    */
   def extractUsedNamesFromSrc(sources: String*): Map[String, Set[String]] = {
-    val (srcFiles, Callbacks(analysisCallback, _)) = compileSrcs(sources: _*)
+    val (srcFiles, Callbacks(analysisCallback, _)) = compileSrcs(sources*)
     srcFiles
       .map { srcFile =>
         val classesInSrc = analysisCallback.classNames(srcFile).map(_._1)

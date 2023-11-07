@@ -25,7 +25,7 @@ def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: 
   import scala.jdk.CollectionConverters._
   val command = binary +: arguments
   log(command.mkString(" "))
-  val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
+  val builder = new ProcessBuilder(command*).directory(projectDir.toFile).inheritIO()
   builder.environment.putAll(environment.asJava)
   val process = builder.start()
   val exitCode = process.waitFor()
