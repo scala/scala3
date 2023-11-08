@@ -1,0 +1,12 @@
+-- [E008] Not Found Error: tests/neg/irrefutable.scala:27:29 -----------------------------------------------------------
+27 |    for (case Foo(x: Int) <- xs) yield x // error
+   |                             ^^
+   |                             value withFilter is not a member of Lst[Foo[Any]]
+-- Error: tests/neg/irrefutable.scala:30:16 ----------------------------------------------------------------------------
+30 |    for (Foo(x: Int) <- xs) yield x // error
+   |                ^^^
+   | pattern's type Int is more specialized than the right hand side expression's type Any
+   |
+   | If the narrowing is intentional, this can be communicated by adding the `case` keyword before the full pattern,
+   | which will result in a filtering for expression (using `withFilter`).
+   | This patch can be rewritten automatically under -rewrite -source 3.2-migration.

@@ -923,7 +923,13 @@ trait Checking {
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
-        pos, warnFrom = `3.2`, errorFrom = `future`)
+        pos,
+        warnFrom = `3.2`,
+        // we tighten for-comprehension without `case` to error in 3.4,
+        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // until we propose an alternative way to assert exhaustivity to the typechecker.
+        errorFrom = if isPatDef then `future` else `3.4`
+      )
       false
     }
 

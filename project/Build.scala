@@ -1493,6 +1493,7 @@ object Build {
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
+            -- "UTF16Test.scala" // refutable pattern match
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
