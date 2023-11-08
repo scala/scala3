@@ -1311,16 +1311,11 @@ object desugar {
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
-              if mods.is(Lazy) then
-                DefDef(named.name.asTermName, Nil, tpt, selector(n))
-                  .withMods(mods &~ Lazy)
+              valDef(
+                ValDef(named.name.asTermName, tpt, selector(n))
+                  .withMods(mods)
                   .withSpan(named.span)
-              else
-                valDef(
-                  ValDef(named.name.asTermName, tpt, selector(n))
-                    .withMods(mods)
-                    .withSpan(named.span)
-                )
+              )
           flatTree(firstDef :: restDefs)
       }
   }
