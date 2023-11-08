@@ -56,6 +56,18 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.TableStepperBase.maxLength_="),
 
     // Problem: ???
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.nn"), // The member scala.Predef.nn with signature (1,java.lang.Object):java.lang.Object does not have a correspondant in current version
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.ne"), // The member scala.Predef.ne with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.eq"), // The member scala.Predef.eq with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
+
+    // Problem: protected lazy val (processThread, (futureThread, futureValue), destroyer) = { ... }
+    // https://github.com/scala/scala/blob/cff8a9af4da67658d8e1e32f929e1aff03ffa384/src/library/scala/sys/process/ProcessImpl.scala#L99C5-L99C83
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.destroyer"), // before: lazy val; after: def
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureThread"), // before: lazy val; after: def
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.processThread"), // before: lazy val; after: def
+    ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureValue"), // before: lazy val; after: def
+
+    // Problem: ???
     // Member is defined and has explicit result type
     // https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/convert/JavaCollectionWrappers.scala#L66-L71
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"), // The member scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator with signature ():scala.collection.convert.JavaCollectionWrappers.IteratorWrapper does not have a correspondant in current version
@@ -65,9 +77,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.concat"),
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.prependedAll"),
     ProblemMatcher.make(ProblemKind.InternalError, "scala.concurrent.duration.package.*"),
-
-    // Problem? Very complicated signature
-    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.generic.IsMap.mapOpsIsMap"), // The symbol scala.collection.generic.IsMap.mapOpsIsMap has an incompatible type in current version: before: [CC0 <: ([X, Y] =>> scala.collection.MapOps[X, Y, ([X, Y] =>> scala.collection.Iterable[scala.Tuple2[X, Y]]), CC0[X, Y]]), K0, V0](((scala.collection.generic.IsMap[CC0[K0, V0]] { type V = V0 }) { type C = CC0[<refinement>.this.K, <refinement>.this.V] }) { type K = K0 }); after: [CC0 >: ([X, Y] =>> scala.Nothing) <: ([X, Y] =>> scala.collection.MapOps[X, Y, IsMap$.this.Tupled[([A] =>> scala.collection.Iterable[A])]#Ap, CC0[X, Y]]), K0, V0]{ 726875885 => (((scala.collection.generic.IsMap[CC0[K0, V0]] { type K = K0 }) { type V = V0 }) { type C = CC0[726875885.K, 726875885.V] }) }
 
     // Problems introduced in 2.13.11: Implicit classes with complex signatures
     ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.collection.BuildFromLowPriority1.buildFromSortedSetOps"), // The symbol scala.collection.BuildFromLowPriority1.buildFromSortedSetOps has an incompatible type in current version: before: [CC <: ([X] =>> (scala.collection.SortedSet[X] & scala.collection.SortedSetOps[X, CC, ?])), A0, A](evidence$3: scala.package.Ordering[A])scala.collection.BuildFrom[(CC[A0] & scala.collection.SortedSet[A0]), A, (CC[A] & scala.collection.SortedSet[A])]; after: [CC >: ([X] =>> scala.Nothing) <: ([X] =>> scala.&[scala.collection.SortedSet[X], scala.collection.SortedSetOps[X, CC, ?]]), A0, A](evidence$3: scala.package.Ordering[A])scala.collection.BuildFrom[scala.&[CC[A0], scala.collection.SortedSet[A0]], A, scala.&[CC[A], scala.collection.SortedSet[A]]]
