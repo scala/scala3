@@ -211,6 +211,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
     compileFilesInDir("tests/init-global/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init-global/warn", options).checkWarnings()
     compileFilesInDir("tests/init-global/pos", options).checkCompile()
   }
 
@@ -219,6 +220,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/warn", options).checkWarnings()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
     // The regression test for i12128 has some atypical classpath requirements.

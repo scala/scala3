@@ -5,7 +5,7 @@ object Test {
   case object Bar2 extends Foo[String]
   case object Bar3 extends Foo[AnyRef]
 
-  def fail4[T <: AnyRef](xx: (Foo[T], Foo[T])) = xx match {
+  def fail4[T <: AnyRef](xx: (Foo[T], Foo[T])) = xx match { // warn match may not be exhaustive
     case (Bar1, Bar1) => () // warn // warn
     case (Bar2, Bar3) => ()
     case (Bar3, _) => ()

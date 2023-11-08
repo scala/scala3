@@ -4,7 +4,7 @@ object Positioned:
   var nextId: Int = 0
 
 abstract class Positioned:
-  if (Positioned.debug) { // error
+  if (Positioned.debug) { 
     println("do debugging")
   }
 

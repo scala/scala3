@@ -3,7 +3,7 @@ object Stats {
 }
 
 class UncachedGroundType {
-  if (Stats.monitored) println("record stats") // error
+  if (Stats.monitored) println("record stats") 
 }
 
 class LazyType extends UncachedGroundType

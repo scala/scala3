@@ -5,7 +5,7 @@ object A:
   def foo(): Pair =
     var x = 6
     new Pair(
-      (y => x = y),   // error
+      (y => x = y),   
       () => x
     )
 

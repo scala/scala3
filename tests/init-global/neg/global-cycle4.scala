@@ -7,7 +7,7 @@ class B extends A {
 }
 
 class C extends A {
-  def foo(): Int = O.a + 10       // error
+  def foo(): Int = O.a + 10       
 }
 
 class D(x: Int) {

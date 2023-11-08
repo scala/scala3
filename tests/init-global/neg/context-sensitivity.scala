@@ -6,7 +6,7 @@ class C(var x: Int) extends Foo {
 }
 
 class D(var y: Int) extends Foo {
-  def foo(): Int = A.m  // error
+  def foo(): Int = A.m  
 }
 
 class Box(var value: Foo)

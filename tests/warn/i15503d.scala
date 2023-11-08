@@ -11,12 +11,12 @@ val a = Sum(S(S(Z)),Z) match {
   case Sum(a,Z) => Z // warn
   // case Sum(a @ _,Z) => Z // todo : this should pass in the future
   case Sum(a@S(_),Z) => Z // warn
-  case Sum(a@S(_),Z) => a // OK
+  case Sum(a@S(_),Z) => a // warn unreachable
   case Sum(a@S(b@S(_)), Z) => a // warn
   case Sum(a@S(b@S(_)), Z) => a // warn
-  case Sum(a@S(b@(S(_))), Z) => Sum(a,b) // OK
+  case Sum(a@S(b@(S(_))), Z) => Sum(a,b) // warn unreachable
   case Sum(_,_) => Z // OK
-  case _ => Z // OK
+  case _ => Z // warn unreachable
 }
 
 // todo : This should pass in the future

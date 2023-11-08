@@ -6,7 +6,7 @@ object A:
     var x = 6
     new Pair(
       y => x = y,
-      (() => x)   // error
+      (() => x)   
     )
 
 

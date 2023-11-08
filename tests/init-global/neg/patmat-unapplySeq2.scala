@@ -5,7 +5,7 @@ object A:
   array(0) = new Box(10)
 
   def length: Int = array.length
-  def apply(i: Int): Box = array(i)             // error
+  def apply(i: Int): Box = array(i)             
   def drop(n: Int): Seq[Box] = array.toSeq
   def toSeq: Seq[Box] = array.toSeq
 

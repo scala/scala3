@@ -1,7 +1,7 @@
 object A {
   def a: Int =
     B
-      .s.length // error
+      .s.length 
 }
 
 object B {

@@ -1,7 +1,7 @@
 //> using options  -Wunused:all
 //
 class Bippy(a: Int, b: Int) {
-  private def this(c: Int) = this(c, c)           // warn /Dotty:NoWarn
+  private def this(c: Int) = this(c, c)   
   private def boop(x: Int)            = x+a+b     // warn
     private def bippy(x: Int): Int      = bippy(x)  // warn TODO: could warn
   final private val MILLIS1           = 2000      // warn no warn, /Dotty:Warn
@@ -45,7 +45,7 @@ trait Accessors {
 class StableAccessors {
   private var s1: Int = 0 // warn warn
   private var s2: Int = 0 // warn warn, never set
-  private var s3: Int = 0 // warn, never got /Dotty: no warn even if not usued
+  private var s3: Int = 0
   private var s4: Int = 0 // no warn
 
   private[this] var s5 = 0 // warn warn, never set
@@ -62,7 +62,6 @@ class StableAccessors {
 }
 
 trait DefaultArgs {
-  // warn about default getters for x2 and x3
   private def bippy(x1: Int, x2: Int = 10, x3: Int = 15): Int = x1 + x2 + x3 // no more warn warn since #17061
 
   def boppy() = bippy(5, 100, 200)

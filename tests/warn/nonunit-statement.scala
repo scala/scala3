@@ -50,7 +50,7 @@ class Absolution {
   // Future(42): Unit        // nowarn { F(42)(ctx) }: Unit where annot is on F(42)
   // f(42): Unit             // nowarn
 }
-// warn uni-branched unless user disables it with -Wnonunit-if:false
+
 class Boxed[A](a: A) {
   def isEmpty = false
   def foreach[U](f: A => U): Unit =

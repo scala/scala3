@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Xlint:type-parameter-shadow
+//> using options -Xlint:type-parameter-shadow
 
 object i17613b:
 	import importTry._
@@ -12,7 +12,7 @@ object i17613b:
 		def foobar2[ImClass](in: D) = in.toString // warn
 		type MySeq2[ImClass] = Seq[D] // warn
 
-		given [A]: Ordering[Int]() // error
+		given [A]: Ordering[Int]()
 		type TypeLambda[A] = [ImTrait] =>> Map[ImTrait, B]
 		type PolyFun[A] = [ImTrait] => ImTrait => B // warn
 		type MatchType[A] = A match {
@@ -42,4 +42,3 @@ object i17613b:
 				5
 
 	def main(args: Array[String]) = println("Test for type parameter shadow")
-// nopos-error: No warnings can be incurred under -Werror.

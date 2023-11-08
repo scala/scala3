@@ -6,7 +6,7 @@ class B {
   val a = new A
 }
 
-object O {           // error
+object O {           
   val n: Int = 10
   println(P.m)
 }

@@ -2,10 +2,10 @@ class BaseClass(s: String) {
   def print: Unit = ()
 }
 
-object Obj {                           // error
+object Obj {                           
   val s: String = "hello"
 
-  object AObj extends BaseClass(s)     // error
+  object AObj extends BaseClass(s)     
 
   object BObj extends BaseClass(s)
 

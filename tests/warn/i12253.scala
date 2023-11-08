@@ -27,3 +27,5 @@ object MacroUtils:
 
   end Extractors
 end MacroUtils
+
+// nopos-warn deprecation

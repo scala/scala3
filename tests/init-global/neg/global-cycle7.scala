@@ -1,9 +1,9 @@
-object A {              // error
+object A {              
   val n: Int = B.m
 }
 
 object B {
-  val m: Int = A.n      // error
+  val m: Int = A.n      
 }
 
 abstract class TokensCommon {

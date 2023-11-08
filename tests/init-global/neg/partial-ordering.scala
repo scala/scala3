@@ -1,4 +1,4 @@
-object Names:                      // error
+object Names:                      
   val ctorString = "<init>"
   val ctorName: MethodName = MethodName.apply(ctorString)
 

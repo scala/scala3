@@ -1,5 +1,5 @@
 class A(x: Int) {
-  def foo(): Int = B.a + 10  // error
+  def foo(): Int = B.a + 10  
 }
 
 object B {
