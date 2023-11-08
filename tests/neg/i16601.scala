@@ -1,1 +1,1 @@
-@main def Test: Unit = new concurrent.ExecutionContext  // error
+@main def Test: Any = new concurrent.ExecutionContext  // error
