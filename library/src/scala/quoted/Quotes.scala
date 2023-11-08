@@ -1622,7 +1622,30 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ReturnMethods
 
-    /** Tree representing a variable argument list in the source code */
+    /** Tree representing a variable argument list in the source code.
+     *
+     *  This tree is used to encode varargs terms. The Repeated encapsulates
+     *  the sequence of the elements but needs to be wrapped in a
+     *  `scala.<repeated>[T]` (see `defn.RepeatedParamClass`). For example the
+     *   arguments `1, 2` of `List.apply(1, 2)` can be represented as follows:
+     *
+     *
+     *  ```scala
+     *  //{
+     *  import scala.quoted._
+     *  def inQuotes(using Quotes) = {
+     *    val q: Quotes = summon[Quotes]
+     *    import q.reflect._
+     *  //}
+     *    val intArgs = List(Literal(Constant(1)), Literal(Constant(2)))
+     *    Typed(
+     *     Repeated(intArgs, TypeTree.of[Int]),
+     *     Inferred(defn.RepeatedParamClass.typeRef.appliedTo(TypeRepr.of[Int]))
+     *  //{
+     *  }
+     *  //}
+     *  ```
+     */
     type Repeated <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Repeated` */
@@ -1633,8 +1656,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Repeated` */
     trait RepeatedModule { this: Repeated.type =>
+      /** Create a literal sequence of elements */
       def apply(elems: List[Term], tpt: TypeTree): Repeated
+      /** Copy a literal sequence of elements */
       def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
+      /** Matches a literal sequence of elements */
       def unapply(x: Repeated): (List[Term], TypeTree)
     }
 
@@ -4314,6 +4340,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** A dummy class symbol that is used to indicate repeated parameters
       *  compiled by the Scala compiler.
+      *
+      *  @see Repeated
       */
       def RepeatedParamClass: Symbol
 
