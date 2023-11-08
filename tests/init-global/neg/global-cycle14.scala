@@ -12,3 +12,5 @@ object A {              // error
 object B {
   val m: Int = A.n      // error
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

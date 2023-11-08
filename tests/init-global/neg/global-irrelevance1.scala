@@ -3,3 +3,4 @@ object A:
 
 object B:
   var y = A.x * 2 // error
+// nopos-error: No warnings can be incurred under -Werror.

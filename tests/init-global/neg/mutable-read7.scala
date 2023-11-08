@@ -11,3 +11,4 @@ abstract class Positioned:
 object Trees:
   class Tree extends Positioned
   val emptyTree = new Tree
+// nopos-error: No warnings can be incurred under -Werror.

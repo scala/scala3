@@ -21,3 +21,5 @@ object DeadLockTest {
     final val children = Set(Child1, Child2)
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

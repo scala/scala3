@@ -10,3 +10,5 @@ object Bar {
     case _ => 0
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

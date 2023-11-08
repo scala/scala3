@@ -18,3 +18,5 @@ object P {
 object Q {
   def bar(b: B) = b.a.foo()
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -13,3 +13,4 @@ object Test {
     println(IdAndMsg.values)
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

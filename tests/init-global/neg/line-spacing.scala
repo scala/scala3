@@ -7,3 +7,5 @@ object A {
 object B {
   val s: String = s"${A.a}a"
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

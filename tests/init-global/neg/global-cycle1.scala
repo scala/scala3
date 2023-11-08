@@ -8,3 +8,5 @@ object B {
 
 @main
 def Test = print(A.a)
+
+// nopos-error: No warnings can be incurred under -Werror.

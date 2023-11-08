@@ -7,3 +7,5 @@ object Test {
     println(B.opposite)
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

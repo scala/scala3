@@ -9,3 +9,4 @@ class UncachedGroundType {
 class LazyType extends UncachedGroundType
 
 object NoCompleter extends LazyType
+// nopos-error: No warnings can be incurred under -Werror.

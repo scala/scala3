@@ -21,3 +21,4 @@ object C {
 def main = {
   A.a = new Y(); C
 }
+// nopos-error: No warnings can be incurred under -Werror.

@@ -6,3 +6,5 @@ class B(b: Int):
 
 object B:
   new B(10)
+
+// nopos-error: No warnings can be incurred under -Werror.

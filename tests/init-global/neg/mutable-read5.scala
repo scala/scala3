@@ -7,3 +7,4 @@ object StdNames:
   val AnyRef: Names.Name = Names.name("AnyRef")
   val Array: Names.Name = Names.name("Array")
   val List: Names.Name = Names.name("List")
+// nopos-error: No warnings can be incurred under -Werror.

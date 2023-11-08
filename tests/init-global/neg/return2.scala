@@ -11,3 +11,5 @@ object A:
 
 object B:
   val n = A.foo(-10)(20)
+
+// nopos-error: No warnings can be incurred under -Werror.

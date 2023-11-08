@@ -11,3 +11,5 @@ object A:
 
 object B:
   A.p.f(10)
+
+// nopos-error: No warnings can be incurred under -Werror.

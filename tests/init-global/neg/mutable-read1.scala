@@ -8,3 +8,4 @@ object B:
   val boxA: Box = A.box
   val m: Int = boxB.value
   val n: Int = boxA.value // error
+// nopos-error: No warnings can be incurred under -Werror.

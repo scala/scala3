@@ -15,3 +15,5 @@ object A:
 object B:
   A.array match
   case A(b) =>
+
+// nopos-error: No warnings can be incurred under -Werror.

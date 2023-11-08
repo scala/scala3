@@ -34,3 +34,5 @@ object C:
     (Box(foo): Box[() => Int] | Holder[Int]) match
     case Box(f) => f()
     case Holder(x) => x
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -12,3 +12,5 @@ object A:
 
 object B:
   var y = A.p.g()
+
+// nopos-error: No warnings can be incurred under -Werror.

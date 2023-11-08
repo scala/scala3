@@ -10,3 +10,5 @@ object Enum:
   def f(e: Enum): Enum = e
 
 @main def main(): Unit = println(Enum.b)
+
+// nopos-error: No warnings can be incurred under -Werror.

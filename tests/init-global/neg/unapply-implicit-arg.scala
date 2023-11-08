@@ -12,3 +12,4 @@ object Bar {
     case Bar(i) => i
     case _ => 0
 }
+// nopos-error: No warnings can be incurred under -Werror.

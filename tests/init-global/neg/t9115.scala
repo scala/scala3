@@ -6,3 +6,5 @@ object D { // error
   println(D1)
   println(D2)
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

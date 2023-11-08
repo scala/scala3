@@ -8,6 +8,6 @@ object UnitExp extends Exp[Unit]
 class Foo[U <: Int, T <: U] {
   def bar[A <: T](x: Exp[A]): Unit = x match
     case IntExp(x) =>
-    case StrExp(x) =>
-    case UnitExp => // warn
+    case StrExp(x) => // warn
+    case UnitExp => // warn implausible pattern
 }

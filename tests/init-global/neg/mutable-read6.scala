@@ -13,3 +13,4 @@ object Implicits:
   import Contexts.*
   case class SearchFailure(tag: Int, source: SourceFile)
   val NoMatchingFailure: SearchFailure = SearchFailure(1, NoContext.source)
+// nopos-error: No warnings can be incurred under -Werror.

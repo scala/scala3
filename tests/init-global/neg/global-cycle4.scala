@@ -17,3 +17,5 @@ class D(x: Int) {
 object O {
   val a: Int = D(5).bar().foo()
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

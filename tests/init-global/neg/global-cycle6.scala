@@ -23,3 +23,4 @@ object O {
     val m: Int = 10
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.
