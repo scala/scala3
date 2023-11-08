@@ -20,4 +20,4 @@ addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.11.0")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.2")
 
-addSbtPlugin("ch.epfl.scala" % "sbt-tasty-mima" % "0.4.0")
+addSbtPlugin("ch.epfl.scala" % "sbt-tasty-mima" % "1.0.0")
