@@ -14,8 +14,8 @@ final case class Documentation(
     format: dotty.tools.dotc.semanticdb.Documentation.Format = dotty.tools.dotc.semanticdb.Documentation.Format.HTML
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
 
       {

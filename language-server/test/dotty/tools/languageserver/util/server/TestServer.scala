@@ -21,7 +21,7 @@ class TestServer(testFolder: Path, projects: List[Project]) {
 
   init()
 
-  private[this] def init(): InitializeResult = {
+  private def init(): InitializeResult = {
     var compiledProjects: Set[Project] = Set.empty
 
     /** Compile the dependencies of the given project, and then the project. */

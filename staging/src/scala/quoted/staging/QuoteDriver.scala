@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
   import tpd._
 
-  private[this] val contextBase: ContextBase = new ContextBase
+  private val contextBase: ContextBase = new ContextBase
 
   def run[T](exprBuilder: Quotes => Expr[T], settings: Compiler.Settings): T =
     val outDir: AbstractFile =

@@ -190,7 +190,7 @@ object Code {
   }
 
   object Project {
-    private[this] val count = new java.util.concurrent.atomic.AtomicInteger()
+    private val count = new java.util.concurrent.atomic.AtomicInteger()
     private def freshName: String = s"project${count.incrementAndGet()}"
 
     /**

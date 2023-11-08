@@ -28,7 +28,7 @@ object Chars:
     if (0 <= num && num < base) num else -1
   }
   /** Buffer for creating '\ u XXXX' strings. */
-  private[this] val char2uescapeArray = Array[Char]('\\', 'u', 0, 0, 0, 0)
+  private val char2uescapeArray = Array[Char]('\\', 'u', 0, 0, 0, 0)
 
   /** Convert a character to a backslash-u escape */
   def char2uescape(c: Char): String = {

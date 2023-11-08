@@ -15,8 +15,8 @@ import scala.util.chaining.*
   * Ported from scala.reflect.internal.util.ReusableInstance
   */
 final class ReusableInstance[T <: AnyRef] private (make: => T) {
-  private[this] val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
-  private[this] var taken = 0
+  private val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
+  private var taken = 0
 
   inline def withInstance[R](action: T => R): R ={
     if (taken == cache.size)

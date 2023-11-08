@@ -579,6 +579,9 @@ object Build {
        // Note: bench/profiles/projects.yml should be updated accordingly.
        Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
+      // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
+      scalacOptions ++= Seq("-source", "3.3"),
+
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._

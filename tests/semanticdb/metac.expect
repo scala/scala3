@@ -8,7 +8,7 @@ Text => empty
 Language => Scala
 Symbols => 9 entries
 Occurrences => 19 entries
-Diagnostics => 2 entries
+Diagnostics => 4 entries
 
 Symbols:
 example/Access# => class Access extends Object { self: Access => +8 decls }
@@ -44,7 +44,13 @@ Occurrences:
 
 Diagnostics:
 [3:14..3:16): [warning] unused private member
+[4:16..4:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [4:20..4:22): [warning] unused private member
+[7:18..7:18): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/Advanced.scala
 ---------------------
@@ -559,7 +565,7 @@ Text => empty
 Language => Scala
 Symbols => 108 entries
 Occurrences => 127 entries
-Diagnostics => 4 entries
+Diagnostics => 6 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -803,7 +809,13 @@ Occurrences:
 
 Diagnostics:
 [18:9..18:10): [warning] unused explicit parameter
+[20:23..20:23): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [20:27..20:28): [warning] unused explicit parameter
+[22:23..22:23): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
 [24:10..24:11): [warning] unused explicit parameter
 
@@ -3914,7 +3926,7 @@ Text => empty
 Language => Scala
 Symbols => 42 entries
 Occurrences => 129 entries
-Diagnostics => 1 entries
+Diagnostics => 5 entries
 
 Symbols:
 example/ValUsages. => final object ValUsages extends Object { self: ValUsages.type => +2 decls }
@@ -4093,6 +4105,18 @@ Occurrences:
 
 Diagnostics:
 [2:20..2:21): [warning] unused explicit parameter
+[5:16..5:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[7:16..7:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[12:16..12:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[13:16..13:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/Vararg.scala
 -------------------

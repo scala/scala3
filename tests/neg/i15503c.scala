@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -Wunused:privates
+//> using options -Xfatal-warnings -Wunused:privates -source:3.3
 trait C
 class A:
   self: C => // OK

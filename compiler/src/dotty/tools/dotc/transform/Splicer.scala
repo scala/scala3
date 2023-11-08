@@ -90,7 +90,7 @@ object Splicer {
   /** Checks that no symbol that was generated within the macro expansion has an out of scope reference */
   def checkEscapedVariables(tree: Tree, expansionOwner: Symbol)(using Context): tree.type =
     new TreeTraverser {
-      private[this] var locals = Set.empty[Symbol]
+      private var locals = Set.empty[Symbol]
       private def markSymbol(sym: Symbol)(using Context): Unit =
           locals = locals + sym
       private def markDef(tree: Tree)(using Context): Unit = tree match {

@@ -14,8 +14,8 @@ final case class Synthetic(
     tree: dotty.tools.dotc.semanticdb.Tree = dotty.tools.dotc.semanticdb.Synthetic._typemapper_tree.toCustom(dotty.tools.dotc.semanticdb.TreeMessage.defaultInstance)
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       if (range.isDefined) {
         val __value = range.get

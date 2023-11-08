@@ -33,7 +33,7 @@ import scala.quoted.{Expr, Quotes, Type}
 private class QuoteCompiler extends Compiler:
 
   /** Either `Left` with name of the classfile generated or `Right` with the value contained in the expression */
-  private[this] var result: Either[String, Any] = null
+  private var result: Either[String, Any] = null
 
   override protected def frontendPhases: List[List[Phase]] =
     List(List(new QuotedFrontend))

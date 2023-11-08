@@ -13,8 +13,8 @@ final case class TextDocuments(
     documents: _root_.scala.Seq[dotty.tools.dotc.semanticdb.TextDocument] = _root_.scala.Seq.empty
     )  extends SemanticdbGeneratedMessage  derives CanEqual {
     @transient @sharable
-    private[this] var __serializedSizeMemoized: _root_.scala.Int = 0
-    private[this] def __computeSerializedSize(): _root_.scala.Int = {
+    private var __serializedSizeMemoized: _root_.scala.Int = 0
+    private def __computeSerializedSize(): _root_.scala.Int = {
       var __size = 0
       documents.foreach { __item =>
         val __value = __item

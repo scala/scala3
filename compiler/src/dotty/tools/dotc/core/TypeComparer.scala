@@ -160,7 +160,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  every time we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
-  private [this] var leftRoot: Type | Null = null
+  private var leftRoot: Type | Null = null
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false

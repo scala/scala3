@@ -3112,15 +3112,23 @@ object Parsers {
       if (in.token == LBRACKET) {
         if (mods.is(Local) || mods.hasPrivateWithin)
           syntaxError(DuplicatePrivateProtectedQualifier())
-        inBrackets {
+        val startOffset = in.offset
+        val mods1 = inBrackets {
           if in.token == THIS then
-            if sourceVersion.isAtLeast(future) then
-              deprecationWarning(
-                em"The [this] qualifier will be deprecated in the future; it should be dropped.")
             in.nextToken()
             mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
         }
+        if mods1.is(Local) then
+          report.gradualErrorOrMigrationWarning(
+              em"""The [this] qualifier will be deprecated in the future; it should be dropped.
+                  |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
+              in.sourcePos(),
+              warnFrom = `3.4`,
+              errorFrom = future)
+          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              patch(source, Span(startOffset, in.lastOffset), "")
+        mods1
       }
       else mods
 

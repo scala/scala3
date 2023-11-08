@@ -362,7 +362,7 @@ object projects:
     project = "shapeless-3",
     sbtTestCommand = "testJVM; testJS",
     sbtDocCommand = forceDoc("typeable", "deriving"),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
+    scalacOptions = "-source" :: "3.3" :: SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
