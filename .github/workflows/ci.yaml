@@ -143,7 +143,7 @@ jobs:
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
       - name: Test with Scala 2 library TASTy
-        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation i5" # only test a subset of test to avoid doubling the CI execution time
+        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala" # only test a subset of test to avoid doubling the CI execution time
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]

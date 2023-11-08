@@ -329,7 +329,7 @@ class InlineReducer(inliner: Inliner)(using Context):
               val paramCls = paramType.classSymbol
               if (paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType) {
                 val caseAccessors =
-                  if (paramCls.is(Scala2x)) paramCls.caseAccessors.filter(_.is(Method))
+                  if paramCls.is(Scala2x) then paramCls.caseAccessors
                   else paramCls.asClass.paramAccessors
                 val selectors =
                   for (accessor <- caseAccessors)

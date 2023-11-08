@@ -409,7 +409,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       New(defn.RuntimeTupleMirrorTypeRef, Literal(Constant(arity)) :: Nil)
 
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
-      val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
+      val accessors = cls.caseAccessors
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
       val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
       val nestedPairs = TypeOps.nestedPairs(typeElems)
