@@ -1,6 +1,7 @@
 package dotty.tools.pc.utils
 
 import scala.collection.immutable
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.utils.TestExtensions.*
 

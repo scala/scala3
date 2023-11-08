@@ -69,7 +69,7 @@ final class PcSemanticTokensProvider(
            case tree: Tree =>
              symbol.fold(tree.symbol)(identity)
            case EndMarker(sym) => sym
-      if !pos.exists || sym == null || sym == NoSymbol then None
+      if !pos.exists || sym == NoSymbol then None
       else
         Some(
           makeNode(

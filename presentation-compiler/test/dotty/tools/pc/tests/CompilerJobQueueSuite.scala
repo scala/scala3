@@ -7,6 +7,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
 import scala.meta.internal.pc.CompilerJobQueue
+import scala.language.unsafeNulls
 import scala.util.Try
 
 import org.junit.{After, Assert, Before, Test}

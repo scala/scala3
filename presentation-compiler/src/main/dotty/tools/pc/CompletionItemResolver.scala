@@ -30,7 +30,7 @@ object CompletionItemResolver extends ItemResolver:
           .orElse(
             search.symbolDocumentation(gsym.companion)
           ) match
-          case Some(info) if item.getDetail != null =>
+          case Some(info) if item.getDetail() != null =>
             enrichDocs(
               item,
               info,
@@ -50,7 +50,7 @@ object CompletionItemResolver extends ItemResolver:
       Context
   ): String =
     def docs(gsym: Symbol): String =
-      search.symbolDocumentation(gsym).fold("")(_.docstring())
+      search.symbolDocumentation(gsym).fold("")(_.docstring().nn)
     val gsymDoc = docs(gsym)
     def keyword(gsym: Symbol): String =
       if gsym.isClass then "class"
@@ -60,7 +60,7 @@ object CompletionItemResolver extends ItemResolver:
       else ""
     val companion = gsym.companion
     if companion == NoSymbol || gsym.is(JavaDefined) then
-      if gsymDoc.isEmpty then
+      if gsymDoc.isEmpty() then
         if gsym.isAliasType then
           fullDocstring(gsym.info.metalsDealias.typeSymbol, search)
         else if gsym.is(Method) then
@@ -73,8 +73,8 @@ object CompletionItemResolver extends ItemResolver:
       else gsymDoc
     else
       val companionDoc = docs(companion)
-      if companionDoc.isEmpty then gsymDoc
-      else if gsymDoc.isEmpty then companionDoc
+      if companionDoc.isEmpty() then gsymDoc
+      else if gsymDoc.isEmpty() then companionDoc
       else
         List(
           s"""|### ${keyword(companion)} ${companion.name}

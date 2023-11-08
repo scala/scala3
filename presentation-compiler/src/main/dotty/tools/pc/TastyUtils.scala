@@ -21,7 +21,7 @@ object TastyUtils:
 
   private def normalTasty(tastyURI: URI): String =
     val tastyBytes = Files.readAllBytes(Paths.get(tastyURI))
-    new TastyPrinter(tastyBytes).showContents()
+    new TastyPrinter(tastyBytes.nn).showContents()
 
   private def htmlTasty(
       tastyURI: URI,
@@ -30,7 +30,7 @@ object TastyUtils:
   ): String =
     val title = tastyHtmlPageTitle(tastyURI)
     val tastyBytes = Files.readAllBytes(Paths.get(tastyURI))
-    val tastyHtml = new TastyHTMLPrinter(tastyBytes).showContents()
+    val tastyHtml = new TastyHTMLPrinter(tastyBytes.nn).showContents()
     HtmlBuilder()
       .page(title, htmlStyles :: headElems, bodyAttributes) { builder =>
         builder
@@ -40,7 +40,7 @@ object TastyUtils:
   end htmlTasty
 
   private def tastyHtmlPageTitle(file: URI) =
-    val filename = Paths.get(file).getFileName.toString
+    val filename = Paths.get(file).nn.getFileName().toString
     s"TASTy for $filename"
 
   private val standaloneHtmlStyles =

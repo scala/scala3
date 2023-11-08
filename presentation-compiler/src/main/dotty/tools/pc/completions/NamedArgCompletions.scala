@@ -270,11 +270,12 @@ object NamedArgCompletions:
       )
     }
 
-    val prefix =
-      ident
-        .map(_.name.toString)
-        .getOrElse("")
-        .replace(Cursor.value, "")
+    val prefix = ident
+      .map(_.name.toString)
+      .getOrElse("")
+      .replace(Cursor.value, "")
+      .nn
+
     val params: List[ParamSymbol] =
       allParams
         .filter(param => param.name.startsWith(prefix))
