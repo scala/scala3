@@ -38,15 +38,11 @@ object AmmoniteFileCompletions:
       workspace: Option[Path],
       rawFileName: String
   )(using Context): List[CompletionValue] =
+    val fileName: Option[String] = Option(rawFileName)
+      .flatMap(_.split("/").nn.lastOption.map(_.nn.stripSuffix(".amm.sc.scala")))
 
-    val fileName = rawFileName
-      .split("/")
-      .last
-      .stripSuffix(".amm.sc.scala")
-
-    val split = rawPath
-      .split("\\$file")
-      .toList
+    val split: List[String] = Option(rawPath)
+      .fold(Nil)(_.split("\\$file").nn.toList.map(_.nn))
 
     val editRange = selector.headOption.map { sel =>
       if sel.sourcePos.span.isZeroExtent then posRange
@@ -66,35 +62,33 @@ object AmmoniteFileCompletions:
         isDirectory = true
       )
 
+    def matches(file: Path): Boolean =
+      (Files.isDirectory(file) || file.toAbsolutePath().toString.isAmmoniteScript) &&
+        query.exists(q => CompletionFuzzy.matches(q.nn, file.getFileName().toString))
+
     (split, workspace) match
       case (_ :: script :: Nil, Some(workspace)) =>
         // drop / or \
         val current = workspace.resolve(script.drop(1))
         val importPath = translateImportToPath(select).drop(1)
-        val currentPath = current.getParent.resolve(importPath).toAbsolutePath
+        val currentPath = current.nn.getParent().nn.resolve(importPath).nn.toAbsolutePath()
         val parentTextEdit =
-          if query.exists(_.isEmpty()) &&
-            Files.exists(currentPath.getParent) && Files.isDirectory(
+          if query.exists(_.nn.isEmpty()) &&
+            Files.exists(currentPath.nn.getParent()) && Files.isDirectory(
               currentPath
             )
           then List(parent)
           else Nil
         Files
-          .list(currentPath)
-          .iterator
+          .list(currentPath).nn
+          .iterator().nn
           .asScala
           .toList
-          .filter(_.getFileName.toString.stripSuffix(".sc") != fileName)
+          .filter(path => !fileName.contains(path.nn.getFileName().toString.stripSuffix(".sc")))
           .collect {
-            case file
-                if (Files.isDirectory(
-                  file
-                ) || file.toAbsolutePath.toString.isAmmoniteScript) &&
-                  query.exists(
-                    CompletionFuzzy.matches(_, file.getFileName.toString)
-                  ) =>
+            case file if matches(file) =>
               CompletionValue.FileSystemMember(
-                file.getFileName.toString,
+                file.getFileName().toString,
                 editRange,
                 isDirectory = Files.isDirectory(file)
               )

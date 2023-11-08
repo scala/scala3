@@ -28,14 +28,14 @@ object SignatureHelpProvider:
       params: OffsetParams,
       search: SymbolSearch
   ) =
-    val uri = params.uri
-    val sourceFile = SourceFile.virtual(params.uri, params.text)
-    driver.run(uri, sourceFile)
+    val uri = params.uri()
+    val sourceFile = SourceFile.virtual(params.uri().nn, params.text().nn)
+    driver.run(uri.nn, sourceFile)
 
     given ctx: Context = driver.currentCtx
 
     val pos = driver.sourcePosition(params)
-    val trees = driver.openedTrees(uri)
+    val trees = driver.openedTrees(uri.nn)
 
     val path =
       Interactive.pathTo(trees, pos).dropWhile(t => notCurrentApply(t, pos))
@@ -101,7 +101,7 @@ object SignatureHelpProvider:
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
   ): Option[Signature] =
-    val allParams = info.parameters.asScala
+    val allParams = info.parameters().nn.asScala
     def updateParams(
         params: List[Signatures.Param],
         index: Int
@@ -114,11 +114,11 @@ object SignatureHelpProvider:
             case Some(paramDoc) =>
               val newName =
                 if isJavaSymbol && head.name.startsWith("x$") then
-                  paramDoc.displayName
+                  paramDoc.nn.displayName()
                 else head.name
               head.copy(
-                doc = Some(paramDoc.docstring),
-                name = newName
+                doc = Some(paramDoc.docstring.nn),
+                name = newName.nn
               ) :: rest
             case _ => head :: rest
 
@@ -132,7 +132,7 @@ object SignatureHelpProvider:
           val updated = updateParams(head, index)
           updated :: updateParamss(tail, index + head.size)
     val updatedParams = updateParamss(signature.paramss, 0)
-    Some(signature.copy(doc = Some(info.docstring), paramss = updatedParams))
+    Some(signature.copy(doc = Some(info.docstring().nn), paramss = updatedParams))
   end withDocumentation
 
   private def signatureToSignatureInformation(
@@ -174,12 +174,12 @@ object SignatureHelpProvider:
     documentation.foreach(info.setDocumentation(_))
     info
 
-  private def markupContent(content: String): l.MarkupContent =
-    if content.isEmpty then null
+  private def markupContent(content: String): l.MarkupContent | Null =
+    if content.isEmpty() then null
     else
       val markup = new l.MarkupContent
       markup.setKind("markdown")
-      markup.setValue(content.trim)
+      markup.setValue(content.trim())
       markup
 
 end SignatureHelpProvider

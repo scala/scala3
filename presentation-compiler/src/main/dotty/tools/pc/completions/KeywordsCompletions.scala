@@ -1,10 +1,13 @@
 package dotty.tools.pc.completions
 
+import scala.collection.mutable.ListBuffer
 import scala.meta.internal.pc.Keyword
 
 import dotty.tools.dotc.ast.NavigateAST
+import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.ast.untpd.UntypedTreeTraverser
 import dotty.tools.dotc.core.Comments
 import dotty.tools.dotc.core.Comments.Comment
 import dotty.tools.dotc.core.Contexts.Context
@@ -23,7 +26,7 @@ object KeywordsCompletions:
       checkIfNotInComment(completionPos.cursorPos, comments)
 
     path match
-      case Nil if completionPos.query.isEmpty =>
+      case Nil if completionPos.query.isEmpty() =>
         Keyword.all.collect {
           // topelevel definitions are allowed in Scala 3
           case kw if (kw.isPackage || kw.isTemplate) && notInComment =>
@@ -163,6 +166,19 @@ object KeywordsCompletions:
   def checkTemplateForNewParents(enclosing: List[Tree], pos: CompletionPos)(
       using ctx: Context
   ): TemplateKeywordAvailability =
+
+    def collectTypeAndModuleDefs(
+      tree: untpd.Tree,
+      f: PartialFunction[untpd.Tree, Boolean]
+    )(using Context): List[untpd.Tree] = {
+      val buf = ListBuffer.empty[untpd.Tree]
+      val traverser = new UntypedTreeTraverser:
+        def traverse(tree: untpd.Tree)(using Context) =
+          foldOver(if f(tree) then buf += tree, tree)
+      traverser.traverse(tree)
+      buf.toList
+    }
+
     /*
      * Finds tree which ends just before cursor positions, that may be extended or derive.
      * In Scala 3, such tree must be a `TypeDef` which has field of type `Template` describing
@@ -172,43 +188,18 @@ object KeywordsCompletions:
      *
      * @returns TypeDef tree defined before the cursor position or `enclosingTree` otherwise
      */
-    def findLastSatisfyingTree(span: Span): Option[Tree] =
-      NavigateAST.untypedPath(span).headOption.flatMap {
-        case other: untpd.Tree =>
-          val typeDefs = other.filterSubTrees {
-            // package test
-            // class Test ext@@ - Interactive.pathTo returns `PackageDef` instead of `TypeDef`
-            // - because it tried to repair the broken tree by finishing `TypeDef` before ext
-            //
-            // The cursor position is 27 and tree positions after parsing are:
-            //
-            //  package Test@../Test.sc<8..12> {
-            //    class Test {}@../Test.sc[13..19..23]
-            //  }@../Test.sc<0..27>
+    def findLastSatisfyingTree(untpdPath: List[Positioned]): Option[untpd.Tree] =
+      untpdPath.headOption.flatMap {
+        case untpdTree: untpd.Tree =>
+          collectTypeAndModuleDefs(untpdTree, {
             case typeDef: (untpd.TypeDef | untpd.ModuleDef) =>
               typeDef.span.exists && typeDef.span.end < pos.sourcePos.span.start
-            case other =>
-              false
-          }
-
-          typeDefs match
-            // If we didn't find any trees, it means the enclosingTree is not a TypeDef,
-            // thus can't be followed with `extends`, `with` and `derives`
-            case Nil =>
-              // we have to fallback to typed tree and check if it is an enum
-              enclosing match
-                case (tree: TypeDef) :: _ if tree.symbol.isEnumClass =>
-                  Some(other)
-                case _ => None
-            case other =>
-              other
-                .filter(tree => tree.span.exists && tree.span.end < pos.start)
-                .maxByOption(_.span.end)
-
+            case _ => false
+          })
+          .filter(tree => tree.span.exists && tree.span.end < pos.start)
+          .maxByOption(_.span.end)
         case _ => None
       }
-
-    end findLastSatisfyingTree
 
     def checkForPossibleKeywords(
         template: Template
@@ -219,16 +210,17 @@ object KeywordsCompletions:
         template.derived.isEmpty
       )
 
-    findLastSatisfyingTree(pos.cursorPos.span)
-      .flatMap {
-        case untpd.TypeDef(_, template: Template) =>
-          Some(checkForPossibleKeywords(template))
-        case untpd.ModuleDef(_, template: Template) =>
-          Some(checkForPossibleKeywords(template))
-        case template: Template => Some(checkForPossibleKeywords(template))
-        case other => None
-      }
-      .getOrElse(TemplateKeywordAvailability.default)
+    val untpdPath = NavigateAST.untypedPath(pos.cursorPos.span)
+
+    findLastSatisfyingTree(untpdPath).orElse { enclosing match
+      case (typeDef: TypeDef) :: _ if typeDef.symbol.isEnumClass => untpdPath.headOption
+      case _ => None
+    }.map {
+      case untpd.TypeDef(_, template: Template) => checkForPossibleKeywords(template)
+      case untpd.ModuleDef(_, template: Template) => checkForPossibleKeywords(template)
+      case template: Template => checkForPossibleKeywords(template)
+    }.getOrElse(TemplateKeywordAvailability.default)
+
 
   end checkTemplateForNewParents
 

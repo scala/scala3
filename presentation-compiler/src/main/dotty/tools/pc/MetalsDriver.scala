@@ -48,7 +48,7 @@ class MetalsDriver(
 
   override def run(uri: URI, sourceCode: String): List[Diagnostic] =
     val diags =
-      if alreadyCompiled(uri, sourceCode.toCharArray()) then Nil
+      if alreadyCompiled(uri, sourceCode.toCharArray().nn) then Nil
       else super.run(uri, sourceCode)
     lastCompiledURI = uri
     diags

@@ -9,6 +9,7 @@ import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 import scala.util.control.NonFatal
+import scala.jdk.OptionConverters.*
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
@@ -37,29 +38,29 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
     def sourcePosition(
         params: OffsetParams
     ): SourcePosition =
-      val uri = params.uri
-      val source = driver.openedFiles(uri)
+      val uri = params.uri()
+      val source = driver.openedFiles(uri.nn)
       val span = params match
-        case p: RangeParams if p.offset != p.endOffset =>
+        case p: RangeParams if p.offset() != p.endOffset() =>
           p.trimWhitespaceInRange.fold {
-            Spans.Span(p.offset, p.endOffset)
+            Spans.Span(p.offset(), p.endOffset())
           } {
             case trimmed: RangeParams =>
-              Spans.Span(trimmed.offset, trimmed.endOffset)
+              Spans.Span(trimmed.offset(), trimmed.endOffset())
             case offset =>
-              Spans.Span(p.offset, p.offset)
+              Spans.Span(p.offset(), p.offset())
           }
-        case _ => Spans.Span(params.offset)
+        case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
     end sourcePosition
 
     def localContext(params: OffsetParams): Context =
-      if driver.currentCtx.run.units.isEmpty then
+      if driver.currentCtx.run.nn.units.isEmpty then
         throw new RuntimeException(
           "No source files were passed to the Scala 3 presentation compiler"
         )
-      val unit = driver.currentCtx.run.units.head
+      val unit = driver.currentCtx.run.nn.units.head
       val pos = driver.sourcePosition(params)
       val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
       val tpdPath =
@@ -100,7 +101,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
       for
         uri <- InteractiveDriver.toUriOption(pos.source)
         range <- if pos.exists then Some(pos.toLsp) else None
-      yield new l.Location(uri.toString, range)
+      yield new l.Location(uri.toString(), range)
 
     def encloses(other: SourcePosition): Boolean =
       pos.start <= other.start && pos.end >= other.end
@@ -208,8 +209,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
         sym,
         () => parentSymbols.iterator.map(toSemanticdbSymbol).toList.asJava,
       )
-      if documentation.isPresent then Some(documentation.get())
-      else None
+      documentation.nn.toScala
     end symbolDocumentation
   end extension
 
