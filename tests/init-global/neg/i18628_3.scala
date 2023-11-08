@@ -4,6 +4,6 @@ object Test:
   class Box(val x: Int)
 
   def recur(a: => Box, b: => Box): Int =
-    a.x + recur(a: @widen(5), b: @widen(5)) + b.x // error
+    a.x + recur(a: @widen(5), b: @widen(5)) + b.x // error // error
 
   recur(Box(1), Box(2))
