@@ -165,7 +165,9 @@ object Inferencing {
     (using Context) extends TypeAccumulator[Boolean] {
 
     /** Replace toplevel-covariant occurrences (i.e. covariant without double flips)
-     *  of Nothing by fresh type variables.
+     *  of Nothing by fresh type variables. Double-flips are not covered to be
+     *  conservative and save a bit of time on traversals; we could probably
+     *  generalize that if we see use cases.
      *  For singleton types and references to module classes: try to
      *  improve the widened type. For module classes, the widened type
      *  is the intersection of all its non-transparent parent types.
@@ -190,6 +192,12 @@ object Inferencing {
             case _ =>
               mapOver(t)
         else t
+
+      // Don't map Nothing arguments for higher-kinded types; we'd get the wrong kind */
+      override def mapArg(arg: Type, tparam: ParamInfo): Type =
+        if tparam.paramInfo.isLambdaSub then arg
+        else super.mapArg(arg, tparam)
+    end improve
 
     /** Instantiate type variable with possibly improved computed instance type.
      *  @return  true if variable was instantiated with improved type, which

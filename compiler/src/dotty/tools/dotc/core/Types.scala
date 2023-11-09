@@ -4895,16 +4895,16 @@ object Types {
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(using Context): Type = {
       assert(tp ne this, i"self instantiation of $origin, constraint = ${ctx.typerState.constraint}")
-      if !myInst.exists then
-        typr.println(i"instantiating $this with $tp")
+      assert(!myInst.exists, i"$origin is already instantiated to $myInst but we attempted to instantiate it to $tp")
+      typr.println(i"instantiating $this with $tp")
 
-        if Config.checkConstraintsSatisfiable then
-          assert(currentEntry.bounds.contains(tp),
-            i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
+      if Config.checkConstraintsSatisfiable then
+        assert(currentEntry.bounds.contains(tp),
+          i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
 
-        if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
-          setInst(tp)
-        ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
+      if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
+        setInst(tp)
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
 
@@ -5811,11 +5811,13 @@ object Types {
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
+    protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
+      case arg: TypeBounds => this(arg)
+      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = arg match
-          case arg: TypeBounds => this(arg)
-          case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
+        val arg1 = mapArg(arg, tparams.head)
         val otherArgs1 = mapArgs(otherArgs, tparams.tail)
         if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
         else arg1 :: otherArgs1
