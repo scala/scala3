@@ -153,8 +153,11 @@ object Mode {
   /** We are in the IDE */
   val Interactive: Mode = newMode(20, "Interactive")
 
-  /** We are typing the body of an inline method */
-  val InlineableBody: Mode = newMode(21, "InlineableBody")
+  // /** We are typing the body of an inline method */
+  // val InlineableBody: Mode = newMode(21, "InlineableBody") // TODO unused?
+
+  /** We are in the rhs of an inline definition */
+  val InlineRHS = newMode(21, "InlineRHS")
 
   val NewGivenRules: Mode = newMode(22, "NewGivenRules")
 
