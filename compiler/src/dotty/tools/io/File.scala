@@ -35,7 +35,7 @@ object File {
  *  @author  Paul Phillips
  *  @since   2.8
  *
- *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
+ *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
   override val creationCodec: io.Codec = constructorCodec
