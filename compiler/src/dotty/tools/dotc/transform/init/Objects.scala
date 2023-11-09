@@ -589,7 +589,7 @@ object Objects:
             values.map(ref => ref.widen(height)).join
 
           case Fun(code, thisV, klass, env) =>
-            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height))
+            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height - 1))
 
           case ref @ OfClass(klass, outer, _, args, env) =>
             val outer2 = outer.widen(height - 1)
