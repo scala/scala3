@@ -2,6 +2,7 @@ package dotty.tools.pc.utils
 
 import scala.language.unsafeNulls
 
+import dotty.tools.pc.completions.CompletionSource
 import dotty.tools.dotc.util.DiffUtil
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
@@ -10,20 +11,22 @@ import org.hamcrest.*
 
 trait PcAssertions:
 
-  def assertCompletions(
+  def assertWithDiff(
       expected: String,
       actual: String,
-      snippet: Option[String] = None
+      includeSources: Boolean,
+      snippet: Option[String] = None,
+      completionSources: List[CompletionSource] = Nil,
   ): Unit =
     val longestExpeceted =
-      expected.linesIterator.maxByOption(_.length).map(_.length).getOrElse(0)
+      expected.linesIterator.map(_.length).maxOption.getOrElse(0)
     val longestActual =
-      actual.linesIterator.maxByOption(_.length).map(_.length).getOrElse(0)
+      actual.linesIterator.map(_.length).maxOption.getOrElse(0)
 
     val actualMatcher =
       if longestActual >= 40 || longestExpeceted >= 40 then
-        lineByLineDiffMatcher(expected)
-      else sideBySideDiffMatcher(expected)
+        lineByLineDiffMatcher(expected, completionSources, includeSources)
+      else sideBySideDiffMatcher(expected, completionSources, includeSources)
 
     assertThat(actual, actualMatcher, snippet)
 
@@ -115,27 +118,51 @@ trait PcAssertions:
       error.setStackTrace(Array.empty)
       throw error
 
-  private def lineByLineDiffMatcher(expected: String): TypeSafeMatcher[String] =
+
+  private def lineByLineDiffMatcher(
+    expected: String,
+    completionSources: List[CompletionSource] = Nil,
+    isCompletion: Boolean = false
+  ): TypeSafeMatcher[String] =
+    def getDetailedMessage(diff: String): String =
+      val lines = diff.linesIterator.toList
+      val sources = completionSources.padTo(lines.size, CompletionSource.Empty)
+      val maxLength = lines.map(_.length).maxOption.getOrElse(0)
+      var redLineIndex = 0
+      lines.map: line =>
+        if line.startsWith(Console.BOLD + Console.RED) then
+          redLineIndex = redLineIndex + 1
+          s"$line | [${sources(redLineIndex - 1)}]"
+        else
+          line
+      .mkString("\n")
+
     new TypeSafeMatcher[String]:
 
       override def describeMismatchSafely(
           item: String,
           mismatchDescription: org.hamcrest.Description
       ): Unit =
+        val diff = DiffUtil.mkColoredHorizontalLineDiff(unifyNewlines(expected), unifyNewlines(item))
+        val maybeEnhancedDiff = if isCompletion then getDetailedMessage(diff) else diff
         mismatchDescription.appendText(System.lineSeparator)
-        mismatchDescription.appendText(
-          DiffUtil.mkColoredHorizontalLineDiff(
-            unifyNewlines(expected),
-            unifyNewlines(item)
-          )
-        )
+        mismatchDescription.appendText(maybeEnhancedDiff)
         mismatchDescription.appendText(System.lineSeparator)
 
       override def describeTo(description: org.hamcrest.Description): Unit = ()
       override def matchesSafely(item: String): Boolean =
         unifyNewlines(expected) == unifyNewlines(item)
 
-  private def sideBySideDiffMatcher(expected: String): TypeSafeMatcher[String] =
+  private def sideBySideDiffMatcher(
+    expected: String,
+    completionSources: List[CompletionSource] = Nil,
+    isCompletion: Boolean = false
+  ): TypeSafeMatcher[String] =
+    def getDetailedMessage(diff: String): String =
+      val lines = diff.linesIterator.toList
+      val sources = completionSources.padTo(lines.size, CompletionSource.Empty)
+      (lines zip sources).map((line, source) => s"$line | [$source]").mkString("\n")
+
     new TypeSafeMatcher[String]:
 
       override def describeMismatchSafely(
@@ -147,10 +174,10 @@ trait PcAssertions:
 
         val expectedLines = cleanedExpected.linesIterator.toSeq
         val actualLines = cleanedActual.linesIterator.toSeq
+        val diff = DiffUtil.mkColoredLineDiff(expectedLines, actualLines)
+        val maybeEnhancedDiff = if isCompletion then getDetailedMessage(diff) else diff
 
-        mismatchDescription.appendText(
-          DiffUtil.mkColoredLineDiff(expectedLines, actualLines)
-        )
+        mismatchDescription.appendText(maybeEnhancedDiff)
         mismatchDescription.appendText(System.lineSeparator)
 
       override def describeTo(description: org.hamcrest.Description): Unit = ()
