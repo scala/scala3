@@ -486,6 +486,12 @@ class Definitions {
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
   @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
 
+  // val Predef_undefinedElidedTree = new PerRun[ast.tpd.Tree]({
+  //   import dotty.tools.dotc.ast.tpd.TreeOps
+  //   val base = ast.tpd.ref(defn.Predef_undefined)
+  //   ast.tpd.ElidedTree.from(base)
+  // })
+
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
 
@@ -1018,6 +1024,7 @@ class Definitions {
   @tu lazy val IntoAnnot: ClassSymbol = requiredClass("scala.annotation.into")
   @tu lazy val IntoParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.$into")
   @tu lazy val ErasedParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ErasedParam")
+  @tu lazy val ElidedTreeAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ElidedTree")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
   @tu lazy val MappedAlternativeAnnot: ClassSymbol = requiredClass("scala.annotation.internal.MappedAlternative")
   @tu lazy val MigrationAnnot: ClassSymbol = requiredClass("scala.annotation.migration")

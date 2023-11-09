@@ -14,6 +14,7 @@ import collection.mutable
 import reflect.ClassTag
 import scala.util.{Success, Failure}
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
+import org.scalajs.ir.Trees.JSBinaryOp.in
 
 object Settings:
 
@@ -24,6 +25,7 @@ object Settings:
   val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
   val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
+  val ClasspathTag: ClassTag[IArray[AbstractFile]] = ClassTag(classOf[Array[AbstractFile]])
 
   trait SettingCategory:
     def prefixLetter: String

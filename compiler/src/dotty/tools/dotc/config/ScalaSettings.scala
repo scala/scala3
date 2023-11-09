@@ -443,4 +443,8 @@ private sealed trait YSettings:
   val YjavaTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Ypickle-java"), preferPrevious = true)
   val YearlyTastyOutput: Setting[AbstractFile] = OutputSetting(ForkSetting, "Yearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Ypickle-write"), preferPrevious = true)
   val YallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.")
+  val Youtline: Setting[Boolean] = BooleanSetting(ForkSetting, "Yexperimental-outline", "Run typechecking in two passes, a prior outline pass, and a subsequent full pass. This may be useful in combination with pipelining.")
+  val YsecondPass: Setting[Boolean] = BooleanSetting(ForkSetting, "Ysecond-pass", "Internal use only, signal that the compiler is in the second pass after outlining.")
+  val YoutlineClasspath: Setting[AbstractFile] = OutputSetting(ForkSetting, "Youtline-classpath", "directory|jar", "Destination for outline classfiles.", NoAbstractFile)
+  val YmaxParallelism: Setting[Int] = IntSetting(ForkSetting, "Ymax-parallelism", "When combined with -Yexperimental-outline, maximum number of parallel threads to use, 0 means all available processors", 0)
 end YSettings
