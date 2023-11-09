@@ -1,9 +1,10 @@
-//> using options -Xlint:type-parameter-shadow
+//> using options -Xlint:type-parameter-shadow -Xfatal-warnings
 
 object i17613b:
 	import importTry._
 	class B:
 		type T = Int
+		trait Typeclass[T]
 		trait D
 
 		def foobar[ImTrait](in: D) = in.toString // warn
@@ -12,7 +13,7 @@ object i17613b:
 		def foobar2[ImClass](in: D) = in.toString // warn
 		type MySeq2[ImClass] = Seq[D] // warn
 
-		given [A]: Ordering[Int]()
+		given [A]: Typeclass[Int]() // warn
 		type TypeLambda[A] = [ImTrait] =>> Map[ImTrait, B]
 		type PolyFun[A] = [ImTrait] => ImTrait => B // warn
 		type MatchType[A] = A match {
@@ -28,8 +29,8 @@ object i17613b:
 
 			type Y[List] = Int // no warning
 
-			given [A]: Ordering[A]()
-			given [Int]: Ordering[Int]() // warn
+			given [A]: Typeclass[A]()
+			given [Int]: Typeclass[Int]() // warn
 
 		class C[M[List[_]]] // warn List not renamed here
 		type E[M[Int[_]]] = Int // warn
@@ -42,3 +43,5 @@ object i17613b:
 				5
 
 	def main(args: Array[String]) = println("Test for type parameter shadow")
+
+	// nopos-error fatal warnings

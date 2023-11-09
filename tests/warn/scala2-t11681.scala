@@ -1,5 +1,5 @@
-//> using options -Xfatal-warnings -Wunused:params
-//
+//> using options -Wunused:params
+
 
 import Answers._
 
@@ -108,5 +108,3 @@ object Answers {
 }
 
 val a$1 = 2
-
-// nopo-error: No warnings can be incurred under -Werror.
