@@ -17,7 +17,8 @@ import dotty.tools.dotc.staging.StagingLevel
 import scala.collection.mutable.ListBuffer
 
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
-class Inlining extends MacroTransform {
+class Inlining extends MacroTransform, IdentityDenotTransformer {
+  self =>
 
   import tpd.*
 
@@ -75,7 +76,7 @@ class Inlining extends MacroTransform {
             && StagingLevel.level == 0
             && MacroAnnotations.hasMacroAnnotation(tree.symbol)
           then
-            val trees = (new MacroAnnotations).expandAnnotations(tree)
+            val trees = (new MacroAnnotations(self)).expandAnnotations(tree)
             val trees1 = trees.map(super.transform)
 
             // Find classes added to the top level from a package object
