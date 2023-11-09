@@ -552,7 +552,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass then
-          sym == defn.AnyClass
+          sym == defn.AnyClass || !sym.isPureClass
             // we assume Any is a shorthand of {cap} Any, so if Any is an upper
             // bound, the type is taken to be impure.
         else
