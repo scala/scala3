@@ -3153,6 +3153,7 @@ Text => empty
 Language => Scala
 Symbols => 68 entries
 Occurrences => 115 entries
+Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -3341,6 +3342,10 @@ Occurrences:
 [32:47..32:48): s -> example/PickOneRefinement_1#run().(s)
 [32:49..32:56): pickOne -> example/SpecialRefinement#pickOne().
 [32:57..32:59): as -> example/PickOneRefinement_1#run().(as)
+
+Diagnostics:
+[32:60..32:60): [warning] The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 Synthetics:
 [15:23..15:34):elems.toMap => *[String, Any]
