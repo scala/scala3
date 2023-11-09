@@ -413,6 +413,14 @@ object Parsers {
       finally inEnum = saved
     }
 
+    private var inTypeMatchPattern = false
+    private def withinTypeMatchPattern[T](body: => T): T = {
+      val saved = inTypeMatchPattern
+      inTypeMatchPattern = true
+      try body
+      finally inTypeMatchPattern = saved
+    }
+
     private var staged = StageKind.None
     def withinStaged[T](kind: StageKind)(op: => T): T = {
       val saved = staged
@@ -1862,7 +1870,7 @@ object Parsers {
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
-          if sourceVersion.isAtLeast(future) then
+          if !inTypeMatchPattern && sourceVersion.isAtLeast(future) then
             deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
             patch(source, Span(in.offset, in.offset + 1), "?")
           val start = in.skipToken()
@@ -2898,7 +2906,7 @@ object Parsers {
             val start = in.skipToken()
             Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
           case _ =>
-            rejectWildcardType(infixType())
+            withinTypeMatchPattern(rejectWildcardType(infixType()))
         }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
