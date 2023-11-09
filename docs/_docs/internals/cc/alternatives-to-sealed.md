@@ -1,23 +1,26 @@
 A capture checking variant
 ==========================
 
- - We use a stricter form of the TOPLAS model where
-    - we can't unbox and box from and into S^{cap} (as in TOPLAS), and
-    - we don't allow subtyping to cap under box. I.e.
-      ```
-      Box S1 ^ C1 <: Box S2 ^ C2
-      if S1 <: S2, C1 <: C2, C2 != {cap}
-      ```
+ - We separate encapsulation from boxing. Instead, similar to reachability types,
+   we don't allow widening to `cap` in subcapturing. The subcapturing rule (sc-var)
+   is revised as follows:
+
+   ```
+   x: S^C in E    E |- C <: C'    cap notin C
+   -------------------------------------------
+                E |- {x} <: C'
+
+   ```
    The aim is to have a system where we detect all leaks on formation
    and not some just on access. In the TOPLAS version, we cannot box {cap}
    but we can box with some capability {x} and then widen under the box
    into {cap}. This was not a problem because we cannot unbox cap so the
    data could not be accessed. But now we want to be stricter and already
    prevent the formation. This strictness is necessary to ensure soundness
-   of the `cap -> x*` conversion described below.
+   of the modified (Var) rule described below.
 
  - To compensate, and allow capture polymorphism in e.g. function arguments, we allow
-   some subcapture slack to cap under box when comparing the types of actual and expected types
+   some subcapture slack to covariant cap when comparing the types of actual and expected types
    after rechecking. This has to be done selectively, so that the following are still guaranteed:
 
     - No widening of function results.
@@ -32,8 +35,9 @@ A capture checking variant
    expected types are created by
 
     1. function parameter types for their arguments,
-    2. declared types of vals or vars for their right hand sides,
+    2. declared types of vals for their right hand sides,
     3. declared result types of defs for their right hand sides,
+    2. declared types of vars for their initializers,
     4. declared types of vars for the right hand sides of assignments to them,
     5. declared types of seq literals for the elements in that seq literal,
 
@@ -45,28 +49,25 @@ A capture checking variant
 
  - Technicalities for type comparers and type maps:
 
-    1. Subcapturing: We need to thread through the subset propagation logic whether
-       the elements to add to a capture set come from a boxed set. Maybe it's best
-       for this if the isBoxed flag was moved from CapturingTypes to CaptureSets?
-       Or, alternativelty, pass box status to subCaptures as an additional parameter,
-       but then we also have to deal with uses of subCapturing in, say,
-       set union or intersection. The knowledge that an element comes from a
-       boxed set has to be propagated through maps. I.e. if r comes from a boxed
-       set, we also assume f(r) comes from a boxed set. Then, the `x.subsumes(y)`
-       test needs to know whether `y` comes from a boxed set. All this looks
-       rather complicated.
+    1. Subcapturing: When applying rule (sc-var), we need to make sure that the
+       capture set of the info of a ref does not contain `cap`. In the case where
+       this capture set is a variable, we can use `disallowRootCapability`.
 
     2. Lubs of capture sets can now contain at the same time `cap` and other
        references.
 
     3. Avoidance maps can have undefined results. We need to tweak the part
        of AvoidMap that widens from a TermRef `ref` to `ref.info`, so that
-       this is forbidden if the widening appears in a boxed capture set.
-       This could be achieved by disallowing the root capability in a capture
-       set that arises from mapping a boxed capture set through avoidance, using
-       a handler that issues an appropriate error message.
+       this is forbidden if the `ref.info` contains `cap`. This is similar
+       to the restriction of subcapturing. It could be achieved by disallowing
+       the root capability in a capeture set that arises from mapping a capture
+       set through avoidance, using a handler that issues an appropriate error message.
 
- - As in the TOPLAS paper, mutable variables and results of try are implicitly boxed.
+ - There is no longer a need for mutable variables and results of try's to be boxed.
+
+ - The resulting system is significantly less expressive than the TOPLAS version since
+   we no longer support return types or variables capturing `cap`. But we make
+   up for it through the introduction of reach capabilities (see following items).
 
  - For any immutable variable `x`, introduce a capability `x*` which stands for
    "all capabilities reachable through `x`". We have `{x} <: {x*} <: {cap}`.
@@ -93,13 +94,14 @@ class Ref[T](init: T):
   def get: T = x
   def set(y: T) = { x = y }
 ```
+Note that type parameters no longer need (or can) be annotated with `sealed`.
 
 The following example does not work.
 ```scala
 def runAll(xs: List[Proc]): Unit =
-  var cur: List[() => Unit] = xs
+  var cur: List[Proc] = xs // error: xs: List[() ->{xs} Unit], can't be widened to List[Proc]
   while cur.nonEmpty do
-    val next: () => Unit = cur.head // error on unbox
+    val next: () => Unit = cur.head
     next()
     cur = cur.tail
 
@@ -109,15 +111,15 @@ def runAll(xs: List[Proc]): Unit =
 Same with refs:
 ```scala
 def runAll(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs: List[() ->{xs*} Unit]) // error on box
+  val cur = Ref[List[Proc]](xs: List[() ->{xs*} Unit]) // error, since we cannot widen {xs*} to {cap}
   while cur.get.nonEmpty do
-    val next: () => Unit = cur.get.head // error on unbox
+    val next: () => Unit = cur.get.head
     next()
     cur.set(cur.get.tail: List[Proc])
 
   usingFile: f =>
     cur.set:
-      (() => f.write(): () ->{f*} Unit) :: Nil // error since we cannot widen {f*} to {cap} under box
+      (() => f.write(): () ->{f*} Unit) :: Nil // error since we cannot widen {f*} to {cap}
 ```
 
 The following variant makes the loop typecheck, but
@@ -150,7 +152,7 @@ def runAll(xs: List[Proc]): Unit =
 The following variant of the while loop is again invalid:
 ```scala
 def runAll(xs: List[Proc]): Unit =
-  var cur: List[Proc] = xs // error, can't widen under box, xs: List[() ->{xs*} Unit]
+  var cur: List[Proc] = xs // error, can't widen, xs: List[() ->{xs*} Unit]
   while cur.nonEmpty do
     val next: () ->{cur*} Unit = cur.head: // error: cur* not wf since cur is not stable
     next()
@@ -166,7 +168,7 @@ But this doesn't:
 def addOneProc(xs: List[Proc]) =
   def x: Proc = () => write("hello")
   val result: List[() ->{x, xs*} Unit] = x :: xs
-  result // error: can't widen to cap under box in function result
+  result // error:  need to avoid `x` or `result` but cannot widen to cap in function result
 ```
 And this doesn't either, since `Set` is invariant:
 ```scala
@@ -184,12 +186,12 @@ This also works:
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 ```
-We can also use a widened result type for compose:
+But this does not:
 ```scala
 def compose2[A, B, C](f: A => B, g: B => C): A => C =
-  z => g(f(z))
+  z => g(f(z))  // can't widen {f, g} to `cap` in function result
 ```
-Even this should workL
+Even this should work:
 ```scala
 def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
   ps.map(compose1)
@@ -206,20 +208,26 @@ def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
     //    (f: A ->{ps*} A, g: A ->{ps*} A) -> A ->{ps*} A
 ```
 
-But this would not work with `compose2` instead of `compose1`.
+Syntax Considerations:
+
+ - `x*` is short and has the right connotations. For the spread operator, `xs*` means
+   _everything contained in x_. Likewise `x*` in capture sets would mean all capabilities
+   reachable through `x`.
+ - But then we have capabilities that are not values, undermining the OCap model a bit.
+   On the other hand, even if we make `x*` values then these would have to be erased in any case.
 
 Work items:
 ===========
 
  - Implement x* references.
     - internal representation: maybe have a synthetic private member `reach` of
-      `Any` to which `x*` maps.
+      `Any` to which `x*` maps, i.e. `x*` is `x.reach`. Advantage: maps like substitutions
+      and asSeenFrom work out of the box.
     - subcapturing: `x <:< x*`.
     - Narrowing code: in `adaptBoxed` where `x.type` gets widened to `T^{x}`, also
       do the covariant `cap` to `x*` replacement.
  - Drop local roots
- - Implement restricted subtyping
- - Implement adaptation that widens under box
- - Drop sealed scheme
+ - Implement adaptation that maps covariant cap-sets in expected type to fluid sets.
+ - Implement restricted subtyping.
+ - Drop sealed scheme.
 
-def compose(f: A => B, g: B => C): A ->{f, g} C
