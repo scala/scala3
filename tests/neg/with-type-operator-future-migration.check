@@ -2,6 +2,6 @@
 5 |def foo: Int with String = ??? // error
   |             ^^^^
   |             with as a type operator has been deprecated; use & instead
-  |             This construct can be rewritten automatically under -rewrite -source future-migration.
+  |             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
   |
   | longer explanation available when compiling with `-explain`

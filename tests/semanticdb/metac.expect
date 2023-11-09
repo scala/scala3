@@ -3394,6 +3394,7 @@ Text => empty
 Language => Scala
 Symbols => 13 entries
 Occurrences => 22 entries
+Diagnostics => 1 entries
 
 Symbols:
 local0 => selfparam self: C1
@@ -3433,6 +3434,10 @@ Occurrences:
 [13:17..13:18): B -> selfs/B#
 [13:17..13:17): <- selfs/C6#`<init>`().
 [13:27..13:28): B -> selfs/B#
+
+Diagnostics:
+[10:29..10:33): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/StructuralTypes.scala
 ----------------------------
@@ -5059,7 +5064,7 @@ Text => empty
 Language => Scala
 Symbols => 143 entries
 Occurrences => 246 entries
-Diagnostics => 1 entries
+Diagnostics => 3 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -5457,6 +5462,10 @@ Occurrences:
 
 Diagnostics:
 [5:13..5:14): [warning] unused explicit parameter
+[62:25..62:29): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[63:25..63:29): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 Synthetics:
 [68:20..68:24):@ann => *[Int]

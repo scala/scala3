@@ -4,7 +4,7 @@ trait C { type M <: B }
 trait D { type M >: A }
 
 object Test {
-  def test(x: C with D): Unit = {
+  def test(x: C & D): Unit = {
     def foo(a: A, b: B)(z: a.S[b.I,a.I][b.S[a.I,a.I]]) = z
     def bar(a: A, y: x.M) = foo(a,y)
     def baz(a: A) = bar(a, a)

@@ -28,6 +28,13 @@
    |                         The [this] qualifier will be deprecated in the future; it should be dropped.
    |                         See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
    |                         This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+-- [E003] Syntax Warning: tests/neg-scalajs/js-native-members.scala:58:44 ----------------------------------------------
+58 |  def assign[T, U](target: T, source: U): T with U = js.native // ok
+   |                                            ^^^^
+   |                             with as a type operator has been deprecated; use & instead
+   |                             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+   |
+   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-scalajs/js-native-members.scala:9:24 ---------------------------------------------------------------
 9 |  def this(z: String) = this(z.length, z) // error
   |                        ^^^^^^^^^^^^^^^^^
