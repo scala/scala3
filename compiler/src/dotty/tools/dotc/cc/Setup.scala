@@ -543,7 +543,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     end postProcess
   end setupTraverser
 
-  private def superTypeIsImpure(tp: Type)(using Context): Boolean = {
+  /** Checks whether an abstract type could be impure. See also: [[needsVariable]]. */
+  private def instanceCanBeImpure(tp: Type)(using Context): Boolean = {
     tp.dealiasKeepAnnots match
       case CapturingType(_, refs) =>
         !refs.isAlwaysEmpty
@@ -552,20 +553,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass then
-          sym == defn.AnyClass
-            // we assume Any is a shorthand of {cap} Any, so if Any is an upper
-            // bound, the type is taken to be impure.
+          !sym.isPureClass
         else
-          sym != defn.Caps_Cap && superTypeIsImpure(tp.superType)
+          sym != defn.Caps_Cap && instanceCanBeImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
-        superTypeIsImpure(tp.underlying)
+        instanceCanBeImpure(tp.underlying)
       case tp: AndType =>
-        superTypeIsImpure(tp.tp1) || superTypeIsImpure(tp.tp2)
+        instanceCanBeImpure(tp.tp1) || instanceCanBeImpure(tp.tp2)
       case tp: OrType =>
-        superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
+        instanceCanBeImpure(tp.tp1) && instanceCanBeImpure(tp.tp2)
       case _ =>
         false
-  }.showing(i"super type is impure $tp = $result", capt)
+  }.showing(i"instance can be impure $tp = $result", capt)
 
   /** Should a capture set variable be added on type `tp`? */
   def needsVariable(tp: Type)(using Context): Boolean = {
@@ -577,7 +576,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else
           val tp1 = tp.dealiasKeepAnnots
           if tp1 ne tp then needsVariable(tp1)
-          else superTypeIsImpure(tp1)
+          else instanceCanBeImpure(tp1)
       case tp: (RefinedOrRecType | MatchType) =>
         needsVariable(tp.underlying)
       case tp: AndType =>
