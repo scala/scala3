@@ -1,83 +1,11 @@
 A capture checking variant
 ==========================
 
- - We separate encapsulation from boxing. Instead, similar to reachability types,
-   we don't allow widening to `cap` in subcapturing. The subcapturing rule (sc-var)
-   is revised as follows:
+ - Our starting point is the currently implemented system, where encapsulation is achieved by disallowing root capabilities in
+ the types of sealed type variables. By contrast no restrictions apply
+ to boxing or unboxing.
 
-   ```
-   x: S^C in E    E |- C <: C'    cap notin C
-   -------------------------------------------
-                E |- {x} <: C'
-
-   ```
-   The aim is to have a system where we detect all leaks on formation
-   and not some just on access. In the TOPLAS version, we cannot box {cap}
-   but we can box with some capability {x} and then widen under the box
-   into {cap}. This was not a problem because we cannot unbox cap so the
-   data could not be accessed. But now we want to be stricter and already
-   prevent the formation. This strictness is necessary to ensure soundness
-   of the modified (Var) rule described below.
-
-   NOTE: This restrictions might make things difficult. For instance,
-   we want to have:
-
-       A^ -> B <: A^{x} -> B
-
-   but with the rule above this no longer holds.
-
- - To compensate, and allow capture polymorphism in e.g. function arguments, we allow
-   some subcapture slack to covariant cap when comparing the types of actual and expected types
-   after rechecking. This has to be done selectively, so that the following are still guaranteed:
-
-    - No widening of function results.
-      That way, library-defined encapsulators like `usingFile` still prevent leaks
-      on formation.
-    - No widening in assignments to vars.
-      That way, we cannot assign local capabilities to global vars.
-    - No widening in results of trys.
-      That way, local throws capabilities cannot escape.
-
- - The way to achieve this is to tweak the expected type. Interesting
-   expected types are created by
-
-    1. function parameter types for their arguments,
-    2. declared types of vals for their right hand sides,
-    3. declared result types of defs for their right hand sides,
-    2. declared types of vars for their initializers,
-    4. declared types of vars for the right hand sides of assignments to them,
-    5. declared types of seq literals for the elements in that seq literal,
-
-  In cases (1) and (2) above we map all covariant occurrences of cap
-  in the original expected type to a wildcard (i.e. a fluid capture set). This still treats
-  `try` blocks correctly, since even if the expected type of a try block contains wildcards,
-  we still need to eliminate capabilities defined in the try through avoidance, and that
-  will not be possible since we cannot widen to cap via subtyping.
-
- - Technicalities for type comparers and type maps:
-
-    1. Subcapturing: When applying rule (sc-var), we need to make sure that the
-       capture set of the info of a ref does not contain `cap`. In the case where
-       this capture set is a variable, we can use `disallowRootCapability`.
-
-    2. Lubs of capture sets can now contain at the same time `cap` and other
-       references.
-
-    3. Avoidance maps can have undefined results. We need to tweak the part
-       of AvoidMap that widens from a TermRef `ref` to `ref.info`, so that
-       this is forbidden if the `ref.info` contains `cap`. This is similar
-       to the restriction of subcapturing. It could be achieved by disallowing
-       the root capability in a capeture set that arises from mapping a capture
-       set through avoidance, using a handler that issues an appropriate error message.
-
- - There is no longer a need for mutable variables and results of try's to be boxed.
-
- - The resulting system is significantly less expressive than the TOPLAS version since
-   we no longer support return types or variables capturing `cap`. But we make
-   up for it through the introduction of reach capabilities (see following items).
-
- - For any immutable variable `x`, introduce a capability `x*` which stands for
-   "all capabilities reachable through `x`". We have `{x} <: {x*} <: {cap}`.
+ - We now treat all type variables as sealed (so no special `sealed` modifier is necessary anymore). A type variable cannot be instantiated to a type that contains a covariant occurrence of `cap`. The same restriction applies to the types of mutable variables and try expressions.
 
  - We modify the VAR rule as follows:
 
@@ -89,9 +17,8 @@ A capture checking variant
    (2) all covariant occurrences of cap replaced by `x*`. (1) is standard,
    whereas (2) is new.
 
-- Why is this sound? Covariant occurrences of cap must represent capabilities
-  that are reachable from `x`, so they are included in the meaning of `{x*}`.
-
+- Why is this sound? Covariant occurrences of cap must represent capabilities that are reachable from `x`, so they are included in the meaning of `{x*}`. At the same time, encapsulation is still maintained since no covariant occurrences of cap are allowed in instance types of
+type variables.
 
 Examples:
 
@@ -106,19 +33,19 @@ Note that type parameters no longer need (or can) be annotated with `sealed`.
 The following example does not work.
 ```scala
 def runAll(xs: List[Proc]): Unit =
-  var cur: List[Proc] = xs // error: xs: List[() ->{xs} Unit], can't be widened to List[Proc]
+  var cur: List[Proc] = xs // error: Illegal type for var
   while cur.nonEmpty do
     val next: () => Unit = cur.head
     next()
     cur = cur.tail
 
   usingFile: f =>
-    cur = ((() => f.write()): (() ->{f*} Unit)) :: Nil // error since we cannot widen {f*} to {cap} under box
+    cur = ((() => f.write()): (() ->{f*} Unit)) :: Nil
 ```
 Same with refs:
 ```scala
 def runAll(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs: List[() ->{xs*} Unit]) // error, since we cannot widen {xs*} to {cap}
+  val cur = Ref[List[Proc]](xs: List[() ->{xs*} Unit]) // error, illegal type for type argument to Ref
   while cur.get.nonEmpty do
     val next: () => Unit = cur.get.head
     next()
@@ -126,7 +53,7 @@ def runAll(xs: List[Proc]): Unit =
 
   usingFile: f =>
     cur.set:
-      (() => f.write(): () ->{f*} Unit) :: Nil // error since we cannot widen {f*} to {cap}
+      (() => f.write(): () ->{f*} Unit) :: Nil
 ```
 
 The following variant makes the loop typecheck, but
@@ -153,31 +80,23 @@ def runAll(xs: List[Proc]): Unit =
     cur.set(cur.get.tail: List[() ->{xs*} Unit])
 
   usingFile: f =>
-    cur = (() => f.write(): () ->{f*} Unit) :: Nil // error since {f*} !<: {xs*}
+    cur.set:
+      (() => f.write(): () ->{f*} Unit) :: Nil // error since {f*} !<: {xs*}
 ```
 
-The following variant of the while loop is again invalid:
-```scala
-def runAll(xs: List[Proc]): Unit =
-  var cur: List[Proc] = xs // error, can't widen, xs: List[() ->{xs*} Unit]
-  while cur.nonEmpty do
-    val next: () ->{cur*} Unit = cur.head: // error: cur* not wf since cur is not stable
-    next()
-    cur = cur.tail
-```
 More examples. This works:
 ```scala
 def cons(x: Proc, xs: List[Proc]): List[() ->{x, xs*} Unit] =
   List.cons[() ->{x, xs*} Unit](x, xs)
 ```
-But this doesn't:
+And this works as well
 ```scala
-def addOneProc(xs: List[Proc]) =
+def addOneProc(xs: List[Proc]): List[Proc] =
   def x: Proc = () => write("hello")
   val result: List[() ->{x, xs*} Unit] = x :: xs
-  result // error:  need to avoid `x` or `result` but cannot widen to cap in function result
+  result // OK, we can widen () ->{x, xs*} Unit to cap here.
 ```
-And this doesn't either, since `Set` is invariant:
+This doesn't work:
 ```scala
 def cons(x: Proc, xs: Set[Proc]) =
   Set.include[Proc](x, xs) // error: can't instantiate type parameter to Proc
@@ -193,10 +112,10 @@ This also works:
 def compose1[A, B, C](f: A => B, g: B => C): A ->{f, g} C =
   z => g(f(z))
 ```
-But this does not:
+And this works as well:
 ```scala
 def compose2[A, B, C](f: A => B, g: B => C): A => C =
-  z => g(f(z))  // can't widen {f, g} to `cap` in function result
+  z => g(f(z))
 ```
 Even this should work:
 ```scala
@@ -214,6 +133,7 @@ def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
     //  The closure is widened to the non-dependent function type
     //    (f: A ->{ps*} A, g: A ->{ps*} A) -> A ->{ps*} A
 ```
+But it does no work with `compose2``, since the type variable of `map` cannot be instantiated to `A => A`.`
 
 Syntax Considerations:
 
@@ -226,15 +146,13 @@ Syntax Considerations:
 Work items:
 ===========
 
- - Implement x* references.
-    - internal representation: maybe have a synthetic private member `reach` of
-      `Any` to which `x*` maps, i.e. `x*` is `x.reach`. Advantage: maps like substitutions
+ - Implement `x*` references.
+    - internal representation: maybe have a synthetic private member `*` of
+      `Any` to which `x*` maps, i.e. `x*` is `x.*`. Advantage: maps like substitutions
       and asSeenFrom work out of the box.
     - subcapturing: `x <:< x*`.
     - Narrowing code: in `adaptBoxed` where `x.type` gets widened to `T^{x}`, also
       do the covariant `cap` to `x*` replacement.
  - Drop local roots
- - Implement adaptation that maps covariant cap-sets in expected type to fluid sets.
- - Implement restricted subtyping.
  - Drop sealed scheme.
 
