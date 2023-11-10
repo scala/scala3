@@ -23,6 +23,7 @@ def getPrData(commitSha: String): (ID, String) =
     |query prForCommit {
     |  repository(owner:"lampepfl", name:"dotty") {
     |    object(expression: $commitSha){
+    |      __typename
     |      ... on Commit {
     |        associatedPullRequests(first: 1) {
     |          nodes {
@@ -40,7 +41,7 @@ def getPrData(commitSha: String): (ID, String) =
       "DummyUser",
       apiToken
     )
-  val pr = res.repository.`object`.associatedPullRequests.nodes.head
+  val pr = res.repository.`object`.asCommit.get.associatedPullRequests.nodes.head
   (ID(pr.id), pr.mergedAt)
 
 def timestampItem(id: ID, date: String) =
