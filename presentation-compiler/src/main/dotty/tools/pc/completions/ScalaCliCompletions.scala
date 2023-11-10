@@ -16,12 +16,11 @@ class ScalaCliCompletions(
       pos.lineContent.take(pos.column).stripPrefix("/*<script>*/")
     )
     path match
-      case Nil => scalaCliDep
+      case Nil | (_: PackageDef) :: _ => scalaCliDep
       // generated script file will end with .sc.scala
-      case (_: TypeDef) :: Nil if pos.source.file.path.endsWith(".sc.scala") =>
+      case (_: TypeDef) :: (_: PackageDef) :: Nil if pos.source.file.path.endsWith(".sc.scala") =>
         scalaCliDep
-      case (_: Template) :: (_: TypeDef) :: Nil
-          if pos.source.file.path.endsWith(".sc.scala") =>
+      case (_: Template) :: (_: TypeDef) :: Nil if pos.source.file.path.endsWith(".sc.scala") =>
         scalaCliDep
       case head :: next => None
 

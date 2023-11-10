@@ -24,7 +24,7 @@ object KeywordsCompletions:
       checkIfNotInComment(completionPos.cursorPos, comments)
 
     path match
-      case Nil if completionPos.query.isEmpty() =>
+      case Nil | (_: PackageDef) :: _ if completionPos.query.isEmpty() =>
         Keyword.all.collect {
           // topelevel definitions are allowed in Scala 3
           case kw if (kw.isPackage || kw.isTemplate) && notInComment =>
@@ -76,7 +76,7 @@ object KeywordsCompletions:
 
   private def isPackage(enclosing: List[Tree]): Boolean =
     enclosing match
-      case Nil => true
+      case Nil | (_: PackageDef) :: _ => true
       case _ => false
 
   private def isParam(enclosing: List[Tree]): Boolean =
