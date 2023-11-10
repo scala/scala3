@@ -52,19 +52,15 @@ class CompletionProvider(
     val pos = driver.sourcePosition(params)
     val (items, isIncomplete) = driver.compilationUnits.get(uri) match
       case Some(unit) =>
-        val path =
-          Interactive.pathTo(driver.openedTrees(uri), pos)(using ctx)
 
         val newctx = ctx.fresh.setCompilationUnit(unit)
-        val tpdPath =
-          Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(
-            using newctx
-          )
+        val tpdPath = Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
+
         val locatedCtx =
           Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
         val completionPos =
-          CompletionPos.infer(pos, params, path)(using newctx)
+          CompletionPos.infer(pos, params, tpdPath)(using newctx)
         val autoImportsGen = AutoImports.generator(
           completionPos.sourcePos,
           text,
@@ -82,7 +78,7 @@ class CompletionProvider(
             buildTargetIdentifier,
             completionPos,
             indexedCtx,
-            path,
+            tpdPath,
             config,
             folderPath,
             autoImportsGen,
@@ -96,7 +92,7 @@ class CompletionProvider(
             idx,
             autoImportsGen,
             completionPos,
-            path,
+            tpdPath,
             indexedCtx
           )(using newctx)
         }
