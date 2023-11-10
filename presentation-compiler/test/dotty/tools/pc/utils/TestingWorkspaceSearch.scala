@@ -45,11 +45,7 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
 
           val nioPath = Paths.get(path)
           val uri = nioPath.toUri()
-          val symbols =
-            DefSymbolCollector(
-              driver,
-              CompilerVirtualFileParams(uri, text)
-            ).namedDefSymbols
+          val symbols = DefSymbolCollector(driver, CompilerVirtualFileParams(uri, text)).namedDefSymbols
 
           // We have to map symbol from this Context, to one in PresentationCompiler
           // To do it we are searching it with semanticdb symbol

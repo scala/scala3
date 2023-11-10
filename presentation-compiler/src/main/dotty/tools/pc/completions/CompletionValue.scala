@@ -16,6 +16,24 @@ import org.eclipse.lsp4j.InsertTextMode
 import org.eclipse.lsp4j.Range
 import org.eclipse.lsp4j.TextEdit
 
+enum CompletionSource:
+  case Empty
+  case OverrideKind
+  case ImplementAllKind
+  case CompilerKind
+  case KeywordKind
+  case ScopeKind
+  case WorkspaceKind
+  case ExtensionKind
+  case NamedArgKind
+  case AutoFillKind
+  case FileSystemMemberKind
+  case IvyImportKind
+  case InterpolatorKind
+  case MatchCompletionKind
+  case CaseKeywordKind
+  case DocumentKind
+
 sealed trait CompletionValue:
   def label: String
   def insertText: Option[String] = None
@@ -24,11 +42,12 @@ sealed trait CompletionValue:
   def range: Option[Range] = None
   def filterText: Option[String] = None
   def completionItemKind(using Context): CompletionItemKind
+  def completionItemDataKind: Integer = CompletionItemData.None
   def description(printer: ShortenedTypePrinter)(using Context): String = ""
   def insertMode: Option[InsertTextMode] = None
   def completionData(buildTargetIdentifier: String)(
     using Context
-  ): Option[CompletionItemData] = None
+  ): CompletionItemData = CompletionItemData("<no-symbol>", buildTargetIdentifier, kind = completionItemDataKind)
   def command: Option[String] = None
 
   /**
@@ -44,17 +63,15 @@ object CompletionValue:
   sealed trait Symbolic extends CompletionValue:
     def symbol: Symbol
     def isFromWorkspace: Boolean = false
-    def completionItemDataKind = CompletionItemData.None
+    override def completionItemDataKind = CompletionItemData.None
 
     override def completionData(
         buildTargetIdentifier: String
-    )(using Context): Option[CompletionItemData] =
-      Some(
-        CompletionItemData(
-          SemanticdbSymbols.symbolName(symbol),
-          buildTargetIdentifier,
-          kind = completionItemDataKind
-        )
+    )(using Context): CompletionItemData =
+      CompletionItemData(
+        SemanticdbSymbols.symbolName(symbol),
+        buildTargetIdentifier,
+        kind = completionItemDataKind
       )
     def importSymbol: Symbol = symbol
 
@@ -106,12 +123,16 @@ object CompletionValue:
       label: String,
       symbol: Symbol,
       override val snippetSuffix: CompletionSuffix
-  ) extends Symbolic
+  ) extends Symbolic {
+    override def completionItemDataKind: Integer = CompletionSource.CompilerKind.ordinal
+  }
   case class Scope(
       label: String,
       symbol: Symbol,
       override val snippetSuffix: CompletionSuffix,
-  ) extends Symbolic
+  ) extends Symbolic {
+    override def completionItemDataKind: Integer = CompletionSource.ScopeKind.ordinal
+  }
   case class Workspace(
       label: String,
       symbol: Symbol,
@@ -119,6 +140,7 @@ object CompletionValue:
       override val importSymbol: Symbol
   ) extends Symbolic:
     override def isFromWorkspace: Boolean = true
+    override def completionItemDataKind: Integer = CompletionSource.WorkspaceKind.ordinal
 
   /**
    * CompletionValue for extension methods via SymbolSearch
@@ -130,6 +152,7 @@ object CompletionValue:
   ) extends Symbolic:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
+    override def completionItemDataKind: Integer = CompletionSource.ExtensionKind.ordinal
     override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(symbol)} (extension)"
 
@@ -150,8 +173,7 @@ object CompletionValue:
       override val range: Option[Range]
   ) extends Symbolic:
     override def insertText: Option[String] = Some(value)
-    override def completionItemDataKind: Integer =
-      CompletionItemData.OverrideKind
+    override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
     override def labelWithDescription(printer: ShortenedTypePrinter)(using Context): String =
@@ -164,6 +186,7 @@ object CompletionValue:
       symbol: Symbol
   ) extends Symbolic:
     override def insertText: Option[String] = Some(label.replace("$", "$$").nn)
+    override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Field
     override def description(printer: ShortenedTypePrinter)(using Context): String =
@@ -178,11 +201,13 @@ object CompletionValue:
   ) extends CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
+    override def completionItemDataKind: Integer = CompletionSource.OverrideKind.ordinal
     override def insertText: Option[String] = Some(value)
     override def label: String = "Autofill with default values"
 
   case class Keyword(label: String, override val insertText: Option[String])
       extends CompletionValue:
+    override def completionItemDataKind: Integer = CompletionSource.KeywordKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Keyword
 
@@ -193,6 +218,7 @@ object CompletionValue:
   ) extends CompletionValue:
     override def label: String = filename
     override def insertText: Option[String] = Some(filename.stripSuffix(".sc"))
+    override def completionItemDataKind: Integer = CompletionSource.FileSystemMemberKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.File
 
@@ -202,6 +228,7 @@ object CompletionValue:
       override val range: Option[Range]
   ) extends CompletionValue:
     override val filterText: Option[String] = insertText
+    override def completionItemDataKind: Integer = CompletionSource.IvyImportKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Folder
 
@@ -216,6 +243,7 @@ object CompletionValue:
       isWorkspace: Boolean = false,
       isExtension: Boolean = false
   ) extends Symbolic:
+    override def completionItemDataKind: Integer = CompletionSource.InterpolatorKind.ordinal
     override def description(
         printer: ShortenedTypePrinter
     )(using Context): String =
@@ -229,6 +257,7 @@ object CompletionValue:
       override val additionalEdits: List[TextEdit],
       desc: String
   ) extends CompletionValue:
+    override def completionItemDataKind: Integer = CompletionSource.MatchCompletionKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Enum
     override def description(printer: ShortenedTypePrinter)(using Context): String =
@@ -242,6 +271,7 @@ object CompletionValue:
       override val range: Option[Range] = None,
       override val command: Option[String] = None
   ) extends Symbolic:
+    override def completionItemDataKind: Integer = CompletionSource.CaseKeywordKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
 
@@ -254,6 +284,7 @@ object CompletionValue:
     override def filterText: Option[String] = Some(description)
 
     override def insertText: Option[String] = Some(doc)
+    override def completionItemDataKind: Integer = CompletionSource.DocumentKind.ordinal
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Snippet
 
