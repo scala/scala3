@@ -1267,6 +1267,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      Compile / scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory

@@ -3673,11 +3673,14 @@ object Parsers {
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
-              if sourceVersion.isAtLeast(future) then
-                deprecationWarning(
-                  em"""`= _` has been deprecated; use `= uninitialized` instead.
-                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""",
-                  rhsOffset)
+              report.gradualErrorOrMigrationWarning(
+                em"""`= _` has been deprecated; use `= uninitialized` instead.
+                        |`uninitialized` can be imported with `scala.compiletime.uninitialized`.${rewriteNotice(`3.4-migration`)}""",
+                in.sourcePos(rhsOffset),
+                warnFrom = `3.4`,
+                errorFrom = future)
+              if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+                patch(source, Span(rhsOffset, rhsOffset + 1), "scala.compiletime.uninitialized")
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0

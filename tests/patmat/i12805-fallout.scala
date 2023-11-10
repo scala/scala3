@@ -1,4 +1,5 @@
 import scala.annotation.unchecked.uncheckedVariance
+import scala.compiletime.uninitialized
 
 type Untyped = Null
 
@@ -7,7 +8,7 @@ class Type
 abstract class Tree[-T >: Untyped] {
   type ThisTree[T >: Untyped] <: Tree[T]
 
-  protected var myTpe: T @uncheckedVariance = _
+  protected var myTpe: T @uncheckedVariance = uninitialized
 
   def withType(tpe: Type): ThisTree[Type] = {
     val tree = this.asInstanceOf[ThisTree[Type]]
