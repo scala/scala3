@@ -7,6 +7,11 @@ A capture checking variant
 
  - We now treat all type variables as sealed (so no special `sealed` modifier is necessary anymore). A type variable cannot be instantiated to a type that contains a covariant occurrence of `cap`. The same restriction applies to the types of mutable variables and try expressions.
 
+ - For any immutable variable `x`, introduce a _reach_ capability `x*` which stands for
+   "all capabilities reachable through `x`". We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
+   is the union of all capture sets that appear in covariant position in the type of `x`. If `x` and `y` are different
+   variables then `{x*}` and `{y*}` are unrelated.
+
  - We modify the VAR rule as follows:
 
         x: T in E
@@ -106,6 +111,10 @@ But this works:
 def cons(x: Proc, xs: Set[Proc]): Set[() ->{x,xs*} Unit] =
   Set.include[() ->{x,xs*} Unit](x, xs) // ok
 ```
+Say we have `a: () ->{io} Unit` and `as: List[() ->{io} Unit]`. Then `cons(a, as)`
+is of type `() ->{a, as*} Unit`, which is a subtype of `() ->{io} Unit`. This follows from
+`{a} <: {io}` by rule (Var) and `{as*} <: dcs(as) = {io}` by the subcapturing rules for
+reach capabilities.
 
 This also works:
 ```scala
@@ -133,7 +142,7 @@ def mapCompose[A](ps: List[(A => A, A => A)]): List[A ->{ps*} A] =
     //  The closure is widened to the non-dependent function type
     //    (f: A ->{ps*} A, g: A ->{ps*} A) -> A ->{ps*} A
 ```
-But it does no work with `compose2``, since the type variable of `map` cannot be instantiated to `A => A`.`
+But it does not work with `compose2`, since the type variable of `map` cannot be instantiated to `A => A`.
 
 Syntax Considerations:
 
@@ -150,9 +159,9 @@ Work items:
     - internal representation: maybe have a synthetic private member `*` of
       `Any` to which `x*` maps, i.e. `x*` is `x.*`. Advantage: maps like substitutions
       and asSeenFrom work out of the box.
-    - subcapturing: `x <:< x*`.
+    - subcapturing: `x <:< x* <: dcs(x)`.
     - Narrowing code: in `adaptBoxed` where `x.type` gets widened to `T^{x}`, also
       do the covariant `cap` to `x*` replacement.
  - Drop local roots
- - Drop sealed scheme.
+ - Make all type paraneters sealed
 
