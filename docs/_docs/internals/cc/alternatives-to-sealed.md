@@ -19,6 +19,13 @@ A capture checking variant
    prevent the formation. This strictness is necessary to ensure soundness
    of the modified (Var) rule described below.
 
+   NOTE: This restrictions might make things difficult. For instance,
+   we want to have:
+
+       A^ -> B <: A^{x} -> B
+
+   but with the rule above this no longer holds.
+
  - To compensate, and allow capture polymorphism in e.g. function arguments, we allow
    some subcapture slack to covariant cap when comparing the types of actual and expected types
    after rechecking. This has to be done selectively, so that the following are still guaranteed:
