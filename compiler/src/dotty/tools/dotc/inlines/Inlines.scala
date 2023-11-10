@@ -64,6 +64,7 @@ object Inlines:
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
+      && !ctx.mode.is(Mode.NoInline)
   }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
