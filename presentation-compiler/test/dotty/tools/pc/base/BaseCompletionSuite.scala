@@ -8,6 +8,7 @@ import scala.meta.internal.metals.{CompilerOffsetParams, EmptyCancelToken}
 import scala.meta.pc.CancelToken
 import scala.language.unsafeNulls
 
+import dotty.tools.pc.completions.CompletionSource
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import dotty.tools.pc.utils.{TestCompletions, TextEdits}
 
@@ -172,7 +173,7 @@ abstract class BaseCompletionSuite extends BasePCSuite:
       }
       .mkString("\n")
 
-    assertCompletions(expected, obtained, Some(original))
+    assertWithDiff(expected, obtained, includeSources = false, Some(original))
 
   /**
    * Check completions that will be shown in original param after `@@` marker
@@ -245,13 +246,19 @@ abstract class BaseCompletionSuite extends BasePCSuite:
         .append(commitCharacter)
         .append("\n")
     }
-    val expectedResult = sortLines(stableOrder, expected)
-    val actualResult = sortLines(
+    val completionSources = filteredItems
+      .map(_.data.map(data => CompletionSource.fromOrdinal(data.kind))
+      .getOrElse(CompletionSource.Empty))
+      .toList
+
+    val (expectedResult, _) = sortLines(stableOrder, expected)
+    val (actualResult, sources) = sortLines(
       stableOrder,
-      postProcessObtained(trimTrailingSpace(out.toString()))
+      postProcessObtained(trimTrailingSpace(out.toString())),
+      completionSources,
     )
 
-    assertCompletions(expectedResult, actualResult, Some(original))
+    assertWithDiff(expectedResult, actualResult, includeSources = true, Some(original), sources)
 
     if (filterText.nonEmpty) {
       filteredItems.foreach { item =>

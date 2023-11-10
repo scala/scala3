@@ -177,9 +177,8 @@ class CompletionProvider(
       item.setAdditionalTextEdits((completion.additionalEdits ++ additionalEdits).asJava)
       completion.insertMode.foreach(item.setInsertTextMode)
 
-      completion
-        .completionData(buildTargetIdentifier)
-        .foreach(data => item.setData(data.toJson))
+      val data = completion.completionData(buildTargetIdentifier)
+      item.setData(data.toJson)
 
       item.setTags(completion.lspTags.asJava)
 
