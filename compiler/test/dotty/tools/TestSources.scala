@@ -6,6 +6,7 @@ import java.io.File
 import java.nio.file._
 
 import scala.jdk.CollectionConverters._
+import dotty.Properties
 
 object TestSources {
 
@@ -35,6 +36,14 @@ object TestSources {
   def runTestPicklingBlacklisted: List[String] = loadList(runTestPicklingBlacklistFile)
   def runTestRecheckExcluded: List[String] = loadList(runTestRecheckExcludesFile)
   def runLazyValsAllowlist: List[String] = loadList(runLazyValsAllowlistFile)
+
+  // other lists
+
+  def scala2LibraryTastyBlacklistFile: String = "compiler/test/dotc/scala2-library-tasty.blacklist"
+
+  def scala2LibraryTastyBlacklisted: List[String] =
+    if Properties.usingScalaLibraryTasty then loadList(scala2LibraryTastyBlacklistFile)
+    else Nil
 
   // load lists
 

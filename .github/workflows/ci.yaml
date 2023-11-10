@@ -142,8 +142,50 @@ jobs:
         run: |
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
-      - name: Test with Scala 2 library TASTy
+      - name: Test with Scala 2 library TASTy (fast)
         run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala" # only test a subset of test to avoid doubling the CI execution time
+
+  test_scala2_library_tasty:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2021-03-22
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'pull_request'
+           && contains(github.event.pull_request.body, '[test_scala2_library_tasty]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
+         )"
+
+    steps:
+      - name: Set JDK 16 as default
+        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
+      - name: Checkout cleanup script
+        uses: actions/checkout@v3
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v3
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test with Scala 2 library TASTy
+        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation"
+
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]

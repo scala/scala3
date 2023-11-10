@@ -176,7 +176,7 @@ object Build {
   // Use the TASTy jar from `scala2-library-tasty` in the classpath
   // This only works with `scala3-bootstrapped/scalac` and tests in `scala3-bootstrapped`
   //
-  // Enable in SBT with: set ThisBuild/Build.useScala2LibraryTasty := true
+  // Enable in SBT with: `set ThisBuild/Build.useScala2LibraryTasty := true`
   val useScala2LibraryTasty = settingKey[Boolean]("Use the TASTy jar from `scala2-library-tasty` in the classpath")
 
   // Used to compile files similar to ./bin/scalac script
