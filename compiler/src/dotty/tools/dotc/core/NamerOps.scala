@@ -111,8 +111,11 @@ object NamerOps:
   def addConstructorApplies(scope: MutableScope, cls: ClassSymbol, modcls: ClassSymbol)(using Context): scope.type =
     def proxy(constr: Symbol): Symbol =
       newSymbol(
-        modcls, nme.apply, ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
-        ApplyProxyCompleter(constr), coord = constr.coord)
+        modcls, nme.apply,
+        ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
+        ApplyProxyCompleter(constr),
+        cls.privateWithin,
+        constr.coord)
     for dcl <- cls.info.decls do
       if dcl.isConstructor then scope.enter(proxy(dcl))
     scope
