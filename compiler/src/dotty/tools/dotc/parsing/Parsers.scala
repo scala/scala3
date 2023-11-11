@@ -1476,6 +1476,7 @@ object Parsers {
       if in.token == THIS then simpleRef()
       else termIdent() match
         case id @ Ident(nme.CAPTURE_ROOT) =>
+          // TODO drop
           if in.token == LBRACKET then
             val ref = atSpan(id.span.start)(captureRootIn)
             val qual =
@@ -1486,7 +1487,11 @@ object Parsers {
           else
             atSpan(id.span.start)(captureRoot)
         case id =>
-          id
+          if isIdent(nme.raw.STAR) then
+            in.nextToken()
+            atSpan(startOffset(id)):
+              Select(id, nme.CC_REACH)
+          else id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */

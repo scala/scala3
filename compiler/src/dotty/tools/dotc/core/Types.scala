@@ -2174,6 +2174,9 @@ object Types {
     final def isTracked(using Context): Boolean =
       isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
 
+    /** Is this a reach reference of the form `x*`? */
+    def isReach(using Context): Boolean = false // overridden in TermRef
+
     /** Is this reference the generic root capability `cap` ? */
     def isUniversalRootCapability(using Context): Boolean = false
 
@@ -2918,7 +2921,13 @@ object Types {
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
+      || isReach
       ) && !symbol.isOneOf(UnstableValueFlags)
+
+    override def isReach(using Context): Boolean =
+      name == nme.CC_REACH && symbol == defn.Any_ccReach
+
+    def reachPrefix: CaptureRef = prefix.asInstanceOf[CaptureRef]
 
     override def isUniversalRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
@@ -2930,7 +2939,9 @@ object Types {
       if name == nme.LOCAL_CAPTURE_ROOT then normOwner else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
-      if isTrackableRef then symbol.termRef else this
+      if isReach then TermRef(reachPrefix.normalizedRef, name, denot)
+      else if isTrackableRef then symbol.termRef
+      else this
   }
 
   abstract case class TypeRef(override val prefix: Type,

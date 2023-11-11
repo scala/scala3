@@ -25,11 +25,14 @@ A capture checking variant
 - Why is this sound? Covariant occurrences of cap must represent capabilities that are reachable from `x`, so they are included in the meaning of `{x*}`. At the same time, encapsulation is still maintained since no covariant occurrences of cap are allowed in instance types of
 type variables.
 
-Examples:
+## Examples:
 
+Assume
 ```scala
+type Proc = () => Unit
+
 class Ref[T](init: T):
-  private var x: T
+  private var x: T = init
   def get: T = x
   def set(y: T) = { x = y }
 ```
@@ -50,7 +53,7 @@ def runAll(xs: List[Proc]): Unit =
 Same with refs:
 ```scala
 def runAll(xs: List[Proc]): Unit =
-  val cur = Ref[List[Proc]](xs: List[() ->{xs*} Unit]) // error, illegal type for type argument to Ref
+  val cur = Ref[List[Proc]](xs) // error, illegal type for type argument to Ref
   while cur.get.nonEmpty do
     val next: () => Unit = cur.get.head
     next()
@@ -161,7 +164,7 @@ Work items:
       and asSeenFrom work out of the box.
     - subcapturing: `x <:< x* <: dcs(x)`.
     - Narrowing code: in `adaptBoxed` where `x.type` gets widened to `T^{x}`, also
-      do the covariant `cap` to `x*` replacement.
+      do the covariant `cap` to `x*` replacement. Similarly in `fourthTry` of `TypeComparer`.
  - Drop local roots
  - Make all type paraneters sealed
 

@@ -333,15 +333,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def apply(t: Type): Type = t match
       case t: NamedType =>
-        val sym = t.symbol
-        def outer(froms: List[List[Symbol]], tos: List[LambdaType]): Type =
-          def inner(from: List[Symbol], to: List[ParamRef]): Type =
-            if from.isEmpty then outer(froms.tail, tos.tail)
-            else if sym eq from.head then to.head
-            else inner(from.tail, to.tail)
-          if tos.isEmpty then t
-          else inner(froms.head, tos.head.paramRefs)
-        outer(from, to)
+        if t.prefix == NoPrefix then
+          val sym = t.symbol
+          def outer(froms: List[List[Symbol]], tos: List[LambdaType]): Type =
+            def inner(from: List[Symbol], to: List[ParamRef]): Type =
+              if from.isEmpty then outer(froms.tail, tos.tail)
+              else if sym eq from.head then to.head
+              else inner(from.tail, to.tail)
+            if tos.isEmpty then t
+            else inner(froms.head, tos.head.paramRefs)
+          outer(from, to)
+        else t.derivedSelect(apply(t.prefix))
       case _ =>
         mapOver(t)
 

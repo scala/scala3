@@ -166,7 +166,7 @@ extension (tp: Type)
   def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
       val refs1 = tp match
-        case ref: CaptureRef if ref.isTracked => ref.singletonCaptureSet
+        case ref: CaptureRef if ref.isTracked || ref.isReach => ref.singletonCaptureSet
         case _ => refs
       CapturingType(parent, refs1, boxed)
     case _ =>
@@ -221,6 +221,52 @@ extension (tp: Type)
         case _ =>
           mapOver(t)
     tm(tp)
+
+  /** If `x` is a capture ref, its reach capability `x*`, represented internally
+   *  as `x.$reach`. `x*` stands for all capabilities reachable through `x`".
+   *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
+   *  is the union of all capture sets that appear in covariant position in the
+   *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
+   *  are unrelated.
+   */
+  def reach(using Context): TermRef =
+    assert(tp.isTrackableRef)
+    TermRef(tp, nme.CC_REACH, defn.Any_ccReach)
+
+  /** If `ref` is a trackable capture ref, replace all covariant occurrences of a
+   *  universal capture set in `tp` by `{ref*}`. This implements the new aspect of
+   *  the (Var) rule, which can now be stated as follows:
+   *
+   *     x: T in E
+   *     -----------
+   *     E |- x: T'
+   *
+   *  where T' is T with (1) the toplevel capture set replaced by `{x}` and
+   *  (2) all covariant occurrences of cap replaced by `x*`. (1) is standard,
+   *  whereas (2) is new.
+   *
+   *  Why is this sound? Covariant occurrences of cap must represent capabilities
+   *  that are reachable from `x`, so they are included in the meaning of `{x*}`.
+   *  At the same time, encapsulation is still maintained since no covariant
+   *  occurrences of cap are allowed in instance types of type variables.
+   */
+  def withReachCaptures(ref: Type)(using Context): Type =
+    val narrowCaps = new TypeMap:
+      def apply(t: Type) = t.dealias match
+        case t1 @ CapturingType(p, cs) if cs.isUniversal && variance > 0 =>
+          t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+        case _ => t match
+          case t @ CapturingType(p, cs) =>
+            t.derivedCapturingType(apply(p), cs) // don't map capture set variables
+          case t =>
+            mapOver(t)
+    ref match
+      case ref: CaptureRef if ref.isTrackableRef =>
+        val tp1 = narrowCaps(tp)
+        if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
+        tp1
+      case _ =>
+        tp
 
 extension (cls: ClassSymbol)
 

@@ -1152,7 +1152,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   // given `a: T^C`, improve `T^C` to `T^{a}`
               case _ =>
           case _ =>
-        val adapted = adapt(actualw, expected, covariant = true)
+        val adapted = adapt(actualw.withReachCaptures(actual), expected, covariant = true)
         if adapted ne actualw then
           capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
           adapted

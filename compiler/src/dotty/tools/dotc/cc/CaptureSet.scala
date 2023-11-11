@@ -156,17 +156,24 @@ sealed abstract class CaptureSet extends Showable:
 
   extension (x: CaptureRef)(using Context)
 
-    /* x subsumes y if one of the following is true:
-    *   - x is the same as y,
-    *   - x is a this reference and y refers to a field of x
-    *   - x is a super root of y
+    /** x subsumes x
+    *   this subsumes this.f
+    *   x subsumes y  ==>  x* subsumes y
+    *   x subsumes y  ==>  x* subsumes y*
     */
-    private def subsumes(y: CaptureRef) =
+    private def subsumes(y: CaptureRef): Boolean =
       (x eq y)
       || x.isSuperRootOf(y)
       || y.match
-          case y: TermRef => y.prefix eq x
+          case y: TermRef => !y.isReach && (y.prefix eq x)
           case _ => false
+      || x.match
+          case x: TermRef if x.isReach =>
+            y.match
+              case y: TermRef if y.isReach => x.reachPrefix.subsumes(y.reachPrefix)
+              case _ => x.reachPrefix.subsumes(y)
+          case _ =>
+            false
 
     /** x <:< cap,   cap[x] <:< cap
      *  cap[y] <:< cap[x] if y encloses x
@@ -530,7 +537,8 @@ object CaptureSet:
       if elem.isUniversalRootCapability then !noUniversal
       else elem match
         case elem: TermRef =>
-          if levelLimit.exists then
+          if elem.isReach then levelOK(elem.reachPrefix)
+          else if levelLimit.exists then
             var sym = elem.symbol
             if sym.isLevelOwner then sym = sym.owner
             levelLimit.isContainedIn(sym.levelOwner)
@@ -1037,6 +1045,8 @@ object CaptureSet:
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
     case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
+    case ref: TermRef if ref.isReach => deepCaptureSet(ref.prefix.widen)
+      .showing(i"Deep capture set of $ref: ${ref.prefix.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
@@ -1077,6 +1087,16 @@ object CaptureSet:
           empty
     recur(tp)
       .showing(i"capture set of $tp = $result", captDebug)
+
+  private def deepCaptureSet(tp: Type)(using Context): CaptureSet =
+    val collect = new TypeAccumulator[CaptureSet]:
+      def apply(cs: CaptureSet, t: Type) = t.dealias match
+        case t @ CapturingType(p, cs1) =>
+          val cs2 = apply(cs, p)
+          if variance > 0 then cs2 ++ cs1 else cs2
+        case _ =>
+          foldOver(cs, t)
+    collect(CaptureSet.empty, tp)
 
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
 

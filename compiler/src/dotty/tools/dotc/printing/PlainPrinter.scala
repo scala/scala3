@@ -168,7 +168,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
-    "{" ~ Text(refs.map(ref => toTextRetainedElem(ref))) ~ "}"
+    "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -393,7 +393,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef =>
         if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
           Str(s"cap[${nameString(tp.localRootOwner)}]")
-        else toTextPrefixOf(tp) ~ selectionString(tp)
+        else if tp.isReach then
+          toTextRef(tp.reachPrefix) ~ "*"
+        else
+          toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
