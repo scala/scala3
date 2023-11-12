@@ -17,7 +17,6 @@ package immutable
 import scala.collection.immutable.Set.Set4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 import language.experimental.captureChecking
-import annotation.unchecked.uncheckedCaptures
 
 /** Base trait for immutable set collections */
 trait Set[A] extends Iterable[A]
@@ -353,9 +352,9 @@ abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A
   * $multipleResults
   */
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
-  private[this] var elems: Set[A @uncheckedCaptures] = Set.empty
+  private[this] var elems: Set[A] = Set.empty
   private[this] var switchedToHashSetBuilder: Boolean = false
-  private[this] var hashSetBuilder: HashSetBuilder[A @uncheckedCaptures] = _
+  private[this] var hashSetBuilder: HashSetBuilder[A] = _
 
   override def clear(): Unit = {
     elems = Set.empty

@@ -24,7 +24,6 @@ import scala.runtime.ScalaRunTime
 import scala.util.Sorting
 import scala.util.hashing.MurmurHash3
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /**
   * An immutable array.
@@ -59,7 +58,7 @@ sealed abstract class ArraySeq[+A]
   def unsafeArrayAsAnyArray = unsafeArray.asInstanceOf[Array[Any]]
 
   protected def evidenceIterableFactory: ArraySeq.type = ArraySeq
-  protected def iterableEvidence: ClassTag[A @uncheckedVariance @uncheckedCaptures] = elemTag.asInstanceOf[ClassTag[A]]
+  protected def iterableEvidence: ClassTag[A @uncheckedVariance] = elemTag.asInstanceOf[ClassTag[A]]
 
   def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit
 
@@ -109,8 +108,8 @@ sealed abstract class ArraySeq[+A]
         null
       else if (thisIsObj) {
         // A and B are objects
-        val ax = this.unsafeArray.asInstanceOf[Array[A @uncheckedCaptures]]
-        val ay = that.unsafeArray.asInstanceOf[Array[B @uncheckedCaptures]]
+        val ax = this.unsafeArray.asInstanceOf[Array[A]]
+        val ay = that.unsafeArray.asInstanceOf[Array[B]]
         val len = ax.length + ay.length
         val a = new Array[AnyRef](len)
         System.arraycopy(ax, 0, a, 0, ax.length)
@@ -118,8 +117,8 @@ sealed abstract class ArraySeq[+A]
         ArraySeq.unsafeWrapArray(a).asInstanceOf[ArraySeq[B]]
       } else {
         // A is a primative and B = A. Use this instance's protected ClassTag.
-        val ax = this.unsafeArray.asInstanceOf[Array[A @uncheckedCaptures]]
-        val ay = that.unsafeArray.asInstanceOf[Array[A @uncheckedCaptures]]
+        val ax = this.unsafeArray.asInstanceOf[Array[A]]
+        val ay = that.unsafeArray.asInstanceOf[Array[A]]
         val len = ax.length + ay.length
         val a = iterableEvidence.newArray(len)
         System.arraycopy(ax, 0, a, 0, ax.length)
@@ -186,7 +185,7 @@ sealed abstract class ArraySeq[+A]
         strictOptimizedZip[B, ArraySeq[(A, B)]](that, iterableFactory.newBuilder)
     }
 
-  private inline def ops[A](xs: Array[A @uncheckedCaptures]): ArrayOps[A] = new ArrayOps[A @uncheckedCaptures](xs)
+  private inline def ops[A](xs: Array[A]): ArrayOps[A] = new ArrayOps[A](xs)
 
   override def take(n: Int): ArraySeq[A] =
     if (unsafeArray.length <= n)
@@ -290,12 +289,12 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   }
 
   def newBuilder[A : ClassTag]: Builder[A, ArraySeq[A]] =
-    ArrayBuffer.newBuilder[A @uncheckedCaptures].mapResult(b => unsafeWrapArray[A](b.toArray))
+    ArrayBuffer.newBuilder[A].mapResult(b => unsafeWrapArray[A](b.toArray))
 
   override def fill[A : ClassTag](n: Int)(elem: => A): ArraySeq[A] = tabulate(n)(_ => elem)
 
   override def tabulate[A : ClassTag](n: Int)(f: Int => A): ArraySeq[A] = {
-    val elements = Array.ofDim[A @uncheckedCaptures](scala.math.max(n, 0))
+    val elements = Array.ofDim[A](scala.math.max(n, 0))
     var i = 0
     while (i < n) {
       ScalaRunTime.array_update(elements, i, f(i))
@@ -316,7 +315,7 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    * `ArraySeq.unsafeWrapArray(a.asInstanceOf[Array[Int]])` does not work, it throws a
    * `ClassCastException` at runtime.
    */
-  def unsafeWrapArray[T](x: Array[T @uncheckedCaptures]): ArraySeq[T] = ((x: @unchecked) match {
+  def unsafeWrapArray[T](x: Array[T]): ArraySeq[T] = ((x: @unchecked) match {
     case null              => null
     case x: Array[AnyRef]  => new ofRef[AnyRef](x)
     case x: Array[Int]     => new ofInt(x)

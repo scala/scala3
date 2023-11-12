@@ -19,7 +19,6 @@ import java.lang.{IllegalArgumentException, IndexOutOfBoundsException}
 
 import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
-import scala.annotation.unchecked.uncheckedCaptures
 import language.experimental.captureChecking
 
 /** A `Buffer` implementation backed by a list. It provides constant time
@@ -401,5 +400,5 @@ object ListBuffer extends StrictOptimizedSeqFactory[ListBuffer] {
 
   def newBuilder[A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
 
-  def empty[A]: ListBuffer[A] = new ListBuffer[A @uncheckedCaptures]
+  def empty[A]: ListBuffer[A] = new ListBuffer[A]
 }

@@ -19,7 +19,6 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.language.implicitConversions
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** Utility class for integer maps.
   */
@@ -198,7 +197,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   override def empty: IntMap[T] = IntMap.Nil
 
   override def toList = {
-    val buffer = new scala.collection.mutable.ListBuffer[(Int, T) @uncheckedCaptures]
+    val buffer = new scala.collection.mutable.ListBuffer[(Int, T)]
     foreach(buffer += _)
     buffer.toList
   }

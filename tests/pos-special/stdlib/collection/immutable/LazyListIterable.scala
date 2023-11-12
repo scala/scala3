@@ -998,7 +998,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def filterImpl[A](ll: LazyListIterable[A]^, p: A => Boolean, isFlipped: Boolean): LazyListIterable[A]^{ll, p} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       var elem: A = null.asInstanceOf[A]
       var found   = false
@@ -1015,7 +1015,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def collectImpl[A, B](ll: LazyListIterable[A]^, pf: PartialFunction[A, B]^): LazyListIterable[B]^{ll, pf} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       val marker = Statics.pfMarker
       val toMarker = anyToMarker.asInstanceOf[A => B] // safe because Function1 is erased
@@ -1034,9 +1034,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def flatMapImpl[A, B](ll: LazyListIterable[A]^, f: A => IterableOnce[B]^): LazyListIterable[B]^{ll, f} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
-      var it: Iterator[B @uncheckedCaptures]^{ll, f} = null
+      var it: Iterator[B]^{ll, f} = null
       var itHasNext       = false
       var rest            = restRef           // var rest = restRef.elem
       while (!itHasNext && !rest.isEmpty) {
@@ -1058,7 +1058,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def dropImpl[A](ll: LazyListIterable[A]^, n: Int): LazyListIterable[A]^{ll} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll    // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll*} = ll    // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     var iRef    = n                      // val iRef    = new IntRef(n)
     newLL {
       var rest = restRef                 // var rest = restRef.elem
@@ -1075,7 +1075,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def dropWhileImpl[A](ll: LazyListIterable[A]^, p: A => Boolean): LazyListIterable[A]^{ll, p} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
     newLL {
       var rest = restRef                        // var rest = restRef.elem
       while (!rest.isEmpty && p(rest.head)) {
@@ -1088,8 +1088,8 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
   private def takeRightImpl[A](ll: LazyListIterable[A]^, n: Int): LazyListIterable[A]^{ll} = {
     // DO NOT REFERENCE `ll` ANYWHERE ELSE, OR IT WILL LEAK THE HEAD
-    var restRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
-    var scoutRef: LazyListIterable[A @uncheckedCaptures]^{ll*} = ll  // same situation
+    var restRef: LazyListIterable[A]^{ll*} = ll  // restRef is captured by closure arg to newLL, so A is not recognized as parametric
+    var scoutRef: LazyListIterable[A]^{ll*} = ll  // same situation
     var remainingRef = n                          // val remainingRef = new IntRef(n)
     newLL {
       var scout     = scoutRef                    // var scout     = scoutRef.elem
@@ -1284,8 +1284,8 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   private final class LazyBuilder[A] extends ReusableBuilder[A, LazyListIterable[A]] {
     import LazyBuilder._
 
-    private[this] var next: DeferredState[A @uncheckedCaptures] = _
-    private[this] var list: LazyListIterable[A @uncheckedCaptures] = _
+    private[this] var next: DeferredState[A] = _
+    private[this] var list: LazyListIterable[A] = _
 
     clear()
 
@@ -1345,7 +1345,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   @SerialVersionUID(3L)
   final class SerializationProxy[A](_coll: LazyListIterable[A]^) extends Serializable {
 
-    @transient protected var coll: LazyListIterable[A @uncheckedCaptures]^{this} = _coll
+    @transient protected var coll: LazyListIterable[A]^{this} = _coll
 
     private[this] def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -1360,7 +1360,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
 
     private[this] def readObject(in: ObjectInputStream): Unit = {
       in.defaultReadObject()
-      val init = new mutable.ListBuffer[A @uncheckedCaptures]
+      val init = new mutable.ListBuffer[A]
       var initRead = false
       while (!initRead) in.readObject match {
         case SerializeEnd => initRead = true

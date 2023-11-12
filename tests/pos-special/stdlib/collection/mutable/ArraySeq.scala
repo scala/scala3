@@ -20,7 +20,6 @@ import scala.collection.convert.impl._
 import scala.reflect.ClassTag
 import scala.util.hashing.MurmurHash3
 import language.experimental.captureChecking
-import annotation.unchecked.uncheckedCaptures
 
 /**
   *  A collection representing `Array[T]`. Unlike `ArrayBuffer` it is always backed by the same
@@ -96,7 +95,7 @@ sealed abstract class ArraySeq[T]
     ArraySeq.make(array.asInstanceOf[Array[T]].sorted(ord.asInstanceOf[Ordering[Any]])).asInstanceOf[ArraySeq[T]]
 
   override def sortInPlace[B >: T]()(implicit ord: Ordering[B]): this.type = {
-    if (length > 1) scala.util.Sorting.stableSort(array.asInstanceOf[Array[B @uncheckedCaptures]])
+    if (length > 1) scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]])
     this
   }
 }

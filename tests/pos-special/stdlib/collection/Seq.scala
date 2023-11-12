@@ -18,7 +18,6 @@ import Searching.{Found, InsertionPoint, SearchResult}
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** Base trait for sequence collections
   *
@@ -601,8 +600,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
       if (!hasNext)
         Iterator.empty.next()
 
-      val forcedElms = new mutable.ArrayBuffer[A @uncheckedCaptures](elms.size) ++= elms
-        // uncheckedCaptures OK since used only locally
+      val forcedElms = new mutable.ArrayBuffer[A](elms.size) ++= elms
       val result = (newSpecificBuilder ++= forcedElms).result()
       var i = idxs.length - 2
       while(i >= 0 && idxs(i) >= idxs(i+1))
@@ -893,7 +891,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                part of the result, but any following occurrences will.
     */
   def diff[B >: A](that: Seq[B]): C = {
-    val occ = occCounts[B @uncheckedCaptures](that)
+    val occ = occCounts[B](that)
     fromSpecific(iterator.filter { x =>
       var include = false
       occ.updateWith(x) {
@@ -918,7 +916,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     *                in the result, but any following occurrences will be omitted.
     */
   def intersect[B >: A](that: Seq[B]): C = {
-    val occ = occCounts[B @uncheckedCaptures](that)
+    val occ = occCounts[B](that)
     fromSpecific(iterator.filter { x =>
       var include = true
       occ.updateWith(x) {

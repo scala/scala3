@@ -16,7 +16,6 @@ package immutable
 
 import scala.collection.mutable.{Builder, ReusableBuilder}
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** A base trait for ordered, immutable maps.
  *
@@ -230,9 +229,9 @@ object SeqMap extends MapFactory[SeqMap] {
   }
 
   private final class SeqMapBuilderImpl[K, V] extends ReusableBuilder[(K, V), SeqMap[K, V]] {
-    private[this] var elems: SeqMap[K, V] @uncheckedCaptures = SeqMap.empty
+    private[this] var elems: SeqMap[K, V] = SeqMap.empty
     private[this] var switchedToVectorMapBuilder: Boolean = false
-    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] @uncheckedCaptures = _
+    private[this] var vectorMapBuilder: VectorMapBuilder[K, V] = _
 
     override def clear(): Unit = {
       elems = SeqMap.empty

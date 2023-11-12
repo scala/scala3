@@ -16,7 +16,6 @@ package generic
 import scala.reflect.ClassTag
 import language.experimental.captureChecking
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** Type class witnessing that a collection representation type `Repr` has
   * elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
@@ -100,7 +99,7 @@ object IsSeq {
         new SeqOps[A, mutable.ArraySeq, Array[A]] {
           def apply(i: Int): A = a(i)
           def length: Int = a.length
-          def toIterable: Iterable[A] = mutable.ArraySeq.make[A @uncheckedCaptures](a)
+          def toIterable: Iterable[A] = mutable.ArraySeq.make[A](a)
           protected def coll: Array[A] = a
           protected def fromSpecific(coll: IterableOnce[A]^): Array[A] = Array.from(coll)
           def iterableFactory: FreeSeqFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged

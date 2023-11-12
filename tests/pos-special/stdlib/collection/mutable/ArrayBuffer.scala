@@ -21,7 +21,6 @@ import scala.annotation.tailrec
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.generic.DefaultSerializable
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** An implementation of the `Buffer` class using an array to
   *  represent the assembled sequence internally. Append, update and random
@@ -258,7 +257,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   override def sortInPlace[B >: A]()(implicit ord: Ordering[B]): this.type = {
     if (length > 1) {
       mutationCount += 1
-      scala.util.Sorting.stableSort(array.asInstanceOf[Array[B @uncheckedCaptures]], 0, length)
+      scala.util.Sorting.stableSort(array.asInstanceOf[Array[B]], 0, length)
     }
     this
   }
