@@ -1,3 +1,4 @@
+import caps.cap
 class Unit
 object u extends Unit
 

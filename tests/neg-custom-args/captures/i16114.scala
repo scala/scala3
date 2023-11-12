@@ -11,7 +11,7 @@ def withCap[T](op: Cap^ => T): T = {
 }
 
 def main(fs: Cap^): Unit = {
-  def badOp(io: Cap^{cap}): Unit ->{} Unit = {
+  def badOp(io: Cap^): Unit ->{} Unit = {
     val op1: Unit ->{io} Unit = (x: Unit) =>
       expect[Cap^] {
         io.use()

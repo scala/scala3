@@ -15,7 +15,7 @@ object Test1 {
   }
 }
 
-def Test2(io: IO^{cap}, fs: IO^{io}, ct: IO^) = {
+def Test2(io: IO^, fs: IO^{io}, ct: IO^) = {
   abstract class A[X] { this: A[X]^{io} =>
     def foo(x: X): X
   }

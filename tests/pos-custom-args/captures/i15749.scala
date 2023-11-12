@@ -1,9 +1,9 @@
 class Unit
 object unit extends Unit
 
-type Top = Any^{cap}
+type Top = Any^
 
-type LazyVal[T] = Unit ->{cap} T
+type LazyVal[T] = Unit => T
 
 class Foo[T](val x: T)
 

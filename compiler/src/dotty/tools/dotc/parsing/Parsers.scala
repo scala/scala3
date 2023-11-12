@@ -1474,15 +1474,13 @@ object Parsers {
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
-      else termIdent() match
-        case id @ Ident(nme.CAPTURE_ROOT) =>
-          atSpan(id.span.start)(captureRoot)
-        case id =>
-          if isIdent(nme.raw.STAR) then
-            in.nextToken()
-            atSpan(startOffset(id)):
-              Select(id, nme.CC_REACH)
-          else id
+      else
+        val id = termIdent()
+        if isIdent(nme.raw.STAR) then
+          in.nextToken()
+          atSpan(startOffset(id)):
+            Select(id, nme.CC_REACH)
+        else id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
