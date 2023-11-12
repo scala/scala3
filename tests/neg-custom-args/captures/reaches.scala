@@ -46,3 +46,10 @@ def runAll3(xs: List[Proc]): Unit =
     next()
     cur.set(cur.get.tail: List[Proc])
 
+class Id[sealed -A, sealed +B >: A]():
+  def apply(a: A): B = a
+
+def test =
+  val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
+  usingFile: f =>
+    id(() => f.write())  // escape, if it was not for the error above
