@@ -233,17 +233,18 @@ extension (tp: Type)
     assert(tp.isTrackableRef)
     TermRef(tp, nme.CC_REACH, defn.Any_ccReach)
 
-  /** If `ref` is a trackable capture ref, replace all covariant occurrences of a
-   *  universal capture set in `tp` by `{ref*}`. This implements the new aspect of
-   *  the (Var) rule, which can now be stated as follows:
+  /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
+   *  universal capture set, replace all these occurrences by `{ref*}`. This implements
+   *  the new aspect of the (Var) rule, which can now be stated as follows:
    *
    *     x: T in E
    *     -----------
    *     E |- x: T'
    *
    *  where T' is T with (1) the toplevel capture set replaced by `{x}` and
-   *  (2) all covariant occurrences of cap replaced by `x*`. (1) is standard,
-   *  whereas (2) is new.
+   *  (2) all covariant occurrences of cap replaced by `x*`, provided there
+   *  are no occurrences in `T` at other variances. (1) is standard, whereas
+   *  (2) is new.
    *
    *  Why is this sound? Covariant occurrences of cap must represent capabilities
    *  that are reachable from `x`, so they are included in the meaning of `{x*}`.
@@ -251,10 +252,15 @@ extension (tp: Type)
    *  occurrences of cap are allowed in instance types of type variables.
    */
   def withReachCaptures(ref: Type)(using Context): Type =
-    val narrowCaps = new TypeMap:
+    object narrowCaps extends TypeMap:
+      var ok = true
       def apply(t: Type) = t.dealias match
-        case t1 @ CapturingType(p, cs) if cs.isUniversal && variance > 0 =>
-          t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+        case t1 @ CapturingType(p, cs) if cs.isUniversal =>
+          if variance > 0 then
+            t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+          else
+            ok = false
+            t
         case _ => t match
           case t @ CapturingType(p, cs) =>
             t.derivedCapturingType(apply(p), cs) // don't map capture set variables
@@ -263,8 +269,12 @@ extension (tp: Type)
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
         val tp1 = narrowCaps(tp)
-        if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
-        tp1
+        if narrowCaps.ok then
+          if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
+          tp1
+        else
+          capt.println(i"cannot narrow $tp of $ref to $tp1")
+          tp
       case _ =>
         tp
 

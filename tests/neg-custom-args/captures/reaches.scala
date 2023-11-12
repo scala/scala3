@@ -17,7 +17,6 @@ def runAll0(xs: List[Proc]): Unit =
     next()
     cur = cur.tail: List[() ->{xs*} Unit]
 
-
   usingFile: f =>
     cur = (() => f.write()) :: Nil // error since {f*} !<: {xs*}
 
@@ -53,3 +52,10 @@ def test =
   val id: Id[Proc, Proc] = new Id[Proc, () -> Unit] // error
   usingFile: f =>
     id(() => f.write())  // escape, if it was not for the error above
+
+def attack2 =
+  val id: File^ -> File^ = x => x
+
+  val leaked = usingFile[File^{id*}]: f =>
+    val f1: File^{id*} = id(f) // error
+    f1

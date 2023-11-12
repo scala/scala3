@@ -19,7 +19,8 @@ A capture checking variant
         E |- x: T'
 
    where T' is T with (1) the toplevel capture set replaced by `{x}` and
-   (2) all covariant occurrences of cap replaced by `x*`. (1) is standard,
+   (2) all covariant occurrences of cap replaced by `x*`, provided there
+   are no occurrences in `T` at other variances. (1) is standard,
    whereas (2) is new.
 
 - Why is this sound? Covariant occurrences of cap must represent capabilities that are reachable from `x`, so they are included in the meaning of `{x*}`. At the same time, encapsulation is still maintained since no covariant occurrences of cap are allowed in instance types of
