@@ -288,7 +288,6 @@ object StdNames {
 
     // Compiler-internal
     val CAPTURE_ROOT: N             = "cap"
-    val LOCAL_CAPTURE_ROOT: N       = "<local-cap>"
     val CONSTRUCTOR: N              = "<init>"
     val STATIC_CONSTRUCTOR: N       = "<clinit>"
     val EVT2U: N                    = "evt2u$"

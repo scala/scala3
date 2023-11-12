@@ -59,9 +59,6 @@ class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
 
-  /** Associates nesting level owners with the local roots valid in their scopes. */
-  val localRoots: mutable.HashMap[Symbol, Symbol] = new mutable.HashMap
-
   /** The last pair of capture reference and capture set where
    *  the reference could not be added to the set due to a level conflict.
    */
@@ -80,14 +77,9 @@ class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
 extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
-  def toCaptureRef(using Context): CaptureRef = tree match
-    case QualifiedRoot(outer) =>
-      ctx.owner.levelOwnerNamed(outer)
-        .orElse(defn.RootClass) // non-existing outer roots are reported in Setup's checkQualifiedRoots
-        .localRoot.termRef
-    case _ => tree.tpe match
-      case ref: CaptureRef => ref
-      case tpe => throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
+  def toCaptureRef(using Context): CaptureRef = tree.tpe match
+    case ref: CaptureRef => ref
+    case tpe => throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
 
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
    *  For efficience, the result is cached as an Attachment on the tree.
@@ -337,23 +329,12 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  /** Can this symbol possibly own a local root?
-   *  TODO: Disallow anonymous functions?
+  /** Does this symbol define a level where we do not want to let local variables
+   *  escape into outer capture sets?
    */
   def isLevelOwner(using Context): Boolean =
     sym.isClass
     || sym.is(Method, butNot = Accessor)
-
-  /** The level owner enclosing `sym` which has the given name, or NoSymbol
-   *  if none exists.
-   */
-  def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(sym: Symbol): Symbol =
-      if sym.name.toString == name then
-        if sym.isLevelOwner then sym else NoSymbol
-      else if sym == defn.RootClass then NoSymbol
-      else recur(sym.owner)
-    recur(sym)
 
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
@@ -368,14 +349,6 @@ extension (sym: Symbol)
       else if sym.isLevelOwner then sym
       else recur(sym.owner)
     recur(sym)
-
-  /** The local root corresponding to sym's level owner */
-  def localRoot(using Context): Symbol =
-    val owner = sym.levelOwner
-    assert(owner.exists)
-    def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
-      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef)
-    ccState.localRoots.getOrElseUpdate(owner, newRoot)
 
   /** The outermost symbol owned by both `sym` and `other`. if none exists
    *  since the owning scopes of `sym` and `other` are not nested, invoke

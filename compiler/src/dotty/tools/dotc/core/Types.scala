@@ -2178,18 +2178,7 @@ object Types {
     def isReach(using Context): Boolean = false // overridden in TermRef
 
     /** Is this reference the generic root capability `cap` ? */
-    def isUniversalRootCapability(using Context): Boolean = false
-
-    /** Is this reference a local root capability `{<cap in owner>}`
-     *  for some level owner?
-     */
-    def isLocalRootCapability(using Context): Boolean = this match
-      case tp: TermRef => tp.localRootOwner.exists
-      case _ => false
-
-    /** Is this reference the a (local or generic) root capability? */
-    def isRootCapability(using Context): Boolean =
-      isUniversalRootCapability || isLocalRootCapability
+    def isRootCapability(using Context): Boolean = false
 
     /** Normalize reference so that it can be compared with `eq` for equality */
     def normalizedRef(using Context): CaptureRef = this
@@ -2929,14 +2918,8 @@ object Types {
 
     def reachPrefix: CaptureRef = prefix.asInstanceOf[CaptureRef]
 
-    override def isUniversalRootCapability(using Context): Boolean =
+    override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
-
-    def localRootOwner(using Context): Symbol =
-      // TODO Try to make local class roots be NonMembers owned directly by the class
-      val owner = symbol.maybeOwner
-      def normOwner = if owner.isLocalDummy then owner.owner else owner
-      if name == nme.LOCAL_CAPTURE_ROOT then normOwner else NoSymbol
 
     override def normalizedRef(using Context): CaptureRef =
       if isReach then TermRef(reachPrefix.normalizedRef, name, denot)

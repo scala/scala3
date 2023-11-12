@@ -1476,16 +1476,7 @@ object Parsers {
       if in.token == THIS then simpleRef()
       else termIdent() match
         case id @ Ident(nme.CAPTURE_ROOT) =>
-          // TODO drop
-          if in.token == LBRACKET then
-            val ref = atSpan(id.span.start)(captureRootIn)
-            val qual =
-              inBrackets:
-                atSpan(in.offset):
-                  Literal(Constant(ident().toString))
-            atSpan(id.span.start)(Apply(ref, qual :: Nil))
-          else
-            atSpan(id.span.start)(captureRoot)
+          atSpan(id.span.start)(captureRoot)
         case id =>
           if isIdent(nme.raw.STAR) then
             in.nextToken()

@@ -18,11 +18,11 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------
 13 |    y = (q: Proc)   // error
    |         ^^^^^^^
-   |         Found:    () ->{cap[inner]} Unit
+   |         Found:    Proc
    |         Required: () ->{p} Unit
    |
-   |         Note that reference (cap[inner] : caps.Cap), defined in method inner
-   |         cannot be included in outer capture set {p} of variable y which is associated with method test
+   |         Note that the universal capability `cap`
+   |         cannot be included in capture set {p} of variable y
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:14:8 -------------------------------------

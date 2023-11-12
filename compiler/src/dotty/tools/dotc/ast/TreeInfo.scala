@@ -376,17 +376,6 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
-
-  /** Under capture checking, an extractor for qualified roots `cap[Q]`.
-   */
-  object QualifiedRoot:
-
-    def unapply(tree: Apply)(using Context): Option[String] = tree match
-      case Apply(fn, Literal(lit) :: Nil) if fn.symbol == defn.Caps_capIn =>
-        Some(lit.value.asInstanceOf[String])
-      case _ =>
-        None
-  end QualifiedRoot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>

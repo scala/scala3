@@ -275,23 +275,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         then CapturingType(tp, defn.expandedUniversalSet, boxed = false)
         else tp
 
-      private def checkQualifiedRoots(tree: Tree): Unit =
-        for case elem @ QualifiedRoot(outer) <- tree.retainedElems do
-          if !ctx.owner.levelOwnerNamed(outer).exists then
-            report.error(em"`$outer` does not name an outer definition that represents a capture level", elem.srcPos)
-
       private def recur(t: Type): Type = normalizeCaptures(mapOver(t))
 
       def apply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
-            checkQualifiedRoots(t.annot.tree) // TODO: NEEDED?
             t.derivedCapturingType(this(parent), refs)
           case t @ AnnotatedType(parent, ann) =>
             val parent1 = this(parent)
             if ann.symbol == defn.RetainsAnnot then
               for tpt <- tptToCheck do
-                checkQualifiedRoots(ann.tree)
                 checkWellformedLater(parent1, ann.tree, tpt)
               CapturingType(parent1, ann.tree.toCaptureSet)
             else
@@ -588,11 +581,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case CapturingType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
-        && !refs.containsRoot // if refs is {cap}, an added variable would not change anything
+        && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
       case RetainingType(parent, refs) =>
         needsVariable(parent)
         && !refs.tpes.exists:
-            case ref: TermRef => ref.isUniversalRootCapability
+            case ref: TermRef => ref.isRootCapability
             case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)

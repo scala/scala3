@@ -1343,7 +1343,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     * of long evaluated lazy lists without exhausting the stack through recursive serialization of cons cells.
     */
   @SerialVersionUID(3L)
-  final class SerializationProxy[A](@transient protected var coll: LazyListIterable[A]^) extends Serializable {
+  final class SerializationProxy[A](_coll: LazyListIterable[A]^) extends Serializable {
+
+    @transient protected var coll: LazyListIterable[A @uncheckedCaptures]^{this} = _coll
 
     private[this] def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
