@@ -42,7 +42,7 @@ import scala.annotation.unchecked.uncheckedCaptures
   *  @define willNotTerminateInf
   */
 @SerialVersionUID(-1582447879429021880L)
-class ArrayBuffer[sealed A] private (initialElements: Array[AnyRef], initialSize: Int)
+class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   extends AbstractBuffer[A]
     with IndexedBuffer[A]
     with IndexedSeqOps[A, ArrayBuffer, ArrayBuffer[A]]
@@ -241,7 +241,7 @@ class ArrayBuffer[sealed A] private (initialElements: Array[AnyRef], initialSize
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected[this] def stringPrefix = "ArrayBuffer"
 
-  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
     if(copied > 0) {
       Array.copy(array, 0, xs, start, copied)
@@ -293,7 +293,7 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   final val DefaultInitialSize = 16
   private[this] val emptyArray = new Array[AnyRef](0)
 
-  def from[sealed B](coll: collection.IterableOnce[B]^): ArrayBuffer[B] = {
+  def from[B](coll: collection.IterableOnce[B]^): ArrayBuffer[B] = {
     val k = coll.knownSize
     if (k >= 0) {
       // Avoid reallocation of buffer if length is known
@@ -305,12 +305,12 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
     else new ArrayBuffer[B] ++= coll
   }
 
-  def newBuilder[sealed A]: Builder[A, ArrayBuffer[A]] =
+  def newBuilder[A]: Builder[A, ArrayBuffer[A]] =
     new GrowableBuilder[A, ArrayBuffer[A]](empty) {
       override def sizeHint(size: Int): Unit = elems.ensureSize(size)
     }
 
-  def empty[sealed A]: ArrayBuffer[A] = new ArrayBuffer[A]()
+  def empty[A]: ArrayBuffer[A] = new ArrayBuffer[A]()
 
   /**
    * @param arrayLen  the length of the backing array
@@ -359,7 +359,7 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
 }
 
 // TODO: use `CheckedIndexedSeqView.Id` once we can change the return type of `ArrayBuffer#view`
-final class ArrayBufferView[sealed A] private[mutable](underlying: ArrayBuffer[A], mutationCount: () -> Int)
+final class ArrayBufferView[A] private[mutable](underlying: ArrayBuffer[A], mutationCount: () -> Int)
   extends AbstractIndexedSeqView[A], Pure {
   /* Removed since it poses problems for capture checking
   @deprecated("never intended to be public; call ArrayBuffer#view instead", since = "2.13.7")

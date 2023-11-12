@@ -19,7 +19,7 @@ import scala.annotation.unchecked.uncheckedCaptures
 
 
 /** A `Buffer` is a growable and shrinkable `Seq`. */
-trait Buffer[sealed A]
+trait Buffer[A]
   extends Seq[A]
     with SeqOps[A, Buffer, Buffer[A]]
     with Growable[A]

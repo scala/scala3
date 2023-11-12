@@ -5,7 +5,7 @@ def f(xs: List[C^]) =
 
 type Proc = () => Unit
 
-class Ref[sealed T](init: T):
+class Ref[T](init: T):
   private var x: T = init
   def get: T = x
   def set(y: T) = { x = y }

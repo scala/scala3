@@ -92,7 +92,7 @@ object IsSeq {
         }
     }
 
-  implicit def arrayIsSeq[sealed A0 : ClassTag]: IsSeq[Array[A0]] { type A = A0; type C = Array[A0] } =
+  implicit def arrayIsSeq[A0 : ClassTag]: IsSeq[Array[A0]] { type A = A0; type C = Array[A0] } =
     new IsSeq[Array[A0]] {
       type A = A0
       type C = Array[A0]

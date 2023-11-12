@@ -252,7 +252,7 @@ sealed abstract class ArraySeq[+A]
 
   override protected[this] def className = "ArraySeq"
 
-  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
     if(copied > 0) {
       Array.copy(unsafeArray, 0, xs, start, copied)

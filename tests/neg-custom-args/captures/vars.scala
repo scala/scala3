@@ -29,7 +29,7 @@ def test(cap1: Cap, cap2: Cap) =
   val s = scope(new CC)
   val sc: String => String = scope(new CC)
 
-  def local[sealed T](op: CC^ -> T): T = op(CC())
+  def local[T](op: CC^ -> T): T = op(CC())
 
   local { cap3 => // error
     def g(x: String): String = if cap3 == cap3 then "" else "a"

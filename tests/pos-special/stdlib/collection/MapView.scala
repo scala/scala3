@@ -161,7 +161,7 @@ object MapView extends MapViewFactory {
     override def isEmpty: Boolean = underlying.isEmpty
   }
 
-  override def newBuilder[sealed X, sealed Y]: Builder[(X, Y), MapView[X, Y]] = mutable.HashMap.newBuilder[X, Y].mapResult(_.view)
+  override def newBuilder[X,  Y]: Builder[(X, Y), MapView[X, Y]] = mutable.HashMap.newBuilder[X, Y].mapResult(_.view)
 
   override def empty[K, V]: MapView[K, V] = EmptyMapView.asInstanceOf[MapView[K, V]]
 

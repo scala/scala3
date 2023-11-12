@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 
 trait Capp { def use(): Unit }
 
-def localCap[sealed T](op: (c: Capp^) => T): T = ???
+def localCap[T](op: (c: Capp^) => T): T = ???
 
 def main(io: Capp^, net: Capp^): Unit = {
 
@@ -25,7 +25,7 @@ def main(io: Capp^, net: Capp^): Unit = {
       (c1: Capp^{io}) => () => { c1.use() }
     }
 
-  def localCap2[sealed T](op: (c: Capp^{io}) => T): T = ???
+  def localCap2[T](op: (c: Capp^{io}) => T): T = ???
 
   val test5: () ->{io} Unit =
     localCap2 { c =>  // ok

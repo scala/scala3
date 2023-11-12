@@ -966,7 +966,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
     iterableFactory.from(new View.Updated(this, index, elem))
   }
 
-  protected[collection] def occCounts[sealed B](sq: Seq[B]): mutable.Map[B, Int] = {
+  protected[collection] def occCounts[B](sq: Seq[B]): mutable.Map[B, Int] = {
     val occ = new mutable.HashMap[B, Int]()
     for (y <- sq) occ.updateWith(y) {
       case None => Some(1)

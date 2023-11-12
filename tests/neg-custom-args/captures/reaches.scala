@@ -1,11 +1,11 @@
 class File:
   def write(): Unit = ???
 
-def usingFile[sealed T](f: File^ => T): T = ???
+def usingFile[T](f: File^ => T): T = ???
 
 type Proc = () => Unit
 
-class Ref[sealed T](init: T):
+class Ref[T](init: T):
   private var x: T = init
   def get: T = x
   def set(y: T) = { x = y }
@@ -45,7 +45,7 @@ def runAll3(xs: List[Proc]): Unit =
     next()
     cur.set(cur.get.tail: List[Proc])
 
-class Id[sealed -A, sealed +B >: A]():
+class Id[-A,  +B >: A]():
   def apply(a: A): B = a
 
 def test =

@@ -265,7 +265,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   /** Length of all slices up to and including index */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
-  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
+  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
 
   override def toVector: Vector[A] = this
 
@@ -2393,7 +2393,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
     take(_until)
   }
 
-  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val xsLen = xs.length
     val total = IterableOnce.elemsToCopyToArray(knownSize, xsLen, start, len)
     var copied = 0

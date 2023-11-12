@@ -1,5 +1,5 @@
 import java.io.*
-def usingLogFile[sealed T](op: FileOutputStream^ => T): T =
+def usingLogFile[T](op: FileOutputStream^ => T): T =
   val logFile = FileOutputStream("log")
   val result = op(logFile)
   logFile.close()
