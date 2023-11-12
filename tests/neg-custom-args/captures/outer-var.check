@@ -2,14 +2,17 @@
 11 |    x = q           // error
    |        ^
    |        Found:    () ->{q} Unit
-   |        Required: () ->{cap[test]} Unit
+   |        Required: () ->{p, q²} Unit
+   |
+   |        where:    q  is a parameter in method inner
+   |                  q² is a parameter in method test
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:12:9 -------------------------------------
 12 |    x = (q: Proc)   // error
    |         ^^^^^^^
-   |         Found:    () ->{cap[inner]} Unit
-   |         Required: () ->{cap[test]} Unit
+   |         Found:    Proc
+   |         Required: () ->{p, q} Unit
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:13:9 -------------------------------------

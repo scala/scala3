@@ -1145,7 +1145,7 @@ object Iterator extends IterableFactory[Iterator] {
    *  Nested ConcatIterators are merged to avoid blowing the stack.
    */
   private final class ConcatIterator[+A](val from: Iterator[A]^) extends AbstractIterator[A] {
-    private var current: Iterator[A @uncheckedCaptures]^{cap[ConcatIterator]} = from
+    private var current: Iterator[A @uncheckedCaptures]^{from*} = from
     private var tail: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var last: ConcatIteratorCell[A @uncheckedVariance @uncheckedCaptures] = null
     private var currentHasNextChecked = false

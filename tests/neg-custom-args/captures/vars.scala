@@ -11,7 +11,7 @@ def test(cap1: Cap, cap2: Cap) =
   val z2c: () -> Unit = z2
   var a = f
 
-  var b: List[String ->{cap[test]} String] = Nil
+  var b: List[String ->{cap1, cap2} String] = Nil
   val u = a
   a("")
   b.head

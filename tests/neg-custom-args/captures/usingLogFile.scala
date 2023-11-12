@@ -28,14 +28,6 @@ object Test2:
   private val later2 = usingLogFile { f => Cell(() => f.write(0)) } // error
   later2.x()
 
-  var later3: () ->{cap[`<root>`]} Unit = () => ()
-  usingLogFile { f => later3 = () => f.write(0) }  // error
-  later3()
-
-  var later4: Cell[() ->{cap[`<root>`]} Unit] = Cell(() => ())
-  usingLogFile { f => later4 = Cell(() => f.write(0)) }  // error
-  later4.x()
-
 object Test3:
   class Logger(f: OutputStream^):
     def log(msg: String): Unit = ???
