@@ -4,7 +4,7 @@ object u extends Unit
 
 type Top = Any^
 
-type Wrapper[T] = [X] -> (op: T ->{cap} X) -> X
+type Wrapper[+T] = [X] -> (op: T ->{cap} X) -> X
 
 def test =
 

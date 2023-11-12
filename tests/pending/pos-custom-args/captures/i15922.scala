@@ -11,4 +11,6 @@ def withCap[X](op: (Cap^) => X): X = {
 def leaking(c: Cap^): Id[Cap^{c}] = mkId(c)
 
 def test =
-  val bad = withCap(leaking)
+  val ll = (c: Cap^) => leaking(c)
+  val bad1 = withCap(ll)       // used to work, now error (?)
+  val bad2 = withCap(leaking)  // used to work, now error (?)

@@ -170,22 +170,7 @@ object CheckCaptures:
         t.dealiasKeepAnnots match
           case t: TypeRef =>
             if !seen.contains(t) then
-              capt.println(i"disallow $t, $tp, $what, ${t.isSealed}")
               seen += t
-              t.info match
-                case TypeBounds(_, hi) if !t.isSealed && !t.symbol.isParametricIn(carrier) =>
-                  if hi.isAny then
-                    val detailStr =
-                      if t eq tp then "variable"
-                      else i"refers to the type variable $t, which"
-                    report.error(
-                      em"""$what cannot $have $tp since
-                          |that type $detailStr is not sealed.
-                          |$addendum""",
-                      pos)
-                  else
-                    traverse(hi)
-                case _ =>
               traverseChildren(t)
           case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
@@ -557,7 +542,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val polyType = atPhase(thisPhase.prev):
           fn.tpe.widen.asInstanceOf[TypeLambda]
         for case (arg: TypeTree, formal, pname) <- args.lazyZip(polyType.paramRefs).lazyZip((polyType.paramNames)) do
-          if formal.isSealed then
+          if !tree.symbol.isTypeTestOrCast then
             def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
             disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
               i"Sealed type variable $pname", "be instantiated to",

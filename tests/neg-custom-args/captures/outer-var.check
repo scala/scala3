@@ -35,13 +35,10 @@
    |        cannot be included in outer capture set {p} of variable y which is associated with method test
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-var.scala:16:65 ------------------------------------
+-- Error: tests/neg-custom-args/captures/outer-var.scala:16:53 ---------------------------------------------------------
 16 |  var finalizeActions = collection.mutable.ListBuffer[() => Unit]() // error
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                        Found:    scala.collection.mutable.ListBuffer[box () => Unit]
-   |                        Required: scala.collection.mutable.ListBuffer[box () ->? Unit]^?
-   |
-   |                        Note that the universal capability `cap`
-   |                        cannot be included in capture set ? of variable finalizeActions
-   |
-   | longer explanation available when compiling with `-explain`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        Sealed type variable A cannot be instantiated to box () => Unit since
+   |                        that type captures the root capability `cap`.
+   |                        This is often caused by a local capability in an argument of method apply
+   |                        leaking as part of its result.
