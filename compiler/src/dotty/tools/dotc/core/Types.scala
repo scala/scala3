@@ -4072,15 +4072,10 @@ object Types {
 
     protected def toPInfo(tp: Type)(using Context): PInfo
 
-    /** If `tparam` is a sealed type parameter symbol of a polymorphic method, add
-     *  a @caps.Sealed annotation to the upperbound in `tp`.
-     */
-    protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type = tp
-
     def fromParams[PI <: ParamInfo.Of[N]](params: List[PI], resultType: Type)(using Context): Type =
       if (params.isEmpty) resultType
       else apply(params.map(_.paramName))(
-        tl => params.map(param => toPInfo(addSealed(param, tl.integrate(params, param.paramInfo)))),
+        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
         tl => tl.integrate(params, resultType))
   }
 
@@ -4401,16 +4396,6 @@ object Types {
         paramInfosExp: PolyType => List[TypeBounds],
         resultTypeExp: PolyType => Type)(using Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
-
-    override protected def addSealed(tparam: ParamInfo, tp: Type)(using Context): Type =
-      tparam match
-        case tparam: Symbol if tparam.is(Sealed) =>
-          tp match
-            case tp @ TypeBounds(lo, hi) =>
-              tp.derivedTypeBounds(lo,
-                AnnotatedType(hi, Annotation(defn.Caps_SealedAnnot, tparam.span)))
-            case _ => tp
-        case _ => tp
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))

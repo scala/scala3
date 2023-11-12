@@ -44,9 +44,3 @@ import annotation.experimental
       def unsafeBoxFunArg: T => U = f
 
   end unsafe
-
-  /** An annotation that expresses the sealed modifier on a type parameter
-   *  Should not be directly referred to in source
-   */
-  @deprecated("The Sealed annotation should not be directly used in source code.\nUse the `sealed` modifier on type parameters instead.")
-  class Sealed extends annotation.Annotation

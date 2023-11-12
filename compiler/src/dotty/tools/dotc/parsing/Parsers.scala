@@ -3266,9 +3266,6 @@ object Parsers {
         val start = in.offset
         var mods = annotsAsMods() | Param
         if ownerKind == ParamOwner.Class then mods |= PrivateLocal
-        if Feature.ccEnabled && in.token == SEALED then
-          mods |= Sealed
-          in.nextToken()
         if isIdent(nme.raw.PLUS) && checkVarianceOK() then
           mods |= Covariant
         else if isIdent(nme.raw.MINUS) && checkVarianceOK() then

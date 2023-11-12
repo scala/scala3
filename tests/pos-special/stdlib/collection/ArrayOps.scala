@@ -121,7 +121,7 @@ object ArrayOps {
   }
 
   @SerialVersionUID(3L)
-  private[collection] final class ArrayIterator[@specialized(Specializable.Everything) sealed A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
+  private[collection] final class ArrayIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
     private[this] var pos = 0
     private[this] val len = xs.length
     override def knownSize: Int = len - pos
@@ -144,7 +144,7 @@ object ArrayOps {
   }
 
   @SerialVersionUID(3L)
-  private final class ReverseIterator[@specialized(Specializable.Everything) sealed A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
+  private final class ReverseIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
     private[this] var pos = xs.length-1
     def hasNext: Boolean = pos >= 0
     def next(): A = {
@@ -777,7 +777,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *           Returns `z` if this array is empty.
     */
   def foldLeft[B](z: B)(op: (B, A) => B): B = {
-    def f[@specialized(Specializable.Everything) sealed T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
+    def f[@specialized(Specializable.Everything) T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
       val length = xs.length
       var v: Any = z
       var i = 0
@@ -883,7 +883,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *           Returns `z` if this array is empty.
     */
   def foldRight[B](z: B)(op: (A, B) => B): B = {
-    def f[@specialized(Specializable.Everything) sealed T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
+    def f[@specialized(Specializable.Everything) T](xs: Array[T], op: (Any, Any) => Any, z: Any): Any = {
       var v = z
       var i = xs.length - 1
       while(i >= 0) {

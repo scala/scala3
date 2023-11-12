@@ -519,11 +519,7 @@ object Checking {
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
       val illegal = sym.flags & ClassOnlyFlags
-      if sym.is(TypeParam)
-          && illegal == Sealed
-          && Feature.ccEnabled && cc.ccConfig.allowUniversalInBoxed
-      then () // OK
-      else fail(em"only classes can be ${illegal.flagsString}")
+      fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
