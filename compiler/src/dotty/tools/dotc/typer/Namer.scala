@@ -1200,7 +1200,7 @@ class Namer { typer: Typer =>
               val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
               var target = pathType.select(sym)
               if target.typeParams.nonEmpty then
-                target = target.etaExpandWithAsf(pathType, sym.owner)
+                target = target.etaExpandWithAsf
               newSymbol(
                 cls, forwarderName,
                 MandatoryExportTypeFlags | (sym.flags & RetainedExportTypeFlags),

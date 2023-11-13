@@ -322,19 +322,23 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   // Like `target.etaExpand(target.typeParams)`
   // except call `asSeenFrom` to fix class type parameter bounds
-  // e.g. in pos/i18569:
-  // given prefix `M2.type` and symbol `trait F`
-  // the result of `prefix.select(sym)` is `M2.F`
-  // however F's type parameter T is `<: M1#A` rather than `<: M2.A`
-  // so add a call to `asSeenFrom` with prefix `M2.type` and owner `trait M1`
-  def etaExpandWithAsf(prefix: Type, owner: Symbol)(using Context): Type =
-    val tparams = self.typeParams
-    HKTypeLambda(tparams.map(_.paramName))(
-      tl => tparams.map {
-        case p: Symbol => HKTypeLambda.toPInfo(tl.integrate(tparams, p.info.asSeenFrom(prefix, owner)))
-        case p         => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo))
-      },
-      tl => tl.integrate(tparams, self.appliedTo(tparams.map(_.paramRef))))
+  // e.g. from pos/i18569:
+  //    trait M1:
+  //      trait A
+  //      trait F[T <: A]
+  //    object M2 extends M1
+  // Type parameter T in M2.F has an upper bound of M1#A instead of M2.A
+  // So we take the prefix M2.type and the F symbol's owner, M1,
+  // to call asSeenFrom on T's info.
+  def etaExpandWithAsf(using Context): Type = self match
+    case self: TypeRef if self.symbol.isClass =>
+      val tparams = self.symbol.typeParams
+      val prefix = self.prefix
+      val owner = self.symbol.owner
+      HKTypeLambda(tparams.map(_.paramName))(
+        tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.info.asSeenFrom(prefix, owner)))),
+        tl => tl.integrate(tparams, self.appliedTo(tparams.map(_.paramRef))))
+    case _ => etaExpand(typeParams)
 
   /** Maps [Ts] => C[Ts] to C */
   def etaCollapse(using Context): Type = self match
