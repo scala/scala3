@@ -1082,7 +1082,7 @@ Language => Scala
 Symbols => 181 entries
 Occurrences => 159 entries
 Diagnostics => 1 entries
-Synthetics => 6 entries
+Synthetics => 5 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
@@ -1265,7 +1265,7 @@ _empty_/Enums.unwrap().(ev) => implicit given param ev: <:<[A, Option[B]]
 _empty_/Enums.unwrap().(opt) => param opt: Option[A]
 _empty_/Enums.unwrap().[A] => typeparam A 
 _empty_/Enums.unwrap().[B] => typeparam B 
-local0 => param x: Option[B]
+local0 => param x: A
 
 Occurrences:
 [0:7..0:12): Enums <- _empty_/Enums.
@@ -1433,7 +1433,6 @@ Diagnostics:
 
 Synthetics:
 [52:9..52:13):Refl => *.unapply[Option[B]]
-[52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
 [54:14..54:18):Some => *.apply[Some[Int]]
 [54:14..54:34):Some(Some(1)).unwrap => *(given_<:<_T_T[Option[Int]])
 [54:19..54:23):Some => *.apply[Int]
