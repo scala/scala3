@@ -4921,7 +4921,6 @@ object Types {
     def instantiate(fromBelow: Boolean)(using Context): Type =
       val tp = typeToInstantiateWith(fromBelow)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
-Member
         myInst
       else
         instantiateWith(tp)
