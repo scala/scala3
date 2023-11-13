@@ -420,6 +420,21 @@ object Interactive {
         false
     }
 
+
+  /** Some information about the trees is lost after Typer such as Extension method construct
+   *  is expanded into methods. In order to support completions in those cases
+   *  we have to rely on untyped trees and only when types are necessary use typed trees.
+   */
+  def resolveTypedOrUntypedPath(tpdPath: List[Tree], pos: SourcePosition)(using Context): List[untpd.Tree] =
+    lazy val untpdPath: List[untpd.Tree] = NavigateAST
+      .pathTo(pos.span, List(ctx.compilationUnit.untpdTree), true).collect:
+        case untpdTree: untpd.Tree => untpdTree
+
+    tpdPath match
+      case (_: Bind) :: _ => tpdPath
+      case (_: untpd.TypTree) :: _ => tpdPath
+      case _ => untpdPath
+
   /**
    * Is this tree using a renaming introduced by an import statement or an alias for `this`?
    *

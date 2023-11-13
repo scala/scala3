@@ -250,8 +250,8 @@ class ShortenedTypePrinter(
     lazy val effectiveOwner = sym.effectiveOwner
     sym.isType && (effectiveOwner == defn.ScalaPackageClass || effectiveOwner == defn.ScalaPredefModuleClass)
 
-  def completionSymbol(sym: Symbol): String =
-    val info = sym.info.widenTermRefExpr
+  def completionSymbol(sym: Symbol, info0: Option[Type] = None): String =
+    val info = info0.getOrElse(sym.info.widenTermRefExpr)
     val typeSymbol = info.typeSymbol
 
     lazy val typeEffectiveOwner =

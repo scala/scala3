@@ -19,6 +19,8 @@ import dotty.tools.dotc.core.TypeError
 import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Types.{AppliedType, ExprType, MethodOrPoly, NameFilter, NoType, RefinedType, TermRef, Type, TypeProxy}
 import dotty.tools.dotc.parsing.Tokens
+import dotty.tools.dotc.typer.Implicits.SearchSuccess
+import dotty.tools.dotc.typer.Inferencing
 import dotty.tools.dotc.util.Chars
 import dotty.tools.dotc.util.SourcePosition
 
@@ -28,6 +30,7 @@ import dotty.tools.dotc.core.ContextOps.localContext
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Symbols
+import dotty.tools.dotc.core.Constants
 
 /**
  * One of the results of a completion query.
@@ -49,8 +52,31 @@ object Completion:
    *  @return offset and list of symbols for possible completions
    */
   def completions(pos: SourcePosition)(using Context): (Int, List[Completion]) =
-    val path: List[Tree] = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
-    computeCompletions(pos, path)(using Interactive.contextOfPath(path).withPhase(Phases.typerPhase))
+    val tpdPath = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
+    val completionContext = Interactive.contextOfPath(tpdPath).withPhase(Phases.typerPhase)
+    inContext(completionContext):
+      val untpdPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)
+      val mode = completionMode(untpdPath, pos)
+      val rawPrefix = completionPrefix(untpdPath, pos)
+      val completions = rawCompletions(pos, mode, rawPrefix, tpdPath, untpdPath)
+
+      postProcessCompletions(untpdPath, completions, rawPrefix)
+
+
+  /** Get possible completions from tree at `pos`
+   *  This method requires manually computing the mode, prefix and paths.
+   *
+   *  @return completion map of name to list of denotations
+   */
+  def rawCompletions(
+    pos: SourcePosition,
+    mode: Mode,
+    rawPrefix: String,
+    tpdPath: List[Tree],
+    untpdPath: List[untpd.Tree]
+  )(using Context): CompletionMap =
+    val adjustedPath = typeCheckExtensionConstructPath(untpdPath, tpdPath, pos)
+    computeCompletions(pos, mode, rawPrefix, adjustedPath)
 
   /**
    * Inspect `path` to determine what kinds of symbols should be considered.
@@ -63,90 +89,69 @@ object Completion:
    * Otherwise, provide no completion suggestion.
    */
   def completionMode(path: List[untpd.Tree], pos: SourcePosition): Mode =
-    path match
-      case untpd.Ident(_) :: untpd.Import(_, _) :: _ => Mode.ImportOrExport
-      case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.ImportOrExport
-      case (ref: untpd.RefTree) :: _ =>
-        if (ref.name.isTermName) Mode.Term
-        else if (ref.name.isTypeName) Mode.Type
-        else Mode.None
 
-      case (sel: untpd.ImportSelector) :: _ =>
-        if sel.imported.span.contains(pos.span) then Mode.ImportOrExport
-        else Mode.None // Can't help completing the renaming
+    val completionSymbolKind: Mode =
+      path match
+        case untpd.Ident(_) :: untpd.Import(_, _) :: _ => Mode.ImportOrExport
+        case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.ImportOrExport
+        case Literal(Constants.Constant(_: String)) :: _ => Mode.Term // literal completions
+        case (ref: untpd.RefTree) :: _ =>
+          if (ref.name.isTermName) Mode.Term
+          else if (ref.name.isTypeName) Mode.Type
+          else Mode.None
 
-      case (_: untpd.ImportOrExport) :: _ => Mode.ImportOrExport
-      case _ => Mode.None
+        case (sel: untpd.ImportSelector) :: _ =>
+          if sel.imported.span.contains(pos.span) then Mode.ImportOrExport
+          else Mode.None // Can't help completing the renaming
 
-  /** When dealing with <errors> in varios palces we check to see if they are
-   *  due to incomplete backticks. If so, we ensure we get the full prefix
-   *  including the backtick.
-   *
-   * @param content The source content that we'll check the positions for the prefix
-   * @param start The start position we'll start to look for the prefix at
-   * @param end The end position we'll look for the prefix at
-   * @return Either the full prefix including the ` or an empty string
-   */
-  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String =
-    content.lift(start) match
-      case Some(char) if char == '`' =>
-        content.slice(start, end).mkString
-      case _ =>
-        ""
+        case (_: untpd.ImportOrExport) :: _ => Mode.ImportOrExport
+        case _ => Mode.None
+
+    val completionKind: Mode =
+      path match
+        case Nil | (_: PackageDef) :: _ => Mode.None
+        case untpd.Ident(_) :: (_: untpd.ImportSelector) :: _ => Mode.Member
+        case (_: Select) :: _ => Mode.Member
+        case _ => Mode.Scope
+
+    completionSymbolKind | completionKind
 
   /**
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
   def completionPrefix(path: List[untpd.Tree], pos: SourcePosition)(using Context): String =
+    def fallback: Int =
+      var i = pos.point - 1
+      while i >= 0 && Chars.isIdentifierPart(pos.source.content()(i)) do i -= 1
+      i + 1
+
     path match
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
 
       case untpd.Ident(_) :: (sel: untpd.ImportSelector) :: _ if !sel.isGiven =>
-        completionPrefix(sel.imported :: Nil, pos)
+        if sel.isWildcard then pos.source.content()(pos.point - 1).toString
+        else completionPrefix(sel.imported :: Nil, pos)
 
       case (tree: untpd.ImportOrExport) :: _ =>
         tree.selectors.find(_.span.contains(pos.span)).map: selector =>
           completionPrefix(selector :: Nil, pos)
         .getOrElse("")
 
-      // Foo.`se<TAB> will result in Select(Ident(Foo), <error>)
-      case (select: untpd.Select) :: _ if select.name == nme.ERROR =>
-        checkBacktickPrefix(select.source.content(), select.nameSpan.start, select.span.end)
+      case (tree: untpd.RefTree) :: _ if tree.name != nme.ERROR =>
+        tree.name.toString.take(pos.span.point - tree.span.point)
 
-      // import scala.util.chaining.`s<TAB> will result in a Ident(<error>)
-      case (ident: untpd.Ident) :: _ if ident.name == nme.ERROR =>
-        checkBacktickPrefix(ident.source.content(), ident.span.start, ident.span.end)
+      case _ => pos.source.content.slice(fallback, pos.point).mkString
 
-      case (ref: untpd.RefTree) :: _ =>
-        if (ref.name == nme.ERROR) ""
-        else ref.name.toString.take(pos.span.point - ref.span.point)
-
-      case _ => ""
 
   end completionPrefix
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
   def completionOffset(untpdPath: List[untpd.Tree]): Int =
-    untpdPath match {
+    untpdPath match
       case (ref: untpd.RefTree) :: _ => ref.span.point
       case _ => 0
-    }
-
-  /** Some information about the trees is lost after Typer such as Extension method construct
-   *  is expanded into methods. In order to support completions in those cases
-   *  we have to rely on untyped trees and only when types are necessary use typed trees.
-   */
-  def resolveTypedOrUntypedPath(tpdPath: List[Tree], pos: SourcePosition)(using Context): List[untpd.Tree] =
-    lazy val untpdPath: List[untpd.Tree] = NavigateAST
-      .pathTo(pos.span, List(ctx.compilationUnit.untpdTree), true).collect:
-        case untpdTree: untpd.Tree => untpdTree
-
-    tpdPath match
-      case (_: Bind) :: _ => tpdPath
-      case (_: untpd.TypTree) :: _ => tpdPath
-      case _ => untpdPath
 
   /** Handle case when cursor position is inside extension method construct.
    *  The extension method construct is then desugared into methods, and consturct parameters
@@ -170,18 +175,12 @@ object Completion:
           Interactive.pathTo(typedEnclosingParam, pos.span)
     .flatten.getOrElse(tpdPath)
 
-  private def computeCompletions(pos: SourcePosition, tpdPath: List[Tree])(using Context): (Int, List[Completion]) =
-    val path0 = resolveTypedOrUntypedPath(tpdPath, pos)
-    val mode = completionMode(path0, pos)
-    val rawPrefix = completionPrefix(path0, pos)
-
+  private def computeCompletions(pos: SourcePosition, mode: Mode, rawPrefix: String, adjustedPath: List[Tree])(using Context): CompletionMap =
     val hasBackTick = rawPrefix.headOption.contains('`')
     val prefix = if hasBackTick then rawPrefix.drop(1) else rawPrefix
-
     val completer = new Completer(mode, prefix, pos)
 
-    val adjustedPath = typeCheckExtensionConstructPath(path0, tpdPath, pos)
-    val completions = adjustedPath match
+    val result = adjustedPath match
         // Ignore synthetic select from `This` because in code it was `Ident`
         // See example in dotty.tools.languageserver.CompletionTest.syntheticThis
         case Select(qual @ This(_), _) :: _ if qual.span.isSynthetic      => completer.scopeCompletions
@@ -191,17 +190,24 @@ object Completion:
         case (_: untpd.ImportSelector) :: Import(expr, _) :: _            => completer.directMemberCompletions(expr)
         case _                                                            => completer.scopeCompletions
 
+    interactiv.println(i"""completion info with pos    = $pos,
+                          |                prefix  = ${completer.prefix},
+                          |                term    = ${completer.mode.is(Mode.Term)},
+                          |                type    = ${completer.mode.is(Mode.Type)},
+                          |                scope   = ${completer.mode.is(Mode.Scope)},
+                          |                member  = ${completer.mode.is(Mode.Member)}""")
+
+    result
+
+  def postProcessCompletions(path: List[untpd.Tree], completions: CompletionMap, rawPrefix: String)(using Context): (Int, List[Completion]) =
     val describedCompletions = describeCompletions(completions)
+    val hasBackTick = rawPrefix.headOption.contains('`')
     val backtickedCompletions =
       describedCompletions.map(completion => backtickCompletions(completion, hasBackTick))
 
-    val offset = completionOffset(path0)
+    interactiv.println(i"""completion resutls = $backtickedCompletions%, %""")
 
-    interactiv.println(i"""completion with pos     = $pos,
-                          |                prefix  = ${completer.prefix},
-                          |                term    = ${completer.mode.is(Mode.Term)},
-                          |                type    = ${completer.mode.is(Mode.Type)}
-                          |                results = $backtickedCompletions%, %""")
+    val offset = completionOffset(path)
     (offset, backtickedCompletions)
 
   def backtickCompletions(completion: Completion, hasBackTick: Boolean) =
@@ -415,11 +421,22 @@ object Completion:
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
     private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
+
+      def tryToInstantiateTypeVars(conversionTarget: SearchSuccess): Type =
+        try
+          val typingCtx = ctx.fresh
+          inContext(typingCtx):
+            val methodRefTree = ref(conversionTarget.ref, needLoad = false)
+            val convertedTree = ctx.typer.typedAheadExpr(untpd.Apply(untpd.TypedSplice(methodRefTree), untpd.TypedSplice(qual) :: Nil))
+            Inferencing.fullyDefinedType(convertedTree.tpe, "", pos)
+        catch
+          case error => conversionTarget.tree.tpe // fallback to not fully defined type
+
       if qual.typeOpt.isExactlyNothing || qual.typeOpt.isNullType then
         Map.empty
       else
         implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
-          .flatMap(accessibleMembers)
+          .flatMap { conversionTarget => accessibleMembers(tryToInstantiateTypeVars(conversionTarget)) }
           .toSeq
           .groupByName
 
@@ -551,19 +568,14 @@ object Completion:
      * @param qual The argument to which the implicit conversion should be applied.
      * @return The set of types after `qual` implicit conversion.
      */
-    private def implicitConversionTargets(qual: Tree)(using Context): Set[Type] =
+    private def implicitConversionTargets(qual: Tree)(using Context): Set[SearchSuccess] = {
       val typer = ctx.typer
-      val targets = try {
-        val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
-        conversions.map(_.tree.typeOpt)
-      } catch {
-        case _ =>
-          interactiv.println(i"implicit conversion targets failed: ${qual.show}")
-          Set.empty
-      }
+      val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
+      conversions.map(_.tree.typeOpt)
 
-      interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
-      targets
+      interactiv.println(i"implicit conversion targets considered: ${conversions.toList}%, %")
+      conversions
+    }
 
     /** Filter for names that should appear when looking for completions. */
     private object completionsFilter extends NameFilter:
@@ -605,4 +617,8 @@ object Completion:
 
     /** Both term and type symbols are allowed */
     val ImportOrExport: Mode = new Mode(4) | Term | Type
+
+    val Scope: Mode = new Mode(8)
+
+    val Member: Mode = new Mode(16)
 

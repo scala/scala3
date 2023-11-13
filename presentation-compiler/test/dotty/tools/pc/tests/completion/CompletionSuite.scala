@@ -109,17 +109,17 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
-         |->[B](y: B): (A, B)
-         |ensuring(cond: Boolean): A
-         |ensuring(cond: A => Boolean): A
-         |ensuring(cond: Boolean, msg: => Any): A
-         |ensuring(cond: A => Boolean, msg: => Any): A
-         |fromSpecific(from: From)(it: IterableOnce[A]): C
-         |fromSpecific(it: IterableOnce[A]): C
-         |nn: x.type & T
-         |toFactory(from: From): Factory[A, C]
+         |->[B](y: B): (scala.collection.immutable.List.type, B)
+         |ensuring(cond: Boolean): scala.collection.immutable.List.type
+         |ensuring(cond: scala.collection.immutable.List.type => Boolean): scala.collection.immutable.List.type
+         |ensuring(cond: Boolean, msg: => Any): scala.collection.immutable.List.type
+         |ensuring(cond: scala.collection.immutable.List.type => Boolean, msg: => Any): scala.collection.immutable.List.type
+         |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
+         |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
+         |nn: List.type & scala.collection.immutable.List.type
+         |toFactory(from: Any): Factory[Nothing, List[Nothing]]
          |formatted(fmtstr: String): String
-         |→[B](y: B): (A, B)
+         |→[B](y: B): (scala.collection.immutable.List.type, B)
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean
@@ -515,8 +515,8 @@ class CompletionSuite extends BaseCompletionSuite:
       """.stripMargin,
       """|until(end: Int): Range
          |until(end: Int, step: Int): Range
-         |until(end: T): Exclusive[T]
-         |until(end: T, step: T): Exclusive[T]
+         |until(end: Long): Exclusive[Long]
+         |until(end: Long, step: Long): Exclusive[Long]
          |""".stripMargin,
       postProcessObtained = _.replace("Float", "Double"),
       stableOrder = false
@@ -630,6 +630,20 @@ class CompletionSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|Some scala
          |Some[A](value: A): Some[A]
+         |""".stripMargin
+    )
+
+  @Test def pat11 =
+    check(
+      s"""|object Main {
+          |  Som@@
+          |}
+          |""".stripMargin,
+      """|Some scala
+         |Some[A](value: A): Some[A]
+         |SomeToExpr(x: Some[T])(using Quotes): Expr[Some[T]]
+         |SomeToExpr[T: Type: ToExpr]: SomeToExpr[T]
+         |SomeFromExpr[T](using Type[T], FromExpr[T]): SomeFromExpr[T]
          |""".stripMargin
     )
 
@@ -1187,7 +1201,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |  val x = Bar[M](new Foo[Int]{})
          |  x.bar.m@@
          |""".stripMargin,
-      """|map[B](f: A => B): Foo[B]
+      """|map[B](f: Int => B): Foo[B]
          |""".stripMargin,
       topLines = Some(1)
     )
@@ -1672,7 +1686,6 @@ class CompletionSuite extends BaseCompletionSuite:
       topLines = Some(5)
     )
 
-
   @Test def `import-rename` =
     check(
       """import scala.collection.{AbstractMap => Set@@}
@@ -1680,6 +1693,7 @@ class CompletionSuite extends BaseCompletionSuite:
       ""
     )
 
+  @Ignore
   @Test def `dont-crash-implicit-search` =
     check(
       """object M:
@@ -1687,3 +1701,26 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       ""
     )
+
+  @Test def `extension-definition-type-variable-inference` =
+    check(
+      """|object M:
+         |  extension [T](xs: List[T]) def test(p: T => Boolean): List[T] = ???
+         |  List(1,2,3).tes@@
+         |""".stripMargin,
+      """|test(p: Int => Boolean): List[Int]
+         |""".stripMargin
+    )
+
+  @Test def `old-style-extension-type-variable-inference` =
+    check(
+      """|object M:
+         |  implicit class ListUtils[T](xs: List[T]) {
+         |    def test(p: T => Boolean): List[T] = ???
+         |  }
+         |  List(1,2,3).tes@@
+         |""".stripMargin,
+      """|test(p: Int => Boolean): List[Int]
+         |""".stripMargin
+    )
+

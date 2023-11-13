@@ -13,6 +13,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
@@ -53,14 +54,16 @@ class CompletionProvider(
     val (items, isIncomplete) = driver.compilationUnits.get(uri) match
       case Some(unit) =>
 
-        val newctx = ctx.fresh.setCompilationUnit(unit)
+        val newctx = ctx.fresh.setCompilationUnit(unit).withPhase(Phases.typerPhase(using ctx))
         val tpdPath = Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
+        val adjustedPath = Interactive.resolveTypedOrUntypedPath(tpdPath, pos)(using newctx)
 
-        val locatedCtx =
-          Interactive.contextOfPath(tpdPath)(using newctx)
+        val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
         val indexedCtx = IndexedContext(locatedCtx)
+
         val completionPos =
-          CompletionPos.infer(pos, params, tpdPath)(using newctx)
+          CompletionPos.infer(pos, params, adjustedPath)(using locatedCtx)
+
         val autoImportsGen = AutoImports.generator(
           completionPos.sourcePos,
           text,
@@ -69,16 +72,18 @@ class CompletionProvider(
           indexedCtx,
           config
         )
+
         val (completions, searchResult) =
           new Completions(
             pos,
             text,
-            ctx.fresh.setCompilationUnit(unit),
+            locatedCtx,
             search,
             buildTargetIdentifier,
             completionPos,
             indexedCtx,
             tpdPath,
+            adjustedPath,
             config,
             folderPath,
             autoImportsGen,
@@ -94,7 +99,7 @@ class CompletionProvider(
             completionPos,
             tpdPath,
             indexedCtx
-          )(using newctx)
+          )(using locatedCtx)
         }
         val isIncomplete = searchResult match
           case SymbolSearch.Result.COMPLETE => false
