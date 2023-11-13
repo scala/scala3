@@ -610,17 +610,38 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           .run()
           .mkString(JFile.pathSeparator)
 
-      val stdlibClasspath = artifactClasspath("org.scala-lang", "scala3-library_3")
-      val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
-
       val pageWidth = TestConfiguration.pageWidth - 20
-      val flags1 = flags.copy(defaultClassPath = stdlibClasspath)
-        .withClasspath(targetDir.getPath)
-        .and("-d", targetDir.getPath)
-        .and("-pagewidth", pageWidth.toString)
 
-      val scalacCommand = Array("java", "-cp", scalacClasspath, "dotty.tools.dotc.Main")
-      val command = scalacCommand ++ flags1.all ++ files.map(_.getAbsolutePath)
+      val fileArgs = files.map(_.getAbsolutePath)
+
+      def scala2Command(): Array[String] = {
+        assert(!flags.options.contains("-scalajs"),
+          "Compilation tests with Scala.js on Scala 2 are not supported.\nThis test can be blacklisted in compiler/test/dotc/*-scala-js.blacklist")
+        val stdlibClasspath = artifactClasspath("org.scala-lang", "scala-library")
+        val scalacClasspath = artifactClasspath("org.scala-lang", "scala-compiler")
+        val flagsArgs = flags
+          .copy(options = Array.empty, defaultClassPath = stdlibClasspath)
+          .withClasspath(targetDir.getPath)
+          .and("-d", targetDir.getPath)
+          .all
+        val scalacCommand = Array("java", "-cp", scalacClasspath, "scala.tools.nsc.Main")
+        scalacCommand ++ flagsArgs ++ fileArgs
+      }
+
+      def scala3Command(): Array[String] = {
+        val stdlibClasspath = artifactClasspath("org.scala-lang", "scala3-library_3")
+        val scalacClasspath = artifactClasspath("org.scala-lang", "scala3-compiler_3")
+        val flagsArgs = flags
+          .copy(defaultClassPath = stdlibClasspath)
+          .withClasspath(targetDir.getPath)
+          .and("-d", targetDir.getPath)
+          .and("-pagewidth", pageWidth.toString)
+          .all
+        val scalacCommand = Array("java", "-cp", scalacClasspath, "dotty.tools.dotc.Main")
+        scalacCommand ++ flagsArgs ++ fileArgs
+      }
+
+      val command = if compiler.startsWith("2") then scala2Command() else scala3Command()
       val process = Runtime.getRuntime.exec(command)
 
       val reporter = mkReporter
