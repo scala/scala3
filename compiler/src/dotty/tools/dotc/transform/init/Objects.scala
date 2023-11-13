@@ -698,13 +698,24 @@ object Objects:
 
     case Fun(code, thisV, klass, env) =>
       // meth == NoSymbol for poly functions
-      if meth.name.toString == "tupled" then
+      if meth.name == nme.tupled then
         value // a call like `fun.tupled`
       else
         code match
         case ddef: DefDef =>
-          given Env.Data = Env.of(ddef, args.map(_.value), env)
-          extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          if meth.name == nme.apply then
+            given Env.Data = Env.of(ddef, args.map(_.value), env)
+            extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          else
+            // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
+            if meth.owner == defn.AnyClass || meth.owner == defn.ObjectClass then
+              value
+            else
+              // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
+              // For now, return `Cold` to ensure soundness and trigger a warning.
+              Cold
+            end if
+          end if
 
         case _ =>
           // by-name closure
