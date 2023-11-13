@@ -750,8 +750,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         }
       if isRemovable(param.binder) then current = current.remove(param.binder)
       current.dropDeps(param)
+      replacedTypeVar match
+        case replacedTypeVar: TypeVar if isHard(replacedTypeVar) => current = current.hardenTypeVars(replacement)
+        case _ =>
       current.checkWellFormed()
   end replace
+
+  def hardenTypeVars(tp: Type)(using Context): OrderingConstraint = tp.dealiasKeepRefiningAnnots match
+    case tp: TypeVar if contains(tp.origin) => withHard(tp)
+    case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
+    case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
+    case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
     def removeFromOrdering(po: ParamOrdering) = {
