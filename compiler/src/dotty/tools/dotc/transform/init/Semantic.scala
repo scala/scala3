@@ -1140,7 +1140,7 @@ object Semantic:
    */
   def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
     given Cache.Data()
-    for classSym <- classes if isConcreteClass(classSym) do
+    for classSym <- classes if isConcreteClass(classSym) && !classSym.isStaticObject do
       checkClass(classSym)
 
 // ----- Semantic definition --------------------------------
