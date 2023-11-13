@@ -1121,7 +1121,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               case fn @ Ident(name: TermName) =>
                 // We need to make sure that the prefix of this extension getter is
                 // retained when we transform it into a setter. Otherwise, we could
-                // end up resoving an unrelated setter from another extension. We
+                // end up resolving an unrelated setter from another extension. We
                 // transform the `Ident` into a `Select` to ensure that the prefix
                 // is retained with a `TypedSplice` (see `case Select` bellow).
                 // See tests/pos/i18713.scala for an example.
