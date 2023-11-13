@@ -1,4 +1,4 @@
-object O:
+class O:
   case class A(b: B):
     println(n)
 

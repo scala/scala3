@@ -1,8 +1,8 @@
 -- Error: tests/init/neg/t3273.scala:4:42 ------------------------------------------------------------------------------
 4 |  val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |                                  ^^^^^^^^^^^^^^^
-  |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (object Test) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
-  |-> object Test {	[ t3273.scala:3 ]
+  |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (class Test) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
+  |-> class Test {	[ t3273.scala:3 ]
   |   ^
   |-> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
   |                                   ^^^^^^^^^^^^^^^
@@ -14,8 +14,8 @@
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (object Test) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
-  |-> object Test {	[ t3273.scala:3 ]
+  |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (class Test) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
+  |-> class Test {	[ t3273.scala:3 ]
   |   ^
   |-> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
