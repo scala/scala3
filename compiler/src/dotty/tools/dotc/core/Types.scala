@@ -2910,8 +2910,8 @@ object Types {
       ((prefix eq NoPrefix)
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
-      || isReach
       ) && !symbol.isOneOf(UnstableValueFlags)
+      || isReach
 
     override def isReach(using Context): Boolean =
       name == nme.CC_REACH && symbol == defn.Any_ccReach

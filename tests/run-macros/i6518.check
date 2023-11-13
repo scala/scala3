@@ -2,6 +2,7 @@
 ##
 $asInstanceOf$
 $isInstanceOf$
+$reach
 ==
 andThen
 apply
