@@ -616,7 +616,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
 
       def scala2Command(): Array[String] = {
         assert(!flags.options.contains("-scalajs"),
-          "Compilation tests with Scala.js on Scala 2 are not supported.\nThis test can be blacklisted in compiler/test/dotc/*-scala-js.blacklist")
+          "Compilation tests with Scala.js on Scala 2 are not supported.\nThis test can be skipped using the `// scalajs: --skip` tag")
         val stdlibClasspath = artifactClasspath("org.scala-lang", "scala-library")
         val scalacClasspath = artifactClasspath("org.scala-lang", "scala-compiler")
         val flagsArgs = flags
