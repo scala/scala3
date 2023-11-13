@@ -852,7 +852,7 @@ trait Implicits:
     && !to.isError
     && !ctx.isAfterTyper
     && ctx.mode.is(Mode.ImplicitsEnabled)
-    && from.widen.isValueType
+    && from.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
@@ -984,7 +984,7 @@ trait Implicits:
             .filter { imp =>
               !isImplicitDefConversion(imp.underlying)
                 && imp.symbol != defn.Predef_conforms
-                && viewExists(imp, fail.expectedType)
+                && viewExists(imp.underlying.resultType, fail.expectedType)
             }
         else
           Nil
