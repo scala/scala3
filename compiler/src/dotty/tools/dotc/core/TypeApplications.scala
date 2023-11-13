@@ -320,6 +320,22 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
+  // Like `target.etaExpand(target.typeParams)`
+  // except call `asSeenFrom` to fix class type parameter bounds
+  // e.g. in pos/i18569:
+  // given prefix `M2.type` and symbol `trait F`
+  // the result of `prefix.select(sym)` is `M2.F`
+  // however F's type parameter T is `<: M1#A` rather than `<: M2.A`
+  // so add a call to `asSeenFrom` with prefix `M2.type` and owner `trait M1`
+  def etaExpandWithAsf(prefix: Type, owner: Symbol)(using Context): Type =
+    val tparams = self.typeParams
+    HKTypeLambda(tparams.map(_.paramName))(
+      tl => tparams.map {
+        case p: Symbol => HKTypeLambda.toPInfo(tl.integrate(tparams, p.info.asSeenFrom(prefix, owner)))
+        case p         => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo))
+      },
+      tl => tl.integrate(tparams, self.appliedTo(tparams.map(_.paramRef))))
+
   /** Maps [Ts] => C[Ts] to C */
   def etaCollapse(using Context): Type = self match
     case EtaExpansion(classType) => classType
