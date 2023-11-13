@@ -708,9 +708,12 @@ object Objects:
             extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
           else
             meth.owner.asType.name match
+            // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
             case tpnme.Any | tpnme.AnyRef =>
               value
             case _ =>
+              // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
+              // For now, return `Cold` to ensure soundness and trigger a warning.
               Cold
           end if
 
