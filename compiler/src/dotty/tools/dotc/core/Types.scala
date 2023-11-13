@@ -4919,7 +4919,12 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      instantiateWith(typeToInstantiateWith(fromBelow))
+      val tp = typeToInstantiateWith(fromBelow)
+      if myInst.exists then // The line above might have triggered instantiation of the current type variable
+Member
+        myInst
+      else
+        instantiateWith(tp)
 
     /** Widen unions when instantiating this variable in the current context? */
     def widenUnions(using Context): Boolean = !ctx.typerState.constraint.isHard(this)
