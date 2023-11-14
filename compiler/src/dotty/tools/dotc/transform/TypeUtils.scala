@@ -4,12 +4,8 @@ package transform
 
 import core.*
 import TypeErasure.ErasedValueType
-import Types.*
-import Contexts.*
-import Symbols.*
+import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
 import Names.Name
-
-import dotty.tools.dotc.core.Decorators.*
 
 object TypeUtils {
   /** A decorator that provides methods on types
@@ -98,5 +94,15 @@ object TypeUtils {
     def takesImplicitParams(using Context): Boolean = self.stripPoly match
       case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
       case _ => false
+
+    /** Is this a type deriving only from transparent classes?
+     *  @param traitOnly  if true, all class symbols must be transparent traits
+     */
+    def isTransparent(traitOnly: Boolean = false)(using Context): Boolean = self match
+      case AndType(tp1, tp2) =>
+        tp1.isTransparent(traitOnly) && tp2.isTransparent(traitOnly)
+      case _ =>
+        val cls = self.underlyingClassRef(refinementOK = false).typeSymbol
+        cls.isTransparentClass && (!traitOnly || cls.is(Trait))
   }
 }

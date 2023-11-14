@@ -1634,6 +1634,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ =>
 
     if desugared.isEmpty then
+      val forceDegree =
+        if pt.isValueType then
+          // Allow variables that appear invariantly in `pt` to be improved by mapping
+          // bottom types in their instance types to fresh type variables
+          new ForceDegree.Value(IfBottom.fail):
+            val tvmap = variances(pt)
+            override def canImprove(tvar: TypeVar) =
+              tvmap.computedVariance(tvar) == (0: Integer)
+        else
+          ForceDegree.failBottom
+
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
@@ -1641,7 +1652,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val (formalBounds, isErased) = protoFormal(i)
             val formal = formalBounds.loBound
             val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
-            val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+            val knownFormal = isFullyDefined(formal, forceDegree)
             // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
             // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
             val paramType =

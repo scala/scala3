@@ -4908,6 +4908,9 @@ object Types {
       tp
     }
 
+    def typeToInstantiateWith(fromBelow: Boolean)(using Context): Type =
+      TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
      *  of its lower bounds in the current constraint; otherwise it is
@@ -4916,7 +4919,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+      val tp = typeToInstantiateWith(fromBelow)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else
@@ -5812,11 +5815,13 @@ object Types {
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
+    protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
+      case arg: TypeBounds => this(arg)
+      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = arg match
-          case arg: TypeBounds => this(arg)
-          case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
+        val arg1 = mapArg(arg, tparams.head)
         val otherArgs1 = mapArgs(otherArgs, tparams.tail)
         if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
         else arg1 :: otherArgs1
