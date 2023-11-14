@@ -8,3 +8,6 @@ def test =
 def g = { implicit (x: Int) =>
   x + 1
 }
+
+def foo(x: Int) = x
+def testTrailingUnderscoreEtaExpansion = foo
