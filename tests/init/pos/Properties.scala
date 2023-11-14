@@ -23,9 +23,9 @@ private[scala] trait PropertiesTrait {
   /** The loaded properties */
   protected lazy val scalaProps: java.util.Properties = {
     val props = new java.util.Properties
-    val stream = pickJarBasedOn getResourceAsStream propFilename
+    val stream = pickJarBasedOn.getResourceAsStream(propFilename)
     if (stream ne null)
-      quietlyDispose(props load stream, stream.close)
+      quietlyDispose(props.load(stream), stream.close)
 
     props
   }
@@ -47,8 +47,8 @@ private[scala] trait PropertiesTrait {
   final def setProp(name: String, value: String)      = System.setProperty(name, value)
   final def clearProp(name: String)                   = System.clearProperty(name)
 
-  final def envOrElse(name: String, alt: String)      = Option(System getenv name) getOrElse alt
-  final def envOrNone(name: String)                   = Option(System getenv name)
+  final def envOrElse(name: String, alt: String)      = Option(System.getenv(name)) getOrElse alt
+  final def envOrNone(name: String)                   = Option(System.getenv(name))
 
   final def envOrSome(name: String, alt: Option[String])       = envOrNone(name) orElse alt
 
@@ -68,7 +68,7 @@ private[scala] trait PropertiesTrait {
   val releaseVersion =
     for {
       v <- scalaPropOrNone("maven.version.number")
-      if !(v endsWith "-SNAPSHOT")
+      if !(v.endsWith("-SNAPSHOT"))
     } yield v
 
   /** The development Scala version, if this is not a final release.
@@ -82,7 +82,7 @@ private[scala] trait PropertiesTrait {
   val developmentVersion =
     for {
       v <- scalaPropOrNone("maven.version.number")
-      if v endsWith "-SNAPSHOT"
+      if v.endsWith("-SNAPSHOT")
       ov <- scalaPropOrNone("version.number")
     } yield ov
 
