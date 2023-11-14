@@ -14,6 +14,8 @@ package scala.concurrent
 
 import scala.util.{ Try, Success, Failure }
 
+import language.experimental.captureChecking
+
 /** Promise is an object which can be completed with a value or failed
  *  with an exception.
  *
@@ -33,10 +35,10 @@ import scala.util.{ Try, Success, Failure }
  *  @define nonDeterministic
  *  Note: Using this method may result in non-deterministic concurrent programs.
  */
-trait Promise[T] {
+trait Promise[sealed T] { this: Promise[T]^ =>
   /** Future containing the value of this promise.
    */
-  def future: Future[T]
+  def future: Future[T]^
 
   /** Returns whether the promise has already been completed with
    *  a value or an exception.
