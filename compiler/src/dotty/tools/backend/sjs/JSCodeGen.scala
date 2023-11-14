@@ -36,6 +36,7 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
 import JSEncoding.*
 import ScopedVar.withScopedVars
+import scala.reflect.NameTransformer
 
 /** Main codegen for Scala.js IR.
  *
@@ -4218,7 +4219,7 @@ class JSCodeGen()(using genCtx: Context) {
       }
     }
 
-    val methodName = MethodName.reflectiveProxy(methodNameStr, formalParamTypeRefs)
+    val methodName = MethodName.reflectiveProxy(NameTransformer.encode(methodNameStr), formalParamTypeRefs)
 
     js.Apply(js.ApplyFlags.empty, selectedValueTree, js.MethodIdent(methodName), actualArgs)(jstpe.AnyType)
   }
