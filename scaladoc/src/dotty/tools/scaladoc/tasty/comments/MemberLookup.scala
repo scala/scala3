@@ -236,9 +236,9 @@ object MemberLookup extends MemberLookup {
       // Scaladoc overloading support allows terminal * (and they're meaningless)
       val cleanStr = str.stripSuffix("*")
 
-      if cleanStr endsWith "$" then
+      if cleanStr.endsWith("$") then
         Selector(cleanStr.init, SelectorKind.ForceTerm)
-      else if cleanStr endsWith "!" then
+      else if cleanStr.endsWith("!") then
         Selector(cleanStr.init, SelectorKind.ForceType)
       else
         Selector(cleanStr, SelectorKind.NoForce)

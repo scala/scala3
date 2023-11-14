@@ -34,6 +34,7 @@ import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
+import dotty.tools.tasty.TastyVersion
 
 object Symbols {
 
@@ -280,6 +281,12 @@ object Symbols {
      */
     def compilationUnitInfo(using Context): CompilationUnitInfo | Null =
       lastDenot.topLevelClass.compilationUnitInfo
+
+    /** The version of TASTy from which the symbol was loaded, None if not applicable. */
+    def tastyVersion(using Context): Option[TastyVersion] =
+      val compUnitInfo = compilationUnitInfo
+      if compUnitInfo == null then None
+      else compUnitInfo.tastyVersion
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile | Null = {

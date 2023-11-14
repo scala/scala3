@@ -675,7 +675,7 @@ sealed class CharReader(buffer: String) { reader =>
 
   var offset: Int = 0
   def char: Char =
-    if (offset >= buffer.length) endOfText else buffer charAt offset
+    if (offset >= buffer.length) endOfText else buffer.charAt(offset)
 
   final def nextChar() =
     offset += 1
@@ -712,7 +712,7 @@ sealed class CharReader(buffer: String) { reader =>
     jumpWhitespace()
     val (ok0, chars0) =
       if (chars.charAt(0) == ' ')
-        (offset > poff, chars substring 1)
+        (offset > poff, chars.substring(1))
       else
         (true, chars)
     val ok = ok0 && jump(chars0)
