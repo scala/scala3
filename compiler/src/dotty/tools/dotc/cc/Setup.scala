@@ -640,7 +640,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def maybeAdd(target: Type, fallback: Type) =
         if needsVariable(target) then CapturingType(target, addedSet(target))
         else fallback
-      val dealiased = tp.dealiasKeepAnnots
+      val dealiased = tp.dealiasKeepAnnotsAndOpaques
       if dealiased ne tp then
         val transformed = transformInferredType(dealiased)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)
