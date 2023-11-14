@@ -1262,7 +1262,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   private class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(using Context): Tree = tree match {
-      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) =>
+      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) && !tree.symbol.is(Module) =>
         tree.symbol.defTree match {
           case defTree: ValOrDefDef =>
             val rhs = defTree.rhs
