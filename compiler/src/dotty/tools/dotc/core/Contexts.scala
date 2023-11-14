@@ -1063,6 +1063,7 @@ object Contexts {
       sources.clear()
       files.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
+      comparersInUse = 0
 
     // Test that access is single threaded
 
