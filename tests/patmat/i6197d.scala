@@ -1,8 +1,8 @@
 //> using options -Ycheck-all-patmat
 def foo(x: Array[String]) = x match {
-  case _: Array[_] =>
+  case _: Array[?] =>
 }
 
 def bar(x: Array[String]) = x match {
-  case _: Array[_ <: Int] =>
+  case _: Array[? <: Int] =>
 }

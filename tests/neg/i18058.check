@@ -1,4 +1,4 @@
 -- Error: tests/neg/i18058.scala:4:21 ----------------------------------------------------------------------------------
-4 |type G = (f: _ <: F) => f.A // error
+4 |type G = (f: ? <: F) => f.A // error
   |                     ^
   |                     invalid new prefix  <: F cannot replace f.type in type f.A

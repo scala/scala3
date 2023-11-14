@@ -94,7 +94,7 @@ def loadTemplateFile(file: File, defaultTitle: Option[TemplateName] = None)(usin
   }.map(_.stripPrefix("\"").stripSuffix("\""))
 
   def listSetting(settings: Map[String, Object], name: String): Option[List[String]] = settings.get(name).map {
-    case elems: List[_] => elems.zipWithIndex.map {
+    case elems: List[?] => elems.zipWithIndex.map {
       case (s: String, _) => s
       case (other, index) =>
         throw new RuntimeException(s"Expected a string at index $index for $name in $file but got $other")

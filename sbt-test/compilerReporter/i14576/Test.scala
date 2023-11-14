@@ -10,5 +10,5 @@ object Test:
   def f(x: Text) = println(x.str)
   f("abc")
 
-  // under -source:future, `_` is deprecated for wildcard arguments of types: use `?` instead
-  val xs: List[_] = Nil
+  @deprecated("", "") def deprecatedFun(): Unit = ()
+  deprecatedFun()

@@ -2,7 +2,7 @@ package tests
 package snippetTestcase2
 
 trait Quotes2[A] {
-  val r1: r1Module[_] = ???
+  val r1: r1Module[?] = ???
   trait r1Module[A] {
     type X
     object Y {

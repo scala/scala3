@@ -1,4 +1,4 @@
 trait F:
   type A
 
-type G = (f: _ <: F) => f.A // error
+type G = (f: ? <: F) => f.A // error

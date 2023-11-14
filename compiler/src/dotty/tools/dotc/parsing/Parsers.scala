@@ -1870,9 +1870,15 @@ object Parsers {
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
-          if !inTypeMatchPattern && sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
-            patch(source, Span(in.offset, in.offset + 1), "?")
+          if !inTypeMatchPattern then
+            report.gradualErrorOrMigrationWarning(
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
+              in.sourcePos(),
+              warnFrom = `3.4`,
+              errorFrom = future)
+            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              patch(source, Span(in.offset, in.offset + 1), "?")
+          end if
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.

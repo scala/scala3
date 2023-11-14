@@ -1266,8 +1266,8 @@ object Build {
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
+      scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
-      Compile / scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
