@@ -58,8 +58,8 @@ object ContextFunctionResults:
    */
   def contextResultsAreErased(sym: Symbol)(using Context): Boolean =
     def allErased(tp: Type): Boolean = tp.dealias match
-      case defn.ContextFunctionType(argTpes, resTpe) =>
-        argTpes.forall(_.hasAnnotation(defn.ErasedParamAnnot)) && allErased(resTpe)
+      case ft @ defn.FunctionTypeOfMethod(mt: MethodType) if mt.isContextualMethod =>
+        mt.nonErasedParamCount == 0 && allErased(mt.resType)
       case _ => true
     contextResultCount(sym) > 0 && allErased(sym.info.finalResultType)
 
@@ -68,13 +68,13 @@ object ContextFunctionResults:
    */
   def integrateContextResults(tp: Type, crCount: Int)(using Context): Type =
     if crCount == 0 then tp
-    else tp match
+    else tp.dealias match
       case ExprType(rt) =>
         integrateContextResults(rt, crCount)
       case tp: MethodOrPoly =>
         tp.derivedLambdaType(resType = integrateContextResults(tp.resType, crCount))
-      case defn.ContextFunctionType(argTypes, resType) =>
-        MethodType(argTypes, integrateContextResults(resType, crCount - 1))
+      case defn.FunctionTypeOfMethod(mt) if mt.isContextualMethod =>
+        mt.derivedLambdaType(resType = integrateContextResults(mt.resType, crCount - 1))
 
   /** The total number of parameters of method `sym`, not counting
    *  erased parameters, but including context result parameters.
@@ -101,7 +101,7 @@ object ContextFunctionResults:
     def recur(tp: Type, n: Int): Type =
       if n == 0 then tp
       else tp match
-        case defn.ContextFunctionType(_, resTpe) => recur(resTpe, n - 1)
+        case defn.FunctionTypeOfMethod(mt) => recur(mt.resType, n - 1)
     recur(meth.info.finalResultType, depth)
 
   /** Should selection `tree` be eliminated since it refers to an `apply`
@@ -115,8 +115,8 @@ object ContextFunctionResults:
     else tree match
       case Select(qual, name) =>
         if name == nme.apply then
-          qual.tpe match
-            case defn.ContextFunctionType(_, _) =>
+          qual.tpe.nn.dealias match
+            case defn.FunctionTypeOfMethod(mt) if mt.isContextualMethod =>
               integrateSelect(qual, n + 1)
             case _ if defn.isContextFunctionClass(tree.symbol.maybeOwner) => // for TermRefs
               integrateSelect(qual, n + 1)
