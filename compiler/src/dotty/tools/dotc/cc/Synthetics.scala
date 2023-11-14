@@ -140,9 +140,9 @@ object Synthetics:
       val (et: ExprType) = info: @unchecked
       val (enclThis: ThisType) = owner.thisType: @unchecked
       def mapFinalResult(tp: Type, f: Type => Type): Type =
-        val defn.FunctionOf(args, res, isContextual) = tp: @unchecked
+        val defn.FunctionNOf(args, res, isContextual) = tp: @unchecked
         if defn.isFunctionNType(res) then
-          defn.FunctionOf(args, mapFinalResult(res, f), isContextual)
+          defn.FunctionNOf(args, mapFinalResult(res, f), isContextual)
         else
           f(tp)
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))

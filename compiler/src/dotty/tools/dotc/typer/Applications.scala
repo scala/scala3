@@ -1731,7 +1731,7 @@ trait Applications extends Compatibility {
           def apply(t: Type) = t match {
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
-                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
+                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(arg :: Nil, defn.UnitType)
                 else arg
               mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)
@@ -1964,7 +1964,7 @@ trait Applications extends Compatibility {
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionOf(
+        defn.FunctionNOf(
           args.map(Function.const(defn.AnyType)), typeShape(body),
           isContextual = untpd.isContextualClosure(tree))
       case Match(EmptyTree, _) =>
@@ -2004,8 +2004,8 @@ trait Applications extends Compatibility {
         def paramCount(ref: TermRef) =
           val formals = ref.widen.firstParamTypes
           if formals.length > idx then
-            formals(idx) match
-              case defn.FunctionOf(args, _, _) => args.length
+            formals(idx).dealias match
+              case defn.FunctionNOf(args, _, _) => args.length
               case _ => -1
           else -1
 
@@ -2090,8 +2090,8 @@ trait Applications extends Compatibility {
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case pt =>
-        val compat0 = pt match
-          case defn.FunctionOf(args, resType, _) =>
+        val compat0 = pt.dealias match
+          case defn.FunctionNOf(args, resType, _) =>
             narrowByTypes(alts, args, resType)
           case _ =>
             Nil
@@ -2280,7 +2280,7 @@ trait Applications extends Compatibility {
               false
           val commonFormal =
             if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
-            else defn.FunctionOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
+            else defn.FunctionNOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
             withMode(Mode.ImplicitsEnabled) {

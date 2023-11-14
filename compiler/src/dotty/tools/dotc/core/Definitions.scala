@@ -1139,10 +1139,9 @@ class Definitions {
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
       val mt = MethodType.companion(isContextual, false)(args, resultType)
-      if mt.hasErasedParams then
-        RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
-      else
-        FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+      if mt.hasErasedParams then RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
+      else FunctionNOf(args, resultType, isContextual)
+
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft.dealias match
         case PolyFunctionOf(mt: MethodType) =>
@@ -1154,6 +1153,20 @@ class Definitions {
             if (targs.isEmpty) None
             else Some(targs.init, targs.last, tsym.name.isContextFunction)
           else None
+    }
+  }
+
+  object FunctionNOf {
+    /** Create a `FunctionN` or `ContextFunctionN` type applied to the arguments and result type */
+    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
+      FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+
+    /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
+     *  Extracts the list of function argument types, the result type and whether function is contextual.
+     */
+    def unapply(tpe: AppliedType)(using Context): Option[(List[Type], Type, Boolean)] = {
+      if !isFunctionNType(tpe) then None
+      else Some(tpe.args.init, tpe.args.last, tpe.typeSymbol.name.isContextFunction)
     }
   }
 

@@ -932,7 +932,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp: TermRef =>
         sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
-        sigName(defn.FunctionOf(Nil, rt))
+        sigName(defn.FunctionNOf(Nil, rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
       case tp @ defn.PolyFunctionOf(_) =>
