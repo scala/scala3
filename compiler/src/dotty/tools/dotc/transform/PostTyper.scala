@@ -370,6 +370,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val callTrace = ref(call.symbol)(using ctx.withSource(pos.source)).withSpan(pos.span)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
+          Checking.checkPolyFunctionExtension(templ)
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(

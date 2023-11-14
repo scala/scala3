@@ -2,6 +2,10 @@
 1 |def polyFun: PolyFunction {  } = // error
   |             ^^^^^^^^^^^^^^^^^
   |             PolyFunction subtypes must refine the apply method
+-- Error: tests/neg/i18302e.scala:2:6 ----------------------------------------------------------------------------------
+2 |  new PolyFunction {  } // error
+  |      ^^^^^^^^^^^^
+  |      `PolyFunction` marker trait is reserved for compiler generated refinements
 -- Error: tests/neg/i18302e.scala:4:15 ---------------------------------------------------------------------------------
 4 |def polyFun(f: PolyFunction {  }) = () // error
   |               ^^^^^^^^^^^^^^^^^
