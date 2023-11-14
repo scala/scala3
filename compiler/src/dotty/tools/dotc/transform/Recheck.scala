@@ -104,7 +104,7 @@ object Recheck:
    *   - in function and method parameter types
    *   - under annotations
    */
-  def normalizeByName(tp: Type)(using Context): Type = tp match
+  def normalizeByName(tp: Type)(using Context): Type = tp.dealias match
     case tp: ExprType =>
       mapExprType(tp)
     case tp: PolyType =>

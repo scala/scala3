@@ -459,7 +459,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
-        def forceBox(tp: Type): Type = tp match
+        def forceBox(tp: Type): Type = tp.strippedDealias match
           case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
             defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
           case tp @ RefinedType(parent, rname, rinfo: MethodType) =>

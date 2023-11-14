@@ -2003,10 +2003,7 @@ trait Applications extends Compatibility {
         // the arity of that function, otherise -1.
         def paramCount(ref: TermRef) =
           val formals = ref.widen.firstParamTypes
-          if formals.length > idx then
-            formals(idx).dealias match
-              case defn.FunctionNOf(args, _, _) => args.length
-              case _ => -1
+          if formals.length > idx then defn.functionArity(formals(idx))
           else -1
 
         val numArgs = args.length

@@ -1143,16 +1143,13 @@ class Definitions {
       else FunctionNOf(args, resultType, isContextual)
 
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
-      ft.dealias match
+      ft match
         case PolyFunctionOf(mt: MethodType) =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
-        case dft =>
-          val tsym = dft.typeSymbol
-          if isFunctionSymbol(tsym) && ft.isRef(tsym) then
-            val targs = dft.argInfos
-            if (targs.isEmpty) None
-            else Some(targs.init, targs.last, tsym.name.isContextFunction)
-          else None
+        case AppliedType(parent, targs) if isFunctionNType(ft) =>
+          Some(targs.init, targs.last, ft.typeSymbol.name.isContextFunction)
+        case _ =>
+          None
     }
   }
 
