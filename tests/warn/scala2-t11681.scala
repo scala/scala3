@@ -47,7 +47,6 @@ trait BadAPI extends InterFace {
 // mustn't alter warnings in super
 trait PoorClient extends BadAPI {
   override def meth(x: Int) = ???       // OK
-  override def f(a: Int, b: String, c: Double): Int = a + b.toInt + c.toInt
 }
 
 class Unusing(u: Int) {       // warn
