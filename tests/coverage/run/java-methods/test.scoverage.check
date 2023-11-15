@@ -27,7 +27,7 @@ Object
 Test
 61
 83
-4
+5
 simple
 Apply
 false
@@ -44,7 +44,7 @@ Object
 Test
 86
 127
-5
+6
 withTypeParam
 Apply
 false
@@ -61,7 +61,7 @@ Object
 Test
 140
 152
-6
+7
 <init>
 Apply
 false
@@ -78,7 +78,7 @@ Object
 Test
 155
 162
-7
+8
 f
 Apply
 false
@@ -95,7 +95,7 @@ Object
 Test
 165
 194
-8
+9
 println
 Apply
 false
@@ -112,7 +112,7 @@ Object
 Test
 173
 193
-8
+9
 identity
 Apply
 false
@@ -129,7 +129,7 @@ Object
 Test
 197
 211
-9
+10
 println
 Apply
 false
@@ -146,7 +146,7 @@ Object
 Test
 36
 50
-3
+4
 Test
 DefDef
 false

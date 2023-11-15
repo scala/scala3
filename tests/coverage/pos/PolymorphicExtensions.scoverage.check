@@ -27,7 +27,7 @@ covtest.PolyExt$
 foo
 61
 68
-4
+5
 foo
 DefDef
 false
@@ -44,7 +44,7 @@ covtest.PolyExt$
 get
 114
 121
-7
+8
 get
 DefDef
 false
@@ -61,7 +61,7 @@ covtest.PolyExt$
 tap
 170
 173
-8
+9
 ???
 Ident
 false
@@ -78,7 +78,7 @@ covtest.PolyExt$
 tap
 139
 146
-8
+9
 tap
 DefDef
 false
@@ -95,7 +95,7 @@ covtest.PolyExt$
 <init>
 177
 189
-10
+11
 foo
 Apply
 false
@@ -112,7 +112,7 @@ covtest.PolyExt$
 <init>
 177
 186
-10
+11
 foo
 Apply
 false
@@ -129,7 +129,7 @@ covtest.PolyExt$
 <init>
 277
 287
-11
+12
 get
 Apply
 false
@@ -146,7 +146,7 @@ covtest.PolyExt$
 foo
 370
 377
-13
+14
 foo
 DefDef
 false
@@ -163,7 +163,7 @@ covtest.PolyExt$
 bar
 405
 421
-14
+15
 tap
 Apply
 false
@@ -180,7 +180,7 @@ covtest.PolyExt$
 bar
 405
 412
-14
+15
 tap
 Apply
 false
@@ -197,7 +197,7 @@ covtest.PolyExt$
 bar
 405
 408
-14
+15
 foo
 Ident
 false
@@ -214,7 +214,7 @@ covtest.PolyExt$
 $anonfun
 413
 420
-14
+15
 println
 Apply
 false
@@ -231,7 +231,7 @@ covtest.PolyExt$
 bar
 390
 397
-14
+15
 bar
 DefDef
 false
