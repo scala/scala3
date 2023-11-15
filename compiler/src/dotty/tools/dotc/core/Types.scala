@@ -1460,13 +1460,13 @@ object Types {
       case _ => this
     }
 
-    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+    /** Follow aliases and dereference LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
     final def dealias(using Context): Type = dealias1(keepNever, keepOpaques = false)
 
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+    /** Follow aliases and dereference LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      *  Goes through annotated types and rewraps annotations on the result.
      */
@@ -1475,11 +1475,29 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining, keepOpaques = false)
 
-    /** Follow non-opaque aliases and dereferences LazyRefs, annotated types and instantiated
-     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
-     *  or instantiated type variable.
+    /** Like dealias, but does not follow aliases if symbol is Opaque. This is
+     *  necessary if we want to look at the info of a symbol containing opaque
+     *  type aliases but pretend "it's from the outside". For instance, consider:
+     *
+     *    opaque type IArray[T] = Array[? <: T]
+     *    object IArray:
+     *      def head[T](xs: IArray[T]): T = ???
+     *
+     *  If we dealias types in the info of `head`, those types appear with prefix
+     *  IArray.this, where IArray's self type is `IArray { type IArray[T] = Array[? <: T] }`.
+     *  Hence, if we see IArray it will appear as an alias of [T] =>> Array[? <: T].
+     *  But if we want to see the type from the outside of object IArray we need to
+     *  suppress this dealiasing. A test case where this matters is i18909.scala.
+     *  Here, we dealias symbol infos at the start of capture checking in operation `fluidify`.
+     *  We have to be careful not to accidentally reveal opaque aliases when doing so.
      */
     final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
+
+    /** Like dealiasKeepAnnots, but does not follow opaque aliases. See `dealiasKeepOpaques`
+     *  for why this is sometimes necessary.
+     */
+    final def dealiasKeepAnnotsAndOpaques(using Context): Type =
+      dealias1(keepAlways, keepOpaques = true)
 
     /** Approximate this type with a type that does not contain skolem types. */
     final def deskolemized(using Context): Type =
@@ -5351,6 +5369,8 @@ object Types {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.eq(that.alias)
       case _ => false
     }
+
+    override def toString = s"${getClass.getSimpleName}($alias)"
   }
 
   /**    = T

@@ -116,7 +116,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  convert it to be boxed.
    */
   private def box(tp: Type)(using Context): Type =
-    def recur(tp: Type): Type = tp.dealiasKeepAnnots match
+    def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
       case tp @ CapturingType(parent, refs) =>
         if tp.isBoxed then tp else tp.boxed
       case tp @ AnnotatedType(parent, ann) =>
@@ -574,7 +574,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
         else
-          val tp1 = tp.dealiasKeepAnnots
+          val tp1 = tp.dealiasKeepAnnotsAndOpaques
           if tp1 ne tp then needsVariable(tp1)
           else instanceCanBeImpure(tp1)
       case tp: (RefinedOrRecType | MatchType) =>
@@ -640,7 +640,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def maybeAdd(target: Type, fallback: Type) =
         if needsVariable(target) then CapturingType(target, addedSet(target))
         else fallback
-      val dealiased = tp.dealiasKeepAnnots
+      val dealiased = tp.dealiasKeepAnnotsAndOpaques
       if dealiased ne tp then
         val transformed = transformInferredType(dealiased)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)

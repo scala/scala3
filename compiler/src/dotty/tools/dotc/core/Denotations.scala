@@ -992,18 +992,18 @@ object Denotations {
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
 
-    def definedPeriodsString: String = {
+    /** Show all defined periods and the info of the denotation at each */
+    def definedPeriodsString(using Context): String = {
       var sb = new StringBuilder()
       var cur = this
       var cnt = 0
-      while ({
-        sb.append(" " + cur.validFor)
+      while
+        sb.append(i" ${cur.validFor.toString}:${cur.infoOrCompleter}")
         cur = cur.nextInRun
         cnt += 1
         if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
         cur ne this
-      })
-      ()
+      do ()
       sb.toString
     }
 

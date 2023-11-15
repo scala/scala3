@@ -1053,9 +1053,9 @@ class TreeUnpickler(reader: TastyReader,
         else EmptyValDef
       cls.setNoInitsFlags(parentsKind(parents), bodyFlags)
       cls.info = ClassInfo(
-        cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
-        selfInfo = if (self.isEmpty) NoType else self.tpt.tpe)
-        .integrateOpaqueMembers
+          cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
+          selfInfo = if (self.isEmpty) NoType else self.tpt.tpe
+        ).integrateOpaqueMembers
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val mappedParents: LazyTreeList =
         if parents.exists(_.isInstanceOf[InferredTypeTree]) then
