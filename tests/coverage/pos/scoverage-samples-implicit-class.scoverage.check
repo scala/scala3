@@ -27,7 +27,7 @@ org.scoverage.samples.CreditEngine
 $anonfun
 263
 276
-10
+11
 !
 Apply
 false
@@ -44,7 +44,7 @@ org.scoverage.samples.CreditEngine
 $anonfun
 263
 269
-10
+11
 StringOpssssss
 Apply
 false
@@ -61,7 +61,7 @@ org.scoverage.samples.CreditEngine
 $anonfun
 263
 276
-10
+11
 !
 Apply
 true
@@ -78,7 +78,7 @@ org.scoverage.samples.CreditEngine
 $anonfun
 286
 303
-11
+12
 println
 Apply
 false
@@ -95,7 +95,7 @@ org.scoverage.samples.CreditEngine
 $anonfun
 286
 303
-11
+12
 println
 Apply
 true
@@ -112,7 +112,7 @@ org.scoverage.samples.CreditEngine
 receive
 201
 212
-8
+9
 receive
 DefDef
 false
@@ -129,7 +129,7 @@ org.scoverage.samples.StringOpssssss
 !
 152
 174
-4
+5
 println
 Apply
 false
@@ -146,7 +146,7 @@ org.scoverage.samples.StringOpssssss
 !
 160
 173
-4
+5
 +
 Apply
 false
@@ -163,7 +163,7 @@ org.scoverage.samples.StringOpssssss
 !
 160
 167
-4
+5
 +
 Apply
 false
@@ -180,7 +180,7 @@ org.scoverage.samples.StringOpssssss
 !
 124
 129
-4
+5
 !
 DefDef
 false
@@ -197,7 +197,7 @@ org.scoverage.samples.scoverage-samples-implicit-class$package$
 StringOpssssss
 79
 108
-3
+4
 StringOpssssss
 DefDef
 false

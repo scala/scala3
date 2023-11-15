@@ -27,7 +27,7 @@ Object
 Test
 225
 228
-12
+13
 <init>
 Apply
 false
@@ -44,7 +44,7 @@ Object
 Test
 231
 243
-13
+14
 println
 Apply
 false
@@ -61,7 +61,7 @@ Object
 Test
 246
 260
-14
+15
 println
 Apply
 false
@@ -78,7 +78,7 @@ Object
 Test
 134
 148
-7
+8
 toString
 Apply
 false
@@ -95,7 +95,7 @@ Object
 Test
 263
 277
-15
+16
 println
 Apply
 false
@@ -112,7 +112,7 @@ Object
 Test
 176
 190
-8
+9
 toString
 Apply
 false
@@ -129,7 +129,7 @@ Object
 Test
 295
 309
-17
+18
 println
 Apply
 false
@@ -146,7 +146,7 @@ Object
 Test
 303
 308
-17
+18
 foo
 Select
 false
@@ -163,7 +163,7 @@ Object
 Test
 192
 206
-11
+12
 Test
 DefDef
 false

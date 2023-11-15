@@ -27,7 +27,7 @@ org.scoverage.samples.PriceEngine
 $anonfun
 362
 368
-17
+18
 stop
 Apply
 false
@@ -44,7 +44,7 @@ org.scoverage.samples.PriceEngine
 $anonfun
 353
 368
-16
+17
 <none>
 Block
 true
@@ -61,7 +61,7 @@ org.scoverage.samples.PriceEngine
 $anonfun
 400
 406
-20
+21
 stop
 Apply
 false
@@ -78,7 +78,7 @@ org.scoverage.samples.PriceEngine
 $anonfun
 391
 406
-19
+20
 <none>
 Block
 true
@@ -95,7 +95,7 @@ org.scoverage.samples.PriceEngine
 receive
 302
 313
-15
+16
 receive
 DefDef
 false
@@ -112,7 +112,7 @@ org.scoverage.samples.PriceEngine
 stop
 470
 485
-25
+26
 println
 Apply
 false
@@ -129,7 +129,7 @@ org.scoverage.samples.PriceEngine
 stop
 470
 485
-25
+26
 println
 Apply
 true
@@ -146,7 +146,7 @@ org.scoverage.samples.PriceEngine
 stop
 485
 485
-25
+26
 <none>
 Literal
 true
@@ -163,7 +163,7 @@ org.scoverage.samples.PriceEngine
 stop
 414
 422
-23
+24
 stop
 DefDef
 false

@@ -27,7 +27,7 @@ Class
 <init>
 22
 29
-1
+2
 apply
 Apply
 false
@@ -44,7 +44,7 @@ Class
 <init>
 41
 57
-2
+3
 ::
 Apply
 false
@@ -61,7 +61,7 @@ Class
 <init>
 46
 57
-2
+3
 apply
 Apply
 false
@@ -78,7 +78,7 @@ Class
 msg
 104
 136
-5
+6
 +
 Apply
 false
@@ -95,7 +95,7 @@ Class
 msg
 104
 132
-5
+6
 +
 Apply
 false
@@ -112,7 +112,7 @@ Class
 msg
 104
 126
-5
+6
 +
 Apply
 false
@@ -129,7 +129,7 @@ Class
 msg
 104
 122
-5
+6
 +
 Apply
 false
@@ -146,7 +146,7 @@ Class
 msg
 104
 116
-5
+6
 +
 Apply
 false
@@ -163,7 +163,7 @@ Class
 msg
 70
 77
-5
+6
 msg
 DefDef
 false
@@ -180,7 +180,7 @@ Class
 integer
 139
 150
-6
+7
 integer
 DefDef
 false
@@ -197,7 +197,7 @@ Class
 ex
 162
 168
-7
+8
 ex
 DefDef
 false
@@ -214,7 +214,7 @@ Object
 Test
 221
 224
-11
+12
 <init>
 Apply
 false
@@ -231,7 +231,7 @@ Object
 f
 241
 246
-13
+14
 f
 DefDef
 false
@@ -248,7 +248,7 @@ Object
 Test
 264
 286
-14
+15
 msg
 Apply
 false
@@ -265,7 +265,7 @@ Object
 Test
 276
 285
-14
+15
 integer
 Select
 false
@@ -282,7 +282,7 @@ Object
 Test
 289
 299
-15
+16
 println
 Apply
 false
@@ -299,7 +299,7 @@ Object
 Test
 306
 334
-16
+17
 msg
 Apply
 false
@@ -316,7 +316,7 @@ Object
 Test
 306
 310
-16
+17
 ex
 Select
 false
@@ -333,7 +333,7 @@ Object
 Test
 321
 325
-16
+17
 ex
 Select
 false
@@ -350,7 +350,7 @@ Object
 Test
 321
 333
-16
+17
 integer
 Select
 false
@@ -367,7 +367,7 @@ Object
 Test
 337
 347
-17
+18
 println
 Apply
 false
@@ -384,7 +384,7 @@ Object
 Test
 354
 370
-18
+19
 msg
 Apply
 false
@@ -401,7 +401,7 @@ Object
 Test
 360
 363
-18
+19
 f
 Apply
 false
@@ -418,7 +418,7 @@ Object
 Test
 373
 383
-19
+20
 println
 Apply
 false
@@ -435,7 +435,7 @@ Object
 Test
 188
 202
-10
+11
 Test
 DefDef
 false

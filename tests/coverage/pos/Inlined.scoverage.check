@@ -27,7 +27,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -44,7 +44,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -61,7 +61,7 @@ covtest.Inlined$package$
 testInlined
 330
 330
-10
+11
 <none>
 Literal
 true
@@ -78,7 +78,7 @@ covtest.Inlined$package$
 testInlined
 155
 162
-6
+7
 apply
 Apply
 false
@@ -95,7 +95,7 @@ covtest.Inlined$package$
 testInlined
 155
 169
-6
+7
 length
 Select
 false
@@ -112,7 +112,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -129,7 +129,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -146,7 +146,7 @@ covtest.Inlined$package$
 testInlined
 330
 330
-10
+11
 <none>
 Literal
 true
@@ -163,7 +163,7 @@ covtest.Inlined$package$
 testInlined
 180
 187
-7
+8
 apply
 Apply
 false
@@ -180,7 +180,7 @@ covtest.Inlined$package$
 testInlined
 180
 194
-7
+8
 length
 Select
 false
@@ -197,7 +197,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 false
@@ -214,7 +214,7 @@ covtest.Inlined$package$
 testInlined
 288
 330
-10
+11
 assertFailed
 Apply
 true
@@ -231,7 +231,7 @@ covtest.Inlined$package$
 testInlined
 330
 330
-10
+11
 <none>
 Literal
 true
@@ -248,7 +248,7 @@ covtest.Inlined$package$
 testInlined
 86
 101
-3
+4
 testInlined
 DefDef
 false
