@@ -1489,7 +1489,7 @@ object Types {
      *  But if we want to see the type from the outside of object IArray we need to
      *  suppress this dealiasing. A test case where this matters is i18909.scala.
      *  Here, we dealias symbol infos at the start of capture checking in operation `fluidify`.
-     *  We have to be careful not to accidentally reveal opqaue aliases when doing so.
+     *  We have to be careful not to accidentally reveal opaque aliases when doing so.
      */
     final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
 
