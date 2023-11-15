@@ -22,12 +22,17 @@ object Trace:
 
   val empty: Trace = Vector.empty
 
+  val EMPTY_PADDING     = "    "
+  val CONNECTING_INDENT = "\u2502   "               // "|   "
+  val CHILD             = "\u251c\u2500\u2500 "     // "|-- "
+  val LAST_CHILD        = "\u2514\u2500\u2500 "     // "\-- "
+
   extension (trace: Trace)
     def add(node: Tree): Trace = trace :+ node
     def toVector: Vector[Tree] = trace
     def ++(trace2: Trace): Trace = trace ++ trace2
 
-  def show(using trace: Trace, ctx: Context): String = buildStacktrace(trace, "\n")
+  def show(using trace: Trace, ctx: Context): String = buildStacktrace(trace, "Calling trace:" + System.lineSeparator())
 
   def position(using trace: Trace): Tree = trace.last
 
@@ -41,8 +46,8 @@ object Trace:
     var lastLineNum = -1
     var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
     trace.foreach { tree =>
+      val isLastTraceItem = tree `eq` trace.last
       val pos = tree.sourcePos
-      val prefix = "-> "
       val line =
         if pos.source.exists then
           val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
@@ -52,19 +57,22 @@ object Trace:
           tree match
             case defDef: DefTree =>
               // The definition can be huge, avoid printing the whole definition.
-              defDef.symbol.show
+              defDef.symbol.showFullName
             case _ =>
-              tree.show
+              tree.show.split(System.lineSeparator(), 2).nn.head.nn
+
       val positionMarkerLine =
         if pos.exists && pos.source.exists then
-          positionMarker(pos)
-        else ""
+          (if isLastTraceItem then EMPTY_PADDING else CONNECTING_INDENT)+ positionMarker(pos)
+        else
+          ""
 
       // always use the more precise trace location
-      if lastLineNum == pos.line then
+      if lastLineNum >= 0 && lastLineNum == pos.line then
         lines.dropRightInPlace(1)
 
-      lines += (prefix + line + "\n" + positionMarkerLine)
+      val prefix = if isLastTraceItem then LAST_CHILD else CHILD
+      lines += (prefix + line + System.lineSeparator() + positionMarkerLine)
 
       lastLineNum = pos.line
     }
@@ -78,10 +86,10 @@ object Trace:
    */
   private def positionMarker(pos: SourcePosition): String =
     val trimmed = pos.source.lineContent(pos.start).takeWhile(c => c.isWhitespace).length
-    val padding = pos.startColumnPadding.substring(trimmed).nn + "   "
+    val padding = pos.startColumnPadding.substring(trimmed).nn
     val carets =
       if (pos.startLine == pos.endLine)
         "^" * math.max(1, pos.endColumn - pos.startColumn)
       else "^"
 
-    s"$padding$carets\n"
+    s"$padding$carets" + System.lineSeparator()
