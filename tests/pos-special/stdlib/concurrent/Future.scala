@@ -660,7 +660,7 @@ object Future {
    *  @param result   the given successful value
    *  @return         the newly created `Future` instance
    */
-  final def successful[T](result: T): Future[T] = Promise.successful(result).future
+  final def successful[T](result: T): Future[T] = Promise.successful[T @uncheckedCaptures](result).future
 
   /** Creates an already completed Future with the specified result or exception.
    *
@@ -668,7 +668,7 @@ object Future {
    *  @param result   the result of the returned `Future` instance
    *  @return         the newly created `Future` instance
    */
-  final def fromTry[T](result: Try[T]): Future[T] = Promise.fromTry(result).future
+  final def fromTry[T](result: Try[T]): Future[T] = Promise.fromTry[T @uncheckedCaptures](result).future
 
   /** Starts an asynchronous computation and returns a `Future` instance with the result of that computation.
   *
@@ -735,7 +735,7 @@ object Future {
     val i = futures.iterator
     if (!i.hasNext) Future.never
     else {
-      val p: Promise[T]^ = Promise[T]()
+      val p: Promise[T]^ = Promise[T @uncheckedCaptures]()
       // !cc! Try[T] -> Unit is a workaround for #18857. It should probably be Try[T] => Unit if this is a capability.
       val firstCompleteHandler = new AtomicReference[Promise[T]^{p}](p) with (Try[T] -> Unit) {
         override final def apply(v1: Try[T]): Unit =  {

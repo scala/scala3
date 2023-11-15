@@ -12,6 +12,8 @@
 
 package scala.concurrent
 
+import language.experimental.captureChecking
+
 /**
  * A context to be notified by [[scala.concurrent.blocking]] when
  * a thread is about to block. In effect this trait provides
@@ -68,9 +70,9 @@ object BlockContext {
     **/
   final def defaultBlockContext: BlockContext = DefaultBlockContext
 
-  private[this] final val contextLocal = new ThreadLocal[BlockContext]()
+  private[this] final val contextLocal = new ThreadLocal[BlockContext^]()
 
-  private[this] final def prefer(candidate: BlockContext): BlockContext =
+  private[this] final def prefer(candidate: BlockContext^): BlockContext^ =
     if (candidate ne null) candidate
     else {
       val t = Thread.currentThread
@@ -81,12 +83,12 @@ object BlockContext {
   /**
    * @return the `BlockContext` that would be used for the current `java.lang.Thread` at this point
    **/
-  final def current: BlockContext = prefer(contextLocal.get)
+  final def current: BlockContext^ = prefer(contextLocal.get)
 
   /**
    * Installs a current `BlockContext` around executing `body`.
    **/
-  final def withBlockContext[T](blockContext: BlockContext)(body: => T): T = {
+  final def withBlockContext[T](blockContext: BlockContext^)(body: => T): T = {
     val old = contextLocal.get // can be null
     if (old eq blockContext) body
     else {
@@ -99,7 +101,7 @@ object BlockContext {
    * Installs the BlockContext `blockContext` around the invocation to `f` and passes in the previously installed BlockContext to `f`.
    * @return the value produced by applying `f`
    **/
-  final def usingBlockContext[I, T](blockContext: BlockContext)(f: BlockContext => T): T = {
+  final def usingBlockContext[I, T](blockContext: BlockContext^)(f: BlockContext^ => T): T = {
     val old = contextLocal.get // can be null
     if (old eq blockContext) f(prefer(old))
     else {

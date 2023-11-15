@@ -19,8 +19,8 @@ import language.experimental.captureChecking
 /** Promise is an object which can be completed with a value or failed
  *  with an exception.
  *
- *  A promise should always eventually be completed, whether for success or failure, 
- *  in order to avoid unintended resource retention for any associated Futures' 
+ *  A promise should always eventually be completed, whether for success or failure,
+ *  in order to avoid unintended resource retention for any associated Futures'
  *  callbacks or transformations.
  *
  *  @define promiseCompletion
@@ -70,7 +70,7 @@ trait Promise[sealed T] { this: Promise[T]^ =>
    *
    *  @return   This promise
    */
-   def completeWith(other: Future[T]): this.type = {
+   def completeWith(other: Future[T]^): this.type = {
     if (other ne this.future) // this tryCompleteWith this doesn't make much sense
       other.onComplete(this tryComplete _)(ExecutionContext.parasitic)
 
@@ -125,26 +125,26 @@ object Promise {
    *  @tparam T       the type of the value in the promise
    *  @return         the newly created `Promise` instance
    */
-  final def apply[T](): Promise[T] = new impl.Promise.DefaultPromise[T]()
+  final def apply[sealed T](): Promise[T] = new impl.Promise.DefaultPromise[T]()
 
   /** Creates an already completed Promise with the specified exception.
    *
    *  @tparam T       the type of the value in the promise
    *  @return         the newly created `Promise` instance
    */
-  final def failed[T](exception: Throwable): Promise[T] = fromTry(Failure(exception))
+  final def failed[sealed T](exception: Throwable): Promise[T] = fromTry(Failure(exception))
 
   /** Creates an already completed Promise with the specified result.
    *
    *  @tparam T       the type of the value in the promise
    *  @return         the newly created `Promise` instance
    */
-  final def successful[T](result: T): Promise[T] = fromTry(Success(result))
+  final def successful[sealed T](result: T): Promise[T] = fromTry(Success(result))
 
   /** Creates an already completed Promise with the specified result or exception.
    *
    *  @tparam T       the type of the value in the promise
    *  @return         the newly created `Promise` instance
    */
-  final def fromTry[T](result: Try[T]): Promise[T] = new impl.Promise.DefaultPromise[T](result)
+  final def fromTry[sealed T](result: Try[T]): Promise[T] = new impl.Promise.DefaultPromise[T](result)
 }
