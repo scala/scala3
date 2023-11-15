@@ -2,12 +2,12 @@
 3 |    B
 4 |      .s.length // error
   |    ^
-  |    Access uninitialized field value s. Call trace: 
-  |    -> object B {	[ line-spacing.scala:7 ]
-  |       ^
-  |    -> val s: String = s"${A.a}a"	[ line-spacing.scala:8 ]
-  |                           ^^^
-  |    -> def a: Int =	[ line-spacing.scala:2 ]
-  |       ^
-  |    -> .s.length // error	[ line-spacing.scala:4 ]
-  |       ^
+  |    Access uninitialized field value s. Calling trace:
+  |    ├── object B {	[ line-spacing.scala:7 ]
+  |    │   ^
+  |    ├── val s: String = s"${A.a}a"	[ line-spacing.scala:8 ]
+  |    │                       ^^^
+  |    ├── def a: Int =	[ line-spacing.scala:2 ]
+  |    │   ^
+  |    └── .s.length // error	[ line-spacing.scala:4 ]
+  |        ^

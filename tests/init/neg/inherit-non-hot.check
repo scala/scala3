@@ -2,16 +2,16 @@
 6 |            if b == null then b = new B(this) // error
   |                              ^^^^^^^^^^^^^^^
   |The RHS of reassignment must be transitively initialized (Hot). It was found to be a non-transitively initialized (Warm) object of type (class B) { outer = a transitively initialized (Hot) object, args = (an uninitialized (Cold) object) }.  Calling trace:
-  |-> class C extends A {	[ inherit-non-hot.scala:15 ]
-  |   ^
-  |-> val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
-  |                ^^^
-  |-> def toB: B =	[ inherit-non-hot.scala:5 ]
-  |   ^
-  |-> if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
-  |                     ^^^^^^^^^^^^^^^
+  |├── class C extends A {	[ inherit-non-hot.scala:15 ]
+  |│   ^
+  |├── val bAgain = toB.getBAgain	[ inherit-non-hot.scala:16 ]
+  |│                ^^^
+  |├── def toB: B =	[ inherit-non-hot.scala:5 ]
+  |│   ^
+  |└── if b == null then b = new B(this) // error	[ inherit-non-hot.scala:6 ]
+  |                      ^^^^^^^^^^^^^^^
   |
   |Promoting the value to transitively initialized (Hot) failed due to the following problem:
   |Could not verify that the field value a is transitively initialized (Hot). It was found to be an uninitialized (Cold) object. Promotion trace:
-  |-> class B(a: A) {	[ inherit-non-hot.scala:10 ]
-  |           ^^^^
+  |└── class B(a: A) {	[ inherit-non-hot.scala:10 ]
+  |            ^^^^
