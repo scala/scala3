@@ -1479,7 +1479,7 @@ object Parsers {
         if isIdent(nme.raw.STAR) then
           in.nextToken()
           atSpan(startOffset(id)):
-            Select(id, nme.CC_REACH)
+            PostfixOp(id, Ident(nme.CC_REACH))
         else id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking

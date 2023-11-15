@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, isBoxed, levelOwner, retainedElems}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, isBoxed, levelOwner, retainedElems}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -377,8 +377,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        if tp.isReach then toTextRef(tp.stripReach) ~ "*"
-        else toTextPrefixOf(tp) ~ selectionString(tp)
+        toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
@@ -404,6 +403,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
       case tp: SingletonType => toTextRef(tp)
+      case ReachCapability(tp1) => toTextRef(tp1) ~ "*"
       case _ => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =

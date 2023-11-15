@@ -15,6 +15,12 @@ import annotation.experimental
 
   given Cap = cap
 
+  /** Reach capabilities x* which appear as terms in @retains annotations are encoded
+   *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
+   *  they are  represented as `x.type @annotation.internal.reachCapability`.
+   */
+  extension (x: Any) def reachCapability: Any = x
+
   object unsafe:
 
     extension [T](x: T)

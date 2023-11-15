@@ -156,7 +156,7 @@ sealed abstract class CaptureSet extends Showable:
           case y: TermRef => !y.isReach && (y.prefix eq x)
           case _ => false
       || x.match
-          case x: TermRef if x.isReach => x.stripReach.subsumes(y.stripReach)
+          case ReachCapability(x1) => x1.subsumes(y.stripReach)
           case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
@@ -500,18 +500,15 @@ object CaptureSet:
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
       if elem.isRootCapability then !noUniversal
       else elem match
-        case elem: TermRef =>
-          if elem.isReach then levelOK(elem.stripReach)
-          else if levelLimit.exists then
-            var sym = elem.symbol
-            if sym.isLevelOwner then sym = sym.owner
-            levelLimit.isContainedIn(sym.levelOwner)
-          else true
-        case elem: ThisType =>
-          if levelLimit.exists then
-            levelLimit.isContainedIn(elem.cls.levelOwner)
-          else true
-        case elem: TermParamRef =>
+        case elem: TermRef if levelLimit.exists =>
+          var sym = elem.symbol
+          if sym.isLevelOwner then sym = sym.owner
+          levelLimit.isContainedIn(sym.levelOwner)
+        case elem: ThisType if levelLimit.exists =>
+          levelLimit.isContainedIn(elem.cls.levelOwner)
+        case ReachCapability(elem1) =>
+          levelOK(elem1)
+        case _ =>
           true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
@@ -1015,8 +1012,8 @@ object CaptureSet:
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
     case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
-    case ref: TermRef if ref.isReach => deepCaptureSet(ref.prefix.widen)
-      .showing(i"Deep capture set of $ref: ${ref.prefix.widen} = $result", capt)
+    case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
+      .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */

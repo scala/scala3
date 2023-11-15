@@ -2163,7 +2163,7 @@ object Types {
   }
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
-  trait CaptureRef extends SingletonType:
+  trait CaptureRef extends TypeProxy, ValueType:
     private var myCaptureSet: CaptureSet | Null = uninitialized
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
@@ -2175,9 +2175,9 @@ object Types {
       isTrackableRef && (isRootCapability || !captureSetOfInfo.isAlwaysEmpty)
 
     /** Is this a reach reference of the form `x*`? */
-    def isReach(using Context): Boolean = false // overridden in TermRef
+    def isReach(using Context): Boolean = false // overridden in AnnotatedType
 
-    def stripReach(using Context): CaptureRef = this // overridden in TermRef
+    def stripReach(using Context): CaptureRef = this // overridden in AnnotatedType
 
     /** Is this reference the generic root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
@@ -2213,6 +2213,8 @@ object Types {
       if isTrackableRef && !cs.isAlwaysEmpty then singletonCaptureSet else cs
 
   end CaptureRef
+
+  trait SingletonCaptureRef extends SingletonType, CaptureRef
 
   /** A trait for types that bind other types that refer to them.
    *  Instances are: LambdaType, RecType.
@@ -2877,7 +2879,7 @@ object Types {
    */
   abstract case class TermRef(override val prefix: Type,
                               private var myDesignator: Designator)
-    extends NamedType, ImplicitRef, CaptureRef {
+    extends NamedType, ImplicitRef, SingletonCaptureRef {
 
     type ThisType = TermRef
     type ThisName = TermName
@@ -2913,21 +2915,12 @@ object Types {
       || symbol.is(ParamAccessor) && (prefix eq symbol.owner.thisType)
       || isRootCapability
       ) && !symbol.isOneOf(UnstableValueFlags)
-      || isReach
-
-    override def isReach(using Context): Boolean =
-      name == nme.CC_REACH && symbol == defn.Any_ccReach
-
-    override def stripReach(using Context): CaptureRef =
-      if isReach then prefix.asInstanceOf[CaptureRef] else this
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def normalizedRef(using Context): CaptureRef =
-      if isReach then TermRef(stripReach.normalizedRef, name, denot)
-      else if isTrackableRef then symbol.termRef
-      else this
+      if isTrackableRef then symbol.termRef else this
   }
 
   abstract case class TypeRef(override val prefix: Type,
@@ -3066,7 +3059,8 @@ object Types {
    *  Note: we do not pass a class symbol directly, because symbols
    *  do not survive runs whereas typerefs do.
    */
-  abstract case class ThisType(tref: TypeRef) extends CachedProxyType, CaptureRef {
+  abstract case class ThisType(tref: TypeRef)
+  extends CachedProxyType, SingletonCaptureRef {
     def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
       case cls: ClassSymbol => cls
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
@@ -4679,7 +4673,8 @@ object Types {
   /** Only created in `binder.paramRefs`. Use `binder.paramRefs(paramNum)` to
    *  refer to `TermParamRef(binder, paramNum)`.
    */
-  abstract case class TermParamRef(binder: TermLambda, paramNum: Int) extends ParamRef, CaptureRef {
+  abstract case class TermParamRef(binder: TermLambda, paramNum: Int)
+  extends ParamRef, SingletonCaptureRef {
     type BT = TermLambda
     def kindString: String = "Term"
     def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
@@ -5386,7 +5381,7 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType, ValueType {
+  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType, CaptureRef {
 
     override def underlying(using Context): Type = parent
 
@@ -5414,6 +5409,23 @@ object Types {
       }
       isRefiningCache
     }
+
+    override def isTrackableRef(using Context) =
+      isReach && parent.isTrackableRef
+
+    /** Is this a reach reference of the form `x*`? */
+    override def isReach(using Context): Boolean =
+      annot.symbol == defn.ReachCapabilityAnnot
+
+    override def stripReach(using Context): SingletonCaptureRef =
+      (if isReach then parent else this).asInstanceOf[SingletonCaptureRef]
+
+    override def normalizedRef(using Context): CaptureRef =
+      if isReach then AnnotatedType(stripReach.normalizedRef, annot) else this
+
+    override def captureSet(using Context): CaptureSet =
+      if isReach then super.captureSet
+      else CaptureSet.ofType(this, followResult = false)
 
     // equals comes from case class; no matching override is needed
 

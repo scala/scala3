@@ -77,9 +77,14 @@ class NoCommonRoot(rs: Symbol*)(using Context) extends Exception(
 extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
-  def toCaptureRef(using Context): CaptureRef = tree.tpe match
-    case ref: CaptureRef if ref.isTrackableRef => ref
-    case tpe => throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
+  def toCaptureRef(using Context): CaptureRef = tree match
+    case ReachCapabilityApply(arg) =>
+      arg.toCaptureRef.reach
+    case _ => tree.tpe match
+      case ref: CaptureRef if ref.isTrackableRef =>
+        ref
+      case tpe =>
+        throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
 
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
    *  For efficience, the result is cached as an Attachment on the tree.
@@ -209,15 +214,15 @@ extension (tp: Type)
     tm(tp)
 
   /** If `x` is a capture ref, its reach capability `x*`, represented internally
-   *  as `x.$reach`. `x*` stands for all capabilities reachable through `x`".
+   *  as `x @reachCapability`. `x*` stands for all capabilities reachable through `x`".
    *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
    *  is the union of all capture sets that appear in covariant position in the
    *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
    *  are unrelated.
    */
-  def reach(using Context): TermRef =
+  def reach(using Context): CaptureRef =
     assert(tp.isTrackableRef)
-    TermRef(tp, nme.CC_REACH, defn.Any_ccReach)
+    AnnotatedType(tp, Annotation(defn.ReachCapabilityAnnot, util.Spans.NoSpan))
 
   /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
    *  universal capture set, replace all these occurrences by `{ref*}`. This implements
@@ -365,3 +370,21 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+/** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
+ *  capability as a tree in a @retains annotation.
+ */
+object ReachCapabilityApply:
+  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+    case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
+    case _ => None
+
+/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
+ *  the reach capability `ref*` as a type.
+ */
+object ReachCapability:
+  def unapply(tree: AnnotatedType)(using Context): Option[SingletonCaptureRef] = tree match
+    case AnnotatedType(parent: SingletonCaptureRef, ann)
+    if ann.symbol == defn.ReachCapabilityAnnot => Some(parent)
+    case _ => None
+

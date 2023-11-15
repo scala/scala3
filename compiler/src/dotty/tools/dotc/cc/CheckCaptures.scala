@@ -130,7 +130,10 @@ object CheckCaptures:
         report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
       case _ =>
     for elem <- ann.retainedElems do
-      elem.tpe match
+      val elem1 = elem match
+        case ReachCapabilityApply(arg) => arg
+        case _ => elem
+      elem1.tpe match
         case ref: CaptureRef =>
           if !ref.isTrackableRef then
             report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
@@ -1249,7 +1252,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val checker = new TypeTraverser:
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
-        private def isAllowed(ref: CaptureRef): Boolean = ref.stripReach match
+        private def isAllowed(ref: CaptureRef): Boolean = ref match
           case ref: TermParamRef => allowed.contains(ref)
           case _ => true
 
