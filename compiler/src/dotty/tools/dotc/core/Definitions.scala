@@ -535,8 +535,11 @@ class Definitions {
       List(AnyType), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
-  @tu lazy val CollectionSeqType: TypeRef = requiredClassRef("scala.collection.Seq")
-  @tu lazy val SeqType: TypeRef = requiredClassRef("scala.collection.immutable.Seq")
+  @tu lazy val CollectionSeqType: TypeRef  = requiredClassRef("scala.collection.Seq")
+  @tu lazy val SeqType: TypeRef            = requiredClassRef("scala.collection.immutable.Seq")
+  @tu lazy val SeqModule: Symbol           = requiredModule("scala.collection.immutable.Seq")
+  @tu lazy val SeqModule_apply: Symbol     = SeqModule.requiredMethod(nme.apply)
+  def SeqModuleAlias: Symbol               = ScalaPackageClass.requiredMethod(nme.Seq)
   def SeqClass(using Context): ClassSymbol = SeqType.symbol.asClass
     @tu lazy val Seq_apply        : Symbol = SeqClass.requiredMethod(nme.apply)
     @tu lazy val Seq_head         : Symbol = SeqClass.requiredMethod(nme.head)
@@ -544,8 +547,6 @@ class Definitions {
     @tu lazy val Seq_lengthCompare: Symbol = SeqClass.requiredMethod(nme.lengthCompare, List(IntType))
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
-    @tu lazy val SeqModule        : Symbol = requiredModule("scala.collection.immutable.Seq")
-    @tu lazy val SeqModule_apply  : Symbol = SeqModule.requiredMethod(nme.apply)
 
 
   @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
