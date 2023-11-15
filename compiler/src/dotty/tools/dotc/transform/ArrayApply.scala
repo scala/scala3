@@ -1,15 +1,11 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
-import core.*
+import ast.tpd
+import core.*, Contexts.*, Decorators.*, Symbols.*, Flags.*, StdNames.*
+import reporting.trace
 import MegaPhase.*
-import Contexts.*
-import Symbols.*
-import Flags.*
-import StdNames.*
-import dotty.tools.dotc.ast.tpd
-
-
 
 /** This phase rewrites calls to `Array.apply` to a direct instantiation of the array in the bytecode.
  *
@@ -22,25 +18,18 @@ class ArrayApply extends MiniPhase {
 
   override def description: String = ArrayApply.description
 
-  private var transformListApplyLimit = 8
+  private val transformListApplyLimit = 8
 
-  private def reducingTransformListApply[A](depth: Int)(body: => A): A = {
-      val saved = transformListApplyLimit
-      transformListApplyLimit -= depth
-      try body
-      finally transformListApplyLimit = saved
-    }
-
-  override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     if isArrayModuleApply(tree.symbol) then
       tree.args match
-        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
+        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) :: Nil)) :: ct :: Nil
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
-        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: Nil
+        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) :: Nil)) :: Nil
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
-          tpd.JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
+          JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
 
         case _ =>
           tree
@@ -48,11 +37,11 @@ class ArrayApply extends MiniPhase {
     else if isListOrSeqModuleApply(tree.symbol) then
       tree.args match
         // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
-        case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: tpd.JavaSeqLiteral)))) :: Nil
+        case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
           if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) &&
             rest.elems.lengthIs < transformListApplyLimit =>
-          rest.elems.foldRight(tpd.ref(defn.NilModule)): (elem, acc) => 
-            tpd.New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
+          rest.elems.foldRight(ref(defn.NilModule)): (elem, acc) => 
+            New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
 
         case _ =>
           tree
