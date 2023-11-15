@@ -1249,7 +1249,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       val checker = new TypeTraverser:
         private var allowed: SimpleIdentitySet[TermParamRef] = SimpleIdentitySet.empty
 
-        private def isAllowed(ref: CaptureRef): Boolean = ref match
+        private def isAllowed(ref: CaptureRef): Boolean = ref.stripReach match
           case ref: TermParamRef => allowed.contains(ref)
           case _ => true
 
@@ -1257,7 +1257,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           cs.ensureWellformed: elem =>
             ctx ?=>
               var seen = new util.HashSet[CaptureRef]
-              def recur(ref: CaptureRef): Unit = ref match
+              def recur(ref: CaptureRef): Unit = ref.stripReach match
                 case ref: TermParamRef
                 if !allowed.contains(ref) && !seen.contains(ref) =>
                   seen += ref

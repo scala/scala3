@@ -78,7 +78,7 @@ extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
   def toCaptureRef(using Context): CaptureRef = tree.tpe match
-    case ref: CaptureRef => ref
+    case ref: CaptureRef if ref.isTrackableRef => ref
     case tpe => throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
 
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.

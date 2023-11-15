@@ -2177,6 +2177,8 @@ object Types {
     /** Is this a reach reference of the form `x*`? */
     def isReach(using Context): Boolean = false // overridden in TermRef
 
+    def stripReach(using Context): CaptureRef = this // overridden in TermRef
+
     /** Is this reference the generic root capability `cap` ? */
     def isRootCapability(using Context): Boolean = false
 
@@ -2916,13 +2918,14 @@ object Types {
     override def isReach(using Context): Boolean =
       name == nme.CC_REACH && symbol == defn.Any_ccReach
 
-    def reachPrefix: CaptureRef = prefix.asInstanceOf[CaptureRef]
+    override def stripReach(using Context): CaptureRef =
+      if isReach then prefix.asInstanceOf[CaptureRef] else this
 
     override def isRootCapability(using Context): Boolean =
       name == nme.CAPTURE_ROOT && symbol == defn.captureRoot
 
     override def normalizedRef(using Context): CaptureRef =
-      if isReach then TermRef(reachPrefix.normalizedRef, name, denot)
+      if isReach then TermRef(stripReach.normalizedRef, name, denot)
       else if isTrackableRef then symbol.termRef
       else this
   }

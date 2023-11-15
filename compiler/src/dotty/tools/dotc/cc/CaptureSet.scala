@@ -156,12 +156,8 @@ sealed abstract class CaptureSet extends Showable:
           case y: TermRef => !y.isReach && (y.prefix eq x)
           case _ => false
       || x.match
-          case x: TermRef if x.isReach =>
-            y.match
-              case y: TermRef if y.isReach => x.reachPrefix.subsumes(y.reachPrefix)
-              case _ => x.reachPrefix.subsumes(y)
-          case _ =>
-            false
+          case x: TermRef if x.isReach => x.stripReach.subsumes(y.stripReach)
+          case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
@@ -505,7 +501,7 @@ object CaptureSet:
       if elem.isRootCapability then !noUniversal
       else elem match
         case elem: TermRef =>
-          if elem.isReach then levelOK(elem.reachPrefix)
+          if elem.isReach then levelOK(elem.stripReach)
           else if levelLimit.exists then
             var sym = elem.symbol
             if sym.isLevelOwner then sym = sym.owner

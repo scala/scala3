@@ -377,7 +377,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        if tp.isReach then toTextRef(tp.reachPrefix) ~ "*"
+        if tp.isReach then toTextRef(tp.stripReach) ~ "*"
         else toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"

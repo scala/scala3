@@ -63,7 +63,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
     val elems = refs.elems.toList
     val elems1 = elems.mapConserve(tm)
     if elems1 eq elems then this
-    else if elems1.forall(_.isInstanceOf[CaptureRef])
+    else if elems1.forall(_.isTrackableRef)
     then derivedAnnotation(CaptureSet(elems1.asInstanceOf[List[CaptureRef]]*), boxed)
     else EmptyAnnotation
 
