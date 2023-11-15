@@ -312,7 +312,7 @@ class Definitions {
           Final,
           bounds = TypeBounds.lower(AnyClass.thisType))
 
-    @tu lazy val Any_ccReach = enterMethod(AnyClass, nme.CC_REACH, AnyType)
+    @tu lazy val Any_ccReach = enterMethod(AnyClass, nme.CC_REACH, AnyType, SyntheticArtifact | Final)
 
     def AnyMethods: List[TermSymbol] = List(Any_==, Any_!=, Any_equals, Any_hashCode,
       Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_asInstanceOf, Any_typeTest,
