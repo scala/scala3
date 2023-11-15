@@ -521,6 +521,7 @@ class Definitions {
   def ListType: TypeRef                 = ListClass.typeRef
   @tu lazy val ListModule: Symbol       = requiredModule("scala.collection.immutable.List")
   @tu lazy val ListModule_apply: Symbol = ListModule.requiredMethod(nme.apply)
+  def ListModuleAlias: Symbol           = ScalaPackageClass.requiredMethod(nme.List)
   @tu lazy val NilModule: Symbol        = requiredModule("scala.collection.immutable.Nil")
   def NilType: TermRef                  = NilModule.termRef
   @tu lazy val ConsClass: Symbol        = requiredClass("scala.collection.immutable.::")
