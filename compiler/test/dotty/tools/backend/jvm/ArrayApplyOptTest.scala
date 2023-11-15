@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import org.junit.Test
 import org.junit.Assert._
@@ -161,26 +162,76 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
   }
 
   @Test def testListApplyAvoidsIntermediateArray = {
-    val source =
-      """
+    checkApplyAvoidsIntermediateArray("List"):
+      """import scala.collection.immutable.{ ::, Nil }
         |class Foo {
         |  def meth1: List[String] = List("1", "2", "3")
-        |  def meth2: List[String] =
-        | new scala.collection.immutable.::("1", new scala.collection.immutable.::("2", new scala.collection.immutable.::("3", scala.collection.immutable.Nil))).asInstanceOf[List[String]]
+        |  def meth2: List[String] = new ::("1", new ::("2", new ::("3", Nil)))
         |}
       """.stripMargin
+  }
 
+  @Test def testSeqApplyAvoidsIntermediateArray = {
+    checkApplyAvoidsIntermediateArray("Seq"):
+      """import scala.collection.immutable.{ ::, Nil }
+        |class Foo {
+        |  def meth1: Seq[String] = Seq("1", "2", "3")
+        |  def meth2: Seq[String] = new ::("1", new ::("2", new ::("3", Nil)))
+        |}
+      """.stripMargin
+  }
+
+  @Test def testSeqApplyAvoidsIntermediateArray2 = {
+    checkApplyAvoidsIntermediateArray("scala.collection.immutable.Seq"):
+      """import scala.collection.immutable.{ ::, Seq, Nil }
+        |class Foo {
+        |  def meth1: Seq[String] = Seq("1", "2", "3")
+        |  def meth2: Seq[String] = new ::("1", new ::("2", new ::("3", Nil)))
+        |}
+    """.stripMargin
+  }
+
+  @Test def testSeqApplyAvoidsIntermediateArray3 = {
+    checkApplyAvoidsIntermediateArray("scala.collection.Seq"):
+      """import scala.collection.immutable.{ ::, Nil }, scala.collection.Seq
+        |class Foo {
+        |  def meth1: Seq[String] = Seq("1", "2", "3")
+        |  def meth2: Seq[String] = new ::("1", new ::("2", new ::("3", Nil)))
+        |}
+    """.stripMargin
+  }
+
+  def checkApplyAvoidsIntermediateArray(name: String)(source: String) = {
     checkBCode(source) { dir =>
       val clsIn   = dir.lookupName("Foo.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")
 
-      val instructions1 = instructionsFromMethod(meth1)
+      val instructions1 = instructionsFromMethod(meth1) match
+        case instr :+ TypeOp(CHECKCAST, _) :+ TypeOp(CHECKCAST, _) :+ (ret @ Op(ARETURN)) =>
+          instr :+ ret
+        case instr :+ TypeOp(CHECKCAST, _) :+ (ret @ Op(ARETURN)) =>
+          // List.apply[?A] doesn't, strictly, return List[?A],
+          // because it cascades to its definition on IterableFactory
+          // where it returns CC[A].  The erasure of that is Object,
+          // which is why Erasure's Typer adds a cast to compensate.
+          // If we drop that cast while optimising (because using
+          // the constructor for :: doesn't require the cast like
+          // List.apply did) then then cons construction chain will
+          // be typed as ::.
+          // Unfortunately the LUB of :: and Nil.type is Product
+          // instead of List, so a cast remains necessary,
+          // across whatever causes the lub, like `if` or `try` branches.
+          // Therefore if we dropping the cast may cause a needed cast
+          // to be necessary, we shouldn't drop the cast,
+          // which was only motivated by the assert here.
+          instr :+ ret
+        case instr => instr
       val instructions2 = instructionsFromMethod(meth2)
 
       assert(instructions1 == instructions2,
-        "the List.apply method " +
+        s"the $name.apply method\n" +
           diffInstructions(instructions1, instructions2))
     }
   }

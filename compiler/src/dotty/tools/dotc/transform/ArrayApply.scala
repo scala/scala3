@@ -34,14 +34,15 @@ class ArrayApply extends MiniPhase {
         case _ =>
           tree
 
-    else if isListOrSeqModuleApply(tree.symbol) then
+    else if isSeqApply(tree) then
       tree.args match
         // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
         case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
           if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) &&
             rest.elems.lengthIs < transformListApplyLimit =>
-          rest.elems.foldRight(ref(defn.NilModule)): (elem, acc) => 
+          val consed = rest.elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
             New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
+          consed.cast(tree.tpe)
 
         case _ =>
           tree
@@ -52,8 +53,22 @@ class ArrayApply extends MiniPhase {
     sym.name == nme.apply
     && (sym.owner == defn.ArrayModuleClass || (sym.owner == defn.IArrayModuleClass && !sym.is(Extension)))
 
-  private def isListOrSeqModuleApply(sym: Symbol)(using Context): Boolean =
-    sym == defn.ListModule_apply || sym == defn.SeqModule_apply
+  private def isListApply(tree: Tree)(using Context): Boolean =
+    (tree.symbol == defn.ListModule_apply || tree.symbol.name == nme.apply) && appliedCore(tree).match
+      case Select(qual, _) =>
+        val sym = qual.symbol
+        sym == defn.ListModule
+        || sym == defn.ListModuleAlias
+      case _ => false
+
+  private def isSeqApply(tree: Tree)(using Context): Boolean =
+    isListApply(tree) || tree.symbol == defn.SeqModule_apply && appliedCore(tree).match
+      case Select(qual, _) =>
+        val sym = qual.symbol
+        sym == defn.SeqModule
+        || sym == defn.SeqModuleAlias
+        || sym == defn.CollectionSeqType.symbol.companionModule
+      case _ => false
 
   /** Only optimize when classtag if it is one of
    *  - `ClassTag.apply(classOf[XYZ])`
