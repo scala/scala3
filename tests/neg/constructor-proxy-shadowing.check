@@ -52,7 +52,7 @@
 17 |val x = Seq(3) // error: shadowing
    |        ^^^
    |        Reference to constructor proxy for class Seq
-   |        shadows outer reference to getter Seq in package scala
+   |        shadows outer reference to value Seq in package scala
    |
    |        The instance needs to be created with an explicit `new`.
    |--------------------------------------------------------------------------------------------------------------------
@@ -66,7 +66,7 @@
    |
    |    new Seq(...)
    |
-   | Or it could mean calling the apply method of getter Seq in package scala as in
+   | Or it could mean calling the apply method of value Seq in package scala as in
    |
    |    Seq.apply(...)
    |

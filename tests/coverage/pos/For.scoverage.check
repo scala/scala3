@@ -262,23 +262,6 @@ covtest
 For$package$
 Object
 covtest.For$package$
-testForeach
-301
-304
-13
-Nil
-Ident
-false
-0
-false
-Nil
-
-15
-For.scala
-covtest
-For$package$
-Object
-covtest.For$package$
 $anonfun
 318
 343
@@ -290,7 +273,7 @@ false
 false
 println("user code here")
 
-16
+15
 For.scala
 covtest
 For$package$

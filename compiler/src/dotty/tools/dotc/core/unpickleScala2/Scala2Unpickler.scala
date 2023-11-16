@@ -450,9 +450,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
        // Scala 2 sometimes pickle the same type parameter symbol multiple times
        // (see i11173 for an example), but we should only unpickle it once.
        || tag == TYPEsym && flags.is(TypeParam) && symScope(owner).lookup(name.asTypeName).exists
+       // We discard the private val representing a case accessor. We only load the case accessor def.
+       || flags.isAllOf(CaseAccessor| PrivateLocal, butNot = Method)
     then
       // skip this member
       return NoSymbol
+
+    // Adapt the flags of getters so they become like vals/vars instead.
+    // The info of this symbol is adapted in the `LocalUnpickler`.
+    if flags.isAllOf(Method | Accessor) && !name.toString().endsWith("_$eq") then
+      flags &~= Method | Accessor
+      if !flags.is(StableRealizable) then flags |= Mutable
 
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
@@ -618,7 +626,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
             NamerOps.addConstructorProxies(denot.classSymbol)
           case denot =>
-            val tp1 = translateTempPoly(tp)
+            val tp1 = translateTempPoly(tp) match
+              case ExprType(resultType) if !denot.isOneOf(Param | Method) =>
+                // Adapt the flags of getters so they become like vals/vars instead.
+                // This is the `def` of an accessor that needs to be transformed into
+                // a `val`/`var`. Note that the `Method | Accessor` flags were already
+                // striped away in `readDisambiguatedSymbol`.
+                resultType
+              case tp1 => tp1
             denot.info =
               if (tag == ALIASsym) TypeAlias(tp1)
               else if (denot.isType) checkNonCyclic(denot.symbol, tp1, reportErrors = false)
