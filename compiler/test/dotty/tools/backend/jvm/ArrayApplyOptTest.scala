@@ -201,34 +201,108 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
     """.stripMargin
   }
 
-  def checkApplyAvoidsIntermediateArray(name: String)(source: String) = {
+  @Test def testListApplyAvoidsIntermediateArray_max1 = {
+    checkApplyAvoidsIntermediateArray_examples("max1"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", "5", "6", "7")
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::("3", new ::("4", new ::("5", new ::("6", new ::("7", Nil)))))))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_max2 = {
+    checkApplyAvoidsIntermediateArray_examples("max2"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", "5", "6", List[Object]())
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::("3", new ::("4", new ::("5", new ::("6", new ::(Nil, Nil)))))))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_max3 = {
+    checkApplyAvoidsIntermediateArray_examples("max3"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", "5", List[Object]("6"))
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::("3", new ::("4", new ::("5", new ::(new ::("6", Nil), Nil))))))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_max4 = {
+    checkApplyAvoidsIntermediateArray_examples("max4"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", List[Object]("5", "6"))
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::("3", new ::("4", new ::(new ::("5", new ::("6", Nil)), Nil)))))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_over1 = {
+    checkApplyAvoidsIntermediateArray_examples("over1"):
+      """  def meth1: List[Object] = List("1", "2", "3", "4", "5", "6", "7", "8")
+        |  def meth2: List[Object] = List(wrapRefArray(Array("1", "2", "3", "4", "5", "6", "7", "8"))*)
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_over2 = {
+    checkApplyAvoidsIntermediateArray_examples("over2"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", "5", "6", "7", List[Object]())
+        |  def meth2: List[Object] = List(wrapRefArray(Array[Object]("1", "2", "3", "4", "5", "6", "7", Nil))*)
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_over3 = {
+    checkApplyAvoidsIntermediateArray_examples("over3"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", "5", "6", List[Object]("7"))
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::("3", new ::("4", new ::("5", new ::("6", new ::(List(wrapRefArray(Array[Object]("7"))*), Nil)))))))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_over4 = {
+    checkApplyAvoidsIntermediateArray_examples("over4"):
+      """  def meth1: List[Object] = List[Object]("1", "2", "3", "4", "5", List[Object]("6", "7"))
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::("3", new ::("4", new ::("5", new ::(List(wrapRefArray(Array[Object]("6", "7"))*), Nil))))))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_max5 = {
+    checkApplyAvoidsIntermediateArray_examples("max5"):
+      """  def meth1: List[Object] = List[Object](List[Object](List[Object](List[Object](List[Object](List[Object](List[Object](List[Object]())))))))
+        |  def meth2: List[Object] = new ::(new ::(new ::(new ::(new ::(new ::(new ::(Nil, Nil), Nil), Nil), Nil), Nil), Nil), Nil)
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_over5 = {
+    checkApplyAvoidsIntermediateArray_examples("over5"):
+      """  def meth1: List[Object] = List[Object](List[Object](List[Object](List[Object](List[Object](List[Object](List[Object](List[Object](List[Object]()))))))))
+        |  def meth2: List[Object] = new ::(new ::(new ::(new ::(new ::(new ::(new ::(List[Object](wrapRefArray(Array[Object](Nil))*), Nil), Nil), Nil), Nil), Nil), Nil), Nil)
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_max6 = {
+    checkApplyAvoidsIntermediateArray_examples("max6"):
+      """  def meth1: List[Object] = List[Object]("1", "2", List[Object]("3", "4", List[Object](List[Object]())))
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::(new ::("3", new ::("4", new ::(new ::(Nil, Nil), Nil))), Nil)))
+      """.stripMargin
+  }
+
+  @Test def testListApplyAvoidsIntermediateArray_over6 = {
+    checkApplyAvoidsIntermediateArray_examples("over6"):
+      """  def meth1: List[Object] = List[Object]("1", "2", List[Object]("3", "4", List[Object]("5")))
+        |  def meth2: List[Object] = new ::("1", new ::("2", new ::(new ::("3", new ::("4", new ::(new ::("5", Nil), Nil))), Nil)))
+      """.stripMargin
+  }
+
+  def checkApplyAvoidsIntermediateArray_examples(name: String)(body: String): Unit = {
+    checkApplyAvoidsIntermediateArray(s"List_$name"):
+      s"""import scala.collection.immutable.{ ::, Nil }, scala.runtime.ScalaRunTime.wrapRefArray
+         |class Foo {
+         |$body
+         |}
+      """.stripMargin
+  }
+
+  def checkApplyAvoidsIntermediateArray(name: String)(source: String): Unit = {
     checkBCode(source) { dir =>
       val clsIn   = dir.lookupName("Foo.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")
 
-      val instructions1 = instructionsFromMethod(meth1) match
-        case instr :+ TypeOp(CHECKCAST, _) :+ TypeOp(CHECKCAST, _) :+ (ret @ Op(ARETURN)) =>
-          instr :+ ret
-        case instr :+ TypeOp(CHECKCAST, _) :+ (ret @ Op(ARETURN)) =>
-          // List.apply[?A] doesn't, strictly, return List[?A],
-          // because it cascades to its definition on IterableFactory
-          // where it returns CC[A].  The erasure of that is Object,
-          // which is why Erasure's Typer adds a cast to compensate.
-          // If we drop that cast while optimising (because using
-          // the constructor for :: doesn't require the cast like
-          // List.apply did) then then cons construction chain will
-          // be typed as ::.
-          // Unfortunately the LUB of :: and Nil.type is Product
-          // instead of List, so a cast remains necessary,
-          // across whatever causes the lub, like `if` or `try` branches.
-          // Therefore if we dropping the cast may cause a needed cast
-          // to be necessary, we shouldn't drop the cast,
-          // which was only motivated by the assert here.
-          instr :+ ret
-        case instr => instr
-      val instructions2 = instructionsFromMethod(meth2)
+      val instructions1 = instructionsFromMethod(meth1).filter { case TypeOp(CHECKCAST, _) => false case _ => true }
+      val instructions2 = instructionsFromMethod(meth2).filter { case TypeOp(CHECKCAST, _) => false case _ => true }
 
       assert(instructions1 == instructions2,
         s"the $name.apply method\n" +

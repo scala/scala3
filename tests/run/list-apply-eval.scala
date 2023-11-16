@@ -34,7 +34,6 @@ object Test:
 
   // Examples of arity and nesting arity
   // to find the thresholds and reproduce the behaviour of nsc
-  // tested manually, comparing -Xprint across compilers (ran out of time)
   def examples(): Unit =
     val max1 = List[Object]("1", "2", "3", "4", "5", "6", "7")                  // 7 cons w/ 7 string heads + nil
     val max2 = List[Object]("1", "2", "3", "4", "5", "6", List[Object]())       // 7 cons w/ 6 string heads + 1 nil head + nil
