@@ -5,6 +5,7 @@ package transform
 import ast.tpd
 import core.*, Contexts.*, Decorators.*, Symbols.*, Flags.*, StdNames.*
 import reporting.trace
+import util.Property
 import MegaPhase.*
 
 /** This phase rewrites calls to `Array.apply` to a direct instantiation of the array in the bytecode.
@@ -18,7 +19,16 @@ class ArrayApply extends MiniPhase {
 
   override def description: String = ArrayApply.description
 
-  private val transformListApplyLimit = 8
+  private val TransformListApplyBudgetKey = new Property.Key[Int]
+  private def transformListApplyBudget(using Context) = ctx.property(TransformListApplyBudgetKey).getOrElse(8)
+
+  override def prepareForApply(tree: Apply)(using Context): Context =
+    if isSeqApply(tree) then
+      val args = seqApplyArgsOrNull(tree)
+      if args != null then
+        ctx.fresh.setProperty(TransformListApplyBudgetKey, transformListApplyBudget - args.elems.length)
+      else ctx
+    else ctx
 
   override def transformApply(tree: Apply)(using Context): Tree =
     if isArrayModuleApply(tree.symbol) then
@@ -35,17 +45,12 @@ class ArrayApply extends MiniPhase {
           tree
 
     else if isSeqApply(tree) then
-      tree.args match
-        // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
-        case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
-          if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) &&
-            rest.elems.lengthIs < transformListApplyLimit =>
-          val consed = rest.elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
-            New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
-          consed.cast(tree.tpe)
-
-        case _ =>
-          tree
+      val args = seqApplyArgsOrNull(tree)
+      if args != null && (transformListApplyBudget > 0 || args.elems.isEmpty) then
+        val consed = args.elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
+          New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
+        consed.cast(tree.tpe)
+      else tree
 
     else tree
 
@@ -69,6 +74,15 @@ class ArrayApply extends MiniPhase {
         || sym == defn.SeqModuleAlias
         || sym == defn.CollectionSeqType.symbol.companionModule
       case _ => false
+
+  private def seqApplyArgsOrNull(tree: Apply)(using Context): JavaSeqLiteral | Null =
+    // assumes isSeqApply(tree)
+    tree.args match
+      // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
+      case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
+          if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
+        rest
+      case _ => null
 
   /** Only optimize when classtag if it is one of
    *  - `ClassTag.apply(classOf[XYZ])`

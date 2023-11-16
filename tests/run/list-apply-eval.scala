@@ -31,3 +31,59 @@ object Test:
   // again, the lub of :: and Nil is Product, which breaks ++ (which requires IterableOnce)
   def lub2(b: Boolean): Unit =
     Seq(1) ++ (if (b) Seq(2) else Nil)
+
+  // Examples of arity and nesting arity
+  // to find the thresholds and reproduce the behaviour of nsc
+  // tested manually, comparing -Xprint across compilers (ran out of time)
+  def examples(): Unit =
+    val max1 = List[Object]("1", "2", "3", "4", "5", "6", "7")                  // 7 cons w/ 7 string heads + nil
+    val max2 = List[Object]("1", "2", "3", "4", "5", "6", List[Object]())       // 7 cons w/ 6 string heads + 1 nil head + nil
+    val max3 = List[Object]("1", "2", "3", "4", "5", List[Object]("6"))
+    val max4 = List[Object]("1", "2", "3", "4", List[Object]("5", "6"))
+
+    val over1 = List[Object]("1", "2", "3", "4", "5", "6", "7", "8")            // wrap 8-sized array
+    val over2 = List[Object]("1", "2", "3", "4", "5", "6", "7", List[Object]()) // wrap 8-sized array
+    val over3 = List[Object]("1", "2", "3", "4", "5", "6", List[Object]("7"))   // wrap 1-sized array with 7
+    val over4 = List[Object]("1", "2", "3", "4", "5", List[Object]("6", "7"))   // wrap 2
+
+    val max5 =
+      List[Object](
+        List[Object](
+          List[Object](
+            List[Object](
+              List[Object](
+                List[Object](
+                  List[Object](
+                    List[Object](
+      )))))))) // 7 cons + 1 nil
+
+    val over5 =
+      List[Object](
+        List[Object](
+          List[Object](
+            List[Object](
+              List[Object](
+                List[Object](
+                  List[Object](
+                    List[Object]( List[Object]()
+      )))))))) // 7 cons + 1-sized array wrapping nil
+
+    val max6 =
+      List[Object](                         //  ::(
+        "1", "2", List[Object](             //    1, ::(2, ::(::(
+          "3", "4", List[Object](           //      3, ::(4, ::(::(
+            List[Object]()                  //        Nil, Nil
+          )                                 //      ), Nil))
+        )                                   //    ), Nil))
+      )                                     //  )
+      // 7 cons + 4 string heads + 4 nils for nested lists
+
+    val max7 =
+      List[Object](                         //  ::(
+        "1", "2", List[Object](             //    1, ::(2, ::(::(
+          "3", "4", List[Object](           //      3, ::(4, ::(::(
+            "5"                             //        5, Nil
+          )                                 //      ), Nil))
+        )                                   //    ), Nil))
+      )                                     //  )
+      // 7 cons + 5 string heads + 3 nils for nested lists
