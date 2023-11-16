@@ -19,4 +19,4 @@ def test =
   def forceWrapper[A](mx: Wrapper[Unit ->{cap} A]): Wrapper[A] =
     // Γ ⊢ mx: Wrapper[□ {cap} Unit => A]
     // `force` should be typed as ∀(□ {cap} Unit -> A) A, but it can not
-    strictMap[Unit ->{cap} A, A](mx)(t => force[A](t)) // error
+    strictMap[Unit ->{mx*} A, A](mx)(t => force[A](t)) // error // should work

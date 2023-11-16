@@ -12,5 +12,5 @@ def leaking(c: Cap^): Id[Cap^{c}] = mkId(c)
 
 def test =
   val ll = (c: Cap^) => leaking(c)
-  val bad1 = withCap(ll)       // used to work, now error (?)
-  val bad2 = withCap(leaking)  // used to work, now error (?)
+  val bad1 = withCap(ll)       // error
+  val bad2 = withCap(leaking)  // error
