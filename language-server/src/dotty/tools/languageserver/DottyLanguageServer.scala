@@ -792,7 +792,7 @@ object DottyLanguageServer {
    * not a worksheet, no mapper is necessary. Otherwise, return `toUnwrappedPosition`.
    */
   private def positionMapperFor(sourcefile: SourceFile): Option[SourcePosition => SourcePosition] = {
-    if (isWorksheet(sourcefile)) Some(toUnwrappedPosition _)
+    if (isWorksheet(sourcefile)) Some(toUnwrappedPosition)
     else None
   }
 

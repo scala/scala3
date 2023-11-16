@@ -2993,26 +2993,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }
     }
     nestedCtx.typerState.commit()
-    if sourceVersion.isAtLeast(future) then
-      lazy val (prefix, suffix) = res match {
-        case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
-          val arity = vparams.length
-          if (arity > 0) ("", "") else ("(() => ", "())")
-        case _ =>
-          ("(() => ", ")")
-      }
-      def remedy =
-        if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
-        else s"use `$prefix<function>$suffix` instead"
-      report.errorOrMigrationWarning(
-        em"""The syntax `<function> _` is no longer supported;
-            |you can $remedy""",
-        tree.srcPos,
-        from = future)
-      if sourceVersion.isMigrating then
-        patch(Span(tree.span.start), prefix)
-        patch(Span(qual.span.end, tree.span.end), suffix)
-    end if
+
+    lazy val (prefix, suffix) = res match {
+      case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        val arity = vparams.length
+        if (arity > 0) ("", "") else ("(() => ", "())")
+      case _ =>
+        ("(() => ", ")")
+    }
+    def remedy =
+      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+      else s"use `$prefix<function>$suffix` instead"
+    def rewrite = Message.rewriteNotice("This construct", `3.4-migration`)
+    report.gradualErrorOrMigrationWarning(
+      em"""The syntax `<function> _` is no longer supported;
+          |you can $remedy$rewrite""",
+      tree.srcPos,
+      warnFrom = `3.4`,
+      errorFrom = future)
+    if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+      patch(Span(tree.span.start), prefix)
+      patch(Span(qual.span.end, tree.span.end), suffix)
+
     res
   }
 
