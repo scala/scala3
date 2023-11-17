@@ -92,7 +92,6 @@ subsection:
           - page: reference/changed-features/operators.md
           - page: reference/changed-features/wildcards.md
           - page: reference/changed-features/imports.md
-          - page: reference/changed-features/type-checking.md
           - page: reference/changed-features/type-inference.md
           - page: reference/changed-features/implicit-resolution.md
           - page: reference/changed-features/implicit-conversions.md
