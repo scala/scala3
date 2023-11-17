@@ -3,13 +3,13 @@ class CC
 def test1(cap1: CC^) =
 
   class Ref[T](init: T):
-    private var v: T = init  // error
+    private var v: T = init
     def setV(x: T): Unit = v = x
     def getV: T = v
 
 def test2(cap1: CC^) =
 
-  class Ref[sealed T](init: T):
+  class Ref[T](init: T):
     private var v: T = init
     def setV(x: T): Unit = v = x
     def getV: T = v

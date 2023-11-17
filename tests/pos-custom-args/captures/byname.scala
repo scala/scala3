@@ -1,4 +1,5 @@
 import annotation.retainsByName
+import caps.cap
 class CC
 type Cap = CC^
 

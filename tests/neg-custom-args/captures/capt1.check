@@ -33,8 +33,22 @@
 27 |    def m() = if x == null then y else y
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/capt1.scala:32:12 -------------------------------------------------------------
+32 |  val z2 = h[() -> Cap](() => x) // error // error
+   |           ^^^^^^^^^^^^
+   |           Sealed type variable X cannot be instantiated to () -> box C^ since
+   |           the part box C^ of that type captures the root capability `cap`.
+   |           This is often caused by a local capability in an argument of method h
+   |           leaking as part of its result.
 -- Error: tests/neg-custom-args/captures/capt1.scala:32:30 -------------------------------------------------------------
-32 |  val z2 = h[() -> Cap](() => x) // error
+32 |  val z2 = h[() -> Cap](() => x) // error // error
    |                              ^
    |                            (x : C^) cannot be referenced here; it is not included in the allowed capture set {}
    |                            of an enclosing function literal with expected type () -> box C^
+-- Error: tests/neg-custom-args/captures/capt1.scala:34:12 -------------------------------------------------------------
+34 |  val z3 = h[(() -> Cap) @retains(x)](() => x)(() => C())  // error
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           Sealed type variable X cannot be instantiated to box () ->{x} Cap since
+   |           the part C^ of that type captures the root capability `cap`.
+   |           This is often caused by a local capability in an argument of method h
+   |           leaking as part of its result.

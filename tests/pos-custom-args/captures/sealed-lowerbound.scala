@@ -1,10 +1,10 @@
-def foo[sealed B](x: B): B = x
+def foo[B](x: B): B = x
 
-def bar[B, sealed A >: B](x: A): A = foo[A](x)
+def bar[B, A >: B](x: A): A = foo[A](x)
 
-class C[sealed A]
+class C[A]
 
-class CV[sealed A](x: Int):
+class CV[A](x: Int):
   def this() = this:
     val x = new C[A]:
       println("foo")

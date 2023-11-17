@@ -1474,19 +1474,13 @@ object Parsers {
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
-      else termIdent() match
-        case id @ Ident(nme.CAPTURE_ROOT) =>
-          if in.token == LBRACKET then
-            val ref = atSpan(id.span.start)(captureRootIn)
-            val qual =
-              inBrackets:
-                atSpan(in.offset):
-                  Literal(Constant(ident().toString))
-            atSpan(id.span.start)(Apply(ref, qual :: Nil))
-          else
-            atSpan(id.span.start)(captureRoot)
-        case id =>
-          id
+      else
+        val id = termIdent()
+        if isIdent(nme.raw.STAR) then
+          in.nextToken()
+          atSpan(startOffset(id)):
+            PostfixOp(id, Ident(nme.CC_REACH))
+        else id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -3278,9 +3272,6 @@ object Parsers {
         val start = in.offset
         var mods = annotsAsMods() | Param
         if ownerKind == ParamOwner.Class then mods |= PrivateLocal
-        if Feature.ccEnabled && in.token == SEALED then
-          mods |= Sealed
-          in.nextToken()
         if isIdent(nme.raw.PLUS) && checkVarianceOK() then
           mods |= Covariant
         else if isIdent(nme.raw.MINUS) && checkVarianceOK() then

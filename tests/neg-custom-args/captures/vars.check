@@ -19,7 +19,7 @@
 25 |    b = List(g) // error
    |        ^^^^^^^
    |        Found:    List[box (x$0: String) ->{cap3} String]
-   |        Required: List[box String ->{cap[test]} String]
+   |        Required: List[box String ->{cap1, cap2} String]
    |
    | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/captures/vars.scala:34:2 ---------------------------------------------------------------

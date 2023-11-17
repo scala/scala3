@@ -110,7 +110,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
 
   override def toString: String = result()
 
-  override def toArray[sealed B >: Char](implicit ct: scala.reflect.ClassTag[B]) =
+  override def toArray[B >: Char](implicit ct: scala.reflect.ClassTag[B]) =
     ct.runtimeClass match {
       case java.lang.Character.TYPE => toCharArray.asInstanceOf[Array[B]]
       case _ => super.toArray

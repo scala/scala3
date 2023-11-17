@@ -30,7 +30,7 @@ def test(c: Cap, d: Cap, e: Cap) =
     CONS(z, ys)
   val zsc: LIST[Cap ->{d, y} Unit] = zs
   val z1 = zs.head
-  val z1c: Cap^{cap[test]} ->{y, d} Unit = z1
+  val z1c: Cap^ ->{y, d} Unit = z1
   val ys1 = zs.tail
   val y1 = ys1.head
 

@@ -34,7 +34,7 @@ import language.experimental.captureChecking
  *  @define orderDependentFold
  */
 @deprecatedInheritance("LinkedHashMap will be made final; use .withDefault for the common use case of computing a default value", "2.13.11")
-class LinkedHashMap[sealed K, sealed V]
+class LinkedHashMap[K,  V]
   extends AbstractMap[K, V]
     with SeqMap[K, V]
     with MapOps[K, V, LinkedHashMap, LinkedHashMap[K, V]]
@@ -477,20 +477,20 @@ class LinkedHashMap[sealed K, sealed V]
 @SerialVersionUID(3L)
 object LinkedHashMap extends MapFactory[LinkedHashMap] {
 
-  def empty[sealed K, sealed V] = new LinkedHashMap[K, V]
+  def empty[K,  V] = new LinkedHashMap[K, V]
 
-  def from[sealed K, sealed V](it: collection.IterableOnce[(K, V)]^) = {
+  def from[K,  V](it: collection.IterableOnce[(K, V)]^) = {
     val newlhm = empty[K, V]
     newlhm.sizeHint(it.knownSize)
     newlhm.addAll(it)
     newlhm
   }
 
-  def newBuilder[sealed K, sealed V] = new GrowableBuilder(empty[K, V])
+  def newBuilder[K,  V] = new GrowableBuilder(empty[K, V])
 
   /** Class for the linked hash map entry, used internally.
     */
-  private[mutable] final class LinkedEntry[sealed K, sealed V](val key: K, val hash: Int, var value: V) {
+  private[mutable] final class LinkedEntry[K,  V](val key: K, val hash: Int, var value: V) {
     var earlier: LinkedEntry[K, V] = null
     var later: LinkedEntry[K, V] = null
     var next: LinkedEntry[K, V] = null

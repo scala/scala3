@@ -19,7 +19,6 @@ import scala.collection.generic.DefaultSerializable
 import scala.collection.immutable.Map.Map4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** Base type of immutable Maps */
 trait Map[K, +V]
@@ -641,9 +640,9 @@ object Map extends MapFactory[Map] {
 abstract class AbstractMap[K, +V] extends scala.collection.AbstractMap[K, V] with Map[K, V]
 
 private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, V), Map[K, V]] {
-  private[this] var elems: Map[K, V] @uncheckedCaptures = Map.empty
+  private[this] var elems: Map[K, V] = Map.empty
   private[this] var switchedToHashMapBuilder: Boolean = false
-  private[this] var hashMapBuilder: HashMapBuilder[K, V] @uncheckedCaptures = _
+  private[this] var hashMapBuilder: HashMapBuilder[K, V] = _
 
   private[immutable] def getOrElse[V0 >: V](key: K, value: V0): V0 =
     if (hashMapBuilder ne null) hashMapBuilder.getOrElse(key, value)

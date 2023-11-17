@@ -16,7 +16,6 @@ package immutable
 
 import scala.annotation.tailrec
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements immutable maps using a vector/map-based data structure, which preserves insertion order.
   *
@@ -243,7 +242,7 @@ object VectorMap extends MapFactory[VectorMap] {
 private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K, V), VectorMap[K, V]] {
   private[this] val vectorBuilder = new VectorBuilder[K]
   private[this] val mapBuilder = new MapBuilderImpl[K, (Int, V)]
-  private[this] var aliased: VectorMap[K, V] @uncheckedCaptures = _ // OK since VectorMapBuilder is private
+  private[this] var aliased: VectorMap[K, V] = _ // OK since VectorMapBuilder is private
 
   override def clear(): Unit = {
     vectorBuilder.clear()

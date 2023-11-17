@@ -24,9 +24,8 @@ import scala.collection.mutable.GrowableBuilder
 import scala.util.Try
 import scala.util.hashing.Hashing
 import language.experimental.captureChecking
-import caps.unsafe.unsafeAssumePure
 
-private[collection] final class INode[sealed K, sealed V](bn: MainNode[K, V], g: Gen, equiv: Equiv[K]) extends INodeBase[K, V](g) {
+private[collection] final class INode[K, V](bn: MainNode[K, V], g: Gen, equiv: Equiv[K]) extends INodeBase[K, V](g) {
   import INodeBase._
 
   WRITE(bn)
@@ -429,7 +428,7 @@ private[concurrent] object INode {
   final val KEY_ABSENT = new AnyRef
   final val KEY_PRESENT_OR_ABSENT = new AnyRef
 
-  def newRootNode[sealed K, sealed V](equiv: Equiv[K]) = {
+  def newRootNode[K, V](equiv: Equiv[K]) = {
     val gen = new Gen
     val cn = new CNode[K, V](0, new Array(0), gen)
     new INode[K, V](cn, gen, equiv)
@@ -437,7 +436,7 @@ private[concurrent] object INode {
 }
 
 
-private[concurrent] final class FailedNode[sealed K, sealed V](p: MainNode[K, V]) extends MainNode[K, V] {
+private[concurrent] final class FailedNode[K, V](p: MainNode[K, V]) extends MainNode[K, V] {
   WRITE_PREV(p)
 
   def string(lev: Int) = throw new UnsupportedOperationException
@@ -450,12 +449,12 @@ private[concurrent] final class FailedNode[sealed K, sealed V](p: MainNode[K, V]
 }
 
 
-private[concurrent] trait KVNode[sealed K, sealed V] {
+private[concurrent] trait KVNode[K, V] {
   def kvPair: (K, V)
 }
 
 
-private[collection] final class SNode[sealed K, sealed V](final val k: K, final val v: V, final val hc: Int)
+private[collection] final class SNode[K, V](final val k: K, final val v: V, final val hc: Int)
   extends BasicNode with KVNode[K, V] {
   def copy = new SNode(k, v, hc)
   def copyTombed = new TNode(k, v, hc)
@@ -465,7 +464,7 @@ private[collection] final class SNode[sealed K, sealed V](final val k: K, final 
 }
 
 // Tomb Node, used to ensure proper ordering during removals
-private[collection] final class TNode[sealed K, sealed V](final val k: K, final val v: V, final val hc: Int)
+private[collection] final class TNode[K, V](final val k: K, final val v: V, final val hc: Int)
   extends MainNode[K, V] with KVNode[K, V] {
   def copy = new TNode(k, v, hc)
   def copyTombed = new TNode(k, v, hc)
@@ -477,7 +476,7 @@ private[collection] final class TNode[sealed K, sealed V](final val k: K, final 
 }
 
 // List Node, leaf node that handles hash collisions
-private[collection] final class LNode[sealed K, sealed V](val entries: List[(K, V)], equiv: Equiv[K])
+private[collection] final class LNode[K, V](val entries: List[(K, V)], equiv: Equiv[K])
   extends MainNode[K, V] {
 
   def this(k: K, v: V, equiv: Equiv[K]) = this((k -> v) :: Nil, equiv)
@@ -519,7 +518,7 @@ private[collection] final class LNode[sealed K, sealed V](val entries: List[(K, 
 }
 
 // Ctrie Node, contains bitmap and array of references to branch nodes
-private[collection] final class CNode[sealed K, sealed V](val bitmap: Int, val array: Array[BasicNode], val gen: Gen) extends CNodeBase[K, V] {
+private[collection] final class CNode[K, V](val bitmap: Int, val array: Array[BasicNode], val gen: Gen) extends CNodeBase[K, V] {
   // this should only be called from within read-only snapshots
   def cachedSize(ct: AnyRef): Int = {
     val currsz = READ_SIZE()
@@ -655,7 +654,7 @@ private[collection] final class CNode[sealed K, sealed V](val bitmap: Int, val a
 
 private[concurrent] object CNode {
 
-  def dual[sealed K, sealed V](x: SNode[K, V], xhc: Int, y: SNode[K, V], yhc: Int, lev: Int, gen: Gen, equiv: Equiv[K]): MainNode[K, V] = if (lev < 35) {
+  def dual[K, V](x: SNode[K, V], xhc: Int, y: SNode[K, V], yhc: Int, lev: Int, gen: Gen, equiv: Equiv[K]): MainNode[K, V] = if (lev < 35) {
     val xidx = (xhc >>> lev) & 0x1f
     val yidx = (yhc >>> lev) & 0x1f
     val bmp = (1 << xidx) | (1 << yidx)
@@ -690,7 +689,7 @@ private[concurrent] case class RDCSS_Descriptor[K, V](old: INode[K, V], expected
   *  For details, see: [[http://lampwww.epfl.ch/~prokopec/ctries-snapshot.pdf]]
   */
 @SerialVersionUID(-5212455458703321708L)
-final class TrieMap[sealed K, sealed V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef], hashf: Hashing[K], ef: Equiv[K])
+final class TrieMap[K, V] private (r: AnyRef, rtupd: AtomicReferenceFieldUpdater[TrieMap[K, V], AnyRef], hashf: Hashing[K], ef: Equiv[K])
   extends scala.collection.mutable.AbstractMap[K, V]
     with scala.collection.concurrent.Map[K, V]
     with scala.collection.mutable.MapOps[K, V, TrieMap, TrieMap[K, V]]
@@ -1043,11 +1042,11 @@ final class TrieMap[sealed K, sealed V] private (r: AnyRef, rtupd: AtomicReferen
 @SerialVersionUID(3L)
 object TrieMap extends MapFactory[TrieMap] {
 
-  def empty[sealed K, sealed V]: TrieMap[K, V] = new TrieMap[K, V]
+  def empty[K, V]: TrieMap[K, V] = new TrieMap[K, V]
 
-  def from[sealed K, sealed V](it: IterableOnce[(K, V)]^): TrieMap[K, V] = new TrieMap[K, V]() ++= it
+  def from[K, V](it: IterableOnce[(K, V)]^): TrieMap[K, V] = new TrieMap[K, V]() ++= it
 
-  def newBuilder[sealed K, sealed V]: mutable.GrowableBuilder[(K, V), TrieMap[K, V]] = new GrowableBuilder(empty[K, V])
+  def newBuilder[K, V]: mutable.GrowableBuilder[(K, V), TrieMap[K, V]] = new GrowableBuilder(empty[K, V])
 
   @transient
   val inodeupdater: AtomicReferenceFieldUpdater[INodeBase[_, _], MainNode[_, _]] = AtomicReferenceFieldUpdater.newUpdater(classOf[INodeBase[_, _]], classOf[MainNode[_, _]], "mainnode")
@@ -1071,7 +1070,7 @@ object TrieMap extends MapFactory[TrieMap] {
 }
 
 // non-final as an extension point for parallel collections
-private[collection] class TrieMapIterator[sealed K, sealed V](var level: Int, private var ct: TrieMap[K, V], mustInit: Boolean = true) extends AbstractIterator[(K, V)] {
+private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: TrieMap[K, V], mustInit: Boolean = true) extends AbstractIterator[(K, V)] {
   private val stack = new Array[Array[BasicNode]](7)
   private val stackpos = new Array[Int](7)
   private var depth = -1

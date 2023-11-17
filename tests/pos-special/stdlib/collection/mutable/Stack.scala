@@ -35,7 +35,7 @@ import language.experimental.captureChecking
  *  @define willNotTerminateInf
  */
 @migration("Stack is now based on an ArrayDeque instead of a linked list", "2.13.0")
-class Stack[sealed A] protected (array: Array[AnyRef], start: Int, end: Int)
+class Stack[A] protected (array: Array[AnyRef], start: Int, end: Int)
   extends ArrayDeque[A](array, start, end)
     with IndexedSeqOps[A, Stack, Stack[A]]
     with StrictOptimizedSeqOps[A, Stack, Stack[A]]
@@ -135,10 +135,10 @@ class Stack[sealed A] protected (array: Array[AnyRef], start: Int, end: Int)
 @SerialVersionUID(3L)
 object Stack extends StrictOptimizedSeqFactory[Stack] {
 
-  def from[sealed A](source: IterableOnce[A]^): Stack[A] = empty ++= source
+  def from[A](source: IterableOnce[A]^): Stack[A] = empty ++= source
 
-  def empty[sealed A]: Stack[A] = new Stack
+  def empty[A]: Stack[A] = new Stack
 
-  def newBuilder[sealed A]: Builder[A, Stack[A]] = new GrowableBuilder[A, Stack[A]](empty)
+  def newBuilder[A]: Builder[A, Stack[A]] = new GrowableBuilder[A, Stack[A]](empty)
 
 }

@@ -18,7 +18,6 @@ import mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /**
   * This class implements immutable sets using a list-based data structure. List set iterators and

@@ -21,7 +21,7 @@ import scala.reflect.ClassTag
  *  @tparam T    the type of the elements for the builder.
  */
 @SerialVersionUID(3L)
-sealed abstract class ArrayBuilder[sealed T]
+sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
   protected[this] var capacity: Int = 0

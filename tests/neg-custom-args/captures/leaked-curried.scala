@@ -4,7 +4,7 @@ trait Cap:
 def withCap[T](op: (x: Cap^) => T): T = ???
 
 trait Box:
-  val get: () ->{} () ->{cap} Cap^
+  val get: () ->{} () => Cap^
 
 def main(): Unit =
   val leaked = withCap: (io: Cap^) =>
