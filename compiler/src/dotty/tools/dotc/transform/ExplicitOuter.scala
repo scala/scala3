@@ -2,19 +2,19 @@ package dotty.tools
 package dotc
 package transform
 
-import MegaPhase._
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Phases._
-import core.Types._
-import core.Flags._
-import core.Decorators._
+import MegaPhase.*
+import core.DenotTransformers.*
+import core.Symbols.*
+import core.Contexts.*
+import core.Phases.*
+import core.Types.*
+import core.Flags.*
+import core.Decorators.*
 import core.StdNames.nme
-import core.Names._
-import core.NameOps._
+import core.Names.*
+import core.NameOps.*
 import core.NameKinds.SuperArgName
-import SymUtils._
+import SymUtils.*
 import dotty.tools.dotc.ast.tpd
 
 import collection.mutable
@@ -35,8 +35,8 @@ import scala.annotation.tailrec
  *   needs to run after pattern matcher as it can add outer checks and force creation of $outer
  */
 class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
-  import ExplicitOuter._
-  import ast.tpd._
+  import ExplicitOuter.*
+  import ast.tpd.*
 
   override def phaseName: String = ExplicitOuter.name
 
@@ -122,7 +122,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 }
 
 object ExplicitOuter {
-  import ast.tpd._
+  import ast.tpd.*
 
   val name: String = "explicitOuter"
   val description: String = "add accessors to outer classes from nested ones"

@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package coverage
 
-import ast.tpd._
+import ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import java.nio.file.Path

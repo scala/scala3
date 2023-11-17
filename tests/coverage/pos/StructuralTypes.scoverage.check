@@ -41,23 +41,6 @@ covtest
 Record
 Class
 covtest.Record
-$anonfun
-159
-163
-5
-_1
-Select
-false
-0
-false
-_._1
-
-2
-StructuralTypes.scala
-covtest
-Record
-Class
-covtest.Record
 selectDynamic
 148
 176
@@ -69,24 +52,7 @@ false
 false
 elems.find(_._1 == name).get
 
-3
-StructuralTypes.scala
-covtest
-Record
-Class
-covtest.Record
-selectDynamic
-148
-179
-5
-_2
-Select
-false
-0
-false
-elems.find(_._1 == name).get._2
-
-4
+2
 StructuralTypes.scala
 covtest
 Record
@@ -103,7 +69,7 @@ false
 false
 def selectDynamic
 
-5
+3
 StructuralTypes.scala
 covtest
 StructuralTypes$
@@ -120,7 +86,7 @@ false
 false
 "name" -> "Emma"
 
-6
+4
 StructuralTypes.scala
 covtest
 StructuralTypes$
@@ -137,7 +103,7 @@ false
 false
 "age" -> 42
 
-7
+5
 StructuralTypes.scala
 covtest
 StructuralTypes$
@@ -154,7 +120,7 @@ false
 false
 person.name
 
-8
+6
 StructuralTypes.scala
 covtest
 StructuralTypes$

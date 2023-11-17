@@ -206,6 +206,12 @@ extension (tp: Type)
     case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
     case _ => false
 
+  def isSealed(using Context): Boolean = tp match
+    case tp: TypeParamRef => tp.underlying.isSealed
+    case tp: TypeBounds => tp.hi.hasAnnotation(defn.Caps_SealedAnnot)
+    case tp: TypeRef => tp.symbol.is(Sealed) || tp.info.isSealed // TODO: drop symbol flag?
+    case _ => false
+
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
@@ -225,7 +231,11 @@ extension (cls: ClassSymbol)
           && bc.givenSelfType.dealiasKeepAnnots.match
             case CapturingType(_, refs) => refs.isAlwaysEmpty
             case RetainingType(_, refs) => refs.isEmpty
-            case selfType => selfType.exists && selfType.captureSet.isAlwaysEmpty
+            case selfType =>
+              isCaptureChecking  // At Setup we have not processed self types yet, so
+                                 // unless a self type is explicitly given, we can't tell
+                                 // and err on the side of impure.
+              && selfType.exists && selfType.captureSet.isAlwaysEmpty
 
 extension (sym: Symbol)
 

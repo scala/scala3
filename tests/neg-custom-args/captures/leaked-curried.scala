@@ -12,8 +12,8 @@ def main(): Unit =
       self =>
       val get: () ->{} () ->{io} Cap^ =
         () => () => io // error
-    class Foo extends Box, Pure: // error
+    class Foo extends Box, Pure:
       val get: () ->{} () ->{io} Cap^ =
-        () => () => io
+        () => () => io // error
     new Foo
   val bad = leaked.get()().use()  // using a leaked capability

@@ -9,30 +9,30 @@ import java.io.IOException
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
-import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
-import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._, Phases._
+import Contexts.*, Symbols.*, Types.*, Scopes.*, SymDenotations.*, Names.*, NameOps.*
+import StdNames.*, Denotations.*, NameOps.*, Flags.*, Constants.*, Annotations.*, Phases.*
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
-import util.Spans._
-import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
+import util.Spans.*
+import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd.*
 import ast.untpd.Modifiers
 import backend.sjs.JSDefinitions
-import printing.Texts._
+import printing.Texts.*
 import printing.Printer
 import io.AbstractFile
-import util.common._
+import util.common.*
 import util.NoSourcePosition
 import typer.Checking.checkNonCyclic
-import typer.Nullables._
-import transform.SymUtils._
-import PickleBuffer._
-import PickleFormat._
-import Decorators._
-import TypeApplications._
+import typer.Nullables.*
+import transform.SymUtils.*
+import PickleBuffer.*
+import PickleFormat.*
+import Decorators.*
+import TypeApplications.*
 import classfile.ClassfileParser
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
-import reporting._
+import reporting.*
 
 object Scala2Unpickler {
 
@@ -146,7 +146,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   // print("unpickling "); showPickled() // !!! DEBUG
 
-  import Scala2Unpickler._
+  import Scala2Unpickler.*
 
   val moduleRoot: SymDenotation = inContext(ictx) { moduleClassRoot.sourceModule.denot }
   assert(moduleRoot.isTerm)
@@ -450,9 +450,25 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
        // Scala 2 sometimes pickle the same type parameter symbol multiple times
        // (see i11173 for an example), but we should only unpickle it once.
        || tag == TYPEsym && flags.is(TypeParam) && symScope(owner).lookup(name.asTypeName).exists
+       // We discard the private val representing a case accessor. We only load the case accessor def.
+       || flags.isAllOf(CaseAccessor| PrivateLocal, butNot = Method)
     then
       // skip this member
       return NoSymbol
+
+    // Adapt the flags of getters so they become like vals/vars instead.
+    // The info of this symbol is adapted in the `LocalUnpickler`.
+    if flags.isAllOf(Method | Accessor) && !name.toString().endsWith("_$eq") then
+      flags &~= Method | Accessor
+      if !flags.is(StableRealizable) then flags |= Mutable
+
+    // Skip case accessor `<xyz>$access$<idx>` and keep track of their name to make `<xyz>` the case accessor
+    if flags.is(CaseAccessor) && name.toString().contains("$access$") then
+      val accessorName = name.toString().split('$').head.toTermName // <xyz>
+      symScope(owner) // we assume that the `<xyz>` is listed before the accessor and hence is already entered in the scope
+        .find(decl => decl.isAllOf(ParamAccessor) && decl.name == accessorName)
+        .setFlag(CaseAccessor)
+      return NoSymbol // skip this member
 
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
@@ -618,7 +634,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
             NamerOps.addConstructorProxies(denot.classSymbol)
           case denot =>
-            val tp1 = translateTempPoly(tp)
+            val tp1 = translateTempPoly(tp) match
+              case ExprType(resultType) if !denot.isOneOf(Param | Method) =>
+                // Adapt the flags of getters so they become like vals/vars instead.
+                // This is the `def` of an accessor that needs to be transformed into
+                // a `val`/`var`. Note that the `Method | Accessor` flags were already
+                // striped away in `readDisambiguatedSymbol`.
+                resultType
+              case tp1 => tp1
             denot.info =
               if (tag == ALIASsym) TypeAlias(tp1)
               else if (denot.isType) checkNonCyclic(denot.symbol, tp1, reportErrors = false)
@@ -832,7 +855,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
         else if args.nonEmpty then
           tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
-        else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
+        else if (sym.typeParams.nonEmpty) tycon.etaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
         val lo = readTypeRef()

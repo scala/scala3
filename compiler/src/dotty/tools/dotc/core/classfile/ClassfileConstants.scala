@@ -331,7 +331,7 @@ object ClassfileConstants {
   inline val impdep1       = 0xfe
   inline val impdep2       = 0xff
 
-  import Flags._
+  import Flags.*
   abstract class FlagTranslation {
 
     protected def baseFlags(jflags: Int): FlagSet = EmptyFlags

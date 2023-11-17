@@ -1,7 +1,7 @@
-//> using options  -Wunused:all
-//
+//> using options  -Wunused:all -source:3.3
+
 class Bippy(a: Int, b: Int) {
-  private def this(c: Int) = this(c, c)   
+  private def this(c: Int) = this(c, c)
   private def boop(x: Int)            = x+a+b     // warn
     private def bippy(x: Int): Int      = bippy(x)  // warn TODO: could warn
   final private val MILLIS1           = 2000      // warn no warn, /Dotty:Warn

@@ -94,23 +94,6 @@ Object
 covtest.InlinedFromLib$package$
 testInlined
 198
-202
-7
-List
-Ident
-false
-0
-false
-List
-
-5
-InlinedFromLib.scala
-covtest
-InlinedFromLib$package$
-Object
-covtest.InlinedFromLib$package$
-testInlined
-198
 212
 7
 length
@@ -120,7 +103,7 @@ false
 false
 List(l).length
 
-6
+5
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -137,7 +120,7 @@ false
 false
 assert(l == List(l).length)
 
-7
+6
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -154,7 +137,7 @@ true
 false
 assert(l == List(l).length)
 
-8
+7
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -171,7 +154,7 @@ true
 false
 assert(l == List(l).length)
 
-9
+8
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -188,24 +171,7 @@ false
 false
 List(l)
 
-10
-InlinedFromLib.scala
-covtest
-InlinedFromLib$package$
-Object
-covtest.InlinedFromLib$package$
-testInlined
-223
-227
-8
-List
-Ident
-false
-0
-false
-List
-
-11
+9
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -222,7 +188,7 @@ false
 false
 List(l).length
 
-12
+10
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -239,7 +205,7 @@ false
 false
 assert(List(l).length == 1)
 
-13
+11
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -256,7 +222,7 @@ true
 false
 assert(List(l).length == 1)
 
-14
+12
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$
@@ -273,7 +239,7 @@ true
 false
 assert(List(l).length == 1)
 
-15
+13
 InlinedFromLib.scala
 covtest
 InlinedFromLib$package$

@@ -5,7 +5,7 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Constants.*, Contexts.*
 import StdNames.{tpnme, nme}
-import transform.SymUtils._
+import transform.SymUtils.*
 import typer.*
 import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
@@ -22,7 +22,7 @@ import util.Spans.Span
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
-  import tpd._
+  import tpd.*
 
   /** An exception signalling that an inline info cannot be computed due to a
    *  cyclic reference. i14772.scala shows a case where this happens.
@@ -64,6 +64,7 @@ object Inlines:
       )
       && !ctx.typer.hasInliningErrors
       && !ctx.base.stopInlining
+      && !ctx.mode.is(Mode.NoInline)
   }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
@@ -299,20 +300,6 @@ object Inlines:
     (new Reposition).transform(tree)
   end reposition
 
-  /** Leave only a call trace consisting of
-   *  - a reference to the top-level class from which the call was inlined,
-   *  - the call's position
-   *  in the call field of an Inlined node.
-   *  The trace has enough info to completely reconstruct positions.
-   *  Note: For macros it returns a Select and for other inline methods it returns an Ident (this distinction is only temporary to be able to run YCheckPositions)
-   */
-  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
-    assert(ctx.source == pos.source)
-    val topLevelCls = callSym.topLevelClass
-    if (callSym.is(Macro)) ref(topLevelCls.owner).select(topLevelCls.name)(using ctx.withOwner(topLevelCls.owner)).withSpan(pos.span)
-    else Ident(topLevelCls.typeRef).withSpan(pos.span)
-  }
-
   private object Intrinsics:
     import dotty.tools.dotc.reporting.Diagnostic.Error
     private enum ErrorKind:
@@ -395,7 +382,7 @@ object Inlines:
    *  @param  rhsToInline  the body of the inlineable method that replaces the call.
    */
   private class InlineCall(call: tpd.Tree)(using Context) extends Inliner(call):
-    import tpd._
+    import tpd.*
     import Inlines.*
 
     /** The Inlined node representing the inlined call */

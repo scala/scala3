@@ -1,8 +1,8 @@
 package dotty.tools.dotc.config
 
-import dotty.tools.dotc.core._
-import Contexts._
-import Symbols._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Symbols.*
 
 import dotty.tools.backend.sjs.JSDefinitions
 

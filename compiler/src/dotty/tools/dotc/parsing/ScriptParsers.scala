@@ -3,9 +3,9 @@ package dotc
 package parsing
 
 import util.SourceFile
-import core._
-import Contexts._
-import Parsers._
+import core.*
+import Contexts.*
+import Parsers.*
 
 
 /** <p>Performs the following context-free rewritings:</p>
@@ -45,7 +45,7 @@ import Parsers._
  */
 object ScriptParsers {
 
-  import ast.untpd._
+  import ast.untpd.*
 
   class ScriptParser(source: SourceFile)(using Context) extends Parser(source) {
 
@@ -118,7 +118,7 @@ object ScriptParsers {
        *    }
        *  }
        */
-      import definitions._
+      import definitions.*
 
       def emptyPkg    = atPos(0, 0, 0) { Ident(nme.EMPTY_PACKAGE_NAME) }
       def emptyInit   = DefDef(

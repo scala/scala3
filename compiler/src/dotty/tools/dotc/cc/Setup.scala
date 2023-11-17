@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package cc
 
-import core._
+import core.*
 import Phases.*, DenotTransformers.*, SymDenotations.*
 import Contexts.*, Names.*, Flags.*, Symbols.*, Decorators.*
 import Types.*, StdNames.*
@@ -116,7 +116,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  convert it to be boxed.
    */
   private def box(tp: Type)(using Context): Type =
-    def recur(tp: Type): Type = tp.dealiasKeepAnnots match
+    def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
       case tp @ CapturingType(parent, refs) =>
         if tp.isBoxed then tp else tp.boxed
       case tp @ AnnotatedType(parent, ann) =>
@@ -522,7 +522,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         tree.symbol match
           case cls: ClassSymbol =>
             val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
-            if (selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic then
+            if ((selfInfo eq NoType) || cls.is(ModuleClass) && !cls.isStatic)
+              && !cls.isPureClass
+            then
               // add capture set to self type of nested classes if no self type is given explicitly.
               val newSelfType = CapturingType(cinfo.selfType, CaptureSet.Var(cls))
               val ps1 = inContext(ctx.withOwner(cls)):
@@ -541,7 +543,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     end postProcess
   end setupTraverser
 
-  private def superTypeIsImpure(tp: Type)(using Context): Boolean = {
+  /** Checks whether an abstract type could be impure. See also: [[needsVariable]]. */
+  private def instanceCanBeImpure(tp: Type)(using Context): Boolean = {
     tp.dealiasKeepAnnots match
       case CapturingType(_, refs) =>
         !refs.isAlwaysEmpty
@@ -550,20 +553,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tp: (TypeRef | AppliedType) =>
         val sym = tp.typeSymbol
         if sym.isClass then
-          sym == defn.AnyClass
-            // we assume Any is a shorthand of {cap} Any, so if Any is an upper
-            // bound, the type is taken to be impure.
+          !sym.isPureClass
         else
-          sym != defn.Caps_Cap && superTypeIsImpure(tp.superType)
+          sym != defn.Caps_Cap && instanceCanBeImpure(tp.superType)
       case tp: (RefinedOrRecType | MatchType) =>
-        superTypeIsImpure(tp.underlying)
+        instanceCanBeImpure(tp.underlying)
       case tp: AndType =>
-        superTypeIsImpure(tp.tp1) || superTypeIsImpure(tp.tp2)
+        instanceCanBeImpure(tp.tp1) || instanceCanBeImpure(tp.tp2)
       case tp: OrType =>
-        superTypeIsImpure(tp.tp1) && superTypeIsImpure(tp.tp2)
+        instanceCanBeImpure(tp.tp1) && instanceCanBeImpure(tp.tp2)
       case _ =>
         false
-  }.showing(i"super type is impure $tp = $result", capt)
+  }.showing(i"instance can be impure $tp = $result", capt)
 
   /** Should a capture set variable be added on type `tp`? */
   def needsVariable(tp: Type)(using Context): Boolean = {
@@ -573,9 +574,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
         else
-          val tp1 = tp.dealiasKeepAnnots
+          val tp1 = tp.dealiasKeepAnnotsAndOpaques
           if tp1 ne tp then needsVariable(tp1)
-          else superTypeIsImpure(tp1)
+          else instanceCanBeImpure(tp1)
       case tp: (RefinedOrRecType | MatchType) =>
         needsVariable(tp.underlying)
       case tp: AndType =>
@@ -639,7 +640,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def maybeAdd(target: Type, fallback: Type) =
         if needsVariable(target) then CapturingType(target, addedSet(target))
         else fallback
-      val dealiased = tp.dealiasKeepAnnots
+      val dealiased = tp.dealiasKeepAnnotsAndOpaques
       if dealiased ne tp then
         val transformed = transformInferredType(dealiased)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)
@@ -705,4 +706,5 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
   def postCheck()(using Context): Unit =
     for chk <- todoAtPostCheck do chk(ctx)
+    todoAtPostCheck.clear()
 end Setup

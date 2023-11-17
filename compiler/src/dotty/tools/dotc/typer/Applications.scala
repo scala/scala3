@@ -2,33 +2,33 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
+import core.*
 import ast.{Trees, tpd, untpd, desugar}
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition}
-import Contexts._
-import Flags._
-import Symbols._
+import Contexts.*
+import Flags.*
+import Symbols.*
 import Denotations.Denotation
-import Types._
-import Decorators._
-import ErrorReporting._
-import Trees._
-import Names._
-import StdNames._
-import ContextOps._
+import Types.*
+import Decorators.*
+import ErrorReporting.*
+import Trees.*
+import Names.*
+import StdNames.*
+import ContextOps.*
 import NameKinds.DefaultGetterName
-import ProtoTypes._
-import Inferencing._
-import reporting._
-import transform.TypeUtils._
-import transform.SymUtils._
-import Nullables._, NullOpsDecorator.*
+import ProtoTypes.*
+import Inferencing.*
+import reporting.*
+import transform.TypeUtils.*
+import transform.SymUtils.*
+import Nullables.*, NullOpsDecorator.*
 import config.Feature
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
-import TypeApplications._
+import TypeApplications.*
 import Annotations.Annotation
 
 import Constants.{Constant, IntTag}
@@ -38,7 +38,7 @@ import annotation.threadUnsafe
 import scala.util.control.NonFatal
 
 object Applications {
-  import tpd._
+  import tpd.*
 
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
@@ -352,7 +352,7 @@ object Applications {
 trait Applications extends Compatibility {
   self: Typer & Dynamic =>
 
-  import Applications._
+  import Applications.*
   import tpd.{ cpy => _, _ }
   import untpd.cpy
 
@@ -1731,7 +1731,7 @@ trait Applications extends Compatibility {
           def apply(t: Type) = t match {
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
-                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
+                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(arg :: Nil, defn.UnitType)
                 else arg
               mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)
@@ -1964,7 +1964,7 @@ trait Applications extends Compatibility {
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionOf(
+        defn.FunctionNOf(
           args.map(Function.const(defn.AnyType)), typeShape(body),
           isContextual = untpd.isContextualClosure(tree))
       case Match(EmptyTree, _) =>
@@ -2003,10 +2003,7 @@ trait Applications extends Compatibility {
         // the arity of that function, otherise -1.
         def paramCount(ref: TermRef) =
           val formals = ref.widen.firstParamTypes
-          if formals.length > idx then
-            formals(idx) match
-              case defn.FunctionOf(args, _, _) => args.length
-              case _ => -1
+          if formals.length > idx then defn.functionArity(formals(idx))
           else -1
 
         val numArgs = args.length
@@ -2090,8 +2087,8 @@ trait Applications extends Compatibility {
           else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case pt =>
-        val compat0 = pt match
-          case defn.FunctionOf(args, resType, _) =>
+        val compat0 = pt.dealias match
+          case defn.FunctionNOf(args, resType, _) =>
             narrowByTypes(alts, args, resType)
           case _ =>
             Nil
@@ -2280,7 +2277,7 @@ trait Applications extends Compatibility {
               false
           val commonFormal =
             if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
-            else defn.FunctionOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
+            else defn.FunctionNOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
             withMode(Mode.ImplicitsEnabled) {

@@ -1,22 +1,22 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Decorators._
-import Flags._
-import Types._
-import Contexts._
-import Symbols._
-import SymUtils._
-import NameKinds._
+import core.*
+import Decorators.*
+import Flags.*
+import Types.*
+import Contexts.*
+import Symbols.*
+import SymUtils.*
+import NameKinds.*
 import dotty.tools.dotc.ast.tpd
-import tpd._
+import tpd.*
 
 import scala.collection.mutable
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.quoted.*
 
 import scala.annotation.constructorOnly
 

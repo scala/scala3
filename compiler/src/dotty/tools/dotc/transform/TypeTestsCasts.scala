@@ -4,16 +4,16 @@ package transform
 
 import scala.language.unsafeNulls as _
 
-import core._
-import Contexts._, Symbols._, Types._, Constants._, StdNames._, Decorators._
+import core.*
+import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
 import ast.untpd
-import Erasure.Boxing._
-import TypeErasure._
-import ValueClasses._
-import SymUtils._
-import core.Flags._
-import util.Spans._
-import reporting._
+import Erasure.Boxing.*
+import TypeErasure.*
+import ValueClasses.*
+import SymUtils.*
+import core.Flags.*
+import util.Spans.*
+import reporting.*
 import config.Printers.{ transforms => debug }
 
 import patmat.Typ
@@ -29,7 +29,7 @@ import patmat.Typ
  * cannot be rewritten before erasure. That's why TypeTestsCasts is called from Erasure.
  */
 object TypeTestsCasts {
-  import ast.tpd._
+  import ast.tpd.*
   import typer.Inferencing.maximizeType
   import typer.ProtoTypes.constrained
 

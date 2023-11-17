@@ -1,8 +1,8 @@
 package dotty.tools.dotc.semanticdb
 
-import java.nio.file._
+import java.nio.file.*
 import java.nio.charset.StandardCharsets
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.semanticdb.Scala3.given
 
@@ -92,7 +92,7 @@ object Tools:
   end metac
 
   private def schemaString(schema: Schema) =
-    import Schema._
+    import Schema.*
     schema match
     case SEMANTICDB3     => "SemanticDB v3"
     case SEMANTICDB4     => "SemanticDB v4"
@@ -101,7 +101,7 @@ object Tools:
   end schemaString
 
   private def languageString(language: Language) =
-    import Language._
+    import Language.*
     language match
     case SCALA                              => "Scala"
     case JAVA                               => "Java"

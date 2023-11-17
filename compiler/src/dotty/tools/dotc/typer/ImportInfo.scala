@@ -3,14 +3,16 @@ package dotc
 package typer
 
 import ast.{tpd, untpd}
-import core._
+import core.*
 import printing.{Printer, Showable}
 import util.SimpleIdentityMap
-import Symbols._, Names._, Types._, Contexts._, StdNames._, Flags._
+import Symbols.*, Names.*, Types.*, Contexts.*, StdNames.*, Flags.*
 import Implicits.RenamedImplicitRef
 import StdNames.nme
 import printing.Texts.Text
 import NameKinds.QualifiedName
+
+import scala.compiletime.uninitialized
 
 object ImportInfo {
 
@@ -66,7 +68,7 @@ class ImportInfo(symf: Context ?=> Symbol,
     }
     mySym.uncheckedNN
   }
-  private var mySym: Symbol | Null = _
+  private var mySym: Symbol | Null = uninitialized
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(using Context): Type = importSym.info match {
@@ -180,7 +182,7 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   private val isLanguageImport: Boolean = untpd.languageImport(qualifier).isDefined
 
-  private var myUnimported: Symbol | Null = _
+  private var myUnimported: Symbol | Null = uninitialized
 
   private var featureCache: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 

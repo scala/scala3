@@ -1,7 +1,7 @@
 package scala.quoted
 package runtime.impl.printers
 
-import scala.quoted._
+import scala.quoted.*
 
 object Extractors {
 
@@ -18,7 +18,7 @@ object Extractors {
     new ExtractorsPrinter[quotes.type]().visitSymbol(symbol).result()
 
   def showFlags(using Quotes)(flags: quotes.reflect.Flags): String = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
     if (flags.is(Flags.Artifact)) flagList += "Flags.Artifact"
@@ -64,7 +64,7 @@ object Extractors {
   }
 
   private class ExtractorsPrinter[Q <: Quotes & Singleton](using val quotes: Q) { self =>
-    import quotes.reflect._
+    import quotes.reflect.*
 
     private val sb: StringBuilder = new StringBuilder
 

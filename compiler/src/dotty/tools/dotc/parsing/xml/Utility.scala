@@ -130,7 +130,7 @@ object Utility {
    *  See [4] and Appendix B of XML 1.0 specification.
   */
   def isNameChar(ch: Char): Boolean = {
-    import java.lang.Character._
+    import java.lang.Character.*
     // The constants represent groups Mc, Me, Mn, Lm, and Nd.
 
     isNameStart(ch) || (getType(ch).toByte match {
@@ -151,7 +151,7 @@ object Utility {
    *  See [3] and Appendix B of XML 1.0 specification
    */
   def isNameStart(ch: Char): Boolean = {
-    import java.lang.Character._
+    import java.lang.Character.*
 
     getType(ch).toByte match {
       case LOWERCASE_LETTER |

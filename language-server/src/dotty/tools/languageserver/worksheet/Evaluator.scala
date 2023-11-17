@@ -23,7 +23,7 @@ private object Evaluator {
    * The most recent Evaluator that was used. It can be reused if the user classpath hasn't changed
    * between two calls.
    */
-  private[this] var previousEvaluator: Option[(String, Evaluator)] = None
+  private var previousEvaluator: Option[(String, Evaluator)] = None
 
   /**
    * Get a (possibly reused) Evaluator and set cancel checker.

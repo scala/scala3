@@ -38,12 +38,12 @@ final class ExtractMethodProvider(
     extends ExtractMethodUtils:
 
   def extractMethod(): List[TextEdit] =
-    val text = range.text()
-    val uri = range.uri
+    val text = range.text().nn
+    val uri = range.uri().nn
     val filePath = Paths.get(uri)
     val source = SourceFile.virtual(filePath.toString, text)
     driver.run(uri, source)
-    val unit = driver.currentCtx.run.units.head
+    val unit = driver.currentCtx.run.nn.units.head
     val pos = driver.sourcePosition(range).startPos
     val path =
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
@@ -145,7 +145,7 @@ final class ExtractMethodProvider(
         val oldIndentLen = head.startPos.startColumnPadding.length()
         val toExtract =
           textToExtract(
-            range.text(),
+            text,
             head.startPos.start,
             expr.endPos.end,
             newIndent,

@@ -6,11 +6,11 @@ import scala.language.unsafeNulls
 
 import java.lang.System.{lineSeparator => EOL}
 
-import core.Contexts._
-import core.Decorators._
+import core.Contexts.*
+import core.Decorators.*
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
-import Diagnostic._
+import Diagnostic.*
 import util.{ SourcePosition, NoSourcePosition }
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
@@ -210,7 +210,7 @@ trait MessageRendering {
   }
 
   private def appendFilterHelp(dia: Diagnostic, sb: mutable.StringBuilder): Unit =
-    import dia._
+    import dia.*
     val hasId = msg.errorId.errorNumber >= 0
     val category = dia match {
       case _: UncheckedWarning => "unchecked"
@@ -228,7 +228,7 @@ trait MessageRendering {
 
   /** The whole message rendered from `msg` */
   def messageAndPos(dia: Diagnostic)(using Context): String = {
-    import dia._
+    import dia.*
     val pos1 = pos.nonInlined
     val inlineStack = inlinePosStack(pos).filter(_ != pos1)
     val maxLineNumber =

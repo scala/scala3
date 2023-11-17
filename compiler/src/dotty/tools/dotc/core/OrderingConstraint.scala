@@ -2,17 +2,19 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Decorators._, TypeApplications._
+import Types.*, Contexts.*, Symbols.*, Decorators.*, TypeApplications.*
 import util.{SimpleIdentitySet, SimpleIdentityMap}
 import collection.mutable
 import printing.Printer
-import printing.Texts._
+import printing.Texts.*
 import config.Config
 import config.Printers.constr
 import reflect.ClassTag
 import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
+
+import scala.compiletime.uninitialized
 
 object OrderingConstraint {
 
@@ -124,7 +126,7 @@ object OrderingConstraint {
   val empty = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentitySet.empty)
 }
 
-import OrderingConstraint._
+import OrderingConstraint.*
 
 /** Constraint over undetermined type parameters that keeps separate maps to
  *  reflect parameter orderings.
@@ -748,8 +750,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         }
       if isRemovable(param.binder) then current = current.remove(param.binder)
       current.dropDeps(param)
+      replacedTypeVar match
+        case replacedTypeVar: TypeVar if isHard(replacedTypeVar) => current = current.hardenTypeVars(replacement)
+        case _ =>
       current.checkWellFormed()
   end replace
+
+  def hardenTypeVars(tp: Type)(using Context): OrderingConstraint = tp.dealiasKeepRefiningAnnots match
+    case tp: TypeVar if contains(tp.origin) => withHard(tp)
+    case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
+    case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
+    case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
     def removeFromOrdering(po: ParamOrdering) = {
@@ -881,7 +892,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         i += 1
     }
 
-  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = _
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = uninitialized
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {

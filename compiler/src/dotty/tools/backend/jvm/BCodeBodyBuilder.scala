@@ -13,16 +13,16 @@ import BCodeHelpers.InvokeStyle
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.core.Constants._
+import dotty.tools.dotc.core.Constants.*
 import dotty.tools.dotc.core.Flags.{Label => LabelFlag, _}
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.{nme, str}
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.transform.SymUtils._
-import dotty.tools.dotc.util.Spans._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Phases._
+import dotty.tools.dotc.transform.SymUtils.*
+import dotty.tools.dotc.util.Spans.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.report
 
@@ -33,13 +33,13 @@ import dotty.tools.dotc.report
  *
  */
 trait BCodeBodyBuilder extends BCodeSkelBuilder {
-  // import global._
-  // import definitions._
-  import tpd._
+  // import global.*
+  // import definitions.*
+  import tpd.*
   import int.{_, given}
   import DottyBackendInterface.symExtensions
-  import bTypes._
-  import coreBTypes._
+  import bTypes.*
+  import coreBTypes.*
 
   protected val primitives: DottyPrimitives
 
@@ -126,7 +126,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       assert(resKind.isNumericType || (resKind == BOOL),
              s"$resKind is not a numeric or boolean type [operation: ${fun.symbol}]")
 
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
 
       args match {
         // unary operation
@@ -179,7 +179,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
 
       case Apply(DesugaredSelect(arrayObj, _), args) =>
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
       val k = tpeTK(arrayObj)
       genLoad(arrayObj, k)
       val elementType = typeOfArrayOp.getOrElse[bTypes.BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
@@ -262,7 +262,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       val code = primitives.getPrimitive(tree, receiver.tpe)
 
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
 
       if (isArithmeticOp(code))                genArithmeticOp(tree, code)
       else if (code == CONCAT) genStringConcat(tree)
@@ -1267,7 +1267,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Generate coercion denoted by "code" */
     def genCoercion(code: Int): Unit = {
-      import ScalaPrimitivesOps._
+      import ScalaPrimitivesOps.*
       (code: @switch) match {
         case B2B | S2S | C2C | I2I | L2L | F2F | D2D => ()
         case _ =>
@@ -1443,7 +1443,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val mdescr   = bmType.descriptor
 
       val isInterface = isEmittedInterface(receiverClass)
-      import InvokeStyle._
+      import InvokeStyle.*
       if (style == Super) {
         if (isInterface && !method.is(JavaDefined)) {
           val args = new Array[BType](bmType.argumentTypes.length + 1)
@@ -1497,7 +1497,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         } else if (tk.isRef) { // REFERENCE(_) | ARRAY(_)
           bc.emitIF_ACMP(op, success)
         } else {
-          import Primitives._
+          import Primitives.*
           def useCmpG = if (negated) op == GT || op == GE else op == LT || op == LE
           (tk: @unchecked) match {
             case LONG   => emit(asm.Opcodes.LCMP)
@@ -1512,7 +1512,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     /* Emits code to compare (and consume) stack-top and zero using the 'op' operator */
     private def genCZJUMP(success: asm.Label, failure: asm.Label, op: TestOp, tk: BType, targetIfNoJump: asm.Label, negated: Boolean = false): Unit = {
-      import Primitives._
+      import Primitives.*
       if (targetIfNoJump == success) genCZJUMP(failure, success, op.negate(), tk, targetIfNoJump, negated = !negated)
       else {
         if (tk.isIntSizedType) { // BOOL, BYTE, CHAR, SHORT, or INT

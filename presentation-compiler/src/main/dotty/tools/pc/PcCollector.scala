@@ -33,15 +33,15 @@ abstract class PcCollector[T](
     params: VirtualFileParams
 ):
   private val caseClassSynthetics: Set[Name] = Set(nme.apply, nme.copy)
-  val uri = params.uri()
-  val filePath = Paths.get(uri)
-  val sourceText = params.text
+  val uri = params.uri().nn
+  val filePath = Paths.get(uri).nn
+  val sourceText = params.text().nn
   val source =
-    SourceFile.virtual(filePath.toString, sourceText)
+    SourceFile.virtual(filePath.toString(), sourceText)
   driver.run(uri, source)
   given ctx: Context = driver.currentCtx
 
-  val unit = driver.currentCtx.run.units.head
+  val unit = driver.currentCtx.run.nn.units.head
   val compilatonUnitContext = ctx.fresh.setCompilationUnit(unit)
   val offset = params match
     case op: OffsetParams => op.offset()
@@ -49,8 +49,7 @@ abstract class PcCollector[T](
   val offsetParams =
     params match
       case op: OffsetParams => op
-      case _ =>
-        CompilerOffsetParams(params.uri(), params.text(), 0, params.token())
+      case _ => CompilerOffsetParams(uri, sourceText, 0, params.token().nn)
   val pos = driver.sourcePosition(offsetParams)
   val rawPath =
     Interactive
@@ -69,7 +68,7 @@ abstract class PcCollector[T](
     case _ => rawPath
   def collect(
       parent: Option[Tree]
-  )(tree: Tree, pos: SourcePosition, symbol: Option[Symbol]): T
+  )(tree: Tree| EndMarker, pos: SourcePosition, symbol: Option[Symbol]): T
 
   /**
    * @return (adjusted position, should strip backticks)
@@ -423,7 +422,7 @@ abstract class PcCollector[T](
         parent: Option[Tree]
     ): Set[T] =
       def collect(
-          tree: Tree,
+          tree: Tree | EndMarker,
           pos: SourcePosition,
           symbol: Option[Symbol] = None
       ) =
@@ -461,6 +460,9 @@ abstract class PcCollector[T](
         case df: NamedDefTree
             if df.span.isCorrect && df.nameSpan.isCorrect &&
               filter(df) && !isGeneratedGiven(df) =>
+          def collectEndMarker =
+            EndMarker.getPosition(df, pos, sourceText).map:
+              collect(EndMarker(df.symbol), _)
           val annots = collectTrees(df.mods.annotations)
           val traverser =
             new PcCollector.DeepFolderWithParent[Set[T]](
@@ -470,7 +472,7 @@ abstract class PcCollector[T](
             occurrences + collect(
               df,
               pos.withSpan(df.nameSpan)
-            )
+            ) ++ collectEndMarker
           ) { case (set, tree) =>
             traverser(set, tree)
           }
@@ -635,3 +637,34 @@ case class ExtensionParamOccurence(
     sym: Symbol,
     methods: List[untpd.Tree]
 )
+
+case class EndMarker(symbol: Symbol)
+
+object EndMarker:
+  /**
+    * Matches end marker line from start to the name's beginning.
+    * E.g.
+    *    end /* some comment */
+    */
+  private val endMarkerRegex = """.*end(/\*.*\*/|\s)+""".r
+  def getPosition(df: NamedDefTree, pos: SourcePosition, sourceText: String)(
+      implicit ct: Context
+  ): Option[SourcePosition] =
+    val name = df.name.toString()
+    val endMarkerLine =
+      sourceText.slice(df.span.start, df.span.end).split('\n').last
+    val index = endMarkerLine.length() - name.length()
+    if index < 0 then None
+    else
+      val (possiblyEndMarker, possiblyEndMarkerName) =
+        endMarkerLine.splitAt(index)
+      Option.when(
+        possiblyEndMarkerName == name &&
+          endMarkerRegex.matches(possiblyEndMarker)
+      )(
+        pos
+          .withStart(df.span.end - name.length())
+          .withEnd(df.span.end)
+      )
+  end getPosition
+end EndMarker

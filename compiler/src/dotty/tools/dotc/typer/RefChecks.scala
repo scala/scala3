@@ -2,27 +2,27 @@ package dotty.tools
 package dotc
 package typer
 
-import transform._
-import core._
-import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._, NameKinds._
-import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
+import transform.*
+import core.*
+import Symbols.*, Types.*, Contexts.*, Flags.*, Names.*, NameOps.*, NameKinds.*
+import StdNames.*, Denotations.*, SymUtils.*, Phases.*, SymDenotations.*
 import NameKinds.DefaultGetterName
-import util.Spans._
+import util.Spans.*
 import scala.collection.mutable
-import ast._
-import MegaPhase._
+import ast.*
+import MegaPhase.*
 import config.Printers.{checks, noPrinter, capt}
-import Decorators._
+import Decorators.*
 import OverridingPairs.isOverridingPair
-import typer.ErrorReporting._
+import typer.ErrorReporting.*
 import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
 import config.SourceVersion.{`3.0`, `future`}
 import config.Printers.refcheck
-import reporting._
+import reporting.*
 import Constants.Constant
 
 object RefChecks {
-  import tpd._
+  import tpd.*
 
   val name: String = "refchecks"
   val description: String = "checks related to abstract members and overriding"
@@ -267,6 +267,9 @@ object RefChecks {
             if !other.is(Deferred) then
               checkOverride(subtypeChecker, dcl, other)
     end checkAll
+
+    // Disabled for capture checking since traits can get different parameter refinements
+    def checkInheritedTraitParameters: Boolean = true
   end OverridingPairsChecker
 
   /** 1. Check all members of class `clazz` for overriding conditions.
@@ -369,7 +372,7 @@ object RefChecks {
      */
     def checkOverride(checkSubType: (Type, Type) => Context ?=> Boolean, member: Symbol, other: Symbol): Unit =
       def memberTp(self: Type) =
-        if (member.isClass) TypeAlias(member.typeRef.EtaExpand(member.typeParams))
+        if (member.isClass) TypeAlias(member.typeRef.etaExpand(member.typeParams))
         else self.memberInfo(member)
       def otherTp(self: Type) =
         self.memberInfo(other)
@@ -851,7 +854,7 @@ object RefChecks {
       checkCaseClassInheritanceInvariant()
     }
 
-    if (!clazz.is(Trait)) {
+    if (!clazz.is(Trait) && checker.checkInheritedTraitParameters) {
       // check that parameterized base classes and traits are typed in the same way as from the superclass
       // I.e. say we have
       //
@@ -1128,7 +1131,7 @@ object RefChecks {
       report.warning(UnqualifiedCallToAnyRefMethod(tree, tree.symbol), tree)
 
 }
-import RefChecks._
+import RefChecks.*
 
 /** Post-attribution checking and transformation, which fulfills the following roles
  *
@@ -1162,7 +1165,7 @@ import RefChecks._
  */
 class RefChecks extends MiniPhase { thisPhase =>
 
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = RefChecks.name
 

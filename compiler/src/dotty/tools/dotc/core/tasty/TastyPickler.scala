@@ -6,12 +6,12 @@ package tasty
 import scala.language.unsafeNulls
 
 import dotty.tools.tasty.{TastyBuffer, TastyFormat, TastyHash}
-import TastyFormat._
-import TastyBuffer._
+import TastyFormat.*
+import TastyBuffer.*
 
 import collection.mutable
 import core.Symbols.ClassSymbol
-import Decorators._
+import Decorators.*
 
 object TastyPickler {
 

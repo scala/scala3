@@ -3,53 +3,53 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
-import ast._
-import Trees._
-import Constants._
-import StdNames._
-import Scopes._
-import Denotations._
-import ProtoTypes._
-import Contexts._
-import Symbols._
-import Types._
-import SymDenotations._
-import Annotations._
-import Names._
-import NameOps._
-import NameKinds._
-import NamerOps._
-import ContextOps._
-import Flags._
-import Decorators._
-import ErrorReporting._
-import Checking._
-import Inferencing._
+import core.*
+import ast.*
+import Trees.*
+import Constants.*
+import StdNames.*
+import Scopes.*
+import Denotations.*
+import ProtoTypes.*
+import Contexts.*
+import Symbols.*
+import Types.*
+import SymDenotations.*
+import Annotations.*
+import Names.*
+import NameOps.*
+import NameKinds.*
+import NamerOps.*
+import ContextOps.*
+import Flags.*
+import Decorators.*
+import ErrorReporting.*
+import Checking.*
+import Inferencing.*
 import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import inlines.{Inlines, PrepareInlineable}
-import util.Spans._
-import util.common._
+import util.Spans.*
+import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos}
 import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
 
 import collection.mutable
 import annotation.tailrec
-import Implicits._
+import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
-import config.SourceVersion._
+import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
-import transform.SymUtils._
-import transform.TypeUtils._
-import reporting._
-import Nullables._
-import NullOpsDecorator._
+import transform.SymUtils.*
+import transform.TypeUtils.*
+import reporting.*
+import Nullables.*
+import NullOpsDecorator.*
 import cc.CheckCaptures
 import config.Config
 
@@ -130,7 +130,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                with QuotesAndSplices
                with Deriving {
 
-  import Typer._
+  import Typer.*
   import tpd.{cpy => _, _}
   import untpd.cpy
 
@@ -217,7 +217,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      *                     or else `NoContext` if nothing was found yet.
      */
     def findRefRecur(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type = {
-      import BindingPrec._
+      import BindingPrec.*
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
@@ -821,8 +821,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   def typedNumber(tree: untpd.Number, pt: Type)(using Context): Tree = {
-    import scala.util.FromDigits._
-    import untpd.NumberKind._
+    import scala.util.FromDigits.*
+    import untpd.NumberKind.*
     record("typedNumber")
     val digits = tree.digits
     val target = pt.dealias
@@ -904,7 +904,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
     tree.tpt match {
       case templ: untpd.Template =>
-        import untpd._
+        import untpd.*
         var templ1 = templ
         def isEligible(tp: Type) =
         	tp.exists
@@ -948,7 +948,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) =>
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
-          import untpd._
+          import untpd.*
           typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withSpan(tree.span), pt)
         }
       case _ => ifExpr
@@ -1119,7 +1119,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case Apply(fn, _) if fn.symbol.is(ExtensionMethod) =>
             def toSetter(fn: Tree): untpd.Tree = fn match
               case fn @ Ident(name: TermName) =>
-                untpd.cpy.Ident(fn)(name.setterName)
+                // We need to make sure that the prefix of this extension getter is
+                // retained when we transform it into a setter. Otherwise, we could
+                // end up resolving an unrelated setter from another extension. We
+                // transform the `Ident` into a `Select` to ensure that the prefix
+                // is retained with a `TypedSplice` (see `case Select` bellow).
+                // See tests/pos/i18713.scala for an example.
+                fn.tpe match
+                  case TermRef(qual: TermRef, _) =>
+                    toSetter(ref(qual).select(fn.symbol).withSpan(fn.span))
+                  case TermRef(qual: ThisType, _) =>
+                    toSetter(This(qual.cls).select(fn.symbol).withSpan(fn.span))
+                  case TermRef(NoPrefix, _) =>
+                    untpd.cpy.Ident(fn)(name.setterName)
               case fn @ Select(qual, name: TermName) =>
                 untpd.cpy.Select(fn)(untpd.TypedSplice(qual), name.setterName)
               case fn @ TypeApply(fn1, targs) =>
@@ -1622,6 +1634,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ =>
 
     if desugared.isEmpty then
+      val forceDegree =
+        if pt.isValueType then
+          // Allow variables that appear invariantly in `pt` to be improved by mapping
+          // bottom types in their instance types to fresh type variables
+          new ForceDegree.Value(IfBottom.fail):
+            val tvmap = variances(pt)
+            override def canImprove(tvar: TypeVar) =
+              tvmap.computedVariance(tvar) == (0: Integer)
+        else
+          ForceDegree.failBottom
+
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
@@ -1629,7 +1652,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val (formalBounds, isErased) = protoFormal(i)
             val formal = formalBounds.loBound
             val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
-            val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+            val knownFormal = isFullyDefined(formal, forceDegree)
             // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
             // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
             val paramType =
@@ -2970,26 +2993,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         }
     }
     nestedCtx.typerState.commit()
-    if sourceVersion.isAtLeast(future) then
-      lazy val (prefix, suffix) = res match {
-        case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
-          val arity = vparams.length
-          if (arity > 0) ("", "") else ("(() => ", "())")
-        case _ =>
-          ("(() => ", ")")
-      }
-      def remedy =
-        if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
-        else s"use `$prefix<function>$suffix` instead"
-      report.errorOrMigrationWarning(
-        em"""The syntax `<function> _` is no longer supported;
-            |you can $remedy""",
-        tree.srcPos,
-        from = future)
-      if sourceVersion.isMigrating then
-        patch(Span(tree.span.start), prefix)
-        patch(Span(qual.span.end, tree.span.end), suffix)
-    end if
+
+    lazy val (prefix, suffix) = res match {
+      case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        val arity = vparams.length
+        if (arity > 0) ("", "") else ("(() => ", "())")
+      case _ =>
+        ("(() => ", ")")
+    }
+    def remedy =
+      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+      else s"use `$prefix<function>$suffix` instead"
+    def rewrite = Message.rewriteNotice("This construct", `3.4-migration`)
+    report.gradualErrorOrMigrationWarning(
+      em"""The syntax `<function> _` is no longer supported;
+          |you can $remedy$rewrite""",
+      tree.srcPos,
+      warnFrom = `3.4`,
+      errorFrom = future)
+    if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+      patch(Span(tree.span.start), prefix)
+      patch(Span(qual.span.end, tree.span.end), suffix)
+
     res
   }
 
@@ -3625,8 +3650,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val remembered = // report AmbiguousReferences as priority, otherwise last error
         (errs.filter(_.msg.isInstanceOf[AmbiguousReference]) ++ errs).take(1)
       for err <- remembered do
+        val tree = if app.isEmpty then qual else app
         rememberSearchFailure(qual,
-          SearchFailure(app.withType(FailedExtension(app, selectionProto, err.msg))))
+          SearchFailure(tree.withType(FailedExtension(tree, selectionProto, err.msg))))
     catch case ex: TypeError => nestedFailure(ex)
 
     // try an implicit conversion or given extension
@@ -4165,11 +4191,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val funExpected = functionExpected
           val arity =
             if funExpected then
-              if !isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none) then
-                // if method type is fully defined, but expected type is not,
-                // prioritize method parameter types as parameter types of the eta-expanded closure
-                0
-              else defn.functionArity(ptNorm)
+              defn.functionArity(ptNorm)
             else
               val nparams = wtp.paramInfos.length
               if nparams > 1
@@ -4305,7 +4327,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               AppliedType(tree.tpe, tp.typeParams.map(Function.const(TypeBounds.empty)))
             else
               // Eta-expand higher-kinded type
-              tree.tpe.EtaExpand(tp.typeParamSymbols)
+              tree.tpe.etaExpand(tp.typeParamSymbols)
           tree.withType(tp1)
         }
       if (ctx.mode.is(Mode.Pattern) || ctx.mode.isQuotedPattern || tree1.tpe <:< pt) tree1

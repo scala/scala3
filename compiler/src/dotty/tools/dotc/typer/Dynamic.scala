@@ -7,6 +7,8 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types.*
@@ -18,6 +20,7 @@ import ErrorReporting.*
 import dotty.tools.dotc.transform.ValueClasses
 import dotty.tools.dotc.transform.TypeUtils.isPrimitiveValueType
 import reporting.*
+import inlines.Inlines
 
 object Dynamic {
   private def isDynamicMethod(name: Name): Boolean =
@@ -67,8 +70,8 @@ object DynamicUnapply {
 trait Dynamic {
   self: Typer & Applications =>
 
-  import Dynamic._
-  import tpd._
+  import Dynamic.*
+  import tpd.*
 
   /** Translate selection that does not typecheck according to the normal rules into a applyDynamic/applyDynamicNamed.
    *    foo.bar(baz0, baz1, ...)                       ~~> foo.applyDynamic(bar)(baz0, baz1, ...)
@@ -210,7 +213,12 @@ trait Dynamic {
               case _ => tree
             case other => tree
         case _ => tree
-      addClassOfs(typed(scall))
+
+      // We type the application of `applyDynamic` without inlining (arguments are already typed and inlined),
+      // to be able to add the add the Class arguments before we inline the method.
+      val call = addClassOfs(withMode(Mode.NoInline)(typed(scall)))
+      if Inlines.needsInlining(call) then Inlines.inlineCall(call)
+      else call
     }
 
     def fail(reason: String): Tree =

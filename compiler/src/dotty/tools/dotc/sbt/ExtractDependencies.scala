@@ -9,27 +9,27 @@ import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.classpath.FileUtils.{isTasty, hasClassExtension, hasTastyExtension}
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.Phases._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.Flags.*
+import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Phases.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
-import xsbti.api.DependencyContext._
+import xsbti.api.DependencyContext.*
 
 import scala.jdk.CollectionConverters.*
 
 import scala.collection.{Set, mutable}
-
+import scala.compiletime.uninitialized
 
 /** This phase sends information on classes' dependencies to sbt via callbacks.
  *
@@ -51,7 +51,7 @@ import scala.collection.{Set, mutable}
  *  @see ExtractAPI
  */
 class ExtractDependencies extends Phase {
-  import ExtractDependencies._
+  import ExtractDependencies.*
 
   override def phaseName: String = ExtractDependencies.name
 
@@ -119,7 +119,7 @@ object ExtractDependencies {
  *  inheritance" in the "Name hashing algorithm" section.
  */
 private class ExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.TreeTraverser { thisTreeTraverser =>
-  import tpd._
+  import tpd.*
 
   private def addMemberRefDependency(sym: Symbol)(using Context): Unit =
     if (!ignoreDependency(sym)) {
@@ -519,9 +519,9 @@ class DependencyRecorder {
     }
   }
 
-  private var lastOwner: Symbol = _
-  private var lastDepSource: Symbol = _
-  private var lastFoundCache: FoundDepsInClass | Null = _
+  private var lastOwner: Symbol = uninitialized
+  private var lastDepSource: Symbol = uninitialized
+  private var lastFoundCache: FoundDepsInClass | Null = uninitialized
 
   /** The source of the dependency according to `nonLocalEnclosingClass`
    *  if it exists, otherwise fall back to `responsibleForImports`.
@@ -558,7 +558,7 @@ class DependencyRecorder {
     clazz
   }
 
-  private var _responsibleForImports: Symbol = _
+  private var _responsibleForImports: Symbol = uninitialized
 
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.

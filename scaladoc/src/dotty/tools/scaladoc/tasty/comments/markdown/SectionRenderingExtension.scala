@@ -59,7 +59,7 @@ object SectionRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
 
 
   object Render extends NodeRenderer:
-    override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
+    override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[?]] =
       JSet(
         new NodeRenderingHandler(classOf[Section], SectionHandler),
         new NodeRenderingHandler(classOf[AnchorLink], AnchorLinkHandler)

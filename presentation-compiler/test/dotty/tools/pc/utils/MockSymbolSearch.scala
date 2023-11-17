@@ -14,6 +14,7 @@ import scala.meta.pc.{
   SymbolSearch,
   SymbolSearchVisitor
 }
+import scala.language.unsafeNulls
 
 import org.eclipse.lsp4j.Location
 

@@ -2,7 +2,7 @@ package dotty.tools.backend.jvm
 
 import java.nio.channels.ClosedByInterruptException
 import java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy
-import java.util.concurrent._
+import java.util.concurrent.*
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.Phases
 import dotty.tools.dotc.core.Decorators.em
 
 import scala.language.unsafeNulls
+import scala.compiletime.uninitialized
 
 /**
  * Interface to handle post-processing and classfile writing (see [[PostProcessor]]) of generated
@@ -185,7 +186,7 @@ final private class CompilationUnitInPostProcess(private var classes: List[Gener
   }
 
   /** the main async task submitted onto the scheduler */
-  var task: Future[Unit] = _
+  var task: Future[Unit] = uninitialized
 
   val bufferedReporting = new PostProcessorFrontendAccess.BufferingBackendReporting()
 }

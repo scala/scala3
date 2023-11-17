@@ -7,6 +7,7 @@ import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.internal.mtags.CommonMtagsEnrichments
 import scala.meta.internal.pc.InlineValueProvider.Errors as InlineErrors
 import scala.meta.pc.DisplayableException
+import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits

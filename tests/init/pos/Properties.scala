@@ -15,7 +15,7 @@ import java.util.jar.Attributes.Name as AttributeName
 
 private[scala] trait PropertiesTrait {
   protected def propCategory: String      // specializes the remainder of the values
-  protected def pickJarBasedOn: Class[_]  // props file comes from jar containing this
+  protected def pickJarBasedOn: Class[?]  // props file comes from jar containing this
 
   /** The name of the properties file */
   protected val propFilename = "/" + propCategory + ".properties"

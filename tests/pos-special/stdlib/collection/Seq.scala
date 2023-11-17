@@ -18,6 +18,7 @@ import Searching.{Found, InsertionPoint, SearchResult}
 import scala.annotation.nowarn
 import language.experimental.captureChecking
 import caps.unsafe.unsafeAssumePure
+import scala.annotation.unchecked.uncheckedCaptures
 
 /** Base trait for sequence collections
   *
@@ -77,9 +78,11 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
   * @define coll sequence
   * @define Coll `Seq`
   */
-trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
+trait SeqOps[+A, +CC[_], +C] extends Any with SeqViewOps[A, CC, C] { self =>
 
   override def view: SeqView[A] = new SeqView.Id[A](this)
+
+  def iterableFactory: FreeSeqFactory[CC]
 
   /** Get the element at the specified index. This operation is provided for convenience in `Seq`. It should
     * not be assumed to be efficient unless you have an `IndexedSeq`. */
@@ -234,7 +237,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
    *
    *  @return  an iterator yielding the elements of this $coll in reversed order
    */
-  def reverseIterator: Iterator[A] = reversed.iterator
+  override def reverseIterator: Iterator[A] = reversed.iterator
 
   /** Tests whether this $coll contains the given sequence at a given index.
     *
@@ -598,7 +601,8 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
       if (!hasNext)
         Iterator.empty.next()
 
-      val forcedElms = new mutable.ArrayBuffer[A](elms.size) ++= elms
+      val forcedElms = new mutable.ArrayBuffer[A @uncheckedCaptures](elms.size) ++= elms
+        // uncheckedCaptures OK since used only locally
       val result = (newSpecificBuilder ++= forcedElms).result()
       var i = idxs.length - 2
       while(i >= 0 && idxs(i) >= idxs(i+1))
@@ -889,7 +893,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
     *                part of the result, but any following occurrences will.
     */
   def diff[B >: A](that: Seq[B]): C = {
-    val occ = occCounts(that)
+    val occ = occCounts[B @uncheckedCaptures](that)
     fromSpecific(iterator.filter { x =>
       var include = false
       occ.updateWith(x) {
@@ -914,7 +918,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
     *                in the result, but any following occurrences will be omitted.
     */
   def intersect[B >: A](that: Seq[B]): C = {
-    val occ = occCounts(that)
+    val occ = occCounts[B @uncheckedCaptures](that)
     fromSpecific(iterator.filter { x =>
       var include = true
       occ.updateWith(x) {
@@ -962,7 +966,7 @@ trait SeqOps[+A, +CC[_], +C] extends Any with IterableOps[A, CC, C] { self =>
     iterableFactory.from(new View.Updated(this, index, elem))
   }
 
-  protected[collection] def occCounts[B](sq: Seq[B]): mutable.Map[B, Int] = {
+  protected[collection] def occCounts[sealed B](sq: Seq[B]): mutable.Map[B, Int] = {
     val occ = new mutable.HashMap[B, Int]()
     for (y <- sq) occ.updateWith(y) {
       case None => Some(1)

@@ -3,7 +3,7 @@ package backend
 package jvm
 
 
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.transform.Erasure
 import scala.tools.asm.{Handle, Opcodes}
 import dotty.tools.dotc.core.StdNames
@@ -11,7 +11,7 @@ import BTypes.InternalName
 
 abstract class CoreBTypes {
   val bTypes: BTypes
-  import bTypes._
+  import bTypes.*
 
    def primitiveTypeMap: Map[Symbol, PrimitiveBType]
 
@@ -55,9 +55,9 @@ abstract class CoreBTypes {
 abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTypes {
   val bTypes: BTypesFromSymbols[I]
 
-  import bTypes._
+  import bTypes.*
   import int.given
-  import DottyBackendInterface._
+  import DottyBackendInterface.*
   import frontendAccess.frontendSynch
   import dotty.tools.dotc.core.Contexts.Context
 
@@ -223,7 +223,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
   )
 
   lazy val typeOfArrayOp: Map[Int, BType] = {
-    import dotty.tools.backend.ScalaPrimitivesOps._
+    import dotty.tools.backend.ScalaPrimitivesOps.*
     Map(
         (List(ZARRAY_LENGTH, ZARRAY_GET, ZARRAY_SET) map (_ -> BOOL))   ++
         (List(BARRAY_LENGTH, BARRAY_GET, BARRAY_SET) map (_ -> BYTE))   ++

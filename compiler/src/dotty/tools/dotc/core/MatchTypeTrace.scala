@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Decorators._
+import Types.*, Contexts.*, Symbols.*, Decorators.*
 import util.Property
 import Names.Name
 
@@ -15,7 +15,7 @@ object MatchTypeTrace:
     case Stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])
     case NoInstance(scrut: Type, stuckCase: Type, fails: List[(Name, TypeBounds)])
     case EmptyScrutinee(scrut: Type)
-  import TraceEntry._
+  import TraceEntry.*
 
   private class MatchTrace:
     var entries: List[TraceEntry] = Nil

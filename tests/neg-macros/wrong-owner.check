@@ -1,0 +1,23 @@
+
+-- Error: tests/neg-macros/wrong-owner/Test_2.scala:5:6 ----------------------------------------------------------------
+3 |@experimental
+4 |@wrongOwner
+5 |class Foo // error
+  |^
+  |Malformed tree was found while expanding macro with -Xcheck-macros.
+  |               |The tree does not conform to the compiler's tree invariants.
+  |               |
+  |               |Macro was:
+  |               |@scala.annotation.internal.SourceFile("tests/neg-macros/wrong-owner/Test_2.scala") @wrongOwner @scala.annotation.experimental class Foo()
+  |               |
+  |               |The macro returned:
+  |               |@scala.annotation.internal.SourceFile("tests/neg-macros/wrong-owner/Test_2.scala") @wrongOwner @scala.annotation.experimental class Foo() {
+  |  override def toString(): java.lang.String = "Hello from macro"
+  |}
+  |               |
+  |               |Error:
+  |               |assertion failed: bad owner; method toString has owner class String, expected was class Foo
+  |owner chain = method toString, class String, package java.lang, package java, package <root>, ctxOwners = class Foo, class Foo, package <empty>, package <empty>, package <empty>, package <root>, package <root>, package <root>, package <root>, package <root>, package <root>, <none>, <none>, <none>, <none>, <none>
+  |               |
+  |stacktrace available when compiling with `-Ydebug`
+  |               |

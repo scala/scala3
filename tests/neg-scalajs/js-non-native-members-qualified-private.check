@@ -1,3 +1,9 @@
+-- Warning: tests/neg-scalajs/js-non-native-members-qualified-private.scala:52:28 --------------------------------------
+52 |      class B private[this] () extends js.Object // ok
+   |                            ^
+   |                          The [this] qualifier will be deprecated in the future; it should be dropped.
+   |                          See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+   |                          This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 -- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:6:32 -----------------------------------------
 6 |        private[Enclosing1] def foo(i: Int): Int = i // error
   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

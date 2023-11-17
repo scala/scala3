@@ -28,7 +28,7 @@ import NameKinds.AdaptedClosureName
  *  to performance degradation, and in some cases, stack overflows.
  */
 class EtaReduce extends MiniPhase:
-  import ast.tpd._
+  import ast.tpd.*
 
   override def phaseName: String = EtaReduce.name
 

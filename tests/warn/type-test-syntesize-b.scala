@@ -15,7 +15,7 @@ object Test {
 
   test[Any, Int]
   test[Any, String]
-  test[Any, Some[_]]
+  test[Any, Some[?]]
   test[Any, Array[Int]]
   test[Seq[Int], List[Int]]
 

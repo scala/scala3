@@ -1,11 +1,11 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.SymUtils.*
 
 import scala.collection.mutable
 
@@ -40,7 +40,7 @@ object CollectNullableFields {
  *    - defined in the same class as the lazy val
  */
 class CollectNullableFields extends MiniPhase {
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = CollectNullableFields.name
 

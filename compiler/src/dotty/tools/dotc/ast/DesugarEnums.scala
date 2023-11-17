@@ -2,19 +2,19 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._
-import Symbols._, StdNames._, Trees._
-import Decorators._
+import core.*
+import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*
+import Symbols.*, StdNames.*, Trees.*
+import Decorators.*
 import util.{Property, SourceFile}
-import typer.ErrorReporting._
+import typer.ErrorReporting.*
 import transform.SyntheticMembers.ExtendsSingletonMirror
 
 import scala.annotation.internal.sharable
 
 /** Helper methods to desugar enums */
 object DesugarEnums {
-  import untpd._
+  import untpd.*
 
   enum CaseKind:
     case Simple, Object, Class

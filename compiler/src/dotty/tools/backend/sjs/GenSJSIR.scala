@@ -1,8 +1,8 @@
 package dotty.tools.backend.sjs
 
-import dotty.tools.dotc.core._
-import Contexts._
-import Phases._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Phases.*
 
 /** Generates Scala.js IR files for the compilation unit. */
 class GenSJSIR extends Phase {

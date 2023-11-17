@@ -10,6 +10,7 @@ import reporting.Diagnostic
 import transform.ValueClasses
 import util.StackTraceOps.*
 
+import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
 
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
@@ -22,12 +23,12 @@ import scala.util.control.NonFatal
  */
 private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
-  import Rendering._
+  import Rendering.*
 
-  var myClassLoader: AbstractFileClassLoader = _
+  var myClassLoader: AbstractFileClassLoader = uninitialized
 
   /** (value, maxElements, maxCharacters) => String */
-  var myReplStringOf: (Object, Int, Int) => String = _
+  var myReplStringOf: (Object, Int, Int) => String = uninitialized
 
   /** Class loader used to load compiled code */
   private[repl] def classLoader()(using Context) =

@@ -24,24 +24,27 @@ import org.eclipse.lsp4j as l
 final class PcInlineValueProviderImpl(
     val driver: InteractiveDriver,
     val params: OffsetParams
-) extends PcCollector[Occurence](driver, params)
+) extends PcCollector[Option[Occurence]](driver, params)
     with InlineValueProvider:
 
-  val text = params.text.toCharArray()
+  val text = params.text().nn.toCharArray().nn
 
-  val position: l.Position = pos.toLsp.getStart()
+  val position: l.Position = pos.toLsp.getStart().nn
 
   override def collect(parent: Option[Tree])(
-      tree: Tree,
+      tree: Tree | EndMarker,
       pos: SourcePosition,
       sym: Option[Symbol]
-  ): Occurence =
-    val (adjustedPos, _) = adjust(pos)
-    Occurence(tree, parent, adjustedPos)
+  ): Option[Occurence] =
+    tree match
+      case tree: Tree =>
+        val (adjustedPos, _) = adjust(pos)
+        Some(Occurence(tree, parent, adjustedPos))
+      case _ => None
 
   override def defAndRefs(): Either[String, (Definition, List[Reference])] =
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-    val allOccurences = result()
+    val allOccurences = result().flatten
     for
       definition <- allOccurences
         .collectFirst { case Occurence(defn: ValDef, _, pos) =>

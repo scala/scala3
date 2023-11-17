@@ -4,20 +4,20 @@ package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd, untpd, desugar}
 import scala.collection.mutable
-import core._
+import core.*
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.typer.VarianceChecker
 import typer.ErrorReporting.errorTree
-import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
-import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
-import Decorators._
-import Symbols._, SymUtils._, NameOps._
+import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
+import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
+import Decorators.*
+import Symbols.*, SymUtils.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
 import util.SrcPos
-import reporting._
+import reporting.*
 import NameKinds.WildcardParamName
 
 object PostTyper {
@@ -61,7 +61,7 @@ object PostTyper {
  *  they do not warrant their own group of miniphases before pickling.
  */
 class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = PostTyper.name
 
@@ -366,8 +366,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
-          withMode(Mode.InlinedCall)(transform(call))
-          val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+          withMode(Mode.NoInline)(transform(call))
+          val callTrace = ref(call.symbol)(using ctx.withSource(pos.source)).withSpan(pos.span)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {
@@ -379,6 +379,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             )
           }
         case tree: ValDef =>
+          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
@@ -387,6 +388,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             checkStableSelection(tree.rhs)
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
+          annotateExperimental(tree.symbol)
           registerIfHasMacroAnnotations(tree)
           checkErasedDef(tree)
           Checking.checkPolyFunctionType(tree.tpt)
@@ -520,7 +522,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
 
     private def registerNeedsInlining(tree: Tree)(using Context): Unit =
-      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.InlinedCall) then
+      if tree.symbol.is(Inline) && !Inlines.inInlineMethod && !ctx.mode.is(Mode.NoInline) then
         ctx.compilationUnit.needsInlining = true
 
     /** Check if the definition has macro annotation and sets `compilationUnit.hasMacroAnnotations` if needed. */
@@ -542,9 +544,14 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           report.error("`erased` definition cannot be implemented with en expression of type Null", tree.srcPos)
 
     private def annotateExperimental(sym: Symbol)(using Context): Unit =
-      if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
+      def isTopLevelDefinitionInSource(sym: Symbol) =
+        !sym.is(Package) && !sym.name.isPackageObjectName &&
+        (sym.owner.is(Package) || (sym.owner.isPackageObject && !sym.isConstructor))
+      if !sym.hasAnnotation(defn.ExperimentalAnnot)
+        && (ctx.settings.experimental.value && isTopLevelDefinitionInSource(sym))
+        || (sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot))
+      then
         sym.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
-        sym.companionModule.addAnnotation(Annotation(defn.ExperimentalAnnot, sym.span))
 
     private def scala2LibPatch(tree: TypeDef)(using Context) =
       val sym = tree.symbol

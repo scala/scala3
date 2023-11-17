@@ -15,6 +15,7 @@ import scala.collection._
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 import scala.io.Codec
+import scala.compiletime.uninitialized
 
 import dotc._
 import ast.{Trees, tpd, untpd}
@@ -54,14 +55,14 @@ class DottyLanguageServer extends LanguageServer
   import lsp4j.jsonrpc.messages.{Either => JEither}
   import lsp4j._
 
-  private[this] var rootUri: String = _
+  private var rootUri: String = uninitialized
 
-  private[this] var myClient: DottyClient = _
+  private var myClient: DottyClient = uninitialized
   def client: DottyClient = myClient
 
-  private[this] var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = _
+  private var myDrivers: mutable.Map[ProjectConfig, InteractiveDriver] = uninitialized
 
-  private[this] var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = _
+  private var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = uninitialized
 
   def drivers: Map[ProjectConfig, InteractiveDriver] = thisServer.synchronized {
     if myDrivers == null then
@@ -791,7 +792,7 @@ object DottyLanguageServer {
    * not a worksheet, no mapper is necessary. Otherwise, return `toUnwrappedPosition`.
    */
   private def positionMapperFor(sourcefile: SourceFile): Option[SourcePosition => SourcePosition] = {
-    if (isWorksheet(sourcefile)) Some(toUnwrappedPosition _)
+    if (isWorksheet(sourcefile)) Some(toUnwrappedPosition)
     else None
   }
 

@@ -2,12 +2,12 @@ package dotty.tools.dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._
-import Contexts._, Trees._, Types._, StdNames._, Symbols._
-import ValueClasses._
+import core.*
+import Contexts.*, Trees.*, Types.*, StdNames.*, Symbols.*
+import ValueClasses.*
 
 object TreeExtractors {
-  import tpd._
+  import tpd.*
 
   /** Match arg1.op(arg2) and extract (arg1, op.symbol, arg2) */
   object BinaryOp {

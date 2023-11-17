@@ -11,19 +11,19 @@ import java.lang.reflect.{InvocationTargetException, Method => JLRMethod}
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeMapWithImplicits
-import dotty.tools.dotc.core.Annotations._
-import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Annotations.*
+import dotty.tools.dotc.core.Constants.*
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Denotations.staticRef
-import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.FlatName
-import dotty.tools.dotc.core.Names._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.TypeErasure
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.reporting.Message
@@ -32,8 +32,8 @@ import dotty.tools.dotc.core.CyclicReference
 
 /** Tree interpreter for metaprogramming constructs */
 class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
-  import Interpreter._
-  import tpd._
+  import Interpreter.*
+  import tpd.*
 
   val classLoader =
     if ctx.owner.topLevelClass.name.startsWith(str.REPL_SESSION_LINE) then
@@ -328,7 +328,7 @@ object Interpreter:
   class StopInterpretation(val msg: Message, val pos: SrcPos) extends Exception
 
   object Call:
-    import tpd._
+    import tpd.*
     /** Matches an expression that is either a field access or an application
      *  It returns a TermRef containing field accessed or a method reference and the arguments passed to it.
      */

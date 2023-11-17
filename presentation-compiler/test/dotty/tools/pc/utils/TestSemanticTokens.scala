@@ -6,6 +6,7 @@ import scala.collection.mutable.ListBuffer
 import scala.meta.internal.pc.SemanticTokens
 import scala.meta.internal.pc.SemanticTokens.*
 import scala.meta.pc.Node
+import scala.language.unsafeNulls
 
 import org.eclipse.lsp4j as l
 

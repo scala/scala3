@@ -380,7 +380,7 @@ object Objects:
       case Some(theValue) =>
         theValue
       case _ =>
-        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        report.warning("[Internal error] Value not found " + x.show + "\nenv = " + data.show + ". " + Trace.show, Trace.position)
         Bottom
 
     def getVal(x: Symbol)(using data: Data, ctx: Context): Option[Value] = data.getVal(x)
@@ -589,7 +589,7 @@ object Objects:
             values.map(ref => ref.widen(height)).join
 
           case Fun(code, thisV, klass, env) =>
-            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height))
+            Fun(code, thisV.widenRefOrCold(height), klass, env.widen(height - 1))
 
           case ref @ OfClass(klass, outer, _, args, env) =>
             val outer2 = outer.widen(height - 1)
@@ -619,7 +619,7 @@ object Objects:
   def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case Cold =>
-      report.warning("Using cold alias. Calling trace:\n" + Trace.show, Trace.position)
+      report.warning("Using cold alias. " + Trace.show, Trace.position)
       Bottom
 
     case Bottom =>
@@ -698,13 +698,24 @@ object Objects:
 
     case Fun(code, thisV, klass, env) =>
       // meth == NoSymbol for poly functions
-      if meth.name.toString == "tupled" then
+      if meth.name == nme.tupled then
         value // a call like `fun.tupled`
       else
         code match
         case ddef: DefDef =>
-          given Env.Data = Env.of(ddef, args.map(_.value), env)
-          extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          if meth.name == nme.apply then
+            given Env.Data = Env.of(ddef, args.map(_.value), env)
+            extendTrace(code) { eval(ddef.rhs, thisV, klass, cacheResult = true) }
+          else
+            // The methods defined in `Any` and `AnyRef` are trivial and don't affect initialization.
+            if meth.owner == defn.AnyClass || meth.owner == defn.ObjectClass then
+              value
+            else
+              // In future, we will have Tasty for stdlib classes and can abstractly interpret that Tasty.
+              // For now, return `Cold` to ensure soundness and trigger a warning.
+              Cold
+            end if
+          end if
 
         case _ =>
           // by-name closure
@@ -781,7 +792,7 @@ object Objects:
               errorReadOtherStaticObject(State.currentObject, addr.owner)
               Bottom
           else if ref.isObjectRef && ref.klass.hasSource then
-            report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
+            report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
             Bottom
           else
             // initialization error, reported by the initialization checker
@@ -789,7 +800,7 @@ object Objects:
         else if ref.hasVal(target) then
           ref.valValue(target)
         else if ref.isObjectRef && ref.klass.hasSource then
-          report.warning("Access uninitialized field " + field.show + ". Call trace: " + Trace.show, Trace.position)
+          report.warning("Access uninitialized field " + field.show + ". " + Trace.show, Trace.position)
           Bottom
         else
           // initialization error, reported by the initialization checker
@@ -836,7 +847,7 @@ object Objects:
       report.warning("[Internal error] unexpected tree in assignment, array = " + arr.show + Trace.show, Trace.position)
 
     case Cold =>
-      report.warning("Assigning to cold aliases is forbidden. Calling trace:\n" + Trace.show, Trace.position)
+      report.warning("Assigning to cold aliases is forbidden. " + Trace.show, Trace.position)
 
     case Bottom =>
 
@@ -851,7 +862,7 @@ object Objects:
         else
           Heap.writeJoin(addr, rhs)
       else
-        report.warning("Mutating a field before its initialization: " + field.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        report.warning("Mutating a field before its initialization: " + field.show + ". " + Trace.show, Trace.position)
     end match
 
     Bottom
@@ -936,7 +947,7 @@ object Objects:
             Bottom
           end if
         case _ =>
-          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
+          report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
           Bottom
       else
         given Env.Data = env
@@ -948,17 +959,17 @@ object Objects:
             given Env.Data = fun.env
             eval(fun.code, fun.thisV, fun.klass)
           case Cold =>
-            report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
+            report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
             Bottom
           case _: ValueSet | _: Ref | _: OfArray =>
-            report.warning("[Internal error] Unexpected by-name value " + value.show  + ". Calling trace:\n" + Trace.show, Trace.position)
+            report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
             Bottom
         else
           value
 
     case _ =>
       if isByNameParam(sym) then
-        report.warning("Calling cold by-name alias. Call trace: \n" + Trace.show, Trace.position)
+        report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
         Bottom
       else
         Cold
@@ -983,10 +994,10 @@ object Objects:
         else
           Heap.writeJoin(addr, value)
       case _ =>
-        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". Calling trace:\n" + Trace.show, Trace.position)
+        report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
 
     case _ =>
-      report.warning("Assigning to variables in outer scope. Calling trace:\n" + Trace.show, Trace.position)
+      report.warning("Assigning to variables in outer scope. " + Trace.show, Trace.position)
 
     Bottom
   }
@@ -1418,7 +1429,7 @@ object Objects:
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
       val applyRes = call(scrutinee, applyDenot.symbol, TraceValue(Bottom, summon[Trace]) :: Nil, scrutineeType, superType = NoType, needResolve = true)
 
-      if isWildcardStarArg(pats.last) then
+      if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
           val toSeqDenot = scrutineeType.member(nme.toSeq).suchThat(_.info.isParameterless)
@@ -1433,7 +1444,8 @@ object Objects:
         end if
       else
         // no patterns like `xs*`
-      for pat <- pats do evalPattern(applyRes, pat)
+        for pat <- pats do evalPattern(applyRes, pat)
+      end if
     end evalSeqPatterns
 
 
@@ -1714,15 +1726,13 @@ object Objects:
   def errorMutateOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       s"Mutating ${otherObj.show} during initialization of ${currentObj.show}.\n" +
-      "Mutating other static objects during the initialization of one static object is forbidden. " +
-      "Calling trace:\n" + Trace.show
+      "Mutating other static objects during the initialization of one static object is forbidden. " + Trace.show
 
     report.warning(msg, Trace.position)
 
   def errorReadOtherStaticObject(currentObj: ClassSymbol, otherObj: ClassSymbol)(using Trace, Context) =
     val msg =
       "Reading mutable state of " + otherObj.show + " during initialization of " + currentObj.show + ".\n" +
-      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " +
-      "Calling trace: " + Trace.show
+      "Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. " + Trace.show
 
     report.warning(msg, Trace.position)

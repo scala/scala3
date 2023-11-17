@@ -1,13 +1,12 @@
--- Error: tests/neg-custom-args/captures/exception-definitions.scala:2:6 -----------------------------------------------
-2 |class Err extends Exception: // error
-  |^
-  |reference (caps.cap : caps.Cap) is not included in the allowed capture set {} of pure base class class Throwable
-3 |  self: Err^ =>
+-- Error: tests/neg-custom-args/captures/exception-definitions.scala:3:8 -----------------------------------------------
+3 |  self: Err^ => // error
+  |        ^^^^
+  |reference (caps.cap : caps.Cap) captured by this self type is not included in the allowed capture set {} of pure base class class Throwable
 -- Error: tests/neg-custom-args/captures/exception-definitions.scala:7:12 ----------------------------------------------
 7 |    val x = c  // error
   |            ^
-  |(c : Any^) cannot be referenced here; it is not included in the allowed capture set {} of pure base class class Throwable
--- Error: tests/neg-custom-args/captures/exception-definitions.scala:8:8 -----------------------------------------------
+  |(c : Any^) cannot be referenced here; it is not included in the allowed capture set {} of the self type of class Err2
+-- Error: tests/neg-custom-args/captures/exception-definitions.scala:8:13 ----------------------------------------------
 8 |  class Err3(c: Any^) extends Exception // error
-  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |  reference (Err3.this.c : Any^) is not included in the allowed capture set {} of pure base class class Throwable
+  |             ^
+  |       reference (Err3.this.c : Any^) is not included in the allowed capture set {} of the self type of class Err3

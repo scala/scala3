@@ -1,21 +1,21 @@
 package dotty.tools.dotc
 package transform
 
-import core._
-import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
-import Flags._
-import DenotTransformers._
-import Decorators._
-import NameOps._
+import core.*
+import Symbols.*, Types.*, Contexts.*, Names.*, StdNames.*, Constants.*, SymUtils.*
+import Flags.*
+import DenotTransformers.*
+import Decorators.*
+import NameOps.*
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
 import ValueClasses.isDerivedValueClass
-import SymUtils._
+import SymUtils.*
 import util.Property
 import util.Spans.Span
 import config.Printers.derive
-import NullOpsDecorator._
+import NullOpsDecorator.*
 
 object SyntheticMembers {
 
@@ -53,8 +53,8 @@ object SyntheticMembers {
  *    def hashCode(): Int
  */
 class SyntheticMembers(thisPhase: DenotTransformer) {
-  import SyntheticMembers._
-  import ast.tpd._
+  import SyntheticMembers.*
+  import ast.tpd.*
 
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil

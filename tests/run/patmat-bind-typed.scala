@@ -1,5 +1,5 @@
 object Test {
-  def f(xs: List[Any]) = for (key @ (dummy: String) <- xs) yield key
+  def f(xs: List[Any]) = for (case key @ (dummy: String) <- xs) yield key
 
   def main(args: Array[String]): Unit = {
     f("abc" :: Nil) foreach println

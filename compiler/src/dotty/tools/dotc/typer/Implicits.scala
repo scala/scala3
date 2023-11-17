@@ -3,44 +3,45 @@ package dotc
 package typer
 
 import backend.sjs.JSDefinitions
-import core._
+import core.*
 import ast.{TreeTypeMap, untpd, tpd}
-import util.Spans._
+import util.Spans.*
 import util.Stats.{record, monitored}
 import printing.{Showable, Printer}
-import printing.Texts._
-import Contexts._
-import Types._
-import Flags._
+import printing.Texts.*
+import Contexts.*
+import Types.*
+import Flags.*
 import Mode.ImplicitsEnabled
 import NameKinds.{LazyImplicitName, ContextBoundParamName}
-import Symbols._
-import Types._
-import Decorators._
-import Names._
-import StdNames._
-import ProtoTypes._
-import ErrorReporting._
+import Symbols.*
+import Types.*
+import Decorators.*
+import Names.*
+import StdNames.*
+import ProtoTypes.*
+import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
 import Typer.BindingPrec, BindingPrec.*
-import transform.TypeUtils._
-import Hashable._
+import transform.TypeUtils.*
+import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
 import collection.mutable
-import reporting._
+import reporting.*
 import transform.Splicer
 import annotation.tailrec
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import scala.compiletime.uninitialized
 
 /** Implicit resolution */
 object Implicits:
-  import tpd._
+  import tpd.*
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
    *  Gets generated if an implicit ref is imported via a renaming import.
@@ -431,6 +432,7 @@ object Implicits:
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
+    require(tree.tpe.isInstanceOf[SearchFailureType], s"unexpected type for ${tree}")
     final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
   }
@@ -595,7 +597,7 @@ object Implicits:
   }
 end Implicits
 
-import Implicits._
+import Implicits.*
 
 /** Info relating to implicits that is kept for one run */
 trait ImplicitRunInfo:
@@ -620,7 +622,7 @@ trait ImplicitRunInfo:
 
     object collectParts extends TypeTraverser:
 
-      private var parts: mutable.LinkedHashSet[Type] = _
+      private var parts: mutable.LinkedHashSet[Type] = uninitialized
       private val partSeen = util.HashSet[Type]()
 
       def traverse(t: Type) = try
@@ -843,14 +845,14 @@ end ImplicitRunInfo
 trait Implicits:
   self: Typer =>
 
-  import tpd._
+  import tpd.*
 
   override def viewExists(from: Type, to: Type)(using Context): Boolean =
        !from.isError
     && !to.isError
     && !ctx.isAfterTyper
     && ctx.mode.is(Mode.ImplicitsEnabled)
-    && from.widen.isValueType
+    && from.isValueType
     && (  from.isValueSubType(to)
        || inferView(dummyTreeOfType(from), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
@@ -982,7 +984,7 @@ trait Implicits:
             .filter { imp =>
               !isImplicitDefConversion(imp.underlying)
                 && imp.symbol != defn.Predef_conforms
-                && viewExists(imp, fail.expectedType)
+                && viewExists(imp.underlying.resultType, fail.expectedType)
             }
         else
           Nil
@@ -1840,7 +1842,7 @@ final class SearchRoot extends SearchHistory:
       result match {
         case failure: SearchFailure => failure
         case success: SearchSuccess =>
-          import tpd._
+          import tpd.*
 
           // We might have accumulated dictionary entries for by name implicit arguments
           // which are not in fact used recursively either directly in the outermost result

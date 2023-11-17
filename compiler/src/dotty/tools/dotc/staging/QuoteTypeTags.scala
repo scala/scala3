@@ -1,10 +1,10 @@
 package dotty.tools.dotc.staging
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.util.Property
 

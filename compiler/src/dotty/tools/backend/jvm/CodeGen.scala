@@ -8,27 +8,28 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import dotty.tools.dotc.transform.SymUtils._
+import scala.jdk.CollectionConverters.*
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.interfaces
 import dotty.tools.dotc.report
 
 import java.util.Optional
 import dotty.tools.dotc.sbt.ExtractDependencies
-import dotty.tools.dotc.core._
-import Contexts._
-import Phases._
-import Symbols._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Phases.*
+import Symbols.*
 import StdNames.nme
 
 import java.io.DataOutputStream
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
+import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 import scala.tools.asm
-import scala.tools.asm.tree._
-import tpd._
+import scala.tools.asm.tree.*
+import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.util
 import dotty.tools.dotc.util.NoSourcePosition
@@ -36,7 +37,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 
 class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( val bTypes: BTypesFromSymbols[int.type]) { self =>
   import DottyBackendInterface.symExtensions
-  import bTypes._
+  import bTypes.*
   import int.given
 
   private lazy val mirrorCodeGen = Impl.JMirrorBuilder()
@@ -94,7 +95,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
       for (binary <- unit.pickled.get(claszSymbol.asClass)) {
         generatedTasty += GeneratedTasty(store, binary)
         val tasty =
-          val uuid = new TastyHeaderUnpickler(binary()).readHeader()
+          val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
           val lo = uuid.getMostSignificantBits
           val hi = uuid.getLeastSignificantBits
 

@@ -72,7 +72,7 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
         html.raw(renderLink(node.target, node.body))
 
     object Render extends NodeRenderer:
-      override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
+      override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[?]] =
         JSet(
           new NodeRenderingHandler(classOf[DocLinkNode], Handler),
         )

@@ -17,6 +17,7 @@ import dotty.Properties
 import interfaces.Diagnostic.{ERROR, WARNING}
 
 import scala.io.Codec
+import scala.compiletime.uninitialized
 
 class TestReporter protected (outWriter: PrintWriter, logLevel: Int)
 extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
@@ -81,9 +82,9 @@ object TestReporter {
   private val failedTestsFileName: String = "last-failed.log"
   private val failedTestsFile: JFile = new JFile(s"$testLogsDirName/$failedTestsFileName")
 
-  private var outFile: JFile = _
-  private var logWriter: PrintWriter = _
-  private var failedTestsWriter: PrintWriter = _
+  private var outFile: JFile = uninitialized
+  private var logWriter: PrintWriter = uninitialized
+  private var failedTestsWriter: PrintWriter = uninitialized
 
   private def initLog() = if (logWriter eq null) {
     val date = new Date

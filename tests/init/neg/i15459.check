@@ -3,9 +3,9 @@
   |          ^^^^
   |Could not verify that the method argument is transitively initialized (Hot). It was found to be the original object of type (class Sub) where initialization checking started. Only transitively initialized arguments may be passed to methods (except constructors).
   |Non initialized field(s): value b. Calling trace:
-  |-> class Sub extends Sup:	[ i15459.scala:5 ]
-  |   ^
-  |-> class Sup:	[ i15459.scala:1 ]
-  |   ^
-  |-> println(this)  // error	[ i15459.scala:3 ]
-  |           ^^^^
+  |├── class Sub extends Sup:	[ i15459.scala:5 ]
+  |│   ^
+  |├── class Sup:	[ i15459.scala:1 ]
+  |│   ^
+  |└── println(this)  // error	[ i15459.scala:3 ]
+  |            ^^^^

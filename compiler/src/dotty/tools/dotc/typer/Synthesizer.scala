@@ -2,25 +2,25 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
+import core.*
 import util.Spans.Span
-import Contexts._
-import Types._, Flags._, Symbols._, Names._, StdNames._, Constants._
+import Contexts.*
+import Types.*, Flags.*, Symbols.*, Names.*, StdNames.*, Constants.*
 import TypeErasure.{erasure, hasStableErasure}
-import Decorators._
-import ProtoTypes._
+import Decorators.*
+import ProtoTypes.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import ast.untpd
-import transform.SymUtils._
-import transform.TypeUtils._
-import transform.SyntheticMembers._
+import transform.SymUtils.*
+import transform.TypeUtils.*
+import transform.SyntheticMembers.*
 import util.Property
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
-import ast.tpd._
-import Synthesizer._
+import ast.tpd.*
+import Synthesizer.*
 import sbt.ExtractDependencies.*
-import xsbti.api.DependencyContext._
+import xsbti.api.DependencyContext.*
 
 /** Synthesize terms for special classes */
 class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
@@ -104,7 +104,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionOf(actualArgs, actualRet,
+          expected =:= defn.FunctionNOf(actualArgs, actualRet,
             defn.isContextFunctionType(baseFun))
         val arity: Int =
           if defn.isFunctionNType(fun) then
@@ -409,7 +409,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       New(defn.RuntimeTupleMirrorTypeRef, Literal(Constant(arity)) :: Nil)
 
     def makeProductMirror(pre: Type, cls: Symbol, tps: Option[List[Type]]): TreeWithErrors =
-      val accessors = cls.caseAccessors.filterNot(_.isAllOf(PrivateLocal))
+      val accessors = cls.caseAccessors
       val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
       val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
       val nestedPairs = TypeOps.nestedPairs(typeElems)

@@ -2,12 +2,12 @@ package dotty.tools
 package dotc
 package config
 
-import core._
-import Contexts._, Symbols._, Names._
+import core.*
+import Contexts.*, Symbols.*, Names.*
 import StdNames.nme
 import Decorators.*
 import util.{SrcPos, NoSourcePosition}
-import SourceVersion._
+import SourceVersion.*
 import reporting.Message
 import NameKinds.QualifiedName
 
@@ -134,7 +134,12 @@ object Feature:
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos, note: => String = "")(using Context) =
     if !isExperimentalEnabled then
-      report.error(em"Experimental $which may only be used with a nightly or snapshot version of the compiler$note", srcPos)
+      report.error(
+        em"""Experimental $which may only be used under experimental mode:
+            |  1. In a definition marked as @experimental
+            |  2. Compiling with the -experimental compiler flag
+            |  3. With a nightly or snapshot version of the compiler$note
+          """, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
     ccEnabled && defn.ccExperimental.contains(sym)
@@ -159,7 +164,7 @@ object Feature:
     do checkExperimentalFeature(s"feature $setting", NoSourcePosition)
 
   def isExperimentalEnabled(using Context): Boolean =
-    Properties.experimental && !ctx.settings.YnoExperimental.value
+    (Properties.experimental || ctx.settings.experimental.value) && !ctx.settings.YnoExperimental.value
 
   /** Handle language import `import language.<prefix>.<imported>` if it is one
    *  of the global imports `pureFunctions` or `captureChecking`. In this case

@@ -2,18 +2,18 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._
-import Types._
-import Flags._
-import Names._
-import StdNames._
-import Symbols._
-import Trees._
-import ProtoTypes._
-import Scopes._
-import CheckRealizable._
+import core.*
+import ast.*
+import Contexts.*
+import Types.*
+import Flags.*
+import Names.*
+import StdNames.*
+import Symbols.*
+import Trees.*
+import ProtoTypes.*
+import Scopes.*
+import CheckRealizable.*
 import ErrorReporting.errorTree
 import util.Spans.Span
 import Phases.refchecksPhase
@@ -23,29 +23,29 @@ import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
-import transform.SymUtils._
-import transform.ValueClasses._
-import Decorators._
+import transform.SymUtils.*
+import transform.ValueClasses.*
+import Decorators.*
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
 import NameKinds.DefaultGetterName
-import NameOps._
+import NameOps.*
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
 import config.Feature
 import config.Feature.sourceVersion
-import config.SourceVersion._
+import config.SourceVersion.*
 import printing.Formatting.hlAsKeyword
 import transform.TypeUtils.*
 import cc.isCaptureChecking
 
 import collection.mutable
-import reporting._
+import reporting.*
 
 object Checking {
-  import tpd._
+  import tpd.*
 
   /** Add further information for error messages involving applied types if the
    *  type is inferred:
@@ -853,7 +853,7 @@ object Checking {
 
 trait Checking {
 
-  import tpd._
+  import tpd.*
 
   def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type =
     Checking.checkNonCyclic(sym, info, reportErrors)
@@ -884,7 +884,7 @@ trait Checking {
       case NonConforming, RefutableExtractor
 
     def fail(pat: Tree, pt: Type, reason: Reason): Boolean = {
-      import Reason._
+      import Reason.*
       val message = reason match
         case NonConforming =>
           var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
@@ -923,7 +923,13 @@ trait Checking {
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
-        pos, warnFrom = `3.2`, errorFrom = `future`)
+        pos,
+        warnFrom = `3.2`,
+        // we tighten for-comprehension without `case` to error in 3.4,
+        // but we keep pat-defs as warnings for now ("@unchecked"),
+        // until we propose an alternative way to assert exhaustivity to the typechecker.
+        errorFrom = if isPatDef then `future` else `3.4`
+      )
       false
     }
 
@@ -1075,8 +1081,7 @@ trait Checking {
              !name.isOperatorName &&
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
-             !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(future) =>
+             !infixOKSinceFollowedBy(tree.right) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -1084,12 +1089,13 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
-            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
-            report.deprecationWarning(
+            def rewriteMsg = Message.rewriteNotice("The latter", version = `future-migration`)
+            report.errorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
-              tree.op.srcPos)
-            if (ctx.settings.deprecation.value) {
+              tree.op.srcPos,
+              from = future)
+            if sourceVersion == `future-migration` then {
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
             }
@@ -1579,7 +1585,7 @@ trait Checking {
 }
 
 trait ReChecking extends Checking {
-  import tpd._
+  import tpd.*
   override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
@@ -1595,7 +1601,7 @@ trait ReChecking extends Checking {
 }
 
 trait NoChecking extends ReChecking {
-  import tpd._
+  import tpd.*
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(using Context): Type = info
   override def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = ()
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()

@@ -2,14 +2,14 @@
 3 |  val b = new B(this) // error
   |          ^^^^^^^^^^^
   |          Problematic object instantiation: arg 1 is not transitively initialized (Hot). Calling trace:
-  |          -> class A:	[ i15363.scala:1 ]
-  |             ^
-  |          -> val b = new B(this) // error	[ i15363.scala:3 ]
-  |                     ^^^^^^^^^^^
+  |          ├── class A:	[ i15363.scala:1 ]
+  |          │   ^
+  |          └── val b = new B(this) // error	[ i15363.scala:3 ]
+  |                      ^^^^^^^^^^^
   |
   |          It leads to the following error during object initialization:
   |          Access field value m on an uninitialized (Cold) object. Calling trace:
-  |          -> class B(a: A):	[ i15363.scala:7 ]
-  |             ^
-  |          -> val x = a.m	[ i15363.scala:8 ]
-  |                     ^^^
+  |          ├── class B(a: A):	[ i15363.scala:7 ]
+  |          │   ^
+  |          └── val x = a.m	[ i15363.scala:8 ]
+  |                      ^^^

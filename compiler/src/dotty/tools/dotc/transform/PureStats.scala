@@ -2,10 +2,10 @@ package dotty.tools.dotc
 package transform
 
 import ast.{Trees, tpd}
-import core._, core.Decorators._
-import MegaPhase._
-import Types._, Contexts._, Flags._, DenotTransformers._
-import Symbols._, StdNames._, Trees._
+import core.*, core.Decorators.*
+import MegaPhase.*
+import Types.*, Contexts.*, Flags.*, DenotTransformers.*
+import Symbols.*, StdNames.*, Trees.*
 
 object PureStats {
   val name: String = "pureStats"
@@ -15,7 +15,7 @@ object PureStats {
 /** Remove pure statements in blocks */
 class PureStats extends MiniPhase {
 
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = PureStats.name
 

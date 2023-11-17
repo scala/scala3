@@ -3,26 +3,28 @@ package dotc
 package core
 
 import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation, LazyType, stillValid, acceptStale, traceInvalid }
-import Contexts._
-import Names._
-import NameKinds._
-import StdNames._
+import Contexts.*
+import Names.*
+import NameKinds.*
+import StdNames.*
 import Symbols.NoSymbol
-import Symbols._
-import Types._
-import Periods._
-import Flags._
-import DenotTransformers._
-import Decorators._
-import Signature.MatchDegree._
-import printing.Texts._
+import Symbols.*
+import Types.*
+import Periods.*
+import Flags.*
+import DenotTransformers.*
+import Decorators.*
+import Signature.MatchDegree.*
+import printing.Texts.*
 import printing.Printer
 import io.AbstractFile
 import config.Config
 import config.Printers.overload
-import util.common._
+import util.common.*
 import typer.ProtoTypes.NoViewsAllowed
 import collection.mutable.ListBuffer
+
+import scala.compiletime.uninitialized
 
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
@@ -121,8 +123,8 @@ object Denotations {
     /** Map `f` over all single denotations and aggregate the results with `g`. */
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T
 
-    private var cachedPrefix: Type = _
-    private var cachedAsSeenFrom: AsSeenFromResult = _
+    private var cachedPrefix: Type = uninitialized
+    private var cachedAsSeenFrom: AsSeenFromResult = uninitialized
     private var validAsSeenFrom: Period = Nowhere
 
     type AsSeenFromResult <: PreDenotation
@@ -990,18 +992,18 @@ object Denotations {
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
 
-    def definedPeriodsString: String = {
+    /** Show all defined periods and the info of the denotation at each */
+    def definedPeriodsString(using Context): String = {
       var sb = new StringBuilder()
       var cur = this
       var cnt = 0
-      while ({
-        sb.append(" " + cur.validFor)
+      while
+        sb.append(i" ${cur.validFor.toString}:${cur.infoOrCompleter}")
         cur = cur.nextInRun
         cnt += 1
         if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
         cur ne this
-      })
-      ()
+      do ()
       sb.toString
     }
 

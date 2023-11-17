@@ -505,6 +505,19 @@ class CompletionKeywordSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def `extends-class-nested-in-object` =
+    check(
+      """
+        |package foo
+        |
+        |object Foo {
+        |  class Boo ext@@
+        |}
+      """.stripMargin,
+      """|extends
+         |""".stripMargin
+    )
+
   @Test def `extends-class-nested-with-body` =
     check(
       """

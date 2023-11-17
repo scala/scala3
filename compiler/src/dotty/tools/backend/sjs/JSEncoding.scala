@@ -4,16 +4,16 @@ import scala.language.unsafeNulls
 
 import scala.collection.mutable
 
-import dotty.tools.dotc.core._
-import Contexts._
-import Flags._
-import Types._
-import Symbols._
-import NameOps._
-import Names._
-import StdNames._
+import dotty.tools.dotc.core.*
+import Contexts.*
+import Flags.*
+import Types.*
+import Symbols.*
+import NameOps.*
+import Names.*
+import StdNames.*
 
-import dotty.tools.dotc.transform.sjs.JSSymUtils._
+import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
@@ -61,7 +61,7 @@ object JSEncoding {
   // Fresh local name generator ----------------------------------------------
 
   class LocalNameGenerator {
-    import LocalNameGenerator._
+    import LocalNameGenerator.*
 
     private val usedLocalNames = mutable.Set.empty[LocalName]
     private val localSymbolNames = mutable.Map.empty[Symbol, LocalName]

@@ -2,32 +2,32 @@ package dotty.tools
 package dotc
 package core
 
-import Symbols._
-import Flags._
-import Names._
-import StdNames._, NameOps._
-import NullOpsDecorator._
+import Symbols.*
+import Flags.*
+import Names.*
+import StdNames.*, NameOps.*
+import NullOpsDecorator.*
 import NameKinds.SkolemName
-import Scopes._
-import Constants._
-import Contexts._
-import Phases._
-import Annotations._
-import SymDenotations._
-import Decorators._
-import Denotations._
-import Periods._
-import CheckRealizable._
+import Scopes.*
+import Constants.*
+import Contexts.*
+import Phases.*
+import Annotations.*
+import SymDenotations.*
+import Decorators.*
+import Denotations.*
+import Periods.*
+import CheckRealizable.*
 import Variances.{Variance, setStructuralVariances, Invariant}
 import typer.Nullables
-import util.Stats._
+import util.Stats.*
 import util.{SimpleIdentityMap, SimpleIdentitySet}
-import ast.tpd._
+import ast.tpd.*
 import ast.TreeTypeMap
-import printing.Texts._
+import printing.Texts.*
 import printing.Printer
-import Hashable._
-import Uniques._
+import Hashable.*
+import Uniques.*
 import collection.mutable
 import config.Config
 import annotation.{tailrec, constructorOnly}
@@ -42,7 +42,7 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.dotc.transform.TypeUtils.isErasedClass
 
 object Types {
@@ -1460,13 +1460,13 @@ object Types {
       case _ => this
     }
 
-    /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
+    /** Follow aliases and dereference LazyRefs, annotated types and instantiated
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
     final def dealias(using Context): Type = dealias1(keepNever, keepOpaques = false)
 
-    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
+    /** Follow aliases and dereference LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      *  Goes through annotated types and rewraps annotations on the result.
      */
@@ -1475,11 +1475,29 @@ object Types {
     /** Like `dealiasKeepAnnots`, but keeps only refining annotations */
     final def dealiasKeepRefiningAnnots(using Context): Type = dealias1(keepIfRefining, keepOpaques = false)
 
-    /** Follow non-opaque aliases and dereferences LazyRefs, annotated types and instantiated
-     *  TypeVars until type is no longer alias type, annotated type, LazyRef,
-     *  or instantiated type variable.
+    /** Like dealias, but does not follow aliases if symbol is Opaque. This is
+     *  necessary if we want to look at the info of a symbol containing opaque
+     *  type aliases but pretend "it's from the outside". For instance, consider:
+     *
+     *    opaque type IArray[T] = Array[? <: T]
+     *    object IArray:
+     *      def head[T](xs: IArray[T]): T = ???
+     *
+     *  If we dealias types in the info of `head`, those types appear with prefix
+     *  IArray.this, where IArray's self type is `IArray { type IArray[T] = Array[? <: T] }`.
+     *  Hence, if we see IArray it will appear as an alias of [T] =>> Array[? <: T].
+     *  But if we want to see the type from the outside of object IArray we need to
+     *  suppress this dealiasing. A test case where this matters is i18909.scala.
+     *  Here, we dealias symbol infos at the start of capture checking in operation `fluidify`.
+     *  We have to be careful not to accidentally reveal opaque aliases when doing so.
      */
     final def dealiasKeepOpaques(using Context): Type = dealias1(keepNever, keepOpaques = true)
+
+    /** Like dealiasKeepAnnots, but does not follow opaque aliases. See `dealiasKeepOpaques`
+     *  for why this is sometimes necessary.
+     */
+    final def dealiasKeepAnnotsAndOpaques(using Context): Type =
+      dealias1(keepAlways, keepOpaques = true)
 
     /** Approximate this type with a type that does not contain skolem types. */
     final def deskolemized(using Context): Type =
@@ -1901,7 +1919,7 @@ object Types {
             case res: MethodType => res.toFunctionType(isJava)
             case res => res
           }
-          defn.FunctionOf(
+          defn.FunctionNOf(
             mt.paramInfos.mapConserve(_.translateFromRepeated(toArray = isJava)),
             result1, isContextual)
         if mt.hasErasedParams then
@@ -2164,7 +2182,7 @@ object Types {
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
   trait CaptureRef extends SingletonType:
-    private var myCaptureSet: CaptureSet | Null = _
+    private var myCaptureSet: CaptureSet | Null = uninitialized
     private var myCaptureSetRunId: Int = NoRunId
     private var mySingletonCaptureSet: CaptureSet.Const | Null = null
 
@@ -2285,7 +2303,7 @@ object Types {
     private var lastSymbol: Symbol | Null = null
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
-    private var mySignature: Signature = _
+    private var mySignature: Signature = uninitialized
     private var mySignatureRunId: Int = NoRunId
 
     // Invariants:
@@ -2941,7 +2959,7 @@ object Types {
     type ThisName = TypeName
 
     private var myCanDropAliasPeriod: Period = Nowhere
-    private var myCanDropAlias: Boolean = _
+    private var myCanDropAlias: Boolean = uninitialized
 
     /** Given an alias type `type A = B` where a recursive comparison with `B` yields
      *  `false`, can we conclude that the comparison is definitely false?
@@ -3405,7 +3423,7 @@ object Types {
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = true
     private var myBaseClassesPeriod: Period = Nowhere
-    private var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClasses: List[ClassSymbol] = uninitialized
     /** Base classes are the merge of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -3498,7 +3516,7 @@ object Types {
     def isAnd: Boolean = false
     def isSoft: Boolean
     private var myBaseClassesPeriod: Period = Nowhere
-    private var myBaseClasses: List[ClassSymbol] = _
+    private var myBaseClasses: List[ClassSymbol] = uninitialized
     /** Base classes are the intersection of the operand base classes. */
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
@@ -3527,7 +3545,7 @@ object Types {
         myFactorCount
       else 1
 
-    private var myJoin: Type = _
+    private var myJoin: Type = uninitialized
     private var myJoinPeriod: Period = Nowhere
 
     /** Replace or type by the closest non-or type above it */
@@ -3541,7 +3559,7 @@ object Types {
       myJoin
     }
 
-    private var myUnion: Type = _
+    private var myUnion: Type = uninitialized
     private var myUnionPeriod: Period = Nowhere
 
     override def widenUnionWithoutNull(using Context): Type =
@@ -3556,8 +3574,8 @@ object Types {
       myUnion
 
     private var atomsRunId: RunId = NoRunId
-    private var myAtoms: Atoms = _
-    private var myWidened: Type = _
+    private var myAtoms: Atoms = uninitialized
+    private var myWidened: Type = uninitialized
 
     private def computeAtoms()(using Context): Atoms =
       val tp1n = tp1.normalized
@@ -3797,11 +3815,11 @@ object Types {
     // (1) mySignatureRunId != NoRunId      =>  mySignature != null
     // (2) myJavaSignatureRunId != NoRunId  =>  myJavaSignature != null
 
-    private var mySignature: Signature = _
+    private var mySignature: Signature = uninitialized
     private var mySignatureRunId: Int = NoRunId
-    private var myJavaSignature: Signature = _
+    private var myJavaSignature: Signature = uninitialized
     private var myJavaSignatureRunId: Int = NoRunId
-    private var myScala2Signature: Signature = _
+    private var myScala2Signature: Signature = uninitialized
     private var myScala2SignatureRunId: Int = NoRunId
 
     /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
@@ -3882,7 +3900,7 @@ object Types {
   }
 
   trait TermLambda extends LambdaType { thisLambdaType =>
-    import DepStatus._
+    import DepStatus.*
     type ThisName = TermName
     type PInfo = Type
     type This >: this.type <: TermLambda
@@ -4908,6 +4926,9 @@ object Types {
       tp
     }
 
+    def typeToInstantiateWith(fromBelow: Boolean)(using Context): Type =
+      TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
      *  of its lower bounds in the current constraint; otherwise it is
@@ -4916,7 +4937,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      val tp = TypeComparer.instanceType(origin, fromBelow, widenUnions, nestingLevel)
+      val tp = typeToInstantiateWith(fromBelow)
       if myInst.exists then // The line above might have triggered instantiation of the current type variable
         myInst
       else
@@ -4993,7 +5014,7 @@ object Types {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type | Null = null
-    private var reductionContext: util.MutableMap[Type, Type] = _
+    private var reductionContext: util.MutableMap[Type, Type] = uninitialized
 
     override def tryNormalize(using Context): Type =
       try
@@ -5348,6 +5369,8 @@ object Types {
       case that: AliasingBounds => this.isTypeAlias == that.isTypeAlias && alias.eq(that.alias)
       case _ => false
     }
+
+    override def toString = s"${getClass.getSimpleName}($alias)"
   }
 
   /**    = T
@@ -5420,7 +5443,7 @@ object Types {
     override def stripped(using Context): Type = parent.stripped
 
     private var isRefiningKnown = false
-    private var isRefiningCache: Boolean = _
+    private var isRefiningCache: Boolean = uninitialized
 
     def isRefining(using Context): Boolean = {
       if (!isRefiningKnown) {
@@ -5812,11 +5835,13 @@ object Types {
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
+    protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
+      case arg: TypeBounds => this(arg)
+      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = arg match
-          case arg: TypeBounds => this(arg)
-          case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
+        val arg1 = mapArg(arg, tparams.head)
         val otherArgs1 = mapArgs(otherArgs, tparams.tail)
         if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
         else arg1 :: otherArgs1

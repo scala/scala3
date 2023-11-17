@@ -1,6 +1,6 @@
 //> using scala 3.3.1
 //> using toolkit 0.2.1
-//> using lib pro.kordyjan::pytanie:0.1.6
+//> using lib pro.kordyjan::pytanie:0.1.7
 
 import pytanie.*
 import sttp.client4.*
@@ -13,18 +13,26 @@ case class ID(value: String) derives WrapperVariable
 val PROJECT_ID = ID("PVT_kwDOACj3ec4AWSoi")
 val FIELD_ID = ID("PVTF_lADOACj3ec4AWSoizgO7uJ4")
 
-@main def run(number: Int) =
-  val (id, date) = getPrData(number)
+@main def run(commitSha: String) =
+  val (id, date) = getPrData(commitSha)
   val newId = addItem(id)
   timestampItem(newId, date)
 
-def getPrData(number: Int): (ID, String) =
+def getPrData(commitSha: String): (ID, String) =
   val res = query"""
-    |query getPR {
-    |  repository(owner: "lampepfl", name:"dotty") {
-    |    pullRequest(number: $number) {
-    |      id
-    |      mergedAt
+    |query prForCommit {
+    |  repository(owner:"lampepfl", name:"dotty") {
+    |    object(expression: $commitSha){
+    |      __typename
+    |      ... on Commit {
+    |        associatedPullRequests(first: 1) {
+    |          nodes {
+    |            number
+    |            id
+    |            mergedAt
+    |          }
+    |        }
+    |      }
     |    }
     |  }
     |}
@@ -33,7 +41,8 @@ def getPrData(number: Int): (ID, String) =
       "DummyUser",
       apiToken
     )
-  (ID(res.repository.pullRequest.id), res.repository.pullRequest.mergedAt)
+  val pr = res.repository.`object`.asCommit.get.associatedPullRequests.nodes.head
+  (ID(pr.id), pr.mergedAt)
 
 def timestampItem(id: ID, date: String) =
   query"""

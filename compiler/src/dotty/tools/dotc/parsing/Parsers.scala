@@ -8,35 +8,35 @@ import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition, NoSourcePosition }
-import Tokens._
-import Scanners._
+import Tokens.*
+import Scanners.*
 import xml.MarkupParsers.MarkupParser
-import core._
-import Flags._
-import Contexts._
-import Names._
+import core.*
+import Flags.*
+import Contexts.*
+import Names.*
 import NameKinds.{WildcardParamName, QualifiedName}
-import NameOps._
+import NameOps.*
 import ast.{Positioned, Trees}
-import ast.Trees._
-import StdNames._
-import util.Spans._
-import Constants._
+import ast.Trees.*
+import StdNames.*
+import util.Spans.*
+import Constants.*
 import Symbols.NoSymbol
-import ScriptParsers._
-import Decorators._
+import ScriptParsers.*
+import Decorators.*
 import util.Chars
 import scala.annotation.tailrec
 import rewrites.Rewrites.{patch, overlapsPatch}
-import reporting._
+import reporting.*
 import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
-import config.SourceVersion._
+import config.SourceVersion.*
 import config.SourceVersion
 
 object Parsers {
 
-  import ast.untpd._
+  import ast.untpd.*
 
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
@@ -411,6 +411,14 @@ object Parsers {
       inEnum = true
       try body
       finally inEnum = saved
+    }
+
+    private var inTypeMatchPattern = false
+    private def withinTypeMatchPattern[T](body: => T): T = {
+      val saved = inTypeMatchPattern
+      inTypeMatchPattern = true
+      try body
+      finally inTypeMatchPattern = saved
     }
 
     private var staged = StageKind.None
@@ -1233,7 +1241,7 @@ object Parsers {
             case EXPOLIT => return Number(digits, NumberKind.Floating)
             case _ =>
           }
-        import scala.util.FromDigits._
+        import scala.util.FromDigits.*
         val value =
           try token match {
             case INTLIT                        => intFromDigits(digits, in.base)
@@ -1756,12 +1764,14 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          report.errorOrMigrationWarning(
-            DeprecatedWithOperator(rewriteNotice(`future-migration`)),
-            in.sourcePos(withOffset),
-            from = future)
-          if sourceVersion == `future-migration` then
-            patch(source, Span(withOffset, withOffset + 4), "&")
+          val withSpan = Span(withOffset, withOffset + 4)
+          report.gradualErrorOrMigrationWarning(
+            DeprecatedWithOperator(rewriteNotice(`3.4-migration`)),
+            source.atSpan(withSpan),
+            warnFrom = `3.4`,
+            errorFrom = future)
+          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+            patch(source, withSpan, "&")
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
 
@@ -1860,9 +1870,15 @@ object Parsers {
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
-          if sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
-            patch(source, Span(in.offset, in.offset + 1), "?")
+          if !inTypeMatchPattern then
+            report.gradualErrorOrMigrationWarning(
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
+              in.sourcePos(),
+              warnFrom = `3.4`,
+              errorFrom = future)
+            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              patch(source, Span(in.offset, in.offset + 1), "?")
+          end if
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
@@ -2343,11 +2359,12 @@ object Parsers {
           val isVarargSplice = location.inArgs && followingIsVararg()
           in.nextToken()
           if isVarargSplice then
-            report.errorOrMigrationWarning(
-              em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice(`future-migration`)}",
+            report.gradualErrorOrMigrationWarning(
+              em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice(`3.4-migration`)}",
               in.sourcePos(uscoreStart),
-              future)
-            if sourceVersion == `future-migration` then
+              warnFrom = `3.4`,
+              errorFrom = future)
+            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
               patch(source, Span(t.span.end, in.lastOffset), "*")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
@@ -2771,7 +2788,7 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if casePat then GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(`future`) then GenCheckMode.Check
+          else if sourceVersion.isAtLeast(`3.4`) then GenCheckMode.Check
           else if sourceVersion.isAtLeast(`3.2`) then GenCheckMode.CheckAndFilter
           else GenCheckMode.FilterNow  // filter on source version < 3.2, for backward compat
         GenFrom(pat, subExpr(), checkMode)
@@ -2895,7 +2912,7 @@ object Parsers {
             val start = in.skipToken()
             Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
           case _ =>
-            rejectWildcardType(infixType())
+            withinTypeMatchPattern(rejectWildcardType(infixType()))
         }
       }
       CaseDef(pat, EmptyTree, atSpan(accept(ARROW)) {
@@ -3111,15 +3128,23 @@ object Parsers {
       if (in.token == LBRACKET) {
         if (mods.is(Local) || mods.hasPrivateWithin)
           syntaxError(DuplicatePrivateProtectedQualifier())
-        inBrackets {
+        val startOffset = in.offset
+        val mods1 = inBrackets {
           if in.token == THIS then
-            if sourceVersion.isAtLeast(future) then
-              deprecationWarning(
-                em"The [this] qualifier will be deprecated in the future; it should be dropped.")
             in.nextToken()
             mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
         }
+        if mods1.is(Local) then
+          report.gradualErrorOrMigrationWarning(
+              em"""The [this] qualifier will be deprecated in the future; it should be dropped.
+                  |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
+              in.sourcePos(),
+              warnFrom = `3.4`,
+              errorFrom = future)
+          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              patch(source, Span(startOffset, in.lastOffset), "")
+        mods1
       }
       else mods
 
@@ -3518,7 +3543,7 @@ object Parsers {
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
-        if in.token == USCORE && sourceVersion.isAtLeast(future) then
+        if in.token == USCORE then
           report.errorOrMigrationWarning(
             em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
@@ -3538,7 +3563,7 @@ object Parsers {
       /** id [‘as’ (id | ‘_’) */
       def namedSelector(from: Ident) =
         if in.token == ARROW || isIdent(nme.as) then
-          if in.token == ARROW && sourceVersion.isAtLeast(future) then
+          if in.token == ARROW then
             report.errorOrMigrationWarning(
               em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
@@ -3654,11 +3679,14 @@ object Parsers {
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
-              if sourceVersion.isAtLeast(future) then
-                deprecationWarning(
-                  em"""`= _` has been deprecated; use `= uninitialized` instead.
-                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""",
-                  rhsOffset)
+              report.gradualErrorOrMigrationWarning(
+                em"""`= _` has been deprecated; use `= uninitialized` instead.
+                        |`uninitialized` can be imported with `scala.compiletime.uninitialized`.${rewriteNotice(`3.4-migration`)}""",
+                in.sourcePos(rhsOffset),
+                warnFrom = `3.4`,
+                errorFrom = future)
+              if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+                patch(source, Span(rhsOffset, rhsOffset + 1), "scala.compiletime.uninitialized")
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0

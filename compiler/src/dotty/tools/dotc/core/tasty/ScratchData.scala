@@ -10,6 +10,7 @@ class ScratchData:
   val pickledIndices = new mutable.BitSet
 
   val commentBuffer = new TastyBuffer(5000)
+  val attributeBuffer = new TastyBuffer(32)
 
   def reset() =
     assert(delta ne delta1)
@@ -17,4 +18,5 @@ class ScratchData:
     positionBuffer.reset()
     pickledIndices.clear()
     commentBuffer.reset()
+    attributeBuffer.reset()
 

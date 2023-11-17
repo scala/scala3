@@ -12,7 +12,7 @@ import scala.language.unsafeNulls
 
 import java.io.{File => JavaIoFile, _}
 import java.nio.file.{Files, Paths}
-import java.nio.file.StandardOpenOption._
+import java.nio.file.StandardOpenOption.*
 
 import scala.io.Codec
 /**
@@ -35,7 +35,7 @@ object File {
  *  @author  Paul Phillips
  *  @since   2.8
  *
- *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
+ *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
   override val creationCodec: io.Codec = constructorCodec

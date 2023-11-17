@@ -8,7 +8,7 @@ Text => empty
 Language => Scala
 Symbols => 9 entries
 Occurrences => 19 entries
-Diagnostics => 2 entries
+Diagnostics => 4 entries
 
 Symbols:
 example/Access# => class Access extends Object { self: Access => +8 decls }
@@ -44,7 +44,13 @@ Occurrences:
 
 Diagnostics:
 [3:14..3:16): [warning] unused private member
+[4:16..4:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [4:20..4:22): [warning] unused private member
+[7:18..7:18): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/Advanced.scala
 ---------------------
@@ -56,7 +62,7 @@ Text => empty
 Language => Scala
 Symbols => 61 entries
 Occurrences => 143 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -268,6 +274,12 @@ Occurrences:
 [53:39..53:47): toString -> scala/Tuple2#toString().
 
 Diagnostics:
+[20:15..20:15): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[21:15..21:15): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[39:20..39:20): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [40:12..40:15): [warning] unused local definition
 
 Synthetics:
@@ -383,7 +395,7 @@ Text => empty
 Language => Scala
 Symbols => 23 entries
 Occurrences => 50 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -464,6 +476,12 @@ Occurrences:
 [23:42..23:45): ??? -> scala/Predef.`???`().
 
 Diagnostics:
+[9:14..9:14): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[9:22..9:22): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[11:29..11:29): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [14:8..14:9): [warning] unused local definition
 
 Synthetics:
@@ -559,7 +577,7 @@ Text => empty
 Language => Scala
 Symbols => 108 entries
 Occurrences => 127 entries
-Diagnostics => 4 entries
+Diagnostics => 6 entries
 Synthetics => 2 entries
 
 Symbols:
@@ -803,7 +821,13 @@ Occurrences:
 
 Diagnostics:
 [18:9..18:10): [warning] unused explicit parameter
+[20:23..20:23): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [20:27..20:28): [warning] unused explicit parameter
+[22:23..22:23): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [22:27..22:28): [warning] unused explicit parameter
 [24:10..24:11): [warning] unused explicit parameter
 
@@ -1070,7 +1094,7 @@ Language => Scala
 Symbols => 181 entries
 Occurrences => 159 entries
 Diagnostics => 1 entries
-Synthetics => 6 entries
+Synthetics => 5 entries
 
 Symbols:
 _empty_/Enums. => final object Enums extends Object { self: Enums.type => +30 decls }
@@ -1253,7 +1277,7 @@ _empty_/Enums.unwrap().(ev) => implicit given param ev: <:<[A, Option[B]]
 _empty_/Enums.unwrap().(opt) => param opt: Option[A]
 _empty_/Enums.unwrap().[A] => typeparam A 
 _empty_/Enums.unwrap().[B] => typeparam B 
-local0 => param x: Option[B]
+local0 => param x: A
 
 Occurrences:
 [0:7..0:12): Enums <- _empty_/Enums.
@@ -1421,7 +1445,6 @@ Diagnostics:
 
 Synthetics:
 [52:9..52:13):Refl => *.unapply[Option[B]]
-[52:31..52:50):identity[Option[B]] => *[Function1[A, Option[B]]]
 [54:14..54:18):Some => *.apply[Some[Int]]
 [54:14..54:34):Some(Some(1)).unwrap => *(given_<:<_T_T[Option[Int]])
 [54:19..54:23):Some => *.apply[Int]
@@ -3141,6 +3164,7 @@ Text => empty
 Language => Scala
 Symbols => 68 entries
 Occurrences => 115 entries
+Diagnostics => 1 entries
 Synthetics => 3 entries
 
 Symbols:
@@ -3330,6 +3354,10 @@ Occurrences:
 [32:49..32:56): pickOne -> example/SpecialRefinement#pickOne().
 [32:57..32:59): as -> example/PickOneRefinement_1#run().(as)
 
+Diagnostics:
+[32:60..32:60): [warning] The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+
 Synthetics:
 [15:23..15:34):elems.toMap => *[String, Any]
 [15:23..15:34):elems.toMap => *(refl[Tuple2[String, Any]])
@@ -3377,6 +3405,7 @@ Text => empty
 Language => Scala
 Symbols => 13 entries
 Occurrences => 22 entries
+Diagnostics => 1 entries
 
 Symbols:
 local0 => selfparam self: C1
@@ -3416,6 +3445,10 @@ Occurrences:
 [13:17..13:18): B -> selfs/B#
 [13:17..13:17): <- selfs/C6#`<init>`().
 [13:27..13:28): B -> selfs/B#
+
+Diagnostics:
+[10:29..10:33): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/StructuralTypes.scala
 ----------------------------
@@ -3914,7 +3947,7 @@ Text => empty
 Language => Scala
 Symbols => 42 entries
 Occurrences => 129 entries
-Diagnostics => 1 entries
+Diagnostics => 5 entries
 
 Symbols:
 example/ValUsages. => final object ValUsages extends Object { self: ValUsages.type => +2 decls }
@@ -4093,6 +4126,18 @@ Occurrences:
 
 Diagnostics:
 [2:20..2:21): [warning] unused explicit parameter
+[5:16..5:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[7:16..7:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[12:16..12:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[13:16..13:16): [warning] The [this] qualifier will be deprecated in the future; it should be dropped.
+See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/Vararg.scala
 -------------------
@@ -5030,7 +5075,7 @@ Text => empty
 Language => Scala
 Symbols => 143 entries
 Occurrences => 246 entries
-Diagnostics => 1 entries
+Diagnostics => 4 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -5428,6 +5473,12 @@ Occurrences:
 
 Diagnostics:
 [5:13..5:14): [warning] unused explicit parameter
+[62:25..62:29): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[63:25..63:29): [warning] with as a type operator has been deprecated; use & instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+[71:31..71:31): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
+This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 Synthetics:
 [68:20..68:24):@ann => *[Int]

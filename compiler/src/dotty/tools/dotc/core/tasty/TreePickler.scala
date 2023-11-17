@@ -5,16 +5,16 @@ package tasty
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.TastyFormat._
-import dotty.tools.tasty.TastyBuffer._
+import dotty.tools.tasty.TastyFormat.*
+import dotty.tools.tasty.TastyBuffer.*
 
-import ast.Trees._
+import ast.Trees.*
 import ast.{untpd, tpd}
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
+import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
 import Comments.{Comment, CommentsContext}
-import NameKinds._
+import NameKinds.*
 import StdNames.nme
-import transform.SymUtils._
+import transform.SymUtils.*
 import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
@@ -27,9 +27,9 @@ object TreePickler:
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
   pickler.newSection(ASTsSection, buf)
-  import buf._
+  import buf.*
   import pickler.nameBuffer.nameIndex
-  import tpd._
+  import tpd.*
   import TreePickler.*
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
@@ -734,7 +734,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleModifiers(sym: Symbol, mdef: MemberDef)(using Context): Unit = {
-    import Flags._
+    import Flags.*
     var flags = sym.flags
     val privateWithin = sym.privateWithin
     if (privateWithin.exists) {
@@ -749,7 +749,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
-    import Flags._
+    import Flags.*
     def writeModTag(tag: Int) = {
       assert(isModifierTag(tag))
       writeByte(tag)

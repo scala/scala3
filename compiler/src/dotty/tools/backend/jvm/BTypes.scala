@@ -39,7 +39,7 @@ abstract class BTypes { self =>
   def classBTypeFromInternalName(internalName: String) = classBTypeFromInternalNameMap(internalName)
 
   val coreBTypes: CoreBTypes { val bTypes: self.type}
-  import coreBTypes._
+  import coreBTypes.*
 
   /**
    * A BType is either a primitve type, a ClassBType, an ArrayBType of one of these, or a MethodType

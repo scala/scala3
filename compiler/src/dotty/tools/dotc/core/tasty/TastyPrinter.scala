@@ -5,11 +5,11 @@ package tasty
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
 import TastyBuffer.NameRef
 
-import Contexts._, Decorators._
+import Contexts.*, Decorators.*
 import Names.Name
-import TastyUnpickler._
+import TastyUnpickler.*
 import util.Spans.offsetToInt
-import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
+import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection, AttributesSection}
 import java.nio.file.{Files, Paths}
 import dotty.tools.io.{JarArchive, Path}
 
@@ -84,26 +84,28 @@ class TastyPrinter(bytes: Array[Byte]) {
       case Some(s) => sb.append(s)
       case _ =>
     }
-    sb.append("\n\n")
     unpickle(new PositionSectionUnpickler) match {
-      case Some(s) => sb.append(s)
+      case Some(s) => sb.append("\n\n").append(s)
       case _ =>
     }
-    sb.append("\n\n")
     unpickle(new CommentSectionUnpickler) match {
-      case Some(s) => sb.append(s)
+      case Some(s) => sb.append("\n\n").append(s)
+      case _ =>
+    }
+    unpickle(new AttributesSectionUnpickler) match {
+      case Some(s) => sb.append("\n\n").append(s)
       case _ =>
     }
     sb.result
   }
 
   class TreeSectionUnpickler extends SectionUnpickler[String](ASTsSection) {
-    import dotty.tools.tasty.TastyFormat._
+    import dotty.tools.tasty.TastyFormat.*
 
     private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
-      import reader._
+      import reader.*
       var indent = 0
       def newLine() = {
         val length = treeStr("%5d".format(index(currentAddr) - index(startAddr)))
@@ -218,6 +220,20 @@ class TastyPrinter(bytes: Array[Byte]) {
         sb.append(treeStr("%10d".format(addr.index)))
         sb.append(s": ${cmt.raw} (expanded = ${cmt.isExpanded})\n")
       }
+      sb.result
+    }
+  }
+
+  class AttributesSectionUnpickler extends SectionUnpickler[String](AttributesSection) {
+  import dotty.tools.tasty.TastyFormat.attributeTagToString
+    private val sb: StringBuilder = new StringBuilder
+
+    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
+      val attributeTags = new AttributeUnpickler(reader).attributeTags
+      sb.append(s"  attributes bytes:\n")
+      for attributeTag <- attributeTags do
+        sb.append("    ").append(attributeTagToString(attributeTag)).append("\n")
       sb.result
     }
   }

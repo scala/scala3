@@ -1,6 +1,8 @@
 package tests
 package visibility
 
+import scala.language.`3.3` // to avoid migration warnings/errors of private[this]
+
 private object PrivateTopLevelObject //unexpected
 
 private[tests] object PrivateInOuterPackageTopLevelObject //unexpected

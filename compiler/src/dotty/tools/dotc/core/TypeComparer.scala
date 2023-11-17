@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
-import Decorators._
+import Types.*, Contexts.*, Symbols.*, Flags.*, Names.*, NameOps.*, Denotations.*
+import Decorators.*
 import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
@@ -13,11 +13,11 @@ import config.Config
 import config.Feature.migrateTo3
 import config.Printers.{subtyping, gadts, matchTypes, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
-import TypeApplications._
+import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import transform.TypeUtils._
-import transform.SymUtils._
+import transform.TypeUtils.*
+import transform.SymUtils.*
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
@@ -29,7 +29,7 @@ import NameKinds.WildcardParamName
 /** Provides methods to compare types.
  */
 class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling, PatternTypeConstrainer {
-  import TypeComparer._
+  import TypeComparer.*
   Stats.record("TypeComparer")
 
   private var myContext: Context = initctx
@@ -160,7 +160,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  every time we compare components of the previous pair of types.
    *  This type is used for capture conversion in `isSubArgs`.
    */
-  private [this] var leftRoot: Type | Null = null
+  private var leftRoot: Type | Null = null
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
@@ -501,17 +501,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
-        /** Mark toplevel type vars in `tp2` as hard in the current constraint */
-        def hardenTypeVars(tp2: Type): Unit = tp2.dealiasKeepRefiningAnnots match
-          case tvar: TypeVar if constraint.contains(tvar.origin) =>
-            constraint = constraint.withHard(tvar)
-          case tp2: TypeParamRef if constraint.contains(tp2) =>
-            hardenTypeVars(constraint.typeVarOfParam(tp2))
-          case tp2: AndOrType =>
-            hardenTypeVars(tp2.tp1)
-            hardenTypeVars(tp2.tp2)
-          case _ =>
-
         val res = widenOK || joinOK
           || recur(tp11, tp2) && recur(tp12, tp2)
           || containsAnd(tp1)
@@ -534,7 +523,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // is marked so that it converts all soft unions in its lower bound to hard unions
           // before it is instantiated. The reason is that the variable's instance type will
           // be a supertype of (decomposed and reconstituted) `tp1`.
-          hardenTypeVars(tp2)
+          constraint = constraint.hardenTypeVars(tp2)
 
         res
 
@@ -746,7 +735,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ =>
             val tparams1 = tp1.typeParams
             if (tparams1.nonEmpty)
-              return recur(tp1.EtaExpand(tparams1), tp2) || fourthTry
+              return recur(tp1.etaExpand(tparams1), tp2) || fourthTry
             tp2 match {
               case EtaExpansion(tycon2: TypeRef) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
                 recur(tp1, tycon2) || fourthTry
@@ -2375,7 +2364,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case Atoms.Range(lo2, hi2) =>
                 if hi1.subsetOf(lo2) then return tp2
                 if hi2.subsetOf(lo1) then return tp1
-                if (hi1 & hi2).isEmpty then return orType(tp1, tp2)
+                if (hi1 & hi2).isEmpty then return orType(tp1, tp2, isSoft = isSoft)
               case none =>
           case none =>
         val t1 = mergeIfSuper(tp1, tp2, canConstrain)
@@ -3342,7 +3331,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
  *                subtraces; never print backtraces starting with `<==`.
  */
 class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {
-  import TypeComparer._
+  import TypeComparer.*
 
   init(initctx)
 

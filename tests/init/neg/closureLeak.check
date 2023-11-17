@@ -2,13 +2,13 @@
 11 |    l.foreach(a => a.addX(this)) // error
    |              ^^^^^^^^^^^^^^^^^
    |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (class Outer) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
-   |-> class Outer {	[ closureLeak.scala:1 ]
-   |   ^
-   |-> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
-   |             ^^^^^^^^^^^^^^^^^
+   |├── class Outer {	[ closureLeak.scala:1 ]
+   |│   ^
+   |└── l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
+   |              ^^^^^^^^^^^^^^^^^
    |
    |Promoting the value to transitively initialized (Hot) failed due to the following problem:
    |Could not verify that the method argument is transitively initialized (Hot). It was found to be the original object of type (class Outer) where initialization checking started. Only transitively initialized arguments may be passed to methods (except constructors).
    |Non initialized field(s): value p. Promotion trace:
-   |-> l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
-   |                         ^^^^
+   |└── l.foreach(a => a.addX(this)) // error	[ closureLeak.scala:11 ]
+   |                          ^^^^

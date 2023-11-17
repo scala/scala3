@@ -16,7 +16,7 @@ object IsInstanceOfClassTag {
       case Some(xs) =>
     }
 
-    safeCast[List[_]](List[Int](1)) match {
+    safeCast[List[?]](List[Int](1)) match {
       case None =>
       case Some(xs) =>
     }

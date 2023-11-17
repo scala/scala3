@@ -7,6 +7,8 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
 
+import scala.compiletime.uninitialized
+
 /**
  * MetalsDriver is a wrapper class that provides a compilation cache for InteractiveDriver.
  * MetalsDriver skips running compilation if
@@ -29,7 +31,7 @@ class MetalsDriver(
     override val settings: List[String]
 ) extends InteractiveDriver(settings):
 
-  @volatile private var lastCompiledURI: URI = _
+  @volatile private var lastCompiledURI: URI = uninitialized
 
   private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
     compilationUnits.get(uri) match
@@ -48,7 +50,7 @@ class MetalsDriver(
 
   override def run(uri: URI, sourceCode: String): List[Diagnostic] =
     val diags =
-      if alreadyCompiled(uri, sourceCode.toCharArray()) then Nil
+      if alreadyCompiled(uri, sourceCode.toCharArray().nn) then Nil
       else super.run(uri, sourceCode)
     lastCompiledURI = uri
     diags

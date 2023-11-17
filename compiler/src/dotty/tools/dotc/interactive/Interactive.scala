@@ -4,21 +4,21 @@ package interactive
 
 import scala.language.unsafeNulls
 
-import scala.collection._
+import scala.collection.*
 
 import ast.{NavigateAST, Trees, tpd, untpd}
-import core._
-import Decorators._, ContextOps._
-import Contexts._, Flags._, Names._, NameOps._, Symbols._, Trees._, Types._
-import transform.SymUtils._
-import util.Spans._, util.SourceFile, util.SourcePosition
+import core.*
+import Decorators.*, ContextOps.*
+import Contexts.*, Flags.*, Names.*, NameOps.*, Symbols.*, Trees.*, Types.*
+import transform.SymUtils.*
+import util.Spans.*, util.SourceFile, util.SourcePosition
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *
  *  @see `InteractiveDriver` to get typed trees from code.
  */
 object Interactive {
-  import ast.tpd._
+  import ast.tpd.*
 
   object Include {
     case class Set private[Include] (val bits: Int) extends AnyVal {

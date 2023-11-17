@@ -478,9 +478,33 @@ class PcRenameSuite extends BasePcRenameSuite:
          |  def <<ma@@p>>(f: Int => Int): Bar = Bar(x.map(f))
          |}
          |
-         |val f = 
+         |val f =
          |  for {
          |    b <- Bar(List(1,2,3))
          |  } yield b
-         |""".stripMargin,
+         |""".stripMargin
+    )
+
+  @Test def `end-marker` =
+    check(
+      """|def <<he@@llo>>(a: Int) =
+        |  ???
+        |end <<hello>>
+        |""".stripMargin
+    )
+
+  @Test def `end-marker-with-comment` =
+    check(
+      """|def <<he@@llo>>(a: Int) =
+        |  ???
+        |end /* a comment */ <<hello>> /* a comment */
+        |""".stripMargin
+    )
+
+  @Test def `end-marker-wrong` =
+    check(
+      """|def <<f@@oo>> =
+        |  def bar =
+        |    ???
+        |  end bar""".stripMargin
     )

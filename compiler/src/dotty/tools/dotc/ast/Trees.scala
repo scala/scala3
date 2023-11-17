@@ -2,10 +2,10 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
+import core.*
+import Types.*, Names.*, NameOps.*, Flags.*, util.Spans.*, Contexts.*, Constants.*
 import typer.{ ConstFold, ProtoTypes }
-import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
+import SymDenotations.*, Symbols.*, Denotations.*, StdNames.*, Comments.*
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
@@ -16,7 +16,7 @@ import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import compiletime.uninitialized
-import Decorators._
+import Decorators.*
 import staging.StagingLevel.*
 
 object Trees {
@@ -661,7 +661,8 @@ object Trees {
    *
    *  @param  call      Info about the original call that was inlined
    *                    Until PostTyper, this is the full call, afterwards only
-   *                    a reference to the toplevel class from which the call was inlined.
+   *                    a reference to the method or the top-level class from
+   *                    which the call was inlined.
    *  @param  bindings  Bindings for proxies to be used in the inlined code
    *  @param  expansion The inlined tree, minus bindings.
    *

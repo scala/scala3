@@ -3,9 +3,9 @@
   |                                             ^^^^^^^
   |Could not verify that the method argument is transitively initialized (Hot). It was found to be the original object of type (class InlineError) where initialization checking started. Only transitively initialized arguments may be passed to methods (except constructors).
   |Non initialized field(s): value v. Calling trace:
-  |-> class InlineError {	[ inlined-method.scala:1 ]
-  |   ^
-  |-> Assertion.failAssert(this)	[ inlined-method.scala:2 ]
-  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |-> scala.runtime.Scala3RunTime.assertFailed(message) // error	[ inlined-method.scala:8 ]
-  |                                            ^^^^^^^
+  |├── class InlineError {	[ inlined-method.scala:1 ]
+  |│   ^
+  |├── Assertion.failAssert(this)	[ inlined-method.scala:2 ]
+  |│   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |└── scala.runtime.Scala3RunTime.assertFailed(message) // error	[ inlined-method.scala:8 ]
+  |                                             ^^^^^^^

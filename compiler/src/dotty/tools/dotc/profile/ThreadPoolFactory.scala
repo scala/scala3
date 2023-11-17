@@ -3,11 +3,11 @@ package dotty.tools.dotc.profile
 import scala.language.unsafeNulls
 
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy
-import java.util.concurrent._
+import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 
 sealed trait ThreadPoolFactory {
 

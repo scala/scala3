@@ -4,6 +4,7 @@ import java.nio.file.Paths
 
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
+import scala.language.unsafeNulls
 
 abstract class BaseSignatureHelpSuite extends BasePCSuite:
   def checkDoc(
@@ -83,6 +84,6 @@ abstract class BaseSignatureHelpSuite extends BasePCSuite:
       }
     }
 
-    val obtainedSorted = sortLines(stableOrder, out.toString())
-    val expectedSorted = sortLines(stableOrder, expected)
-    assertCompletions(expectedSorted, obtainedSorted, Some(original))
+    val (obtainedSorted, _) = sortLines(stableOrder, out.toString())
+    val (expectedSorted, _) = sortLines(stableOrder, expected)
+    assertWithDiff(expectedSorted, obtainedSorted, includeSources = false, Some(original))

@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package typer
 
-import core._
-import ast._
-import Contexts._, Types._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
+import core.*
+import ast.*
+import Contexts.*, Types.*, Denotations.*, Names.*, StdNames.*, NameOps.*, Symbols.*
 import NameKinds.DepParamName
-import Trees._
-import Constants._
+import Trees.*
+import Constants.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
-import Decorators._
-import Uniques._
+import Decorators.*
+import Uniques.*
 import inlines.Inlines
 import config.Printers.typr
 import Inferencing.*
@@ -25,7 +25,7 @@ import dotty.tools.dotc.util.Spans.{NoSpan, Span}
 
 object ProtoTypes {
 
-  import tpd._
+  import tpd.*
 
   /** A trait defining an `isCompatible` method. */
   trait Compatibility {
@@ -384,9 +384,9 @@ object ProtoTypes {
     def allArgTypesAreCurrent()(using Context): Boolean =
       state.typedArg.size == args.length
 
-    private def isUndefined(tp: Type): Boolean = tp match {
+    private def isUndefined(tp: Type): Boolean = tp.dealias match {
       case _: WildcardType => true
-      case defn.FunctionOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
+      case defn.FunctionNOf(args, result, _) => args.exists(isUndefined) || isUndefined(result)
       case _ => false
     }
 
@@ -425,7 +425,7 @@ object ProtoTypes {
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
             }
-            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+            targ = arg.withType(defn.FunctionNOf(paramTypes, WildcardType))
           case Some(_) if !force =>
             targ = arg.withType(WildcardType)
           case _ =>

@@ -1,4 +1,5 @@
-//> using options  -Wunused:privates
+//> using options  -Wunused:privates -source:3.3
+
 trait C
 class A:
   self: C => // OK

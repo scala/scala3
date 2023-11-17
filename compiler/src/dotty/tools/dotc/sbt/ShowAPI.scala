@@ -11,7 +11,7 @@ package sbt
 
 import scala.language.unsafeNulls
 
-import xsbti.api._
+import xsbti.api.*
 
 import scala.util.Try
 

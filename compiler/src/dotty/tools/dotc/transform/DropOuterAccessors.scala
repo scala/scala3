@@ -1,15 +1,15 @@
 package dotty.tools.dotc
 package transform
 
-import core._
+import core.*
 import MegaPhase.MiniPhase
-import dotty.tools.dotc.core.Contexts._
-import ast._
-import Flags._
-import Symbols._
-import Contexts._
-import Decorators._
-import DenotTransformers._
+import dotty.tools.dotc.core.Contexts.*
+import ast.*
+import Flags.*
+import Symbols.*
+import Contexts.*
+import Decorators.*
+import DenotTransformers.*
 import ExplicitOuter.isOuterParamAccessor
 import CountOuterAccesses.mightBeDropped
 import collection.mutable
@@ -24,7 +24,7 @@ object DropOuterAccessors:
  */
 class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
-  import tpd._
+  import tpd.*
 
   override def phaseName: String = DropOuterAccessors.name
 

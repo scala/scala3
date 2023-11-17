@@ -17,6 +17,7 @@ object HelloWorld:
     testScala2ObjectParents()
     testScala2CaseClassUnderscoreMembers()
     testScalaNumberUnderlying()
+    testArrayOps()
     scala.collection.mutable.UnrolledBufferTest.test()
   }
 
@@ -68,3 +69,9 @@ object HelloWorld:
     val _: Object = MyNumber2(BigInt(1)).underlying
     val _: Object = (MyNumber2(BigInt(1)): ScalaNumber).underlying
   }
+
+  def testArrayOps() = {
+    new collection.ArrayOps[String](Array[String]("foo")).exists(x => true)
+  }
+
+end HelloWorld

@@ -35,7 +35,7 @@ object InterpolatorCompletions:
       config: PresentationCompilerConfig,
       buildTargetIdentifier: String
   )(using Context, ReportContext) =
-    InterpolationSplice(pos.span.point, text.toCharArray(), text) match
+    InterpolationSplice(pos.span.point, text.toCharArray().nn, text) match
       case Some(interpolator) =>
         InterpolatorCompletions.contributeScope(
           text,

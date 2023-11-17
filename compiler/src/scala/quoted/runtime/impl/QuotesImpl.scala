@@ -7,20 +7,20 @@ import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Annotations
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameOps.*
+import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.NoCompilationUnit
 import dotty.tools.dotc.quoted.MacroExpansion
 import dotty.tools.dotc.quoted.PickledQuotes
 import dotty.tools.dotc.quoted.QuotePatterns
-import dotty.tools.dotc.quoted.reflect._
+import dotty.tools.dotc.quoted.reflect.*
 
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
-import scala.quoted.runtime.impl.printers._
+import scala.quoted.runtime.impl.printers.*
 
 import scala.reflect.TypeTest
 

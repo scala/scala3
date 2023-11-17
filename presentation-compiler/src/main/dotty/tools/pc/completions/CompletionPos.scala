@@ -29,10 +29,9 @@ case class CompletionPos(
 ):
 
   def sourcePos: SourcePosition = cursorPos.withSpan(Spans.Span(start, end))
+  def stripSuffixEditRange: l.Range = new l.Range(cursorPos.offsetToPos(start), cursorPos.offsetToPos(end))
+  def toEditRange: l.Range = cursorPos.withStart(start).withEnd(cursorPos.point).toLsp
 
-  def toEditRange: l.Range =
-    new l.Range(cursorPos.offsetToPos(start), cursorPos.offsetToPos(end))
-  end toEditRange
 end CompletionPos
 
 object CompletionPos:
@@ -42,7 +41,7 @@ object CompletionPos:
       offsetParams: OffsetParams,
       treePath: List[Tree]
   )(using Context): CompletionPos =
-    infer(cursorPos, offsetParams.uri, offsetParams.text, treePath)
+    infer(cursorPos, offsetParams.uri().nn, offsetParams.text().nn, treePath)
 
   def infer(
       cursorPos: SourcePosition,
@@ -56,18 +55,11 @@ object CompletionPos:
     val prevIsDot =
       if start - 1 >= 0 then text.charAt(start - 1) == '.' else false
     val kind =
-      if query.isEmpty && !prevIsDot then CompletionKind.Empty
+      if query.nn.isEmpty() && !prevIsDot then CompletionKind.Empty
       else if prevIsDot then CompletionKind.Members
       else CompletionKind.Scope
 
-    CompletionPos(
-      kind,
-      start,
-      end,
-      query,
-      cursorPos,
-      uri
-    )
+    CompletionPos(kind, start, end, query.nn, cursorPos, uri)
   end infer
 
   /**
@@ -81,7 +73,7 @@ object CompletionPos:
   ): (Int, Boolean) =
     var i = 0
     var tabIndented = false
-    while lineOffset + i < text.length && {
+    while lineOffset + i < text.length() && {
         val char = text.charAt(lineOffset + i)
         if char == '\t' then
           tabIndented = true
@@ -133,7 +125,7 @@ object CompletionPos:
    */
   private def inferIdentEnd(pos: SourcePosition, text: String): Int =
     var i = pos.point
-    while i < text.length && Chars.isIdentifierPart(text.charAt(i)) do i += 1
+    while i < text.length() && Chars.isIdentifierPart(text.charAt(i)) do i += 1
     i
 
 end CompletionPos

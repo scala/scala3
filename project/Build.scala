@@ -579,6 +579,9 @@ object Build {
        // Note: bench/profiles/projects.yml should be updated accordingly.
        Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
 
+      // Use source 3.3 to avoid fatal migration warnings on scalajs-ir
+      scalacOptions ++= Seq("-source", "3.3"),
+
       // Generate compiler.properties, used by sbt
       (Compile / resourceGenerators) += Def.task {
         import java.util._
@@ -1251,18 +1254,21 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.0.0"
+    val mtagsVersion = "1.1.0+53-af181de4-SNAPSHOT"
 
     Seq(
+      resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.0",
         "io.get-coursier" % "interface" % "1.0.18",
         "org.scalameta" % "mtags-interfaces" % mtagsVersion,
       ),
-      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.11" % mtagsVersion % SourceDeps),
+      libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      (Compile / sourceGenerators) += Def.task {
+      scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
+      Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
+      Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val targetDir = (Compile/sourceManaged).value / "mtags-shared"
@@ -1490,6 +1496,7 @@ object Build {
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
+            -- "UTF16Test.scala" // refutable pattern match
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get

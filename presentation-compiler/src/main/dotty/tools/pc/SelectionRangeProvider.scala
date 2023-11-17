@@ -36,9 +36,10 @@ class SelectionRangeProvider(
 
     params.asScala.toList.map { param =>
 
-      val uri = param.uri
+      val uri = param.uri().nn
+      val text = param.text().nn
       val filePath = Paths.get(uri)
-      val source = SourceFile.virtual(filePath.toString, param.text)
+      val source = SourceFile.virtual(filePath.toString, text)
       driver.run(uri, source)
       val pos = driver.sourcePosition(param)
       val path =

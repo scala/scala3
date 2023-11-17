@@ -1,6 +1,6 @@
--- [E042] Type Error: tests/neg/i16601.scala:1:27 ----------------------------------------------------------------------
-1 |@main def Test: Unit = new concurrent.ExecutionContext  // error
-  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                           ExecutionContext is a trait; it cannot be instantiated
+-- [E042] Type Error: tests/neg/i16601.scala:1:26 ----------------------------------------------------------------------
+1 |@main def Test: Any = new concurrent.ExecutionContext  // error
+  |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                          ExecutionContext is a trait; it cannot be instantiated
   |
   | longer explanation available when compiling with `-explain`

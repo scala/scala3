@@ -104,7 +104,7 @@ object Recheck:
    *   - in function and method parameter types
    *   - under annotations
    */
-  def normalizeByName(tp: Type)(using Context): Type = tp match
+  def normalizeByName(tp: Type)(using Context): Type = tp.dealias match
     case tp: ExprType =>
       mapExprType(tp)
     case tp: PolyType =>
@@ -596,9 +596,9 @@ abstract class Recheck extends Phase, SymTransformer:
 
   /** Show tree with rechecked types instead of the types stored in the `.tpe` field */
   override def show(tree: untpd.Tree)(using Context): String =
-    atPhase(thisPhase) {
-      super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
-    }
+    atPhase(thisPhase):
+      withMode(Mode.Printing):
+        super.show(addRecheckedTypes.transform(tree.asInstanceOf[tpd.Tree]))
 end Recheck
 
 /** A class that can be used to test basic rechecking without any customaization */

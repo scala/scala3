@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.moduleClassName
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.ImportInfo
@@ -82,7 +83,6 @@ object IndexedContext:
 
   def apply(ctx: Context): IndexedContext =
     ctx match
-      case null => Empty
       case NoContext => Empty
       case _ => LazyWrapper(using ctx)
 
@@ -205,14 +205,14 @@ object IndexedContext:
     val (symbols, renames) =
       if ctx.isImportContext then
         val (syms, renames) =
-          fromImportInfo(ctx.importInfo)
+          fromImportInfo(ctx.importInfo.nn)
             .map((sym, rename) => (sym, rename.map(r => sym -> r.decoded)))
             .unzip
         (syms, renames.flatten.toMap)
       else if ctx.owner.isClass then
         val site = ctx.owner.thisType
         (accesibleMembers(site), Map.empty)
-      else if ctx.scope != null then (ctx.scope.toList, Map.empty)
+      else if ctx.scope != EmptyScope then (ctx.scope.toList, Map.empty)
       else (List.empty, Map.empty)
 
     val initial = Map.empty[String, List[Symbol]]

@@ -18,7 +18,7 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using Quotes): Expr[T] =
-    import quotes.reflect._
+    import quotes.reflect.*
     Term.betaReduce(expr.asTerm) match
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
@@ -28,7 +28,7 @@ object Expr {
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     Block(statements.map(asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
   }
 
@@ -240,7 +240,7 @@ object Expr {
    *  @tparam T type of the implicit parameter
    */
   def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     Implicits.search(TypeRepr.of[T]) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None

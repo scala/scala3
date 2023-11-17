@@ -2,20 +2,20 @@ package dotty.tools
 package dotc
 package transform
 
-import core.Annotations._
-import core.Contexts._
-import core.Phases._
+import core.Annotations.*
+import core.Contexts.*
+import core.Phases.*
 import core.Decorators.*
 import core.Definitions
-import core.Flags._
+import core.Flags.*
 import core.Names.Name
-import core.Symbols._
+import core.Symbols.*
 import core.TypeApplications.{EtaExpansion, TypeParamInfo}
 import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
-import core.Types._
+import core.Types.*
 import core.classfile.ClassfileConstants
-import SymUtils._
-import TypeUtils._
+import SymUtils.*
+import TypeUtils.*
 import config.Printers.transforms
 import reporting.trace
 import java.lang.StringBuilder
@@ -258,7 +258,7 @@ object GenericSignatures {
           if (sym == defn.PairClass && tupleArity(tp) > Definitions.MaxTupleArity)
             jsig(defn.TupleXXLClass.typeRef)
           else if (isTypeParameterInSig(sym, sym0)) {
-            assert(!sym.isAliasType, "Unexpected alias type: " + sym)
+            assert(!sym.isAliasType || sym.info.isLambdaSub, "Unexpected alias type: " + sym)
             typeParamSig(sym.name.lastPart)
           }
           else if (defn.specialErasure.contains(sym))
@@ -407,7 +407,6 @@ object GenericSignatures {
 
 
   // only refer to type params that will actually make it into the sig, this excludes:
-  // * higher-order type parameters
   // * type parameters appearing in method parameters
   // * type members not visible in an enclosing template
   private def isTypeParameterInSig(sym: Symbol, initialSymbol: Symbol)(using Context) =

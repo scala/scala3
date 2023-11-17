@@ -2,23 +2,23 @@ package dotty.tools
 package dotc
 package core
 
-import Periods._
-import Names._
-import Scopes._
-import Flags._
-import Decorators._
-import Contexts._
-import Phases._
-import SymDenotations._
-import Denotations._
-import printing.Texts._
+import Periods.*
+import Names.*
+import Scopes.*
+import Flags.*
+import Decorators.*
+import Contexts.*
+import Phases.*
+import SymDenotations.*
+import Denotations.*
+import printing.Texts.*
 import printing.Printer
-import Types._
-import util.Spans._
-import DenotTransformers._
-import StdNames._
-import NameOps._
-import transform.SymUtils._
+import Types.*
+import util.Spans.*
+import DenotTransformers.*
+import StdNames.*
+import NameOps.*
+import transform.SymUtils.*
 import NameKinds.LazyImplicitName
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
@@ -32,6 +32,8 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.annotation.internal.sharable
 import config.Printers.typr
 import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
+
+import scala.compiletime.uninitialized
 
 object Symbols {
 
@@ -88,7 +90,7 @@ object Symbols {
       ctx.settings.YcheckInitGlobal.value
 
     /** The last denotation of this symbol */
-    private var lastDenot: SymDenotation = _
+    private var lastDenot: SymDenotation = uninitialized
     private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
