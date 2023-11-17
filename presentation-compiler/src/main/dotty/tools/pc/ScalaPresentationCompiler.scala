@@ -106,6 +106,19 @@ case class ScalaPresentationCompiler(
       new PcSemanticTokensProvider(driver, params).provide().asJava
     }
 
+  override def syntheticDecorations(
+        params: SyntheticDecorationsParams
+    ): ju.concurrent.CompletableFuture[ju.List[SyntheticDecoration]] =
+    compilerAccess.withInterruptableCompiler(Some(params))(
+      new ju.ArrayList[SyntheticDecoration](),
+      params.token(),
+    ) { access =>
+      val driver = access.compiler()
+      new PcSyntheticDecorationsProvider(driver, params, search)
+        .provide()
+        .asJava
+    }
+
   override def getTasty(
       targetUri: URI,
       isHttpEnabled: Boolean

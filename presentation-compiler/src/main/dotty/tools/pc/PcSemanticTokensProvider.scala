@@ -74,7 +74,7 @@ final class PcSemanticTokensProvider(
         Some(
           makeNode(
             sym = sym,
-            pos = adjust(pos)._1,
+            pos = pos.adjust(text)._1,
             isDefinition = isDefinition(tree),
             isDeclaration = isDeclaration(tree)
           )
