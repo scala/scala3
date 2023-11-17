@@ -71,7 +71,7 @@ abstract class SignatureTest(
   // e.g. to remove '(0)' from object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
   private val commentRegex = raw"\/\*<-\*\/[^\/]+\/\*->\*\/".r
   private val whitespaceRegex = raw"\s+".r
-  private val expectedRegex = raw".+//expected: (.+)".r
+  private val expectedRegex = raw".*//expected: (.+)".r
   private val unexpectedRegex = raw"(.+)//unexpected".r
   private val identifierRegex = raw"^\s*(`.*`|(?:\w+)(?:_[^\[\(\s]+)|\w+|[^\[\(\s]+)".r
 
@@ -94,7 +94,7 @@ abstract class SignatureTest(
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
     source.getLines.map(_.trim)
       .filterNot(_.isEmpty)
-      .filterNot(_.startWithAnyOfThese("=",":","{","}", "//"))
+      .filterNot(l => l.startWithAnyOfThese("=",":","{","}", "//") && !l.startsWith("//expected:"))
       .toSeq
       .flatMap {
         case unexpectedRegex(signature) => findName(signature, kinds).map(Unexpected(_))

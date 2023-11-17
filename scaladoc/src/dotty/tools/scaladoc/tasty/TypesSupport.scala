@@ -13,41 +13,19 @@ trait TypesSupport:
 
   type SSignature = List[SignaturePart]
 
-  def getGivenInstance(method: qctx.reflect.DefDef): Option[SSignature] =
-    import qctx.reflect._
-    given qctx.type = qctx
-
-    def extractTypeSymbol(t: Tree): Option[Symbol] = t match
-      case tpeTree: TypeTree =>
-        inner(tpeTree.tpe)
-      case other => None
-
-    def inner(tpe: TypeRepr): Option[Symbol] = tpe match
-      case ThisType(tpe) => inner(tpe)
-      case AnnotatedType(tpe, _) => inner(tpe)
-      case AppliedType(tpe, _) => inner(tpe)
-      case tp @ TermRef(qual, typeName) => Some(tp.termSymbol)
-      case tp @ TypeRef(qual, typeName) => Some(tp.typeSymbol)
-
-    val typeSymbol = extractTypeSymbol(method.returnTpt)
-
-    typeSymbol.map(_.tree).collect {
-      case c: ClassDef => c.getTreeOfFirstParent
-      case _ => Some(method.returnTpt)
-    }.flatten.map(_.asSignature)
-
   given TreeSyntax: AnyRef with
     extension (using Quotes)(tpeTree: reflect.Tree)
-      def asSignature: SSignature =
+      def asSignature(elideThis: reflect.ClassDef): SSignature =
         import reflect._
         tpeTree match
-          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
-          case tpeTree: TypeTree => topLevelProcess(tpeTree.tpe)
-          case term:  Term => topLevelProcess(term.tpe)
+          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)(using elideThis)
+          case tpeTree: TypeTree => topLevelProcess(tpeTree.tpe)(using elideThis)
+          case term: Term => topLevelProcess(term.tpe)(using elideThis)
 
   given TypeSyntax: AnyRef with
     extension (using Quotes)(tpe: reflect.TypeRepr)
-      def asSignature: SSignature = topLevelProcess(tpe)
+      def asSignature(elideThis: reflect.ClassDef): SSignature =
+        topLevelProcess(tpe)(using elideThis)
 
 
   private def plain(str: String): SignaturePart = Plain(str)
@@ -58,13 +36,15 @@ trait TypesSupport:
 
   private def tpe(str: String): SignaturePart = dotty.tools.scaladoc.Type(str, None)
 
+  private def inParens(s: SSignature, wrap: Boolean = true) =
+    if wrap then plain("(").l ++ s ++ plain(")").l else s
+
   extension (on: SignaturePart) def l: List[SignaturePart] = List(on)
 
   private def tpe(using Quotes)(symbol: reflect.Symbol): SSignature =
     import SymOps._
-    val suffix = if symbol.isValDef || symbol.flags.is(reflect.Flags.Module) then plain(".type").l else Nil
     val dri: Option[DRI] = Option(symbol).filterNot(_.isHiddenByVisibility).map(_.dri)
-    dotty.tools.scaladoc.Type(symbol.normalizedName, dri) :: suffix
+    dotty.tools.scaladoc.Type(symbol.normalizedName, dri).l
 
   private def commas(lists: List[SSignature]) = lists match
     case List(single) => single
@@ -86,21 +66,38 @@ trait TypesSupport:
         case _ => false
       case _ => false
 
-  private def topLevelProcess(using Quotes)(tp: reflect.TypeRepr): SSignature =
+  private def topLevelProcess(using Quotes)(tp: reflect.TypeRepr)(using elideThis: reflect.ClassDef): SSignature =
     import reflect._
     tp match
-      case ThisType(tpe) => inner(tpe) :+ plain(".this.type")
+      case ThisType(tpe) =>
+        val suffix = List(keyword("this"), plain("."), keyword("type"))
+        if skipPrefix(tp, elideThis) then suffix
+        else inner(tpe) ++ plain(".").l ++ suffix
       case tpe => inner(tpe)
 
   // TODO #23 add support for all types signatures that makes sense
-  private def inner(using Quotes)(tp: reflect.TypeRepr)(using indent: Int = 0): SSignature =
+  private def inner(
+    using Quotes,
+  )(
+    tp: reflect.TypeRepr,
+  )(using
+    elideThis: reflect.ClassDef,
+    indent: Int = 0,
+    skipTypeSuffix: Boolean = false,
+  ): SSignature =
     import reflect._
     def noSupported(name: String): SSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
       plain(s"Unsupported[$name]").l
     tp match
-      case OrType(left, right) => inner(left) ++ keyword(" | ").l ++ inner(right)
-      case AndType(left, right) => inner(left) ++ keyword(" & ").l ++ inner(right)
+      case OrType(left, right) =>
+        inParens(inner(left), shouldWrapInParens(left, tp, true))
+        ++ keyword(" | ").l
+        ++ inParens(inner(right), shouldWrapInParens(right, tp, false))
+      case AndType(left, right) =>
+        inParens(inner(left), shouldWrapInParens(left, tp, true))
+        ++ keyword(" & ").l
+        ++ inParens(inner(right), shouldWrapInParens(right, tp, false))
       case ByNameType(tpe) => keyword("=> ") :: inner(tpe)
       case ConstantType(constant) =>
         plain(constant.show).l
@@ -191,12 +188,18 @@ trait TypesSupport:
       }
       case t @ AppliedType(tpe, typeList) =>
         import dotty.tools.dotc.util.Chars._
-        if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
-          inner(typeList.head)
+        if defn.isTupleClass(tpe.typeSymbol) && typeList.length != 1 then
+          typeList match
+            case Nil => Nil
+            case args => inParens(commas(args.map(inner(_))))
+        else if isInfix(t) then
+          val lhs = typeList.head
+          val rhs = typeList.last
+          inParens(inner(lhs), shouldWrapInParens(lhs, t, true))
           ++ plain(" ").l
           ++ inner(tpe)
           ++ plain(" ").l
-          ++ inner(typeList.last)
+          ++ inParens(inner(rhs), shouldWrapInParens(rhs, t, false))
         else if t.isFunctionType then
           val arrow = if t.isContextFunctionType then " ?=> " else " => "
           typeList match
@@ -205,74 +208,59 @@ trait TypesSupport:
             case Seq(rtpe) =>
               plain("()").l ++ keyword(arrow).l ++ inner(rtpe)
             case Seq(arg, rtpe) =>
-              def withParentheses(tpe: TypeRepr) = plain("(").l ++ inner(tpe) ++ plain(")").l
               val partOfSignature = arg match
-                case tpe @ (_:TermRef | _:TypeRef | _:ConstantType | _: ParamRef) => inner(arg)
+                case tpe @ (_: TermRef | _: TypeRef | _: ConstantType | _: ParamRef | _: AndType | _: OrType) => inner(arg)
                 case tpe: AppliedType if !tpe.isFunctionType && !tpe.isTupleN => inner(arg)
-                case _ => withParentheses(arg)
+                case _ => inParens(inner(arg))
               partOfSignature ++ keyword(arrow).l ++ inner(rtpe)
             case args =>
-              plain("(").l ++ commas(args.init.map(inner)) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)
-        else if t.isTupleN then
-          typeList match
-            case Nil =>
-              Nil
-            case args =>
-              plain("(").l ++ commas(args.map(inner)) ++ plain(")").l
+              plain("(").l ++ commas(args.init.map(inner(_))) ++ plain(")").l ++ keyword(arrow).l ++ inner(args.last)
         else inner(tpe) ++ plain("[").l ++ commas(typeList.map { t => t match
           case _: TypeBounds => keyword("_").l ++ inner(t)
-          case _ => inner(t)
+          case _ => topLevelProcess(t)
         }) ++ plain("]").l
 
       case tp @ TypeRef(qual, typeName) =>
+        def defaultSignature() =
+          val suffix = keyword("#").l ++ tpe(tp.typeSymbol)
+          inParens(inner(qual), shouldWrapInParens(qual, tp, true)) ++ suffix
+
         qual match {
           case r: RecursiveThis => tpe(s"this.$typeName").l
-          case _: TypeRepr => tpe(tp.typeSymbol)
+          case t if skipPrefix(t, elideThis) =>
+            tpe(tp.typeSymbol)
+          case _: TermRef | _: ParamRef =>
+            val suffix = if tp.typeSymbol == Symbol.noSymbol then tpe(typeName).l else tpe(tp.typeSymbol)
+            inner(qual)(using skipTypeSuffix = true) ++ plain(".").l ++ suffix
+          case ThisType(tr) =>
+            import dotty.tools.scaladoc.tasty.SymOps.isHiddenByVisibility
+
+            val supertype = getSupertypes(elideThis).filterNot((s, t) => s.isHiddenByVisibility).find((s, t) => s == tr.typeSymbol)
+            supertype match
+              case Some((sym, AppliedType(tr2, args))) =>
+                sym.tree.asInstanceOf[ClassDef].constructor.paramss.headOption match
+                  case Some(TypeParamClause(tpc)) =>
+                    tpc.zip(args).collectFirst {
+                      case (TypeDef(name, _), arg) if name == typeName => arg
+                    } match
+                      case Some(tr) => inner(tr)
+                      case _ => defaultSignature()
+                  case _ => defaultSignature()
+              case _ => defaultSignature()
+          case _ => defaultSignature()
         }
-        // convertTypeOrBoundsToReference(reflect)(qual) match {
-        //     case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
-        //     case EmptyReference => TypeReference(typeName, "", Nil, true)
-        //     case _ if tp.typeSymbol.exists =>
-        //     tp.typeSymbol match {
-        //         // NOTE: Only TypeRefs can reference ClassDefSymbols
-        //         case sym if sym.isClassDef => //Need to be split because these types have their own file
-        //         convertTypeOrBoundsToReference(reflect)(qual) match {
-        //             case TypeReference(label, link, xs, _) => TypeReference(sym.name, link + "/" + label, xs, true)
-        //             case EmptyReference if sym.name == "<root>" | sym.name == "_root_" => EmptyReference
-        //             case EmptyReference => TypeReference(sym.name, "", Nil, true)
-        //             case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
-        //         }
 
-        //         // NOTE: This branch handles packages, which are now TypeRefs
-        //         case sym if sym.isTerm || sym.isTypeDef =>
-        //         convertTypeOrBoundsToReference(reflect)(qual) match {
-        //             case TypeReference(label, link, xs, _) => TypeReference(sym.name, link + "/" + label, xs)
-        //             case EmptyReference if sym.name == "<root>" | sym.name == "_root_" => EmptyReference
-        //             case EmptyReference => TypeReference(sym.name, "", Nil)
-        //             case _ => throw Exception("Match error in SymRef/TypeOrBounds/Other. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
-        //         }
-        //         case sym => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + sym)
-        //     }
-        //     case _ =>
-        //     throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
-        // }
       case tr @ TermRef(qual, typeName) =>
-        tr.termSymbol.tree match
-          case vd: ValDef => inner(vd.tpt.tpe)
-          case _          => tpe(tr.termSymbol)
+        val prefix = qual match
+          case t if skipPrefix(t, elideThis) => Nil
+          case tp => inner(tp)(using skipTypeSuffix = true) ++ plain(".").l
+        val suffix = if skipTypeSuffix then Nil else List(plain("."), keyword("type"))
+        val typeSig = tr.termSymbol.tree match
+          case vd: ValDef if tr.termSymbol.flags.is(Flags.Module) =>
+            inner(vd.tpt.tpe)
+          case _ => plain(typeName).l
+        prefix ++ typeSig ++ suffix
 
-
-        // convertTypeOrBoundsToReference(reflect)(qual) match {
-        //     case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
-        //     case EmptyReference => TypeReference(typeName, "", Nil)
-        //     case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
-        // }
-
-      // NOTE: old SymRefs are now either TypeRefs or TermRefs - the logic here needs to be moved into above branches
-      // NOTE: _.symbol on *Ref returns its symbol
-      // case SymRef(symbol, typeOrBounds) => symbol match {
-      // }
-      // case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
       case TypeBounds(low, hi) =>
         if(low == hi) keyword(" = ").l ++ inner(low)
         else typeBoundsTreeOfHigherKindedType(low, hi)
@@ -290,7 +278,9 @@ trait TypesSupport:
         }
         inner(sc) ++ keyword(" match ").l ++ plain("{\n").l ++ casesTexts ++ plain(spaces + "}").l
 
-      case ParamRef(m: MethodType, i) => tpe(m.paramNames(i)).l ++ plain(".type").l
+      case ParamRef(m: MethodType, i) =>
+        val suffix = if skipTypeSuffix then Nil else List(plain("."), keyword("type"))
+        tpe(m.paramNames(i)).l ++ suffix
 
       case ParamRef(binder: LambdaType, i) => tpe(binder.paramNames(i)).l
 
@@ -310,29 +300,113 @@ trait TypesSupport:
           s"${tpe.show(using Printer.TypeReprStructure)}"
         throw MatchError(msg)
 
-  private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean) =
+  private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean)(using elideThis: reflect.ClassDef) =
     import reflect._
     val ignore = if (low) t.typeSymbol == defn.NothingClass else t.typeSymbol == defn.AnyClass
     val prefix = keyword(if low then " >: " else " <: ")
     t match {
-      case l: TypeLambda => prefix :: plain("(").l ++ inner(l) ++ plain(")").l
-      case p: ParamRef => prefix :: inner(p)
-      case other if !ignore => prefix :: inner(other)
+      case l: TypeLambda => prefix :: inParens(inner(l)(using elideThis))
+      case p: ParamRef => prefix :: inner(p)(using elideThis)
+      case other if !ignore => prefix :: topLevelProcess(other)(using elideThis)
       case _ => Nil
     }
 
-  private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr) =
+  private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr)(using elideThis: reflect.ClassDef) =
     import reflect._
     def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
-      if low == high then keyword(" = ").l ++ inner(low)
-      else typeBound(low, low = true) ++ typeBound(high, low = false)
+      if low == high then keyword(" = ").l ++ inner(low)(using elideThis)
+      else typeBound(low, low = true)(using elideThis) ++ typeBound(high, low = false)(using elideThis)
     high.match
       case TypeLambda(params, paramBounds, resType) =>
         if resType.typeSymbol == defn.AnyClass then
           plain("[").l ++ commas(params.zip(paramBounds).map { (name, typ) =>
             val normalizedName = if name.matches("_\\$\\d*") then "_" else name
-            tpe(normalizedName).l ++ inner(typ)
+            tpe(normalizedName).l ++ inner(typ)(using elideThis)
           }) ++ plain("]").l
         else
           regularTypeBounds(low, high)
       case _ => regularTypeBounds(low, high)
+
+  private def skipPrefix(using Quotes)(tr: reflect.TypeRepr, elideThis: reflect.ClassDef) =
+    import reflect._
+
+    def collectOwners(owners: Set[Symbol], sym: Symbol): Set[Symbol] =
+      if sym.flags.is(Flags.Package) then owners
+      else collectOwners(owners + sym, sym.owner)
+    val owners = collectOwners(Set.empty, elideThis.symbol)
+
+    tr match
+      case NoPrefix() => true
+      case ThisType(tp) if owners(tp.typeSymbol) => true
+      case tp if owners(tp.typeSymbol) => true
+      case _ =>
+        val flags = tr.typeSymbol.flags
+        flags.is(Flags.Module) || flags.is(Flags.Package)
+
+  private def shouldWrapInParens(using Quotes)(inner: reflect.TypeRepr, outer: reflect.TypeRepr, isLeft: Boolean) =
+    import reflect._
+
+    // Duplication of dotty.tools.dotc.parsing.precedence because we cannot construct Name here
+    def precedence(opName: String) =
+      import dotty.tools.dotc.util.Chars.{isScalaLetter, isOperatorPart}
+      val isOpAssignmentName = opName match
+        case "!=" | "<=" | ">=" | "" => false
+        case name =>
+          name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
+      opName.head match
+        case _ if isOpAssignmentName => 0
+        case c if isScalaLetter(c) => 1
+        case '|' => 2
+        case '^' => 3
+        case '&' => 4
+        case '=' | '!' => 5
+        case '<' | '>' => 6
+        case ':' => 7
+        case '+' | '-' => 8
+        case '*' | '/' | '%' => 9
+        case _ => 10
+
+    def shouldWrap(innerOp: String, outerOp: String) =
+      val innerPrec = precedence(innerOp)
+      val outerPrec = precedence(outerOp)
+      val innerLeftAssoc = !innerOp.endsWith(":")
+      val outerLeftAssoc = !outerOp.endsWith(":")
+
+      if innerLeftAssoc == outerLeftAssoc && outerLeftAssoc == isLeft
+      then innerPrec < outerPrec
+      else innerPrec <= outerPrec
+
+    def opName(at: AppliedType) = at.tycon.typeSymbol.name
+
+    (inner, outer) match
+      case (_: AndType, _: TypeRef) => true
+      case (_: OrType,  _: TypeRef) => true
+      case (t: AppliedType, _: TypeRef) => isInfix(t)
+
+      case (_: AndType, _: AndType) => false
+      case (_: AndType, _: OrType)  => false
+      case (_: OrType,  _: AndType) => true
+      case (_: OrType,  _: OrType)  => false
+
+      case (at: AppliedType, _: AndType) => at.isFunctionType || isInfix(at) && shouldWrap(opName(at), "&")
+      case (at: AppliedType, _: OrType)  => at.isFunctionType || isInfix(at) && shouldWrap(opName(at), "|")
+      case (_: AndType, at: AppliedType) => isInfix(at) && shouldWrap("&", opName(at))
+      case (_: OrType, at: AppliedType)  => isInfix(at) && shouldWrap("|", opName(at))
+      case (at1: AppliedType, at2: AppliedType) => isInfix(at2) && (
+        at1.isFunctionType || isInfix(at1) && shouldWrap(opName(at1), opName(at2))
+      )
+      case _ => false
+
+  private def isInfix(using Quotes)(at: reflect.AppliedType) =
+    import dotty.tools.dotc.util.Chars.isIdentifierPart
+    import reflect._
+
+    def infixAnnot =
+      at.tycon.typeSymbol.getAnnotation(Symbol.requiredClass("scala.annotation.showAsInfix")) match
+        case Some(Apply(_, args)) =>
+          args.collectFirst {
+            case Literal(BooleanConstant(false)) => false
+          }.getOrElse(true)
+        case _ => false
+
+    at.args.size == 2 && (!at.typeSymbol.name.forall(isIdentifierPart) || infixAnnot)

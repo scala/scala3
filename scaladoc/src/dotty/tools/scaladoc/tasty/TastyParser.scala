@@ -126,7 +126,10 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     if ctx.args.documentSyntheticTypes then
       import parser.qctx.reflect._
       val intrinsicTypeDefs = parser.intrinsicTypeDefs.toSeq.map { s =>
-        "scala" -> parser.parseTypeDef(s.tree.asInstanceOf[TypeDef])
+        "scala" -> parser.parseTypeDef(
+          s.tree.asInstanceOf[TypeDef],
+          defn.AnyClass.tree.asInstanceOf[ClassDef],
+        )
       }
       val intrinsicClassDefs = parser.intrinsicClassDefs.toSeq.map { s =>
         "scala" -> parser.parseClasslike(s.tree.asInstanceOf[ClassDef])
@@ -160,7 +163,10 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     import parser.qctx.reflect._
     val javaLangObjectDef = defn.ObjectClass.tree.asInstanceOf[ClassDef]
     val objectMembers = parser.extractPatchedMembers(javaLangObjectDef)
-    val aM = parser.parseTypeDef(defn.AnyRefClass.tree.asInstanceOf[TypeDef])
+    val aM = parser.parseTypeDef(
+      defn.AnyRefClass.tree.asInstanceOf[TypeDef],
+      defn.AnyClass.tree.asInstanceOf[ClassDef],
+    )
     "scala" -> aM.copy(
       kind = Kind.Class(Nil, Nil),
       members = objectMembers
