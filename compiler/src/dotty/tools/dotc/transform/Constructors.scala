@@ -15,6 +15,7 @@ import Symbols.*
 import Decorators.*
 import DenotTransformers.*
 import collection.mutable
+import Types.*
 
 object Constructors {
   val name: String = "constructors"
@@ -197,6 +198,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
              ) &&
              fn.symbol.info.resultType.classSymbol == outerParam.info.classSymbol =>
           ref(outerParam)
+        case Assign(lhs, rhs) if lhs.symbol.name == nme.OUTER => // not transform LHS of assignment to $outer field
+            cpy.Assign(tree)(lhs, super.transform(rhs))
+        case dd: DefDef if dd.name.endsWith(nme.OUTER.asSimpleName) => // not transform RHS of outer accessor
+          dd
         case tree: RefTree if tree.symbol.is(ParamAccessor) && tree.symbol.name == nme.OUTER =>
           ref(outerParam)
         case _ =>
