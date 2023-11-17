@@ -1013,6 +1013,7 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions -= "-Xfatal-warnings",
+      Compile / compile / logLevel := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
