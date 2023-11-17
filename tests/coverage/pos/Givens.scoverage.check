@@ -27,7 +27,7 @@ covtest.Givens
 test
 174
 191
-10
+11
 println
 Apply
 false
@@ -44,7 +44,7 @@ covtest.Givens
 test
 196
 213
-11
+12
 println
 Apply
 false
@@ -61,7 +61,7 @@ covtest.Givens
 test
 100
 108
-8
+9
 test
 DefDef
 false
@@ -78,7 +78,7 @@ covtest.Givens
 printContext
 279
 291
-14
+15
 println
 Apply
 false
@@ -95,7 +95,7 @@ covtest.Givens
 printContext
 296
 311
-15
+16
 println
 Apply
 false
@@ -112,7 +112,7 @@ covtest.Givens
 printContext
 217
 233
-13
+14
 printContext
 DefDef
 false
@@ -129,7 +129,7 @@ covtest.Givens
 getMessage
 315
 329
-17
+18
 getMessage
 DefDef
 false
@@ -146,7 +146,7 @@ covtest.Givens
 test2
 399
 409
-20
+21
 <init>
 Apply
 false
@@ -163,7 +163,7 @@ covtest.Givens
 test2
 414
 443
-21
+22
 printContext
 Apply
 false
@@ -180,7 +180,7 @@ covtest.Givens
 test2
 448
 477
-22
+23
 printContext
 Apply
 false
@@ -197,7 +197,7 @@ covtest.Givens
 test2
 461
 476
-22
+23
 getMessage
 Apply
 false
@@ -214,7 +214,7 @@ covtest.Givens
 test2
 362
 371
-19
+20
 test2
 DefDef
 false

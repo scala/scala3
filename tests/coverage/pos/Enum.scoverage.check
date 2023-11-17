@@ -27,7 +27,7 @@ covtest.Planet
 surfaceGravity
 338
 356
-14
+15
 surfaceGravity
 DefDef
 false
@@ -44,7 +44,7 @@ covtest.Planet
 surfaceWeight
 444
 458
-15
+16
 surfaceGravity
 Select
 false
@@ -61,7 +61,7 @@ covtest.Planet
 surfaceWeight
 392
 409
-15
+16
 surfaceWeight
 DefDef
 false
@@ -78,7 +78,7 @@ covtest.EnumTypes$
 test
 1043
 1077
-30
+31
 println
 Apply
 false
@@ -95,7 +95,7 @@ covtest.EnumTypes$
 test
 1051
 1076
-30
+31
 +
 Apply
 false
@@ -112,7 +112,7 @@ covtest.EnumTypes$
 test
 1082
 1103
-31
+32
 println
 Apply
 false
@@ -129,7 +129,7 @@ covtest.EnumTypes$
 test
 1090
 1102
-31
+32
 s
 Apply
 false
@@ -146,7 +146,7 @@ covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1195
 1222
-34
+35
 surfaceGravity
 Select
 false
@@ -163,7 +163,7 @@ covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1229
 1320
-35
+36
 foreach
 Apply
 false
@@ -180,7 +180,7 @@ covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1238
 1251
-35
+36
 refArrayOps
 Apply
 false
@@ -197,7 +197,7 @@ covtest.EnumTypes$
 $anonfun
 1263
 1320
-36
+37
 println
 Apply
 false
@@ -214,7 +214,7 @@ covtest.EnumTypes$
 $anonfun
 1271
 1319
-36
+37
 s
 Apply
 false
@@ -231,7 +231,7 @@ covtest.EnumTypes$
 $anonfun
 1296
 1317
-36
+37
 surfaceWeight
 Apply
 false
@@ -248,7 +248,7 @@ covtest.EnumTypes$
 calculateEarthWeightOnPlanets
 1109
 1142
-33
+34
 calculateEarthWeightOnPlanets
 DefDef
 false
@@ -265,7 +265,7 @@ covtest.EnumTypes$
 test
 1326
 1347
-38
+39
 println
 Apply
 false
@@ -282,7 +282,7 @@ covtest.EnumTypes$
 test
 1352
 1385
-39
+40
 calculateEarthWeightOnPlanets
 Apply
 false
@@ -299,7 +299,7 @@ covtest.EnumTypes$
 test
 901
 909
-27
+28
 test
 DefDef
 false

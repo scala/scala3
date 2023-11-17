@@ -27,7 +27,7 @@ Object
 $anonfun
 76
 85
-2
+3
 apply
 Apply
 false
@@ -44,7 +44,7 @@ Object
 asyncSum
 27
 39
-2
+3
 asyncSum
 DefDef
 false
@@ -61,7 +61,7 @@ Object
 Test
 174
 182
-7
+8
 apply
 Apply
 false
@@ -78,7 +78,7 @@ Object
 Test
 87
 101
-5
+6
 Test
 DefDef
 false

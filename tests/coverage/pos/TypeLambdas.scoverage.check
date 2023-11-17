@@ -27,7 +27,7 @@ covtest.TypeLambdas$
 test
 306
 319
-13
+14
 apply
 Apply
 false
@@ -44,7 +44,7 @@ covtest.TypeLambdas$
 test
 310
 318
-13
+14
 ->
 Apply
 false
@@ -61,7 +61,7 @@ covtest.TypeLambdas$
 test
 324
 334
-14
+15
 println
 Apply
 false
@@ -78,7 +78,7 @@ covtest.TypeLambdas$
 test
 382
 396
-17
+18
 println
 Apply
 false
@@ -95,7 +95,7 @@ covtest.TypeLambdas$
 test
 259
 267
-12
+13
 test
 DefDef
 false

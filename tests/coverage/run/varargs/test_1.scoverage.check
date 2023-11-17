@@ -27,7 +27,7 @@ Object
 repeated
 48
 60
-3
+4
 repeated
 DefDef
 false
@@ -44,7 +44,7 @@ Object
 f
 79
 84
-5
+6
 f
 DefDef
 false
@@ -61,7 +61,7 @@ Object
 Test
 120
 130
-9
+10
 repeated
 Apply
 false
@@ -78,7 +78,7 @@ Object
 Test
 133
 153
-10
+11
 repeated
 Apply
 false
@@ -95,7 +95,7 @@ Object
 Test
 142
 147
-10
+11
 f
 Apply
 false
@@ -112,7 +112,7 @@ Object
 Test
 156
 178
-11
+12
 method
 Apply
 false
@@ -129,7 +129,7 @@ Object
 Test
 181
 205
-12
+13
 method
 Apply
 false
@@ -146,7 +146,7 @@ Object
 Test
 217
 248
-14
+15
 multiple
 Apply
 false
@@ -163,7 +163,7 @@ Object
 Test
 251
 261
-15
+16
 println
 Apply
 false
@@ -180,7 +180,7 @@ Object
 Test
 268
 302
-16
+17
 multiple
 Apply
 false
@@ -197,7 +197,7 @@ Object
 Test
 291
 301
-16
+17
 f
 Apply
 false
@@ -214,7 +214,7 @@ Object
 Test
 305
 315
-17
+18
 println
 Apply
 false
@@ -231,7 +231,7 @@ Object
 Test
 322
 371
-18
+19
 multiple
 Apply
 false
@@ -248,7 +248,7 @@ Object
 Test
 345
 355
-18
+19
 f
 Apply
 false
@@ -265,7 +265,7 @@ Object
 Test
 374
 384
-19
+20
 println
 Apply
 false
@@ -282,7 +282,7 @@ Object
 Test
 101
 115
-8
+9
 Test
 DefDef
 false
