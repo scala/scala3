@@ -19,8 +19,8 @@ Def         ::=  PatVarDef
               |  TmplDef
 ```
 
-A _declaration_ introduces names and assigns them types.
-It can form part of a [class definition](05-classes-and-objects.html#templates) or of a refinement in a [compound type](03-types.html#compound-types).
+A _declaration_ introduces names and assigns them types or type definitions.
+It can form part of a [class definition](05-classes-and-objects.html#templates) or of a refinement in a [refined type](03-types.html#concrete-refined-types).
 
 A _definition_ introduces names that denote terms or types.
 It can form part of an object or class definition or it can be local to a block.
@@ -61,11 +61,11 @@ PatDef       ::=  Pattern2 {‘,’ Pattern2} [‘:’ Type] ‘=’ Expr
 ids          ::=  id {‘,’ id}
 ```
 
-A value declaration `val ´x´: ´T´` introduces ´x´ as a name of a value of type ´T´.
+A value declaration `val ´x´: ´T´` introduces ´x´ as a name of a value of _declared type_ ´T´.
 
 A value definition `val ´x´: ´T´ = ´e´` defines ´x´ as a name of the value that results from the evaluation of ´e´.
-If the value definition is not recursive, the type ´T´ may be omitted, in which case the [packed type](06-expressions.html#expression-typing) of expression ´e´ is assumed.
-If a type ´T´ is given, then ´e´ is expected to conform to it.
+If the value definition is not recursive, the declared type ´T´ may be omitted, in which case the [packed type](06-expressions.html#expression-typing) of expression ´e´ is assumed.
+If a type ´T´ is given, then it must be a [proper type](03-types.html#proper-types) and ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
 
 Evaluation of the value definition implies evaluation of its right-hand side ´e´, unless it has the modifier `lazy`.
 The effect of the value definition is to bind ´x´ to the value of ´e´
@@ -156,7 +156,7 @@ An implementation of a class may _define_ a declared variable using a variable d
 
 A variable definition `var ´x´: ´T´ = ´e´` introduces a mutable variable with type ´T´ and initial value as given by the expression ´e´.
 The type ´T´ can be omitted, in which case the type of ´e´ is assumed.
-If ´T´ is given, then ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
+If ´T´ is given, then it must be a [proper type](03-types.html#proper-types) and ´e´ is expected to [conform to it](06-expressions.html#expression-typing).
 
 Variable definitions can alternatively have a [pattern](08-pattern-matching.html#patterns) as left-hand side.
 A variable definition  `var ´p´ = ´e´` where ´p´ is a pattern other than a simple name or a name followed by a colon and a type is expanded in the same way as a [value definition](#value-declarations-and-definitions) `val ´p´ = ´e´`, except that the free names in ´p´ are introduced as mutable variables, not values.
@@ -217,8 +217,6 @@ A variable definition `var ´x_1, ..., x_n: T´ = ´e´` is a shorthand for the 
 
 ## Type Declarations and Type Aliases
 
-<!-- TODO: Higher-kinded tdecls should have a separate section -->
-
 ```ebnf
 Dcl        ::=  ‘type’ {nl} TypeDcl
 TypeDcl    ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
@@ -226,32 +224,48 @@ Def        ::=  ‘type’ {nl} TypeDef
 TypeDef    ::=  id [TypeParamClause] ‘=’ Type
 ```
 
+A possibly parameterized _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´` declares ´t´ to be an abstract type.
+If omitted, ´L´ and ´H´ are implied to be `Nothing` and `scala.Any`, respectively.
+
+A possibly parameterized _type alias_ `type ´t´[´\mathit{tps}\,´] = ´T´` defines ´t´ to be a concrete type member.
+
+If a type parameter clause `[´\mathit{tps}\,´]` is present, it is desugared away according to the rules in the following section.
+
 ### Desugaring of parameterized type declarations
-A parameterized type declaration is desugared into an unparameterized type declaration
-whose bounds are type lambdas with explicit variance annotations.
+
+A parameterized type declaration is desugared into an unparameterized type declaration whose bounds are [type lambdas](03-types.html#type-lambdas) with explicit variance annotations.
+
+The scope of a type parameter extends over the bounds `>: ´L´ <: ´U´` or the alias `= ´T´` and the type parameter clause ´\mathit{tps}´ itself.
+A higher-order type parameter clause (of an abstract type constructor ´tc´) has the same kind of scope, restricted to the declaration of the type parameter ´tc´.
+
+To illustrate nested scoping, these declarations are all equivalent: `type t[m[x] <: Bound[x], Bound[x]]`, `type t[m[x] <: Bound[x], Bound[y]]` and `type t[m[x] <: Bound[x], Bound[_]]`, as the scope of, e.g., the type parameter of ´m´ is limited to the declaration of ´m´.
+In all of them, ´t´ is an abstract type member that abstracts over two type constructors: ´m´ stands for a type constructor that takes one type parameter and that must be a subtype of `Bound`, ´t´'s second type constructor parameter.
+`t[MutableList, Iterable]` is a valid use of ´t´.
 
 #### Abstract Type
-An abstract type
+
+A parameterized abstract type
 ```scala
-type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´
+type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´
 ```
 is desugared into an unparameterized abstract type as follow:
 - If `L` conforms to `Nothing`, then,
 
   ```scala
 type ´t´ >: Nothing
-       <: [´\mathit{tps'}\,´] =>> ´U´
+       <: [´\mathit{tps'}\,´] =>> ´H´
   ```
 - otherwise,
 
   ```scala
 type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´
-       <: [´\mathit{tps'}\,´] =>> ´U´
+       <: [´\mathit{tps'}\,´] =>> ´H´
   ```
-  
-If at least one of the ´\mathit{tps}´ contains an explicit variance annotation, then ´\mathit{tps'} = \mathit{tps}´, otherwise we infer the variance of each type parameter as with the user-written type lambda `[´\mathit{tps}\,´] =>> ´U´`.
 
-The same desugaring applies to type parameters. For instance,
+If at least one of the ´\mathit{tps}´ contains an explicit variance annotation, then ´\mathit{tps'} = \mathit{tps}´, otherwise we infer the variance of each type parameter as with the user-written type lambda `[´\mathit{tps}\,´] =>> ´H´`.
+
+The same desugaring applies to type parameters.
+For instance,
 ```scala
 [F[X] <: Coll[X]]
 ```
@@ -261,6 +275,7 @@ is treated as a shorthand for
 ```
 
 #### Type Alias
+
 A parameterized type alias
 ```scala
 type ´t´[´\mathit{tps}\,´] = ´T´
@@ -271,34 +286,17 @@ type ´t´ = [´\mathit{tps'}\,´] =>> ´T´
 ```
 where ´\mathit{tps'}´ is computed as in the previous case.
 
-´\color{red}{\text{TODO SCALA3: Everything else in this section (and the next one
-on type parameters) needs to be rewritten to take into account the desugaring described above.}}´
+### Non-Parameterized Type Declarations and Type Aliases
 
-A _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´U´` declares ´t´ to be an abstract type with lower bound type ´L´ and upper bound type ´U´.
-If the type parameter clause `[´\mathit{tps}\,´]` is omitted, ´t´ abstracts over a proper type, otherwise ´t´ stands for a type constructor that accepts type arguments as described by the type parameter clause.
+A _type declaration_ `type ´t´ >: ´L´ <: ´H´` declares ´t´ to be an abstract type whose [type definition](03-types.html#type-definitions) has the lower bound type ´L´ and upper bound type ´H´.
 
-If a type declaration appears as a member declaration of a type, implementations of the type may implement ´t´ with any type ´T´ for which ´L <: T <: U´.
-It is a compile-time error if ´L´ does not conform to ´U´.
-Either or both bounds may be omitted.
-If the lower bound ´L´ is absent, the bottom type `scala.Nothing` is assumed.
-If the upper bound ´U´ is absent, the top type `scala.Any` is assumed.
-
-A type constructor declaration imposes additional restrictions on the concrete types for which ´t´ may stand.
-Besides the bounds ´L´ and ´U´, the type parameter clause may impose higher-order bounds and variances, as governed by the [conformance of type constructors](03-types.html#conformance).
-
-The scope of a type parameter extends over the bounds `>: ´L´ <: ´U´` and the type parameter clause ´\mathit{tps}´ itself.
-A higher-order type parameter clause (of an abstract type constructor ´tc´) has the same kind of scope, restricted to the declaration of the type parameter ´tc´.
-
-To illustrate nested scoping, these declarations are all equivalent: `type t[m[x] <: Bound[x], Bound[x]]`, `type t[m[x] <: Bound[x], Bound[y]]` and `type t[m[x] <: Bound[x], Bound[_]]`, as the scope of, e.g., the type parameter of ´m´ is limited to the declaration of ´m´.
-In all of them, ´t´ is an abstract type member that abstracts over two type constructors: ´m´ stands for a type constructor that takes one type parameter and that must be a subtype of ´Bound´, ´t´'s second type constructor parameter.
-`t[MutableList, Iterable]` is a valid use of ´t´.
+If a type declaration appears as a member declaration of a type, implementations of the type may implement ´t´ with any type ´T´ for which ´L <: T <: H´.
+It is a compile-time error if ´L´ does not conform to ´H´.
 
 A _type alias_ `type ´t´ = ´T´` defines ´t´ to be an alias name for the type ´T´.
-The left hand side of a type alias may have a type parameter clause, e.g. `type ´t´[´\mathit{tps}\,´] = ´T´`.
-The scope of a type parameter extends over the right hand side ´T´ and the type parameter clause ´\mathit{tps}´ itself.
 
-The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bound or in its right-hand side.
-However, it is a static error if a type alias refers recursively to the defined type constructor itself.
+The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bounds or in its right-hand side.
+However, it is a static error if a type alias refers recursively to the defined type itself.
 That is, the type ´T´ in a type alias `type ´t´[´\mathit{tps}\,´] = ´T´` may not refer directly or indirectly to the name ´t´.
 It is also an error if an abstract type is directly or indirectly its own upper or lower bound.
 
@@ -309,8 +307,8 @@ The following are legal type declarations and definitions:
 ```scala
 type IntList = List[Integer]
 type T <: Comparable[T]
-type Two[A] = Tuple2[A, A]
-type MyCollection[+X] <: Iterable[X]
+type Two[A] = Tuple2[A, A] // desugars to Two = [A] =>> Tuple2[A, A]
+type MyCollection[+X] <: Iterable[X] // desugars to MyCollection <: [+X] =>> Iterable[X]
 ```
 
 The following are illegal:
@@ -323,11 +321,11 @@ type T <: S
 
 type T >: Comparable[T.That]    // Cannot select from T.
                                 // T is a type, not a value
-type MyCollection <: Iterable   // Type constructor members must explicitly
-                                // state their type parameters.
+type MyCollection <: Iterable   // The reference to the type constructor
+                                // Iterable must explicitly state its type arguments.
 ```
 
-If a type alias `type ´t´[´\mathit{tps}\,´] = ´S´` refers to a class type ´S´, the name ´t´ can also be used as a constructor for objects of type ´S´.
+If a type alias `type ´t´ = ´S´` refers to a class type ´S´ (or to a type lambda that is the eta-expansion of class type ´S´), the name ´t´ can also be used as a constructor for objects of type ´S´.
 
 ###### Example
 
@@ -432,14 +430,12 @@ The variance position changes at the following constructs.
 - The variance position of the lower bound of a type declaration or type parameter is the opposite of the variance position of the type declaration or parameter.
 - The type of a mutable variable is always in invariant position.
 - The right-hand side of a type alias is always in invariant position.
-- The prefix ´S´ of a type selection `´S´#´T´` is always in invariant position.
-- For a type argument ´T´ of a type `´S´[´... T ...´ ]`:
-If the corresponding type parameter is invariant, then ´T´ is in invariant position.
-If the corresponding type parameter is contravariant, the variance position of ´T´ is the opposite of the variance position of the enclosing type `´S´[´... T ...´ ]`.
+- The prefix ´p´ of a type selection `´p.T´` is always in invariant position.
+- For a type argument ´T´ of a type `´S´[´..., T, ...´]`:
+  - If the corresponding type parameter of ´S´ is invariant, then ´T´ is in invariant position.
+  - If the corresponding type parameter of ´S´ is contravariant, the variance position of ´T´ is the opposite of the variance position of the enclosing type `´S´[´..., T, ...´]`.
 
-<!-- TODO: handle type aliases -->
-
-References to the type parameters in [object-private or object-protected values, types, variables, or methods](05-classes-and-objects.html#modifiers) of the class are not checked for their variance position.
+References to the type parameters in [object-private values, types, variables, or methods](05-classes-and-objects.html#modifiers) of the class are not checked for their variance position.
 In these members the type parameter may appear anywhere without restricting its legal variance annotations.
 
 ###### Example
@@ -447,7 +443,8 @@ The following variance annotation is legal.
 
 ```scala
 abstract class P[+A, +B] {
-  def fst: A; def snd: B
+  def fst: A
+  def snd: B
 }
 ```
 
@@ -471,14 +468,14 @@ If the mutable variables are object-private, the class definition becomes legal 
 
 ```scala
 abstract class R[+A, +B](x: A, y: B) {
-  private[this] var fst: A = x        // OK
-  private[this] var snd: B = y        // OK
+  private var fst: A = x        // OK
+  private var snd: B = y        // OK
 }
 ```
 
 ###### Example
 
-The following variance annotation is illegal, since ´a´ appears in contravariant position in the parameter of `append`:
+The following variance annotation is illegal, since ´A´ appears in contravariant position in the parameter of `append`:
 
 ```scala
 abstract class Sequence[+A] {
@@ -591,7 +588,7 @@ ParamType          ::=  ‘=>’ Type
 ```
 
 The type of a value parameter may be prefixed by `=>`, e.g. `´x´: => ´T´`.
-The type of such a parameter is then the parameterless method type `=> ´T´`.
+The type of such a parameter is then the [by-name type](./03-types.html#by-name-types) `=> ´T´`.
 This indicates that the corresponding argument is not evaluated at the point of method application, but instead is evaluated at each use within the method.
 That is, the argument is evaluated using _call-by-name_.
 

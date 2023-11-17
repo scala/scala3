@@ -377,6 +377,565 @@ If they are all left-associative, the sequence is interpreted as ´(... (t_0 \ma
 The type operators `|` and `&` are not really special.
 Nevertheless, unless shadowed, they resolve to `scala.|` and `scala.&`, which represent [union and intersection types](#union-and-intersection-types), respectively.
 
+### Function Types
+
+```ebnf
+Type              ::=  FunTypeArgs ‘=>’ Type
+FunTypeArgs       ::=  InfixType
+                    |  ‘(’ [ FunArgTypes ] ‘)’
+                    |  FunParamClause
+FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
+FunArgType        ::=  Type
+                    |  ‘=>’ Type
+FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
+TypedFunParam     ::=  id ‘:’ Type
+```
+
+The concrete function type ´(T_1, ..., T_n) \Rightarrow R´ represents the set of function values that take arguments of types ´T_1, ..., Tn´ and yield results of type ´R´.
+The case of exactly one argument type ´T \Rightarrow R´ is a shorthand for ´(T) \Rightarrow R´.
+An argument type of the form ´\Rightarrow T´ represents a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters) of type ´T´.
+
+Function types associate to the right, e.g. ´S \Rightarrow T \Rightarrow R´ is the same as ´S \Rightarrow (T \Rightarrow R)´.
+
+Function types are [covariant](04-basic-declarations-and-definitions.md#variance-annotations) in their result type and [contravariant](04-basic-declarations-and-definitions.md#variance-annotations) in their argument types.
+
+Function types translate into internal class types that define an `apply` method.
+Specifically, the ´n´-ary function type ´(T_1, ..., T_n) \Rightarrow R´ translates to the internal class type `scala.Function´_n´[´T_1´, ..., ´T_n´, ´R´]`.
+In particular ´() \Rightarrow R´ is a shorthand for class type `scala.Function´_0´[´R´]`.
+
+Such class types behave as if they were instances of the following trait:
+
+```scala
+trait Function´_n´[-´T_1´, ..., -´T_n´, +´R´]:
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+```
+
+Their exact supertype and implementation can be consulted in the [function classes section](./12-the-scala-standard-library.md#the-function-classes) of the standard library page in this document.
+
+_Dependent function types_ are function types whose parameters are named and can referred to in result types.
+In the concrete type ´(x_1: T_1, ..., x_n: T_n) \Rightarrow R´, ´R´ can refer to the parameters ´x_i´, notably to form path-dependent types.
+It translates to the internal [refined type](#refined-types)
+```scala
+scala.Function´_n´[´T_1´, ..., ´T_n´, ´S´] {
+  def apply(´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+}
+```
+where ´S´ is the least super type of ´R´ that does not mention any of the ´x_i´.
+
+_Polymorphic function types_ are function types that take type arguments.
+Their result type must be a function type.
+In the concrete type ´[a_1 >: L_1 <: H_1, ..., a_n >: L_1 <: H_1] => (T_1, ..., T_m) => R´, the types ´T_j´ and ´R´ can refer to the type parameters ´a_i´.
+It translates to the internal refined type
+```scala
+scala.PolyFunction {
+  def apply[´a_1 >: L_1 <: H_1, ..., a_n >: L_1 <: H_1´](´x_1´: ´T_1´, ..., ´x_n´: ´T_n´): ´R´
+}
+```
+
+### Concrete Refined Types
+
+```ebnf
+RefinedType           ::=  AnnotType {[nl] Refinement}
+SimpleType1           ::=  ...
+                        |  Refinement
+Refinement            ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
+
+RefineDcl             ::=  ‘val’ ValDcl
+                        |  ‘def’ DefDcl
+                        |  ‘type’ {nl} TypeDcl
+```
+
+In the concrete syntax of types, refinements can contain several refined declarations.
+Moreover, the refined declarations can refer to each other as well as to members of the parent type, i.e., they have access to `this`.
+
+In the internal types, each refinement defines exactly one refined declaration, and references to `this` must be made explicit in a recursive type.
+
+The conversion from the concrete syntax to the abstract syntax works as follows:
+
+1. Create a fresh recursive this name ´\alpha´.
+2. Replace every implicit or explicit reference to `this` in the refinement declarations by ´\alpha´.
+3. Create nested [refined types](#refined-types), one for every refined declaration.
+4. Unless ´\alpha´ was never actually used, wrap the result in a [recursive type](#recursive-types) `{ ´\alpha´ => ´...´ }`.
+
+### Concrete Type Lambdas
+
+```ebnf
+TypeLambda            ::= TypeLambdaParams ‘=>>’ Type
+TypeLambdaParams      ::=  ‘[’ TypeLambdaParam {‘,’ TypeLambdaParam} ‘]’
+TypeLambdaParam       ::=  {Annotation} (id | ‘_’) [TypeParamClause] TypeBounds
+TypeParamClause       ::=  ‘[’ VariantTypeParam {‘,’ VariantTypeParam} ‘]’
+VariantTypeParam      ::=  {Annotation} [‘+’ | ‘-’] (id | ‘_’) [TypeParamClause] TypeBounds
+```
+
+At the top level of concrete type lambda parameters, variance annotations are not allowed.
+However, in internal types, all type lambda parameters have explicit variance annotations.
+
+When translating a concrete type lambda into an internal one, the variance of each type parameter is _inferred_ from its usages in the body of the type lambda.
+
+## Definitions
+
+From here onwards, we refer to internal types by default.
+
+### Kinds
+
+The Scala type system is fundamentally higher-kinded.
+_Types_ are either _proper types_, _type constructors_ or _poly-kinded types_.
+
+- Proper types are the types of _terms_.
+- Type constructors are type-level functions from types to types.
+- Poly-kinded types can take various kinds.
+
+All types live in a single lattice with respect to a [_conformance_](#conformance) relationship ´<:´.
+The _top type_ is `AnyKind` and the _bottom type_ is `Nothing`: all types conform to `AnyKind`, and `Nothing` conforms to all types.
+They can be referred to as the standard library entities `scala.AnyKind` and `scala.Nothing`, respectively.
+
+Types can be _concrete_ or _abstract_.
+An abstract type ´T´ always has lower and upper bounds ´L´ and ´H´ such that ´L >: T´ and ´T <: H´.
+A concrete type ´T´ is considered to have itself as both lower and upper bound.
+
+The kind of a type is indicated by its (transitive) upper bound:
+
+- A type `´T <:´ scala.Any` is a proper type.
+- A type `´T <: K´` where ´K´ is a [_type lambda_](#type-lambdas) (of the form `[´\pm a_1 >: L_1 <: H_1´, ..., ´\pm a_n >: L_n <: H_n´] =>> ´U´`) is a type constructor.
+- Other types are poly-kinded; they are neither proper types nor type constructors.
+
+As a consequece, `AnyKind` itself is poly-kinded.
+`Nothing` is _universally-kinded_: it has all kinds at the same time, since it conforms to all types.
+
+With this representation, it is rarely necessary to explicitly talk about the kinds of types.
+Usually, the kinds of types are implicit through their bounds.
+
+Another way to look at it is that type bounds _are_ kinds.
+They represent sets of types: ´>: L <: H´ denotes the set of types ´T´ such that ´L <: T´ and ´T <: H´.
+A set of types can be seen as a _type of types_, i.e., as a _kind_.
+
+#### Conventions
+
+Type bounds are formally always of the form `´>: L <: H´`.
+By convention, we can omit either of both bounds in writing.
+
+- When omitted, the lower bound ´L´ is `Nothing`.
+- When omitted, the higher bound ´H´ is `Any` (_not_ `AnyKind`).
+
+These conventions correspond to the defaults in the concrete syntax.
+
+### Proper Types
+
+Proper types are also called _value types_, as they represent sets of _values_.
+
+_Stable types_ are value types that contain exactly one non-`null` value.
+Stable types can be used as prefixes in named [designator types](#designator-types).
+The stable types are
+
+- designator types referencing a stable term,
+- this types,
+- super types,
+- literal types,
+- recursive this types, and
+- skolem types.
+
+Every stable type ´T´ is concrete and has an _underlying_ type ´U´ such that ´T <: U´.
+
+### Type Constructors
+
+To each type constructor corresponds an _inferred type parameter clause_ which is computed as follows:
+
+- For a [type lambda](#type-lambdas), its type parameter clause (including variance annotations).
+- For a [polymorphic class type](#type-designators), the type parameter clause of the referenced class definition.
+- For a non-class [type designator](#type-designators), the inferred clause of its upper bound.
+
+### Type Definitions
+
+A _type definition_ ´D´ represents the right-hand-side of a `type` declaration or the bounds of a type parameter.
+It is either:
+
+- a type alias of the form ´= U´, or
+- an abstract type definition with bounds ´>: L <: H´.
+
+All type definitions have a lower bound ´L´ and an upper bound ´H´, which are types.
+For type aliases, ´L = H = U´.
+
+The type definition of a type parameter is never a type alias.
+
+## Types
+
+### Type Lambdas
+
+```ebnf
+TypeLambda     ::=  ‘[‘ TypeParams ‘]‘ ‘=>>‘ Type
+TypeParams     ::=  TypeParam {‘,‘ TypeParam}
+TypeParam      ::=  ParamVariance id TypeBounds
+ParamVariance  ::=  ε | ‘+‘ | ‘-‘
+```
+
+A _type lambda_ of the form `[´\pm a_1 >: L_1 <: H_1´, ..., ´\pm a_n >: L_n <: H_n´] =>> ´U´` is a direct representation of a type constructor with ´n´ type parameters.
+When applied to ´n´ type arguments that conform to the specified bounds, it produces another type ´U´.
+Type lambdas are always concrete types.
+
+The scope of a type parameter extends over the result type ´U´ as well as the bounds of the type parameters themselves.
+
+All type constructors conform to some type lambda.
+
+The type bounds of the parameters of a type lambda are in contravariant position, while its result type is in covariant position.
+If some type constructor `´T <:´ [´\pm a_1 >: L_1 <: H_1´, ..., ´\pm a_n >: L_n <: H_n´] =>> ´U´`, then ´T´'s ´i´th type parameter bounds contain the bounds ´>: L_i <: H_i´, and its result type conforms to ´U´.
+
+Note: the concrete syntax of type lambdas does not allow to specify variances for type parameters.
+Instead, variances are inferred from the body of the lambda to be as general as possible.
+
+##### Example
+
+```scala
+type Lst = [T] =>> List[T] // T is inferred to be covariant with bounds >: Nothing <: Any
+type Fn = [A <: Seq[?], B] =>> (A => B) // A is inferred to be contravariant, B covariant
+
+val x: Lst[Int] = List(1) // ok, Lst[Int] expands to List[Int]
+val f: Fn[List[Int], Int] = (x: List[Int]) => x.head // ok
+
+val g: Fn[Int, Int] = (x: Int) => x // error: Int does not conform to the bound Seq[?]
+
+def liftPair[F <: [T] =>> Any](f: F[Int]): Any = f
+liftPair[Lst](List(1)) // ok, Lst <: ([T] =>> Any)
+```
+
+### Designator Types
+
+```ebnf
+DesignatorType    ::=  Prefix ‘.‘ id
+Prefix            ::=  Type
+                    |  PackageRef
+                    |  ε
+PackageRef        ::=  id {‘.‘ id}
+```
+
+A designator type (or designator for short) is a reference to a definition.
+Term designators refer to term definitions, while type designators refer to type definitions.
+
+In the abstract syntax, the `id` retains whether it is a term or type.
+In the concrete syntax, an `id` refers to a *type* designator, while `id.type` refers to a *term* designator.
+In that context, term designators are often called _singleton types_.
+
+Designators with an empty prefix ´\epsilon´ are called direct designators.
+They refer to local definitions available in the scope:
+
+- Local `type`, `object`, `val`, `lazy val`, `var` or `def` definitions
+- Term or type parameters
+
+The `id`s of direct designators are protected from accidental shadowing in the abstract syntax.
+They retain the identity of the exact definition they refer to, rather than relying on scope-based name resolution. [^debruijnoralpha]
+
+[^debruijnoralpha]: In the literature, this is often achieved through De Bruijn indices or through alpha-renaming when needed. In a concrete implementation, this is often achieved through retaining *symbolic* references in a symbol table.
+
+The ´\epsilon´ prefix cannot be written in the concrete syntax.
+A bare `id` is used instead and resolved based on scopes.
+
+Named designators refer to *member* definitions of a non-empty prefix:
+
+- Top-level definitions, including top-level classes, have a package ref prefix
+- Class member definitions and refinements have a type prefix
+
+#### Term Designators
+
+A term designator ´p.x´ referring to a term definition `t` has an _underlying type_ ´U´.
+If ´p = \epsilon´ or ´p´ is a package ref, the underlying type ´U´ is the _declared type_ of `t` and ´p.x´ is a stable type if an only if `t` is a `val` or `object` definition.
+Otherwise, the underlying type ´U´ and whether ´p.x´ is a stable type are determined by [`memberType`](#member-type)`(´p´, ´x´)`.
+
+All term designators are concrete types.
+If `scala.Null ´<: U´`, the term designator denotes the set of values consisting of `null` and the value denoted by ´t´, i.e., the value ´v´ for which `t eq v`.
+Otherwise, the designator denotes the singleton set only containing ´v´.
+
+#### Type Designators
+
+A type designator ´p.C´ referring to a _class_ definition (including traits and hidden object classes) is a _class type_.
+If the class is monomorphic, the type designator is a value type denoting the set of instances of ´C´ or any of its subclasses.
+Otherwise it is a type constructor with the same type parameters as the class definition.
+All class types are concrete, non-stable types.
+
+If a type designator ´p.T´ is not a class type, it refers to a type definition `T` (a type parameter or a `type` declaration) and has an _underlying [type definition](#type-definitions)_.
+If ´p = \epsilon´ or ´p´ is a package ref, the underlying type definition is the _declared type definition_ of `T`.
+Otherwise, it is determined by [`memberType`](#member-type)`(´p´, ´T´)`.
+A non-class type designator is concrete (resp. stable) if and only if its underlying type definition is an alias ´U´ and ´U´ is itself concrete (resp. stable).
+
+### Parameterized Types
+
+```ebnf
+ParameterizedType ::=  Type ‘[‘ TypeArgs ‘]‘
+TypeArgs          ::=  TypeArg {‘,‘ TypeArg}
+TypeArg           ::=  Type
+                    |  WilcardTypeArg
+WildcardTypeArg   ::=  ‘?‘ TypeBounds
+```
+
+A _parameterized type_ ´T[T_1, ..., T_n]´ consists of a type constructor ´T´ and type arguments ´T_1, ..., T_n´ where ´n \geq 1´.
+The parameterized type is well-formed if
+
+- ´T´ is a type constructor which takes ´n´ type parameters ´a_1, ..., a_n´, i.e., it must conform to a type lambda of the form ´[\pm a_1 >: L_1 <: H_1, ..., \pm a_n >: L_n <: H_n] => U´, and
+- if ´T´ is an abstract type constructor, none of the type arguments is a wildcard type argument, and
+- each type argument _conforms to its bounds_, i.e., given ´\sigma´ the substitution ´[a_1 := T_1, ..., a_n := T_n]´, for each type ´i´:
+  - if ´T_i´ is a type and ´\sigma L_i <: T_i <: \sigma H_i´, or
+  - ´T_i´ is a wildcard type argument ´? >: L_{Ti} <: H_{Ti}´ and ´\sigma L_i <: L_{Ti}´ and ´H_{Ti} <: \sigma H_i´.
+
+´T[T_1, ..., T_n]´ is a _parameterized class type_ if and only if ´T´ is a [class type](#type-designators).
+All parameterized class types are value types.
+
+In the concrete syntax of wildcard type arguments, if both bounds are omitted, the real bounds are inferred from the bounds of the corresponding type parameter in the target type constructor (which must be concrete).
+If only one bound is omitted, `Nothing` or `Any` is used, as usual.
+
+#### Simplification Rules
+
+Wildcard type arguments used in covariant or contravariant positions can always be simplified to regular types.
+
+Let ´T[T_1, ..., T_n]´ be a parameterized type for a concrete type constructor.
+Then, applying a wildcard type argument ´? >: L <: H´ at the ´i´'th position obeys the following equivalences:
+
+- If the type parameter ´T_i´ is declared covariant, then ´T[..., ? >: L <: H, ...] =:= T[..., H, ...]´.
+- If the type parameter ´T_i´ is declared contravariant, then ´T[..., ? >: L <: H, ...] =:= T[..., L, ...]´.
+
+#### Example Parameterized Types
+
+Given the partial type definitions:
+
+```scala
+class TreeMap[A <: Comparable[A], B] { ... }
+class List[+A] { ... }
+class I extends Comparable[I] { ... }
+
+class F[M[A], X] { ... } // M[A] desugars to M <: [A] =>> Any
+class S[K <: String] { ... }
+class G[M[Z <: I], I] { ... } // M[Z <: I] desugars to M <: [Z <: I] =>> Any
+```
+
+the following parameterized types are well-formed:
+
+```scala
+TreeMap[I, String]
+List[I]
+List[List[Boolean]]
+
+F[List, Int]
+F[[X] =>> List[X], Int]
+G[S, String]
+
+List[?] // ? inferred as List[_ >: Nothing <: Any], equivalent to List[Any]
+List[? <: String] // equivalent to List[String]
+S[? <: String]
+F[?, Boolean] // ? inferred as ? >: Nothing <: [A] =>> Any
+```
+
+and the following types are ill-formed:
+
+```scala
+TreeMap[I]            // illegal: wrong number of parameters
+TreeMap[List[I], Int] // illegal: type parameter not within bound
+List[[X] => List[X]]
+
+F[Int, Boolean]       // illegal: Int is not a type constructor
+F[TreeMap, Int]       // illegal: TreeMap takes two parameters,
+                      //   F expects a constructor taking one
+F[[X, Y] => (X, Y)]
+G[S, Int]             // illegal: S constrains its parameter to
+                      //   conform to String,
+                      // G expects type constructor with a parameter
+                      //   that conforms to Int
+```
+
+The following code also contains an ill-formed type:
+
+```scala
+trait H[F[A]]:  // F[A] desugars to F <: [A] =>> Any, which is abstract
+  def f: F[_]   // illegal : an abstract type constructor
+                // cannot be applied to wildcard arguments.
+```
+
+### This Types
+
+```ebnf
+ThisType  ::=  classid ‘.‘ ‘this‘
+```
+
+A _this type_ `´C´.this` denotes the `this` value of class ´C´ within ´C´.
+
+This types often appear implicitly as the prefix of [designator types](#designator-types) referring to members of ´C´.
+They play a particular role in the type system, since they are affected by the [as seen from](#as-seen-from) operation on types.
+
+This types are stable types.
+The underlying type of `´C´.this` is the [self type](05-classes-and-objects.html#templates) of ´C´.
+
+### Super Types
+
+```ebnf
+SuperType  ::=  classid ‘.‘ ‘super‘ ‘[‘ classid ‘]‘
+```
+
+A _super type_ `´C´.super[´D´]` denotes the `this` value of class `C` within `C`, but "widened" to only see members coming from a parent class or trait ´D´.
+
+Super types exist for compatibility with Scala 2, which allows shadowing of inner classes.
+In a Scala 3-only context, a super type can always be replaced by the corresponding [this type](#this-types).
+Therefore, we omit further discussion of super types in this specification.
+
+### Literal Types
+
+```ebnf
+LiteralType  ::=  SimpleLiteral
+```
+
+A literal type `lit` denotes the single literal value `lit`.
+Thus, the type ascription `1: 1` gives the most precise type to the literal value `1`:  the literal type `1`.
+
+At run time, an expression `e` is considered to have literal type `lit` if `e == lit`.
+Concretely, the result of `e.isInstanceOf[lit]` and `e match { case _ : lit => }` is determined by evaluating `e == lit`.
+
+Literal types are available for all primitive types, as well as for `String`.
+However, only literal types for `Int`, `Long`, `Float`, `Double`, `Boolean`, `Char` and `String` can be expressed in the concrete syntax.
+
+Literal types are stable types.
+Their underlying type is the primitive type containing their value.
+
+##### Example
+
+```scala
+val x: 1 = 1
+val y: false = false
+val z: false = y
+val int: Int = x
+
+val badX: 1 = int       // error: Int is not a subtype of 1
+val badY: false = true  // error: true is not a subtype of false
+```
+
+### By-Name Types
+
+```ebnf
+ByNameType  ::=  ‘=>‘ Type
+```
+
+A by-name type ´=> T´ denotes the declared type of a by-name term parameter.
+By-name types can only appear as the types of parameters in method types, and as type arguments in [parameterized types](#parameterized-types).
+
+<!-- TODO Should by-name types be Types at all? Should we make them similar to MethodicType's instead? -->
+
+### Annotated Types
+
+```ebnf
+AnnotatedType  ::=  Type Annotation
+```
+
+An _annotated type_ ´T a´ attaches the [annotation](11-annotations.html#user-defined-annotations) ´a´ to the type ´T´.
+
+###### Example
+
+The following type adds the `@suspendable` annotation to the type `String`:
+
+```scala
+String @suspendable
+```
+
+### Refined Types
+
+```ebnf
+RefinedType  ::=  Type ‘{‘ Refinement ‘}‘
+Refinement   ::=  ‘type‘ id TypeAliasOrBounds
+               |  ‘def‘ id ‘:‘ TypeOrMethodic
+               |  ‘val‘ id ‘:‘ Type
+```
+
+A _refined type_ ´T { R }´ denotes the set of values that belong to ´T´ and also have a _member_ conforming to the refinement ´R´.
+
+The refined type ´T { R }´ is well-formed if:
+
+- ´T´ is a proper type, and
+- if ´R´ is a term (`def` or `val`) refinement, the refined type is a proper type, and
+- if ´R´ overrides a member of ´T´, the usual rules for [overriding](05-classes-and-objects.html#overriding) apply, and
+- if ´R´ is a `def` refinement with a [polymorphic method type](#polymorphic-method-types), then ´R´ overrides a member definition of ´T´.
+
+As an exception to the last rule, a polymorphic method type refinement is allowed if `´T <:´ scala.PolyFunction` and ´id´ is the name `apply`.
+
+If the refinement ´R´ overrides no member of ´T´ and is not an occurrence of the `scala.PolyFunction` exception, the refinement is said to be “structural” [^2].
+
+[^2]: A reference to a structurally defined member (method call or access to a value or variable) may generate binary code that is significantly slower than an equivalent code to a non-structural member.
+
+Note: since a refinement does not define a _class_, it is not possible to use a [this type](#this-types) to reference term and type members of the parent type ´T´ within the refinement.
+When the surface syntax of refined types makes such references, a [recursive type](#recursive-types) wraps the refined type, given access to members of self through a recursive-this type.
+
+###### Example
+
+Given the following class definitions:
+
+```scala
+trait T:
+  type X <: Option[Any]
+  def foo: Any
+  def fooPoly[A](x: A): Any
+
+trait U extends T:
+  override def foo: Int
+  override def fooPoly[A](x: A): A
+
+trait V extends T
+  type X = Some[Int]
+  def bar: Int
+  def barPoly[A](x: A): A
+```
+
+We get the following conformance relationships:
+
+- `U <: T { def foo: Int }`
+- `U <: T { def fooPoly[A](x: A): A }`
+- `U <: (T { def foo: Int }) { def fooPoly[A](x: A): A }` (we can chain refined types to refine multiple members)
+- `V <: T { type X <: Some[Any] }`
+- `V <: T { type X >: Some[Nothing] }`
+- `V <: T { type X = Some[Int] }`
+- `V <: T { def bar: Any }` (a structural refinement)
+
+The following refined types are not well-formed:
+
+- `T { def barPoly[A](x: A): A }` (structural refinement for a polymorphic method type)
+- `T { type X <: List[Any] }` (does not satisfy overriding rules)
+- `List { def head: Int }` (the parent type `List` is not a proper type)
+- `T { def foo: List }` (the refined type `List` is not a proper type)
+- `T { def foo: T.this.X }` (`T.this` is not allowed outside the body of `T`)
+
+### Recursive Types
+
+```ebnf
+RecursiveType  ::=  ‘{‘ recid ‘=>‘ Type ‘}‘
+RecursiveThis  ::=  recid ‘.‘ ‘this‘
+```
+
+A _recursive type_ of the form `{ ´\alpha´ => ´T´ }` represents the same values as ´T´, while offering ´T´ access to its _recursive this_ type `´\alpha´`.
+
+Recursive types cannot directly be expressed in the concrete syntax.
+They are created as needed when a refined type in the concrete syntax contains a refinement that needs access to the `this` value.
+Each recursive type defines a unique self-reference `´\alpha´`, distinct from any other recursive type in the system.
+
+Recursive types can be unfolded during subtyping as needed, replacing references to its `´\alpha´` by a stable reference to the other side of the conformance relationship.
+
+##### Example
+
+Given the class definitions in the [refined types](#refined-types) section, we can write the following refined type in the source syntax:
+
+```scala
+T { def foo: X }
+// equivalent to
+T { def foo: this.X }
+```
+
+This type is not directly expressible as a refined type alone, as the refinement cannot access the `this` value.
+Instead, in the abstract syntax of types, it is translated to `{ ´\alpha´ => ´T´ { def foo: ´\alpha´.X } }`.
+
+Given the following definitions:
+
+```scala
+trait Z extends T:
+  type X = Option[Int]
+  def foo: Option[Int] = Some(5)
+
+val z: Z
+```
+
+we can check that `z ´<:´ { ´\alpha´ => ´T´ { def foo: ´\alpha´.X } }`.
+We first unfold the recursive type, substituting ´z´ for ´\alpha´, resulting in `z ´<:´ T { def foo: z.X }`.
+Since the underlying type of ´z´ is ´Z´, we can resolve `z.X` to mean `Option[Int]`, and then validate that `z ´<:´ T` and that `z` has a member `def foo: Option[Int]`.
+
 ### Union and Intersection Types
 
 Syntactically, the types `S | T` and `S & T` are infix types, where the infix operators are `|` and `&`, respectively (see above).
