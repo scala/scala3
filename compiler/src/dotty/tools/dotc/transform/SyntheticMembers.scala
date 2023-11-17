@@ -552,7 +552,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
             .map((pre, child) => rawRef(child).asSeenFrom(pre, child.owner))
           case _ =>
             cls.children.map(rawRef)
-      end computeChildTypes
+
       val childTypes = computeChildTypes
       val cases =
         for (patType, idx) <- childTypes.zipWithIndex yield
