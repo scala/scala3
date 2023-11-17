@@ -245,14 +245,40 @@ extension (tp: Type)
   def withReachCaptures(ref: Type)(using Context): Type =
     object narrowCaps extends TypeMap:
       var ok = true
+
+      private var hasImpureParam: Boolean = false
+
+      def withImpureParamIf[T](cond: Boolean)(op: => T): T =
+        val saved = hasImpureParam
+        try
+          hasImpureParam ||= cond
+          op
+        finally hasImpureParam = saved
+
+      def mapFunction(args: List[Type], restpe: Type, reconstruct: (List[Type], Type) => Type): Type =
+        def isImpureParam(param: Type): Boolean = param match
+          case CapturingType(_, cs) if cs.isUniversal => true
+          case _ => false
+        val args1 = atVariance(-variance):
+          args.mapConserve(this)
+        val restpe1 = withImpureParamIf(args.exists(isImpureParam) && variance > 0):
+          this(restpe)
+        reconstruct(args1, restpe1)
+
       def apply(t: Type) = t.dealias match
         case t1 @ CapturingType(p, cs) if cs.isUniversal =>
           if variance > 0 then
+            if hasImpureParam then
+              ok = false
             t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
           else
-            ok = false
-            t
+            t1.derivedCapturingType(apply(p), cs)
         case _ => t match
+          case t: TermLambda => mapFunction(t.paramInfos, t.resultType, derivedLambdaType(t)(_, _))
+          case defn.FunctionOf(args, restpe, isCtx) =>
+            mapFunction(args, restpe, (args1, restpe1) =>
+              if (args1 eq args) && (restpe1 eq restpe) then t
+              else defn.FunctionOf(args1, restpe1, isCtx))
           case t @ CapturingType(p, cs) =>
             t.derivedCapturingType(apply(p), cs) // don't map capture set variables
           case t =>
