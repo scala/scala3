@@ -2,25 +2,25 @@
 4 |  val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |                                  ^^^^^^^^^^^^^^^
   |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (object Test) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
-  |-> object Test {	[ t3273.scala:3 ]
-  |   ^
-  |-> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
-  |                                   ^^^^^^^^^^^^^^^
+  |├── object Test {	[ t3273.scala:3 ]
+  |│   ^
+  |└── val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
+  |                                    ^^^^^^^^^^^^^^^
   |
   |Promoting the value to transitively initialized (Hot) failed due to the following problem:
   |Access non-initialized value num1. Promotion trace:
-  |-> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
-  |                                   ^^^^
+  |└── val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
+  |                                    ^^^^
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |Could not verify that the method argument is transitively initialized (Hot). It was found to be a function where "this" is (the original object of type (object Test) where initialization checking started). Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
-  |-> object Test {	[ t3273.scala:3 ]
-  |   ^
-  |-> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
-  |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |├── object Test {	[ t3273.scala:3 ]
+  |│   ^
+  |└── val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
+  |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   |Promoting the value to transitively initialized (Hot) failed due to the following problem:
   |Access non-initialized value num2. Promotion trace:
-  |-> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
-  |                                   ^^^^
+  |└── val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
+  |                                    ^^^^
