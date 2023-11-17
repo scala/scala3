@@ -444,7 +444,28 @@ object Types {
       case _ => NoType
     }
 
-    /** Is this a higher-kinded type lambda with given parameter variances? */
+    /** Is this a higher-kinded type lambda with given parameter variances?
+     *  These lambdas are used as the RHS of higher-kinded abstract types or
+     *  type aliases. The variance info is strictly needed only for abstract types.
+     *  For type aliases we allow the user to write the variance, and we use it
+     *  to check that the structural variance of the type lambda is compatible
+     *  with the declared variance, and that the declared variance is compatible
+     *  with any abstract types that are overridden.
+     *
+     *  But it's important to note that the variance of a type parameter in
+     *  a type lambda is strictly determined by how it occurs in the body of
+     *  the lambda. Declared variances have no influence here. For instance
+     *  the following two lambdas are variant, even though no parameter variance
+     *  is indicated:
+     *
+     *      [X] =>> List[X]      // covariant
+     *      [X] =>> X => Unit    // contravariant
+     *
+     *  Why store declared variances in lambdas at all? It's because type symbols are just
+     *  normal symbols, and there is no field in a Symbol that keeps a list of variances.
+     *  Generally we have the design that we store all info that applies to some symbols
+     *  but not others in the symbol's types.
+     */
     def isDeclaredVarianceLambda: Boolean = false
 
     /** Does this type contain wildcard types? */
