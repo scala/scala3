@@ -1,4 +1,4 @@
-//> using options -source future -deprecation 
+//> using options -source future -deprecation
 
 // Compile with -strict -Xfatal-warnings -deprecation
 class C:
@@ -23,8 +23,8 @@ def test() = {
 
   c.op(2)
   c.iop(2)
-  c mop 2     // warn: should not be used as infix operator
-  c meth 2    // warn: should not be used as infix operator
+  c mop 2     // error: should not be used as infix operator
+  c meth 2    // error: should not be used as infix operator
   c `meth` 2  // OK, sincd `meth` is backquoted
   c + 3       // OK, since `+` is symbolic
   1 to 2      // OK, since `to` is defined by Scala-2
@@ -42,9 +42,9 @@ def test() = {
 
   class Map[X, Y]
 
-  val x1: Int Map String = ???     // warn
+  val x1: Int Map String = ???     // error
   val x2: Int Or String = ???      // OK since Or is declared `infix`
-  val x3: Int AndC String = ???    // warn
+  val x3: Int AndC String = ???    // error
   val x4: Int `AndC` String = ???  // OK
   val x5: Int And String = ???     // OK
   val x6: Int && String = ???
@@ -58,7 +58,7 @@ def test() = {
 
   val p = Pair(1, 2)
   val Pair(_, _) = p
-  val _ Pair _ = p   // warn
+  val _ Pair _ = p   // error
   val _ `Pair` _ = p // OK
   val (_ PP _) = p: @unchecked     // OK
 

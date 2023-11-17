@@ -3,7 +3,7 @@
   |                  ^
   |                  `_` is no longer supported for a wildcard import; use `*` instead
   |                  This construct can be rewritten automatically under -rewrite -source future-migration.
--- Deprecation Warning: tests/warn/rewrite-messages.scala:7:4 ----------------------------------------------------------
+-- Migration Warning: tests/warn/rewrite-messages.scala:7:4 ------------------------------------------------------------
 7 |  2 foo 4  // warn
   |    ^^^
   |    Alphanumeric method foo is not declared infix; it should not be used as infix operator.

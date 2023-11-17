@@ -1,10 +1,10 @@
--- Error: tests/init/neg/secondary-ctor4.scala:54:14 -------------------------------------------------------------------
-54 |      val c = new C(b, 5)   // error
+-- Warning: tests/init/warn/secondary-ctor4.scala:54:14 ----------------------------------------------------------------
+54 |      val c = new C(b, 5)   // warn
    |              ^^^^^^^^^^^
    |              Problematic object instantiation: arg 1 is not transitively initialized (Hot). Calling trace:
    |              ├── class D {	[ secondary-ctor4.scala:52 ]
    |              │   ^
-   |              └── val c = new C(b, 5)   // error	[ secondary-ctor4.scala:54 ]
+   |              └── val c = new C(b, 5)   // warn	[ secondary-ctor4.scala:54 ]
    |                          ^^^^^^^^^^^
    |
    |              It leads to the following error during object initialization:
@@ -21,15 +21,15 @@
    |              │   ^
    |              └── println(b.n)	[ secondary-ctor4.scala:23 ]
    |                          ^^^
--- Error: tests/init/neg/secondary-ctor4.scala:42:4 --------------------------------------------------------------------
-42 |    new A(new B(new D))  // error
+-- Warning: tests/init/warn/secondary-ctor4.scala:42:4 -----------------------------------------------------------------
+42 |    new A(new B(new D))  // warn
    |    ^^^^^^^^^^^^^^^^^^^
    |Problematic object instantiation: the outer M.this and arg 1 are not transitively initialized (Hot). Calling trace:
    |├── class N(d: D) extends M(d) {	[ secondary-ctor4.scala:59 ]
    |│   ^
    |├── def this(d: D) = {	[ secondary-ctor4.scala:7 ]
    |│   ^
-   |└── new A(new B(new D))  // error	[ secondary-ctor4.scala:42 ]
+   |└── new A(new B(new D))  // warn	[ secondary-ctor4.scala:42 ]
    |    ^^^^^^^^^^^^^^^^^^^
    |
    |It leads to the following error during object initialization:

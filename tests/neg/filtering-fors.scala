@@ -8,18 +8,18 @@ object Test {
   for (x: Any <- xs) do () // OK
 
   for (x: String <- xs) do ()      // error
-  for ((x: String) <- xs) do ()    // warn
-  for (y@ (x: String) <- xs) do () // warn
-  for ((x, y) <- xs) do ()         // warn
+  for ((x: String) <- xs) do ()    // error
+  for (y@ (x: String) <- xs) do () // error
+  for ((x, y) <- xs) do ()         // error
 
-  for ((x: String) <- xs if x.isEmpty) do ()   // warn
-  for ((x: String) <- xs; y = x) do ()          // warn
-  for ((x: String) <- xs; (y, z) <- xs) do ()   // warn // warn
-  for (case (x: String) <- xs; (y, z) <- xs) do () // warn
-  for ((x: String) <- xs; case (y, z) <- xs) do () // warn
+  for ((x: String) <- xs if x.isEmpty) do ()   // error
+  for ((x: String) <- xs; y = x) do ()          // error
+  for ((x: String) <- xs; (y, z) <- xs) do ()   // error // error
+  for (case (x: String) <- xs; (y, z) <- xs) do () // error
+  for ((x: String) <- xs; case (y, z) <- xs) do () // error
 
   val pairs: List[AnyRef] = List((1, 2), "hello", (3, 4))
-  for ((x, y) <- pairs) yield (y, x) // warn
+  for ((x, y) <- pairs) yield (y, x) // error
 
   for (case x: String <- xs) do ()      // OK
   for (case (x: String) <- xs) do ()    // OK
@@ -32,4 +32,3 @@ object Test {
 
   for (case (x, y) <- pairs) yield (y, x) // OK
 }
-// nopos-error: No warnings can be incurred under -Werror.

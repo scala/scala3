@@ -10,7 +10,7 @@ class M(x: Int) {
     class L1(x: Int) { val n: Int = 5 }
 
     class A(b: B, x: Int) {
-      println(d.n)
+    println(d.n)
 
       class L2(x: Int) { val n: Int = 5 }
 
@@ -39,7 +39,7 @@ class M(x: Int) {
       val n: Int = 10
     }
 
-    new A(new B(new D))  // error
+    new A(new B(new D))  // warn
 
     trait T {
       val m: Int = 10
@@ -51,7 +51,7 @@ class M(x: Int) {
 
     class D {
       val b = new B(this)
-      val c = new C(b, 5)   // error
+      val c = new C(b, 5)   // warn
     }
   }
 }

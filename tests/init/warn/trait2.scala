@@ -3,7 +3,7 @@ abstract class A(x: Int) {
   foo()
 }
 
-trait B(val y: Int)   // error
+trait B(val y: Int)   // warn
 
 class D {
   class C extends A(10) with B(20)  {
