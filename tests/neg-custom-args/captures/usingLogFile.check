@@ -10,7 +10,3 @@
 44 |    val later = usingFile("out", f => (y: Int) => xs.foreach(x => f.write(x + y))) // error
    |                ^^^^^^^^^
    |                local reference f leaks into outer capture set of type parameter T of method usingFile
--- Error: tests/neg-custom-args/captures/usingLogFile.scala:52:16 ------------------------------------------------------
-52 |    val later = usingFile("logfile", // error !!! but should be ok, since we can widen `l` to `file` instead of to `cap`
-   |                ^^^^^^^^^
-   |                local reference l leaks into outer capture set of type parameter T of method usingFile
