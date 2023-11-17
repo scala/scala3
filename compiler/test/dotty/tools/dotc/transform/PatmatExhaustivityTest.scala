@@ -63,7 +63,7 @@ class PatmatExhaustivityTest {
 
   @Test
   def patmatExhaustivity: Unit = {
-    val blacklisted = TestSources.scala2LibraryTastyBlacklisted.toSet
+    val blacklisted = TestSources.patmatExhaustivityScala2LibraryTastyBlacklisted.toSet
     val res = Directory(testsDir).list.toList
       .filter(f => f.extension == "scala" || f.isDirectory)
       .filter { f =>

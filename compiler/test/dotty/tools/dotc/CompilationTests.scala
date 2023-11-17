@@ -133,7 +133,7 @@ class CompilationTests {
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
     aggregateTests(
-      compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.scala2LibraryTastyBlacklisted)),
+      compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyBlacklisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
@@ -156,7 +156,7 @@ class CompilationTests {
   @Test def runAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runAll")
     aggregateTests(
-      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"), FileFilter.exclude(TestSources.scala2LibraryTastyBlacklisted)),
+      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
       // Run tests for legacy lazy vals.
@@ -216,8 +216,8 @@ class CompilationTests {
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
-    compileFilesInDir("tests/init-global/neg", options, FileFilter.exclude(TestSources.scala2LibraryTastyBlacklisted)).checkExpectedErrors()
-    compileFilesInDir("tests/init-global/pos", options, FileFilter.exclude(TestSources.scala2LibraryTastyBlacklisted)).checkCompile()
+    compileFilesInDir("tests/init-global/neg", options, FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyBlacklisted)).checkExpectedErrors()
+    compileFilesInDir("tests/init-global/pos", options, FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyBlacklisted)).checkCompile()
   }
 
   // initialization tests
