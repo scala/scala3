@@ -145,7 +145,10 @@ jobs:
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
       - name: Test with Scala 2 library TASTy (fast)
-        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
+
+      - name: Test with Scala 2 library with CC TASTy (fast)
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala2-library-tasty/compile" # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
 
   test_scala2_library_tasty:
     runs-on: [self-hosted, Linux]
@@ -186,7 +189,11 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test with Scala 2 library TASTy
-        run: ./project/scripts/sbt ";set ThisBuild/Build.useScala2LibraryTasty := true ;scala3-bootstrapped/test"
+        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/test"
+
+      # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
+      # - name: Test with Scala 2 library with CC TASTy
+      #   run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryCCTasty ;scala3-bootstrapped/test"
 
 
   test_windows_fast:
