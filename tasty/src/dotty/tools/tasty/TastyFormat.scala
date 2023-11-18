@@ -485,6 +485,7 @@ object TastyFormat {
   final val INVISIBLE = 44
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
+  final val TRACKED = 47
 
   // Cat. 2:    tag Nat
 
@@ -662,7 +663,8 @@ object TastyFormat {
        | INVISIBLE
        | ANNOTATION
        | PRIVATEqualified
-       | PROTECTEDqualified => true
+       | PROTECTEDqualified
+       | TRACKED => true
     case _ => false
   }
 

@@ -15,7 +15,12 @@ object NamerOps:
    */
   def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
     paramss match
-      case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
+      case TypeSymbols(tparams) :: _ =>
+        var resType = ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
+        for params <- paramss; param <- params do
+          if param.is(Tracked) then
+            resType = RefinedType(resType, param.name, param.termRef)
+        resType
       case _ => ctor.owner.typeRef
 
   /** If isConstructor, make sure it has at least one non-implicit parameter list

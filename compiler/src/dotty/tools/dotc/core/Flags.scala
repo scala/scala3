@@ -242,7 +242,7 @@ object Flags {
   val (AccessorOrSealed @ _, Accessor @ _, Sealed @ _) = newFlags(11, "<accessor>", "sealed")
 
   /** A mutable var, an open class */
-  val (MutableOrOpen @ __, Mutable @ _, Open @ _) = newFlags(12, "mutable", "open")
+  val (MutableOrOpen @ _, Mutable @ _, Open @ _) = newFlags(12, "mutable", "open")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -377,6 +377,8 @@ object Flags {
   /** Symbol cannot be found as a member during typer */
   val (Invisible @ _, _, _) = newFlags(45, "<invisible>")
 
+  val (Tracked @ _, _, _) = newFlags(46, "tracked")
+
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
@@ -452,7 +454,7 @@ object Flags {
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
 
   val TermSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Tracked
 
   /** Flags representing modifiers that can appear in trees */
   val ModifierFlags: FlagSet =

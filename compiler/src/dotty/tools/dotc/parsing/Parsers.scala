@@ -3100,6 +3100,7 @@ object Parsers {
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
           case nme.infix => Mod.Infix()
+          case nme.tracked => Mod.Tracked()
         }
     }
 
@@ -3166,6 +3167,7 @@ object Parsers {
      *                  |  AccessModifier
      *                  |  override
      *                  |  opaque
+     *                  |  tracked
      *  LocalModifier  ::= abstract | final | sealed | open | implicit | lazy | erased | inline | transparent
      */
     def modifiers(allowed: BitSet = modifierTokens, start: Modifiers = Modifiers()): Modifiers = {
@@ -3427,7 +3429,8 @@ object Parsers {
                   val isParams =
                     !impliedMods.is(Given)
                     || startParamTokens.contains(in.token)
-                    || isIdent && (in.name == nme.inline || in.lookahead.isColon)
+                    || isIdent
+                        && (in.name == nme.inline || in.name == nme.tracked || in.lookahead.isColon)
                   (mods, isParams)
               (if isParams then commaSeparated(() => param())
               else contextTypes(paramOwner, numLeadParams, impliedMods)) match {
@@ -4005,7 +4008,9 @@ object Parsers {
         paramss.nestedMap: param =>
           if !param.mods.isAllOf(PrivateLocal) then
             syntaxError(em"method parameter ${param.name} may not be `a val`", param.span)
-          param.withMods(param.mods &~ (AccessFlags | ParamAccessor | Mutable) | Param)
+          if param.mods.is(Tracked) then
+            syntaxError(em"method parameter ${param.name} may not be `tracked`", param.span)
+          param.withMods(param.mods &~ (AccessFlags | ParamAccessor | Tracked | Mutable) | Param)
         .asInstanceOf[List[ParamClause]]
 
       val gdef =

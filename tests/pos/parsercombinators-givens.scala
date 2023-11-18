@@ -24,9 +24,9 @@ given apply[C, E]: Combinator[Apply[C, E]] with {
   }
 }
 
-given combine[A, B, C](using
-    f: Combinator[A] { type Context = C },
-    s: Combinator[B] { type Context = C }
+given combine[A, B](using
+    tracked val f: Combinator[A],
+    tracked val s: Combinator[B] { type Context = f.Context }
 ): Combinator[Combine[A, B]] with {
   type Context = f.Context
   type Element = (f.Element, s.Element)
@@ -46,6 +46,7 @@ extension [A] (buf: mutable.ListBuffer[A]) def popFirst() =
   val n = Apply[mutable.ListBuffer[Int], Int](s => s.popFirst())
   val m = Combine(n, n)
 
-  // val r = m.parse(stream) // error: type mismatch, found `mutable.ListBuffer[Int]`, required `?1.Context`
+  val r = m.parse(stream) // error: type mismatch, found `mutable.ListBuffer[Int]`, required `?1.Context`
+  val rc: Option[(Int, Int)] = r
   // it would be great if this worked
 }
