@@ -118,3 +118,5 @@ i7445b.scala
 # more aggresive reduce projection makes a difference
 i15525.scala
 
+# alias types at different levels of dereferencing
+parsercombinators-givens.scala
