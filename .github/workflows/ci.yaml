@@ -18,6 +18,7 @@ on:
       - '*'
     branches-ignore:
       - 'gh-readonly-queue/**'
+      - 'release-**'
   pull_request:
   merge_group:
   schedule:
