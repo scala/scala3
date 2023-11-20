@@ -188,6 +188,12 @@ object language {
 
     import languageFeature.experimental._
 
+    /** Experimental support for capture checking; implies support for pureFunctions
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/cc]]
+     */
+    implicit lazy val captureChecking: existentials = languageFeature.existentials
+
     /** Only where this feature is enabled, are macro definitions allowed.
      *  If `macros` is not enabled, macro definitions are rejected by the compiler.
      *
