@@ -3,8 +3,7 @@ enum Enum:
   case Case2(x: Int)
 
 class Outer:
-  val e = new Enum2 // error
-  def g(b: e.B): Int = b.foo()
+  val e = new Enum2
 
   class Enum2:
     class nested:
@@ -15,7 +14,8 @@ class Outer:
     def f(e: Enum): Enum = e
 
     class B() { def foo() = n + 1 }
-    g(new e.B())
+    def g(b: B): Int = b.foo()
+    g(new B()) // error
     val n: Int = 10
 
 @main def main(): Unit = {
