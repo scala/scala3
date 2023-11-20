@@ -1,6 +1,7 @@
 ---
 layout: doc-page
 title: How to Inspect Values
+redirectFrom: /docs/contributing/issues/inspection.html
 ---
 
 In this section, you will find out how to debug the contents of certain objects
@@ -11,7 +12,10 @@ while the compiler is running, and inspect produced artifacts of the compiler.
 Frequently you will need to inspect the content of a particular variable.
 You can either use `println`s or the debugger, more info on how to setup the latter.
 
-In the remeainder of this article we'll use `println(<someUsefulExpression>)` inserted in the code, but the same effect can be accomplished by stopping at a breakpoint, and typing `<someUsefulExpression>` in the [debug console](./debugging.md#the-debug-console) of the debugger.
+In the remainder of this article we'll use `println(<someUsefulExpression>)`
+inserted in the code, but the same effect can be accomplished by stopping at a
+breakpoint, and typing `<someUsefulExpression>` in the [debug
+console](./ide-debugging.md#the-debug-console) of the debugger.
 
 When printing a variable, it's always a good idea to call `show` on that variable: `println(x.show)`.
 Many objects of the compiler define `show`, returning a human-readable string.
@@ -102,6 +106,7 @@ If you are curious about the representation of a type, say `[T] =>> List[T]`,
 you can use a helper program [dotty.tools.printTypes][DottyTypeStealer],
 it prints the internal representation of types, along with their class. It can be
 invoked from the sbt shell with three arguments as follows:
+
 ```bash
 sbt:scala3> scala3-compiler/Test/runMain
   dotty.tools.printTypes
