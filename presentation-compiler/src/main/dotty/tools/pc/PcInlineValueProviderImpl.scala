@@ -27,8 +27,6 @@ final class PcInlineValueProviderImpl(
 ) extends PcCollector[Option[Occurence]](driver, params)
     with InlineValueProvider:
 
-  val text = params.text().nn.toCharArray().nn
-
   val position: l.Position = pos.toLsp.getStart().nn
 
   override def collect(parent: Option[Tree])(
@@ -38,7 +36,7 @@ final class PcInlineValueProviderImpl(
   ): Option[Occurence] =
     tree match
       case tree: Tree =>
-        val (adjustedPos, _) = adjust(pos)
+        val (adjustedPos, _) = pos.adjust(text)
         Some(Occurence(tree, parent, adjustedPos))
       case _ => None
 
