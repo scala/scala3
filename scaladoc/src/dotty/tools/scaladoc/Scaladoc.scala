@@ -202,7 +202,7 @@ object Scaladoc:
         classpath.get,
         bootclasspath.get,
         destFile,
-        siteRoot.nonDefault,
+        Option(siteRoot.withDefault(siteRoot.default)),
         projectVersion.nonDefault,
         projectLogo.nonDefault,
         projectFooter.nonDefault,
