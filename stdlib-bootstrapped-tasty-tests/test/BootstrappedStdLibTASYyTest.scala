@@ -58,7 +58,7 @@ class BootstrappedStdLibTASYyTest:
     val size = loadBlacklisted.size
     for (notBlacklisted, i) <- loadBlacklist.zipWithIndex do
       val blacklist = loadBlacklisted - notBlacklisted
-      println(s"Trying withouth $notBlacklisted in the blacklist  (${i+1}/$size)")
+      println(s"Trying without $notBlacklisted in the blacklist  (${i+1}/$size)")
       try {
         loadWithTastyInspector(blacklist)
         shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
@@ -76,7 +76,7 @@ class BootstrappedStdLibTASYyTest:
     val blacklist0 = loadBlacklisted.union(compileBlacklisted)
     for (notBlacklisted, i) <- compileBlacklist.zipWithIndex do
       val blacklist = blacklist0 - notBlacklisted
-      println(s"Trying withouth $notBlacklisted in the blacklist (${i+1}/$size)")
+      println(s"Trying without $notBlacklisted in the blacklist (${i+1}/$size)")
       try {
         compileFromTastyInJar(blacklist)
         shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
