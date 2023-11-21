@@ -1409,7 +1409,7 @@ class Definitions {
           ),
           privateWithin = patch.privateWithin,
           coord = denot.symbol.coord,
-          assocFile = denot.symbol.associatedFile
+          compUnitInfo = denot.symbol.compilationUnitInfo
         )
 
       def makeNonClassSymbol(patch: Symbol) =
