@@ -199,10 +199,10 @@ trait QuotesAndSplices {
    *  )
    *  ```
    */
-  private def splitQuotePattern(quoted: Tree)(using Context): (Map[Symbol, Bind], Tree, List[Tree]) = {
+  private def splitQuotePattern(quoted: Tree)(using Context): (collection.Map[Symbol, Bind], Tree, List[Tree]) = {
     val ctx0 = ctx
 
-    val typeBindings: collection.mutable.Map[Symbol, Bind] = collection.mutable.Map.empty
+    val typeBindings: mutable.Map[Symbol, Bind] = mutable.LinkedHashMap.empty
     def getBinding(sym: Symbol): Bind =
       typeBindings.getOrElseUpdate(sym, {
         val bindingBounds = sym.info
@@ -296,13 +296,19 @@ trait QuotesAndSplices {
       }
     }
     val shape0 = splitter.transform(quoted)
-    val patterns = (splitter.freshTypePatBuf.iterator ++ splitter.typePatBuf.iterator ++ splitter.patBuf.iterator).toList
+    val patterns = (splitter.typePatBuf.iterator ++ splitter.freshTypePatBuf.iterator ++ splitter.patBuf.iterator).toList
     val freshTypeBindings = splitter.freshTypeBindingsBuff.result()
 
-    val shape1 = seq(
-      freshTypeBindings,
-      shape0
-    )
+    val shape1 = shape0 match
+      case Block(stats @ ((tdef: TypeDef) :: rest), expr) if tdef.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot) =>
+        val (bindings, otherStats) = stats.span {
+          case tdef: TypeDef => tdef.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
+          case _ => true
+        }
+        cpy.Block(shape0)(bindings ::: freshTypeBindings ::: otherStats, expr)
+      case _ =>
+        seq(freshTypeBindings, shape0)
+
     val shape2 =
       if (freshTypeBindings.isEmpty) shape1
       else {
@@ -319,7 +325,7 @@ trait QuotesAndSplices {
         new TreeTypeMap(typeMap = typeMap).transform(shape1)
       }
 
-    (typeBindings.toMap, shape2, patterns)
+    (typeBindings, shape2, patterns)
   }
 
   /** Type a quote pattern `case '{ <quoted> } =>` qiven the a current prototype. Typing the pattern
