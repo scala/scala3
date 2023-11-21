@@ -92,7 +92,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     nameString(if (ctx.property(XprintMode).isEmpty) sym.initial.name else sym.name)
 
   override def fullNameString(sym: Symbol): String =
-    if !sym.exists || isEmptyPrefix(sym.effectiveOwner) then nameString(sym)
+    if !sym.exists
+      || isEmptyPrefix(sym.effectiveOwner)
+      || !homogenizedView && !sym.is(Package) && isOmittablePrefix(sym.effectiveOwner)
+    then nameString(sym)
     else super.fullNameString(sym)
 
   override protected def fullNameOwner(sym: Symbol): Symbol = {
@@ -105,6 +108,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ThisType if !printDebug =>
         if (tp.cls.isAnonymousClass) keywordStr("this")
         if (tp.cls.is(ModuleClass)) fullNameString(tp.cls.sourceModule)
+        else super.toTextRef(tp)
+      case tp: TermRef if !printDebug =>
+        if tp.symbol.is(Package) then fullNameString(tp.symbol)
         else super.toTextRef(tp)
       case _ =>
         super.toTextRef(tp)

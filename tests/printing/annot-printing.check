@@ -1,11 +1,11 @@
 [[syntax trees at end of                     typer]] // tests/printing/annot-printing.scala
 package <empty> {
   import scala.annotation.*
-  class Foo() extends annotation.Annotation() {}
-  class Bar(s: String) extends annotation.Annotation() {
+  class Foo() extends scala.annotation.Annotation() {}
+  class Bar(s: String) extends scala.annotation.Annotation() {
     private[this] val s: String
   }
-  class Xyz(i: Int) extends annotation.Annotation() {
+  class Xyz(i: Int) extends scala.annotation.Annotation() {
     private[this] val i: Int
   }
   final lazy module val Xyz: Xyz = new Xyz()

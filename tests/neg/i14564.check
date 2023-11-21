@@ -11,7 +11,7 @@
   |
   |                  One of the following imports might make progress towards fixing the problem:
   |
-  |                    import math.Fractional.Implicits.infixFractionalOps
-  |                    import math.Integral.Implicits.infixIntegralOps
-  |                    import math.Numeric.Implicits.infixNumericOps
+  |                    import scala.math.Fractional.Implicits.infixFractionalOps
+  |                    import scala.math.Integral.Implicits.infixIntegralOps
+  |                    import scala.math.Numeric.Implicits.infixNumericOps
   |
