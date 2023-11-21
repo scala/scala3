@@ -1,21 +1,33 @@
 package dotty.tools.dotc.core
 
 import dotty.tools.io.AbstractFile
+import dotty.tools.tasty.TastyVersion
 
 /** Information about the compilation unit of a class symbol.
   *
   * @param associatedFile The source or class file from which this class or
   *                       the class containing this symbol was generated,
   *                       null if not applicable.
+  * @param tastyVersion   The TASTy version (major, minor, experimental)
   */
 class CompilationUnitInfo(
   val associatedFile: AbstractFile,
+  private var tastyVersionOpt: Option[TastyVersion],
 ) {
+
+  def tastyVersion: Option[TastyVersion] = tastyVersionOpt
+
+  /** Sets the TASTy version. Used to initialize the TASTy version when
+   *  Loading a TASTy file in TastyLoader.
+   */
+  def initTastyVersion(version: TastyVersion): Unit =
+    tastyVersionOpt = Some(version)
+
   override def toString(): String =
-    s"CompilationUnitInfo($associatedFile)"
+    s"CompilationUnitInfo($associatedFile, $tastyVersion)"
 }
 
 object CompilationUnitInfo:
   def apply(assocFile: AbstractFile | Null): CompilationUnitInfo | Null =
     if assocFile == null then null
-    else new CompilationUnitInfo(assocFile)
+    else new CompilationUnitInfo(assocFile, tastyVersionOpt = None) // TODO use current TASTy version

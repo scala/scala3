@@ -418,7 +418,12 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
 
-  def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(tastyFile)
+  private val compUnitInfo = new CompilationUnitInfo(
+    tastyFile,
+    tastyVersionOpt = None // set on doComplete
+  )
+
+  def compilationUnitInfo: CompilationUnitInfo | Null = compUnitInfo
 
   def description(using Context): String = "TASTy file " + tastyFile.toString
 
@@ -427,6 +432,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val (classRoot, moduleRoot) = rootDenots(root.asClass)
       val tastyBytes = tastyFile.toByteArray
       val unpickler = new tasty.DottyUnpickler(tastyBytes)
+      compUnitInfo.initTastyVersion(unpickler.tastyVersion)
       unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
       if mayLoadTreesFromTasty then
         classRoot.classSymbol.rootTreeOrProvider = unpickler
