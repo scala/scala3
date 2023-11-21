@@ -53,6 +53,7 @@ object Parsers {
   enum ParamOwner:
     case Class           // class or trait or enum
     case CaseClass       // case class or enum case
+    case ImplicitClass   // implicit class
     case Type            // type alias or abstract type
     case TypeParam       // type parameter
     case Def             // method
@@ -60,8 +61,9 @@ object Parsers {
     case ExtensionPrefix // extension clause, up to and including extension parameter
     case ExtensionFollow // extension clause, following extension parameter
 
-    def isClass = // owner is a class
-      this == Class || this == CaseClass || this == Given
+    def isClass = this match // owner is a class
+      case Class | CaseClass | ImplicitClass | Given => true
+      case _ => false
     def takesOnlyUsingClauses = // only using clauses allowed for this owner
       this == Given || this == ExtensionFollow
     def acceptsVariance =
@@ -3361,6 +3363,8 @@ object Parsers {
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             if in.token == VAL then
+              if !mods.is(Private) && paramOwner != ParamOwner.ImplicitClass then
+                mods |= Tracked
               in.nextToken()
               mods
             else if in.token == VAR then
@@ -3898,7 +3902,10 @@ object Parsers {
     }
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
-      val constr = classConstr(if mods.is(Case) then ParamOwner.CaseClass else ParamOwner.Class)
+      val constr = classConstr(
+        if mods.is(Case) then ParamOwner.CaseClass
+        else if mods.is(Implicit) then ParamOwner.ImplicitClass
+        else ParamOwner.Class)
       val templ = templateOpt(constr)
       finalizeDef(TypeDef(name, templ), mods, start)
 
