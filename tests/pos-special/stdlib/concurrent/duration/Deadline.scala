@@ -12,6 +12,8 @@
 
 package scala.concurrent.duration
 
+import language.experimental.captureChecking
+
 /**
  * This class stores a deadline, as obtained via `Deadline.now` or the
  * duration DSL:

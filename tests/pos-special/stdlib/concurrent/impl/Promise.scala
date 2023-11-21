@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.Objects.requireNonNull
 import java.io.{IOException, NotSerializableException, ObjectInputStream, ObjectOutputStream}
 
+import language.experimental.captureChecking
+
 /**
   * Latch used to implement waiting on a DefaultPromise's result.
   *
@@ -30,7 +32,7 @@ import java.io.{IOException, NotSerializableException, ObjectInputStream, Object
   * Expert Group and released to the public domain, as explained at
   * https://creativecommons.org/publicdomain/zero/1.0/
   */
-private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer with (Try[T] => Unit) {
+private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer with (Try[T] -> Unit) {
   //@volatie not needed since we use acquire/release
   /*@volatile*/ private[this] var _result: Try[T] = null
   final def result: Try[T] = _result
@@ -58,11 +60,11 @@ private[concurrent] object Promise {
    * If when compressing a chain of Links it is discovered that the root has been completed,
    * the `owner`'s value is completed with that value, and the Link chain is discarded.
    **/
-  private[concurrent] final class Link[T](to: DefaultPromise[T]) extends AtomicReference[DefaultPromise[T]](to) {
+  private[concurrent] final class Link[T](to: DefaultPromise[T]^) extends AtomicReference[DefaultPromise[T]^{to}](to) {
     /**
      * Compresses this chain and returns the currently known root of this chain of Links.
      **/
-    final def promise(owner: DefaultPromise[T]): DefaultPromise[T] = {
+    final def promise(owner: DefaultPromise[T]^): DefaultPromise[T]^ = {
       val c = get()
       compressed(current = c, target = c, owner = owner)
     }
@@ -70,7 +72,7 @@ private[concurrent] object Promise {
     /**
      * The combination of traversing and possibly unlinking of a given `target` DefaultPromise.
      **/
-    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T], target: DefaultPromise[T], owner: DefaultPromise[T]): DefaultPromise[T] = {
+    @inline @tailrec private[this] final def compressed(current: DefaultPromise[T]^, target: DefaultPromise[T]^, owner: DefaultPromise[T]^): DefaultPromise[T]^ = {
       val value = target.get()
       if (value.isInstanceOf[Callbacks[_]]) {
         if (compareAndSet(current, target)) target // Link
@@ -101,7 +103,7 @@ private[concurrent] object Promise {
     }
 
   // Left non-final to enable addition of extra fields by Java/Scala converters in scala-java8-compat.
-  class DefaultPromise[T] private[this] (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
+  class DefaultPromise[T] private[this] (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] -> Unit) { this: DefaultPromise[T]^ =>
     /**
      * Constructs a new, completed, Promise.
      */
@@ -122,15 +124,15 @@ private[concurrent] object Promise {
     /**
      * Returns the associated `Future` with this `Promise`
      */
-    override final def future: Future[T] = this
+    override final def future: Future[T]^{this} = this
 
-    override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
+    override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S]^{this, f} =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transform, f, executor))
 
-    override final def transformWith[S](f: Try[T] => Future[S])(implicit executor: ExecutionContext): Future[S] =
+    override final def transformWith[S](f: Try[T] => Future[S]^)(implicit executor: ExecutionContext): Future[S]^{this, f} =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transformWith, f, executor))
 
-    override final def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
+    override final def zipWith[U, R](that: Future[U]^)(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R]^{this, that, f} = {
       val state = get()
       if (state.isInstanceOf[Try[_]]) {
         if (state.asInstanceOf[Try[T]].isFailure) this.asInstanceOf[Future[R]]
@@ -171,43 +173,43 @@ private[concurrent] object Promise {
       if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, Unit](Xform_foreach, f, executor))
     }
 
-    override final def flatMap[S](f: T => Future[S])(implicit executor: ExecutionContext): Future[S] = {
+    override final def flatMap[S](f: T => Future[S]^)(implicit executor: ExecutionContext): Future[S]^{this, f} = {
       val state = get()
       if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_flatMap, f, executor))
       else this.asInstanceOf[Future[S]]
     }
 
-    override final def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S] = {
+    override final def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S]^{this, f} = {
       val state = get()
       if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_map, f, executor))
       else this.asInstanceOf[Future[S]]
     }
 
-    override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = {
+    override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T]^{this, p} = {
       val state = get()
       if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, T](Xform_filter, p, executor)) // Short-circuit if we get a Success
       else this
     }
 
-    override final def collect[S](pf: PartialFunction[T, S])(implicit executor: ExecutionContext): Future[S] = {
+    override final def collect[S](pf: PartialFunction[T, S]^)(implicit executor: ExecutionContext): Future[S]^{this, pf} = {
       val state = get()
       if (!state.isInstanceOf[Failure[_]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_collect, pf, executor)) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
     }
 
-    override final def recoverWith[U >: T](pf: PartialFunction[Throwable, Future[U]])(implicit executor: ExecutionContext): Future[U] = {
+    override final def recoverWith[U >: T](pf: PartialFunction[Throwable, Future[U]^]^)(implicit executor: ExecutionContext): Future[U]^{this, pf} = {
       val state = get()
       if (!state.isInstanceOf[Success[_]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recoverWith, pf, executor)) // Short-circuit if we get a Failure
       else this.asInstanceOf[Future[U]]
     }
 
-    override final def recover[U >: T](pf: PartialFunction[Throwable, U])(implicit executor: ExecutionContext): Future[U] = {
+    override final def recover[U >: T](pf: PartialFunction[Throwable, U]^)(implicit executor: ExecutionContext): Future[U]^{this, pf} = {
       val state = get()
       if (!state.isInstanceOf[Success[_]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recover, pf, executor)) // Short-circuit if we get a Failure
       else this.asInstanceOf[Future[U]]
     }
 
-    override final def mapTo[S](implicit tag: scala.reflect.ClassTag[S]): Future[S] =
+    override final def mapTo[S](implicit tag: scala.reflect.ClassTag[S]): Future[S]^{this} =
       if (!get().isInstanceOf[Failure[_]]) super[Future].mapTo[S](tag) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
 
@@ -290,7 +292,7 @@ private[concurrent] object Promise {
         (p ne this) && p.tryComplete0(p.get(), resolved) // Use this to get tailcall optimization and avoid re-resolution
       } else /* if(state.isInstanceOf[Try[T]]) */ false
 
-    override final def completeWith(other: Future[T]): this.type = {
+    override final def completeWith(other: Future[T]^): this.type = {
       if (other ne this) {
         val state = get()
         if (!state.isInstanceOf[Try[_]]) {
@@ -340,7 +342,7 @@ private[concurrent] object Promise {
 
     /** Link this promise to the root of another promise.
      */
-    @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T], link: Link[T]): Unit =
+    @tailrec private[concurrent] final def linkRootOf(target: DefaultPromise[T]^, link: Link[T]^): Unit =
       if (this ne target) {
         val state = get()
         if (state.isInstanceOf[Try[_]]) {

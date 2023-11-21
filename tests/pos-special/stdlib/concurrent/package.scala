@@ -15,6 +15,8 @@ package scala
 import scala.concurrent.duration.Duration
 import scala.annotation.implicitNotFound
 
+import language.experimental.captureChecking
+
 /** This package object contains primitives for concurrent and parallel programming.
  *
  * == Guide ==
@@ -169,7 +171,7 @@ package concurrent {
      */
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
-    final def ready[T](awaitable: Awaitable[T], atMost: Duration): awaitable.type = awaitable match {
+    final def ready[T](awaitable: Awaitable[T]^, atMost: Duration): awaitable.type = awaitable match {
       case f: Future[T] if f.isCompleted => awaitable.ready(atMost)(AwaitPermission)
       case _ => blocking(awaitable.ready(atMost)(AwaitPermission))
     }
@@ -196,7 +198,7 @@ package concurrent {
      */
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
-    final def result[T](awaitable: Awaitable[T], atMost: Duration): T = awaitable match {
+    final def result[T](awaitable: Awaitable[T]^, atMost: Duration): T = awaitable match {
       case f: Future[T] if f.isCompleted => f.result(atMost)(AwaitPermission)
       case _ => blocking(awaitable.result(atMost)(AwaitPermission))
     }

@@ -14,11 +14,13 @@ package scala.concurrent
 
 import scala.util.{ Try, Success, Failure }
 
+import language.experimental.captureChecking
+
 /** Promise is an object which can be completed with a value or failed
  *  with an exception.
  *
- *  A promise should always eventually be completed, whether for success or failure, 
- *  in order to avoid unintended resource retention for any associated Futures' 
+ *  A promise should always eventually be completed, whether for success or failure,
+ *  in order to avoid unintended resource retention for any associated Futures'
  *  callbacks or transformations.
  *
  *  @define promiseCompletion
@@ -33,10 +35,10 @@ import scala.util.{ Try, Success, Failure }
  *  @define nonDeterministic
  *  Note: Using this method may result in non-deterministic concurrent programs.
  */
-trait Promise[T] {
+trait Promise[T] { this: Promise[T]^ =>
   /** Future containing the value of this promise.
    */
-  def future: Future[T]
+  def future: Future[T]^
 
   /** Returns whether the promise has already been completed with
    *  a value or an exception.
@@ -68,7 +70,7 @@ trait Promise[T] {
    *
    *  @return   This promise
    */
-   def completeWith(other: Future[T]): this.type = {
+   def completeWith(other: Future[T]^): this.type = {
     if (other ne this.future) // this tryCompleteWith this doesn't make much sense
       other.onComplete(this tryComplete _)(ExecutionContext.parasitic)
 

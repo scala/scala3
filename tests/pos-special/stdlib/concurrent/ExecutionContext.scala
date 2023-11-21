@@ -16,6 +16,8 @@ package scala.concurrent
 import java.util.concurrent.{ ExecutorService, Executor }
 import scala.annotation.implicitNotFound
 
+import language.experimental.captureChecking
+
 /**
  * An `ExecutionContext` can execute program logic asynchronously,
  * typically but not necessarily on a thread pool.
@@ -39,7 +41,7 @@ import scala.annotation.implicitNotFound
  * `scala.concurrent.ExecutionContext.Implicits.global`.
  * The recommended approach is to add `(implicit ec: ExecutionContext)` to methods,
  * or class constructor parameters, which need an `ExecutionContext`.
- * 
+ *
  * Then locally import a specific `ExecutionContext` in one place for the entire
  * application or module, passing it implicitly to individual methods.
  * Alternatively define a local implicit val with the required `ExecutionContext`.
@@ -69,13 +71,13 @@ consider using Scala's global ExecutionContext by defining
 the following:
 
 implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global""")
-trait ExecutionContext {
+trait ExecutionContext { this: ExecutionContext^ =>
 
   /** Runs a block of code on this execution context.
    *
    *  @param runnable  the task to execute
    */
-  def execute(runnable: Runnable): Unit
+  def execute(runnable: Runnable^): Unit
 
   /** Reports that an asynchronous computation failed.
    *
@@ -101,7 +103,7 @@ trait ExecutionContext {
      */
   @deprecated("preparation of ExecutionContexts will be removed", "2.12.0")
   // This cannot be removed until there is a suitable replacement
-  def prepare(): ExecutionContext = this
+  def prepare(): ExecutionContext^{this} = this
 }
 
 /**
@@ -212,15 +214,15 @@ object ExecutionContext {
    *
    * Do *not* call any blocking code in the `Runnable`s submitted to this `ExecutionContext`
    * as it will prevent progress by other enqueued `Runnable`s and the calling `Thread`.
-   * 
+   *
    * Symptoms of misuse of this `ExecutionContext` include, but are not limited to, deadlocks
    * and severe performance problems.
    *
    * Any `NonFatal` or `InterruptedException`s will be reported to the `defaultReporter`.
    */
   object parasitic extends ExecutionContextExecutor with BatchingExecutor {
-    override final def submitForExecution(runnable: Runnable): Unit = runnable.run()
-    override final def execute(runnable: Runnable): Unit = submitSyncBatched(runnable)
+    override final def submitForExecution(runnable: Runnable^): Unit = runnable.run()
+    override final def execute(runnable: Runnable^): Unit = submitSyncBatched(runnable)
     override final def reportFailure(t: Throwable): Unit = defaultReporter(t)
   }
 
@@ -228,9 +230,9 @@ object ExecutionContext {
    * See [[ExecutionContext.global]].
    */
   private[scala] lazy val opportunistic: ExecutionContextExecutor = new ExecutionContextExecutor with BatchingExecutor {
-    final override def submitForExecution(runnable: Runnable): Unit = global.execute(runnable)
+    final override def submitForExecution(runnable: Runnable^): Unit = global.execute(runnable)
 
-    final override def execute(runnable: Runnable): Unit =
+    final override def execute(runnable: Runnable^): Unit =
       if ((!runnable.isInstanceOf[impl.Promise.Transformation[_,_]] || runnable.asInstanceOf[impl.Promise.Transformation[_,_]].benefitsFromBatching) && runnable.isInstanceOf[Batchable])
         submitAsyncBatched(runnable)
       else
@@ -253,7 +255,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService, reporter: Throwable => Unit): ExecutionContextExecutorService =
+  def fromExecutorService(e: ExecutorService, reporter: Throwable => Unit): ExecutionContextExecutorService^{reporter} =
     impl.ExecutionContextImpl.fromExecutorService(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `ExecutorService` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -269,7 +271,7 @@ object ExecutionContext {
    *  @param e the `ExecutorService` to use. If `null`, a new `ExecutorService` is created with [[scala.concurrent.ExecutionContext$.global default configuration]].
    *  @return  the `ExecutionContext` using the given `ExecutorService`
    */
-  def fromExecutorService(e: ExecutorService): ExecutionContextExecutorService = fromExecutorService(e, defaultReporter)
+  def fromExecutorService(e: ExecutorService): ExecutionContextExecutorService^ = fromExecutorService(e, defaultReporter)
 
   /** Creates an `ExecutionContext` from the given `Executor`.
    *
@@ -277,7 +279,7 @@ object ExecutionContext {
    *  @param reporter  a function for error reporting
    *  @return          the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor, reporter: Throwable => Unit): ExecutionContextExecutor =
+  def fromExecutor(e: Executor, reporter: Throwable => Unit): ExecutionContextExecutor^{reporter} =
     impl.ExecutionContextImpl.fromExecutor(e, reporter)
 
   /** Creates an `ExecutionContext` from the given `Executor` with the [[scala.concurrent.ExecutionContext$.defaultReporter default reporter]].
@@ -285,7 +287,7 @@ object ExecutionContext {
    *  @param e the `Executor` to use. If `null`, a new `Executor` is created with [[scala.concurrent.ExecutionContext$.global default configuration]].
    *  @return  the `ExecutionContext` using the given `Executor`
    */
-  def fromExecutor(e: Executor): ExecutionContextExecutor = fromExecutor(e, defaultReporter)
+  def fromExecutor(e: Executor): ExecutionContextExecutor^ = fromExecutor(e, defaultReporter)
 
   /** The default reporter simply prints the stack trace of the `Throwable` to [[java.lang.System#err System.err]].
    *
