@@ -2704,6 +2704,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           ensureAccessible(constr.termRef, superAccess = true, tree.srcPos)
       else
         checkParentCall(result, cls)
+      if !cls.isRefinementClass then
+        checkOnlyDependentRefinements(cls, parent)
       if cls is Case then
         checkCaseInheritance(psym, cls, tree.srcPos)
       result

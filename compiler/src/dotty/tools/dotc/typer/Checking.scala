@@ -1197,6 +1197,20 @@ trait Checking {
       }
     }
 
+  /** Check that all refinements in class parent come from tracked parameters */
+  def checkOnlyDependentRefinements(cls: ClassSymbol, parent: Tree)(using Context): Unit =
+    def recur(ptype: Type): Unit = ptype.dealias match
+      case rt @ RefinedType(ptype1, rname, rinfo) =>
+        val ok = rname.isTermName && cls.info.member(rname).hasAltWith(_.symbol.is(Tracked))
+        if !ok then
+          report.error(
+              em"""Illegal refinement { ${ctx.printer.toTextRefinement(rt).show} } in parent type of $cls;
+                  |only val refinements of tracked parameters are allowed.""",
+              parent.srcPos)
+        recur(ptype1)
+      case _ =>
+    recur(parent.tpe)
+
   /** Check that `tpt` does not define a higher-kinded type */
   def checkSimpleKinded(tpt: Tree)(using Context): Tree =
     if (!tpt.tpe.hasSimpleKind && !ctx.isJava)
@@ -1592,6 +1606,7 @@ trait ReChecking extends Checking {
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
+  override def checkOnlyDependentRefinements(cls: ClassSymbol, parent: Tree)(using Context): Unit = ()
   override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
 }
 

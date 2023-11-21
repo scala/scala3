@@ -1,0 +1,18 @@
+-- Error: tests/neg/i0248-inherit-refined.scala:4:18 -------------------------------------------------------------------
+4 |  class B extends X                                   // error
+  |                  ^
+  |                  Illegal refinement { type T = Int } in parent type of class B;
+  |                  only val refinements of tracked parameters are allowed.
+-- [E170] Type Error: tests/neg/i0248-inherit-refined.scala:6:18 -------------------------------------------------------
+6 |  class C extends Y                                   // error
+  |                  ^
+  |                  test.A & test.B is not a class type
+-- [E170] Type Error: tests/neg/i0248-inherit-refined.scala:8:18 -------------------------------------------------------
+8 |  class D extends Z                                   // error
+  |                  ^
+  |                  test.A | test.B is not a class type
+-- Error: tests/neg/i0248-inherit-refined.scala:9:28 -------------------------------------------------------------------
+9 |  abstract class E extends ({ val x: Int })           // error
+  |                            ^^^^^^^^^^^^^^
+  |                            Illegal refinement { val x: Int } in parent type of class E;
+  |                            only val refinements of tracked parameters are allowed.
