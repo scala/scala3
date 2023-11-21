@@ -12,16 +12,8 @@ import dotty.tools.tasty.TastyVersion
   */
 class CompilationUnitInfo(
   val associatedFile: AbstractFile,
-  private var tastyVersionOpt: Option[TastyVersion],
+  val tastyVersion: Option[TastyVersion],
 ) {
-
-  def tastyVersion: Option[TastyVersion] = tastyVersionOpt
-
-  /** Sets the TASTy version. Used to initialize the TASTy version when
-   *  Loading a TASTy file in TastyLoader.
-   */
-  def initTastyVersion(version: TastyVersion): Unit =
-    tastyVersionOpt = Some(version)
 
   override def toString(): String =
     s"CompilationUnitInfo($associatedFile, $tastyVersion)"
@@ -30,4 +22,4 @@ class CompilationUnitInfo(
 object CompilationUnitInfo:
   def apply(assocFile: AbstractFile | Null): CompilationUnitInfo | Null =
     if assocFile == null then null
-    else new CompilationUnitInfo(assocFile, tastyVersionOpt = None) // TODO use current TASTy version
+    else new CompilationUnitInfo(assocFile, tastyVersion = None) // TODO use current TASTy version
