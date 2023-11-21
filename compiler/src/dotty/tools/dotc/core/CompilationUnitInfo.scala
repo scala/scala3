@@ -9,10 +9,12 @@ import dotty.tools.tasty.TastyVersion
   *                       the class containing this symbol was generated,
   *                       null if not applicable.
   * @param tastyVersion   The TASTy version (major, minor, experimental)
+  * @param tastyExplicitNulls  Was this compilation unit compiled with explicit nulls?
   */
 class CompilationUnitInfo(
   val associatedFile: AbstractFile,
   val tastyVersion: Option[TastyVersion],
+  val tastyExplicitNulls: Boolean
 ) {
 
   override def toString(): String =
@@ -22,4 +24,8 @@ class CompilationUnitInfo(
 object CompilationUnitInfo:
   def apply(assocFile: AbstractFile | Null): CompilationUnitInfo | Null =
     if assocFile == null then null
-    else new CompilationUnitInfo(assocFile, tastyVersion = None) // TODO use current TASTy version
+    else new CompilationUnitInfo(
+      assocFile,
+      tastyVersion = None,
+      tastyExplicitNulls = false // TODO track explicit nulls for current compilation units (not only TASTy)
+    )
