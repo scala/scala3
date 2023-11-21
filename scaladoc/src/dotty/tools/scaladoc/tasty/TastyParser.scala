@@ -5,7 +5,7 @@ package tasty
 import java.util.regex.Pattern
 
 import scala.util.{Try, Success, Failure}
-import scala.tasty.inspector.DocTastyInspector
+import scala.tasty.inspector.{TastyInspector, Inspector, Tasty}
 import scala.quoted._
 
 import dotty.tools.dotc
@@ -24,24 +24,12 @@ import ScaladocSupport._
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.tools.scaladoc.tasty.TastyParser]].
   */
-case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspector:
+case class ScaladocTastyInspector()(using ctx: DocContext) extends Inspector:
 
   private val topLevels = Seq.newBuilder[(String, Member)]
   private var rootDoc: Option[Comment] = None
 
-  def processCompilationUnit(using Quotes)(root: reflect.Tree): Unit = ()
-
-  override def postProcess(using Quotes): Unit =
-    // hack into the compiler to get a list of all top-level trees
-    // in principle, to do this, one would collect trees in processCompilationUnit
-    // however, path-dependent types disallow doing so w/o using casts
-    inline def hackForeachTree(thunk: reflect.Tree => Unit): Unit =
-      given dctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-      dctx.run.nn.units.foreach { compilationUnit =>
-        // mirrors code from TastyInspector
-        thunk(compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
-      }
-
+  def inspect(using Quotes)(tastys: List[scala.tasty.inspector.Tasty[quotes.type]]): Unit =
     val symbolsToSkip: Set[reflect.Symbol] =
       ctx.args.identifiersToSkip.flatMap { ref =>
         val qrSymbol = reflect.Symbol
@@ -116,7 +104,8 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
           rootDoc = Some(parseCommentString(using parser.qctx, summon[DocContext])(content, topLevelPck, None))
         }
 
-    hackForeachTree { root =>
+    for tasty <- tastys do {
+      val root = tasty.ast
       if !isSkipped(root.symbol) then
         val treeRoot = root.asInstanceOf[parser.qctx.reflect.Tree]
         processRootDocIfNeeded(treeRoot)
@@ -138,23 +127,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
       topLevels += "scala" -> Member(scalaPckg.fullName, "", scalaPckg.dri, Kind.Package)
       topLevels += mergeAnyRefAliasAndObject(parser)
 
-  def result(): (List[Member], Option[Comment]) =
-    topLevels.clear()
-    rootDoc = None
-    val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
-    val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
 
-    if filePaths.nonEmpty then inspectFilesInContext(classpath, filePaths)
-
-    val all = topLevels.result()
-    all.groupBy(_._1).map { case (pckName, members) =>
-      val (pcks, rest) = members.map(_._2).partition(_.kind == Kind.Package)
-      val basePck = pcks.reduce( (p1, p2) =>
-        val withNewMembers = p1.withNewMembers(p2.members)
-        if withNewMembers.docs.isEmpty then withNewMembers.withDocs(p2.docs) else withNewMembers
-      )
-      basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
-    }.toList -> rootDoc
 
   def mergeAnyRefAliasAndObject(parser: TastyParser) =
     import parser.qctx.reflect._
@@ -165,6 +138,36 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
       kind = Kind.Class(Nil, Nil),
       members = objectMembers
     )
+
+object ScaladocTastyInspector:
+
+  def loadDocs()(using ctx: DocContext): (List[Member], Option[Comment]) =
+    val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
+    val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
+
+    val inspector = new ScaladocTastyInspector
+
+    val (tastyPaths, nonTastyPaths) = filePaths.partition(_.endsWith(".tasty"))
+    val (jarPaths, invalidPaths) = nonTastyPaths.partition(_.endsWith(".jar"))
+
+    for invalidPath <- invalidPaths do
+      report.error("File extension is not `tasty` or `jar`: " + invalidPath)
+
+    if tastyPaths.nonEmpty then
+      TastyInspector.inspectAllTastyFiles(tastyPaths, jarPaths, classpath)(inspector)
+
+    val all = inspector.topLevels.result()
+    all.groupBy(_._1).map { case (pckName, members) =>
+      val (pcks, rest) = members.map(_._2).partition(_.kind == Kind.Package)
+      val basePck = pcks.reduce( (p1, p2) =>
+        val withNewMembers = p1.withNewMembers(p2.members)
+        if withNewMembers.docs.isEmpty then withNewMembers.withDocs(p2.docs) else withNewMembers
+      )
+      basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
+    }.toList -> inspector.rootDoc
+
+end ScaladocTastyInspector
+
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(
   qctx: Quotes,
