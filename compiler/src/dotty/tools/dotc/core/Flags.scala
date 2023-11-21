@@ -377,7 +377,7 @@ object Flags {
   /** Symbol cannot be found as a member during typer */
   val (Invisible @ _, _, _) = newFlags(45, "<invisible>")
 
-  val (Tracked @ _, _, _) = newFlags(46, "tracked")
+  val (Tracked @ _, _, Dependent @ _) = newFlags(46, "tracked", "dependent")
 
   // ------------ Flags following this one are not pickled ----------------------------------
 
@@ -470,7 +470,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
-    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
+    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible, Tracked)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class

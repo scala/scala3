@@ -17,6 +17,7 @@ import Denotations.*
 import printing.Texts.*
 import printing.Printer
 import SymDenotations.NoDenotation
+import util.common.alwaysFalse
 
 import collection.mutable
 import scala.compiletime.uninitialized
@@ -94,15 +95,13 @@ object Scopes {
     def foreach[U](f: Symbol => U)(using Context): Unit = toList.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
-    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
+    def filter(p: Symbol => Boolean, stopAt: Symbol => Boolean = alwaysFalse)(using Context): List[Symbol] = {
       ensureComplete()
       var syms: List[Symbol] = Nil
       var e = lastEntry
-      while ((e != null) && e.owner == this) {
-        val sym = e.sym
-        if (p(sym)) syms = sym :: syms
+      while e != null && e.owner == this && !stopAt(e.sym) do
+        if p(e.sym) then syms = e.sym :: syms
         e = e.prev
-      }
       syms
     }
 

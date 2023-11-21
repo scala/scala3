@@ -2380,7 +2380,7 @@ object SymDenotations {
      *  Both getters and setters are returned in this list.
      */
     def paramAccessors(using Context): List[Symbol] =
-      unforcedDecls.filter(_.is(ParamAccessor))
+      unforcedDecls.filter(_.is(ParamAccessor))//, stopAt = sym => sym.is(Method, butNot = ParamAccessor))
 
     /** The term parameter getters of this class. */
     def paramGetters(using Context): List[Symbol] =

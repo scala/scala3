@@ -10,6 +10,7 @@ import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
 import config.Printers.*
+import transform.TypeUtils.stripRefinement
 
 trait PatternTypeConstrainer { self: TypeComparer =>
 
@@ -86,11 +87,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           patCls.derivesFrom(scrCls) || scrCls.derivesFrom(patCls)
         else true
       }
-    }
-
-    def stripRefinement(tp: Type): Type = tp match {
-      case tp: RefinedOrRecType => stripRefinement(tp.parent)
-      case tp => tp
     }
 
     def tryConstrainSimplePatternType(pat: Type, scrut: Type) = {

@@ -18,6 +18,7 @@ import config.Printers.typr
 import config.Feature
 import util.SrcPos
 import reporting.*
+import transform.TypeUtils.stripRefinement
 import NameKinds.WildcardParamName
 
 object PostTyper {
@@ -411,8 +412,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                   // Constructor parameters are in scope when typing a parent.
                   // While they can safely appear in a parent tree, to preserve
                   // soundness we need to ensure they don't appear in a parent
-                  // type (#16270).
-                  val illegalRefs = parent.tpe.namedPartsWith(p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym))
+                  // type (#16270). We can strip any refinement of a parent type since
+                  // these refinements are split off from the parent type constructor
+                  // application `parent` in Namer and don't show up as parent types
+                  // of the class.
+                  val illegalRefs = parent.tpe.stripRefinement.namedPartsWith:
+                      p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym)
                   if illegalRefs.nonEmpty then
                     report.error(
                       em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
