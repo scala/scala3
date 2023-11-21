@@ -179,6 +179,7 @@ subsection:
           - page: contributing/debugging/other-debugging.md
       - page: contributing/testing.md
       - page: contributing/scaladoc.md
+      - page: contributing/community-build.md
       - page: contributing/sending-in-a-pr.md
       - page: contributing/cheatsheet.md
       - title: Procedures
