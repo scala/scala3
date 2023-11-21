@@ -1504,7 +1504,6 @@ class Namer { typer: Typer =>
               if ptype.typeParams.isEmpty
                   //&& !ptype.dealias.typeSymbol.primaryConstructor.info.finalResultType.isInstanceOf[RefinedType]
                   && !ptype.dealias.typeSymbol.is(Dependent)
-                  || ctx.erasedTypes
               then
                 ptype
               else
@@ -1613,46 +1612,12 @@ class Namer { typer: Typer =>
       /** The refinements coming from all parent class constructor applications */
       val parentRefinements = mutable.LinkedHashMap[Name, Type]()
 
-      /** Split refinements off parent type and add them to `parentRefinements` */
-      def separateRefinements(tp: Type): Type = tp match
-        case RefinedType(tp1, rname, rinfo) =>
-          try separateRefinements(tp1)
-          finally
-            parentRefinements(rname) = parentRefinements.get(rname) match
-              case Some(tp) => tp & rinfo
-              case None => rinfo
-        case tp => tp
-
-      /** Add all parent refinements to the result type of the `info` of
-       *  the class constructor. Parent refinements refer to parameter accessors
-       *  in the current class. These have to be mapped to the paramRefs of the
-       *  constructor info.
-       *  @param info           The (remaining part) of the constructor info
-       *  @param nameToParamRef The map from parameter names to paramRefs of
-       *                        previously encountered parts of `info`.
-       */
-      def integrateParentRefinements(info: Type, nameToParamRef: Map[Name, Type]): Type = info match
-        case info: MethodOrPoly =>
-          info.derivedLambdaType(resType =
-            integrateParentRefinements(info.resType,
-              nameToParamRef ++ info.paramNames.zip(info.paramRefs)))
-        case _ =>
-          val mapParams = new TypeMap:
-            def apply(t: Type) = t match
-              case t: TermRef if t.symbol.is(ParamAccessor) && t.symbol.owner == cls =>
-                nameToParamRef(t.name)
-              case _ =>
-                mapOver(t)
-          parentRefinements.foldLeft(info): (info, refinement) =>
-            val (rname, rinfo) = refinement
-            RefinedType(info, rname, mapParams(rinfo))
-
       val parentTypes =
         defn.adjustForTuple(cls, cls.typeParams,
           defn.adjustForBoxedUnit(cls,
             addUsingTraits(
               ensureFirstIsClass(cls, parents.map(checkedParentType(_)))
-        ))).map(separateRefinements)
+        ))).map(_.separateRefinements(parentRefinements))
 
       typr.println(i"completing $denot, parents = $parents%, %, stripped parent types = $parentTypes%, %")
       typr.println(i"constr type = ${cls.primaryConstructor.infoOrCompleter}, refinements = ${parentRefinements.toList}")
@@ -1671,8 +1636,7 @@ class Namer { typer: Typer =>
       tempInfo = null // The temporary info can now be garbage-collected
 
       if parentRefinements.nonEmpty then
-        val constr = cls.primaryConstructor
-        constr.info = integrateParentRefinements(constr.info, Map())
+        integrateParentRefinements(cls.primaryConstructor, parentRefinements)
         cls.setFlag(Dependent)
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)

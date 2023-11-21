@@ -1012,12 +1012,20 @@ class TreeUnpickler(reader: TastyReader,
      *                   but skip constructor arguments. Return any trees that were partially
      *                   parsed in this way as InferredTypeTrees.
      */
-    def readParents(withArgs: Boolean)(using Context): List[Tree] =
+    def readParents(cls: ClassSymbol, withArgs: Boolean)(using Context): List[Tree] =
       collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
         nextUnsharedTag match
           case APPLY | TYPEAPPLY | BLOCK =>
-            if withArgs then readTree()
-            else InferredTypeTree().withType(readParentType())
+            if withArgs then
+              readTree()
+            else if cls.is(Dependent) then
+              val parentReader = fork
+              val parentCoreType = readParentType()
+              if parentCoreType.dealias.typeSymbol.is(Dependent)
+              then parentReader.readTree() // read the whole tree since we need to see the refinement
+              else InferredTypeTree().withType(parentCoreType)
+            else
+              InferredTypeTree().withType(readParentType())
           case _ => readTpt()
       }
 
@@ -1043,9 +1051,10 @@ class TreeUnpickler(reader: TastyReader,
         while (bodyIndexer.reader.nextByte != DEFDEF) bodyIndexer.skipTree()
         bodyIndexer.indexStats(end)
       }
-      val parentReader = fork
-      val parents = readParents(withArgs = false)(using parentCtx)
-      val parentTypes = parents.map(_.tpe.dealias)
+      val parentsReader = fork
+      val parents = readParents(cls, withArgs = false)(using parentCtx)
+      val parentRefinements = mutable.LinkedHashMap[Name, Type]()
+      val parentTypes = parents.map(_.tpe.dealias.separateRefinements(parentRefinements))
       val self =
         if (nextByte == SELFDEF) {
           readByte()
@@ -1058,11 +1067,13 @@ class TreeUnpickler(reader: TastyReader,
           selfInfo = if (self.isEmpty) NoType else self.tpt.tpe
         ).integrateOpaqueMembers
       val constr = readIndexedDef().asInstanceOf[DefDef]
+      if parentRefinements.nonEmpty then
+        integrateParentRefinements(constr.symbol, parentRefinements)
       val mappedParents: LazyTreeList =
         if parents.exists(_.isInstanceOf[InferredTypeTree]) then
           // parents were not read fully, will need to be read again later on demand
-          new LazyReader(parentReader, localDummy, ctx.mode, ctx.source,
-            _.readParents(withArgs = true)
+          new LazyReader(parentsReader, localDummy, ctx.mode, ctx.source,
+            _.readParents(cls, withArgs = true)
              .map(_.changeOwner(localDummy, constr.symbol)))
         else parents
 

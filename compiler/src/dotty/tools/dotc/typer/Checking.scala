@@ -1201,7 +1201,7 @@ trait Checking {
   def checkOnlyDependentRefinements(cls: ClassSymbol, parent: Tree)(using Context): Unit =
     def recur(ptype: Type): Unit = ptype.dealias match
       case rt @ RefinedType(ptype1, rname, rinfo) =>
-        val ok = rname.isTermName && cls.info.member(rname).hasAltWith(_.symbol.is(Tracked))
+        val ok = rname.isTermName && ptype1.nonPrivateMember(rname).hasAltWith(_.symbol.is(Tracked))
         if !ok then
           report.error(
               em"""Illegal refinement { ${ctx.printer.toTextRefinement(rt).show} } in parent type of $cls;

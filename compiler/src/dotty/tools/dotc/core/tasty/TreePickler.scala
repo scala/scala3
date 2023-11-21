@@ -776,6 +776,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Exported)) writeModTag(EXPORTED)
     if (flags.is(Given)) writeModTag(GIVEN)
     if (flags.is(Implicit)) writeModTag(IMPLICIT)
+    if (flags.is(Tracked)) writeModTag(TRACKED)
     if (isTerm) {
       if (flags.is(Lazy, butNot = Module)) writeModTag(LAZY)
       if (flags.is(AbsOverride)) { writeModTag(ABSTRACT); writeModTag(OVERRIDE) }
@@ -787,7 +788,6 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
-      if (flags.is(Tracked)) writeModTag(TRACKED)
       assert(!(flags.is(Label)))
     }
     else {

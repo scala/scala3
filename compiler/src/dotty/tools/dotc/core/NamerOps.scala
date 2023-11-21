@@ -5,6 +5,7 @@ package core
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
 import TypeApplications.EtaExpansion
+import collection.mutable
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -23,6 +24,47 @@ object NamerOps:
       if param.is(Tracked) then
         resType = RefinedType(resType, param.name, param.termRef)
     resType
+
+  /** Split dependent class refinements off parent type and add them to `refinements` */
+  extension (tp: Type)
+    def separateRefinements(refinements: mutable.LinkedHashMap[Name, Type])(using Context): Type =
+      tp match
+        case RefinedType(tp1, rname, rinfo) =>
+          try tp1.separateRefinements(refinements)
+          finally
+            refinements(rname) = refinements.get(rname) match
+              case Some(tp) => tp & rinfo
+              case None => rinfo
+        case tp => tp
+
+  /** Add all parent `refinements` to the result type of the info of the dependent
+   *  class constructor `constr`. Parent refinements refer to parameter accessors
+   *  in the current class. These have to be mapped to the paramRefs of the
+   *  constructor info.
+   */
+  def integrateParentRefinements(
+      constr: Symbol, refinements: mutable.LinkedHashMap[Name, Type])(using Context): Unit =
+
+    /** @param info           the (remaining part) of the constructor info
+      * @param nameToParamRef the map from parameter names to paramRefs of
+      *                       previously encountered parts of `info`.
+      */
+    def recur(info: Type, nameToParamRef: mutable.Map[Name, Type]): Type = info match
+      case info: MethodOrPoly =>
+        info.derivedLambdaType(resType =
+          recur(info.resType, nameToParamRef ++= info.paramNames.zip(info.paramRefs)))
+      case _ =>
+        val mapParams = new TypeMap:
+          def apply(t: Type) = t match
+            case t: TermRef if t.symbol.is(ParamAccessor) && t.symbol.owner == constr.owner =>
+              nameToParamRef(t.name)
+            case _ =>
+              mapOver(t)
+        refinements.foldLeft(info): (info, refinement) =>
+          val (rname, rinfo) = refinement
+          RefinedType(info, rname, mapParams(rinfo))
+    constr.info = recur(constr.info, mutable.Map())
+  end integrateParentRefinements
 
   /** If isConstructor, make sure it has at least one non-implicit parameter list
    *  This is done by adding a () in front of a leading old style implicit parameter,

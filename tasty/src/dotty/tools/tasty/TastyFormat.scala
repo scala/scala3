@@ -219,6 +219,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
                   INVISIBLE                                                        -- invisible during typechecking
+                  TRACKED                                                          -- a tracked class parameter / a dependent class
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
