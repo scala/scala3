@@ -17,7 +17,7 @@ import transform.{PostTyper, Inlining, CrossVersionChecks}
 import staging.StagingLevel
 
 import collection.mutable
-import reporting.trace
+import reporting.{NotConstant, trace}
 import util.Spans.Span
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
@@ -413,7 +413,7 @@ object Inlines:
         if (inlinedMethod == defn.Compiletime_constValue) {
           val constVal = tryConstValue
           if constVal.isEmpty then
-            val msg = em"not a constant type: ${callTypeArgs.head}; cannot take constValue"
+            val msg = NotConstant("cannot take constValue", callTypeArgs.head.tpe)
             return ref(defn.Predef_undefined).withSpan(call.span).withType(ErrorType(msg))
           else
             return constVal
