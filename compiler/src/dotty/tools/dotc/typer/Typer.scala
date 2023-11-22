@@ -448,7 +448,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
                     pos, from = `3.0`)
-                  if migrateTo3 then
+                  if sourceVersion.isMigrating then
                     patch(Span(pos.span.start),
                       if prevCtx.owner == refctx.owner.enclosingClass then "this."
                       else s"${prevCtx.owner.name}.this.")
@@ -2984,13 +2984,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
         report.errorOrMigrationWarning(msg, tree.srcPos, from = `3.0`)
-        if (migrateTo3) {
+        if sourceVersion.isMigrating then
           // Under -rewrite, patch `x _` to `(() => x)`
           msg.actions
             .headOption
             .foreach(Rewrites.applyAction)
           return typed(untpd.Function(Nil, qual), pt)
-        }
     }
     nestedCtx.typerState.commit()
 
