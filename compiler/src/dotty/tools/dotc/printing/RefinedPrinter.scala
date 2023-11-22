@@ -703,7 +703,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val opPrec = parsing.precedence(op.name)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }
       case PostfixOp(l, op) =>
-        changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
+        if op.name == nme.CC_REACH then
+          changePrec(DotPrec) { toText(l) ~ "*" }
+        else
+          changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
       case PrefixOp(op, r) =>
         changePrec(DotPrec) { toText(op) ~ " " ~ toText(r) }
       case Parens(t) =>

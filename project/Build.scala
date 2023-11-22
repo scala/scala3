@@ -176,7 +176,7 @@ object Build {
   // Use the TASTy jar from `scala2-library-tasty` in the classpath
   // This only works with `scala3-bootstrapped/scalac` and tests in `scala3-bootstrapped`
   //
-  // Enable in SBT with: set ThisBuild/Build.useScala2LibraryTasty := true
+  // Enable in SBT with: `set ThisBuild/Build.useScala2LibraryTasty := true`
   val useScala2LibraryTasty = settingKey[Boolean]("Use the TASTy jar from `scala2-library-tasty` in the classpath")
 
   // Used to compile files similar to ./bin/scalac script
@@ -1013,6 +1013,7 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions -= "-Xfatal-warnings",
+      Compile / compile / logLevel := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
@@ -1254,7 +1255,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.1.0+53-af181de4-SNAPSHOT"
+    val mtagsVersion = "1.1.0+79-325e7ef0-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),

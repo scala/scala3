@@ -20,7 +20,6 @@ import scala.collection.generic.DefaultSerializable
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /**
   * This class implements immutable maps using a list-based data structure. List map iterators and
@@ -133,8 +132,8 @@ object ListMap extends MapFactory[ListMap] {
     */
   private[immutable] final class Node[K, V](
     override private[immutable] val key: K,
-    private[immutable] var _value: V @uncheckedCaptures,
-    private[immutable] var _init: ListMap[K, V] @uncheckedCaptures
+    private[immutable] var _value: V,
+    private[immutable] var _init: ListMap[K, V]
   ) extends ListMap[K, V] {
     releaseFence()
 
@@ -287,7 +286,7 @@ object ListMap extends MapFactory[ListMap] {
   */
 private[immutable] final class ListMapBuilder[K, V] extends mutable.ReusableBuilder[(K, V), ListMap[K, V]] {
   private[this] var isAliased: Boolean = false
-  private[this] var underlying: ListMap[K, V] @uncheckedCaptures = ListMap.empty
+  private[this] var underlying: ListMap[K, V] = ListMap.empty
 
   override def clear(): Unit = {
     underlying = ListMap.empty

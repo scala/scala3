@@ -14,7 +14,6 @@ package scala
 package collection
 package immutable
 import language.experimental.captureChecking
-import annotation.unchecked.uncheckedCaptures
 
 /**
   * Trait that overrides operations to take advantage of strict builders.
@@ -29,7 +28,7 @@ trait StrictOptimizedSeqOps[+A, +CC[_], +C]
     if (lengthCompare(1) <= 0) coll
     else {
       val builder = newSpecificBuilder
-      val seen = mutable.HashSet.empty[B @uncheckedCaptures]
+      val seen = mutable.HashSet.empty[B]
       val it = this.iterator
       var different = false
       while (it.hasNext) {

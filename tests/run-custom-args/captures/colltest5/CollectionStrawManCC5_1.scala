@@ -249,12 +249,12 @@ object CollectionStrawMan5 {
   }
 
   /** Concrete collection type: ListBuffer */
-  class ListBuffer[sealed A] extends Seq[A] with SeqLike[A] with Builder[A, List[A]] {
+  class ListBuffer[A] extends Seq[A] with SeqLike[A] with Builder[A, List[A]] {
     type C[X] = ListBuffer[X]
     private var first, last: List[A] = Nil
     private var aliased = false
     def iterator = first.iterator
-    def fromIterable[sealed B](coll: Iterable[B]^): ListBuffer[B] = ListBuffer.fromIterable(coll)
+    def fromIterable[B](coll: Iterable[B]^): ListBuffer[B] = ListBuffer.fromIterable(coll)
     def apply(i: Int) = first.apply(i)
     def length = first.length
 
@@ -288,7 +288,7 @@ object CollectionStrawMan5 {
 
   object ListBuffer extends SeqFactory {
     type C[X] = ListBuffer[X]
-    def fromIterable[sealed B](coll: Iterable[B]^): ListBuffer[B] = new ListBuffer[B] ++= coll
+    def fromIterable[B](coll: Iterable[B]^): ListBuffer[B] = new ListBuffer[B] ++= coll
   }
 
   /** Concrete collection type: ArrayBuffer */

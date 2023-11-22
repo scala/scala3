@@ -328,7 +328,9 @@ abstract class Recheck extends Phase, SymTransformer:
           assert(false, i"unexpected type of ${tree.fun}: $tp")
 
     def recheckTypeApply(tree: TypeApply, pt: Type)(using Context): Type =
-      recheck(tree.fun).widen match
+      val funtpe = recheck(tree.fun)
+      tree.fun.rememberType(funtpe) // remember type to support later bounds checks
+      funtpe.widen match
         case fntpe: PolyType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
           val argTypes = tree.args.map(recheck(_))

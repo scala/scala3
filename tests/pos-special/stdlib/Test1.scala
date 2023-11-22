@@ -6,7 +6,7 @@ import java.io.*
 
 object Test0:
 
-  def usingLogFile[sealed T](op: FileOutputStream^ => T): T =
+  def usingLogFile[T](op: FileOutputStream^ => T): T =
     val logFile = FileOutputStream("log")
     val result = op(logFile)
     logFile.close()
@@ -20,7 +20,7 @@ object Test0:
 
 object Test1:
   def test(it: Iterator[Int]^, v: View[Int]^) =
-    val isEven: Int ->{cap[test]} Boolean = _ % 2 == 0
+    val isEven: Int => Boolean = _ % 2 == 0
     val it2 = it.filter(isEven)
     val _: Iterator[Int]^{it, isEven} = it2
     val it2c: Iterator[Int]^{it2} = it2

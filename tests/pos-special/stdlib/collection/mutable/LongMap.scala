@@ -37,7 +37,7 @@ import language.experimental.captureChecking
   *  rapidly as 2^30 is approached.
   *
   */
-final class LongMap[sealed V] private[collection] (defaultEntry: Long -> V, initialBufferSize: Int, initBlank: Boolean)
+final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBufferSize: Int, initBlank: Boolean)
   extends AbstractMap[Long, V]
     with MapOps[Long, V, Map, LongMap[V]]
     with StrictOptimizedIterableOps[(Long, V), Iterable, LongMap[V]]
@@ -469,18 +469,18 @@ final class LongMap[sealed V] private[collection] (defaultEntry: Long -> V, init
   }
 
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
-  override def + [sealed V1 >: V](elem1: (Long, V1), elem2: (Long, V1), elems: (Long, V1)*): LongMap[V1] = {
+  override def + [V1 >: V](elem1: (Long, V1), elem2: (Long, V1), elems: (Long, V1)*): LongMap[V1] = {
     val m = this + elem1 + elem2
     if(elems.isEmpty) m else m.concat(elems)
   }
 
-  override def concat[sealed V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = {
+  override def concat[V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = {
     val lm = clone().asInstanceOf[LongMap[V1]]
     xs.iterator.foreach(kv => lm += kv)
     lm
   }
 
-  override def ++ [sealed V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = concat(xs)
+  override def ++ [V1 >: V](xs: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = concat(xs)
 
   @deprecated("Use m.clone().addOne(k,v) instead of m.updated(k, v)", "2.13.0")
   override def updated[V1 >: V](key: Long, value: V1): LongMap[V1] =
@@ -520,7 +520,7 @@ final class LongMap[sealed V] private[collection] (defaultEntry: Long -> V, init
     *  Unlike `mapValues`, this method generates a new
     *  collection immediately.
     */
-  def mapValuesNow[sealed V1](f: V => V1): LongMap[V1] = {
+  def mapValuesNow[V1](f: V => V1): LongMap[V1] = {
     val zv = if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef] else null
     val mv = if ((extraKeys & 2) == 2) f(minValue.asInstanceOf[V]).asInstanceOf[AnyRef] else null
     val lm = new LongMap[V1](LongMap.exceptionDefault,  1,  false)
@@ -563,11 +563,11 @@ final class LongMap[sealed V] private[collection] (defaultEntry: Long -> V, init
     this
   }
 
-  def map[sealed V2](f: ((Long, V)) => (Long, V2)): LongMap[V2] = LongMap.from(new View.Map(coll, f))
+  def map[V2](f: ((Long, V)) => (Long, V2)): LongMap[V2] = LongMap.from(new View.Map(coll, f))
 
-  def flatMap[sealed V2](f: ((Long, V)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
+  def flatMap[V2](f: ((Long, V)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
 
-  def collect[sealed V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
+  def collect[V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
 
   protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[V](LongMap), this)
@@ -587,7 +587,7 @@ object LongMap {
     *
     *  This builder can be reused to create multiple instances.
     */
-  final class LongMapBuilder[sealed V] extends ReusableBuilder[(Long, V), LongMap[V]] {
+  final class LongMapBuilder[V] extends ReusableBuilder[(Long, V), LongMap[V]] {
     private[collection] var elems: LongMap[V] = new LongMap[V]
     override def addOne(entry: (Long, V)): this.type = {
       elems += entry
@@ -599,9 +599,9 @@ object LongMap {
   }
 
   /** Creates a new `LongMap` with zero or more key/value pairs. */
-  def apply[sealed V](elems: (Long, V)*): LongMap[V] = buildFromIterableOnce(elems)
+  def apply[V](elems: (Long, V)*): LongMap[V] = buildFromIterableOnce(elems)
 
-  private def buildFromIterableOnce[sealed V](elems: IterableOnce[(Long, V)]^): LongMap[V] = {
+  private def buildFromIterableOnce[V](elems: IterableOnce[(Long, V)]^): LongMap[V] = {
     var sz = elems.knownSize
     if(sz < 0) sz = 4
     val lm = new LongMap[V](sz * 2)
@@ -611,10 +611,10 @@ object LongMap {
   }
 
   /** Creates a new empty `LongMap`. */
-  def empty[sealed V]: LongMap[V] = new LongMap[V]
+  def empty[V]: LongMap[V] = new LongMap[V]
 
   /** Creates a new empty `LongMap` with the supplied default */
-  def withDefault[sealed V](default: Long -> V): LongMap[V] = new LongMap[V](default)
+  def withDefault[V](default: Long -> V): LongMap[V] = new LongMap[V](default)
 
   /** Creates a new `LongMap` from an existing source collection. A source collection
     * which is already a `LongMap` gets cloned.
@@ -623,17 +623,17 @@ object LongMap {
     * @tparam A the type of the collection’s elements
     * @return a new `LongMap` with the elements of `source`
     */
-  def from[sealed V](source: IterableOnce[(Long, V)]^): LongMap[V] = source match {
+  def from[V](source: IterableOnce[(Long, V)]^): LongMap[V] = source match {
     case source: LongMap[_] => source.clone().asInstanceOf[LongMap[V]]
     case _ => buildFromIterableOnce(source)
   }
 
-  def newBuilder[sealed V]: ReusableBuilder[(Long, V), LongMap[V]] = new LongMapBuilder[V]
+  def newBuilder[V]: ReusableBuilder[(Long, V), LongMap[V]] = new LongMapBuilder[V]
 
   /** Creates a new `LongMap` from arrays of keys and values.
     *  Equivalent to but more efficient than `LongMap((keys zip values): _*)`.
     */
-  def fromZip[sealed V](keys: Array[Long], values: Array[V]): LongMap[V] = {
+  def fromZip[V](keys: Array[Long], values: Array[V]): LongMap[V] = {
     val sz = math.min(keys.length, values.length)
     val lm = new LongMap[V](sz * 2)
     var i = 0
@@ -645,7 +645,7 @@ object LongMap {
   /** Creates a new `LongMap` from keys and values.
     *  Equivalent to but more efficient than `LongMap((keys zip values): _*)`.
     */
-  def fromZip[sealed V](keys: scala.collection.Iterable[Long], values: scala.collection.Iterable[V]): LongMap[V] = {
+  def fromZip[V](keys: scala.collection.Iterable[Long], values: scala.collection.Iterable[V]): LongMap[V] = {
     val sz = math.min(keys.size, values.size)
     val lm = new LongMap[V](sz * 2)
     val ki = keys.iterator
@@ -655,7 +655,7 @@ object LongMap {
     lm
   }
 
-  implicit def toFactory[sealed V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
+  implicit def toFactory[V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
 
   @SerialVersionUID(3L)
   private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
@@ -669,6 +669,6 @@ object LongMap {
     def newBuilder(from: Any) = LongMap.newBuilder[AnyRef]
   }
 
-  implicit def iterableFactory[sealed V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
+  implicit def iterableFactory[V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
   implicit def buildFromLongMap[V]: BuildFrom[LongMap[_], (Long, V), LongMap[V]] = toBuildFrom(this)
 }

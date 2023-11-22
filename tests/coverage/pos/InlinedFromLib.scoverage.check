@@ -27,7 +27,7 @@ covtest.InlinedFromLib$package$
 testInlined
 169
 183
-6
+7
 assertFailed
 Apply
 false
@@ -44,7 +44,7 @@ covtest.InlinedFromLib$package$
 testInlined
 169
 183
-6
+7
 assertFailed
 Apply
 true
@@ -61,7 +61,7 @@ covtest.InlinedFromLib$package$
 testInlined
 169
 183
-6
+7
 <none>
 Literal
 true
@@ -78,7 +78,7 @@ covtest.InlinedFromLib$package$
 testInlined
 198
 205
-7
+8
 apply
 Apply
 false
@@ -95,7 +95,7 @@ covtest.InlinedFromLib$package$
 testInlined
 198
 212
-7
+8
 length
 Select
 false
@@ -112,7 +112,7 @@ covtest.InlinedFromLib$package$
 testInlined
 186
 213
-7
+8
 assertFailed
 Apply
 false
@@ -129,7 +129,7 @@ covtest.InlinedFromLib$package$
 testInlined
 186
 213
-7
+8
 assertFailed
 Apply
 true
@@ -146,7 +146,7 @@ covtest.InlinedFromLib$package$
 testInlined
 186
 213
-7
+8
 <none>
 Literal
 true
@@ -163,7 +163,7 @@ covtest.InlinedFromLib$package$
 testInlined
 223
 230
-8
+9
 apply
 Apply
 false
@@ -180,7 +180,7 @@ covtest.InlinedFromLib$package$
 testInlined
 223
 237
-8
+9
 length
 Select
 false
@@ -197,7 +197,7 @@ covtest.InlinedFromLib$package$
 testInlined
 216
 243
-8
+9
 assertFailed
 Apply
 false
@@ -214,7 +214,7 @@ covtest.InlinedFromLib$package$
 testInlined
 216
 243
-8
+9
 assertFailed
 Apply
 true
@@ -231,7 +231,7 @@ covtest.InlinedFromLib$package$
 testInlined
 216
 243
-8
+9
 <none>
 Literal
 true
@@ -248,7 +248,7 @@ covtest.InlinedFromLib$package$
 testInlined
 129
 144
-4
+5
 testInlined
 DefDef
 false

@@ -7,7 +7,7 @@ object Test:
   class Logger(f: OutputStream^):
     def log(msg: String): Unit = ???
 
-  def usingFile[sealed T](name: String, op: OutputStream^ => T): T =
+  def usingFile[T](name: String, op: OutputStream^ => T): T =
     val f = new FileOutputStream(name)
     val result = op(f)
     f.close()

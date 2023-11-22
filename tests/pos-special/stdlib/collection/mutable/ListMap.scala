@@ -31,7 +31,7 @@ import language.experimental.captureChecking
   *  @define orderDependentFold
   */
 @deprecated("Use an immutable.ListMap assigned to a var instead of mutable.ListMap", "2.13.0")
-class ListMap[sealed K, sealed V]
+class ListMap[K,  V]
   extends AbstractMap[K, V]
     with MapOps[K, V, ListMap, ListMap[K, V]]
     with StrictOptimizedIterableOps[(K, V), Iterable, ListMap[K, V]]
@@ -77,7 +77,7 @@ class ListMap[sealed K, sealed V]
 @SerialVersionUID(3L)
 @deprecated("Use an immutable.ListMap assigned to a var instead of mutable.ListMap", "2.13.0")
 object ListMap extends MapFactory[ListMap] {
-  def empty[sealed K, sealed V]: ListMap[K, V] = new ListMap[K, V]
-  def from[sealed K, sealed V](it: IterableOnce[(K, V)]^): ListMap[K,V] = Growable.from(empty[K, V], it)
-  def newBuilder[sealed K, sealed V]: Builder[(K, V), ListMap[K,V]] = new GrowableBuilder(empty[K, V])
+  def empty[K,  V]: ListMap[K, V] = new ListMap[K, V]
+  def from[K,  V](it: IterableOnce[(K, V)]^): ListMap[K,V] = Growable.from(empty[K, V], it)
+  def newBuilder[K,  V]: Builder[(K, V), ListMap[K,V]] = new GrowableBuilder(empty[K, V])
 }

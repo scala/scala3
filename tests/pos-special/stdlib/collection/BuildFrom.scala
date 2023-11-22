@@ -81,13 +81,13 @@ object BuildFrom extends BuildFromLowPriority1 {
       def newBuilder(from: WrappedString): mutable.Builder[Char, WrappedString] = WrappedString.newBuilder
     }
 
-  implicit def buildFromArray[sealed A : ClassTag]: BuildFrom[Array[_], A, Array[A]] =
+  implicit def buildFromArray[A : ClassTag]: BuildFrom[Array[_], A, Array[A]] =
     new BuildFrom[Array[_], A, Array[A]] {
       def fromSpecific(from: Array[_])(it: IterableOnce[A]^): Array[A] = Factory.arrayFactory[A].fromSpecific(it)
       def newBuilder(from: Array[_]): Builder[A, Array[A]] = Factory.arrayFactory[A].newBuilder
     }
 
-  implicit def buildFromView[A, sealed B]: BuildFrom[View[A], B, View[B]] =
+  implicit def buildFromView[A,  B]: BuildFrom[View[A], B, View[B]] =
     new BuildFrom[View[A], B, View[B]] {
       def fromSpecific(from: View[A])(it: IterableOnce[B]^): View[B] = View.from(it).unsafeAssumePure
       def newBuilder(from: View[A]): Builder[B, View[B]] = View.newBuilder

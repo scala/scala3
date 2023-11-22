@@ -2,7 +2,7 @@ class ContextClass
 type Context = ContextClass^
 
 def Test(using ctx1: Context, ctx2: Context) =
-  val f: Int ->{cap[Test]} Int = identity
+  val f: Int => Int = identity
   val g1: Int ->{ctx1} Int = identity
   val g2: Int ->{ctx2} Int = identity
   val h: Int -> Int = identity
@@ -19,7 +19,7 @@ def Test(using ctx1: Context, ctx2: Context) =
   val c3 = h.andThen(g2); val _: Int ->{g2} Int = c3
   val c4 = h.andThen(h); val _: Int -> Int = c4
 
-  val f2: (Int, Int) ->{cap[Test]} Int = _ + _
+  val f2: (Int, Int) => Int = _ + _
   val f2c = f2.curried; val _: Int -> Int ->{f2} Int = f2c
   val f2t = f2.tupled; val _: ((Int, Int)) ->{f2} Int = f2t
 

@@ -58,9 +58,9 @@ object Factory {
     def newBuilder: Builder[Char, String] = new mutable.StringBuilder()
   }
 
-  implicit def arrayFactory[sealed A: ClassTag]: Factory[A, Array[A]] = new ArrayFactory[A]
+  implicit def arrayFactory[A: ClassTag]: Factory[A, Array[A]] = new ArrayFactory[A]
   @SerialVersionUID(3L)
-  private class ArrayFactory[sealed A: ClassTag] extends Factory[A, Array[A]] with Serializable {
+  private class ArrayFactory[A: ClassTag] extends Factory[A, Array[A]] with Serializable {
     def fromSpecific(it: IterableOnce[A]^): Array[A] = {
       val b = newBuilder
       b.sizeHint(scala.math.max(0, it.knownSize))

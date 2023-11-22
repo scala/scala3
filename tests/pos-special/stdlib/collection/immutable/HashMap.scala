@@ -26,7 +26,6 @@ import scala.runtime.AbstractFunction2
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements immutable maps using a Compressed Hash-Array Mapped Prefix-tree.
   * See paper https://michael.steindorfer.name/publications/oopsla15.pdf for more details.
@@ -1768,7 +1767,7 @@ private final class BitmapIndexedMapNode[K, +V](
             } else {
               mapOfNewNodes |= bitpos
               if (newNodes eq null) {
-                newNodes = mutable.Queue.empty[MapNode[K, V] @uncheckedCaptures]
+                newNodes = mutable.Queue.empty[MapNode[K, V]]
               }
               newNodes += newSubNode
             }
@@ -1853,7 +1852,7 @@ private final class BitmapIndexedMapNode[K, +V](
 private final class HashCollisionMapNode[K, +V ](
   val originalHash: Int,
   val hash: Int,
-  var content: Vector[(K, V @uV) @uncheckedCaptures]
+  var content: Vector[(K, V @uV)]
   ) extends MapNode[K, V] {
 
   import Node._
@@ -2157,7 +2156,7 @@ private final class MapKeyValueTupleReverseIterator[K, V](rootNode: MapNode[K, V
 private final class MapKeyValueTupleHashIterator[K, V](rootNode: MapNode[K, V])
   extends ChampBaseReverseIterator[MapNode[K, V]](rootNode) with Iterator[Any] {
   private[this] var hash = 0
-  private[this] var value: V @uncheckedCaptures = _
+  private[this] var value: V = _
   override def hashCode(): Int = MurmurHash3.tuple2Hash(hash, value.##, MurmurHash3.productSeed)
   def next() = {
     if (!hasNext)
@@ -2229,12 +2228,12 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
   /** The last given out HashMap as a return value of `result()`, if any, otherwise null.
     * Indicates that on next add, the elements should be copied to an identical structure, before continuing
     * mutations. */
-  private var aliased: HashMap[K, V] @uncheckedCaptures = _
+  private var aliased: HashMap[K, V] = _
 
   private def isAliased: Boolean = aliased != null
 
   /** The root node of the partially build hashmap */
-  private var rootNode: BitmapIndexedMapNode[K, V] @uncheckedCaptures = newEmptyRootNode
+  private var rootNode: BitmapIndexedMapNode[K, V] = newEmptyRootNode
 
   private[immutable] def getOrElse[V0 >: V](key: K, value: V0): V0 =
     if (rootNode.size == 0) value

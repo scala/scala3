@@ -1,7 +1,7 @@
 import annotation.unchecked.uncheckedCaptures
 def test =
-  @uncheckedCaptures
-  var finalizeActions = collection.mutable.ListBuffer[() => Unit]()
+  val finalizeActionsInit = collection.mutable.ListBuffer[(() => Unit) @uncheckedCaptures]()
+  var finalizeActions = finalizeActionsInit
   val action = finalizeActions.remove(0)
 
 

@@ -1,5 +1,5 @@
 //> using options -language:experimental.captureChecking -Xfatal-warnings
-
+import caps.cap
 class C
 type Cap = C^
 

@@ -64,7 +64,7 @@ object Test {
   def iterOps(xs: => Iterator[Int]^) =
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
-    val isEven: Int ->{cap[iterOps]} Boolean = _ % 2 == 0
+    val isEven: Int => Boolean = _ % 2 == 0
     val isNonNeg: Int => Boolean = _ > 0
     val flips: Int => List[Int] = x => x :: -x :: Nil
     val x1 = xs.foldLeft("")(strPlusInt)
@@ -116,7 +116,7 @@ object Test {
   def viewOps(xs: View[Int]^) = {
     val strPlusInt: (String, Int) => String = _ + _
     val intPlusStr: (Int, String) => String = _ + _
-    val isEven: Int ->{cap[viewOps]} Boolean = _ % 2 == 0
+    val isEven: Int => Boolean = _ % 2 == 0
     val isNonNeg: Int => Boolean = _ > 0
     val flips: Int => List[Int] = x => x :: -x :: Nil
     val x1 = xs.foldLeft("")(strPlusInt)

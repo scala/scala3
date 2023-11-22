@@ -27,7 +27,7 @@ Object
 <init>
 131
 145
-10
+11
 println
 Apply
 false
@@ -44,7 +44,7 @@ Object
 <init>
 139
 144
-10
+11
 aList
 Ident
 false
@@ -61,7 +61,7 @@ Object
 <init>
 148
 168
-11
+12
 println
 Apply
 false
@@ -78,7 +78,7 @@ Object
 <init>
 156
 167
-11
+12
 anotherList
 Ident
 false
@@ -95,7 +95,7 @@ Object
 aList
 14
 36
-1
+2
 apply
 Apply
 false
@@ -112,7 +112,7 @@ Object
 aList
 19
 34
-1
+2
 apply
 Apply
 false
@@ -129,7 +129,7 @@ Object
 aList
 0
 9
-0
+1
 aList
 DefDef
 false
@@ -146,7 +146,7 @@ Object
 arr
 50
 69
-4
+5
 apply
 Apply
 false
@@ -163,7 +163,7 @@ Object
 arr
 38
 45
-3
+4
 arr
 DefDef
 false
@@ -180,7 +180,7 @@ Object
 anotherList
 91
 101
-7
+8
 apply
 Apply
 false
@@ -197,7 +197,7 @@ Object
 anotherList
 96
 99
-7
+8
 arr
 Ident
 false
@@ -214,7 +214,7 @@ Object
 anotherList
 71
 86
-6
+7
 anotherList
 DefDef
 false

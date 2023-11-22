@@ -15,7 +15,6 @@ package scala.collection.immutable
 import scala.collection.Stepper.EfficientSplit
 import scala.collection.{AbstractIterator, AnyStepper, IterableFactoryDefaults, Iterator, Stepper, StepperShape}
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** `NumericRange` is a more generic version of the
   *  `Range` class which works with arbitrary types.
@@ -494,7 +493,7 @@ object NumericRange {
     import num.mkNumericOps
 
     private[this] var _hasNext = !self.isEmpty
-    private[this] var _next: T @uncheckedCaptures = self.start
+    private[this] var _next: T = self.start
     private[this] val lastElement: T = if (_hasNext) self.last else self.start
     override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / self.step) + 1 else 0
     def hasNext: Boolean = _hasNext

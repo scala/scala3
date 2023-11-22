@@ -15,4 +15,4 @@ def test2(c: Cap^, d: Cap^): Unit =
   val f2: (Cap^{c} -> Unit) ->{c} Unit = useCap2[Cap^{c}](c)  // ok
 
   def useCap3[X](x: X): (X ->{d} Unit) -> Unit = ???
-  val f3: (Cap^{c} -> Unit) ->{cap} Unit = useCap3[Cap^{c}](c)  // error
+  val f3: (Cap^{c} -> Unit) => Unit = useCap3[Cap^{c}](c)  // error

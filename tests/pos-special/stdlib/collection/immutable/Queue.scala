@@ -201,7 +201,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
   */
 @SerialVersionUID(3L)
 object Queue extends StrictOptimizedSeqFactory[Queue] {
-  def newBuilder[sealed A]: Builder[A, Queue[A]] = new ListBuffer[A] mapResult (x => new Queue[A](Nil, x))
+  def newBuilder[A]: Builder[A, Queue[A]] = new ListBuffer[A] mapResult (x => new Queue[A](Nil, x))
 
   def from[A](source: IterableOnce[A]^): Queue[A] = source match {
     case q: Queue[A] => q

@@ -21,7 +21,6 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.language.implicitConversions
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** Utility class for long maps.
   */
@@ -193,7 +192,7 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   override def empty: LongMap[T] = LongMap.Nil
 
   override def toList = {
-    val buffer = new ListBuffer[(Long, T) @uncheckedCaptures]
+    val buffer = new ListBuffer[(Long, T)]
     foreach(buffer += _)
     buffer.toList
   }
