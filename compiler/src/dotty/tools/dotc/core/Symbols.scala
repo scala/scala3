@@ -288,6 +288,11 @@ object Symbols {
       if compUnitInfo == null then None
       else compUnitInfo.tastyVersion
 
+    /** If this class has explicit nulls enabled */
+    def explicitNulls(using Context): Boolean =
+      val compUnitInfo = compilationUnitInfo
+      compUnitInfo != null && compUnitInfo.explicitNulls
+
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile | Null = {
       val file = associatedFile

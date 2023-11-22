@@ -433,7 +433,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
     new CompilationUnitInfo(
       tastyFile,
       tastyVersion = Some(tastyVersion),
-      tastyExplicitNulls = attributes.explicitNulls,
+      explicitNulls = attributes.explicitNulls,
     )
 
   def description(using Context): String = "TASTy file " + tastyFile.toString
