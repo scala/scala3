@@ -463,7 +463,7 @@ object Parsers {
           report.errorOrMigrationWarning(
             em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
             in.sourcePos(), from = `3.0`)
-          if migrateTo3 then
+          if sourceVersion.isMigrating then
             patch(source, t.span.startPos, "(")
             patch(source, t.span.endPos, ")")
           convertToParam(t, mods) :: Nil
@@ -1315,7 +1315,7 @@ object Parsers {
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
                 in.sourcePos(), from = `3.0`)
-              if migrateTo3 then
+              if sourceVersion.isMigrating then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
@@ -1413,7 +1413,8 @@ object Parsers {
                 |It needs to be indented to the right to keep being treated as
                 |an argument to the previous expression.${rewriteNotice()}""",
             in.sourcePos(), from = `3.0`)
-          patch(source, Span(in.offset), "  ")
+          if sourceVersion.isMigrating then
+            patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL(inTemplate = true)
@@ -2267,7 +2268,7 @@ object Parsers {
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          if migrateTo3 then
+          if sourceVersion.isMigrating then
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
             cond match {
@@ -3153,7 +3154,7 @@ object Parsers {
               warnFrom = `3.4`,
               errorFrom = future)
           if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
-              patch(source, Span(startOffset, in.lastOffset), "")
+            patch(source, Span(startOffset, in.lastOffset), "")
         mods1
       }
       else mods
