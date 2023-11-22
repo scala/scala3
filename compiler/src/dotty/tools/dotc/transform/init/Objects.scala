@@ -947,27 +947,32 @@ object Objects:
             Bottom
           end if
         case _ =>
+          // Only vals can be lazy
           report.warning("[Internal error] Variable not found " + sym.show + "\nenv = " + env.show + ". " + Trace.show, Trace.position)
           Bottom
       else
         given Env.Data = env
-        // Assume forward reference check is doing a good job
-        val value = Env.valValue(sym)
-        if isByNameParam(sym) then
-          value match
-          case fun: Fun =>
-            given Env.Data = fun.env
-            eval(fun.code, fun.thisV, fun.klass)
-          case Cold =>
-            report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
-            Bottom
-          case _: ValueSet | _: Ref | _: OfArray =>
-            report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
-            Bottom
+        if sym.is(Flags.Lazy) then
+          val rhs = sym.defTree.asInstanceOf[ValDef].rhs
+          eval(rhs, thisV, sym.enclosingClass.asClass, cacheResult = true)
         else
-          value
+          // Assume forward reference check is doing a good job
+          val value = Env.valValue(sym)
+          if isByNameParam(sym) then
+            value match
+            case fun: Fun =>
+              given Env.Data = fun.env
+              eval(fun.code, fun.thisV, fun.klass)
+            case Cold =>
+              report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
+              Bottom
+            case _: ValueSet | _: Ref | _: OfArray =>
+              report.warning("[Internal error] Unexpected by-name value " + value.show  + ". " + Trace.show, Trace.position)
+              Bottom
+          else
+            value
 
-    case _ =>
+    case None =>
       if isByNameParam(sym) then
         report.warning("Calling cold by-name alias. " + Trace.show, Trace.position)
         Bottom
@@ -1232,9 +1237,10 @@ object Objects:
 
       case vdef : ValDef =>
         // local val definition
-        val rhs = eval(vdef.rhs, thisV, klass)
         val sym = vdef.symbol
-        initLocal(vdef.symbol, rhs)
+        if !sym.is(Flags.Lazy) then
+          val rhs = eval(vdef.rhs, thisV, klass)
+          initLocal(sym, rhs)
         Bottom
 
       case ddef : DefDef =>
