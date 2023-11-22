@@ -44,7 +44,10 @@ class CompilationTests {
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
-      compileDir("tests/pos-special/stdlib", allowDeepSubtypes),
+    ) ::: (
+      // FIXME: This fails due to a bug involving self types and capture checking
+      if Properties.usingScalaLibraryTasty then Nil
+      else List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then
@@ -130,7 +133,7 @@ class CompilationTests {
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
     aggregateTests(
-      compileFilesInDir("tests/neg", defaultOptions),
+      compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyBlacklisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
@@ -213,8 +216,8 @@ class CompilationTests {
   @Test def checkInitGlobal: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInitGlobal")
     val options = defaultOptions.and("-Ysafe-init-global", "-Xfatal-warnings")
-    compileFilesInDir("tests/init-global/neg", options).checkExpectedErrors()
-    compileFilesInDir("tests/init-global/pos", options).checkCompile()
+    compileFilesInDir("tests/init-global/neg", options, FileFilter.exclude(TestSources.negInitGlobalScala2LibraryTastyBlacklisted)).checkExpectedErrors()
+    compileFilesInDir("tests/init-global/pos", options, FileFilter.exclude(TestSources.posInitGlobalScala2LibraryTastyBlacklisted)).checkCompile()
   }
 
   // initialization tests

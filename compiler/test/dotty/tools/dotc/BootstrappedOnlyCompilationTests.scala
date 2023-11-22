@@ -120,7 +120,7 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
-    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"))
+    compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyBlacklisted))
       .checkRuns()
   }
 
