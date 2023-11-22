@@ -422,7 +422,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val tastyBytes = tastyFile.toByteArray
       new tasty.DottyUnpickler(tastyBytes) // reads header and name table
 
-  def compilationUnitInfo: CompilationUnitInfo | Null =
+  val compilationUnitInfo: CompilationUnitInfo | Null =
     val tastyHeader = unpickler.unpickler.header
     val tastyVersion = TastyVersion(
       tastyHeader.majorVersion,
@@ -453,10 +453,10 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val message = e match
         case e: UnpickleException =>
           s"""TASTy file ${tastyFile.canonicalPath} could not be read, failing with:
-            |  ${Option(e.getMessage).getOrElse("")}"""
+            |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
         case _ =>
           s"""TASTy file ${tastyFile.canonicalPath} is broken, reading aborted with ${e.getClass}
-            |  ${Option(e.getMessage).getOrElse("")}"""
+            |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
       throw IOException(message, e)
 
 
