@@ -1,6 +1,8 @@
 package dotty.tools.tasty
 
-case class TastyVersion(major: Int, minor: Int, experimental: Int) {
+import scala.annotation.internal.sharable
+
+case class TastyVersion private(major: Int, minor: Int, experimental: Int) {
   def isExperimental: Boolean = experimental > 0
 
   def nextStable: TastyVersion = copy(experimental = 0)
@@ -20,5 +22,18 @@ case class TastyVersion(major: Int, minor: Int, experimental: Int) {
     val max = if (experimental == 0) this else TastyVersion(major, minor - 1, 0)
     val extra = Option.when(experimental > 0)(this)
     s"stable TASTy from ${min.show} to ${max.show}${extra.fold("")(e => s", or exactly ${e.show}")}"
+  }
+}
+
+object TastyVersion {
+
+  @sharable
+  private val cache: java.util.concurrent.ConcurrentHashMap[TastyVersion, TastyVersion] =
+    new java.util.concurrent.ConcurrentHashMap()
+
+  def apply(major: Int, minor: Int, experimental: Int): TastyVersion = {
+    val version = new TastyVersion(major, minor, experimental)
+    val cachedVersion = cache.putIfAbsent(version, version)
+    if (cachedVersion == null) version else cachedVersion
   }
 }
