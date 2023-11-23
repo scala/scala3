@@ -7,6 +7,7 @@ import java.nio.channels.ClosedByInterruptException
 
 import scala.util.control.NonFatal
 
+import dotty.tools.dotc.classpath.FileUtils.isTasty
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -192,10 +193,13 @@ object SymbolLoaders {
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (None, Some(src)) =>
-        if (ctx.settings.verbose.value) report.inform("[symloader] no class, picked up source file for " + src.path)
+        if (ctx.settings.verbose.value) report.inform("[symloader] no class or tasty, picked up source file for " + src.path)
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (Some(bin), _) =>
-        enterClassAndModule(owner, nameOf(classRep), ctx.platform.newClassLoader(bin))
+        val completer =
+          if bin.isTasty then ctx.platform.newTastyLoader(bin)
+          else ctx.platform.newClassLoader(bin)
+        enterClassAndModule(owner, nameOf(classRep), completer)
     }
 
   def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
@@ -404,20 +408,27 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "class file " + classfile.toString
 
   override def doComplete(root: SymDenotation)(using Context): Unit =
-    load(root)
-
-  def load(root: SymDenotation)(using Context): Unit = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     val classfileParser = new ClassfileParser(classfile, classRoot, moduleRoot)(ctx)
-    val result = classfileParser.run()
-    if (mayLoadTreesFromTasty)
-      result match {
-        case Some(unpickler: tasty.DottyUnpickler) =>
-          classRoot.classSymbol.rootTreeOrProvider = unpickler
-          moduleRoot.classSymbol.rootTreeOrProvider = unpickler
-        case _ =>
-      }
-  }
+    classfileParser.run()
+}
+
+class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
+
+  override def sourceFileOrNull: AbstractFile | Null = tastyFile
+
+  def description(using Context): String = "TASTy file " + tastyFile.toString
+
+  override def doComplete(root: SymDenotation)(using Context): Unit =
+    val (classRoot, moduleRoot) = rootDenots(root.asClass)
+    val unpickler =
+      val tastyBytes = tastyFile.toByteArray
+      new tasty.DottyUnpickler(tastyBytes)
+    unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
+    if mayLoadTreesFromTasty then
+      classRoot.classSymbol.rootTreeOrProvider = unpickler
+      moduleRoot.classSymbol.rootTreeOrProvider = unpickler
+    // TODO check TASTy UUID matches classfile
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value

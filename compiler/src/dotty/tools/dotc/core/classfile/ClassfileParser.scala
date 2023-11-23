@@ -12,7 +12,7 @@ import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotati
 import Phases._
 import ast.{ tpd, untpd }
 import ast.tpd._, util._
-import java.io.{ ByteArrayOutputStream, IOException }
+import java.io.IOException
 
 import java.lang.Integer.toHexString
 import java.util.UUID
@@ -23,6 +23,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, ZipArchive}
 import scala.util.control.NonFatal
+import dotty.tools.dotc.classpath.FileUtils.classToTasty
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -918,12 +919,6 @@ class ClassfileParser(
         Some(unpickler)
       }
 
-      def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
-        val unpickler = new tasty.DottyUnpickler(bytes)
-        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))(using ctx.withSource(util.NoSource))
-        Some(unpickler)
-      }
-
       def parseScalaSigBytes: Array[Byte] = {
         val tag = in.nextByte.toChar
         assert(tag == STRING_TAG, tag)
@@ -947,49 +942,19 @@ class ClassfileParser(
         val attrLen = in.nextInt
         val bytes = in.nextBytes(attrLen)
         if (attrLen == 16) { // A tasty attribute with that has only a UUID (16 bytes) implies the existence of the .tasty file
-          val tastyBytes: Array[Byte] = classfile match { // TODO: simplify when #3552 is fixed
-            case classfile: io.ZipArchive#Entry => // We are in a jar
-              val path = classfile.parent.lookupName(
-                classfile.name.stripSuffix(".class") + ".tasty", directory = false
-              )
-              if (path != null) {
-                val stream = path.input
-                try {
-                  val tastyOutStream = new ByteArrayOutputStream()
-                  val buffer = new Array[Byte](1024)
-                  var read = stream.read(buffer, 0, buffer.length)
-                  while (read != -1) {
-                    tastyOutStream.write(buffer, 0, read)
-                    read = stream.read(buffer, 0, buffer.length)
-                  }
-                  tastyOutStream.flush()
-                  tastyOutStream.toByteArray
-                } finally {
-                  stream.close()
-                }
-              }
-              else {
-                report.error(em"Could not find $path in ${classfile.underlyingSource}")
-                Array.empty
-              }
-            case _ =>
-              val dir = classfile.container
-              val name = classfile.name.stripSuffix(".class") + ".tasty"
-              val tastyFileOrNull = dir.lookupName(name, false)
-              if (tastyFileOrNull == null) {
-                report.error(em"Could not find TASTY file $name under $dir")
-                Array.empty
-              } else
-                tastyFileOrNull.toByteArray
-          }
-          if (tastyBytes.nonEmpty) {
-            val reader = new TastyReader(bytes, 0, 16)
-            val expectedUUID = new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
-            val tastyUUID = new TastyHeaderUnpickler(tastyBytes).readHeader()
-            if (expectedUUID != tastyUUID)
-              report.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
-            return unpickleTASTY(tastyBytes)
-          }
+          classfile.classToTasty match
+            case None =>
+              report.error(em"Could not find TASTY for $classfile")
+            case Some(tastyFile) =>
+              val expectedUUID =
+                val reader = new TastyReader(bytes, 0, 16)
+                new UUID(reader.readUncompressedLong(), reader.readUncompressedLong())
+              val tastyUUID =
+                val tastyBytes: Array[Byte] = tastyFile.toByteArray
+                new TastyHeaderUnpickler(tastyBytes).readHeader()
+              if (expectedUUID != tastyUUID)
+                report.warning(s"$classfile is out of sync with its TASTy file. Loaded TASTy file. Try cleaning the project to fix this issue", NoSourcePosition)
+            return None
         }
         else
           // Before 3.0.0 we had a mode where we could embed the TASTY bytes in the classfile. This has not been supported in any stable release.
