@@ -12,7 +12,7 @@ object Test {
   }
 }
 
-class Foo extends PolyFunction {
+class Foo extends PolyFunction { // error
   def apply(erased x: Int): Int = {
     println("Foo.apply")
     42

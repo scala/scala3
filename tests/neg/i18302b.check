@@ -2,3 +2,7 @@
 3 |def polyFun: PolyFunction { def apply(x: Int)(y: Int): Int } = // error
   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.
+-- Error: tests/neg/i18302b.scala:4:6 ----------------------------------------------------------------------------------
+4 |  new PolyFunction: // error
+  |      ^^^^^^^^^^^^
+  |      `PolyFunction` marker trait is reserved for compiler generated refinements

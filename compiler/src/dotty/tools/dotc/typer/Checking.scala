@@ -845,6 +845,14 @@ object Checking {
     def reportNoRefinements(pos: SrcPos) =
       report.error("PolyFunction subtypes must refine the apply method", pos)
   }.traverse(tree)
+
+  /** Check that users do not extend the `PolyFunction` trait.
+   *  We only allow compiler generated `PolyFunction`s.
+   */
+  def checkPolyFunctionExtension(templ: Template)(using Context): Unit =
+    templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
+      case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
+      case None =>
 }
 
 trait Checking {
