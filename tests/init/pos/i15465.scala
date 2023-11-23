@@ -2,7 +2,7 @@ class TestSuite:
   protected val it = new ItWord
 
   protected final class ItWord:
-    def should(string: String) = new ItVerbString("should", string)
+    infix def should(string: String) = new ItVerbString("should", string)
 
   private def registerTestToRun(fun: => Any): Unit = ()
 

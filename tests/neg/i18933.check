@@ -1,0 +1,10 @@
+-- Error: tests/neg/i18933.scala:3:8 -----------------------------------------------------------------------------------
+3 |  infix case B(b: B) // error // error
+  |        ^^^^
+  |        end of statement expected but 'case' found
+-- [E006] Not Found Error: tests/neg/i18933.scala:3:2 ------------------------------------------------------------------
+3 |  infix case B(b: B) // error // error
+  |  ^^^^^
+  |  Not found: infix
+  |
+  | longer explanation available when compiling with `-explain`

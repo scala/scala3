@@ -156,7 +156,7 @@ class JUnitBootstrappers extends MiniPhase {
     val moduleSym = newCompleteModuleSymbol(owner, bootstrapperName,
       Synthetic, Synthetic,
       List(defn.ObjectType, junitdefn.BootstrapperType), newScope,
-      coord = testClass.span, assocFile = testClass.assocFile).entered
+      coord = testClass.span, compUnitInfo = testClass.compUnitInfo).entered
     val classSym = moduleSym.moduleClass.asClass
 
     val constr = genConstructor(classSym)

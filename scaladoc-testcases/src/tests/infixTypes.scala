@@ -4,9 +4,9 @@ package infixTypes
 import annotation.showAsInfix
 
 @showAsInfix
-trait SomeTrait[A, B]
+infix trait SomeTrait[A, B]
 
-trait SomeTrait2[A, B]
+infix trait SomeTrait2[A, B]
 
 def someTrait1[C, D]: C SomeTrait D
   = ???

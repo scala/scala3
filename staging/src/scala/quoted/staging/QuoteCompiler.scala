@@ -5,6 +5,7 @@ import dotty.tools.unsupported
 import dotty.tools.dotc._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.CompilationUnitInfo
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Mode
@@ -69,12 +70,12 @@ private class QuoteCompiler extends Compiler:
           implicit val unitCtx: Context = SpliceScope.setSpliceScope(new RunScope)(using ctx1)
 
           val pos = Span(0)
-          val assocFile = new VirtualFile("<quote>")
+          val compUnitInfo = CompilationUnitInfo(new VirtualFile("<quote>"))
 
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`
           val cls = newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
-            defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
+            defn.ObjectType :: Nil, newScope, coord = pos, compUnitInfo = compUnitInfo).entered.asClass
           cls.enter(newDefaultConstructor(cls), EmptyScope)
           val meth = newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
 

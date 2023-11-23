@@ -426,7 +426,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
               if (ctx.settings.YdebugMissingRefs.value) Thread.dumpStack()
-              newStubSymbol(owner, name, source)
+              newStubSymbol(owner, name, CompilationUnitInfo(source))
             }
           }
         }
