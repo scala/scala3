@@ -80,12 +80,19 @@ object ContextOps:
       }
 
     /** A fresh local context with given tree and owner.
-    *  Owner might not exist (can happen for self valdefs), in which case
-    *  no owner is set in result context
-    */
+     *
+     *  #19019 Self valdefs must always keep their enclosing ctx.owner. They
+     *  can be NoSymbol or having a symbol with the SelfName flag, depending on
+     *  whether they have an explicit name or not. In either case, we avoid
+     *  `setOwner`.
+     *
+     *  The owner might also not exist for other kinds of trees, such as
+     *  `LambdaTypeTree` and `TermLambdaTypeTree`. In these cases, we also
+     *  keep the enclosing owner.
+     */
     def localContext(tree: untpd.Tree, owner: Symbol): FreshContext = inContext(ctx) {
       val freshCtx = ctx.fresh.setTree(tree)
-      if owner.exists then freshCtx.setOwner(owner) else freshCtx
+      if owner.exists && !owner.is(SelfName) then freshCtx.setOwner(owner) else freshCtx
     }
 
     /** Context where `sym` is defined, assuming we are in a nested context. */
