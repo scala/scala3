@@ -119,7 +119,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             // TupledFunction[?, (...) => R]
             tupled.functionArgInfos match
               case tupledArgs :: funRet :: Nil =>
-                defn.tupleTypes(tupledArgs.dealias) match
+                tupledArgs.tupleElementTypes match
                   case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
                     // TupledFunction[?, ((...funArgs...)) => funRet]
                     funArgs.size
