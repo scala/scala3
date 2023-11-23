@@ -68,7 +68,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp.ref)
         case tp @ AppliedType(tycon, args) =>
           if (defn.isCompiletimeAppliedType(tycon.typeSymbol)) tp.tryCompiletimeConstantFold
-          else tycon.dealias.appliedTo(args)
+          else if !tycon.typeSymbol.isOpaqueAlias then tycon.dealias.appliedTo(args)
+          else tp
         case tp: NamedType =>
           tp.reduceProjection
         case _ =>
@@ -120,10 +121,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
     (keyword ~ refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
-  protected def argText(arg: Type, isErased: Boolean = false): Text = keywordText("erased ").provided(isErased) ~ (homogenizeArg(arg) match {
-    case arg: TypeBounds => "?" ~ toText(arg)
-    case arg => toText(arg)
-  })
+  protected def argText(arg: Type, isErased: Boolean = false): Text =
+    keywordText("erased ").provided(isErased)
+    ~ homogenizeArg(arg).match
+        case arg: TypeBounds => "?" ~ toText(arg)
+        case defn.NamedTupleElem(name, arg) => toText(name) ~ ": " ~ argText(arg, isErased)
+        case arg => toText(arg)
 
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).

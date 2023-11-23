@@ -1451,16 +1451,36 @@ object desugar {
    *     (t)            ==>   t
    *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
    */
-  def smallTuple(tree: Tuple)(using Context): Tree = {
-    val ts = tree.trees
-    val arity = ts.length
-    assert(arity <= Definitions.MaxTupleArity)
-    def tupleTypeRef = defn.TupleType(arity).nn
-    if (arity == 0)
-      if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
-    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
-    else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
-  }
+  def tuple(tree: Tuple)(using Context): Tree =
+    val elems = tree.trees.mapConserve(desugarTupleElem)
+    val arity = elems.length
+    if arity <= Definitions.MaxTupleArity then
+      def tupleTypeRef = defn.TupleType(arity).nn
+      val tree1 =
+        if arity == 0 then
+          if ctx.mode is Mode.Type then TypeTree(defn.UnitType) else unitLiteral
+        else if ctx.mode is Mode.Type then AppliedTypeTree(ref(tupleTypeRef), elems)
+        else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), elems)
+      tree1.withSpan(tree.span)
+    else
+      cpy.Tuple(tree)(elems)
+
+  private def desugarTupleElem(elem: untpd.Tree)(using Context): untpd.Tree = elem match
+    case NamedArg(name, arg) =>
+      val nameLit = untpd.Literal(Constant(name.toString))
+      if ctx.mode.is(Mode.Type) then
+        untpd.AppliedTypeTree(untpd.ref(defn.Tuple_NamedValueType),
+          untpd.SingletonTypeTree(nameLit) :: arg :: Nil)
+      else if ctx.mode.is(Mode.Pattern) then
+        untpd.Apply(
+          untpd.Block(Nil,
+            untpd.TypeApply(untpd.ref(defn.Tuple_NamedValue_extract),
+              untpd.SingletonTypeTree(nameLit) :: Nil)),
+          arg :: Nil)
+      else
+        untpd.Apply(untpd.ref(defn.Tuple_NamedValue_apply), nameLit :: arg :: Nil)
+    case _ =>
+      elem
 
   private def isTopLevelDef(stat: Tree)(using Context): Boolean = stat match
     case _: ValDef | _: PatDef | _: DefDef | _: Export | _: ExtMethods => true

@@ -634,6 +634,14 @@ object Parsers {
         ts.toList
       else leading :: Nil
 
+    def maybeNamed(op: () => Tree): () => Tree = () =>
+      if isIdent && in.lookahead.token == EQUALS then
+        atSpan(in.offset):
+          val name = ident()
+          in.nextToken()
+          NamedArg(name, op())
+      else op()
+
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
       in.currentRegion = f(cur)
@@ -1528,6 +1536,7 @@ object Parsers {
       val start = in.offset
       var imods = Modifiers()
       var erasedArgs: ListBuffer[Boolean] = ListBuffer()
+
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
@@ -1574,61 +1583,51 @@ object Parsers {
             Function(params, resultType)
         }
 
-      var isValParamList = false
+      def convertToElem(t: Tree): Tree = t match
+        case ByNameTypeTree(t1) =>
+          syntaxError(ByNameParameterNotSupported(t), t.span)
+          t1
+        case ValDef(name, tpt, _) => NamedArg(name, convertToElem(tpt))
+        case _ => t
 
       val t =
-        if (in.token == LPAREN) {
+        if in.token == LPAREN then
           in.nextToken()
-          if (in.token == RPAREN) {
+          if in.token == RPAREN then
             in.nextToken()
             functionRest(Nil)
-          }
-          else {
+          else
             val paramStart = in.offset
             def addErased() =
-              erasedArgs.addOne(isErasedKw)
-              if isErasedKw then { in.skipToken(); }
+              erasedArgs += isErasedKw
+              if isErasedKw then in.nextToken()
             addErased()
-            val ts = in.currentRegion.withCommasExpected {
+            var ts = in.currentRegion.withCommasExpected:
               funArgType() match
                 case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
-                  isValParamList = true
-                  def funParam(start: Offset, mods: Modifiers) = {
-                    atSpan(start) {
+                  def funParam(start: Offset, mods: Modifiers) =
+                    atSpan(start):
                       addErased()
                       typedFunParam(in.offset, ident(), imods)
-                    }
-                  }
                   commaSeparatedRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => funParam(in.offset, imods))
                 case t =>
-                  def funParam() = {
-                      addErased()
-                      funArgType()
-                  }
+                  def funParam() =
+                    addErased()
+                    funArgType()
                   commaSeparatedRest(t, funParam)
-            }
             accept(RPAREN)
-            if isValParamList || in.isArrow || isPureArrow then
+            if in.isArrow || isPureArrow || erasedArgs.contains(true) then
               functionRest(ts)
-            else {
-              val ts1 = ts.mapConserve { t =>
-                if isByNameType(t) then
-                  syntaxError(ByNameParameterNotSupported(t), t.span)
-                  stripByNameType(t)
-                else
-                  t
-              }
-              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
+            else
+              val tuple = atSpan(start):
+                makeTupleOrParens(ts.mapConserve(convertToElem))
               infixTypeRest(
                 refinedTypeRest(
                   withTypeRest(
                     annotTypeRest(
                       simpleTypeRest(tuple)))))
-            }
-          }
-        }
         else if (in.token == LBRACKET) {
           val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
@@ -1913,6 +1912,7 @@ object Parsers {
      *                     |  Singleton `.' id
      *                     |  Singleton `.' type
      *                     |  ‘(’ ArgTypes ‘)’
+     *                     |  ‘(’ NamesAndTypes ‘)’
      *                     |  Refinement
      *                     |  TypeSplice                -- deprecated syntax (since 3.0.0)
      *                     |  SimpleType1 TypeArgs
@@ -1921,7 +1921,7 @@ object Parsers {
     def simpleType1() = simpleTypeRest {
       if in.token == LPAREN then
         atSpan(in.offset) {
-          makeTupleOrParens(inParensWithCommas(argTypes(namedOK = false, wildOK = true)))
+          makeTupleOrParens(inParensWithCommas(argTypes(namedOK = false, wildOK = true, tupleOK = true)))
         }
       else if in.token == LBRACE then
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement(indentOK = false)) }
@@ -2004,32 +2004,31 @@ object Parsers {
     /**   ArgTypes          ::=  Type {`,' Type}
      *                        |  NamedTypeArg {`,' NamedTypeArg}
      *    NamedTypeArg      ::=  id `=' Type
+     *    NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
+     *    NameAndType       ::=  id ':' Type
      */
-    def argTypes(namedOK: Boolean, wildOK: Boolean): List[Tree] = {
-
-      def argType() = {
+    def argTypes(namedOK: Boolean, wildOK: Boolean, tupleOK: Boolean): List[Tree] =
+      def argType() =
         val t = typ()
-        if (wildOK) t else rejectWildcardType(t)
-      }
+        if wildOK then t else rejectWildcardType(t)
 
-      def namedTypeArg() = {
+      def namedArgType() =
         val name = ident()
         accept(EQUALS)
         NamedArg(name.toTypeName, argType())
-      }
 
-      if (namedOK && in.token == IDENTIFIER)
-        in.currentRegion.withCommasExpected {
-          argType() match {
-            case Ident(name) if in.token == EQUALS =>
-              in.nextToken()
-              commaSeparatedRest(NamedArg(name, argType()), () => namedTypeArg())
-            case firstArg =>
-              commaSeparatedRest(firstArg, () => argType())
-          }
-        }
-      else commaSeparated(() => argType())
-    }
+      def namedElem() =
+        val name = ident()
+        acceptColon()
+        NamedArg(name, argType())
+
+      if namedOK && isIdent && in.lookahead.token == EQUALS then
+        commaSeparated(() => namedArgType())
+      else if tupleOK && isIdent && in.lookahead.isColon then
+        commaSeparated(() => namedElem())
+      else
+        commaSeparated(() => argType())
+    end argTypes
 
     def paramTypeOf(core: () => Tree): Tree =
       if in.token == ARROW || isPureArrow(nme.PUREARROW) then
@@ -2075,7 +2074,7 @@ object Parsers {
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
     def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] =
-      inBracketsWithCommas(argTypes(namedOK, wildOK))
+      inBracketsWithCommas(argTypes(namedOK, wildOK, tupleOK = false))
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -2651,7 +2650,9 @@ object Parsers {
       }
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
+     *                       |   NamedExprInParens {‘,’ NamedExprInParens}
      *    Bindings          ::=  Binding {`,' Binding}
+     *    NamedExprInParens ::=  id '=' ExprInParens
      */
     def exprsInParensOrBindings(): List[Tree] =
       if in.token == RPAREN then Nil
@@ -2661,7 +2662,7 @@ object Parsers {
           if isErasedKw then isFormalParams = true
           if isFormalParams then binding(Modifiers())
           else
-            val t = exprInParens()
+            val t = maybeNamed(exprInParens)()
             if t.isInstanceOf[ValDef] then isFormalParams = true
             t
         commaSeparatedRest(exprOrBinding(), exprOrBinding)
@@ -3017,7 +3018,7 @@ object Parsers {
      *                    |  Literal
      *                    |  Quoted
      *                    |  XmlPattern
-     *                    |  `(' [Patterns] `)'
+     *                    |  `(' [Patterns | NamedPatterns] `)'
      *                    |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
      *                    |  ‘given’ RefinedType
      *  SimplePattern1   ::= SimpleRef
@@ -3068,9 +3069,13 @@ object Parsers {
         p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
+     *  NamedPatterns     ::=  NamedPattern {‘,’ NamedPattern}
+     *  NamedPattern      ::=  id '=' Pattern
      */
     def patterns(location: Location = Location.InPattern): List[Tree] =
-      commaSeparated(() => pattern(location))
+      val pat = () => pattern(location)
+      commaSeparated(  // TODO: Drop the distinction once we allow named argument patterns
+        if location == Location.InPattern then maybeNamed(pat) else pat)
 
     def patternsOpt(location: Location = Location.InPattern): List[Tree] =
       if (in.token == RPAREN) Nil else patterns(location)

@@ -198,7 +198,7 @@ SimpleType        ::=  SimpleLiteral
                     |  id
                     |  Singleton ‘.’ id
                     |  Singleton ‘.’ ‘type’
-                    |  ‘(’ Types ‘)’
+                    |  ‘(’ Types | NamesAndTypes ‘)’
                     |  Refinement
                     |  SimpleType1 TypeArgs
                     |  SimpleType1 ‘#’ id
@@ -216,6 +216,8 @@ Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}
 Types             ::=  Type {‘,’ Type}
+NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
+NameAndType       ::=  id ':' Type
 ```
 
 ### Expressions
@@ -263,7 +265,7 @@ SimpleExpr        ::=  SimpleRef
                     |  quoteId                                                  -- only inside splices
                     |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]
                     |  ‘new’ TemplateBody
-                    |  ‘(’ ExprsInParens ‘)’
+                    |  ‘(’ [ExprsInParens] ‘)’
                     |  SimpleExpr ‘.’ id
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs
@@ -279,8 +281,9 @@ ExprSplice        ::= spliceId                                                  
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
-ExprInParens      ::=  PostfixExpr ‘:’ Type
-                    |  Expr
+                    |  NamedExprInParens {‘,’ NamedExprInParens}
+ExprInParens      ::=  (PostfixExpr ‘:’ Type |  Expr)
+NamedExprInParens ::=  id '=' ExprInParens
 ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
                     |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
@@ -331,6 +334,9 @@ SimplePattern1    ::=  SimpleRef
 PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
+NamedPatterns     ::=  NamedPattern {‘,’ NamedPattern}
+NamedPattern      ::=  id '=' Pattern
+
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
 ```

@@ -16,6 +16,7 @@ import Comments.Comment
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef
+import Constants.Constant
 import cc.{CaptureSet, RetainingType}
 import ast.tpd.ref
 
@@ -937,6 +938,16 @@ class Definitions {
   def TupleClass(using Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
   @tu lazy val TupleModule: Symbol = requiredModule("scala.Tuple")
+    @tu lazy val TupleNamedValueModule: Symbol = requiredModule("scala.Tuple.NamedValue")
+    @tu lazy val Tuple_NamedValue_apply: Symbol = TupleNamedValueModule.requiredMethod("apply")
+    @tu lazy val Tuple_NamedValue_extract: Symbol = TupleNamedValueModule.requiredMethod("extract")
+
+    def Tuple_NamedValueType: TypeRef = TupleModule.termRef.select("NamedValue".toTypeName).asInstanceOf
+      // Note: It would be dangerous to expose NamedValue as a symbol, since
+      // NamedValue.typeRef gives the internal view of NamedValue inside Tuple
+      // which reveals the opaque alias. To see it externally, we need the construction
+      // above. Without this tweak, named-tuples.scala fails -Ycheck after typer.
+
   @tu lazy val EmptyTupleClass: Symbol = requiredClass("scala.EmptyTuple")
   @tu lazy val EmptyTupleModule: Symbol = requiredModule("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = requiredClassRef("scala.NonEmptyTuple")
@@ -1301,6 +1312,14 @@ class Definitions {
   def isByNameFunction(tp: Type)(using Context): Boolean = tp match
     case ByNameFunction(_) => true
     case _ => false
+
+  object NamedTupleElem:
+    def apply(name: Name, tp: Type)(using Context): Type =
+      AppliedType(Tuple_NamedValueType, ConstantType(Constant(name.toString)) :: tp :: Nil)
+    def unapply(t: Type)(using Context): Option[(TermName, Type)] = t match
+      case AppliedType(tycon, ConstantType(Constant(s: String)) :: tp :: Nil)
+        if tycon.typeSymbol == Tuple_NamedValueType.typeSymbol => Some((s.toTermName, tp))
+      case _ => None
 
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
     sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass

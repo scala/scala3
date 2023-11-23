@@ -1,0 +1,28 @@
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:12:25 ------------------------------------------------------
+12 |  val y: (String, Int) = person // error
+   |                         ^^^^^^
+   |                         Found:    (person : (name: String, age: Int))
+   |                         Required: (String, Int)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:13:20 ------------------------------------------------------
+13 |  val _: NameOnly = person // error
+   |                    ^^^^^^
+   |                    Found:    (person : (name: String, age: Int))
+   |                    Required: NameOnly
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:14:18 ------------------------------------------------------
+14 |  val _: Person = nameOnly // error
+   |                  ^^^^^^^^
+   |                  Found:    (nameOnly : (name: String))
+   |                  Required: Person
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:16:36 ------------------------------------------------------
+16 |  val _: (age: Int, name: String) = person // error
+   |                                    ^^^^^^
+   |                                    Found:    (person : (name: String, age: Int))
+   |                                    Required: (age: Int, name: String)
+   |
+   | longer explanation available when compiling with `-explain`
