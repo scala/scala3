@@ -92,11 +92,9 @@ class TreeUnpickler(reader: TastyReader,
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = uninitialized
 
-  /** Was unpickled class compiled with pureFunctions? */
-  private var withPureFuns: Boolean = false
-
   /** Was unpickled class compiled with capture checks? */
-  private var withCaptureChecks: Boolean = false
+  private val withCaptureChecks: Boolean =
+    attributeUnpicklerOpt.exists(_.attributes.captureChecked)
 
   private val unpicklingScala2Library =
     attributeUnpicklerOpt.exists(_.attributes.scala2StandardLibrary)
@@ -655,13 +653,8 @@ class TreeUnpickler(reader: TastyReader,
       }
       registerSym(start, sym)
       if (isClass) {
-        if sym.owner.is(Package) then
-          if annots.exists(_.hasSymbol(defn.CaptureCheckedAnnot)) then
-            sym.setFlag(CaptureChecked)
-            withCaptureChecks = true
-            withPureFuns = true
-          else if annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
-            withPureFuns = true
+        if sym.owner.is(Package) && withCaptureChecks then
+          sym.setFlag(CaptureChecked)
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }

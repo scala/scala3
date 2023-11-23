@@ -9,16 +9,22 @@ class Attributes private[tasty](
 ) {
   def scala2StandardLibrary: Boolean = booleanTags(SCALA2STANDARDLIBRARYattr)
   def explicitNulls: Boolean = booleanTags(EXPLICITNULLSattr)
+  def captureChecked: Boolean = booleanTags(CAPTURECHECKEDattr)
+  def withPureFuns: Boolean = booleanTags(WITHPUREFUNSattr)
 }
 
 object Attributes:
   def apply(
     scala2StandardLibrary: Boolean,
     explicitNulls: Boolean,
+    captureChecked: Boolean,
+    withPureFuns: Boolean,
   ): Attributes =
     val booleanTags = BitSet.newBuilder
     if scala2StandardLibrary then booleanTags += SCALA2STANDARDLIBRARYattr
     if explicitNulls then booleanTags += EXPLICITNULLSattr
+    if captureChecked then booleanTags += CAPTURECHECKEDattr
+    if withPureFuns then booleanTags += WITHPUREFUNSattr
     new Attributes(booleanTags.result())
   end apply
 
