@@ -53,7 +53,7 @@ In that case, the type of ´x´ is the type of the referenced entity.
 
 A reference to a qualified (type- or term-) identifier ´e.x´ refers to the member of the type ´T´ of ´e´ which has the name ´x´ in the same namespace as the identifier.
 It is an error if ´T´ is not a [value type](03-types.html#value-types).
-The type of ´e.x´ is the member type of the referenced entity in ´T´.
+The type of ´e.x´ is specified as a [type designator](03-types.html#type-designators).
 
 Binding precedence implies that the way source is bundled in files affects name resolution.
 In particular, imported names have higher precedence than names, defined in other files, that might otherwise be visible because they are defined in either the current package or an enclosing package.

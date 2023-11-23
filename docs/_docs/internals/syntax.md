@@ -201,7 +201,6 @@ SimpleType1       ::=  id                                                       
 Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
-Singletons        ::=  Singleton { ‘,’ Singleton }
 FunArgType        ::=  [`erased`] Type
                     |  [`erased`] ‘=>’ Type                                     PrefixOp(=>, t)
 FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
@@ -357,8 +356,8 @@ ClsParam          ::=  {Annotation}                                             
                        [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 
 DefParamClauses   ::=  DefParamClause { DefParamClause } -- and two DefTypeParamClause cannot be adjacent
-DefParamClause    ::=  DefTypeParamClause 
-                    |  DefTermParamClause 
+DefParamClause    ::=  DefTypeParamClause
+                    |  DefTermParamClause
                     |  UsingParamClause
 TypelessClauses   ::=  TypelessClause {TypelessClause}
 TypelessClause    ::=  DefTermParamClause
