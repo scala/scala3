@@ -18,7 +18,6 @@ import util.Spans.*
 import core.Symbols.*
 import ErrorReporting.*
 import dotty.tools.dotc.transform.ValueClasses
-import dotty.tools.dotc.transform.TypeUtils.isPrimitiveValueType
 import reporting.*
 import inlines.Inlines
 

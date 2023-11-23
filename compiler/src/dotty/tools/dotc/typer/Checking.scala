@@ -38,7 +38,6 @@ import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion.*
 import printing.Formatting.hlAsKeyword
-import transform.TypeUtils.*
 import cc.isCaptureChecking
 
 import collection.mutable

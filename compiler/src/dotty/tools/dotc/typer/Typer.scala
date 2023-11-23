@@ -46,7 +46,6 @@ import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
 import transform.SymUtils.*
-import transform.TypeUtils.*
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*

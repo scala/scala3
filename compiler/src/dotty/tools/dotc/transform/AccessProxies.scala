@@ -9,7 +9,6 @@ import Flags.*
 import Names.*
 import NameOps.*
 import Decorators.*
-import TypeUtils.*
 import Types.*
 import util.Spans.Span
 import config.Printers.transforms

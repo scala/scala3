@@ -5,7 +5,6 @@ package patmat
 
 import core.*
 import Types.*
-import TypeUtils.*
 import Contexts.*
 import Flags.*
 import ast.*

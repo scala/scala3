@@ -9,7 +9,6 @@ import TypeOps.makePackageObjPrefixExplicit
 import backend.sjs.JSDefinitions
 import transform.ExplicitOuter.*
 import transform.ValueClasses.*
-import transform.TypeUtils.*
 import transform.ContextFunctionResults.*
 import unpickleScala2.Scala2Erasure
 import Decorators.*
@@ -404,7 +403,6 @@ object TypeErasure {
       tp1 // After erasure, T | Nothing is just T and C | Null is just C, if C is a reference type.
     else tp1 match {
       case JavaArrayType(elem1) =>
-        import dotty.tools.dotc.transform.TypeUtils.*
         tp2 match {
           case JavaArrayType(elem2) =>
             if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType)

@@ -1,13 +1,12 @@
 package dotty.tools
 package dotc
-package transform
+package core
 
-import core.*
 import TypeErasure.ErasedValueType
 import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
 import Names.Name
 
-object TypeUtils {
+class TypeUtils {
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */

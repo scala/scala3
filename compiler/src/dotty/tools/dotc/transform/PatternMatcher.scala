@@ -9,7 +9,6 @@ import patmat.SpaceEngine
 import util.Spans.*
 import typer.Applications.*
 import SymUtils.*
-import TypeUtils.*
 import Annotations.*
 import Flags.*, Constants.*
 import Decorators.*
