@@ -4,7 +4,6 @@ package ast
 
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import typer.ProtoTypes
-import transform.SymUtils.*
 import core.*
 import Scopes.newScope
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*

@@ -9,8 +9,7 @@ import Types.*
 import Symbols.*
 import MegaPhase.*
 import Flags.*
-import ValueClasses.*
-import SymUtils.*
+
 import NameOps.*
 
 
@@ -66,7 +65,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
   override def transformSym(d: SymDenotation)(using Context): SymDenotation = {
     def noGetterNeeded =
       d.isOneOf(NoGetterNeededFlags) ||
-      d.isAllOf(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Lazy) ||
+      d.isAllOf(PrivateLocal) && !d.owner.is(Trait) && !d.owner.isDerivedValueClass && !d.is(Lazy) ||
       d.is(Module) && d.isStatic ||
       d.hasAnnotation(defn.ScalaStaticAnnot) ||
       d.isSelfSym

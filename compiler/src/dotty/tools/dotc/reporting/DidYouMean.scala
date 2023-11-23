@@ -6,7 +6,6 @@ import core.*
 import Contexts.*
 import Decorators.*, Symbols.*, Names.*, Types.*, Flags.*
 import typer.ProtoTypes.{FunProto, SelectionProto}
-import transform.SymUtils.isNoValue
 
 /** A utility object to support "did you mean" hinting */
 object DidYouMean:

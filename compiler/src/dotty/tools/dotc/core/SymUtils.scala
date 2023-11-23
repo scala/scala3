@@ -1,5 +1,5 @@
 package dotty.tools.dotc
-package transform
+package core
 
 import core.*
 import Types.*
@@ -11,18 +11,18 @@ import NameOps.*
 import StdNames.*
 import NameKinds.*
 import Flags.*
-import ValueClasses.isDerivedValueClass
 import Decorators.*
 import Constants.Constant
 import Annotations.Annotation
 import Phases.*
 import ast.tpd.Literal
+import transform.Mixin
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.sjsNeedsField
 
 import scala.annotation.tailrec
 
-object SymUtils:
+class SymUtils:
 
   extension (self: Symbol)
 
@@ -79,6 +79,14 @@ object SymUtils:
       self.is(Enum, butNot = Case) &&
       self.info.parents.exists(p => p.typeSymbol == defn.JavaEnumClass)
 
+    def isDerivedValueClass(using Context): Boolean = self.isClass && {
+      val d = self.denot
+      !d.isRefinementClass &&
+      d.isValueClass &&
+      (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
+      !d.isPrimitiveValueClass
+    }
+
     /** Is this a case class for which a product mirror is generated?
     *  Excluded are value classes, abstract classes and case classes with more than one
     *  parameter section.
@@ -100,7 +108,7 @@ object SymUtils:
       if (!self.is(CaseClass)) "it is not a case class"
       else if (self.is(Abstract)) "it is an abstract class"
       else if (self.primaryConstructor.info.paramInfoss.length != 1) "it takes more than one parameter list"
-      else if (isDerivedValueClass(self)) "it is a value class"
+      else if self.isDerivedValueClass then "it is a value class"
       else if (!(companionMirror || canAccessCtor)) s"the constructor of $self is inaccessible from the calling scope."
       else ""
     end whyNotGenericProduct

@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.utils.MtagsEnrichments.decoded
 

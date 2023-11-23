@@ -18,7 +18,6 @@ import util.Spans.*
 import DenotTransformers.*
 import StdNames.*
 import NameOps.*
-import transform.SymUtils.*
 import NameKinds.LazyImplicitName
 import ast.tpd
 import tpd.{Tree, TreeProvider, TreeOps}
@@ -35,7 +34,7 @@ import dotty.tools.dotc.classpath.FileUtils.isScalaBinary
 
 import scala.compiletime.uninitialized
 
-object Symbols {
+object Symbols extends SymUtils {
 
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 

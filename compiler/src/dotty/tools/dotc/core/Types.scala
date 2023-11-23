@@ -42,7 +42,7 @@ import CaptureSet.{CompareResult, IdempotentCaptRefMap, IdentityCaptRefMap}
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-import dotty.tools.dotc.transform.SymUtils.*
+
 
 object Types extends TypeUtils {
 

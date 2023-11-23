@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.*
 import dotty.tools.dotc.transform.MegaPhase.*
-import dotty.tools.dotc.transform.SymUtils.*
+
 
 /** Removes `Select`s that would be compiled into `GetStatic`.
  *

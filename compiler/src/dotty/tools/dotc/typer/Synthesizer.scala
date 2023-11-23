@@ -11,7 +11,6 @@ import Decorators.*
 import ProtoTypes.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import ast.untpd
-import transform.SymUtils.*
 import transform.SyntheticMembers.*
 import util.Property
 import ast.Trees.genericEmptyTree

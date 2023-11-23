@@ -10,7 +10,6 @@ import ast.{NavigateAST, Trees, tpd, untpd}
 import core.*
 import Decorators.*, ContextOps.*
 import Contexts.*, Flags.*, Names.*, NameOps.*, Symbols.*, Trees.*, Types.*
-import transform.SymUtils.*
 import util.Spans.*, util.SourceFile, util.SourcePosition
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.

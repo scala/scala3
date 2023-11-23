@@ -18,7 +18,7 @@ import NameKinds.{DefaultGetterName, ModuleClassName}
 import NameOps.*
 import StdNames.*
 import Symbols.*
-import SymUtils.*
+
 import Types.*
 
 import JSSymUtils.*

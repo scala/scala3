@@ -14,7 +14,6 @@ import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annot
 import Comments.{Comment, CommentsContext}
 import NameKinds.*
 import StdNames.nme
-import transform.SymUtils.*
 import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}

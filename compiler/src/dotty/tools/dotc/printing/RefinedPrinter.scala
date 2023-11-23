@@ -23,7 +23,6 @@ import Trees.*
 import TypeApplications.*
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
-import transform.SymUtils.*
 import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition

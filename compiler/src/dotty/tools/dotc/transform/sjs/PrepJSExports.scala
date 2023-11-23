@@ -11,7 +11,7 @@ import Flags.*
 import NameKinds.DefaultGetterName
 import StdNames.*
 import Symbols.*
-import SymUtils.*
+
 import Types.*
 
 import util.Spans.Span

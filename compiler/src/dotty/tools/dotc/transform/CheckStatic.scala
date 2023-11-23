@@ -9,7 +9,7 @@ import Symbols.*
 import dotty.tools.dotc.ast.tpd
 import reporting.*
 
-import dotty.tools.dotc.transform.SymUtils.*
+
 
 /** A transformer that check that requirements of Static fields\methods are implemented:
   *  1. Only objects can have members annotated with `@static`

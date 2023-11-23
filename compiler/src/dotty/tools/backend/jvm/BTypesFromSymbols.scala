@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Phases
 

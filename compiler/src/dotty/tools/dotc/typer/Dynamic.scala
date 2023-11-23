@@ -16,8 +16,8 @@ import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.TypeErasure
 import util.Spans.*
 import core.Symbols.*
+import transform.ValueClasses
 import ErrorReporting.*
-import dotty.tools.dotc.transform.ValueClasses
 import reporting.*
 import inlines.Inlines
 
@@ -239,7 +239,7 @@ trait Dynamic {
        */
       def maybeBoxingCast(tpe: Type) =
         val maybeBoxed =
-          if ValueClasses.isDerivedValueClass(tpe.classSymbol) && qual.tpe <:< defn.ReflectSelectableTypeRef then
+          if tpe.classSymbol.isDerivedValueClass && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
             New(tpe.widen, tree.cast(underlying) :: Nil)

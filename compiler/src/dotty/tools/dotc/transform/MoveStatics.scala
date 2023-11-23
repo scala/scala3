@@ -15,7 +15,7 @@ import NameOps.*
 
 import ast.*
 
-import SymUtils.*
+
 import MegaPhase.*
 
 /** Move static methods from companion to the class itself */

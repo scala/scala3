@@ -19,7 +19,7 @@ import core.StdNames.nme
 import core.SymDenotations.SymDenotation
 import core.Names.*
 import core.NameKinds.*
-import SymUtils.*
+
 
 import util.Store
 
