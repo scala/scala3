@@ -235,7 +235,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def appliedText(tp: Type): Text = tp match
       case tp @ AppliedType(tycon, args) =>
-        tp.tupleElementTypes match
+        tp.tupleElementTypesUpTo(200, normalize = false) match
           case Some(types) if types.size >= 2 && !printDebug => toTextTuple(types)
           case _ =>
             val tsym = tycon.typeSymbol
