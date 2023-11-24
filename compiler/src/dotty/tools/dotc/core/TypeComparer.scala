@@ -2771,26 +2771,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
     } || tycon.derivesFrom(defn.PairClass)
 
-  /** Is `tp` an empty type?
-   *
-   *  `true` implies that we found a proof; uncertainty defaults to `false`.
-   */
-  def provablyEmpty(tp: Type): Boolean =
-    tp.dealias match {
-      case tp if tp.isExactlyNothing => true
-      case AndType(tp1, tp2) => provablyDisjoint(tp1, tp2)
-      case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
-      case at @ AppliedType(tycon, args) =>
-        args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
-          tparam.paramVarianceSign >= 0
-          && provablyEmpty(arg)
-          && typeparamCorrespondsToField(tycon, tparam)
-        }
-      case tp: TypeProxy =>
-        provablyEmpty(tp.underlying)
-      case _ => false
-    }
-
   /** Are `tp1` and `tp2` provablyDisjoint types?
    *
    *  `true` implies that we found a proof; uncertainty defaults to `false`.
@@ -3234,14 +3214,16 @@ object TrackingTypeComparer:
   enum MatchResult extends Showable:
     case Reduced(tp: Type)
     case Disjoint
+    case ReducedAndDisjoint
     case Stuck
     case NoInstance(fails: List[(Name, TypeBounds)])
 
     def toText(p: Printer): Text = this match
-      case Reduced(tp)       => "Reduced(" ~ p.toText(tp) ~ ")"
-      case Disjoint          => "Disjoint"
-      case Stuck             => "Stuck"
-      case NoInstance(fails) => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
+      case Reduced(tp)        => "Reduced(" ~ p.toText(tp) ~ ")"
+      case Disjoint           => "Disjoint"
+      case ReducedAndDisjoint => "ReducedAndDisjoint"
+      case Stuck              => "Stuck"
+      case NoInstance(fails)  => "NoInstance(" ~ Text(fails.map(p.toText(_) ~ p.toText(_)), ", ") ~ ")"
 
 class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   import TrackingTypeComparer.*
@@ -3336,9 +3318,13 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     }
 
     def matchSubTypeTest(spec: MatchTypeCaseSpec.SubTypeTest): MatchResult =
+      val disjoint = provablyDisjoint(scrut, spec.pattern)
       if necessarySubType(scrut, spec.pattern) then
-        MatchResult.Reduced(spec.body)
-      else if provablyDisjoint(scrut, spec.pattern) then
+        if disjoint then
+          MatchResult.ReducedAndDisjoint
+        else
+          MatchResult.Reduced(spec.body)
+      else if disjoint then
         MatchResult.Disjoint
       else
         MatchResult.Stuck
@@ -3472,9 +3458,12 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       // This might not be needed
       val constrainedCaseLambda = constrained(spec.origMatchCase, ast.tpd.EmptyTree)._1.asInstanceOf[HKTypeLambda]
 
-      def tryDisjoint: MatchResult =
+      val disjoint =
         val defn.MatchCase(origPattern, _) = constrainedCaseLambda.resultType: @unchecked
-        if provablyDisjoint(scrut, origPattern) then
+        provablyDisjoint(scrut, origPattern)
+
+      def tryDisjoint: MatchResult =
+        if disjoint then
           MatchResult.Disjoint
         else
           MatchResult.Stuck
@@ -3490,7 +3479,10 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           val defn.MatchCase(instantiatedPat, reduced) =
             instantiateParamsSpec(instances, constrainedCaseLambda)(constrainedCaseLambda.resultType): @unchecked
           if scrut <:< instantiatedPat then
-            MatchResult.Reduced(reduced)
+            if disjoint then
+              MatchResult.ReducedAndDisjoint
+            else
+              MatchResult.Reduced(reduced)
           else
             tryDisjoint
       else
@@ -3514,6 +3506,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           this.poisoned = savedPoisoned
           this.canWidenAbstract = saved
 
+      val disjoint = provablyDisjoint(scrut, pat)
+
       def redux(canApprox: Boolean): MatchResult =
         val instances = paramInstances(canApprox)(Array.fill(caseLambda.paramNames.length)(NoType), pat)
         instantiateParams(instances)(body) match
@@ -3524,13 +3518,16 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               }
             }
           case redux =>
-            MatchResult.Reduced(redux)
+            if disjoint then
+              MatchResult.ReducedAndDisjoint
+            else
+              MatchResult.Reduced(redux)
 
       if matches(canWidenAbstract = false) then
         redux(canApprox = true)
       else if matches(canWidenAbstract = true) then
         redux(canApprox = false)
-      else if (provablyDisjoint(scrut, pat))
+      else if (disjoint)
         // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.
         MatchResult.Disjoint
@@ -3557,28 +3554,22 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             NoType
           case MatchResult.Reduced(tp) =>
             tp.simplified
+          case MatchResult.ReducedAndDisjoint =>
+            // Empty types break the basic assumption that if a scrutinee and a
+            // pattern are disjoint it's OK to reduce passed that pattern. Indeed,
+            // empty types viewed as a set of value is always a subset of any other
+            // types. As a result, if a scrutinee both matches a pattern and is
+            // probably disjoint from it, we prevent reduction.
+            // See `tests/neg/6570.scala` and `6570-1.scala` for examples that
+            // exploit emptiness to break match type soundness.
+            MatchTypeTrace.emptyScrutinee(scrut)
+            NoType
       case Nil =>
         val casesText = MatchTypeTrace.noMatchesText(scrut, cases)
         ErrorType(reporting.MatchTypeNoCases(casesText))
 
     inFrozenConstraint {
-      // Empty types break the basic assumption that if a scrutinee and a
-      // pattern are disjoint it's OK to reduce passed that pattern. Indeed,
-      // empty types viewed as a set of value is always a subset of any other
-      // types. As a result, we first check that the scrutinee isn't empty
-      // before proceeding with reduction. See `tests/neg/6570.scala` and
-      // `6570-1.scala` for examples that exploit emptiness to break match
-      // type soundness.
-
-      // If we revered the uncertainty case of this empty check, that is,
-      // `!provablyNonEmpty` instead of `provablyEmpty`, that would be
-      // obviously sound, but quite restrictive. With the current formulation,
-      // we need to be careful that `provablyEmpty` covers all the conditions
-      // used to conclude disjointness in `provablyDisjoint`.
-      if (provablyEmpty(scrut))
-        MatchTypeTrace.emptyScrutinee(scrut)
-        NoType
-      else if scrut.isError then
+      if scrut.isError then
         // if the scrutinee is an error type
         // then just return that as the result
         // not doing so will result in the first type case matching
