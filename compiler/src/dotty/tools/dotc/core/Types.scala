@@ -30,6 +30,8 @@ import Hashable.*
 import Uniques.*
 import collection.mutable
 import config.Config
+import config.Feature.sourceVersion
+import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
@@ -5117,6 +5119,9 @@ object Types extends TypeUtils {
   object MatchTypeCaseSpec:
     def analyze(cas: Type)(using Context): MatchTypeCaseSpec =
       cas match
+        case cas: HKTypeLambda if !sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
+          // Always apply the legacy algorithm under -source:3.3 and below
+          LegacyPatMat(cas)
         case cas: HKTypeLambda =>
           val defn.MatchCase(pat, body) = cas.resultType: @unchecked
           val missing = checkCapturesPresent(cas, pat)

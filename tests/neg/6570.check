@@ -14,7 +14,7 @@
    |                           does not uniquely determine parameter x in
    |                             case UpperBoundParametricVariant.Cov[x] => Base.N[x]
    |                           The computed bounds for the parameter are:
-   |                             x <: Int
+   |                             x >: Int
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/6570.scala:29:29 --------------------------------------------------------------
@@ -98,7 +98,7 @@
     |                                does not uniquely determine parameter t in
     |                                  case UpperBoundVariant.Cov[t] => Base.N[t]
     |                                The computed bounds for the parameter are:
-    |                                  t <: Int
+    |                                  t >: Int
     |
     | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/6570.scala:107:29 -------------------------------------------------------------
