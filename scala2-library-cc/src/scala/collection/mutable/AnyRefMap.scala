@@ -43,7 +43,7 @@ import language.experimental.captureChecking
  *  rapidly as 2^30^ is approached.
  *
  */
-class AnyRefMap[K <: AnyRef,  V] private[collection] (defaultEntry: K -> V, initialBufferSize: Int, initBlank: Boolean)
+class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initialBufferSize: Int, initBlank: Boolean)
   extends AbstractMap[K, V]
     with MapOps[K, V, Map, AnyRefMap[K, V]]
     with StrictOptimizedIterableOps[(K, V), Iterable, AnyRefMap[K, V]]
@@ -478,11 +478,11 @@ class AnyRefMap[K <: AnyRef,  V] private[collection] (defaultEntry: K -> V, init
   }
 
   // The implicit dummy parameter is necessary to distinguish these methods from the base methods they overload (not override)
-  def map[K2 <: AnyRef,  V2](f: ((K, V)) => (K2, V2))(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
+  def map[K2 <: AnyRef, V2](f: ((K, V)) => (K2, V2))(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.Map(this, f))
-  def flatMap[K2 <: AnyRef,  V2](f: ((K, V)) => IterableOnce[(K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
+  def flatMap[K2 <: AnyRef, V2](f: ((K, V)) => IterableOnce[(K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.FlatMap(this, f))
-  def collect[K2 <: AnyRef,  V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
+  def collect[K2 <: AnyRef, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     strictOptimizedCollect(AnyRefMap.newBuilder[K2, V2], pf)
 
   override def clear(): Unit = {
@@ -515,7 +515,7 @@ object AnyRefMap {
    *
    *  This builder can be reused to create multiple instances.
    */
-  final class AnyRefMapBuilder[K <: AnyRef,  V] extends ReusableBuilder[(K, V), AnyRefMap[K, V]] {
+  final class AnyRefMapBuilder[K <: AnyRef, V] extends ReusableBuilder[(K, V), AnyRefMap[K, V]] {
     private[collection] var elems: AnyRefMap[K, V] = new AnyRefMap[K, V]
     def addOne(entry: (K, V)): this.type = {
       elems += entry
@@ -527,11 +527,11 @@ object AnyRefMap {
   }
 
   /** Creates a new `AnyRefMap` with zero or more key/value pairs. */
-  def apply[K <: AnyRef,  V](elems: (K, V)*): AnyRefMap[K, V] = buildFromIterableOnce(elems)
+  def apply[K <: AnyRef, V](elems: (K, V)*): AnyRefMap[K, V] = buildFromIterableOnce(elems)
 
-  def newBuilder[K <: AnyRef,  V]: ReusableBuilder[(K, V), AnyRefMap[K, V]] = new AnyRefMapBuilder[K, V]
+  def newBuilder[K <: AnyRef, V]: ReusableBuilder[(K, V), AnyRefMap[K, V]] = new AnyRefMapBuilder[K, V]
 
-  private def buildFromIterableOnce[K <: AnyRef,  V](elems: IterableOnce[(K, V)]^): AnyRefMap[K, V] = {
+  private def buildFromIterableOnce[K <: AnyRef, V](elems: IterableOnce[(K, V)]^): AnyRefMap[K, V] = {
     var sz = elems.knownSize
     if(sz < 0) sz = 4
     val arm = new AnyRefMap[K, V](sz * 2)
@@ -541,10 +541,10 @@ object AnyRefMap {
   }
 
   /** Creates a new empty `AnyRefMap`. */
-  def empty[K <: AnyRef,  V]: AnyRefMap[K, V] = new AnyRefMap[K, V]
+  def empty[K <: AnyRef, V]: AnyRefMap[K, V] = new AnyRefMap[K, V]
 
   /** Creates a new empty `AnyRefMap` with the supplied default */
-  def withDefault[K <: AnyRef,  V](default: K -> V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
+  def withDefault[K <: AnyRef, V](default: K -> V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
 
   /** Creates a new `AnyRefMap` from an existing source collection. A source collection
     * which is already an `AnyRefMap` gets cloned.
@@ -554,7 +554,7 @@ object AnyRefMap {
     * @tparam V the type of the values
     * @return a new `AnyRefMap` with the elements of `source`
     */
-  def from[K <: AnyRef,  V](source: IterableOnce[(K, V)]^): AnyRefMap[K, V] = source match {
+  def from[K <: AnyRef, V](source: IterableOnce[(K, V)]^): AnyRefMap[K, V] = source match {
     case source: AnyRefMap[_, _] => source.clone().asInstanceOf[AnyRefMap[K, V]]
     case _ => buildFromIterableOnce(source)
   }
@@ -562,7 +562,7 @@ object AnyRefMap {
   /** Creates a new `AnyRefMap` from arrays of keys and values.
    *  Equivalent to but more efficient than `AnyRefMap((keys zip values): _*)`.
    */
-  def fromZip[K <: AnyRef,  V](keys: Array[K], values: Array[V]): AnyRefMap[K, V] = {
+  def fromZip[K <: AnyRef, V](keys: Array[K], values: Array[V]): AnyRefMap[K, V] = {
     val sz = math.min(keys.length, values.length)
     val arm = new AnyRefMap[K, V](sz * 2)
     var i = 0
@@ -574,7 +574,7 @@ object AnyRefMap {
   /** Creates a new `AnyRefMap` from keys and values.
    *  Equivalent to but more efficient than `AnyRefMap((keys zip values): _*)`.
    */
-  def fromZip[K <: AnyRef,  V](keys: Iterable[K]^, values: Iterable[V]^): AnyRefMap[K, V] = {
+  def fromZip[K <: AnyRef, V](keys: Iterable[K]^, values: Iterable[V]^): AnyRefMap[K, V] = {
     val sz = math.min(keys.size, values.size)
     val arm = new AnyRefMap[K, V](sz * 2)
     val ki = keys.iterator
@@ -584,7 +584,7 @@ object AnyRefMap {
     arm
   }
 
-  implicit def toFactory[K <: AnyRef,  V](dummy: AnyRefMap.type): Factory[(K, V), AnyRefMap[K, V]] = ToFactory.asInstanceOf[Factory[(K, V), AnyRefMap[K, V]]]
+  implicit def toFactory[K <: AnyRef, V](dummy: AnyRefMap.type): Factory[(K, V), AnyRefMap[K, V]] = ToFactory.asInstanceOf[Factory[(K, V), AnyRefMap[K, V]]]
 
   @SerialVersionUID(3L)
   private[this] object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
@@ -592,12 +592,12 @@ object AnyRefMap {
     def newBuilder: Builder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
-  implicit def toBuildFrom[K <: AnyRef,  V](factory: AnyRefMap.type): BuildFrom[Any, (K, V), AnyRefMap[K, V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (K, V), AnyRefMap[K, V]]]
+  implicit def toBuildFrom[K <: AnyRef, V](factory: AnyRefMap.type): BuildFrom[Any, (K, V), AnyRefMap[K, V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (K, V), AnyRefMap[K, V]]]
   private[this] object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
     def fromSpecific(from: Any)(it: IterableOnce[(AnyRef, AnyRef)]^) = AnyRefMap.from(it)
     def newBuilder(from: Any) = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
-  implicit def iterableFactory[K <: AnyRef,  V]: Factory[(K, V), AnyRefMap[K, V]] = toFactory[K, V](this)
-  implicit def buildFromAnyRefMap[K <: AnyRef,  V]: BuildFrom[AnyRefMap[_, _], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
+  implicit def iterableFactory[K <: AnyRef, V]: Factory[(K, V), AnyRefMap[K, V]] = toFactory[K, V](this)
+  implicit def buildFromAnyRefMap[K <: AnyRef, V]: BuildFrom[AnyRefMap[_, _], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
 }

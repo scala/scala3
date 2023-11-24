@@ -45,9 +45,9 @@ class CompilationTests {
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
     ) ::: (
-      // FIXME: This fails due to a bug involving self types and capture checking
-      if Properties.usingScalaLibraryTasty then Nil
-      else List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+      // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
+      if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+      else Nil
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then

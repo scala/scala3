@@ -113,7 +113,7 @@ object ArrayOps {
       b.result()
     }
 
-    def flatMap[BS,  B](f: A => BS)(implicit asIterable: BS => Iterable[B], m: ClassTag[B]): Array[B] =
+    def flatMap[BS, B](f: A => BS)(implicit asIterable: BS => Iterable[B], m: ClassTag[B]): Array[B] =
       flatMap[B](x => asIterable(f(x)))
 
     /** Creates a new non-strict filter which combines this filter with the given predicate. */
@@ -505,7 +505,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *
     *  @return     a pair of arrays: the first one made of those values returned by `f` that were wrapped in [[scala.util.Left]],
     *              and the second one made of those wrapped in [[scala.util.Right]]. */
-  def partitionMap[A1: ClassTag,  A2: ClassTag](f: A => Either[A1, A2]): (Array[A1], Array[A2]) = {
+  def partitionMap[A1: ClassTag, A2: ClassTag](f: A => Either[A1, A2]): (Array[A1], Array[A2]) = {
     val res1 = ArrayBuilder.make[A1]
     val res2 = ArrayBuilder.make[A2]
     var i = 0
@@ -816,7 +816,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  }}}
     *
     */
-  def scanLeft[B : ClassTag](z: B)(op: (B, A) => B): Array[B] = {
+  def scanLeft[ B : ClassTag ](z: B)(op: (B, A) => B): Array[B] = {
     var v = z
     var i = 0
     val res = new Array[B](xs.length + 1)
@@ -855,7 +855,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  }}}
     *
     */
-  def scanRight[B : ClassTag](z: B)(op: (A, B) => B): Array[B] = {
+  def scanRight[ B : ClassTag ](z: B)(op: (A, B) => B): Array[B] = {
     var v = z
     var i = xs.length - 1
     val res = new Array[B](xs.length + 1)
@@ -973,7 +973,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     b.result()
   }
 
-  def flatMap[BS,  B](f: A => BS)(implicit asIterable: BS => Iterable[B], m: ClassTag[B]): Array[B] =
+  def flatMap[BS, B](f: A => BS)(implicit asIterable: BS => Iterable[B], m: ClassTag[B]): Array[B] =
     flatMap[B](x => asIterable(f(x)))
 
   /** Flattens a two-dimensional array by concatenating all its rows
@@ -1095,7 +1095,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *                 If this array is shorter than `that`, `thisElem` values are used to pad the result.
     *                 If `that` is shorter than this array, `thatElem` values are used to pad the result.
     */
-  def zipAll[A1 >: A,  B](that: Iterable[B], thisElem: A1, thatElem: B): Array[(A1, B)] = {
+  def zipAll[A1 >: A, B](that: Iterable[B], thisElem: A1, thatElem: B): Array[(A1, B)] = {
     val b = new ArrayBuilder.ofRef[(A1, B)]()
     val k = that.knownSize
     b.sizeHint(max(k, xs.length))
@@ -1244,7 +1244,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return       a pair of Arrays, containing, respectively, the first and second half
     *                of each element pair of this Array.
     */
-  def unzip[A1,  A2](implicit asPair: A => (A1, A2), ct1: ClassTag[A1], ct2: ClassTag[A2]): (Array[A1], Array[A2]) = {
+  def unzip[A1, A2](implicit asPair: A => (A1, A2), ct1: ClassTag[A1], ct2: ClassTag[A2]): (Array[A1], Array[A2]) = {
     val a1 = new Array[A1](xs.length)
     val a2 = new Array[A2](xs.length)
     var i = 0
@@ -1273,7 +1273,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     *  @return         a triple of Arrays, containing, respectively, the first, second, and third
     *                  elements from each element triple of this Array.
     */
-  def unzip3[A1,  A2,  A3](implicit asTriple: A => (A1, A2, A3), ct1: ClassTag[A1], ct2: ClassTag[A2],
+  def unzip3[A1, A2, A3](implicit asTriple: A => (A1, A2, A3), ct1: ClassTag[A1], ct2: ClassTag[A2],
                          ct3: ClassTag[A3]): (Array[A1], Array[A2], Array[A3]) = {
     val a1 = new Array[A1](xs.length)
     val a2 = new Array[A2](xs.length)
@@ -1418,7 +1418,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     * @tparam K the type of keys returned by the discriminator function
     * @tparam B the type of values returned by the transformation function
     */
-  def groupMap[K,  B : ClassTag](key: A => K)(f: A => B): immutable.Map[K, Array[B]] = {
+  def groupMap[K, B : ClassTag](key: A => K)(f: A => B): immutable.Map[K, Array[B]] = {
     val m = mutable.Map.empty[K, ArrayBuilder[B]]
     val len = xs.length
     var i = 0
@@ -1479,7 +1479,8 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   /** Create a copy of this array with the specified element type. */
   def toArray[B >: A: ClassTag]: Array[B] = {
     val destination = new Array[B](xs.length)
-    copyToArray(destination, 0)
+    @annotation.unused val copied = copyToArray(destination, 0)
+    //assert(copied == xs.length)
     destination
   }
 

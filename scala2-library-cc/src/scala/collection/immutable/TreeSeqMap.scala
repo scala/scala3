@@ -303,7 +303,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     else EmptyByInsertion
   }.asInstanceOf[TreeSeqMap[K, V]]
 
-  def from[K,  V](it: collection.IterableOnce[(K, V)]^): TreeSeqMap[K, V] =
+  def from[K, V](it: collection.IterableOnce[(K, V)]^): TreeSeqMap[K, V] =
     it match {
       case om: TreeSeqMap[K, V] => om
       case _ => (newBuilder[K, V] ++= it).result()
@@ -311,10 +311,10 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
 
   @inline private def increment(ord: Int) = if (ord == Int.MaxValue) Int.MinValue else ord + 1
 
-  def newBuilder[K,  V]: mutable.Builder[(K, V), TreeSeqMap[K, V]] = newBuilder(OrderBy.Insertion)
-  def newBuilder[K,  V](orderedBy: OrderBy): mutable.Builder[(K, V), TreeSeqMap[K, V]] = new Builder[K, V](orderedBy)
+  def newBuilder[K, V]: mutable.Builder[(K, V), TreeSeqMap[K, V]] = newBuilder(OrderBy.Insertion)
+  def newBuilder[K, V](orderedBy: OrderBy): mutable.Builder[(K, V), TreeSeqMap[K, V]] = new Builder[K, V](orderedBy)
 
-  final class Builder[K,  V](orderedBy: OrderBy) extends mutable.Builder[(K, V), TreeSeqMap[K, V]] {
+  final class Builder[K, V](orderedBy: OrderBy) extends mutable.Builder[(K, V), TreeSeqMap[K, V]] {
     private[this] val bdr = new MapBuilderImpl[K, (Int, V)]
     private[this] var ong = Ordering.empty[K]
     private[this] var ord = 0
