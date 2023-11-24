@@ -3237,11 +3237,22 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       }
     }
 
+    def instantiateParamsSpec(insts: Array[Type], caseLambda: HKTypeLambda) = new TypeMap {
+      variance = 0
+
+      def apply(t: Type) = t match {
+        case t @ TypeParamRef(b, n) if b `eq` caseLambda => insts(n)
+        case t: LazyRef => apply(t.ref)
+        case _ => mapOver(t)
+      }
+    }
+
     /** Match a single case. */
     def matchCase(cas: MatchTypeCaseSpec): MatchResult = trace(i"$scrut match ${MatchTypeTrace.caseText(cas)}", matchTypes, show = true) {
       cas match
-        case cas: MatchTypeCaseSpec.SubTypeTest  => matchSubTypeTest(cas)
-        case cas: MatchTypeCaseSpec.LegacyPatMat => matchLegacyPatMat(cas)
+        case cas: MatchTypeCaseSpec.SubTypeTest   => matchSubTypeTest(cas)
+        case cas: MatchTypeCaseSpec.SpeccedPatMat => matchSpeccedPatMat(cas)
+        case cas: MatchTypeCaseSpec.LegacyPatMat  => matchLegacyPatMat(cas)
     }
 
     def matchSubTypeTest(spec: MatchTypeCaseSpec.SubTypeTest): MatchResult =
@@ -3252,6 +3263,128 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       else
         MatchResult.Stuck
     end matchSubTypeTest
+
+    def matchSpeccedPatMat(spec: MatchTypeCaseSpec.SpeccedPatMat): MatchResult =
+      /* Concreteness checking
+       *
+       * When following a baseType and reaching a non-wildcard, in-variant-pos type capture,
+       * we have to make sure that the scrutinee is concrete enough to uniquely determine
+       * the values of the captures. This comes down to checking that we do not follow any
+       * upper bound of an abstract type.
+       *
+       * See notably neg/wildcard-match.scala for examples of this.
+       */
+
+      def followEverythingConcrete(tp: Type): Type =
+        val widenedTp = tp.widenDealias
+        val tp1 = widenedTp.normalized
+
+        def followTp1: Type =
+          // If both widenDealias and normalized did something, start again
+          if (tp1 ne widenedTp) && (widenedTp ne tp) then followEverythingConcrete(tp1)
+          else tp1
+
+        tp1 match
+          case tp1: TypeRef =>
+            tp1.info match
+              case TypeAlias(tl: HKTypeLambda)  => tl
+              case MatchAlias(tl: HKTypeLambda) => tl
+              case _                            => followTp1
+          case tp1 @ AppliedType(tycon, args) =>
+            val concreteTycon = followEverythingConcrete(tycon)
+            if concreteTycon eq tycon then followTp1
+            else followEverythingConcrete(concreteTycon.applyIfParameterized(args))
+          case _ =>
+            followTp1
+      end followEverythingConcrete
+
+      def isConcrete(tp: Type): Boolean =
+        followEverythingConcrete(tp) match
+          case tp1: AndOrType => isConcrete(tp1.tp1) && isConcrete(tp1.tp2)
+          case tp1            => tp1.underlyingClassRef(refinementOK = true).exists
+
+      // Actual matching logic
+
+      val instances = Array.fill[Type](spec.captureCount)(NoType)
+
+      def rec(pattern: MatchTypeCasePattern, scrut: Type, variance: Int, scrutIsWidenedAbstract: Boolean): Boolean =
+        pattern match
+          case MatchTypeCasePattern.Capture(num, isWildcard) =>
+            instances(num) = scrut match
+              case scrut: TypeBounds =>
+                if isWildcard then
+                  // anything will do, as long as it conforms to the bounds for the subsequent `scrut <:< instantiatedPat` test
+                  scrut.hi
+                else if scrutIsWidenedAbstract then
+                  // always keep the TypeBounds so that we can report the correct NoInstances
+                  scrut
+                else
+                  variance match
+                    case 1  => scrut.hi
+                    case -1 => scrut.lo
+                    case 0  => scrut
+              case _ =>
+                if !isWildcard && scrutIsWidenedAbstract && variance != 0 then
+                  // force a TypeBounds to report the correct NoInstances
+                  // the Nothing and Any bounds are used so that they are not displayed; not for themselves in particular
+                  if variance > 0 then TypeBounds(defn.NothingType, scrut)
+                  else TypeBounds(scrut, defn.AnyType)
+                else
+                  scrut
+            !instances(num).isError
+
+          case MatchTypeCasePattern.TypeTest(tpe) =>
+            // The actual type test is handled by `scrut <:< instantiatedPat`
+            true
+
+          case MatchTypeCasePattern.BaseTypeTest(classType, argPatterns, needsConcreteScrut) =>
+            val cls = classType.classSymbol.asClass
+            scrut.baseType(cls) match
+              case base @ AppliedType(baseTycon, baseArgs) if baseTycon =:= classType =>
+                val innerScrutIsWidenedAbstract =
+                  scrutIsWidenedAbstract
+                    || (needsConcreteScrut && !isConcrete(scrut)) // no point in checking concreteness if it does not need to be concrete
+
+                def matchArgs(argPatterns: List[MatchTypeCasePattern], baseArgs: List[Type], tparams: List[TypeParamInfo]): Boolean =
+                  if argPatterns.isEmpty then
+                    true
+                  else
+                    rec(argPatterns.head, baseArgs.head, tparams.head.paramVarianceSign, innerScrutIsWidenedAbstract)
+                      && matchArgs(argPatterns.tail, baseArgs.tail, tparams.tail)
+
+                matchArgs(argPatterns, baseArgs, classType.typeParams)
+
+              case _ =>
+                false
+      end rec
+
+      // This might not be needed
+      val constrainedCaseLambda = constrained(spec.origMatchCase, ast.tpd.EmptyTree)._1.asInstanceOf[HKTypeLambda]
+
+      def tryDisjoint: MatchResult =
+        val defn.MatchCase(origPattern, _) = constrainedCaseLambda.resultType: @unchecked
+        if provablyDisjoint(scrut, origPattern) then
+          MatchResult.Disjoint
+        else
+          MatchResult.Stuck
+
+      if rec(spec.pattern, scrut, variance = 1, scrutIsWidenedAbstract = false) then
+        if instances.exists(_.isInstanceOf[TypeBounds]) then
+          MatchResult.NoInstance {
+            constrainedCaseLambda.paramNames.zip(instances).collect {
+              case (name, bounds: TypeBounds) => (name, bounds)
+            }
+          }
+        else
+          val defn.MatchCase(instantiatedPat, reduced) =
+            instantiateParamsSpec(instances, constrainedCaseLambda)(constrainedCaseLambda.resultType): @unchecked
+          if scrut <:< instantiatedPat then
+            MatchResult.Reduced(reduced)
+          else
+            tryDisjoint
+      else
+        tryDisjoint
+    end matchSpeccedPatMat
 
     def matchLegacyPatMat(spec: MatchTypeCaseSpec.LegacyPatMat): MatchResult =
       val caseLambda = constrained(spec.origMatchCase, ast.tpd.EmptyTree)._1.asInstanceOf[HKTypeLambda]
