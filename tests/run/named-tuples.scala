@@ -1,3 +1,5 @@
+import annotation.experimental
+import language.experimental.namedTuples
 import NamedTuple.dropNames
 
 type Person = (name: String, age: Int)
@@ -39,5 +41,43 @@ val _: CombinedInfo = bob ++ addr
   assert(ageOf(bob) == 33)
   assert(ageOf((name = "anon", age = 22)) == 22)
   assert(ageOf(("anon", 11)) == 11)
+
+  val persons = List(
+    bob,
+    (name = "Bill", age = 40),
+    (name = "Lucy", age = 45)
+  )
+  for
+    p <- persons
+    q <- persons
+    if p.age < q.age
+  do
+    println(s"${p.name} is younger than ${q.name}")
+
+  //persons.select(_.age, _.name)
+  //persons.join(addresses).withCommon(_.name)
+
+  def minMax(elems: Int*): (min: Int, max: Int) =
+    var min = elems(0)
+    var max = elems(0)
+    for elem <- elems do
+      if elem < min then min = elem
+      if elem > max then max = elem
+    (min = min, max = max)
+
+  val mm = minMax(1, 3, 400, -3, 10)
+  assert(mm.min == -3)
+  assert(mm.max == 400)
+
+  val name1 = bob(0).value
+  val age1 = bob(1).value
+
+// should the .value above be inferred or maybe tuple indexing should strip names?
+// But then we could not do this:
+
+  def swap[A, B](x: (A, B)): (B, A) = (x(1), x(0))
+
+  val bobS = swap(bob)
+  val _: (age: Int, name: String) = bobS
 
 

@@ -241,8 +241,10 @@ object Tuple {
    */
   type Union[T <: Tuple] = Fold[T, Nothing, [x, y] =>> x | y]
 
+  @experimental
   opaque type NamedValue[name <: String & Singleton, A] >: A = A
 
+  @experimental
   object NamedValue:
     def apply[S <: String & Singleton, A](name: S, x: A): NamedValue[name.type, A] = x
     def extract[S <: String & Singleton]: NameExtractor[S] = NameExtractor[S]()

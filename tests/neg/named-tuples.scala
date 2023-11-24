@@ -1,14 +1,15 @@
+import annotation.experimental
+import language.experimental.namedTuples
 
-type Person = (name: String, age: Int)
-val person = (name = "Bob", age = 33): (name: String, age: Int)
+@experimental object Test:
 
-type NameOnly = (name: String)
+  type Person = (name: String, age: Int)
+  val person = (name = "Bob", age = 33): (name: String, age: Int)
 
-val nameOnly = (name = "Louis")
+  type NameOnly = (name: String)
 
+  val nameOnly = (name = "Louis")
 
-
-def Test =
   val y: (String, Int) = person // error
   val _: NameOnly = person // error
   val _: Person = nameOnly // error

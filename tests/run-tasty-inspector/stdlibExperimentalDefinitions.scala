@@ -97,7 +97,15 @@ val experimentalDefinitionInLibrary = Set(
   "scala.Tuple$.Helpers$",
   "scala.Tuple$.Helpers$.ReverseImpl",
   "scala.Tuple$.Reverse",
-  "scala.runtime.Tuples$.reverse"
+  "scala.runtime.Tuples$.reverse",
+
+  // New feature: named tuples
+  "scala.NamedTuple",
+  "scala.NamedTuple$",
+  "scala.Tuple$.NamedValue",
+  "scala.Tuple$.NamedValue$",
+
+
 )
 
 

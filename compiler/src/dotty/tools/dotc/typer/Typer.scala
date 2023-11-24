@@ -710,7 +710,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val nameIdx = tupleElems.indexWhere:
         case defn.NamedTupleElem(name, _) => name == selName
         case _ => false
-      if nameIdx >= 0 then
+      if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
         typed(
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(qual), nme.apply),
