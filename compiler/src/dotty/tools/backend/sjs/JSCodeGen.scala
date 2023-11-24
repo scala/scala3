@@ -21,7 +21,7 @@ import StdNames.*
 import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.report
 

@@ -7,7 +7,6 @@ import dotc.*, core.*
 import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import reporting.Diagnostic
-import transform.ValueClasses
 import util.StackTraceOps.*
 
 import scala.compiletime.uninitialized
@@ -127,7 +126,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
    * @param value underlying value
    */
   private def rewrapValueClass(sym: Symbol, value: Object)(using Context): Option[Object] =
-    if ValueClasses.isDerivedValueClass(sym) then
+    if sym.isDerivedValueClass then
       val valueClass = Class.forName(sym.binaryClassName, true, classLoader())
       valueClass.getConstructors.headOption.map(_.newInstance(value))
     else

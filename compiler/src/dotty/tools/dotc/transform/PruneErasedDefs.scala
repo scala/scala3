@@ -10,7 +10,7 @@ import Symbols.*
 import typer.RefChecks
 import MegaPhase.MiniPhase
 import ast.tpd
-import SymUtils.*
+
 import config.Feature
 import Decorators.*
 import dotty.tools.dotc.core.Types.MethodType

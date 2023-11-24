@@ -12,7 +12,7 @@ import typer.ErrorReporting.errorTree
 import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
 import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
 import Decorators.*
-import Symbols.*, SymUtils.*, NameOps.*
+import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature

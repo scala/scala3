@@ -5,7 +5,6 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Contexts.*
 import StdNames.nme
-import transform.SymUtils.*
 import typer.*
 import Names.TermName
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}

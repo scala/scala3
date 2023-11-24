@@ -17,7 +17,6 @@ import NameOps.*
 import Denotations.StaleSymbol
 import util.Spans.Span
 import util.SourceFile
-import transform.SymUtils.*
 
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }

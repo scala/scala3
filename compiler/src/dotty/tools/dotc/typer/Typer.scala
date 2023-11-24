@@ -45,8 +45,6 @@ import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
-import transform.SymUtils.*
-import transform.TypeUtils.*
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
@@ -707,8 +705,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
        // but that is done only after we search for extension methods or conversions.
       typedSelect(tree, pt, qual)
-    else if defn.isSmallGenericTuple(qual.tpe) then
-      val elems = defn.tupleTypes(qual.tpe.widenTermRefExpr).getOrElse(Nil)
+    else if qual.tpe.isSmallGenericTuple then
+      val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
       typedSelect(tree, pt, qual.cast(defn.tupleType(elems)))
     else
       val tree1 = tryExtensionOrConversion(
@@ -729,7 +727,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if checkedType1.exists then
               gadts.println(i"Member selection healed by GADT approximation")
               finish(tree1, qual1, checkedType1)
-            else if defn.isSmallGenericTuple(qual1.tpe) then
+            else if qual1.tpe.isSmallGenericTuple then
               gadts.println(i"Tuple member selection healed by GADT approximation")
               typedSelect(tree, pt, qual1)
             else

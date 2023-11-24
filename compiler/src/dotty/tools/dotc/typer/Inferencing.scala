@@ -9,7 +9,6 @@ import ProtoTypes.*
 import NameKinds.UniqueName
 import util.Spans.*
 import util.{Stats, SimpleIdentityMap, SimpleIdentitySet, SrcPos}
-import transform.TypeUtils.isTransparent
 import Decorators._
 import config.Printers.{gadts, typr}
 import annotation.tailrec

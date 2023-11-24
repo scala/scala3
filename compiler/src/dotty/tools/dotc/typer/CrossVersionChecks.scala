@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.*
-import Symbols.*, Types.*, Contexts.*, Flags.*, SymUtils.*, Decorators.*, reporting.*
+import Symbols.*, Types.*, Contexts.*, Flags.*, Decorators.*, reporting.*
 import util.SrcPos
 import config.{ScalaVersion, NoScalaVersion, Feature, ScalaRelease}
 import MegaPhase.MiniPhase

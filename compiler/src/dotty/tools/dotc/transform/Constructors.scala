@@ -10,7 +10,7 @@ import Flags.*
 import Names.Name
 import NameOps.*
 import NameKinds.{FieldName, ExplicitFieldName}
-import SymUtils.*
+
 import Symbols.*
 import Decorators.*
 import DenotTransformers.*

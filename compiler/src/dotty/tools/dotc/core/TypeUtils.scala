@@ -1,13 +1,12 @@
 package dotty.tools
 package dotc
-package transform
+package core
 
-import core.*
 import TypeErasure.ErasedValueType
 import Types.*, Contexts.*, Symbols.*, Flags.*, Decorators.*
 import Names.Name
 
-object TypeUtils {
+class TypeUtils {
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
@@ -45,22 +44,45 @@ object TypeUtils {
       case ps => ps.reduceLeft(AndType(_, _))
     }
 
-    /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
-    def tupleElementTypes(using Context): Option[List[Type]] = self.dealias match {
-      case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-        tl.tupleElementTypes.map(hd :: _)
-      case self: SingletonType =>
-        if self.termSymbol == defn.EmptyTupleModule then Some(Nil) else None
-      case AndType(tp1, tp2) =>
-        // We assume that we have the following property:
-        // (T1, T2, ..., Tn) & (U1, U2, ..., Un) = (T1 & U1, T2 & U2, ..., Tn & Un)
-        tp1.tupleElementTypes.zip(tp2.tupleElementTypes).map { case (t1, t2) => t1.intersect(t2) }
-      case OrType(tp1, tp2) =>
-        None // We can't combine the type of two tuples
-      case _ =>
-        if defn.isTupleClass(self.typeSymbol) then Some(self.dealias.argInfos)
-        else None
-    }
+    /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
+     */
+    def tupleElementTypes(using Context): Option[List[Type]] =
+      tupleElementTypesUpTo(Int.MaxValue)
+
+    /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
+     *  @param bound     The maximum number of elements that needs generating minus 1
+     *                   The generation will stop once more than bound elems have been generated
+     *  @param normalize If true, normalize and dealias at each step.
+     *                   If false, never normalize and dealias only to find *:
+     *                   and EmptyTuple types. This is useful for printing.
+     */
+    def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[List[Type]] =
+      def recur(tp: Type, bound: Int): Option[List[Type]] =
+        if bound < 0 then Some(Nil)
+        else (if normalize then tp.normalized else tp).dealias match
+          case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+            recur(tl, bound - 1).map(hd :: _)
+          case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
+            Some(tp.args)  // if normalize is set, use the dealiased tuple
+                           // otherwise rely on the default case below to print unaliased tuples.
+          case tp: SingletonType =>
+            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil) else None
+          case _ =>
+            if defn.isTupleClass(tp.typeSymbol) && !normalize then Some(tp.dealias.argInfos)
+            else None
+      recur(self.stripTypeVar, bound)
+
+    /** Is this a generic tuple that would fit into the range 1..22,
+     *  but is not already an instance of one of Tuple1..22?
+     *  In this case we need to cast it to make the TupleN/ members accessible.
+     *  This works only for generic tuples of known size up to 22.
+     */
+    def isSmallGenericTuple(using Context): Boolean =
+      self.derivesFrom(defn.PairClass)
+      && !defn.isTupleNType(self.widenDealias)
+      && self.widenTermRefExpr.tupleElementTypesUpTo(Definitions.MaxTupleArity).match
+          case Some(elems) if elems.length <= Definitions.MaxTupleArity => true
+          case _ => false
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(using Context): Type =

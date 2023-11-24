@@ -23,8 +23,6 @@ import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
-import transform.SymUtils.*
-import transform.ValueClasses.*
 import Decorators.*
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
@@ -34,11 +32,11 @@ import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
+import transform.ValueClasses.underlyingOfValueClass
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion.*
 import printing.Formatting.hlAsKeyword
-import transform.TypeUtils.*
 import cc.isCaptureChecking
 
 import collection.mutable
@@ -710,7 +708,7 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (isDerivedValueClass(clazz)) {
+    if (clazz.isDerivedValueClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
