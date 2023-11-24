@@ -5107,6 +5107,7 @@ object Types extends TypeUtils {
     case SubTypeTest(origMatchCase: Type, pattern: Type, body: Type)
     case SpeccedPatMat(origMatchCase: HKTypeLambda, captureCount: Int, pattern: MatchTypeCasePattern, body: Type)
     case LegacyPatMat(origMatchCase: HKTypeLambda)
+    case MissingCaptures(origMatchCase: HKTypeLambda, missing: collection.BitSet)
 
     def origMatchCase: Type
   end MatchTypeCaseSpec
@@ -5116,15 +5117,43 @@ object Types extends TypeUtils {
       cas match
         case cas: HKTypeLambda =>
           val defn.MatchCase(pat, body) = cas.resultType: @unchecked
-          val specPattern = tryConvertToSpecPattern(cas, pat)
-          if specPattern != null then
-            SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
+          val missing = checkCapturesPresent(cas, pat)
+          if !missing.isEmpty then
+            MissingCaptures(cas, missing)
           else
-            LegacyPatMat(cas)
+            val specPattern = tryConvertToSpecPattern(cas, pat)
+            if specPattern != null then
+              SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
+            else
+              LegacyPatMat(cas)
         case _ =>
           val defn.MatchCase(pat, body) = cas: @unchecked
           SubTypeTest(cas, pat, body)
     end analyze
+
+    /** Checks that all the captures of the case are present in the case.
+     *
+     *  Sometimes, because of earlier substitutions of an abstract type constructor,
+     *  we can end up with patterns that do not mention all their captures anymore.
+     *  This can happen even when the body still refers to these missing captures.
+     *  In that case, we must always consider the case to be unmatchable, i.e., to
+     *  become `Stuck`.
+     *
+     *  See pos/i12127.scala for an example.
+     */
+    def checkCapturesPresent(cas: HKTypeLambda, pat: Type)(using Context): collection.BitSet =
+      val captureCount = cas.paramNames.size
+      val missing = new mutable.BitSet(captureCount)
+      missing ++= (0 until captureCount)
+      new CheckCapturesPresent(cas).apply(missing, pat)
+
+    private class CheckCapturesPresent(cas: HKTypeLambda)(using Context) extends TypeAccumulator[mutable.BitSet]:
+      def apply(missing: mutable.BitSet, tp: Type): mutable.BitSet = tp match
+        case TypeParamRef(binder, num) if binder eq cas =>
+          missing -= num
+        case _ =>
+          foldOver(missing, tp)
+    end CheckCapturesPresent
 
     private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCasePattern | Null =
       var typeParamRefsAccountedFor: Int = 0
