@@ -1,4 +1,6 @@
-// https://github.com/lampepfl/dotty/issues/10242  
+//> using options -source:3.3
+
+// https://github.com/lampepfl/dotty/issues/10242
 type Foo[A, B <: A] = A
 
 type Bar[A] = A match {

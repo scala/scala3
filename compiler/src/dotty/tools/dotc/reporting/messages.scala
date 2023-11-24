@@ -3073,6 +3073,10 @@ class MatchTypeScrutineeCannotBeHigherKinded(tp: Type)(using Context)
     def msg(using Context) = i"the scrutinee of a match type cannot be higher-kinded"
     def explain(using Context) = ""
 
+class MatchTypeLegacyPattern(errorText: String)(using Context) extends TypeMsg(MatchTypeLegacyPatternID):
+  def msg(using Context) = errorText
+  def explain(using Context) = ""
+
 class ClosureCannotHaveInternalParameterDependencies(mt: Type)(using Context)
   extends TypeMsg(ClosureCannotHaveInternalParameterDependenciesID):
     def msg(using Context) =
