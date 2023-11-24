@@ -3371,19 +3371,15 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             stableScrut.member(typeMemberName) match
               case denot: SingleDenotation if denot.exists =>
                 val info = denot.info match
-                  case TypeAlias(alias) => alias
-                  case info             => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
-                if info.isInstanceOf[ClassInfo] then
-                  /* The member is not an alias (we'll get Stuck instead of NoInstances,
-                   * which is not ideal, but we cannot make a RealTypeBounds of ClassInfo).
-                   */
-                  false
-                else
-                  val infoRefersToSkolem = stableScrut.isInstanceOf[SkolemType] && stableScrut.occursIn(info)
-                  val info1 =
-                    if infoRefersToSkolem && !info.isInstanceOf[TypeBounds] then RealTypeBounds(info, info) // to trigger a MatchResult.NoInstances
-                    else info
-                  rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
+                  case TypeAlias(alias)                => alias              // Extract the alias
+                  case ClassInfo(prefix, cls, _, _, _) => prefix.select(cls) // Re-select the class from the prefix
+                  case info => info // Notably, RealTypeBounds, which will eventually give a MatchResult.NoInstances
+                val infoRefersToSkolem = stableScrut.isInstanceOf[SkolemType] && stableScrut.occursIn(info)
+                val info1 = info match
+                  case info: TypeBounds        => info                       // Will already trigger a MatchResult.NoInstances
+                  case _ if infoRefersToSkolem => RealTypeBounds(info, info) // Explicitly trigger a MatchResult.NoInstances
+                  case _                       => info                       // We have a match
+                rec(capture, info1, variance = 0, scrutIsWidenedAbstract)
               case _ =>
                 false
       end rec
