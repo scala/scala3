@@ -2084,7 +2084,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             ExprType(info1.resType)
           case info1 => info1
 
-        isSubInfo(info1, info2, m.symbol.info.orElse(info1))
+        (isSubInfo(info1, info2, m.symbol.info.orElse(info1)) && m.symbol.hasTargetName(m.symbol.name))
         || matchAbstractTypeMember(m.info)
         || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
       end qualifies
