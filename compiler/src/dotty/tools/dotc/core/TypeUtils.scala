@@ -65,8 +65,12 @@ class TypeUtils {
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
             Some(tp.args)  // if normalize is set, use the dealiased tuple
                            // otherwise rely on the default case below to print unaliased tuples.
+          case tp: SkolemType =>
+            recur(tp.underlying, bound)
           case tp: SingletonType =>
-            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil) else None
+            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil)
+            else if normalize then recur(tp.widen, bound)
+            else None
           case _ =>
             if defn.isTupleClass(tp.typeSymbol) && !normalize then Some(tp.dealias.argInfos)
             else None
@@ -83,6 +87,9 @@ class TypeUtils {
       && self.widenTermRefExpr.tupleElementTypesUpTo(Definitions.MaxTupleArity).match
           case Some(elems) if elems.length <= Definitions.MaxTupleArity => true
           case _ => false
+
+    /** Is this type a named tuple element `name = value`? */
+    def isNamedTupleElem(using Context): Boolean = defn.NamedTupleElem.unapply(self).isDefined
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(using Context): Type =
