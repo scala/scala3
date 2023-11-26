@@ -1,4 +1,3 @@
-import annotation.experimental
 import language.experimental.namedTuples
 import NamedTuple.dropNames
 
@@ -76,8 +75,20 @@ val _: CombinedInfo = bob ++ addr
 // But then we could not do this:
 
   def swap[A, B](x: (A, B)): (B, A) = (x(1), x(0))
-
   val bobS = swap(bob)
   val _: (age: Int, name: String) = bobS
 
+  val silly = bob match
+    case (name, age) => name.length + age
 
+  assert(silly == 36)
+
+  val minors = persons.filter:
+    case (age = a) => a < 18
+    case _ => false
+
+  assert(minors.isEmpty)
+
+  bob match
+    case (age = 33, name = "Bob") => ()
+    case _ => assert(false)

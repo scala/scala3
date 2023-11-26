@@ -1447,6 +1447,7 @@ trait Applications extends Compatibility {
 
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+
         def unapplyImplicits(unapp: Tree): List[Tree] = {
           val res = List.newBuilder[Tree]
           def loop(unapp: Tree): Unit = unapp match {
@@ -1481,7 +1482,7 @@ trait Applications extends Compatibility {
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
-        val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
+        val typedArgsErr = args.mapconserve(typed(_, defn.AnyType))
         cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
     }
   }

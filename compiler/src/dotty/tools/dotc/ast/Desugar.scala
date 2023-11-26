@@ -1445,14 +1445,26 @@ object desugar {
       AppliedTypeTree(
         TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
 
+  private def checkMismatched(elems: List[Tree])(using Context) = elems match
+    case elem :: elems1 =>
+      val misMatchOpt =
+        if elem.isInstanceOf[NamedArg]
+        then elems1.find(!_.isInstanceOf[NamedArg])
+        else elems1.find(_.isInstanceOf[NamedArg])
+      for misMatch <- misMatchOpt do
+        report.error(em"Illegal combination of named and unnamed tuple elements", misMatch.srcPos)
+    case _ =>
+
   /** Translate tuple expressions of arity <= 22
    *
    *     ()             ==>   ()
    *     (t)            ==>   t
    *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
    */
-  def tuple(tree: Tuple)(using Context): Tree =
-    val elems = tree.trees.mapConserve(desugarTupleElem)
+  def tuple(tree: Tuple, pt: Type)(using Context): Tree =
+    checkMismatched(tree.trees)
+    val adapted = adaptTupleElems(tree.trees, pt)
+    val elems = adapted.mapConserve(desugarTupleElem)
     val arity = elems.length
     if arity <= Definitions.MaxTupleArity then
       def tupleTypeRef = defn.TupleType(arity).nn
@@ -1465,20 +1477,67 @@ object desugar {
     else
       cpy.Tuple(tree)(elems)
 
-  private def desugarTupleElem(elem: untpd.Tree)(using Context): untpd.Tree = elem match
+  def adaptTupleElems(elems: List[Tree], pt: Type)(using Context): List[Tree] =
+
+    def reorderedNamedArgs(selElems: List[Type], wildcardSpan: Span): List[untpd.Tree] =
+      val nameIdx =
+        for case (defn.NamedTupleElem(name, _), idx) <- selElems.zipWithIndex yield
+          (name, idx)
+      val nameToIdx = nameIdx.toMap[Name, Int]
+      val reordered = Array.fill[untpd.Tree](selElems.length):
+        untpd.Ident(nme.WILDCARD).withSpan(wildcardSpan)
+      for case arg @ NamedArg(name, _) <- elems do
+        nameToIdx.get(name) match
+          case Some(idx) =>
+            if reordered(idx).isInstanceOf[Ident] then
+              reordered(idx) = arg
+            else
+              report.error(em"Duplicate named pattern", arg.srcPos)
+          case _ =>
+            report.error(em"No element named `$name` is defined", arg.srcPos)
+      reordered.toList
+
+    def convertedToNamedArgs(selElems: List[Type]): List[untpd.Tree] =
+      elems.lazyZip(selElems).map:
+        case (arg, defn.NamedTupleElem(name, _)) =>
+          arg match
+            case NamedArg(_, _) => arg // can arise for malformed elements
+            case _ => NamedArg(name, arg)
+        case (arg, _) =>
+          arg
+
+    pt.tupleElementTypes match
+      case Some(selElems @ (firstSelElem :: _)) if ctx.mode.is(Mode.Pattern) =>
+        elems match
+          case (first @ NamedArg(_, _)) :: _ =>
+            reorderedNamedArgs(selElems, first.span.startPos)
+          case _ =>
+            if firstSelElem.isNamedTupleElem
+            then convertedToNamedArgs(selElems)
+            else elems
+      case _ =>
+        elems
+  end adaptTupleElems
+
+  private def desugarTupleElem(elem: Tree)(using Context): Tree = elem match
     case NamedArg(name, arg) =>
-      val nameLit = untpd.Literal(Constant(name.toString))
-      if ctx.mode.is(Mode.Type) then
-        untpd.AppliedTypeTree(untpd.ref(defn.Tuple_NamedValueType),
-          untpd.SingletonTypeTree(nameLit) :: arg :: Nil)
-      else if ctx.mode.is(Mode.Pattern) then
-        untpd.Apply(
-          untpd.Block(Nil,
-            untpd.TypeApply(untpd.ref(defn.Tuple_NamedValue_extract),
-              untpd.SingletonTypeTree(nameLit) :: Nil)),
-          arg :: Nil)
-      else
-        untpd.Apply(untpd.ref(defn.Tuple_NamedValue_apply), nameLit :: arg :: Nil)
+      locally:
+        val nameLit = Literal(Constant(name.toString))
+        if ctx.mode.is(Mode.Type) then
+          AppliedTypeTree(ref(defn.Tuple_NamedValueTypeRef),
+            SingletonTypeTree(nameLit) :: arg :: Nil)
+        else if ctx.mode.is(Mode.Pattern) then
+          Apply(
+            Block(Nil,
+              TypeApply(
+                untpd.Select(untpd.ref(defn.Tuple_NamedValueModuleRef), nme.extract),
+                SingletonTypeTree(nameLit) :: Nil)),
+            arg :: Nil)
+        else
+          Apply(
+            Select(ref(defn.Tuple_NamedValueModuleRef), nme.apply),
+            nameLit :: arg :: Nil)
+      .withSpan(elem.span)
     case _ =>
       elem
 

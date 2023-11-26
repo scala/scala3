@@ -479,6 +479,7 @@ object StdNames {
     val eqlAny: N               = "eqlAny"
     val ex: N                   = "ex"
     val extension: N            = "extension"
+    val extract: N              = "extract"
     val experimental: N         = "experimental"
     val f: N                    = "f"
     val false_ : N              = "false"

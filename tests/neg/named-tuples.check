@@ -26,3 +26,27 @@
    |                                    Required: (age: Int, name: String)
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/named-tuples.scala:20:10 ---------------------------------------------------------------------------
+20 |    case (name = n, age = a) => () // error // error
+   |          ^^^^^^^^
+   |          No element named `name` is defined
+-- Error: tests/neg/named-tuples.scala:20:20 ---------------------------------------------------------------------------
+20 |    case (name = n, age = a) => () // error // error
+   |                    ^^^^^^^
+   |                    No element named `age` is defined
+-- Error: tests/neg/named-tuples.scala:25:9 ----------------------------------------------------------------------------
+25 |  person ++ (1, 2) match // error
+   |  ^^^^^^^^^^^^^^^^
+   | Illegal combination of named and unnamed tuple elements in expression's type (name: String, age: Int, Int, Int)
+-- Error: tests/neg/named-tuples.scala:28:17 ---------------------------------------------------------------------------
+28 |  val bad = ("", age = 10) // error
+   |                 ^^^^^^^^
+   |                 Illegal combination of named and unnamed tuple elements
+-- Error: tests/neg/named-tuples.scala:31:20 ---------------------------------------------------------------------------
+31 |    case (name = n, age) => () // error
+   |                    ^^^
+   |                    Illegal combination of named and unnamed tuple elements
+-- Error: tests/neg/named-tuples.scala:32:16 ---------------------------------------------------------------------------
+32 |    case (name, age = a) => () // error
+   |                ^^^^^^^
+   |                Illegal combination of named and unnamed tuple elements

@@ -851,6 +851,15 @@ object Checking {
     templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
       case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
       case None =>
+
+  /** Check that `tp` is not a tuple containing a mixture of named and unnamed elements */
+  def checkTupleWF(tp: Type, pos: SrcPos, kind: String = "")(using Context): Unit =
+    tp.tupleElementTypes match
+      case Some(elem :: elems1)
+      if elem.isNamedTupleElem && elems1.exists(!_.isNamedTupleElem)
+      || !elem.isNamedTupleElem && elems1.exists(_.isNamedTupleElem) =>
+        report.error(em"Illegal combination of named and unnamed tuple elements in$kind type $tp", pos)
+      case _ =>
 }
 
 trait Checking {

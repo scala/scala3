@@ -712,9 +712,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ => false
       if nameIdx >= 0 && Feature.enabled(Feature.namedTuples) then
         typed(
-          untpd.Apply(
-            untpd.Select(untpd.TypedSplice(qual), nme.apply),
-            untpd.Literal(Constant(nameIdx))),
+          untpd.Select(
+            untpd.Apply(
+              untpd.Select(untpd.TypedSplice(qual), nme.apply),
+              untpd.Literal(Constant(nameIdx))),
+            nme.value),
           pt)
       else if qual.tpe.isSmallGenericTuple then
         typedSelect(tree, pt, qual.cast(defn.tupleType(tupleElems)))
@@ -1801,6 +1803,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val selType = rawSelectorTpe match
           case c: ConstantType if tree.isInline => c
           case otherTpe => otherTpe.widen
+        checkTupleWF(selType, tree.selector.srcPos, " expression's")
 
         /** Does `tree` has the same shape as the given match type?
          *  We only support typed patterns with empty guards, but
@@ -3068,7 +3071,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Translate tuples of all arities */
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
-    val tree1 = desugar.tuple(tree)
+    val tree1 = desugar.tuple(tree, pt)
     if tree1 ne tree then typed(tree1, pt)
     else
       val arity = tree.trees.length
