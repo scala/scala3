@@ -89,7 +89,28 @@ class TypeUtils {
           case _ => false
 
     /** Is this type a named tuple element `name = value`? */
-    def isNamedTupleElem(using Context): Boolean = defn.NamedTupleElem.unapply(self).isDefined
+    def isNamedTupleElem(using Context): Boolean = dropNamedTupleElem ne self
+
+    /** Rewrite `name = elem` to `elem` */
+    def dropNamedTupleElem(using Context) = self match
+      case defn.NamedTupleElem(_, elem) => elem
+      case elem => elem
+
+    /** Drop all named elements in tuple type */
+    def dropNamedTupleElems(using Context): Type = self match
+      case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+        val hd1 = hd.dropNamedTupleElem
+        val tl1 = tl.dropNamedTupleElems
+        if (hd1 eq hd) && (tl1 eq tl) then self else AppliedType(tycon, hd1 :: tl1 :: Nil)
+      case tp @ AppliedType(tycon, args) if defn.isTupleNType(tp) =>
+        tp.derivedAppliedType(tycon, args.mapConserve(_.dropNamedTupleElem))
+      case _ =>
+        if self.termSymbol ne defn.EmptyTupleModule then
+          val normed = self.widen.normalized.dealias
+          if normed ne self then
+            val normed1 = normed.dropNamedTupleElems
+            if normed1 ne normed then return normed1
+        self
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(using Context): Type =

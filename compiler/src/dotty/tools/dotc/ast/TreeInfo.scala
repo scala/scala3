@@ -481,6 +481,31 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
+
+  /** The desugared version of a named tuple element pattern `name = elem`
+   *  (unapply is currently unused)
+   */
+  object NamedElemPattern:
+
+    def apply(name: Name, elem: Tree)(using Context): Tree =
+      Apply(
+        Block(Nil,
+          TypeApply(
+            untpd.Select(untpd.ref(defn.Tuple_NamedValueModuleRef), nme.extract),
+            SingletonTypeTree(Literal(Constant(name.toString))) :: Nil)),
+        elem :: Nil)
+
+    def unapply(tree: Tree)(using Context): Option[(TermName, Tree)] = tree match
+      case Apply(
+        Block(Nil,
+          TypeApply(
+            untpd.Select(TypedSplice(namedValue), nme.extract),
+            SingletonTypeTree(Literal(Constant(name: String))) :: Nil)),
+        elem :: Nil) if namedValue.symbol == defn.Tuple_NamedValueModuleRef.symbol =>
+        Some((name.toTermName, elem))
+      case _ => None
+
+  end NamedElemPattern
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>

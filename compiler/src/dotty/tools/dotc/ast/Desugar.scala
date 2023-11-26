@@ -1461,9 +1461,9 @@ object desugar {
    *     (t)            ==>   t
    *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
    */
-  def tuple(tree: Tuple, pt: Type)(using Context): Tree =
+  def tuple(tree: Tuple, pt: Type)(using Context): (Tree, Type) =
     checkMismatched(tree.trees)
-    val adapted = adaptTupleElems(tree.trees, pt)
+    val (adapted, pt1) = adaptTupleElems(tree.trees, pt)
     val elems = adapted.mapConserve(desugarTupleElem)
     val arity = elems.length
     if arity <= Definitions.MaxTupleArity then
@@ -1473,11 +1473,11 @@ object desugar {
           if ctx.mode is Mode.Type then TypeTree(defn.UnitType) else unitLiteral
         else if ctx.mode is Mode.Type then AppliedTypeTree(ref(tupleTypeRef), elems)
         else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), elems)
-      tree1.withSpan(tree.span)
+      (tree1.withSpan(tree.span), pt1)
     else
-      cpy.Tuple(tree)(elems)
+      (cpy.Tuple(tree)(elems), pt1)
 
-  def adaptTupleElems(elems: List[Tree], pt: Type)(using Context): List[Tree] =
+  def adaptTupleElems(elems: List[Tree], pt: Type)(using Context): (List[Tree], Type) =
 
     def reorderedNamedArgs(selElems: List[Type], wildcardSpan: Span): List[untpd.Tree] =
       val nameIdx =
@@ -1497,26 +1497,15 @@ object desugar {
             report.error(em"No element named `$name` is defined", arg.srcPos)
       reordered.toList
 
-    def convertedToNamedArgs(selElems: List[Type]): List[untpd.Tree] =
-      elems.lazyZip(selElems).map:
-        case (arg, defn.NamedTupleElem(name, _)) =>
-          arg match
-            case NamedArg(_, _) => arg // can arise for malformed elements
-            case _ => NamedArg(name, arg)
-        case (arg, _) =>
-          arg
-
     pt.tupleElementTypes match
-      case Some(selElems @ (firstSelElem :: _)) if ctx.mode.is(Mode.Pattern) =>
+      case Some(selElems) if ctx.mode.is(Mode.Pattern) =>
         elems match
           case (first @ NamedArg(_, _)) :: _ =>
-            reorderedNamedArgs(selElems, first.span.startPos)
+            (reorderedNamedArgs(selElems, first.span.startPos), pt)
           case _ =>
-            if firstSelElem.isNamedTupleElem
-            then convertedToNamedArgs(selElems)
-            else elems
+            (elems, pt.dropNamedTupleElems)
       case _ =>
-        elems
+        (elems, pt)
   end adaptTupleElems
 
   private def desugarTupleElem(elem: Tree)(using Context): Tree = elem match
@@ -1527,12 +1516,7 @@ object desugar {
           AppliedTypeTree(ref(defn.Tuple_NamedValueTypeRef),
             SingletonTypeTree(nameLit) :: arg :: Nil)
         else if ctx.mode.is(Mode.Pattern) then
-          Apply(
-            Block(Nil,
-              TypeApply(
-                untpd.Select(untpd.ref(defn.Tuple_NamedValueModuleRef), nme.extract),
-                SingletonTypeTree(nameLit) :: Nil)),
-            arg :: Nil)
+          NamedElemPattern(name, arg)
         else
           Apply(
             Select(ref(defn.Tuple_NamedValueModuleRef), nme.apply),

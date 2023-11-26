@@ -90,5 +90,8 @@ val _: CombinedInfo = bob ++ addr
   assert(minors.isEmpty)
 
   bob match
-    case (age = 33, name = "Bob") => ()
+    case bob1 @ (age = 33, name = "Bob") =>
+      val x: Person = bob1 // bob1 still has type Person with the unswapped elements
     case _ => assert(false)
+
+

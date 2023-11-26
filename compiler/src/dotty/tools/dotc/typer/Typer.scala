@@ -3071,8 +3071,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   /** Translate tuples of all arities */
   def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
-    val tree1 = desugar.tuple(tree, pt)
-    if tree1 ne tree then typed(tree1, pt)
+    val (tree1, pt1) = desugar.tuple(tree, pt)
+    if (tree1 ne tree) || (pt1 ne pt) then typed(tree1, pt1)
     else
       val arity = tree.trees.length
       val pts = pt.tupleElementTypes match

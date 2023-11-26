@@ -30,5 +30,3 @@ import language.experimental.namedTuples
   person match
     case (name = n, age) => () // error
     case (name, age = a) => () // error
-
-
