@@ -9,10 +9,10 @@ import Decorators.*
 import Annotations.Annotation
 import NameKinds.{UniqueName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
 import typer.{Namer, Checking}
-import util.{Property, SourceFile, SourcePosition, Chars}
+import util.{Property, SourceFile, SourcePosition, SrcPos, Chars}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion.*
-import collection.mutable.ListBuffer
+import collection.mutable
 import reporting.*
 import annotation.constructorOnly
 import printing.Formatting.hl
@@ -242,7 +242,7 @@ object desugar {
 
   private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
     val DefDef(_, paramss, tpt, rhs) = meth
-    val evidenceParamBuf = ListBuffer[ValDef]()
+    val evidenceParamBuf = mutable.ListBuffer[ValDef]()
 
     var seenContextBounds: Int = 0
     def desugarContextBounds(rhs: Tree): Tree = rhs match
@@ -1445,7 +1445,18 @@ object desugar {
       AppliedTypeTree(
         TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
 
-  private def checkMismatched(elems: List[Tree])(using Context) = elems match
+  private def checkWellFormedTupleElems(elems: List[Tree])(using Context) =
+    val seen = mutable.Set[Name]()
+    for case arg @ NamedArg(name, _) <- elems do
+      if seen.contains(name) then
+        report.error(em"Duplicate tuple element name", arg.srcPos)
+      seen += name
+      if name.startsWith("_") && name.toString.tail.toIntOption.isDefined then
+        report.error(
+            em"$name cannot be used as the name of a tuple element because it is a regular tuple selector",
+            arg.srcPos)
+
+    elems match
     case elem :: elems1 =>
       val misMatchOpt =
         if elem.isInstanceOf[NamedArg]
@@ -1454,6 +1465,7 @@ object desugar {
       for misMatch <- misMatchOpt do
         report.error(em"Illegal combination of named and unnamed tuple elements", misMatch.srcPos)
     case _ =>
+  end checkWellFormedTupleElems
 
   /** Translate tuple expressions of arity <= 22
    *
@@ -1462,7 +1474,7 @@ object desugar {
    *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
    */
   def tuple(tree: Tuple, pt: Type)(using Context): (Tree, Type) =
-    checkMismatched(tree.trees)
+    checkWellFormedTupleElems(tree.trees)
     val (adapted, pt1) = adaptTupleElems(tree.trees, pt)
     val elems = adapted.mapConserve(desugarTupleElem)
     val arity = elems.length
@@ -2040,7 +2052,7 @@ object desugar {
    *  without duplicates
    */
   private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
-    val buf = ListBuffer[VarInfo]()
+    val buf = mutable.ListBuffer[VarInfo]()
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))

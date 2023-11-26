@@ -1587,7 +1587,8 @@ object Parsers {
         case ByNameTypeTree(t1) =>
           syntaxError(ByNameParameterNotSupported(t), t.span)
           t1
-        case ValDef(name, tpt, _) => NamedArg(name, convertToElem(tpt))
+        case ValDef(name, tpt, _) =>
+          NamedArg(name, convertToElem(tpt)).withSpan(t.span)
         case _ => t
 
       val t =
@@ -2013,14 +2014,16 @@ object Parsers {
         if wildOK then t else rejectWildcardType(t)
 
       def namedArgType() =
-        val name = ident()
-        accept(EQUALS)
-        NamedArg(name.toTypeName, argType())
+        atSpan(in.offset):
+          val name = ident()
+          accept(EQUALS)
+          NamedArg(name.toTypeName, argType())
 
       def namedElem() =
-        val name = ident()
-        acceptColon()
-        NamedArg(name, argType())
+        atSpan(in.offset):
+          val name = ident()
+          acceptColon()
+          NamedArg(name, argType())
 
       if namedOK && isIdent && in.lookahead.token == EQUALS then
         commaSeparated(() => namedArgType())

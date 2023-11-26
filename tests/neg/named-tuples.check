@@ -1,52 +1,68 @@
--- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:13:25 ------------------------------------------------------
-13 |  val y: (String, Int) = person // error
+-- Error: tests/neg/named-tuples.scala:9:19 ----------------------------------------------------------------------------
+9 |  val illformed = (_2 = 2) // error
+  |                   ^^^^^^
+  |                   _2 cannot be used as the name of a tuple element because it is a regular tuple selector
+-- Error: tests/neg/named-tuples.scala:10:20 ---------------------------------------------------------------------------
+10 |  type Illformed = (_1: Int) // error
+   |                    ^^^^^^^
+   |                    _1 cannot be used as the name of a tuple element because it is a regular tuple selector
+-- Error: tests/neg/named-tuples.scala:11:40 ---------------------------------------------------------------------------
+11 |  val illformed2 = (name = "", age = 0, name = true)  // error
+   |                                        ^^^^^^^^^^^
+   |                                        Duplicate tuple element name
+-- Error: tests/neg/named-tuples.scala:12:45 ---------------------------------------------------------------------------
+12 |  type Illformed2 = (name: String, age: Int, name: Boolean) // error
+   |                                             ^^^^^^^^^^^^^
+   |                                             Duplicate tuple element name
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:18:25 ------------------------------------------------------
+18 |  val y: (String, Int) = person // error
    |                         ^^^^^^
    |                         Found:    (Test.person : (name: String, age: Int))
    |                         Required: (String, Int)
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:14:20 ------------------------------------------------------
-14 |  val _: NameOnly = person // error
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:19:20 ------------------------------------------------------
+19 |  val _: NameOnly = person // error
    |                    ^^^^^^
    |                    Found:    (Test.person : (name: String, age: Int))
    |                    Required: Test.NameOnly
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:15:18 ------------------------------------------------------
-15 |  val _: Person = nameOnly // error
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:20:18 ------------------------------------------------------
+20 |  val _: Person = nameOnly // error
    |                  ^^^^^^^^
    |                  Found:    (Test.nameOnly : (name: String))
    |                  Required: Test.Person
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:17:36 ------------------------------------------------------
-17 |  val _: (age: Int, name: String) = person // error
+-- [E007] Type Mismatch Error: tests/neg/named-tuples.scala:22:36 ------------------------------------------------------
+22 |  val _: (age: Int, name: String) = person // error
    |                                    ^^^^^^
    |                                    Found:    (Test.person : (name: String, age: Int))
    |                                    Required: (age: Int, name: String)
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg/named-tuples.scala:20:10 ---------------------------------------------------------------------------
-20 |    case (name = n, age = a) => () // error // error
+-- Error: tests/neg/named-tuples.scala:25:10 ---------------------------------------------------------------------------
+25 |    case (name = n, age = a) => () // error // error
    |          ^^^^^^^^
    |          No element named `name` is defined
--- Error: tests/neg/named-tuples.scala:20:20 ---------------------------------------------------------------------------
-20 |    case (name = n, age = a) => () // error // error
+-- Error: tests/neg/named-tuples.scala:25:20 ---------------------------------------------------------------------------
+25 |    case (name = n, age = a) => () // error // error
    |                    ^^^^^^^
    |                    No element named `age` is defined
--- Error: tests/neg/named-tuples.scala:25:9 ----------------------------------------------------------------------------
-25 |  person ++ (1, 2) match // error
+-- Error: tests/neg/named-tuples.scala:30:9 ----------------------------------------------------------------------------
+30 |  person ++ (1, 2) match // error
    |  ^^^^^^^^^^^^^^^^
    | Illegal combination of named and unnamed tuple elements in expression's type (name: String, age: Int, Int, Int)
--- Error: tests/neg/named-tuples.scala:28:17 ---------------------------------------------------------------------------
-28 |  val bad = ("", age = 10) // error
+-- Error: tests/neg/named-tuples.scala:33:17 ---------------------------------------------------------------------------
+33 |  val bad = ("", age = 10) // error
    |                 ^^^^^^^^
    |                 Illegal combination of named and unnamed tuple elements
--- Error: tests/neg/named-tuples.scala:31:20 ---------------------------------------------------------------------------
-31 |    case (name = n, age) => () // error
+-- Error: tests/neg/named-tuples.scala:36:20 ---------------------------------------------------------------------------
+36 |    case (name = n, age) => () // error
    |                    ^^^
    |                    Illegal combination of named and unnamed tuple elements
--- Error: tests/neg/named-tuples.scala:32:16 ---------------------------------------------------------------------------
-32 |    case (name, age = a) => () // error
+-- Error: tests/neg/named-tuples.scala:37:16 ---------------------------------------------------------------------------
+37 |    case (name, age = a) => () // error
    |                ^^^^^^^
    |                Illegal combination of named and unnamed tuple elements

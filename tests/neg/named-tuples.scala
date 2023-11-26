@@ -6,6 +6,11 @@ import language.experimental.namedTuples
   type Person = (name: String, age: Int)
   val person = (name = "Bob", age = 33): (name: String, age: Int)
 
+  val illformed = (_2 = 2) // error
+  type Illformed = (_1: Int) // error
+  val illformed2 = (name = "", age = 0, name = true)  // error
+  type Illformed2 = (name: String, age: Int, name: Boolean) // error
+
   type NameOnly = (name: String)
 
   val nameOnly = (name = "Louis")
