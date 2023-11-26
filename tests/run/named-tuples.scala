@@ -26,6 +26,8 @@ val _: CombinedInfo = bob ++ addr
   bob match
     case p @ (name = "Bob", age = _) => println(p.age)
   bob match
+    case p @ (name = "Bob", age = age) => assert(age == 33)
+  bob match
     case p @ (name = "Peter", age = _) => println(p.age)
     case p @ (name = "Bob", age = 0) => println(p.age)
     case _ => println("no match")
