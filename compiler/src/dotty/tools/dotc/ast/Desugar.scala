@@ -1489,6 +1489,12 @@ object desugar {
     else
       (cpy.Tuple(tree)(elems), pt1)
 
+  /** When desugaring a pattern, adapt tuple elements `elems` and expected type `pt`
+   *  to each other. This means:
+   *   - If `elems` are named pattern elements, rearrange them to match `pt`.
+   *     This requires all names in `elems` to be also present in `pt`.
+   *   - If `elems` are unnamed elements, drop any tuple element names from `pt`.
+   */
   def adaptTupleElems(elems: List[Tree], pt: Type)(using Context): (List[Tree], Type) =
 
     def reorderedNamedArgs(selElems: List[Type], wildcardSpan: Span): List[untpd.Tree] =
@@ -1506,18 +1512,17 @@ object desugar {
             else
               report.error(em"Duplicate named pattern", arg.srcPos)
           case _ =>
-            report.error(em"No element named `$name` is defined", arg.srcPos)
+            report.error(em"No element named `$name` is defined in selector type $pt", arg.srcPos)
       reordered.toList
 
-    pt.tupleElementTypes match
-      case Some(selElems) if ctx.mode.is(Mode.Pattern) =>
-        elems match
-          case (first @ NamedArg(_, _)) :: _ =>
-            (reorderedNamedArgs(selElems, first.span.startPos), pt)
-          case _ =>
-            (elems, pt.dropNamedTupleElems)
-      case _ =>
-        (elems, pt)
+    if ctx.mode.is(Mode.Pattern) then
+      elems match
+        case (first @ NamedArg(_, _)) :: _ =>
+          (reorderedNamedArgs(pt.tupleElementTypes.getOrElse(Nil), first.span.startPos), pt)
+        case _ =>
+          (elems, pt.dropNamedTupleElems)
+    else
+      (elems, pt)
   end adaptTupleElems
 
   private def desugarTupleElem(elem: Tree)(using Context): Tree = elem match

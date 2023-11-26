@@ -21,6 +21,8 @@ import language.experimental.namedTuples
 
   val _: (age: Int, name: String) = person // error
 
+  val (name = x, agee = y) = person // error
+
   ("Ives", 2) match
     case (name = n, age = a) => () // error // error
 
@@ -35,3 +37,6 @@ import language.experimental.namedTuples
   person match
     case (name = n, age) => () // error
     case (name, age = a) => () // error
+
+  (??? : Tuple) match
+    case (age = x) => // error
