@@ -392,8 +392,10 @@ object Inferencing {
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
   def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): List[TypeVar] = {
-    @tailrec def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
-      case Apply(fn, _) => boundVars(fn, acc)
+    def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+      case Apply(fn, args) =>
+        val argTpVars = args.flatMap(boundVars(_, Nil))
+        boundVars(fn, acc ++ argTpVars)
       case TypeApply(fn, targs) =>
         val tvars = targs.filter(_.isInstanceOf[InferredTypeTree]).tpes.collect {
           case tvar: TypeVar
@@ -406,16 +408,18 @@ object Inferencing {
       case Block(_, expr) => boundVars(expr, acc)
       case _ => acc
     }
-    @tailrec def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+    def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
       if (toTest.isEmpty) acc
       else tree match {
-        case Apply(fn, _) =>
+        case Apply(fn, args) =>
+          val argsOcc = args.flatMap(occurring(_, toTest, Nil))
+          val argsNocc = toTest.filterNot(argsOcc.contains)
           fn.tpe.widen match {
             case mtp: MethodType =>
-              val (occ, nocc) = toTest.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
-              occurring(fn, nocc, occ ::: acc)
+              val (occ, nocc) = argsNocc.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
+              occurring(fn, nocc, occ ::: argsOcc ::: acc)
             case _ =>
-              occurring(fn, toTest, acc)
+              occurring(fn, argsNocc, argsOcc ::: acc)
           }
         case TypeApply(fn, targs) => occurring(fn, toTest, acc)
         case Select(pre, _) => occurring(pre, toTest, acc)
