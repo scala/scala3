@@ -20,8 +20,7 @@ class SemanticSymbolBuilder:
   private val locals = mutable.HashMap[Symbol, Int]()
 
   /** The local symbol(s) starting at given offset */
-  private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]():
-    override def default(key: Int) = Set[Symbol]()
+  private val symsAtOffset = new mutable.HashMap[Int, Set[Symbol]]().withDefault(_ => Set[Symbol]())
 
 
   def symbolName(sym: Symbol)(using Context): String =

@@ -1150,9 +1150,7 @@ trait Checking {
 
   /** Check that class does not declare same symbol twice */
   def checkNoDoubleDeclaration(cls: Symbol)(using Context): Unit = {
-    val seen = new mutable.HashMap[Name, List[Symbol]] {
-      override def default(key: Name) = Nil
-    }
+    val seen = new mutable.HashMap[Name, List[Symbol]].withDefaultValue(Nil)
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {

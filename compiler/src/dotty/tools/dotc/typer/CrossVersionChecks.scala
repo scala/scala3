@@ -32,10 +32,16 @@ class CrossVersionChecks extends MiniPhase:
       checkMigration(sym, pos, xMigrationValue)
   end checkUndesiredProperties
 
-  /** If @deprecated is present, and the point of reference is not enclosed
-   * in either a deprecated member or a scala bridge method, issue a warning.
-   */
-  private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
+  /**Skip warnings for synthetic members of case classes during declaration and
+    * scan the chain of outer declaring scopes from the current context
+    * a deprecation warning will be skipped if one the following holds
+    * for a given declaring scope:
+    * - the symbol associated with the scope is also deprecated.
+    * - if and only if `sym` is an enum case, the scope is either
+    *   a module that declares `sym`, or the companion class of the
+    *   module that declares `sym`.
+    */
+  def skipWarning(sym: Symbol)(using Context): Boolean =
 
     /** is the owner an enum or its companion and also the owner of sym */
     def isEnumOwner(owner: Symbol)(using Context) =
@@ -46,26 +52,22 @@ class CrossVersionChecks extends MiniPhase:
 
     def isDeprecatedOrEnum(owner: Symbol)(using Context) =
       // pre: sym is an enumcase
-      owner.isDeprecated
-      || isEnumOwner(owner)
+      owner.isDeprecated || isEnumOwner(owner)
 
-    /**Skip warnings for synthetic members of case classes during declaration and
-     * scan the chain of outer declaring scopes from the current context
-     * a deprecation warning will be skipped if one the following holds
-     * for a given declaring scope:
-     * - the symbol associated with the scope is also deprecated.
-     * - if and only if `sym` is an enum case, the scope is either
-     *   a module that declares `sym`, or the companion class of the
-     *   module that declares `sym`.
-     */
-    def skipWarning(using Context): Boolean =
-      (ctx.owner.is(Synthetic) && sym.is(CaseClass))
-        || ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+    (ctx.owner.is(Synthetic) && sym.is(CaseClass))
+      || ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+  end skipWarning
+
+
+  /** If @deprecated is present, and the point of reference is not enclosed
+   * in either a deprecated member or a scala bridge method, issue a warning.
+   */
+  private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
 
     // Also check for deprecation of the companion class for synthetic methods
     val toCheck = sym :: (if sym.isAllOf(SyntheticMethod) then sym.owner.companionClass :: Nil else Nil)
     for sym <- toCheck; annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
-      if !skipWarning then
+      if !skipWarning(sym) then
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(em"${sym.showLocated} is deprecated${since}${msg}", pos)
@@ -107,6 +109,18 @@ class CrossVersionChecks extends MiniPhase:
     }
   }
 
+  /** ??? */
+  def checkDeprecatedInheritance(parents: List[Tree])(using Context): Unit = {
+    for parent <- parents
+        psym = parent.tpe.classSymbol
+        annot <- psym.getAnnotation(defn.DeprecatedInheritanceAnnot)
+        if !skipWarning(psym)
+    do
+      val msg = annot.argumentConstantString(0).map(msg => s": $msg").getOrElse("")
+      val since = annot.argumentConstantString(1).map(version => s" (since: $version)").getOrElse("")
+      report.deprecationWarning(em"inheritance from $psym is deprecated$since$msg", parent.srcPos)
+  }
+
   override def transformValDef(tree: ValDef)(using Context): ValDef =
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
@@ -120,6 +134,10 @@ class CrossVersionChecks extends MiniPhase:
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef =
     // TODO do we need to check checkDeprecatedOvers(tree)?
     checkExperimentalAnnots(tree.symbol)
+    tree
+
+  override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
+    checkDeprecatedInheritance(tree.parents)
     tree
 
   override def transformIdent(tree: Ident)(using Context): Ident = {

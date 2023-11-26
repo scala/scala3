@@ -19,9 +19,7 @@ import collection.mutable
 
   @volatile private var stack: List[String] = Nil
 
-  val hits: mutable.HashMap[String, Int] = new mutable.HashMap[String, Int] {
-    override def default(key: String): Int = 0
-  }
+  val hits: mutable.Map[String, Int] = new mutable.HashMap[String, Int].withDefaultValue(0)
 
   inline def record(inline fn: String, inline n: Int = 1, inline skip: Boolean = timerOnly): Unit =
     if (enabled && !skip) doRecord(fn, n)
