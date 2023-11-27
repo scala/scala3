@@ -12,6 +12,6 @@ def f[T: Ev](v: T): Unit = ???
 
 def main =
 	val s = Set(new Dog)
-//	f(s) // WORKS
-	f(Set(new Dog)) // FAILS
-	// instantiates to
+	f(s) // Ok
+	f(Set(new Dog)) // Error before changes: Ambiguous given instances: both given instance given_Ev_Dog and given instance given_Ev_Animal match type Ev[T]
+
