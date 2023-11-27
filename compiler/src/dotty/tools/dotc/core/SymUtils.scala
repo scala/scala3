@@ -181,7 +181,7 @@ class SymUtils:
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
-        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.parentSymbols(_.isClass) else Nil
+        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbols else Nil
         def problem(child: Symbol) = {
 
           def accessibleMessage(sym: Symbol): String =
