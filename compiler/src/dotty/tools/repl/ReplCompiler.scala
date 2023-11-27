@@ -4,6 +4,7 @@ import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.CompilationUnitInfo
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
@@ -233,7 +234,7 @@ object ReplCompiler:
   val objectNames = mutable.Map.empty[Int, TermName]
 end ReplCompiler
 
-class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source):
+class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source, CompilationUnitInfo(source.file)):
   override def isSuspendable: Boolean = false
 
 /** A placeholder phase that receives parse trees..
