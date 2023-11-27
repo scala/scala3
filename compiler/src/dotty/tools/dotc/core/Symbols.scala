@@ -487,6 +487,12 @@ object Symbols extends SymUtils {
         else
           mySource = defn.patchSource(this)
           if !mySource.exists then
+            val compUnitInfo = compilationUnitInfo
+            if compUnitInfo != null then
+              compUnitInfo.tastyInfo.flatMap(_.attributes.sourceFile) match
+                case Some(path) => mySource = ctx.getSource(path)
+                case _ =>
+          if !mySource.exists then
             mySource = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
