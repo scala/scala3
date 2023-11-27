@@ -4,8 +4,7 @@ package tasty
 
 import scala.language.unsafeNulls
 
-import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler, UnpicklerConfig}
-import TastyHeaderUnpickler.TastyVersion
+import dotty.tools.tasty.{TastyFormat, TastyVersion, TastyBuffer, TastyReader, TastyHeaderUnpickler, UnpicklerConfig}
 import TastyFormat.NameTags.*, TastyFormat.nameTagToString
 import TastyBuffer.NameRef
 
@@ -122,7 +121,7 @@ class TastyUnpickler(reader: TastyReader) {
     result
   }
 
-  new TastyHeaderUnpickler(scala3CompilerConfig, reader).readHeader()
+  val header = new TastyHeaderUnpickler(scala3CompilerConfig, reader).readFullHeader()
 
   locally {
     until(readEnd()) { nameAtRef.add(readNameContents()) }

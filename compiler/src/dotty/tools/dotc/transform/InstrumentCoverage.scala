@@ -97,7 +97,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         id = id,
         start = pos.start,
         end = pos.end,
-        line = pos.line,
+        // +1 to account for the line number starting at 1
+        // the internal line number is 0-base https://github.com/lampepfl/dotty/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
+        line = pos.line + 1,
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.toString,
         treeName = tree.getClass.getSimpleName.nn,

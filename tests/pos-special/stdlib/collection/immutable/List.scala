@@ -14,7 +14,7 @@ package scala
 package collection
 package immutable
 
-import scala.annotation.unchecked.{uncheckedVariance, uncheckedCaptures}
+import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.tailrec
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.DefaultSerializable
@@ -215,7 +215,7 @@ sealed abstract class List[+A]
   // dropRight is inherited from LinearSeq
 
   override def splitAt(n: Int): (List[A], List[A]) = {
-    val b = new ListBuffer[A @uncheckedCaptures]
+    val b = new ListBuffer[A]
     var i = 0
     var these = this
     while (!these.isEmpty && i < n) {
@@ -307,7 +307,7 @@ sealed abstract class List[+A]
   }
 
   @inline final override def takeWhile(p: A => Boolean): List[A] = {
-    val b = new ListBuffer[A @uncheckedCaptures]
+    val b = new ListBuffer[A]
     var these = this
     while (!these.isEmpty && p(these.head)) {
       b += these.head
@@ -317,7 +317,7 @@ sealed abstract class List[+A]
   }
 
   @inline final override def span(p: A => Boolean): (List[A], List[A]) = {
-    val b = new ListBuffer[A @uncheckedCaptures]
+    val b = new ListBuffer[A]
     var these = this
     while (!these.isEmpty && p(these.head)) {
       b += these.head
@@ -652,7 +652,7 @@ sealed abstract class List[+A]
 
 // Internal code that mutates `next` _must_ call `Statics.releaseFence()` if either immediately, or
 // before a newly-allocated, thread-local :: instance is aliased (e.g. in ListBuffer.toList)
-final case class :: [+A](override val head: A, private[scala] var next: List[A @uncheckedVariance @uncheckedCaptures]) // sound because `next` is used only locally
+final case class :: [+A](override val head: A, private[scala] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
   extends List[A] {
   releaseFence()
   override def headOption: Some[A] = Some(head)
@@ -684,7 +684,7 @@ object List extends StrictOptimizedSeqFactory[List] {
 
   def from[B](coll: collection.IterableOnce[B]^): List[B] = Nil.prependedAll(coll)
 
-  def newBuilder[A]: Builder[A, List[A]] = new ListBuffer[A @uncheckedCaptures]()
+  def newBuilder[A]: Builder[A, List[A]] = new ListBuffer[A]()
 
   def empty[A]: List[A] = Nil
 

@@ -23,7 +23,6 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
-import transform.TypeUtils.*
 import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
@@ -2588,7 +2587,7 @@ object SymDenotations {
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }

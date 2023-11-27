@@ -3,7 +3,7 @@ package transform
 
 import core.*
 import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
-import SymUtils.*
+
 import collection.mutable.{LinkedHashMap, LinkedHashSet}
 import annotation.constructorOnly
 import scala.compiletime.uninitialized

@@ -176,7 +176,7 @@ object Build {
   // Use the TASTy jar from `scala2-library-tasty` in the classpath
   // This only works with `scala3-bootstrapped/scalac` and tests in `scala3-bootstrapped`
   //
-  // Enable in SBT with: set ThisBuild/Build.useScala2LibraryTasty := true
+  // Enable in SBT with: `set ThisBuild/Build.useScala2LibraryTasty := true`
   val useScala2LibraryTasty = settingKey[Boolean]("Use the TASTy jar from `scala2-library-tasty` in the classpath")
 
   // Used to compile files similar to ./bin/scalac script
@@ -1013,6 +1013,7 @@ object Build {
       Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions += "-Ycompile-scala2-library",
       scalacOptions -= "-Xfatal-warnings",
+      Compile / compile / logLevel := Level.Error,
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
@@ -1254,7 +1255,7 @@ object Build {
       BuildInfoPlugin.buildInfoDefaultSettings
 
   lazy val presentationCompilerSettings = {
-    val mtagsVersion = "1.1.0+53-af181de4-SNAPSHOT"
+    val mtagsVersion = "1.1.0+79-325e7ef0-SNAPSHOT"
 
     Seq(
       resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
@@ -1266,8 +1267,8 @@ object Build {
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.12" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
+      scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
       Compile / scalacOptions ++= Seq("-Yexplicit-nulls", "-Ysafe-init"),
-      Compile / scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
       Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -2093,7 +2094,16 @@ object Build {
         }
       )
 
-    def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
+    def asTastyCoreScala2: Project = project
+      .settings(commonScala2Settings)
+      // need to add @annotation.internal.sharable to the classpath for compiling
+      // we don't actually publish this library anywhere, so it's fine.
+      // if someone depends on the sources of tasty-core in a scala 2 project,
+      // they should strip the sharable annotation, or add -Ytasty-reader
+      .dependsOn(dottyLibrary(NonBootstrapped) % Provided)
+      .settings(
+        scalacOptions += "-Ytasty-reader" // to read scala3 library
+      )
 
     def asDottyBench(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyCompiler).

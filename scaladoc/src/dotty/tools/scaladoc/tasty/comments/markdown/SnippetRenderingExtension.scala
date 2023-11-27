@@ -35,7 +35,7 @@ object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
       html.raw(SnippetRenderer.renderSnippet(node.getContentChars.toString, node.getInfo.toString.split(" ").headOption))
 
   object Render extends NodeRenderer:
-    override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
+    override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[?]] =
       JSet(
         new NodeRenderingHandler(classOf[ExtendedFencedCodeBlock], ExtendedFencedCodeBlockHandler),
         new NodeRenderingHandler(classOf[FencedCodeBlock], FencedCodeBlockHandler)

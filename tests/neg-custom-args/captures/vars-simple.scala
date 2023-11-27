@@ -2,8 +2,8 @@ class CC
 type Cap = CC^
 
 def test(cap1: Cap, cap2: Cap) =
-  var a: String ->{cap[test]} String = ???
-  var b: List[String ->{cap[test]} String] = Nil
+  var a: String ->{cap1, cap2} String = ???
+  var b: List[String ->{cap1, cap2} String] = Nil
   def f(x: String): String = if cap1 == cap1 then "" else "a"
   a = f // ok
   val x = List(f)

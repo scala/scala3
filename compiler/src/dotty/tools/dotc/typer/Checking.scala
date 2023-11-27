@@ -23,8 +23,6 @@ import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
-import transform.SymUtils.*
-import transform.ValueClasses.*
 import Decorators.*
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
@@ -34,11 +32,11 @@ import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
+import transform.ValueClasses.underlyingOfValueClass
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion.*
 import printing.Formatting.hlAsKeyword
-import transform.TypeUtils.*
 import cc.isCaptureChecking
 
 import collection.mutable
@@ -519,11 +517,7 @@ object Checking {
         // but they can never be one of ClassOnlyFlags
     if !sym.isClass && sym.isOneOf(ClassOnlyFlags) then
       val illegal = sym.flags & ClassOnlyFlags
-      if sym.is(TypeParam)
-          && illegal == Sealed
-          && Feature.ccEnabled && cc.ccConfig.allowUniversalInBoxed
-      then () // OK
-      else fail(em"only classes can be ${illegal.flagsString}")
+      fail(em"only classes can be ${illegal.flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
     if sym.is(Trait) then
@@ -714,7 +708,7 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (isDerivedValueClass(clazz)) {
+    if (clazz.isDerivedValueClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
@@ -849,6 +843,14 @@ object Checking {
     def reportNoRefinements(pos: SrcPos) =
       report.error("PolyFunction subtypes must refine the apply method", pos)
   }.traverse(tree)
+
+  /** Check that users do not extend the `PolyFunction` trait.
+   *  We only allow compiler generated `PolyFunction`s.
+   */
+  def checkPolyFunctionExtension(templ: Template)(using Context): Unit =
+    templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
+      case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
+      case None =>
 }
 
 trait Checking {
@@ -1075,14 +1077,18 @@ trait Checking {
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
     tree.op match {
       case id @ Ident(name: Name) =>
+        def methCompiledBeforeDeprecation =
+          meth.tastyInfo match
+            case Some(info) => info.version.major == 28 && info.version.minor < 4 // compiled before 3.4
+            case _ => false // compiled with the current compiler
         name.toTermName match {
           case name: SimpleName
           if !untpd.isBackquoted(id) &&
              !name.isOperatorName &&
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
-             !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(future) =>
+             !methCompiledBeforeDeprecation &&
+             !infixOKSinceFollowedBy(tree.right) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -1090,12 +1096,14 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
-            def rewriteMsg = Message.rewriteNotice("The latter", options = "-deprecation")
-            report.deprecationWarning(
+            def rewriteMsg = Message.rewriteNotice("The latter", version = `3.4-migration`)
+            report.gradualErrorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
-              tree.op.srcPos)
-            if (ctx.settings.deprecation.value) {
+              tree.op.srcPos,
+              warnFrom = `3.4`,
+              errorFrom = future)
+            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then {
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
             }

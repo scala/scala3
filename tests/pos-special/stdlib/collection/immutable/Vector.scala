@@ -25,7 +25,6 @@ import scala.collection.immutable.VectorInline._
 import scala.collection.immutable.VectorStatics._
 import scala.collection.mutable.ReusableBuilder
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 
 /** $factoryInfo
@@ -229,7 +228,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     // k >= 0, k = suffix.knownSize
     val tinyAppendLimit = 4 + vectorSliceCount
     if (k < tinyAppendLimit) {
-      var v: Vector[B @uncheckedCaptures] = this
+      var v: Vector[B] = this
       suffix match {
         case it: Iterable[_] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
         case _ => suffix.iterator.foreach(x => v = v.appended(x))
@@ -265,7 +264,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   /** Length of all slices up to and including index */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
-  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
+  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
 
   override def toVector: Vector[A] = this
 
@@ -2393,7 +2392,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
     take(_until)
   }
 
-  override def copyToArray[sealed B >: A](xs: Array[B], start: Int, len: Int): Int = {
+  override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val xsLen = xs.length
     val total = IterableOnce.elemsToCopyToArray(knownSize, xsLen, start, len)
     var copied = 0
@@ -2468,7 +2467,7 @@ private class LongVectorStepper(it: NewVectorIterator[Long])
 
 // The following definitions are needed for binary compatibility with ParVector
 private[collection] class VectorIterator[+A](_startIndex: Int, private[this] var endIndex: Int) extends AbstractIterator[A] {
-  private[immutable] var it: NewVectorIterator[A @uncheckedVariance @uncheckedCaptures] = _
+  private[immutable] var it: NewVectorIterator[A @uncheckedVariance] = _
   def hasNext: Boolean = it.hasNext
   def next(): A = it.next()
   private[collection] def remainingElementCount: Int = it.size

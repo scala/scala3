@@ -18,7 +18,6 @@ import Names.*
 import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
-import transform.SymUtils.*
 import dotty.tools.io.File
 import java.io.PrintWriter
 
@@ -274,7 +273,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
             report.error(ex, csym.sourcePos)
             defn.ObjectType :: Nil
         }
-      if (ValueClasses.isDerivedValueClass(csym)) {
+      if (csym.isDerivedValueClass) {
         val underlying = ValueClasses.valueClassUnbox(csym).info.finalResultType
         // The underlying type of a value class should be part of the name hash
         // of the value class (see the test `value-class-underlying`), this is accomplished

@@ -15,7 +15,6 @@ import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.{Addenda, err}
 import typer.ProtoTypes.{AnySelectionProto, LhsProto}
 import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
-import transform.SymUtils.*
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
 import scala.collection.mutable
@@ -130,15 +129,15 @@ object CheckCaptures:
         report.error(em"Singleton type $parent cannot have capture set", parent.srcPos)
       case _ =>
     for elem <- ann.retainedElems do
-      elem match
-        case QualifiedRoot(outer) =>
-          // Will be checked by Setup's checkOuterRoots
-        case _ => elem.tpe match
-          case ref: CaptureRef =>
-            if !ref.isTrackableRef then
-              report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
-          case tpe =>
-            report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
+      val elem1 = elem match
+        case ReachCapabilityApply(arg) => arg
+        case _ => elem
+      elem1.tpe match
+        case ref: CaptureRef =>
+          if !ref.isTrackableRef then
+            report.error(em"$elem cannot be tracked since it is not a parameter or local value", elem.srcPos)
+        case tpe =>
+          report.error(em"$elem: $tpe is not a legal element of a capture set", elem.srcPos)
 
   /** Report an error if some part of `tp` contains the root capability in its capture set
    *  or if it refers to an unsealed type parameter that could possibly be instantiated with
@@ -173,22 +172,7 @@ object CheckCaptures:
         t.dealiasKeepAnnots match
           case t: TypeRef =>
             if !seen.contains(t) then
-              capt.println(i"disallow $t, $tp, $what, ${t.isSealed}")
               seen += t
-              t.info match
-                case TypeBounds(_, hi) if !t.isSealed && !t.symbol.isParametricIn(carrier) =>
-                  if hi.isAny then
-                    val detailStr =
-                      if t eq tp then "variable"
-                      else i"refers to the type variable $t, which"
-                    report.error(
-                      em"""$what cannot $have $tp since
-                          |that type $detailStr is not sealed.
-                          |$addendum""",
-                      pos)
-                  else
-                    traverse(hi)
-                case _ =>
               traverseChildren(t)
           case AnnotatedType(_, ann) if ann.symbol == defn.UncheckedCapturesAnnot =>
             ()
@@ -459,7 +443,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       else if meth == defn.Caps_unsafeUnbox then
         mapArgUsing(_.forceBoxStatus(false))
       else if meth == defn.Caps_unsafeBoxFunArg then
-        def forceBox(tp: Type): Type = tp match
+        def forceBox(tp: Type): Type = tp.strippedDealias match
           case defn.FunctionOf(paramtpe :: Nil, restpe, isContextual) =>
             defn.FunctionOf(paramtpe.forceBoxStatus(true) :: Nil, restpe, isContextual)
           case tp @ RefinedType(parent, rname, rinfo: MethodType) =>
@@ -560,7 +544,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val polyType = atPhase(thisPhase.prev):
           fn.tpe.widen.asInstanceOf[TypeLambda]
         for case (arg: TypeTree, formal, pname) <- args.lazyZip(polyType.paramRefs).lazyZip((polyType.paramNames)) do
-          if formal.isSealed then
+          if !tree.symbol.isTypeTestOrCast then
             def where = if fn.symbol.exists then i" in an argument of ${fn.symbol}" else ""
             disallowRootCapabilitiesIn(arg.knownType, NoSymbol,
               i"Sealed type variable $pname", "be instantiated to",
@@ -837,13 +821,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           }
           checkNotUniversal(parent)
         case _ =>
-      val adapted =
-        if ccConfig.allowUniversalInBoxed then
-          adaptUniversal(tpe, pt, tree)
-        else
-          if needsUniversalCheck then checkNotUniversal(tpe)
-          tpe
-      super.recheckFinish(adapted, tree, pt)
+      if !ccConfig.allowUniversalInBoxed && needsUniversalCheck then
+        checkNotUniversal(tpe)
+      super.recheckFinish(tpe, tree, pt)
     end recheckFinish
 
     // ------------------ Adaptation -------------------------------------
@@ -855,56 +835,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     //   - Relax expected capture set containing `this.type`s by adding references only
     //     accessible through those types (c.f. addOuterRefs, also #14930 for a discussion).
     //   - Adapt box status and environment capture sets by simulating box/unbox operations.
-    //   - Instantiate `cap` in actual as needed to a local root.
-
-    /** The local root that is implied for the expression `tree`.
-     *  This is the local root of the outermost level owner that includes
-     *  all free variables of the expression that have in their types
-     *  some capturing type occuring in covariant or invariant position.
-     */
-    def impliedRoot(tree: Tree)(using Context) =
-      def isTrackedSomewhere(sym: Symbol): Boolean =
-        val search = new TypeAccumulator[Boolean]:
-          def apply(found: Boolean, tp: Type) =
-            def isTrackedHere = variance >= 0 && !tp.captureSet.isAlwaysEmpty
-            found || isTrackedHere || foldOver(found, tp)
-        if sym.is(Method)
-        then !capturedVars(sym).elems.isEmpty || search(false, sym.info.finalResultType)
-        else search(false, sym.info)
-
-      val acc = new TreeAccumulator[Symbol]:
-        val locals = mutable.Set[Symbol]()
-        private def max(sym1: Symbol, sym2: Symbol)(using Context) =
-          sym1.maxNested(sym2, onConflict = (_, _) => throw NoCommonRoot(sym1, sym2))
-        def apply(s: Symbol, t: Tree)(using Context) = t match
-          case t: (Ident | This)
-          if !locals.contains(t.symbol) && isTrackedSomewhere(t.symbol) =>
-            max(s, t.symbol.levelOwner)
-          case t: DefTree =>
-            locals += t.symbol
-            foldOver(s, t)
-          case _ =>
-            foldOver(s, t)
-      acc(NoSymbol, tree).orElse(ctx.owner).localRoot
-
-    /** Assume `actual` is the type of an expression `tree` with the given
-     *  `expected` type. If `actual` captures `cap` and `cap` is not allowed
-     *  in the capture set of `expected`, narrow `cap` to the root capability
-     *  that is implied for `tree`.
-     */
-    def adaptUniversal(actual: Type, expected: Type, tree: Tree)(using Context): Type =
-      if expected.captureSet.disallowsUniversal && actual.captureSet.isUniversal then
-        if actual.isInstanceOf[SingletonType] then
-          // capture set is only exposed when widening
-          adaptUniversal(actual.widen, expected, tree)
-        else
-          val localRoot = impliedRoot(tree)
-          CapturingType(
-              actual.stripCapturing,
-              localRoot.termRef.singletonCaptureSet,
-              actual.isBoxedCapturing)
-            .showing(i"adapt universal $actual vs $expected = $result", capt)
-      else actual
+    //   - Instantiate covariant occurrenves of `cap` in actual to reach capabilities.
 
     private inline val debugSuccesses = false
 
@@ -1152,7 +1083,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                   // given `a: T^C`, improve `T^C` to `T^{a}`
               case _ =>
           case _ =>
-        val adapted = adapt(actualw, expected, covariant = true)
+        val adapted = adapt(actualw.withReachCaptures(actual), expected, covariant = true)
         if adapted ne actualw then
           capt.println(i"adapt boxed $actual vs $expected ===> $adapted")
           adapted
@@ -1328,7 +1259,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           cs.ensureWellformed: elem =>
             ctx ?=>
               var seen = new util.HashSet[CaptureRef]
-              def recur(ref: CaptureRef): Unit = ref match
+              def recur(ref: CaptureRef): Unit = ref.stripReach match
                 case ref: TermParamRef
                 if !allowed.contains(ref) && !seen.contains(ref) =>
                   seen += ref
@@ -1368,20 +1299,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       if tree.isInstanceOf[InferredTypeTree] then
         checker.traverse(tree.knownType)
     end healTypeParam
-
-    def checkNoLocalRootIn(sym: Symbol, info: Type, pos: SrcPos)(using Context): Unit =
-      val check = new TypeTraverser:
-        def traverse(tp: Type) = tp match
-          case tp: TermRef if tp.isLocalRootCapability =>
-            if tp.localRootOwner == sym then
-              report.error(i"local root $tp cannot appear in type of $sym", pos)
-          case tp: ClassInfo =>
-            traverseChildren(tp)
-            for mbr <- tp.decls do
-              if !mbr.is(Private) then checkNoLocalRootIn(sym, mbr.info, mbr.srcPos)
-          case _ =>
-            traverseChildren(tp)
-      check.traverse(info)
 
     def checkArraysAreSealedIn(tp: Type, pos: SrcPos)(using Context): Unit =
       val check = new TypeTraverser:
@@ -1426,8 +1343,6 @@ class CheckCaptures extends Recheck, SymTransformer:
                 checkBounds(normArgs, tl)
                 args.lazyZip(tl.paramNames).foreach(healTypeParam(_, _, fun.symbol))
               case _ =>
-          case _: ValOrDefDef | _: TypeDef =>
-            checkNoLocalRootIn(tree.symbol, tree.symbol.info, tree.symbol.srcPos)
           case tree: TypeTree =>
             checkArraysAreSealedIn(tree.tpe, tree.srcPos)
           case _ =>

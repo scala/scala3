@@ -9,7 +9,7 @@ import dotty.tools.tasty.TastyBuffer
 import dotty.tools.tasty.TastyReader
 import dotty.tools.tasty.UnpickleException
 import dotty.tools.tasty.TastyHeaderUnpickler
-import dotty.tools.tasty.TastyHeaderUnpickler.TastyVersion
+import dotty.tools.tasty.TastyVersion
 import dotty.tools.tasty.UnpicklerConfig
 
 class TastyHeaderUnpicklerTest {

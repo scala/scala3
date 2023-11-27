@@ -38,10 +38,10 @@ class ArrayConstructors extends MiniPhase {
       val cs = tp.tpe.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)
-          if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
+          if !TypeErasure.isGeneric(targ.head.tpe) && !cs.isDerivedValueClass =>
           expand(targ.head.tpe, dims)
         case Apply(TypeApply(t: Select, targ), dims)
-          if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
+          if !TypeErasure.isGeneric(targ.head.tpe) && !cs.isDerivedValueClass =>
           Block(t.qualifier :: Nil, expand(targ.head.tpe, dims))
         case _ => tree
       }

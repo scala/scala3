@@ -7,7 +7,7 @@ import Flags.*
 import Types.*
 import Contexts.*
 import Symbols.*
-import SymUtils.*
+
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import tpd.*

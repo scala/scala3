@@ -27,7 +27,7 @@ covtest.C
 <init>
 28
 36
-3
+4
 <init>
 DefDef
 false
@@ -44,7 +44,7 @@ covtest.C
 <init>
 69
 72
-5
+6
 g
 Apply
 false
@@ -61,7 +61,7 @@ covtest.C
 <init>
 80
 88
-8
+9
 <init>
 DefDef
 false
@@ -78,7 +78,7 @@ covtest.C
 <init>
 108
 128
-9
+10
 +
 Apply
 false
@@ -95,7 +95,7 @@ covtest.C
 f
 133
 138
-11
+12
 f
 DefDef
 false
@@ -112,7 +112,7 @@ covtest.C
 x
 153
 158
-12
+13
 x
 DefDef
 false
@@ -129,7 +129,7 @@ covtest.C
 <init>
 165
 169
-13
+14
 f
 Apply
 false
@@ -146,7 +146,7 @@ covtest.C
 <init>
 167
 168
-13
+14
 x
 Select
 false
@@ -163,7 +163,7 @@ covtest.C
 g
 173
 178
-15
+16
 g
 DefDef
 false
@@ -180,7 +180,7 @@ covtest.O$
 g
 203
 208
-18
+19
 g
 DefDef
 false
@@ -197,7 +197,7 @@ covtest.O$
 y
 223
 228
-19
+20
 y
 DefDef
 false
@@ -214,7 +214,7 @@ covtest.O$
 <init>
 235
 239
-20
+21
 g
 Apply
 false
@@ -231,7 +231,7 @@ covtest.O$
 <init>
 237
 238
-20
+21
 y
 Ident
 false

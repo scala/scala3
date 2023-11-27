@@ -46,7 +46,7 @@ trait Case14[C[_]]
 class SomeClass extends Case14[List]
 
 
-def method1[E, T](value: List[_ >: E]): Int = 0
+def method1[E, T](value: List[? >: E]): Int = 0
 def method2[F[+X] <: Option[X], A](fa: F[A]): A = fa.get
 
 import scala.collection.immutable.ArraySeq

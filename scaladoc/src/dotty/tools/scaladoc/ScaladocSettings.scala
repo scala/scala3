@@ -133,5 +133,5 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
       "List of quick links that is displayed in the header of documentation."
     )
 
-  def scaladocSpecificSettings: Set[Setting[_]] =
+  def scaladocSpecificSettings: Set[Setting[?]] =
     Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks)

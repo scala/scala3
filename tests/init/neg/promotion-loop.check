@@ -2,13 +2,13 @@
 16 |  println(b)      // error
    |          ^
    |Could not verify that the method argument is transitively initialized (Hot). It was found to be a non-transitively initialized (Warm) object of type (class B) { outer = the original object of type (class Test) where initialization checking started }. Only transitively initialized arguments may be passed to methods (except constructors). Calling trace:
-   |-> class Test { test =>	[ promotion-loop.scala:1 ]
-   |   ^
-   |-> println(b)      // error	[ promotion-loop.scala:16 ]
-   |           ^
+   |├── class Test { test =>	[ promotion-loop.scala:1 ]
+   |│   ^
+   |└── println(b)      // error	[ promotion-loop.scala:16 ]
+   |            ^
    |
    |Promoting the value to transitively initialized (Hot) failed due to the following problem:
    |Could not verify that the field value outer is transitively initialized (Hot). It was found to be the original object of type (class Test) where initialization checking started.
    |Non initialized field(s): value n. Promotion trace:
-   |-> val outer = test	[ promotion-loop.scala:12 ]
-   |   ^^^^^^^^^^^^^^^^
+   |└── val outer = test	[ promotion-loop.scala:12 ]
+   |    ^^^^^^^^^^^^^^^^

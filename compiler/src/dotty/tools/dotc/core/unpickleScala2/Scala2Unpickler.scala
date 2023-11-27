@@ -23,7 +23,6 @@ import util.common.*
 import util.NoSourcePosition
 import typer.Checking.checkNonCyclic
 import typer.Nullables.*
-import transform.SymUtils.*
 import PickleBuffer.*
 import PickleFormat.*
 import Decorators.*
@@ -426,7 +425,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
               if (slowSearch(name).exists)
                 System.err.println(i"**** slow search found: ${slowSearch(name)}")
               if (ctx.settings.YdebugMissingRefs.value) Thread.dumpStack()
-              newStubSymbol(owner, name, source)
+              newStubSymbol(owner, name, CompilationUnitInfo(source))
             }
           }
         }
@@ -450,9 +449,25 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
        // Scala 2 sometimes pickle the same type parameter symbol multiple times
        // (see i11173 for an example), but we should only unpickle it once.
        || tag == TYPEsym && flags.is(TypeParam) && symScope(owner).lookup(name.asTypeName).exists
+       // We discard the private val representing a case accessor. We only load the case accessor def.
+       || flags.isAllOf(CaseAccessor| PrivateLocal, butNot = Method)
     then
       // skip this member
       return NoSymbol
+
+    // Adapt the flags of getters so they become like vals/vars instead.
+    // The info of this symbol is adapted in the `LocalUnpickler`.
+    if flags.isAllOf(Method | Accessor) && !name.toString().endsWith("_$eq") then
+      flags &~= Method | Accessor
+      if !flags.is(StableRealizable) then flags |= Mutable
+
+    // Skip case accessor `<xyz>$access$<idx>` and keep track of their name to make `<xyz>` the case accessor
+    if flags.is(CaseAccessor) && name.toString().contains("$access$") then
+      val accessorName = name.toString().split('$').head.toTermName // <xyz>
+      symScope(owner) // we assume that the `<xyz>` is listed before the accessor and hence is already entered in the scope
+        .find(decl => decl.isAllOf(ParamAccessor) && decl.name == accessorName)
+        .setFlag(CaseAccessor)
+      return NoSymbol // skip this member
 
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
@@ -618,7 +633,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
             NamerOps.addConstructorProxies(denot.classSymbol)
           case denot =>
-            val tp1 = translateTempPoly(tp)
+            val tp1 = translateTempPoly(tp) match
+              case ExprType(resultType) if !denot.isOneOf(Param | Method) =>
+                // Adapt the flags of getters so they become like vals/vars instead.
+                // This is the `def` of an accessor that needs to be transformed into
+                // a `val`/`var`. Note that the `Method | Accessor` flags were already
+                // striped away in `readDisambiguatedSymbol`.
+                resultType
+              case tp1 => tp1
             denot.info =
               if (tag == ALIASsym) TypeAlias(tp1)
               else if (denot.isType) checkNonCyclic(denot.symbol, tp1, reportErrors = false)

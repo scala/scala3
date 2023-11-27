@@ -2,7 +2,7 @@
 19 |    val l2 = l.map(_.m()) // error
    |             ^^^^^^^^^^^^
    |             Call method method map on an uninitialized (Cold) object. Calling trace:
-   |             -> class leakWarm {	[ leak-warm.scala:1 ]
-   |                ^
-   |             -> val l2 = l.map(_.m()) // error	[ leak-warm.scala:19 ]
-   |                         ^^^^^^^^^^^^
+   |             ├── class leakWarm {	[ leak-warm.scala:1 ]
+   |             │   ^
+   |             └── val l2 = l.map(_.m()) // error	[ leak-warm.scala:19 ]
+   |                          ^^^^^^^^^^^^

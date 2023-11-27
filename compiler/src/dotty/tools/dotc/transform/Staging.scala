@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.inlines.Inlines
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.staging.CrossStageSafety
 import dotty.tools.dotc.staging.HealType

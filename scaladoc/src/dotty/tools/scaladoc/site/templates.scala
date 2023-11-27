@@ -103,10 +103,10 @@ case class TemplateFile(
     )
 
     def asJavaElement(o: Object): Object = o match
-      case m: Map[_, _] => m.transform {
+      case m: Map[?, ?] => m.transform {
         case (k: String, v: Object) => asJavaElement(v)
       }.asJava
-      case l: List[_] => l.map(x => asJavaElement(x.asInstanceOf[Object])).asJava
+      case l: List[?] => l.map(x => asJavaElement(x.asInstanceOf[Object])).asJava
       case other => other
 
     // Library requires mutable maps..

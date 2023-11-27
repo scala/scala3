@@ -11,9 +11,8 @@ import core.NameOps.isUnapplyName
 import core.Names.*
 import core.NameKinds
 import core.Types.*
-import core.Symbols.NoSymbol
+import core.Symbols.{NoSymbol, isLocalToBlock}
 import interactive.Interactive
-import transform.SymUtils.isLocalToBlock
 import util.Spans.Span
 import reporting.*
 

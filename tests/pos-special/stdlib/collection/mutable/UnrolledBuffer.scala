@@ -46,7 +46,7 @@ import language.experimental.captureChecking
   *
   */
 @SerialVersionUID(3L)
-sealed class UnrolledBuffer[sealed T](implicit val tag: ClassTag[T])
+sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
   extends AbstractBuffer[T]
     with Buffer[T]
     with Seq[T]
@@ -73,7 +73,7 @@ sealed class UnrolledBuffer[sealed T](implicit val tag: ClassTag[T])
 
   override def iterableFactory: SeqFactory[UnrolledBuffer] = UnrolledBuffer.untagged
 
-  protected def newUnrolled = new Unrolled[T](this)
+  protected def newUnrolled: Unrolled[T] = new Unrolled[T](this)
 
   // The below would allow more flexible behavior without requiring inheritance
   // that is risky because all the important internals are private.
@@ -241,11 +241,11 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   val untagged: SeqFactory[UnrolledBuffer] = new ClassTagSeqFactory.AnySeqDelegate(self)
 
-  def empty[sealed A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
+  def empty[A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
 
-  def from[sealed A : ClassTag](source: scala.collection.IterableOnce[A]^): UnrolledBuffer[A] = newBuilder[A].addAll(source)
+  def from[A : ClassTag](source: scala.collection.IterableOnce[A]^): UnrolledBuffer[A] = newBuilder[A].addAll(source)
 
-  def newBuilder[sealed A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
+  def newBuilder[A : ClassTag]: UnrolledBuffer[A] = new UnrolledBuffer[A]
 
   final val waterline: Int = 50
 
@@ -258,7 +258,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
   /** Unrolled buffer node.
     */
-  class Unrolled[sealed T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
+  class Unrolled[T: ClassTag] private[collection] (var size: Int, var array: Array[T], var next: Unrolled[T], val buff: UnrolledBuffer[T] = null) {
     private[collection] def this() = this(0, new Array[T](unrolledlength), null, null)
     private[collection] def this(b: UnrolledBuffer[T]) = this(0, new Array[T](unrolledlength), null, b)
 
@@ -437,7 +437,7 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
 
 // This is used by scala.collection.parallel.mutable.UnrolledParArrayCombiner:
 // Todo -- revisit whether inheritance is the best way to achieve this functionality
-private[collection] class DoublingUnrolledBuffer[sealed T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(t) {
+private[collection] class DoublingUnrolledBuffer[T](implicit t: ClassTag[T]) extends UnrolledBuffer[T]()(t) {
   override def calcNextLength(sz: Int) = if (sz < 10000) sz * 2 else sz
   override protected def newUnrolled = new UnrolledBuffer.Unrolled[T](0, new Array[T](4), null, this)
 }

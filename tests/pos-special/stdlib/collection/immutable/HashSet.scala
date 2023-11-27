@@ -24,7 +24,6 @@ import scala.collection.mutable.ReusableBuilder
 import scala.runtime.Statics.releaseFence
 import scala.util.hashing.MurmurHash3
 import language.experimental.captureChecking
-import scala.annotation.unchecked.uncheckedCaptures
 
 /** This class implements immutable sets using a Compressed Hash-Array Mapped Prefix-tree.
   * See paper https://michael.steindorfer.name/publications/oopsla15.pdf for more details.
@@ -1154,7 +1153,7 @@ private final class BitmapIndexedSetNode[A](
             } else {
               mapOfNewNodes |= bitpos
               if (newNodes eq null) {
-                newNodes = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
+                newNodes = mutable.Queue.empty[SetNode[A]]
               }
               newNodes += newSubNode
             }
@@ -1162,7 +1161,7 @@ private final class BitmapIndexedSetNode[A](
             newDataMap |= bitpos
             nodeMigrateToDataTargetMap |= bitpos
             if (nodesToMigrateToData eq null) {
-              nodesToMigrateToData = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
+              nodesToMigrateToData = mutable.Queue.empty[SetNode[A]]
             }
             nodesToMigrateToData += newSubNode
           }
@@ -1269,7 +1268,7 @@ private final class BitmapIndexedSetNode[A](
               } else {
                 mapOfNewNodes |= bitpos
                 if (newNodes eq null) {
-                  newNodes = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
+                  newNodes = mutable.Queue.empty[SetNode[A]]
                 }
                 newNodes += newSubNode
               }
@@ -1277,7 +1276,7 @@ private final class BitmapIndexedSetNode[A](
               newDataMap |= bitpos
               nodeMigrateToDataTargetMap |= bitpos
               if (nodesToMigrateToData eq null) {
-                nodesToMigrateToData = mutable.Queue.empty[SetNode[A] @uncheckedCaptures]
+                nodesToMigrateToData = mutable.Queue.empty[SetNode[A]]
               }
               nodesToMigrateToData += newSubNode
             }
@@ -1742,7 +1741,7 @@ private final class BitmapIndexedSetNode[A](
   }
 }
 
-private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int, var content: Vector[A] @uncheckedCaptures) extends SetNode[A] {
+private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int, var content: Vector[A]) extends SetNode[A] {
 
   import Node._
 
@@ -1971,12 +1970,12 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
   /** The last given out HashSet as a return value of `result()`, if any, otherwise null.
     * Indicates that on next add, the elements should be copied to an identical structure, before continuing
     * mutations. */
-  private var aliased: HashSet[A] @uncheckedCaptures = _
+  private var aliased: HashSet[A] = _
 
   private def isAliased: Boolean = aliased != null
 
   /** The root node of the partially build hashmap */
-  private var rootNode: BitmapIndexedSetNode[A] @uncheckedCaptures = newEmptyRootNode
+  private var rootNode: BitmapIndexedSetNode[A] = newEmptyRootNode
 
   /** Inserts element `elem` into array `as` at index `ix`, shifting right the trailing elems */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {

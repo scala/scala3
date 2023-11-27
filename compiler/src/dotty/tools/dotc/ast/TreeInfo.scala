@@ -7,7 +7,7 @@ import Flags.*, Trees.*, Types.*, Contexts.*
 import Names.*, StdNames.*, NameOps.*, Symbols.*
 import typer.ConstFold
 import reporting.trace
-import dotty.tools.dotc.transform.SymUtils.*
+
 import Decorators.*
 import Constants.Constant
 import scala.collection.mutable
@@ -376,17 +376,6 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ =>
       tree.tpe.isInstanceOf[ThisType]
   }
-
-  /** Under capture checking, an extractor for qualified roots `cap[Q]`.
-   */
-  object QualifiedRoot:
-
-    def unapply(tree: Apply)(using Context): Option[String] = tree match
-      case Apply(fn, Literal(lit) :: Nil) if fn.symbol == defn.Caps_capIn =>
-        Some(lit.value.asInstanceOf[String])
-      case _ =>
-        None
-  end QualifiedRoot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
@@ -990,7 +979,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
     def isStructuralTermSelect(tree: Select) =
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
-        case defn.PolyFunctionOf(_) =>
+        case defn.FunctionTypeOfMethod(_) =>
           false
         case tp: MatchType =>
           hasRefinement(tp.tryNormalize)

@@ -21,6 +21,12 @@ They are enabled by importing the feature or using the `-language` compiler flag
 In general, experimental language features can be imported in an experimental scope (see [experimental definitions](../other-new-features/experimental-defs.md)).
 They can be imported at the top-level if all top-level definitions are `@experimental`.
 
+### `-experimental` compiler flag
+
+This flag enables the use of any experimental language feature in the project.
+It does this by adding an `@experimental` annotation to all top-level definitions.
+Hence, dependent projects also have to be experimental.
+
 ## Experimental language features supported by special compiler options
 
 Some experimental language features that are still in research and development can be enabled with special compiler options. These include

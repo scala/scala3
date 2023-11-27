@@ -6,9 +6,9 @@ case class C4[X, Y]() extends Root[(X => X)|(Y => Y)|(X => Y)]
 
 object TestGADT {
 
-  def f[A <: Seq[_], B, Foo >: A => B](v: Root[Foo], u: Root[Foo]) = (v, u) match {
+  def f[A <: Seq[?], B, Foo >: A => B](v: Root[Foo], u: Root[Foo]) = (v, u) match {
     case (C3(), C3()) =>
   }
   // The following line no longer type checks
-  // f(C3[Seq[_], Long](), C4[Seq[_], Long]())
+  // f(C3[Seq[?], Long](), C4[Seq[?], Long]())
 }

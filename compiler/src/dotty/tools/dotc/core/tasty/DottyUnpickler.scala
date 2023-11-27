@@ -14,6 +14,7 @@ import TreeUnpickler.UnpickleMode
 
 import dotty.tools.tasty.TastyReader
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection, AttributesSection}
+import dotty.tools.tasty.TastyVersion
 
 object DottyUnpickler {
 
@@ -54,6 +55,9 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
   private val commentUnpicklerOpt = unpickler.unpickle(new CommentsSectionUnpickler)
   private val attributeUnpicklerOpt = unpickler.unpickle(new AttributesSectionUnpickler)
   private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt, attributeUnpicklerOpt)).get
+
+  def tastyAttributes: Attributes =
+    attributeUnpicklerOpt.map(_.attributes).getOrElse(new Attributes(booleanTags = Nil))
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling

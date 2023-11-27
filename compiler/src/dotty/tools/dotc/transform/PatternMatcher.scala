@@ -8,8 +8,7 @@ import Symbols.*, Contexts.*, Types.*, StdNames.*, NameOps.*
 import patmat.SpaceEngine
 import util.Spans.*
 import typer.Applications.*
-import SymUtils.*
-import TypeUtils.*
+
 import Annotations.*
 import Flags.*, Constants.*
 import Decorators.*
@@ -327,10 +326,10 @@ object PatternMatcher {
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
-        lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
+        lazy val caseAccessors = caseClass.caseAccessors
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
+          sym.is(Synthetic) && sym.owner.is(Scala2x)
 
         def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)
@@ -1023,7 +1022,7 @@ object PatternMatcher {
           case Block((_: ValDef) :: Block(_, Match(_, cases)) :: Nil, _) => cases
           case _ => Nil
         val caseThreshold =
-          if ValueClasses.isDerivedValueClass(tpt.tpe.typeSymbol) then 1
+          if tpt.tpe.typeSymbol.isDerivedValueClass then 1
           else MinSwitchCases
         def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)

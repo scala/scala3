@@ -3,7 +3,7 @@ type Cap = C^
 
 type Proc = () => Unit
 
-class Ref[sealed T](p: T):
+class Ref[T](p: T):
   private var x: T = p
   def set(x: T): Unit = this.x = x
   def get: T = x

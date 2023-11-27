@@ -136,3 +136,9 @@
    |       Discarded non-Unit value of type Null. You may want to use `()`.
    |
    | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/syntax-error-recovery.scala:61:2 -----------------------------------------------------------------
+61 |  println(bam)
+   |  ^^^^^^^
+   |  Alphanumeric method println is not declared infix; it should not be used as infix operator.
+   |  Instead, use method syntax .println(...) or backticked identifier `println`.
+   |  The latter can be rewritten automatically under -rewrite -source 3.4-migration.

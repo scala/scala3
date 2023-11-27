@@ -24,7 +24,7 @@ jobs:
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Git Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: 'dotty'
           fetch-depth: 0
@@ -46,7 +46,7 @@ jobs:
 
       - name: Push changes to scala3-reference-docs
         if: github.event_name == 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: lampepfl/scala3-reference-docs
           fetch-depth: 0
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: repo-sync/pull-request@v2
         with:
           destination_branch: main

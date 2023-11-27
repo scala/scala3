@@ -3,7 +3,7 @@ type Cap = C^
 def f1(c: Cap): () ->{c} c.type = () => c // ok
 
 def f2: Int =
-  val g: Boolean ->{cap} Int = ???
+  val g: Boolean => Int = ???
   val x = g(true)
   x
 

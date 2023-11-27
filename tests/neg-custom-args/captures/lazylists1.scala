@@ -1,8 +1,8 @@
 class CC
-type Cap = CC^{cap}
+type Cap = CC^
 
 trait LazyList[+A]:
-  this: LazyList[A]^{cap} =>
+  this: LazyList[A]^ =>
 
   def isEmpty: Boolean
   def head: A
@@ -13,7 +13,7 @@ object LazyNil extends LazyList[Nothing]:
   def head = ???
   def tail = ???
 
-extension [A](xs: LazyList[A]^{cap})
+extension [A](xs: LazyList[A]^)
   def map[B](f: A => B): LazyList[B]^{xs, f} =
     final class Mapped extends LazyList[B]:
       this: (Mapped^{xs, f}) =>

@@ -3,8 +3,8 @@ class D extends B
 object Test extends App {
   def foo[T](bar: T) = {
     bar match {
-      case _: Array[Array[_]] => println("array 2d")
-      case _: Array[_] => println("array 1d")
+      case _: Array[Array[?]] => println("array 2d")
+      case _: Array[?] => println("array 1d")
       case _ => println("something else")
     }
   }

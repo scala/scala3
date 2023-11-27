@@ -17,7 +17,7 @@ object IsInstanceOfClassTag {
         xs.head.substring(0)
     }
 
-    safeCast[List[_]](List[Int](1)) match {
+    safeCast[List[?]](List[Int](1)) match {
       case None =>
       case Some(xs) =>
         xs.head.substring(0) // error

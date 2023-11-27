@@ -11,7 +11,7 @@ import Constants.*
 import ast.Trees.*
 import ast.{TreeTypeMap, untpd}
 import util.Spans.*
-import SymUtils.*
+
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 

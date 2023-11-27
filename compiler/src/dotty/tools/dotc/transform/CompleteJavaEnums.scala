@@ -13,7 +13,7 @@ import Symbols.*
 import Constants.*
 import Decorators.*
 import DenotTransformers.*
-import SymUtils.*
+
 
 
 object CompleteJavaEnums {

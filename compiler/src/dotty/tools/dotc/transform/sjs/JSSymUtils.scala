@@ -11,7 +11,7 @@ import Names.*
 import Phases.*
 import StdNames.*
 import Symbols.*
-import SymUtils.*
+
 import ast.Trees.*
 import Types.*
 

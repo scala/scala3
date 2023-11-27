@@ -27,7 +27,7 @@ Object
 Test
 282
 303
-8
+9
 println
 Apply
 false
@@ -44,7 +44,7 @@ Object
 Test
 306
 337
-9
+10
 println
 Apply
 false
@@ -61,7 +61,7 @@ Object
 Test
 206
 220
-6
+7
 Test
 DefDef
 false

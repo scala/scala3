@@ -15,7 +15,11 @@ import annotation.experimental
 
   given Cap = cap
 
-  def capIn(scope: String): Cap = cap
+  /** Reach capabilities x* which appear as terms in @retains annotations are encoded
+   *  as `caps.reachCapability(x)`. When converted to CaptureRef types in capture sets
+   *  they are  represented as `x.type @annotation.internal.reachCapability`.
+   */
+  extension (x: Any) def reachCapability: Any = x
 
   object unsafe:
 
@@ -46,9 +50,3 @@ import annotation.experimental
       def unsafeBoxFunArg: T => U = f
 
   end unsafe
-
-  /** An annotation that expresses the sealed modifier on a type parameter
-   *  Should not be directly referred to in source
-   */
-  @deprecated("The Sealed annotation should not be directly used in source code.\nUse the `sealed` modifier on type parameters instead.")
-  class Sealed extends annotation.Annotation

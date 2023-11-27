@@ -16,7 +16,6 @@ import core.Types.*
 import core.{Names, StdNames}
 import dotty.tools.dotc.config.Feature
 import transform.MegaPhase.MiniPhase
-import transform.SymUtils.*
 
 import scala.collection.mutable
 import scala.compiletime.uninitialized

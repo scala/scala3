@@ -9,16 +9,16 @@ object Test {
     case x: Array[Float]    => x.sum.toInt
     case x: Array[String]   => x.size
     case x: Array[AnyRef]   => 5
-    case x: Array[_]        => 6
+    case x: Array[?]        => 6
     case _                  => 7
   }
-  def f2(a: Array[_])  = a match {
+  def f2(a: Array[?])  = a match {
     case x: Array[Int]      => x(0)
     case x: Array[Double]   => 2
     case x: Array[Float]    => x.sum.toInt
     case x: Array[String]   => x.size
     case x: Array[AnyRef]   => 5
-    case x: Array[_]        => 6
+    case x: Array[?]        => 6
     case _                  => 7   // error: only null is matched
   }
   def f3[T](a: Array[T]) = a match {
@@ -27,7 +27,7 @@ object Test {
     case x: Array[Float]    => x.sum.toInt
     case x: Array[String]   => x.size
     case x: Array[AnyRef]   => 5
-    case x: Array[_]        => 6
+    case x: Array[?]        => 6
     case _                  => 7   // error: only null is matched
   }
 

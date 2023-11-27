@@ -27,7 +27,7 @@ Object
 <init>
 353
 552
-18
+19
 result
 Apply
 false
@@ -44,7 +44,7 @@ Object
 <init>
 371
 533
-19
+20
 map
 Apply
 false
@@ -61,7 +61,7 @@ Object
 <init>
 371
 454
-19
+20
 sequence
 Apply
 false
@@ -78,7 +78,7 @@ Object
 <init>
 387
 453
-19
+20
 apply
 Apply
 false
@@ -93,15 +93,15 @@ Test$
 Object
 <empty>.Test$
 <init>
-387
-390
-19
-Seq
-Ident
+391
+421
+20
+brokenSynchronizedBlock
+Apply
 false
 0
 false
-Seq
+brokenSynchronizedBlock(false)
 
 5
 i16940/i16940.scala
@@ -110,26 +110,9 @@ Test$
 Object
 <empty>.Test$
 <init>
-391
-421
-19
-brokenSynchronizedBlock
-Apply
-false
-0
-false
-brokenSynchronizedBlock(false)
-
-6
-i16940/i16940.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-<init>
 423
 452
-19
+20
 brokenSynchronizedBlock
 Apply
 false
@@ -137,7 +120,7 @@ false
 false
 brokenSynchronizedBlock(true)
 
-7
+6
 i16940/i16940.scala
 <empty>
 Test$
@@ -146,13 +129,30 @@ Object
 $anonfun
 486
 499
-21
+22
 println
 Apply
 false
 0
 false
 println(test)
+
+7
+i16940/i16940.scala
+<empty>
+Test$
+Object
+<empty>.Test$
+$anonfun
+508
+525
+23
+assertFailed
+Apply
+false
+0
+false
+assert(test == 2)
 
 8
 i16940/i16940.scala
@@ -163,10 +163,10 @@ Object
 $anonfun
 508
 525
-22
+23
 assertFailed
 Apply
-false
+true
 0
 false
 assert(test == 2)
@@ -180,24 +180,7 @@ Object
 $anonfun
 508
 525
-22
-assertFailed
-Apply
-true
-0
-false
-assert(test == 2)
-
-10
-i16940/i16940.scala
-<empty>
-Test$
-Object
-<empty>.Test$
-$anonfun
-508
-525
-22
+23
 <none>
 Literal
 true
@@ -205,7 +188,7 @@ true
 false
 assert(test == 2)
 
-11
+10
 i16940/i16940.scala
 <empty>
 Test$
@@ -214,7 +197,7 @@ Object
 <init>
 539
 548
-24
+25
 seconds
 Select
 false
@@ -222,7 +205,7 @@ false
 false
 3.seconds
 
-12
+11
 i16940/i16940.scala
 <empty>
 i16940$package$
@@ -231,7 +214,7 @@ Object
 brokenSynchronizedBlock
 189
 323
-6
+7
 apply
 Apply
 false
@@ -239,7 +222,7 @@ false
 false
 Future {\n  if (option) {\n    Thread.sleep(500)\n  }\n  synchronized {\n    val tmp = test\n    Thread.sleep(1000)\n    test = tmp + 1\n  }\n}
 
-13
+12
 i16940/i16940.scala
 <empty>
 i16940$package$
@@ -248,7 +231,7 @@ Object
 brokenSynchronizedBlock
 218
 235
-8
+9
 sleep
 Apply
 false
@@ -256,7 +239,7 @@ false
 false
 Thread.sleep(500)
 
-14
+13
 i16940/i16940.scala
 <empty>
 i16940$package$
@@ -265,13 +248,30 @@ Object
 brokenSynchronizedBlock
 212
 239
-7
+8
 <none>
 Block
 true
 0
 false
 {\n    Thread.sleep(500)\n  }
+
+14
+i16940/i16940.scala
+<empty>
+i16940$package$
+Object
+<empty>.i16940$package$
+brokenSynchronizedBlock
+239
+239
+10
+<none>
+Literal
+true
+0
+false
+
 
 15
 i16940/i16940.scala
@@ -280,15 +280,15 @@ i16940$package$
 Object
 <empty>.i16940$package$
 brokenSynchronizedBlock
-239
-239
-9
-<none>
-Literal
-true
+242
+321
+11
+synchronized
+Apply
+false
 0
 false
-
+synchronized {\n    val tmp = test\n    Thread.sleep(1000)\n    test = tmp + 1\n  }
 
 16
 i16940/i16940.scala
@@ -297,15 +297,15 @@ i16940$package$
 Object
 <empty>.i16940$package$
 brokenSynchronizedBlock
-242
-321
-10
-synchronized
+280
+298
+13
+sleep
 Apply
 false
 0
 false
-synchronized {\n    val tmp = test\n    Thread.sleep(1000)\n    test = tmp + 1\n  }
+Thread.sleep(1000)
 
 17
 i16940/i16940.scala
@@ -314,26 +314,9 @@ i16940$package$
 Object
 <empty>.i16940$package$
 brokenSynchronizedBlock
-280
-298
-12
-sleep
-Apply
-false
-0
-false
-Thread.sleep(1000)
-
-18
-i16940/i16940.scala
-<empty>
-i16940$package$
-Object
-<empty>.i16940$package$
-brokenSynchronizedBlock
 128
 155
-6
+7
 brokenSynchronizedBlock
 DefDef
 false

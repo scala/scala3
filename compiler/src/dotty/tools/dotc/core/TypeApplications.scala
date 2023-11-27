@@ -12,7 +12,6 @@ import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
-import dotty.tools.dotc.transform.TypeUtils.isErasedValueType
 
 object TypeApplications {
 

@@ -1,6 +1,6 @@
 //> using scala 3.3.1
 //> using toolkit 0.2.1
-//> using lib pro.kordyjan::pytanie:0.1.6
+//> using lib pro.kordyjan::pytanie:0.1.7
 
 import pytanie.*
 import sttp.client4.*

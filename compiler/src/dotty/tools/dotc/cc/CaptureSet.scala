@@ -77,18 +77,7 @@ sealed abstract class CaptureSet extends Showable:
 
   /** Does this capture set contain the root reference `cap` as element? */
   final def isUniversal(using Context) =
-    elems.exists(_.isUniversalRootCapability)
-
-  /** Does this capture set contain the root reference `cap` as element? */
-  final def containsRoot(using Context) =
     elems.exists(_.isRootCapability)
-
-  /** Does this capture set disallow an addiiton of `cap`, whereas it
-   *  might allow an addition of a local root?
-   */
-  final def disallowsUniversal(using Context) =
-    if isConst then !isUniversal && elems.exists(_.isLocalRootCapability)
-    else asVar.noUniversal
 
   /** Try to include an element in this capture set.
    *  @param elem    The element to be added
@@ -154,39 +143,21 @@ sealed abstract class CaptureSet extends Showable:
     cs.addDependent(this)(using ctx, UnrecordedState)
     this
 
-  extension (x: CaptureRef)(using Context)
-
-    /* x subsumes y if one of the following is true:
-    *   - x is the same as y,
-    *   - x is a this reference and y refers to a field of x
-    *   - x is a super root of y
-    */
-    private def subsumes(y: CaptureRef) =
+  /** x subsumes x
+   *   this subsumes this.f
+   *   x subsumes y  ==>  x* subsumes y
+   *   x subsumes y  ==>  x* subsumes y*
+   */
+  extension (x: CaptureRef)
+     private def subsumes(y: CaptureRef)(using Context): Boolean =
       (x eq y)
-      || x.isSuperRootOf(y)
+      || x.isRootCapability
       || y.match
-          case y: TermRef => y.prefix eq x
+          case y: TermRef => !y.isReach && (y.prefix eq x)
           case _ => false
-
-    /** x <:< cap,   cap[x] <:< cap
-     *  cap[y] <:< cap[x] if y encloses x
-     *  y <:< cap[x] if y's level owner encloses x's local root owner
-     */
-    private def isSuperRootOf(y: CaptureRef): Boolean = x match
-      case x: TermRef =>
-        x.isUniversalRootCapability
-        || x.isLocalRootCapability && !y.isUniversalRootCapability && {
-          val xowner = x.localRootOwner
-          y match
-            case y: TermRef =>
-              xowner.isContainedIn(y.symbol.levelOwner)
-            case y: ThisType =>
-              xowner.isContainedIn(y.cls)
-            case _ =>
-              false
-        }
-      case _ => false
-  end extension
+      || x.match
+          case ReachCapability(x1) => x1.subsumes(y.stripReach)
+          case _ => false
 
   /** {x} <:< this   where <:< is subcapturing, but treating all variables
    *                 as frozen.
@@ -210,7 +181,7 @@ sealed abstract class CaptureSet extends Showable:
    */
   def mightAccountFor(x: CaptureRef)(using Context): Boolean =
     reporting.trace(i"$this mightAccountFor $x, ${x.captureSetOfInfo}?", show = true) {
-      elems.exists(elem => elem.subsumes(x) || elem.isRootCapability)
+      elems.exists(_.subsumes(x))
       || !x.isRootCapability
         && {
           val elems = x.captureSetOfInfo.elems
@@ -516,7 +487,7 @@ object CaptureSet:
       else
         //if id == 34 then assert(!elem.isUniversalRootCapability)
         elems += elem
-        if elem.isUniversalRootCapability then
+        if elem.isRootCapability then
           rootAddedHandler()
         newElemAddedHandler(elem)
         // assert(id != 5 || elems.size != 3, this)
@@ -527,19 +498,17 @@ object CaptureSet:
           res.addToTrace(this)
 
     private def levelOK(elem: CaptureRef)(using Context): Boolean =
-      if elem.isUniversalRootCapability then !noUniversal
+      if elem.isRootCapability then !noUniversal
       else elem match
-        case elem: TermRef =>
-          if levelLimit.exists then
-            var sym = elem.symbol
-            if sym.isLevelOwner then sym = sym.owner
-            levelLimit.isContainedIn(sym.levelOwner)
-          else true
-        case elem: ThisType =>
-          if levelLimit.exists then
-            levelLimit.isContainedIn(elem.cls.levelOwner)
-          else true
-        case elem: TermParamRef =>
+        case elem: TermRef if levelLimit.exists =>
+          var sym = elem.symbol
+          if sym.isLevelOwner then sym = sym.owner
+          levelLimit.isContainedIn(sym.levelOwner)
+        case elem: ThisType if levelLimit.exists =>
+          levelLimit.isContainedIn(elem.cls.levelOwner)
+        case ReachCapability(elem1) =>
+          levelOK(elem1)
+        case _ =>
           true
 
     def addDependent(cs: CaptureSet)(using Context, VarState): CompareResult =
@@ -567,10 +536,9 @@ object CaptureSet:
      *  of this set. The universal set {cap} is a sound fallback.
      */
     final def upperApprox(origin: CaptureSet)(using Context): CaptureSet =
-      if isConst then this
-      else if elems.exists(_.isRootCapability) then
-        CaptureSet(elems.filter(_.isRootCapability).toList*)
-      else if computingApprox then
+      if isConst then
+        this
+      else if elems.exists(_.isRootCapability) || computingApprox then
         universal
       else
         computingApprox = true
@@ -632,6 +600,13 @@ object CaptureSet:
       s"$id$descr$trail"
     override def toString = s"Var$id$elems"
   end Var
+
+  /** Variables that represent refinements of class parameters can have the universal
+   *  capture set, since they represent only what is the result of the constructor.
+   *  Test case: Without that tweak, logger.scala would not compile.
+   */
+  class RefiningVar(directOwner: Symbol)(using Context) extends Var(directOwner):
+    override def disallowRootCapability(handler: () => Context ?=> Unit)(using Context) = this
 
   /** A variable that is derived from some other variable via a map or filter. */
   abstract class DerivedVar(owner: Symbol, initialElems: Refs)(using @constructorOnly ctx: Context)
@@ -1037,6 +1012,8 @@ object CaptureSet:
   /** The capture set of the type underlying CaptureRef */
   def ofInfo(ref: CaptureRef)(using Context): CaptureSet = ref match
     case ref: TermRef if ref.isRootCapability => ref.singletonCaptureSet
+    case ReachCapability(ref1) => deepCaptureSet(ref1.widen)
+      .showing(i"Deep capture set of $ref: ${ref1.widen} = $result", capt)
     case _ => ofType(ref.underlying, followResult = true)
 
   /** Capture set of a type */
@@ -1078,6 +1055,16 @@ object CaptureSet:
     recur(tp)
       .showing(i"capture set of $tp = $result", captDebug)
 
+  private def deepCaptureSet(tp: Type)(using Context): CaptureSet =
+    val collect = new TypeAccumulator[CaptureSet]:
+      def apply(cs: CaptureSet, t: Type) = t.dealias match
+        case t @ CapturingType(p, cs1) =>
+          val cs2 = apply(cs, p)
+          if variance > 0 then cs2 ++ cs1 else cs2
+        case _ =>
+          foldOver(cs, t)
+    collect(CaptureSet.empty, tp)
+
   private val ShownVars: Property.Key[mutable.Set[Var]] = Property.Key()
 
   /** Perform `op`. Under -Ycc-debug, collect and print info about all variables reachable
@@ -1115,7 +1102,7 @@ object CaptureSet:
     override def toAdd(using Context) =
       for CompareResult.LevelError(cs, ref) <- ccState.levelError.toList yield
         ccState.levelError = None
-        if ref.isUniversalRootCapability then
+        if ref.isRootCapability then
           i"""
             |
             |Note that the universal capability `cap`

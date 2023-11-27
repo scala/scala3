@@ -29,7 +29,6 @@ import dotty.tools.dotc.ast.{tpd, untpd}
 import ast.TreeTypeMap
 import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses.*
-import TypeUtils.*
 import ContextFunctionResults.*
 import ExplicitOuter.*
 import core.Mode

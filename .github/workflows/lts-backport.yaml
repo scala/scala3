@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v6
-      - uses: VirtusLab/scala-cli-setup@v1.0.5
+      - uses: VirtusLab/scala-cli-setup@v1.0.6
       - run: scala-cli ./project/scripts/addToBackportingProject.scala -- ${{ github.sha }}
         env:
           GRAPHQL_API_TOKEN: ${{ secrets.GRAPHQL_API_TOKEN }}

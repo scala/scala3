@@ -45,8 +45,6 @@ import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
-import transform.SymUtils.*
-import transform.TypeUtils.*
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
@@ -448,7 +446,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
                     pos, from = `3.0`)
-                  if migrateTo3 then
+                  if sourceVersion.isMigrating then
                     patch(Span(pos.span.start),
                       if prevCtx.owner == refctx.owner.enclosingClass then "this."
                       else s"${prevCtx.owner.name}.this.")
@@ -707,8 +705,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
        // but that is done only after we search for extension methods or conversions.
       typedSelect(tree, pt, qual)
-    else if defn.isSmallGenericTuple(qual.tpe) then
-      val elems = defn.tupleTypes(qual.tpe.widenTermRefExpr).getOrElse(Nil)
+    else if qual.tpe.isSmallGenericTuple then
+      val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
       typedSelect(tree, pt, qual.cast(defn.tupleType(elems)))
     else
       val tree1 = tryExtensionOrConversion(
@@ -729,7 +727,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if checkedType1.exists then
               gadts.println(i"Member selection healed by GADT approximation")
               finish(tree1, qual1, checkedType1)
-            else if defn.isSmallGenericTuple(qual1.tpe) then
+            else if qual1.tpe.isSmallGenericTuple then
               gadts.println(i"Tuple member selection healed by GADT approximation")
               typedSelect(tree, pt, qual1)
             else
@@ -1119,7 +1117,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case Apply(fn, _) if fn.symbol.is(ExtensionMethod) =>
             def toSetter(fn: Tree): untpd.Tree = fn match
               case fn @ Ident(name: TermName) =>
-                untpd.cpy.Ident(fn)(name.setterName)
+                // We need to make sure that the prefix of this extension getter is
+                // retained when we transform it into a setter. Otherwise, we could
+                // end up resolving an unrelated setter from another extension. We
+                // transform the `Ident` into a `Select` to ensure that the prefix
+                // is retained with a `TypedSplice` (see `case Select` bellow).
+                // See tests/pos/i18713.scala for an example.
+                fn.tpe match
+                  case TermRef(qual: TermRef, _) =>
+                    toSetter(ref(qual).select(fn.symbol).withSpan(fn.span))
+                  case TermRef(qual: ThisType, _) =>
+                    toSetter(This(qual.cls).select(fn.symbol).withSpan(fn.span))
+                  case TermRef(NoPrefix, _) =>
+                    untpd.cpy.Ident(fn)(name.setterName)
               case fn @ Select(qual, name: TermName) =>
                 untpd.cpy.Select(fn)(untpd.TypedSplice(qual), name.setterName)
               case fn @ TypeApply(fn1, targs) =>
@@ -1622,6 +1632,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case _ =>
 
     if desugared.isEmpty then
+      val forceDegree =
+        if pt.isValueType then
+          // Allow variables that appear invariantly in `pt` to be improved by mapping
+          // bottom types in their instance types to fresh type variables
+          new ForceDegree.Value(IfBottom.fail):
+            val tvmap = variances(pt)
+            override def canImprove(tvar: TypeVar) =
+              tvmap.computedVariance(tvar) == (0: Integer)
+        else
+          ForceDegree.failBottom
+
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
@@ -1629,7 +1650,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val (formalBounds, isErased) = protoFormal(i)
             val formal = formalBounds.loBound
             val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
-            val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+            val knownFormal = isFullyDefined(formal, forceDegree)
             // If the expected formal is a TypeBounds wildcard argument with Nothing as lower bound,
             // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
             val paramType =
@@ -2413,7 +2434,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                                          // wrt to operand order for `&`, we include the explicit subtype test here.
                                          // See also #5649.
             then body1.tpe
-            else pt & body1.tpe
+            else body1.tpe match
+              case btpe: TypeRef
+              if btpe.symbol == defn.TupleXXLClass && pt.tupleElementTypes.isDefined =>
+                // leave the original tuple type; don't mix with & TupleXXL which would only obscure things
+                pt
+              case _ =>
+                pt & body1.tpe
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
@@ -2961,35 +2988,36 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
         report.errorOrMigrationWarning(msg, tree.srcPos, from = `3.0`)
-        if (migrateTo3) {
+        if sourceVersion.isMigrating then
           // Under -rewrite, patch `x _` to `(() => x)`
           msg.actions
             .headOption
             .foreach(Rewrites.applyAction)
           return typed(untpd.Function(Nil, qual), pt)
-        }
     }
     nestedCtx.typerState.commit()
-    if sourceVersion.isAtLeast(future) then
-      lazy val (prefix, suffix) = res match {
-        case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
-          val arity = vparams.length
-          if (arity > 0) ("", "") else ("(() => ", "())")
-        case _ =>
-          ("(() => ", ")")
-      }
-      def remedy =
-        if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
-        else s"use `$prefix<function>$suffix` instead"
-      report.errorOrMigrationWarning(
-        em"""The syntax `<function> _` is no longer supported;
-            |you can $remedy""",
-        tree.srcPos,
-        from = future)
-      if sourceVersion.isMigrating then
-        patch(Span(tree.span.start), prefix)
-        patch(Span(qual.span.end, tree.span.end), suffix)
-    end if
+
+    lazy val (prefix, suffix) = res match {
+      case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        val arity = vparams.length
+        if (arity > 0) ("", "") else ("(() => ", "())")
+      case _ =>
+        ("(() => ", ")")
+    }
+    def remedy =
+      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+      else s"use `$prefix<function>$suffix` instead"
+    def rewrite = Message.rewriteNotice("This construct", `3.4-migration`)
+    report.gradualErrorOrMigrationWarning(
+      em"""The syntax `<function> _` is no longer supported;
+          |you can $remedy$rewrite""",
+      tree.srcPos,
+      warnFrom = `3.4`,
+      errorFrom = future)
+    if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+      patch(Span(tree.span.start), prefix)
+      patch(Span(qual.span.end, tree.span.end), suffix)
+
     res
   }
 
@@ -4166,11 +4194,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val funExpected = functionExpected
           val arity =
             if funExpected then
-              if !isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none) then
-                // if method type is fully defined, but expected type is not,
-                // prioritize method parameter types as parameter types of the eta-expanded closure
-                0
-              else defn.functionArity(ptNorm)
+              defn.functionArity(ptNorm)
             else
               val nparams = wtp.paramInfos.length
               if nparams > 1

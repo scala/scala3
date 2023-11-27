@@ -59,9 +59,6 @@ class IllegalCaptureRef(tpe: Type) extends Exception(tpe.toString)
 /** Capture checking state, which is known to other capture checking components */
 class CCState:
 
-  /** Associates nesting level owners with the local roots valid in their scopes. */
-  val localRoots: mutable.HashMap[Symbol, Symbol] = new mutable.HashMap
-
   /** The last pair of capture reference and capture set where
    *  the reference could not be added to the set due to a level conflict.
    */
@@ -81,13 +78,13 @@ extension (tree: Tree)
 
   /** Map tree with CaptureRef type to its type, throw IllegalCaptureRef otherwise */
   def toCaptureRef(using Context): CaptureRef = tree match
-    case QualifiedRoot(outer) =>
-      ctx.owner.levelOwnerNamed(outer)
-        .orElse(defn.RootClass) // non-existing outer roots are reported in Setup's checkQualifiedRoots
-        .localRoot.termRef
+    case ReachCapabilityApply(arg) =>
+      arg.toCaptureRef.reach
     case _ => tree.tpe match
-      case ref: CaptureRef => ref
-      case tpe => throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
+      case ref: CaptureRef if ref.isTrackableRef =>
+        ref
+      case tpe =>
+        throw IllegalCaptureRef(tpe) // if this was compiled from cc syntax, problem should have been reported at Typer
 
   /** Convert a @retains or @retainsByName annotation tree to the capture set it represents.
    *  For efficience, the result is cached as an Attachment on the tree.
@@ -166,7 +163,7 @@ extension (tp: Type)
   def forceBoxStatus(boxed: Boolean)(using Context): Type = tp.widenDealias match
     case tp @ CapturingType(parent, refs) if tp.isBoxed != boxed =>
       val refs1 = tp match
-        case ref: CaptureRef if ref.isTracked => ref.singletonCaptureSet
+        case ref: CaptureRef if ref.isTracked || ref.isReach => ref.singletonCaptureSet
         case _ => refs
       CapturingType(parent, refs1, boxed)
     case _ =>
@@ -206,12 +203,6 @@ extension (tp: Type)
     case _: TypeRef | _: AppliedType => tp.typeSymbol.hasAnnotation(defn.CapabilityAnnot)
     case _ => false
 
-  def isSealed(using Context): Boolean = tp match
-    case tp: TypeParamRef => tp.underlying.isSealed
-    case tp: TypeBounds => tp.hi.hasAnnotation(defn.Caps_SealedAnnot)
-    case tp: TypeRef => tp.symbol.is(Sealed) || tp.info.isSealed // TODO: drop symbol flag?
-    case _ => false
-
   /** Drop @retains annotations everywhere */
   def dropAllRetains(using Context): Type = // TODO we should drop retains from inferred types before unpickling
     val tm = new TypeMap:
@@ -221,6 +212,62 @@ extension (tp: Type)
         case _ =>
           mapOver(t)
     tm(tp)
+
+  /** If `x` is a capture ref, its reach capability `x*`, represented internally
+   *  as `x @reachCapability`. `x*` stands for all capabilities reachable through `x`".
+   *  We have `{x} <: {x*} <: dcs(x)}` where the deep capture set `dcs(x)` of `x`
+   *  is the union of all capture sets that appear in covariant position in the
+   *  type of `x`. If `x` and `y` are different variables then `{x*}` and `{y*}`
+   *  are unrelated.
+   */
+  def reach(using Context): CaptureRef =
+    assert(tp.isTrackableRef)
+    AnnotatedType(tp, Annotation(defn.ReachCapabilityAnnot, util.Spans.NoSpan))
+
+  /** If `ref` is a trackable capture ref, and `tp` has only covariant occurrences of a
+   *  universal capture set, replace all these occurrences by `{ref*}`. This implements
+   *  the new aspect of the (Var) rule, which can now be stated as follows:
+   *
+   *     x: T in E
+   *     -----------
+   *     E |- x: T'
+   *
+   *  where T' is T with (1) the toplevel capture set replaced by `{x}` and
+   *  (2) all covariant occurrences of cap replaced by `x*`, provided there
+   *  are no occurrences in `T` at other variances. (1) is standard, whereas
+   *  (2) is new.
+   *
+   *  Why is this sound? Covariant occurrences of cap must represent capabilities
+   *  that are reachable from `x`, so they are included in the meaning of `{x*}`.
+   *  At the same time, encapsulation is still maintained since no covariant
+   *  occurrences of cap are allowed in instance types of type variables.
+   */
+  def withReachCaptures(ref: Type)(using Context): Type =
+    object narrowCaps extends TypeMap:
+      var ok = true
+      def apply(t: Type) = t.dealias match
+        case t1 @ CapturingType(p, cs) if cs.isUniversal =>
+          if variance > 0 then
+            t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
+          else
+            ok = false
+            t
+        case _ => t match
+          case t @ CapturingType(p, cs) =>
+            t.derivedCapturingType(apply(p), cs) // don't map capture set variables
+          case t =>
+            mapOver(t)
+    ref match
+      case ref: CaptureRef if ref.isTrackableRef =>
+        val tp1 = narrowCaps(tp)
+        if narrowCaps.ok then
+          if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
+          tp1
+        else
+          capt.println(i"cannot narrow $tp of $ref to $tp1")
+          tp
+      case _ =>
+        tp
 
 extension (cls: ClassSymbol)
 
@@ -281,23 +328,12 @@ extension (sym: Symbol)
     && sym != defn.Caps_unsafeBox
     && sym != defn.Caps_unsafeUnbox
 
-  /** Can this symbol possibly own a local root?
-   *  TODO: Disallow anonymous functions?
+  /** Does this symbol define a level where we do not want to let local variables
+   *  escape into outer capture sets?
    */
   def isLevelOwner(using Context): Boolean =
     sym.isClass
     || sym.is(Method, butNot = Accessor)
-
-  /** The level owner enclosing `sym` which has the given name, or NoSymbol
-   *  if none exists.
-   */
-  def levelOwnerNamed(name: String)(using Context): Symbol =
-    def recur(sym: Symbol): Symbol =
-      if sym.name.toString == name then
-        if sym.isLevelOwner then sym else NoSymbol
-      else if sym == defn.RootClass then NoSymbol
-      else recur(sym.owner)
-    recur(sym)
 
   /** The owner of the current level. Qualifying owners are
    *   - methods other than constructors and anonymous functions
@@ -312,14 +348,6 @@ extension (sym: Symbol)
       else if sym.isLevelOwner then sym
       else recur(sym.owner)
     recur(sym)
-
-  /** The local root corresponding to sym's level owner */
-  def localRoot(using Context): Symbol =
-    val owner = sym.levelOwner
-    assert(owner.exists)
-    def newRoot = newSymbol(if owner.isClass then newLocalDummy(owner) else owner,
-      nme.LOCAL_CAPTURE_ROOT, Synthetic, defn.Caps_Cap.typeRef)
-    ccState.localRoots.getOrElseUpdate(owner, newRoot)
 
   /** The outermost symbol owned by both `sym` and `other`. if none exists
    *  since the owning scopes of `sym` and `other` are not nested, invoke
@@ -342,3 +370,21 @@ extension (tp: AnnotatedType)
   def isBoxed(using Context): Boolean = tp.annot match
     case ann: CaptureAnnotation => ann.boxed
     case _ => false
+
+/** An extractor for `caps.reachCapability(ref)`, which is used to express a reach
+ *  capability as a tree in a @retains annotation.
+ */
+object ReachCapabilityApply:
+  def unapply(tree: Apply)(using Context): Option[Tree] = tree match
+    case Apply(reach, arg :: Nil) if reach.symbol == defn.Caps_reachCapability => Some(arg)
+    case _ => None
+
+/** An extractor for `ref @annotation.internal.reachCapability`, which is used to express
+ *  the reach capability `ref*` as a type.
+ */
+object ReachCapability:
+  def unapply(tree: AnnotatedType)(using Context): Option[SingletonCaptureRef] = tree match
+    case AnnotatedType(parent: SingletonCaptureRef, ann)
+    if ann.symbol == defn.ReachCapabilityAnnot => Some(parent)
+    case _ => None
+

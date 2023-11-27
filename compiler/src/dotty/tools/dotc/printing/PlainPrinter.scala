@@ -15,7 +15,7 @@ import util.SourcePosition
 import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
-import cc.{CapturingType, RetainingType, CaptureSet, isBoxed, levelOwner, retainedElems}
+import cc.{CapturingType, RetainingType, CaptureSet, ReachCapability, isBoxed, levelOwner, retainedElems}
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -162,13 +162,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   private def toTextRetainedElem[T <: Untyped](ref: Tree[T]): Text = ref match
     case ref: RefTree[?] if ref.typeOpt.exists =>
       toTextCaptureRef(ref.typeOpt)
-    case Apply(fn, Literal(str) :: Nil) if fn.symbol == defn.Caps_capIn =>
-      s"cap[${str.stringValue}]"
     case _ =>
       toText(ref)
 
   private def toTextRetainedElems[T <: Untyped](refs: List[Tree[T]]): Text =
-    "{" ~ Text(refs.map(ref => toTextRetainedElem(ref))) ~ "}"
+    "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -180,11 +178,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   final protected def rootSetText = Str("{cap}") // TODO Use disambiguation
 
-  // Lazy version of isRootCapability; used to not force completers when printing
-  private def isRootCap(tp: CaptureRef): Boolean = tp match
-    case tp: TermRef => tp.symbol.isCompleted && tp.isRootCapability
-    case _ => tp.isRootCapability
-
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
       case tp: TypeType =>
@@ -192,7 +185,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef
       if !tp.denotationIsCurrent
           && !homogenizedView // always print underlying when testing picklers
-          && !isRootCap(tp)
+          && !tp.isRootCapability
           || tp.symbol.is(Module)
           || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
@@ -244,14 +237,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }.close
       case tp @ CapturingType(parent, refs) =>
         val boxText: Text = Str("box ") provided tp.isBoxed //&& ctx.settings.YccDebug.value
-        val rootsInRefs = refs.elems.filter(isRootCap(_)).toList
-        val showAsCap = rootsInRefs match
-          case (tp: TermRef) :: Nil =>
-            tp.symbol == defn.captureRoot && (refs.elems.size == 1 || !printDebug)
-              // {caps.cap} gets printed as `{cap}` even under printDebug as long as there
-              // are no other elements in the set
-          case _ =>
-            false
+        val showAsCap = refs.isUniversal && (refs.elems.size == 1 || !printDebug)
         val refsText = if showAsCap then rootSetText else toTextCaptureSet(refs)
         toTextCapturing(parent, refsText, boxText)
       case tp @ RetainingType(parent, refs) =>
@@ -391,9 +377,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case tp: TermRef =>
-        if tp.symbol.name == nme.LOCAL_CAPTURE_ROOT then  // TODO: Move to toTextCaptureRef
-          Str(s"cap[${nameString(tp.localRootOwner)}]")
-        else toTextPrefixOf(tp) ~ selectionString(tp)
+        toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: ThisType =>
         nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
@@ -419,6 +403,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     homogenize(tp) match
       case tp: TermRef if tp.symbol == defn.captureRoot => Str("cap")
       case tp: SingletonType => toTextRef(tp)
+      case ReachCapability(tp1) => toTextRef(tp1) ~ "*"
       case _ => toText(tp)
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =

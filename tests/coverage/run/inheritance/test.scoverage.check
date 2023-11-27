@@ -27,7 +27,7 @@ Class
 <init>
 84
 100
-2
+3
 println
 Apply
 false
@@ -44,7 +44,7 @@ Class
 <init>
 125
 131
-3
+4
 <init>
 Apply
 false
@@ -61,7 +61,7 @@ Object
 Test
 161
 176
-7
+8
 println
 Apply
 false
@@ -78,7 +78,7 @@ Object
 Test
 169
 173
-7
+8
 <init>
 Apply
 false
@@ -95,7 +95,7 @@ Object
 Test
 211
 226
-9
+10
 println
 Apply
 false
@@ -112,7 +112,7 @@ Object
 Test
 219
 223
-9
+10
 <init>
 Apply
 false
@@ -129,7 +129,7 @@ Object
 Test
 136
 150
-6
+7
 Test
 DefDef
 false

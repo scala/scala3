@@ -55,10 +55,10 @@ trait Parsers {
     }
 
     def flatMap[U](f: T => Parser[U]): Parser[U]
-      = Parser{ in => this(in) flatMapWithNext(f)}
+      = Parser{ in => this(in).flatMapWithNext(f)}
 
     def map[U](f: T => U): Parser[U] //= flatMap{x => success(f(x))}
-      = Parser{ in => this(in) map(f)}
+      = Parser{ in => this(in).map(f)}
 
     def ^^ [U](f: T => U): Parser[U] = map(f)
   }

@@ -978,13 +978,12 @@ class Definitions {
   @tu lazy val CapsModule: Symbol = requiredModule("scala.caps")
     @tu lazy val captureRoot: TermSymbol = CapsModule.requiredValue("cap")
     @tu lazy val Caps_Cap: TypeSymbol = CapsModule.requiredType("Cap")
-    @tu lazy val Caps_capIn: TermSymbol = CapsModule.requiredMethod("capIn")
+    @tu lazy val Caps_reachCapability: TermSymbol = CapsModule.requiredMethod("reachCapability")
     @tu lazy val CapsUnsafeModule: Symbol = requiredModule("scala.caps.unsafe")
     @tu lazy val Caps_unsafeAssumePure: Symbol = CapsUnsafeModule.requiredMethod("unsafeAssumePure")
     @tu lazy val Caps_unsafeBox: Symbol = CapsUnsafeModule.requiredMethod("unsafeBox")
     @tu lazy val Caps_unsafeUnbox: Symbol = CapsUnsafeModule.requiredMethod("unsafeUnbox")
     @tu lazy val Caps_unsafeBoxFunArg: Symbol = CapsUnsafeModule.requiredMethod("unsafeBoxFunArg")
-    @tu lazy val Caps_SealedAnnot: ClassSymbol = requiredClass("scala.caps.Sealed")
     @tu lazy val expandedUniversalSet: CaptureSet = CaptureSet(captureRoot.termRef)
 
   @tu lazy val PureClass: Symbol = requiredClass("scala.Pure")
@@ -1054,6 +1053,7 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
   @tu lazy val SinceAnnot: ClassSymbol = requiredClass("scala.annotation.since")
+  @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
@@ -1118,24 +1118,52 @@ class Definitions {
     //  - .linkedClass: the ClassSymbol of the enumeration (class E)
     sym.owner.linkedClass.typeRef
 
+  object FunctionTypeOfMethod {
+    /** Matches a `FunctionN[...]`/`ContextFunctionN[...]` or refined `PolyFunction`/`FunctionN[...]`/`ContextFunctionN[...]`.
+     *  Extracts the method type type and apply info.
+     */
+    def unapply(ft: Type)(using Context): Option[MethodOrPoly] = {
+      ft match
+        case RefinedType(parent, nme.apply, mt: MethodOrPoly)
+        if parent.derivesFrom(defn.PolyFunctionClass) || (mt.isInstanceOf[MethodType] && isFunctionNType(parent)) =>
+          Some(mt)
+        case AppliedType(parent, targs) if isFunctionNType(ft) =>
+          val isContextual = ft.typeSymbol.name.isContextFunction
+          val methodType = if isContextual then ContextualMethodType else MethodType
+          Some(methodType(targs.init, targs.last))
+        case _ =>
+          None
+    }
+  }
+
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
       val mt = MethodType.companion(isContextual, false)(args, resultType)
-      if mt.hasErasedParams then
-        RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
-      else
-        FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+      if mt.hasErasedParams then RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
+      else FunctionNOf(args, resultType, isContextual)
+
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
-      ft.dealias match
+      ft match
         case PolyFunctionOf(mt: MethodType) =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
-        case dft =>
-          val tsym = dft.typeSymbol
-          if isFunctionSymbol(tsym) && ft.isRef(tsym) then
-            val targs = dft.argInfos
-            if (targs.isEmpty) None
-            else Some(targs.init, targs.last, tsym.name.isContextFunction)
-          else None
+        case AppliedType(parent, targs) if isFunctionNType(ft) =>
+          Some(targs.init, targs.last, ft.typeSymbol.name.isContextFunction)
+        case _ =>
+          None
+    }
+  }
+
+  object FunctionNOf {
+    /** Create a `FunctionN` or `ContextFunctionN` type applied to the arguments and result type */
+    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
+      FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+
+    /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
+     *  Extracts the list of function argument types, the result type and whether function is contextual.
+     */
+    def unapply(tpe: AppliedType)(using Context): Option[(List[Type], Type, Boolean)] = {
+      if !isFunctionNType(tpe) then None
+      else Some(tpe.args.init, tpe.args.last, tpe.typeSymbol.name.isContextFunction)
     }
   }
 
@@ -1381,7 +1409,7 @@ class Definitions {
           ),
           privateWithin = patch.privateWithin,
           coord = denot.symbol.coord,
-          assocFile = denot.symbol.associatedFile
+          compUnitInfo = denot.symbol.compilationUnitInfo
         )
 
       def makeNonClassSymbol(patch: Symbol) =
@@ -1720,26 +1748,6 @@ class Definitions {
       else TypeOps.nestedPairs(elems)
     else TypeOps.nestedPairs(elems)
   }
-
-  def tupleTypes(tp: Type, bound: Int = Int.MaxValue)(using Context): Option[List[Type]] = {
-    @tailrec def rec(tp: Type, acc: List[Type], bound: Int): Option[List[Type]] = tp.normalized.dealias match {
-      case _ if bound < 0 => Some(acc.reverse)
-      case tp: AppliedType if PairClass == tp.classSymbol => rec(tp.args(1), tp.args.head :: acc, bound - 1)
-      case tp: AppliedType if isTupleNType(tp) => Some(acc.reverse ::: tp.args)
-      case tp: TermRef if tp.symbol == defn.EmptyTupleModule => Some(acc.reverse)
-      case _ => None
-    }
-    rec(tp.stripTypeVar, Nil, bound)
-  }
-
-  def isSmallGenericTuple(tp: Type)(using Context): Boolean =
-    if tp.derivesFrom(defn.PairClass) && !defn.isTupleNType(tp.widenDealias) then
-      // If this is a generic tuple we need to cast it to make the TupleN/ members accessible.
-      // This works only for generic tuples of known size up to 22.
-      defn.tupleTypes(tp.widenTermRefExpr) match
-        case Some(elems) if elems.length <= Definitions.MaxTupleArity => true
-        case _ => false
-    else false
 
   def isProductSubType(tp: Type)(using Context): Boolean = tp.derivesFrom(ProductClass)
 

@@ -39,7 +39,7 @@ end Iterator
 private final class ConcatIteratorCell[A](head: => IterableOnce[A]^):
   def headIterator: Iterator[A]^{this} = head.iterator
 
-def usingLogFile[sealed R](op: FileOutputStream^ => R): R =
+def usingLogFile[R](op: FileOutputStream^ => R): R =
   val logFile = FileOutputStream("log")
   val result = op(logFile)
   logFile.close()

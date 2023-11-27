@@ -10,6 +10,7 @@ import config.{ PathResolver, Feature }
 import dotty.tools.io.*
 import Phases.*
 import config.Printers.plugins.{ println => debug }
+import config.Properties
 
 import scala.compiletime.uninitialized
 
@@ -128,7 +129,7 @@ trait Plugins {
     val updatedPlan = Plugins.schedule(plan, pluginPhases)
 
     // add research plugins
-    if (Feature.isExperimentalEnabled)
+    if Properties.experimental && !ctx.settings.YnoExperimental.value then
       plugins.collect { case p: ResearchPlugin => p }.foldRight(updatedPlan) {
         (plug, plan) => plug.init(options(plug), plan)
       }

@@ -13,23 +13,23 @@ object BugExp4Point2D {
 
       // N - N
       @targetName("point2DConstant")
-      def º(y: T2): Point2D[T1,T2] = ???
+      infix def º(y: T2): Point2D[T1,T2] = ???
 
 
       // N - C
       @targetName("point2DConstantData")
-      def º(y: ColumnType[T2]): Point2D[T1,T2] = ???
+      infix def º(y: ColumnType[T2]): Point2D[T1,T2] = ???
 
 
 
     extension [T1:Numeric, T2:Numeric](x: ColumnType[T1])
       // C - C
       @targetName("point2DData")
-      def º(y: ColumnType[T2]): Point2D[T1,T2] = ???
+      infix def º(y: ColumnType[T2]): Point2D[T1,T2] = ???
 
       // C - N
       @targetName("point2DDataConstant")
-      def º(y: T2): Point2D[T1,T2] = ???
+      infix def º(y: T2): Point2D[T1,T2] = ???
 
 
   }

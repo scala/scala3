@@ -27,7 +27,7 @@ covtest.InlinedFromLib$package$
 testInlined
 169
 183
-6
+7
 assertFailed
 Apply
 false
@@ -44,7 +44,7 @@ covtest.InlinedFromLib$package$
 testInlined
 169
 183
-6
+7
 assertFailed
 Apply
 true
@@ -61,7 +61,7 @@ covtest.InlinedFromLib$package$
 testInlined
 169
 183
-6
+7
 <none>
 Literal
 true
@@ -78,7 +78,7 @@ covtest.InlinedFromLib$package$
 testInlined
 198
 205
-7
+8
 apply
 Apply
 false
@@ -94,14 +94,14 @@ Object
 covtest.InlinedFromLib$package$
 testInlined
 198
-202
-7
-List
-Ident
+212
+8
+length
+Select
 false
 0
 false
-List
+List(l).length
 
 5
 InlinedFromLib.scala
@@ -110,15 +110,15 @@ InlinedFromLib$package$
 Object
 covtest.InlinedFromLib$package$
 testInlined
-198
-212
-7
-length
-Select
+186
+213
+8
+assertFailed
+Apply
 false
 0
 false
-List(l).length
+assert(l == List(l).length)
 
 6
 InlinedFromLib.scala
@@ -129,10 +129,10 @@ covtest.InlinedFromLib$package$
 testInlined
 186
 213
-7
+8
 assertFailed
 Apply
-false
+true
 0
 false
 assert(l == List(l).length)
@@ -146,9 +146,9 @@ covtest.InlinedFromLib$package$
 testInlined
 186
 213
-7
-assertFailed
-Apply
+8
+<none>
+Literal
 true
 0
 false
@@ -161,15 +161,15 @@ InlinedFromLib$package$
 Object
 covtest.InlinedFromLib$package$
 testInlined
-186
-213
-7
-<none>
-Literal
-true
+223
+230
+9
+apply
+Apply
+false
 0
 false
-assert(l == List(l).length)
+List(l)
 
 9
 InlinedFromLib.scala
@@ -179,14 +179,14 @@ Object
 covtest.InlinedFromLib$package$
 testInlined
 223
-230
-8
-apply
-Apply
+237
+9
+length
+Select
 false
 0
 false
-List(l)
+List(l).length
 
 10
 InlinedFromLib.scala
@@ -195,15 +195,15 @@ InlinedFromLib$package$
 Object
 covtest.InlinedFromLib$package$
 testInlined
-223
-227
-8
-List
-Ident
+216
+243
+9
+assertFailed
+Apply
 false
 0
 false
-List
+assert(List(l).length == 1)
 
 11
 InlinedFromLib.scala
@@ -212,15 +212,15 @@ InlinedFromLib$package$
 Object
 covtest.InlinedFromLib$package$
 testInlined
-223
-237
-8
-length
-Select
-false
+216
+243
+9
+assertFailed
+Apply
+true
 0
 false
-List(l).length
+assert(List(l).length == 1)
 
 12
 InlinedFromLib.scala
@@ -231,10 +231,10 @@ covtest.InlinedFromLib$package$
 testInlined
 216
 243
-8
-assertFailed
-Apply
-false
+9
+<none>
+Literal
+true
 0
 false
 assert(List(l).length == 1)
@@ -246,43 +246,9 @@ InlinedFromLib$package$
 Object
 covtest.InlinedFromLib$package$
 testInlined
-216
-243
-8
-assertFailed
-Apply
-true
-0
-false
-assert(List(l).length == 1)
-
-14
-InlinedFromLib.scala
-covtest
-InlinedFromLib$package$
-Object
-covtest.InlinedFromLib$package$
-testInlined
-216
-243
-8
-<none>
-Literal
-true
-0
-false
-assert(List(l).length == 1)
-
-15
-InlinedFromLib.scala
-covtest
-InlinedFromLib$package$
-Object
-covtest.InlinedFromLib$package$
-testInlined
 129
 144
-4
+5
 testInlined
 DefDef
 false

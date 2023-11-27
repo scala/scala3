@@ -21,7 +21,7 @@ jobs:
         working-directory: ./docs/_spec
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Keep in sync with ./docs/_spec/Dockerfile
       - uses: ruby/setup-ruby@v1

@@ -298,14 +298,13 @@ object Denotations {
                        name: Name,
                        site: Denotation = NoDenotation,
                        args: List[Type] = Nil,
-                       source: AbstractFile | Null = null,
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
       disambiguate(p) match {
         case m @ MissingRef(ownerd, name) if generateStubs =>
           if ctx.settings.YdebugMissingRefs.value then m.ex.printStackTrace()
-          newStubSymbol(ownerd.symbol, name, source)
+          newStubSymbol(ownerd.symbol, name)
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
@@ -992,18 +991,18 @@ object Denotations {
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
 
-    def definedPeriodsString: String = {
+    /** Show all defined periods and the info of the denotation at each */
+    def definedPeriodsString(using Context): String = {
       var sb = new StringBuilder()
       var cur = this
       var cnt = 0
-      while ({
-        sb.append(" " + cur.validFor)
+      while
+        sb.append(i" ${cur.validFor.toString}:${cur.infoOrCompleter}")
         cur = cur.nextInRun
         cnt += 1
         if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
         cur ne this
-      })
-      ()
+      do ()
       sb.toString
     }
 

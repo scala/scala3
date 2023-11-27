@@ -116,7 +116,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    *  convert it to be boxed.
    */
   private def box(tp: Type)(using Context): Type =
-    def recur(tp: Type): Type = tp.dealiasKeepAnnots match
+    def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
       case tp @ CapturingType(parent, refs) =>
         if tp.isBoxed then tp else tp.boxed
       case tp @ AnnotatedType(parent, ann) =>
@@ -174,7 +174,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                   val getterType =
                     mapInferred(refine = false)(tp.memberInfo(getter)).strippedDealias
                   RefinedType(core, getter.name,
-                      CapturingType(getterType, CaptureSet.Var(ctx.owner)))
+                      CapturingType(getterType, CaptureSet.RefiningVar(ctx.owner)))
                     .showing(i"add capture refinement $tp --> $result", capt)
                 else
                   core
@@ -275,23 +275,16 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         then CapturingType(tp, defn.expandedUniversalSet, boxed = false)
         else tp
 
-      private def checkQualifiedRoots(tree: Tree): Unit =
-        for case elem @ QualifiedRoot(outer) <- tree.retainedElems do
-          if !ctx.owner.levelOwnerNamed(outer).exists then
-            report.error(em"`$outer` does not name an outer definition that represents a capture level", elem.srcPos)
-
       private def recur(t: Type): Type = normalizeCaptures(mapOver(t))
 
       def apply(t: Type) =
         t match
           case t @ CapturingType(parent, refs) =>
-            checkQualifiedRoots(t.annot.tree) // TODO: NEEDED?
             t.derivedCapturingType(this(parent), refs)
           case t @ AnnotatedType(parent, ann) =>
             val parent1 = this(parent)
             if ann.symbol == defn.RetainsAnnot then
               for tpt <- tptToCheck do
-                checkQualifiedRoots(ann.tree)
                 checkWellformedLater(parent1, ann.tree, tpt)
               CapturingType(parent1, ann.tree.toCaptureSet)
             else
@@ -333,15 +326,17 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
     def apply(t: Type): Type = t match
       case t: NamedType =>
-        val sym = t.symbol
-        def outer(froms: List[List[Symbol]], tos: List[LambdaType]): Type =
-          def inner(from: List[Symbol], to: List[ParamRef]): Type =
-            if from.isEmpty then outer(froms.tail, tos.tail)
-            else if sym eq from.head then to.head
-            else inner(from.tail, to.tail)
-          if tos.isEmpty then t
-          else inner(froms.head, tos.head.paramRefs)
-        outer(from, to)
+        if t.prefix == NoPrefix then
+          val sym = t.symbol
+          def outer(froms: List[List[Symbol]], tos: List[LambdaType]): Type =
+            def inner(from: List[Symbol], to: List[ParamRef]): Type =
+              if from.isEmpty then outer(froms.tail, tos.tail)
+              else if sym eq from.head then to.head
+              else inner(from.tail, to.tail)
+            if tos.isEmpty then t
+            else inner(froms.head, tos.head.paramRefs)
+          outer(from, to)
+        else t.derivedSelect(apply(t.prefix))
       case _ =>
         mapOver(t)
 
@@ -574,7 +569,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
         else
-          val tp1 = tp.dealiasKeepAnnots
+          val tp1 = tp.dealiasKeepAnnotsAndOpaques
           if tp1 ne tp then needsVariable(tp1)
           else instanceCanBeImpure(tp1)
       case tp: (RefinedOrRecType | MatchType) =>
@@ -586,11 +581,11 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case CapturingType(parent, refs) =>
         needsVariable(parent)
         && refs.isConst       // if refs is a variable, no need to add another
-        && !refs.containsRoot // if refs is {cap}, an added variable would not change anything
+        && !refs.isUniversal  // if refs is {cap}, an added variable would not change anything
       case RetainingType(parent, refs) =>
         needsVariable(parent)
         && !refs.tpes.exists:
-            case ref: TermRef => ref.isUniversalRootCapability
+            case ref: TermRef => ref.isRootCapability
             case _ => false
       case AnnotatedType(parent, _) =>
         needsVariable(parent)
@@ -640,7 +635,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       def maybeAdd(target: Type, fallback: Type) =
         if needsVariable(target) then CapturingType(target, addedSet(target))
         else fallback
-      val dealiased = tp.dealiasKeepAnnots
+      val dealiased = tp.dealiasKeepAnnotsAndOpaques
       if dealiased ne tp then
         val transformed = transformInferredType(dealiased)
         maybeAdd(transformed, if transformed ne dealiased then transformed else tp)

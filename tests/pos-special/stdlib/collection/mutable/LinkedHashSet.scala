@@ -32,7 +32,7 @@ import language.experimental.captureChecking
  *  @define orderDependentFold
  */
 @deprecatedInheritance("LinkedHashSet will be made final", "2.13.11")
-class LinkedHashSet[sealed A]
+class LinkedHashSet[A]
   extends AbstractSet[A]
     with SetOps[A, LinkedHashSet, LinkedHashSet[A]]
     with StrictOptimizedIterableOps[A, LinkedHashSet, LinkedHashSet[A]]
@@ -315,20 +315,20 @@ class LinkedHashSet[sealed A]
 @SerialVersionUID(3L)
 object LinkedHashSet extends IterableFactory[LinkedHashSet] {
 
-  override def empty[sealed A]: LinkedHashSet[A] = new LinkedHashSet[A]
+  override def empty[A]: LinkedHashSet[A] = new LinkedHashSet[A]
 
-  def from[sealed E](it: collection.IterableOnce[E]^) = {
+  def from[E](it: collection.IterableOnce[E]^) = {
     val newlhs = empty[E]
     newlhs.sizeHint(it.knownSize)
     newlhs.addAll(it)
     newlhs
   }
 
-  def newBuilder[sealed A] = new GrowableBuilder(empty[A])
+  def newBuilder[A] = new GrowableBuilder(empty[A])
 
   /** Class for the linked hash set entry, used internally.
    */
-  private[mutable] final class Entry[sealed A](val key: A, val hash: Int) {
+  private[mutable] final class Entry[A](val key: A, val hash: Int) {
     var earlier: Entry[A] = null
     var later: Entry[A] = null
     var next: Entry[A] = null

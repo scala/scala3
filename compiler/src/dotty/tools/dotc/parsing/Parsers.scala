@@ -51,7 +51,23 @@ object Parsers {
     case ElseWhere     extends Location(false, false, false)
 
   enum ParamOwner:
-    case Class, Type, TypeParam, Def
+    case Class           // class or trait or enum
+    case CaseClass       // case class or enum case
+    case Type            // type alias or abstract type
+    case TypeParam       // type parameter
+    case Def             // method
+    case Given           // given definition
+    case ExtensionPrefix // extension clause, up to and including extension parameter
+    case ExtensionFollow // extension clause, following extension parameter
+
+    def isClass = // owner is a class
+      this == Class || this == CaseClass
+    def takesOnlyUsingClauses = // only using clauses allowed for this owner
+      this == Given || this == ExtensionFollow
+    def acceptsVariance =
+      this == Class || this == CaseClass || this == Type
+
+  end ParamOwner
 
   enum ParseKind:
     case Expr, Type, Pattern
@@ -447,7 +463,7 @@ object Parsers {
           report.errorOrMigrationWarning(
             em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
             in.sourcePos(), from = `3.0`)
-          if migrateTo3 then
+          if sourceVersion.isMigrating then
             patch(source, t.span.startPos, "(")
             patch(source, t.span.endPos, ")")
           convertToParam(t, mods) :: Nil
@@ -1299,7 +1315,7 @@ object Parsers {
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
                 in.sourcePos(), from = `3.0`)
-              if migrateTo3 then
+              if sourceVersion.isMigrating then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
@@ -1397,7 +1413,8 @@ object Parsers {
                 |It needs to be indented to the right to keep being treated as
                 |an argument to the previous expression.${rewriteNotice()}""",
             in.sourcePos(), from = `3.0`)
-          patch(source, Span(in.offset), "  ")
+          if sourceVersion.isMigrating then
+            patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL(inTemplate = true)
@@ -1474,19 +1491,13 @@ object Parsers {
      */
     def captureRef(): Tree =
       if in.token == THIS then simpleRef()
-      else termIdent() match
-        case id @ Ident(nme.CAPTURE_ROOT) =>
-          if in.token == LBRACKET then
-            val ref = atSpan(id.span.start)(captureRootIn)
-            val qual =
-              inBrackets:
-                atSpan(in.offset):
-                  Literal(Constant(ident().toString))
-            atSpan(id.span.start)(Apply(ref, qual :: Nil))
-          else
-            atSpan(id.span.start)(captureRoot)
-        case id =>
-          id
+      else
+        val id = termIdent()
+        if isIdent(nme.raw.STAR) then
+          in.nextToken()
+          atSpan(startOffset(id)):
+            PostfixOp(id, Ident(nme.CC_REACH))
+        else id
 
     /**  CaptureSet ::=  `{` CaptureRef {`,` CaptureRef} `}`    -- under captureChecking
      */
@@ -1870,9 +1881,15 @@ object Parsers {
           val start = in.skipToken()
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
-          if !inTypeMatchPattern && sourceVersion.isAtLeast(future) then
-            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
-            patch(source, Span(in.offset, in.offset + 1), "?")
+          if !inTypeMatchPattern then
+            report.gradualErrorOrMigrationWarning(
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
+              in.sourcePos(),
+              warnFrom = `3.4`,
+              errorFrom = future)
+            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              patch(source, Span(in.offset, in.offset + 1), "?")
+          end if
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
       // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
@@ -2251,7 +2268,7 @@ object Parsers {
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          if migrateTo3 then
+          if sourceVersion.isMigrating then
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
             cond match {
@@ -3137,7 +3154,7 @@ object Parsers {
               warnFrom = `3.4`,
               errorFrom = future)
           if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
-              patch(source, Span(startOffset, in.lastOffset), "")
+            patch(source, Span(startOffset, in.lastOffset), "")
         mods1
       }
       else mods
@@ -3214,33 +3231,29 @@ object Parsers {
      *                          | UsingParamClause
      */
     def typeOrTermParamClauses(
-      ownerKind: ParamOwner,
-      numLeadParams: Int = 0
-    ): List[List[TypeDef] | List[ValDef]] =
+      paramOwner: ParamOwner, numLeadParams: Int = 0): List[List[TypeDef] | List[ValDef]] =
 
-      def recur(firstClause: Boolean, numLeadParams: Int, prevIsTypeClause: Boolean): List[List[TypeDef] | List[ValDef]] =
+      def recur(numLeadParams: Int, firstClause: Boolean, prevIsTypeClause: Boolean): List[List[TypeDef] | List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         newLineOptWhenFollowedBy(LBRACKET)
         if in.token == LPAREN then
           val paramsStart = in.offset
-          val params = termParamClause(
-              numLeadParams,
-              firstClause = firstClause)
+          val params = termParamClause(paramOwner, numLeadParams, firstClause)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
             if lastClause then Nil
-            else recur(firstClause = false, numLeadParams + params.length, prevIsTypeClause = false))
+            else recur(numLeadParams + params.length, firstClause = false, prevIsTypeClause = false))
         else if in.token == LBRACKET then
           if prevIsTypeClause then
             syntaxError(
               em"Type parameter lists must be separated by a term or using parameter list",
               in.offset
             )
-          typeParamClause(ownerKind) :: recur(firstClause, numLeadParams, prevIsTypeClause = true)
+          typeParamClause(paramOwner) :: recur(numLeadParams, firstClause, prevIsTypeClause = true)
         else Nil
       end recur
 
-      recur(firstClause = true, numLeadParams = numLeadParams, prevIsTypeClause = false)
+      recur(numLeadParams, firstClause = true, prevIsTypeClause = false)
     end typeOrTermParamClauses
 
 
@@ -3259,22 +3272,20 @@ object Parsers {
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
-    def typeParamClause(ownerKind: ParamOwner): List[TypeDef] = inBracketsWithCommas {
+    def typeParamClause(paramOwner: ParamOwner): List[TypeDef] = inBracketsWithCommas {
 
       def checkVarianceOK(): Boolean =
-        val ok = ownerKind != ParamOwner.Def && ownerKind != ParamOwner.TypeParam
+        val ok = paramOwner.acceptsVariance
         if !ok then syntaxError(em"no `+/-` variance annotation allowed here")
         in.nextToken()
         ok
 
       def typeParam(): TypeDef = {
-        val isAbstractOwner = ownerKind == ParamOwner.Type || ownerKind == ParamOwner.TypeParam
+        val isAbstractOwner = paramOwner == ParamOwner.Type || paramOwner == ParamOwner.TypeParam
         val start = in.offset
         var mods = annotsAsMods() | Param
-        if ownerKind == ParamOwner.Class then mods |= PrivateLocal
-        if Feature.ccEnabled && in.token == SEALED then
-          mods |= Sealed
-          in.nextToken()
+        if paramOwner == ParamOwner.Class || paramOwner == ParamOwner.CaseClass then
+          mods |= PrivateLocal
         if isIdent(nme.raw.PLUS) && checkVarianceOK() then
           mods |= Covariant
         else if isIdent(nme.raw.MINUS) && checkVarianceOK() then
@@ -3294,16 +3305,16 @@ object Parsers {
       commaSeparated(() => typeParam())
     }
 
-    def typeParamClauseOpt(ownerKind: ParamOwner): List[TypeDef] =
-      if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
+    def typeParamClauseOpt(paramOwner: ParamOwner): List[TypeDef] =
+      if (in.token == LBRACKET) typeParamClause(paramOwner) else Nil
 
     /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
-    def contextTypes(ofClass: Boolean, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
+    def contextTypes(paramOwner: ParamOwner, numLeadParams: Int, impliedMods: Modifiers): List[ValDef] =
       val tps = commaSeparated(funArgType)
       var counter = numLeadParams
       def nextIdx = { counter += 1; counter }
-      val paramFlags = if ofClass then LocalParamAccessor else Param
+      val paramFlags = if paramOwner.isClass then LocalParamAccessor else Param
       tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | impliedMods.flags))
 
     /** ClsTermParamClause    ::=  ‘(’ ClsParams ‘)’ | UsingClsTermParamClause
@@ -3325,11 +3336,8 @@ object Parsers {
      *  @return   the list of parameter definitions
      */
     def termParamClause(
+      paramOwner: ParamOwner,
       numLeadParams: Int,                      // number of parameters preceding this clause
-      ofClass: Boolean = false,                // owner is a class
-      ofCaseClass: Boolean = false,            // owner is a case class
-      prefix: Boolean = false,                 // clause precedes name of an extension method
-      givenOnly: Boolean = false,              // only given parameters allowed
       firstClause: Boolean = false             // clause is the first in regular list of clauses
     ): List[ValDef] = {
       var impliedMods: Modifiers = EmptyModifiers
@@ -3348,7 +3356,7 @@ object Parsers {
         var mods = impliedMods.withAnnotations(annotations())
         if isErasedKw then
           mods = addModifier(mods)
-        if (ofClass) {
+        if paramOwner.isClass then
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
             if in.token == VAL then
@@ -3360,9 +3368,8 @@ object Parsers {
             else
               if (!(mods.flags &~ (ParamAccessor | Inline | Erased | impliedMods.flags)).isEmpty)
                 syntaxError(em"`val` or `var` expected")
-              if (firstClause && ofCaseClass) mods
+              if firstClause && paramOwner == ParamOwner.CaseClass then mods
               else mods | PrivateLocal
-        }
         else {
           if (isIdent(nme.inline) && in.isSoftModifierInParamModifierPosition)
             mods = addModifier(mods)
@@ -3371,7 +3378,7 @@ object Parsers {
         atSpan(start, nameStart) {
           val name = ident()
           acceptColon()
-          if (in.token == ARROW && ofClass && !mods.is(Local))
+          if (in.token == ARROW && paramOwner.isClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
               // needed?, it's checked later anyway
           val tpt = paramType()
@@ -3400,13 +3407,17 @@ object Parsers {
 
       // begin termParamClause
       inParensWithCommas {
-        if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
+        if in.token == RPAREN && paramOwner != ParamOwner.ExtensionPrefix && !impliedMods.is(Given)
+        then Nil
         else
           val clause =
-            if prefix && !isIdent(nme.using) && !isIdent(nme.erased) then param() :: Nil
+            if paramOwner == ParamOwner.ExtensionPrefix
+                && !isIdent(nme.using) && !isIdent(nme.erased)
+            then
+              param() :: Nil
             else
               paramMods()
-              if givenOnly && !impliedMods.is(Given) then
+              if paramOwner.takesOnlyUsingClauses && !impliedMods.is(Given) then
                 syntaxError(em"`using` expected")
               val (firstParamMod, isParams) =
                 var mods = EmptyModifiers
@@ -3420,7 +3431,7 @@ object Parsers {
                     || isIdent && (in.name == nme.inline || in.lookahead.isColon)
                   (mods, isParams)
               (if isParams then commaSeparated(() => param())
-              else contextTypes(ofClass, numLeadParams, impliedMods)) match {
+              else contextTypes(paramOwner, numLeadParams, impliedMods)) match {
                 case Nil => Nil
                 case (h :: t) => h.withAddedFlags(firstParamMod.flags) :: t
               }
@@ -3434,31 +3445,21 @@ object Parsers {
      *
      *  @return  The parameter definitions
      */
-    def termParamClauses(
-      ofClass: Boolean = false,
-      ofCaseClass: Boolean = false,
-      givenOnly: Boolean = false,
-      numLeadParams: Int = 0
-    ): List[List[ValDef]] =
+    def termParamClauses(paramOwner: ParamOwner, numLeadParams: Int = 0): List[List[ValDef]] =
 
-      def recur(firstClause: Boolean, numLeadParams: Int): List[List[ValDef]] =
+      def recur(numLeadParams: Int, firstClause: Boolean): List[List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         if in.token == LPAREN then
           val paramsStart = in.offset
-          val params = termParamClause(
-              numLeadParams,
-              ofClass = ofClass,
-              ofCaseClass = ofCaseClass,
-              givenOnly = givenOnly,
-              firstClause = firstClause)
+          val params = termParamClause(paramOwner, numLeadParams, firstClause)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
             if lastClause then Nil
-            else recur(firstClause = false, numLeadParams + params.length))
+            else recur(numLeadParams + params.length, firstClause = false))
         else Nil
       end recur
 
-      recur(firstClause = true, numLeadParams)
+      recur(numLeadParams, firstClause = true)
     end termParamClauses
 
 /* -------- DEFS ------------------------------------------- */
@@ -3730,7 +3731,7 @@ object Parsers {
 
       if (in.token == THIS) {
         in.nextToken()
-        val vparamss = termParamClauses(numLeadParams = numLeadParams)
+        val vparamss = termParamClauses(ParamOwner.Def, numLeadParams)
         if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.isOneOf(GivenOrImplicit)))
           in.token match {
             case LBRACKET   => syntaxError(em"no type parameters allowed here")
@@ -3751,10 +3752,10 @@ object Parsers {
         val paramss =
           if in.featureEnabled(Feature.clauseInterleaving) then
             // If you are making interleaving stable manually, please refer to the PR introducing it instead, section "How to make non-experimental"
-            typeOrTermParamClauses(ParamOwner.Def, numLeadParams = numLeadParams)
+            typeOrTermParamClauses(ParamOwner.Def, numLeadParams)
           else
             val tparams = typeParamClauseOpt(ParamOwner.Def)
-            val vparamss = termParamClauses(numLeadParams = numLeadParams)
+            val vparamss = termParamClauses(ParamOwner.Def, numLeadParams)
 
             joinParams(tparams, vparamss)
 
@@ -3895,16 +3896,16 @@ object Parsers {
     }
 
     def classDefRest(start: Offset, mods: Modifiers, name: TypeName): TypeDef =
-      val constr = classConstr(isCaseClass = mods.is(Case))
+      val constr = classConstr(if mods.is(Case) then ParamOwner.CaseClass else ParamOwner.Class)
       val templ = templateOpt(constr)
       finalizeDef(TypeDef(name, templ), mods, start)
 
     /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsTermParamClauses
      */
-    def classConstr(isCaseClass: Boolean = false): DefDef = atSpan(in.lastOffset) {
-      val tparams = typeParamClauseOpt(ParamOwner.Class)
+    def classConstr(paramOwner: ParamOwner): DefDef = atSpan(in.lastOffset) {
+      val tparams = typeParamClauseOpt(paramOwner)
       val cmods = fromWithinClassConstr(constrModsOpt())
-      val vparamss = termParamClauses(ofClass = true, ofCaseClass = isCaseClass)
+      val vparamss = termParamClauses(paramOwner)
       makeConstructor(tparams, vparamss).withMods(cmods)
     }
 
@@ -3922,7 +3923,9 @@ object Parsers {
     }
 
     private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
-      val mods1 = mods & (AccessFlags | Enum)
+      // We allow `infix to mark the `enum`s type as infix.
+      // Syntax rules disallow the soft infix modifier on `case`s.
+      val mods1 = mods & (AccessFlags | Enum | Infix)
       if mods1 ne mods then
         syntaxError(em"Only access modifiers are allowed on enum $where")
       mods1
@@ -3933,7 +3936,7 @@ object Parsers {
       val mods1 = checkAccessOnly(mods, "definitions")
       val modulName = ident()
       val clsName = modulName.toTypeName
-      val constr = classConstr()
+      val constr = classConstr(ParamOwner.Class)
       val templ = template(constr, isEnum = true)
       finalizeDef(TypeDef(clsName, templ), mods1, start)
     }
@@ -3955,7 +3958,7 @@ object Parsers {
           val caseDef =
             if (in.token == LBRACKET || in.token == LPAREN || in.token == AT || isModifier) {
               val clsName = id.name.toTypeName
-              val constr = classConstr(isCaseClass = true)
+              val constr = classConstr(ParamOwner.CaseClass)
               TypeDef(clsName, caseTemplate(constr))
             }
             else
@@ -4002,11 +4005,11 @@ object Parsers {
       val name = if isIdent && followingIsGivenSig() then ident() else EmptyTermName
 
       val gdef =
-        val tparams = typeParamClauseOpt(ParamOwner.Def)
+        val tparams = typeParamClauseOpt(ParamOwner.Given)
         newLineOpt()
         val vparamss =
           if in.token == LPAREN && in.lookahead.isIdent(nme.using)
-          then termParamClauses(givenOnly = true)
+          then termParamClauses(ParamOwner.Given)
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
@@ -4046,15 +4049,15 @@ object Parsers {
      */
     def extension(): ExtMethods =
       val start = in.skipToken()
-      val tparams = typeParamClauseOpt(ParamOwner.Def)
+      val tparams = typeParamClauseOpt(ParamOwner.ExtensionPrefix)
       val leadParamss = ListBuffer[List[ValDef]]()
       def numLeadParams = leadParamss.map(_.length).sum
       while
-        val extParams = termParamClause(numLeadParams, prefix = true)
+        val extParams = termParamClause(ParamOwner.ExtensionPrefix, numLeadParams)
         leadParamss += extParams
         isUsingClause(extParams)
       do ()
-      leadParamss ++= termParamClauses(givenOnly = true, numLeadParams = numLeadParams)
+      leadParamss ++= termParamClauses(ParamOwner.ExtensionFollow, numLeadParams)
       if in.isColon then
         syntaxError(em"no `:` expected here")
         in.nextToken()

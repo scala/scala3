@@ -3,11 +3,11 @@
   |        ^^^^^^^
   |Could not verify that the method argument is transitively initialized (Hot). It was found to be the original object of type (class B) where initialization checking started. Only transitively initialized arguments may be passed to methods (except constructors).
   |Non initialized field(s): value result. Calling trace:
-  |-> class B extends A {	[ default-this.scala:6 ]
-  |   ^
-  |-> val result = updateThenCompare(5)	[ default-this.scala:11 ]
-  |                ^^^^^^^^^^^^^^^^^^^^
-  |-> def updateThenCompare(c: Int): Boolean = {	[ default-this.scala:7 ]
-  |   ^
-  |-> compare() // error	[ default-this.scala:9 ]
-  |   ^^^^^^^
+  |├── class B extends A {	[ default-this.scala:6 ]
+  |│   ^
+  |├── val result = updateThenCompare(5)	[ default-this.scala:11 ]
+  |│                ^^^^^^^^^^^^^^^^^^^^
+  |├── def updateThenCompare(c: Int): Boolean = {	[ default-this.scala:7 ]
+  |│   ^
+  |└── compare() // error	[ default-this.scala:9 ]
+  |    ^^^^^^^

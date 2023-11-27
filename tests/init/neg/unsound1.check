@@ -2,7 +2,7 @@
 2 |  if (m > 0) println(foo(m - 1).a2.n) // error
   |                     ^^^^^^^^^^^^^^^
   |                     Access field variable n on an uninitialized (Cold) object. Calling trace:
-  |                     -> class A(m: Int) {	[ unsound1.scala:1 ]
-  |                        ^
-  |                     -> if (m > 0) println(foo(m - 1).a2.n) // error	[ unsound1.scala:2 ]
-  |                                           ^^^^^^^^^^^^^^^
+  |                     ├── class A(m: Int) {	[ unsound1.scala:1 ]
+  |                     │   ^
+  |                     └── if (m > 0) println(foo(m - 1).a2.n) // error	[ unsound1.scala:2 ]
+  |                                            ^^^^^^^^^^^^^^^

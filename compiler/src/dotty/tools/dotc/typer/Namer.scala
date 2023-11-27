@@ -23,8 +23,6 @@ import parsing.Parsers.Parser
 import Annotations.*
 import Inferencing.*
 import transform.ValueClasses.*
-import transform.TypeUtils.*
-import transform.SymUtils.*
 import TypeErasure.erasure
 import reporting.*
 import config.Feature.sourceVersion
@@ -250,7 +248,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
+            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, CompilationUnitInfo(ctx.source.file)))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
@@ -1042,14 +1040,7 @@ class Namer { typer: Typer =>
           tp
 
       val rhs1 = typedAheadType(rhs)
-      val rhsBodyType: TypeBounds =
-        val bounds = addVariances(rhs1.tpe).toBounds
-        if sym.is(Sealed) then
-          sym.resetFlag(Sealed)
-          bounds.derivedTypeBounds(bounds.lo,
-            AnnotatedType(bounds.hi, Annotation(defn.Caps_SealedAnnot, rhs1.span)))
-        else bounds
-
+      val rhsBodyType: TypeBounds = addVariances(rhs1.tpe).toBounds
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
 
       def opaqueToBounds(info: Type): Type =

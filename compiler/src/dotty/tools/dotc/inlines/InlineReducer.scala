@@ -5,7 +5,6 @@ package inlines
 import ast.*, core.*
 import Flags.*, Symbols.*, Types.*, Decorators.*, Contexts.*
 import StdNames.nme
-import transform.SymUtils.*
 import typer.*
 import Names.TermName
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
@@ -329,7 +328,7 @@ class InlineReducer(inliner: Inliner)(using Context):
               val paramCls = paramType.classSymbol
               if (paramCls.is(Case) && unapp.symbol.is(Synthetic) && scrut <:< paramType) {
                 val caseAccessors =
-                  if (paramCls.is(Scala2x)) paramCls.caseAccessors.filter(_.is(Method))
+                  if paramCls.is(Scala2x) then paramCls.caseAccessors
                   else paramCls.asClass.paramAccessors
                 val selectors =
                   for (accessor <- caseAccessors)

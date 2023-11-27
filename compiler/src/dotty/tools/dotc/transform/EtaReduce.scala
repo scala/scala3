@@ -6,7 +6,7 @@ import MegaPhase.MiniPhase
 import core.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
-import SymUtils.*
+
 import NameKinds.AdaptedClosureName
 
 /** Rewrite `(x1, ... xN) => f(x1, ... xN)` for N >= 0 to `f`,

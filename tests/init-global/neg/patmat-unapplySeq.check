@@ -2,10 +2,10 @@
 8 |  def apply(i: Int): Box = array(i)             // error
   |                           ^^^^^^^^
   |Reading mutable state of object A during initialization of object B.
-  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace: 
-  |-> object B:	[ patmat-unapplySeq.scala:15 ]
-  |   ^
-  |-> case A(b) =>	[ patmat-unapplySeq.scala:17 ]
-  |        ^^^^
-  |-> def apply(i: Int): Box = array(i)             // error	[ patmat-unapplySeq.scala:8 ]
-  |                            ^^^^^^^^
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object B:	[ patmat-unapplySeq.scala:15 ]
+  |│   ^
+  |├── case A(b) =>	[ patmat-unapplySeq.scala:17 ]
+  |│        ^^^^
+  |└── def apply(i: Int): Box = array(i)             // error	[ patmat-unapplySeq.scala:8 ]
+  |                             ^^^^^^^^

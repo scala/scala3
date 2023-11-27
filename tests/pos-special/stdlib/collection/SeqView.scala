@@ -196,7 +196,7 @@ object SeqView {
           //     contains items of another type, we'd get a CCE anyway)
           //   - the cast doesn't actually do anything in the runtime because the
           //     type of A is not known and Array[_] is Array[AnyRef]
-          immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[A @uncheckedCaptures]])
+          immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[A]])
         }
       }
       evaluated = true
