@@ -20,15 +20,13 @@ class ArrayApply extends MiniPhase {
   override def description: String = ArrayApply.description
 
   private val TransformListApplyBudgetKey = new Property.Key[Int]
-  private def transformListApplyBudget(using Context) = ctx.property(TransformListApplyBudgetKey).getOrElse(8)
+  private def transformListApplyBudget(using Context) =
+    ctx.property(TransformListApplyBudgetKey).getOrElse(8) // default is 8, as originally implemented in nsc
 
-  override def prepareForApply(tree: Apply)(using Context): Context =
-    if isSeqApply(tree) then
-      val args = seqApplyArgsOrNull(tree)
-      if args != null then
-        ctx.fresh.setProperty(TransformListApplyBudgetKey, transformListApplyBudget - args.elems.length)
-      else ctx
-    else ctx
+  override def prepareForApply(tree: Apply)(using Context): Context = tree match
+    case SeqApplyArgs(elems) =>
+      ctx.fresh.setProperty(TransformListApplyBudgetKey, transformListApplyBudget - elems.length)
+    case _ => ctx
 
   override def transformApply(tree: Apply)(using Context): Tree =
     if isArrayModuleApply(tree.symbol) then
@@ -44,15 +42,12 @@ class ArrayApply extends MiniPhase {
         case _ =>
           tree
 
-    else if isSeqApply(tree) then
-      val args = seqApplyArgsOrNull(tree)
-      if args != null && (transformListApplyBudget > 0 || args.elems.isEmpty) then
-        val consed = args.elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
+    else tree match
+      case SeqApplyArgs(elems) if transformListApplyBudget > 0 || elems.isEmpty =>
+        val consed = elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
           New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
         consed.cast(tree.tpe)
-      else tree
-
-    else tree
+      case _ => tree
 
   private def isArrayModuleApply(sym: Symbol)(using Context): Boolean =
     sym.name == nme.apply
@@ -75,14 +70,17 @@ class ArrayApply extends MiniPhase {
         || sym == defn.CollectionSeqType.symbol.companionModule
       case _ => false
 
-  private def seqApplyArgsOrNull(tree: Apply)(using Context): JavaSeqLiteral | Null =
-    // assumes isSeqApply(tree)
-    tree.args match
-      // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
-      case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
-          if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
-        rest
-      case _ => null
+  private object SeqApplyArgs:
+    def unapply(tree: Apply)(using Context): Option[List[Tree]] =
+      if isSeqApply(tree) then
+        tree.args match
+          // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
+          case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
+              if defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
+            Some(rest.elems)
+          case _ => None
+      else None
+
 
   /** Only optimize when classtag if it is one of
    *  - `ClassTag.apply(classOf[XYZ])`
