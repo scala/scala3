@@ -181,7 +181,7 @@ class SymUtils:
       else {
         val children = self.children
         val companionMirror = self.useCompanionAsSumMirror
-        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbol else NoSymbol
+        val ownerScope = if pre.isInstanceOf[SingletonType] then pre.classSymbols else Nil
         def problem(child: Symbol) = {
 
           def accessibleMessage(sym: Symbol): String =
@@ -191,8 +191,7 @@ class SymUtils:
               self.isContainedIn(sym) || sym.is(Module) && isVisibleToParent(sym.owner)
             def isVisibleToScope(sym: Symbol): Boolean =
               def isReachable: Boolean = ctx.owner.isContainedIn(sym)
-              def isMemberOfPrefix: Boolean =
-                ownerScope.exists && inherits(sym, ownerScope)
+              def isMemberOfPrefix: Boolean = ownerScope.exists(inherits(sym, _))
               isReachable || isMemberOfPrefix || sym.is(Module) && isVisibleToScope(sym.owner)
             if !isVisibleToParent(sym) then i"to its parent $self"
             else if !companionMirror && !isVisibleToScope(sym) then i"to call site ${ctx.owner}"
