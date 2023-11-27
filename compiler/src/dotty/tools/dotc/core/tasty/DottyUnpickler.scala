@@ -57,7 +57,7 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
   private val treeUnpickler = unpickler.unpickle(treeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt, attributeUnpicklerOpt)).get
 
   def tastyAttributes: Attributes =
-    attributeUnpicklerOpt.map(_.attributes).getOrElse(new Attributes(booleanTags = Nil))
+    attributeUnpicklerOpt.map(_.attributes).getOrElse(Attributes.empty)
 
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling

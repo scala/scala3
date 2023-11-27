@@ -1,14 +1,14 @@
 package dotty.tools.dotc.core.tasty
 
-import dotty.tools.tasty.TastyFormat
+import dotty.tools.tasty.TastyFormat.*
 
-class Attributes(
-  val booleanTags: List[Int],
+import scala.collection.immutable.BitSet
+
+class Attributes private[tasty](
+  private[tasty] val booleanTags: BitSet,
 ) {
-  def scala2StandardLibrary: Boolean =
-    booleanTags.contains(TastyFormat.SCALA2STANDARDLIBRARYattr)
-  def explicitNulls: Boolean =
-    booleanTags.contains(TastyFormat.EXPLICITNULLSattr)
+  def scala2StandardLibrary: Boolean = booleanTags(SCALA2STANDARDLIBRARYattr)
+  def explicitNulls: Boolean = booleanTags(EXPLICITNULLSattr)
 }
 
 object Attributes:
@@ -16,8 +16,11 @@ object Attributes:
     scala2StandardLibrary: Boolean,
     explicitNulls: Boolean,
   ): Attributes =
-    val booleanTags = List.newBuilder[Int]
-    if scala2StandardLibrary then booleanTags += TastyFormat.SCALA2STANDARDLIBRARYattr
-    if explicitNulls then booleanTags += TastyFormat.EXPLICITNULLSattr
+    val booleanTags = BitSet.newBuilder
+    if scala2StandardLibrary then booleanTags += SCALA2STANDARDLIBRARYattr
+    if explicitNulls then booleanTags += EXPLICITNULLSattr
     new Attributes(booleanTags.result())
   end apply
+
+  val empty: Attributes =
+    new Attributes(BitSet.empty)
