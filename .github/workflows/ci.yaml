@@ -19,6 +19,7 @@ on:
     branches-ignore:
       - 'gh-readonly-queue/**'
       - 'release-**'
+      - 'lts-**'
   pull_request:
   merge_group:
   schedule:
