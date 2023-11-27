@@ -96,12 +96,16 @@ class Pickler extends Phase {
     do
       if ctx.settings.YtestPickler.value then beforePickling(cls) = tree.show
 
+      val sourceRelativePath =
+        val reference = ctx.settings.sourceroot.value
+        util.SourceFile.relativePath(unit.source, reference)
       val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
       if isJavaAttr then
         // assert that Java sources didn't reach Pickler without `-Yjava-tasty`.
         assert(ctx.settings.YjavaTasty.value, "unexpected Java source file without -Yjava-tasty")
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
       val attributes = Attributes(
+        sourceFile = sourceRelativePath,
         scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
         explicitNulls = ctx.settings.YexplicitNulls.value,
         captureChecked = Feature.ccEnabled,

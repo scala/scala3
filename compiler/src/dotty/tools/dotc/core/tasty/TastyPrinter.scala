@@ -233,6 +233,10 @@ class TastyPrinter(bytes: Array[Byte]) {
 
       for tag <- attributes.booleanTags do
         sb.append("  ").append(attributeTagToString(tag)).append("\n")
+      for (tag, value) <- attributes.stringTagValues do
+        sb.append("  ").append(attributeTagToString(tag))
+          .append(" ").append(value).append("\n")
+      sb.result
     }
   }
 

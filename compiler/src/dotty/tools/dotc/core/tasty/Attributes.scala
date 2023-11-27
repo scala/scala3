@@ -3,9 +3,11 @@ package dotty.tools.dotc.core.tasty
 import dotty.tools.tasty.TastyFormat.*
 
 import scala.collection.immutable.BitSet
+import scala.collection.immutable.TreeMap
 
 class Attributes private[tasty](
   private[tasty] val booleanTags: BitSet,
+  private[tasty] val stringTagValues: List[(Int, String)],
 ) {
   def scala2StandardLibrary: Boolean = booleanTags(SCALA2STANDARDLIBRARYattr)
   def explicitNulls: Boolean = booleanTags(EXPLICITNULLSattr)
@@ -13,10 +15,12 @@ class Attributes private[tasty](
   def withPureFuns: Boolean = booleanTags(WITHPUREFUNSattr)
   def isJava: Boolean = booleanTags(JAVAattr)
   def isOutline: Boolean = booleanTags(OUTLINEattr)
+  def sourceFile: Option[String] = stringTagValues.find(_._1 == SOURCEFILEattr).map(_._2)
 }
 
 object Attributes:
   def apply(
+    sourceFile: String,
     scala2StandardLibrary: Boolean,
     explicitNulls: Boolean,
     captureChecked: Boolean,
@@ -31,8 +35,12 @@ object Attributes:
     if withPureFuns then booleanTags += WITHPUREFUNSattr
     if isJava then booleanTags += JAVAattr
     if isOutline then booleanTags += OUTLINEattr
-    new Attributes(booleanTags.result())
+
+    val stringTagValues = List.newBuilder[(Int, String)]
+    stringTagValues += SOURCEFILEattr -> sourceFile
+
+    new Attributes(booleanTags.result(), stringTagValues.result())
   end apply
 
   val empty: Attributes =
-    new Attributes(BitSet.empty)
+    new Attributes(BitSet.empty, Nil)

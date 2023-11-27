@@ -236,11 +236,11 @@ Note: The signature of a SELECTin or TERMREFin node is the signature of the sele
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 ```none
-  Category 1 (tags 1-59)   :  tag
-  Category 2 (tags 60-89)  :  tag Nat
-  Category 3 (tags 90-109) :  tag AST
-  Category 4 (tags 110-127):  tag Nat AST
-  Category 5 (tags 128-255):  tag Length <payload>
+  Tree Category 1 (tags 1-59)   :  tag
+  Tree Category 2 (tags 60-89)  :  tag Nat
+  Tree Category 3 (tags 90-109) :  tag AST
+  Tree Category 4 (tags 110-127):  tag Nat AST
+  Tree Category 5 (tags 128-255):  tag Length <payload>
 ```
 
 Standard-Section: "Positions" LinesSizes Assoc*
@@ -278,6 +278,13 @@ Standard Section: "Attributes" Attribute*
                   WITHPUREFUNSattr
                   JAVAattr
                   OUTLINEattr
+                  SOURCEFILEattr Utf8
+```
+
+Note: Attribute tags are grouped into 2 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
+```none
+  Attribute Category 1 (tags 1-64)  :  tag
+  Attribute Category 2 (tags 65-128):  tag UTF8
 ```
 
 **************************************************************************************/
@@ -441,9 +448,9 @@ object TastyFormat {
 
   final val SOURCE = 4
 
- // AST tags
-  // Cat. 1:    tag
+  // AST tags
 
+  // Tree Cat. 1:    tag
   final val firstSimpleTreeTag = UNITconst
   // final val ??? = 1
   final val UNITconst = 2
@@ -492,8 +499,8 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
 
-  // Cat. 2:    tag Nat
-
+  // Tree Cat. 2:    tag Nat
+  final val firstNatTreeTag = SHAREDterm
   final val SHAREDterm = 60
   final val SHAREDtype = 61
   final val TERMREFdirect = 62
@@ -512,8 +519,8 @@ object TastyFormat {
   final val IMPORTED = 75
   final val RENAMED = 76
 
-  // Cat. 3:    tag AST
-
+  // Tree Cat. 3:    tag AST
+  final val firstASTTreeTag = THIS
   final val THIS = 90
   final val QUALTHIS = 91
   final val CLASSconst = 92
@@ -531,8 +538,8 @@ object TastyFormat {
   final val ELIDED = 104
 
 
-  // Cat. 4:    tag Nat AST
-
+  // Tree Cat. 4:    tag Nat AST
+  final val firstNatASTTreeTag = IDENT
   final val IDENT = 110
   final val IDENTtpt = 111
   final val SELECT = 112
@@ -544,8 +551,8 @@ object TastyFormat {
   final val SELFDEF = 118
   final val NAMEDARG = 119
 
-  // Cat. 5:    tag Length ...
-
+  // Tree Cat. 5:    tag Length ...
+  final val firstLengthTreeTag = PACKAGE
   final val PACKAGE = 128
   final val VALDEF = 129
   final val DEFDEF = 130
@@ -607,20 +614,24 @@ object TastyFormat {
 
   final val HOLE = 255
 
-  final val firstNatTreeTag = SHAREDterm
-  final val firstASTTreeTag = THIS
-  final val firstNatASTTreeTag = IDENT
-  final val firstLengthTreeTag = PACKAGE
-
-
   // Attributes tags
 
+  // Attr Cat. 1: tag
+  final val firstBooleanAttrTag = SCALA2STANDARDLIBRARYattr
   final val SCALA2STANDARDLIBRARYattr = 1
   final val EXPLICITNULLSattr = 2
   final val CAPTURECHECKEDattr = 3
   final val WITHPUREFUNSattr = 4
   final val JAVAattr = 5
   final val OUTLINEattr = 6
+
+  // Attr Cat. 2: tag UTF8
+  final val firstStringAttrTag = SOURCEFILEattr
+  final val SOURCEFILEattr = 128
+
+  // Attr Cat. 3: unassigned
+  final val firstUnassignedAttrTag = 129
+
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
@@ -845,6 +856,7 @@ object TastyFormat {
     case WITHPUREFUNSattr => "WITHPUREFUNSattr"
     case JAVAattr => "JAVAattr"
     case OUTLINEattr => "OUTLINEattr"
+    case SOURCEFILEattr => "SOURCEFILEattr"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
