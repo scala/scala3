@@ -225,15 +225,19 @@ class TastyPrinter(bytes: Array[Byte]) {
   }
 
   class AttributesSectionUnpickler extends SectionUnpickler[String](AttributesSection) {
-  import dotty.tools.tasty.TastyFormat.attributeTagToString
+    import dotty.tools.tasty.TastyFormat.*
+
     private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      import reader.*
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
-      val attributeTags = new AttributeUnpickler(reader).attributeTags
+      val attributes = new AttributeUnpickler(reader).attributes
       sb.append(s"  attributes bytes:\n")
-      for attributeTag <- attributeTags do
-        sb.append("    ").append(attributeTagToString(attributeTag)).append("\n")
+
+      for tag <- attributes.booleanTags do
+        sb.append("   ").append(attributeTagToString(tag)).append("\n")
+
       sb.result
     }
   }
