@@ -1,6 +1,6 @@
 import scala.language.implicitConversions
 
-object Test {
+class Test {
   val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
 

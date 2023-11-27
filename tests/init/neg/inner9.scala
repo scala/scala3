@@ -1,20 +1,23 @@
-object Flags {
-  class Inner {
-    println(b)
+class Outer:
+  val flags = new Flags // error
+
+  class Flags {
+    class Inner {
+      println(b)
+    }
+
+    new flags.Inner
+
+    val a = this.b + 3
+    val b = 5 // error
   }
 
-  new Flags.Inner
+  class Flags2 {
+    class Inner {
+      println(b)
+    }
 
-  val a = this.b + 3
-  val b = 5              // error
-}
 
-object Flags2 {
-  class Inner {
-    println(b)
+    lazy val a = 3
+    val b = 5
   }
-
-
-  lazy val a = 3
-  val b = 5
-}

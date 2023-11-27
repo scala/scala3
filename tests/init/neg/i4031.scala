@@ -1,4 +1,4 @@
-object App {
+class App {
   trait A { type L >: Any}
   def upcast(a: A, x: Any): a.L = x
   val p: A { type L <: Nothing } = p        // error
