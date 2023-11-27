@@ -22,5 +22,5 @@ object Attributes:
     new Attributes(booleanTags.result())
   end apply
 
-  def empty: Attributes =
+  val empty: Attributes =
     new Attributes(BitSet.empty)
