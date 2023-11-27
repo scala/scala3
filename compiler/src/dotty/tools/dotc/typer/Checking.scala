@@ -1078,8 +1078,8 @@ trait Checking {
     tree.op match {
       case id @ Ident(name: Name) =>
         def methCompiledBeforeDeprecation =
-          meth.tastyVersion match
-            case Some(version) => version.major == 28 && version.minor < 4 // compiled before 3.4
+          meth.tastyInfo match
+            case Some(info) => info.version.major == 28 && info.version.minor < 4 // compiled before 3.4
             case _ => false // compiled with the current compiler
         name.toTermName match {
           case name: SimpleName

@@ -248,7 +248,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, CompilationUnitInfo(ctx.source.file, explicitNulls = ctx.explicitNulls)))
+            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, CompilationUnitInfo(ctx.source.file)))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
