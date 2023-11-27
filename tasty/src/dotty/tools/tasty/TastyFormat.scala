@@ -16,6 +16,7 @@ Micro-syntax:
   Nat           = LongInt                 -- non-negative value, fits in an Int without overflow
   Digit         = 0 | ... | 127
   StopDigit     = 128 | ... | 255         -- value = digit - 128
+  Utf8          = Nat UTF8-CodePoint*
 ```
 
 Macro-format:
@@ -24,12 +25,12 @@ Macro-format:
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
   UUID          = Byte*16                 -- random UUID
-  VersionString = Length UTF8-CodePoint*  -- string that represents the compiler that produced the TASTy
+  VersionString = Utf8                    -- string that represents the compiler that produced the TASTy
 
   Section       = NameRef Length Bytes
   Length        = Nat                     -- length of rest of entry in bytes
 
-  Name          = UTF8              Length UTF8-CodePoint*
+  Name          = UTF8              Utf8
                   QUALIFIED         Length qualified_NameRef selector_NameRef               -- A.B
                   EXPANDED          Length qualified_NameRef selector_NameRef               -- A$$B, semantically a NameKinds.ExpandedName
                   EXPANDPREFIX      Length qualified_NameRef selector_NameRef               -- A$B, prefix of expanded name, see NamedKinds.ExpandPrefixName
@@ -265,7 +266,7 @@ All elements of a position section are serialized as Ints
 
 Standard Section: "Comments" Comment*
 ```none
-  Comment       = UTF8 LongInt              // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
+  Comment       = Utf8 LongInt              // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 ```
 
 Standard Section: "Attributes" Attribute*
