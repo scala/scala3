@@ -939,13 +939,6 @@ class Definitions {
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
   @tu lazy val TupleModule: Symbol = requiredModule("scala.Tuple")
 
-    def Tuple_NamedValueTypeRef: TypeRef = TupleModule.termRef.select("NamedValue".toTypeName).asInstanceOf
-    def Tuple_NamedValueModuleRef: TermRef = TupleModule.termRef.select("NamedValue".toTermName).asInstanceOf
-      // Note: It would be dangerous to expose NamedValue as a symbol, since
-      // NamedValue.{typeRef/termRef} give the internal view of NamedValue inside Tuple
-      // which reveals the opaque alias. To see it externally, we need the construction
-      // above. Without this tweak, named-tuples.scala fails -Ycheck after typer.
-
   @tu lazy val EmptyTupleClass: Symbol = requiredClass("scala.EmptyTuple")
   @tu lazy val EmptyTupleModule: Symbol = requiredModule("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = requiredClassRef("scala.NonEmptyTuple")
@@ -958,6 +951,15 @@ class Definitions {
 
     def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
     def TupleXXL_unapplySeq(using Context): Symbol = TupleXXLModule.requiredMethod(nme.unapplySeq)
+
+  @tu lazy val NamedTupleModule = requiredModule("scala.NamedTuple")
+
+    def NamedTuple_ElementTypeRef: TypeRef = NamedTupleModule.termRef.select("Element".toTypeName).asInstanceOf
+    def NamedTuple_ElementModuleRef: TermRef = NamedTupleModule.termRef.select("Element".toTermName).asInstanceOf
+      // Note: It would be dangerous to expose Element as a symbol, since
+      // Element.{typeRef/termRef} give the internal view of Element inside NamedTuple
+      // which reveals the opaque alias. To see it externally, we need the construction
+      // above. Without this tweak, named-tuples.scala fails -Ycheck after typer.
 
   @tu lazy val RuntimeTupleMirrorTypeRef: TypeRef = requiredClassRef("scala.runtime.TupleMirror")
 
@@ -1313,10 +1315,10 @@ class Definitions {
 
   object NamedTupleElem:
     def apply(name: Name, tp: Type)(using Context): Type =
-      AppliedType(Tuple_NamedValueTypeRef, ConstantType(Constant(name.toString)) :: tp :: Nil)
+      AppliedType(NamedTuple_ElementTypeRef, ConstantType(Constant(name.toString)) :: tp :: Nil)
     def unapply(t: Type)(using Context): Option[(TermName, Type)] = t match
       case AppliedType(tycon, ConstantType(Constant(s: String)) :: tp :: Nil)
-        if tycon.typeSymbol == Tuple_NamedValueTypeRef.typeSymbol => Some((s.toTermName, tp))
+        if tycon.typeSymbol == NamedTuple_ElementTypeRef.typeSymbol => Some((s.toTermName, tp))
       case _ => None
 
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =

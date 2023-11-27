@@ -1530,13 +1530,13 @@ object desugar {
       locally:
         val nameLit = Literal(Constant(name.toString))
         if ctx.mode.is(Mode.Type) then
-          AppliedTypeTree(ref(defn.Tuple_NamedValueTypeRef),
+          AppliedTypeTree(ref(defn.NamedTuple_ElementTypeRef),
             SingletonTypeTree(nameLit) :: arg :: Nil)
         else if ctx.mode.is(Mode.Pattern) then
           NamedElemPattern(name, arg)
         else
           Apply(
-            Select(ref(defn.Tuple_NamedValueModuleRef), nme.apply),
+            Select(ref(defn.NamedTuple_ElementModuleRef), nme.apply),
             nameLit :: arg :: Nil)
       .withSpan(elem.span)
     case _ =>

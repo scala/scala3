@@ -491,7 +491,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       Apply(
         Block(Nil,
           TypeApply(
-            untpd.Select(untpd.ref(defn.Tuple_NamedValueModuleRef), nme.extract),
+            untpd.Select(untpd.ref(defn.NamedTuple_ElementModuleRef), nme.extract),
             SingletonTypeTree(Literal(Constant(name.toString))) :: Nil)),
         elem :: Nil)
 
@@ -501,7 +501,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
           TypeApply(
             untpd.Select(TypedSplice(namedValue), nme.extract),
             SingletonTypeTree(Literal(Constant(name: String))) :: Nil)),
-        elem :: Nil) if namedValue.symbol == defn.Tuple_NamedValueModuleRef.symbol =>
+        elem :: Nil) if namedValue.symbol == defn.NamedTuple_ElementModuleRef.symbol =>
         Some((name.toTermName, elem))
       case _ => None
 
