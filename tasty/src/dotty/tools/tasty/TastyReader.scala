@@ -3,6 +3,7 @@ package dotty.tools.tasty
 import collection.mutable
 
 import TastyBuffer._
+import java.nio.charset.StandardCharsets
 
 /** A byte array buffer that can be filled with bytes or natural numbers in TASTY format,
  *  and that supports reading and patching addresses represented as natural numbers.
@@ -102,6 +103,15 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     for (i <- 0 to 7)
       x = (x << 8) | (readByte() & 0xff)
     x
+  }
+
+  /** Read a UTF8 string encoded as `Nat UTF8-CodePoint*`,
+   *  where the `Nat` is the length of the code-points bytes.
+   */
+  def readUtf8(): String = {
+    val length = readNat()
+    if (length == 0) ""
+    else new String(readBytes(length), StandardCharsets.UTF_8)
   }
 
   /** Read a natural number and return as a NameRef */
