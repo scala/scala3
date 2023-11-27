@@ -432,8 +432,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
     val attributes = unpickler.tastyAttributes
     new CompilationUnitInfo(
       tastyFile,
-      tastyVersion = Some(tastyVersion),
-      explicitNulls = attributes.explicitNulls,
+      tastyInfo = Some(TastyInfo(tastyVersion, attributes)),
     )
 
   def description(using Context): String = "TASTy file " + tastyFile.toString
