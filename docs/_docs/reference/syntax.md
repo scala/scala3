@@ -198,7 +198,7 @@ SimpleType        ::=  SimpleLiteral
                     |  id
                     |  Singleton ‘.’ id
                     |  Singleton ‘.’ ‘type’
-                    |  ‘(’ Types | NamesAndTypes ‘)’
+                    |  ‘(’ [Types] ‘)’
                     |  Refinement
                     |  SimpleType1 TypeArgs
                     |  SimpleType1 ‘#’ id
@@ -216,8 +216,6 @@ Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}
 Types             ::=  Type {‘,’ Type}
-NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
-NameAndType       ::=  id ':' Type
 ```
 
 ### Expressions
@@ -281,9 +279,7 @@ ExprSplice        ::= spliceId                                                  
                     |  ‘$’ ‘{’ Block ‘}’                                        -- unless inside quoted pattern
                     |  ‘$’ ‘{’ Pattern ‘}’                                      -- when inside quoted pattern
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
-                    |  NamedExprInParens {‘,’ NamedExprInParens}
-ExprInParens      ::=  (PostfixExpr ‘:’ Type |  Expr)
-NamedExprInParens ::=  id '=' ExprInParens
+ExprInParens      ::=  PostfixExpr ‘:’ Type |  Expr
 ParArgumentExprs  ::=  ‘(’ [ExprsInParens] ‘)’
                     |  ‘(’ ‘using’ ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
@@ -334,8 +330,6 @@ SimplePattern1    ::=  SimpleRef
 PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
-NamedPatterns     ::=  NamedPattern {‘,’ NamedPattern}
-NamedPattern      ::=  id '=' Pattern
 
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
                     |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
