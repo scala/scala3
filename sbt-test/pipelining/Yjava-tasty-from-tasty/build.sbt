@@ -5,7 +5,7 @@ lazy val a = project.in(file("a"))
     scalacOptions += "-Yjava-tasty", // enable pickling of java signatures
     scalacOptions ++= Seq("-Yjava-tasty-output", ((ThisBuild / baseDirectory).value / "a-pre-java-tasty.jar").toString),
     scalacOptions += "-Ycheck:all",
-    classDirectory := ((ThisBuild / baseDirectory).value / "a-pre-classes"), // send classfiles to a different directory
+    Compile / classDirectory := ((ThisBuild / baseDirectory).value / "a-pre-classes"), // send classfiles to a different directory
   )
 
 // recompile `a` with `-from-tasty` flag to test idempotent read/write java signatures.
@@ -19,11 +19,17 @@ lazy val a_from_tasty = project.in(file("a_from_tasty"))
     scalacOptions += "-Yallow-outline-from-tasty", // allow outline signatures to be read with -from-tasty
     scalacOptions ++= Seq("-Yjava-tasty-output", ((ThisBuild / baseDirectory).value / "a_from_tasty-java-tasty.jar").toString),
     scalacOptions += "-Ycheck:all",
-    classDirectory := ((ThisBuild / baseDirectory).value / "a_from_tasty-classes"), // send classfiles to a different directory
+    Compile / classDirectory := ((ThisBuild / baseDirectory).value / "a_from_tasty-classes"), // send classfiles to a different directory
   )
 
 lazy val b = project.in(file("b"))
   .settings(
-    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a_from_tasty-java-tasty.jar")),
     scalacOptions += "-Ycheck:all",
+    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a_from_tasty-java-tasty.jar")),
+  )
+  .settings(
+    // we have to fork the JVM if we actually want to run the code with correct failure semantics
+    fork := true,
+    // make sure the java classes are visible at runtime
+    Runtime / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-pre-classes"),
   )

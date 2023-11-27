@@ -7,6 +7,9 @@ class B[T] {
 }
 
 object B {
-  val derived: Int = (new B[Int]).inner.value
+  @main def test = {
+    val derived: Int = (new B[Int]).inner.value
+    assert(derived == 23, s"actually was $derived")
+  }
 }
 

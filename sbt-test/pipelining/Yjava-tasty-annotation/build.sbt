@@ -3,7 +3,7 @@ lazy val a = project.in(file("a"))
     scalacOptions += "-Yjava-tasty", // enable pickling of java signatures
     scalacOptions ++= Seq("-Yjava-tasty-output", ((ThisBuild / baseDirectory).value / "a-annotation-java-tasty.jar").toString),
     scalacOptions += "-Ycheck:all",
-    classDirectory := ((ThisBuild / baseDirectory).value / "a-annotation-classes"), // send classfiles to a different directory
+    Compile / classDirectory := ((ThisBuild / baseDirectory).value / "a-annotation-classes"), // send classfiles to a different directory
   )
 
 lazy val b = project.in(file("b"))
