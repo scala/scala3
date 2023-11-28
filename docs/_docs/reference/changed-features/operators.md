@@ -175,8 +175,11 @@ someCondition
    val helper = helperDef
    anotherCondition(helper)
 ```
-an `<indent>` token is inserted after the `||`. Since `<indent>` can start as an expression, the `||` operator is classified as a leading infix operator.
+an `<indent>` token is inserted [^1] after the `||`. Since `<indent>` can start as an expression, the `||` operator is classified as a leading infix operator.
 ```
+
+[^1]: Currently only enabled with an `experimental.fewerBraces` language import or setting.
+
 
 ## Unary operators
 

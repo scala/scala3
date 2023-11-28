@@ -70,7 +70,7 @@ There are two rules:
        ```
        , or
 
-     - after an operator that appears on its own line, or
+     - after an operator that appears on its own line [^1], or
      - after the closing `)` of a condition in an old-style `if` or `while`, or
      - after the closing `)` or `}` of the enumerations of an old-style `for` loop without a `do`.
 
@@ -145,6 +145,8 @@ else d
 ```
 is parsed as `if x then a + b + c else d`.
 
+[^1]: Currently only enabled with an `experimental.fewerBraces` language import or setting.
+
 ## Optional Braces Around Template Bodies
 
 The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule.
@@ -200,6 +202,7 @@ EnumBody          ::=  :<<< [SelfType] EnumStat {semi EnumStat} >>>
 Refinement        ::=  :<<< [RefineDcl] {semi [RefineDcl]} >>>
 Packaging         ::=  ‘package’ QualId :<<< TopStats >>>
 ```
+
 
 ## Optional Braces for Method Arguments
 

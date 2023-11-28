@@ -35,8 +35,6 @@ object Scanners {
 
   private val identity: IndentWidth => IndentWidth = Predef.identity
 
-  val allowIndentAfterInfixOp = true
-
   trait TokenData {
 
     /** the next token */
@@ -192,7 +190,6 @@ object Scanners {
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
       && allowIndent
-
     if (rewrite) {
       val s = ctx.settings
       val rewriteTargets = List(s.newSyntax, s.oldSyntax, s.indent, s.noindent)
@@ -207,6 +204,7 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
+    def indentAfterOperatorEnabled = featureEnabled(Feature.fewerBraces)
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -446,7 +444,7 @@ object Scanners {
         || lookahead.token == NEWLINE
            && indentWidth(offset) <= indentWidth(lookahead.next.offset)
            && (assumeStartsExpr(lookahead.next)
-              || allowIndentAfterInfixOp
+              || indentAfterOperatorEnabled
                   && indentWidth(offset) < indentWidth(lookahead.next.offset))
       }
       && {
@@ -583,7 +581,7 @@ object Scanners {
         lastWidth < nextWidth
         && (  openParensTokens.contains(token)
            || lastToken == RETURN
-           || allowIndentAfterInfixOp
+           || indentAfterOperatorEnabled
               && isOperator(lastToken, lastName) && lastLineOffset >= 0
            )
         && !pastBlankLine
@@ -641,7 +639,7 @@ object Scanners {
         else if lastWidth < nextWidth
              || lastWidth == nextWidth && (lastToken == MATCH || lastToken == CATCH) && token == CASE then
           if canStartIndentTokens.contains(lastToken)
-              || allowIndentAfterInfixOp
+              || indentAfterOperatorEnabled
                   && isOperator(lastToken, lastName)
                   && lastLineOffset >= 0
                   && canStartStatTokens3.contains(token)

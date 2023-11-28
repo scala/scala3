@@ -1,20 +1,28 @@
-def test(b: Boolean, y: Int) =
-  val first = y
+import language.experimental.fewerBraces
+
+def test(y: Int) =
+  val firstValue = y
     * y
+  val secondValue =
+    firstValue
+    +
+      if firstValue < 0 then 1 else 0
+    +
+      if y < 0 then y else -y
 
   val result =
-    y > 0
+    firstValue < secondValue
     ||
-      val z = y + 1
-      z > 0
+      val thirdValue = firstValue * secondValue
+      thirdValue > 100
     ||
-      val bb = !b
-      bb & b
+      def avg(x: Double, y: Double) = (x + y)/2
+      avg(firstValue, secondValue) > 0.0
     ||
-      y
-      * y
+      firstValue
+      * secondValue
       *
-        val z = y * y
-        z
-      <
-        y
+        val firstSquare = firstValue * firstValue
+        firstSquare + firstSquare
+      <=
+        firstValue `max` secondValue

@@ -1003,7 +1003,7 @@ object Parsers {
      */
     def nextCanFollowOperator(leadingOperandTokens: BitSet): Boolean =
       leadingOperandTokens.contains(in.lookahead.token)
-      || Scanners.allowIndentAfterInfixOp
+      || in.indentAfterOperatorEnabled
           && in.lineOffset >= 0             // operator is on its own line
           && in.lookahead.lineOffset >= 0   // and next line is indented
           && in.currentRegion.indentWidth < in.indentWidth(in.lookahead.offset)
