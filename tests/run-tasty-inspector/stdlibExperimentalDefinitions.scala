@@ -102,10 +102,6 @@ val experimentalDefinitionInLibrary = Set(
   // New feature: named tuples
   "scala.NamedTuple",
   "scala.NamedTuple$",
-  "scala.Tuple$.NamedValue",
-  "scala.Tuple$.NamedValue$",
-
-
 )
 
 
