@@ -1003,6 +1003,10 @@ object Parsers {
      */
     def nextCanFollowOperator(leadingOperandTokens: BitSet): Boolean =
       leadingOperandTokens.contains(in.lookahead.token)
+      || Scanners.allowIndentAfterInfixOp
+          && in.lineOffset >= 0             // operator is on its own line
+          && in.lookahead.lineOffset >= 0   // and next line is indented
+          && in.currentRegion.indentWidth < in.indentWidth(in.lookahead.offset)
       || in.postfixOpsEnabled
       || in.lookahead.token == COLONop
       || in.lookahead.token == EOF     // important for REPL completions
