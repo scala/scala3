@@ -3072,13 +3072,12 @@ object Parsers {
         p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
-     *  NamedPatterns     ::=  NamedPattern {‘,’ NamedPattern}
+     *                      |  NamedPattern {‘,’ NamedPattern}
      *  NamedPattern      ::=  id '=' Pattern
      */
     def patterns(location: Location = Location.InPattern): List[Tree] =
-      val pat = () => pattern(location)
-      commaSeparated(  // TODO: Drop the distinction once we allow named argument patterns
-        if location == Location.InPattern then maybeNamed(pat) else pat)
+      commaSeparated(maybeNamed(() => pattern(location)))
+        // check that patterns are all named or all unnamed is done at desugaring
 
     def patternsOpt(location: Location = Location.InPattern): List[Tree] =
       if (in.token == RPAREN) Nil else patterns(location)

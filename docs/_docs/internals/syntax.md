@@ -325,7 +325,7 @@ Pattern2          ::=  [id ‘@’] InfixPattern                                
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
-                    |  ‘(’ [Patterns | NamedPatterns] ‘)’                       Parens(pats) Tuple(pats)
+                    |  ‘(’ [Patterns] ‘)’                                       Parens(pats) Tuple(pats)
                     |  Quoted
                     |  XmlPattern												(to be dropped)
                     |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
@@ -335,7 +335,7 @@ SimplePattern1    ::=  SimpleRef
 PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
-NamedPatterns     ::=  NamedPattern {‘,’ NamedPattern}
+                    |  NamedPattern {‘,’ NamedPattern}
 NamedPattern      ::=  id '=' Pattern
 
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)

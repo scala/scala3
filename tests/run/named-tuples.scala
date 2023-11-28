@@ -102,11 +102,7 @@ val _: CombinedInfo = bob ++ addr
   val bobNamed *: _ = bob
   val _: NamedTuple.Element["name", String] = bobNamed
 
-  import NamedTuple.*
-  val Element(nameStr, n) *: Element(ageStr, a) *: EmptyTuple = bob
-  println(s"matched elements ($nameStr, $n), ($ageStr, $a)")
-
-  val Element(ageStr1, age) = bob(1)
+  val NamedTuple.Element(ageStr1, age) = bob(1)
   assert(ageStr1 == "age" && age == 33)
 
 

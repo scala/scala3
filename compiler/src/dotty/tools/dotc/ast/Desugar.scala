@@ -1475,7 +1475,9 @@ object desugar {
    */
   def tuple(tree: Tuple, pt: Type)(using Context): (Tree, Type) =
     checkWellFormedTupleElems(tree.trees)
-    val (adapted, pt1) = adaptTupleElems(tree.trees, pt)
+    val (adapted, pt1) =
+      if ctx.mode.is(Mode.Pattern) then adaptPatternArgs(tree.trees, pt)
+      else (tree.trees, pt)
     val elems = adapted.mapConserve(desugarTupleElem)
     val arity = elems.length
     if arity <= Definitions.MaxTupleArity then
@@ -1489,20 +1491,26 @@ object desugar {
     else
       (cpy.Tuple(tree)(elems), pt1)
 
-  /** When desugaring a pattern, adapt tuple elements `elems` and expected type `pt`
-   *  to each other. This means:
+  /** When desugaring a list pattern arguments `elems` adapt them and the
+   *  expected type `pt` to each other. This means:
    *   - If `elems` are named pattern elements, rearrange them to match `pt`.
    *     This requires all names in `elems` to be also present in `pt`.
-   *   - If `elems` are unnamed elements, drop any tuple element names from `pt`.
+   *   - If `elems` are unnamed elements, and `pt` is a named tuple, drop all
+   *     tuple element names from `pt`.
    */
-  def adaptTupleElems(elems: List[Tree], pt: Type)(using Context): (List[Tree], Type) =
+  def adaptPatternArgs(elems: List[Tree], pt: Type)(using Context): (List[Tree], Type) =
 
-    def reorderedNamedArgs(selElems: List[Type], wildcardSpan: Span): List[untpd.Tree] =
-      val nameIdx =
-        for case (defn.NamedTupleElem(name, _), idx) <- selElems.zipWithIndex yield
-          (name, idx)
-      val nameToIdx = nameIdx.toMap[Name, Int]
-      val reordered = Array.fill[untpd.Tree](selElems.length):
+    def reorderedNamedArgs(wildcardSpan: Span): List[untpd.Tree] =
+      val nameIdx = pt.tupleElementTypes match
+        case Some(selElems) =>
+          for case (defn.NamedTupleElem(name, _), idx) <- selElems.zipWithIndex yield
+            (name, idx)
+        case None =>
+          val cls = pt.classSymbol
+          if cls.is(CaseClass) then cls.caseAccessors.map(_.name).zipWithIndex
+          else Nil
+      val nameToIdx = nameIdx.toMap
+      val reordered = Array.fill[untpd.Tree](nameIdx.length):
         untpd.Ident(nme.WILDCARD).withSpan(wildcardSpan)
       for case arg @ NamedArg(name, _) <- elems do
         nameToIdx.get(name) match
@@ -1515,15 +1523,10 @@ object desugar {
             report.error(em"No element named `$name` is defined in selector type $pt", arg.srcPos)
       reordered.toList
 
-    if ctx.mode.is(Mode.Pattern) then
-      elems match
-        case (first @ NamedArg(_, _)) :: _ =>
-          (reorderedNamedArgs(pt.tupleElementTypes.getOrElse(Nil), first.span.startPos), pt)
-        case _ =>
-          (elems, pt.dropNamedTupleElems)
-    else
-      (elems, pt)
-  end adaptTupleElems
+    elems match
+      case (first @ NamedArg(_, _)) :: _ => (reorderedNamedArgs(first.span.startPos), pt)
+      case _ => (elems, pt.dropNamedTupleElems)
+  end adaptPatternArgs
 
   private def desugarTupleElem(elem: Tree)(using Context): Tree = elem match
     case NamedArg(name, arg) =>
