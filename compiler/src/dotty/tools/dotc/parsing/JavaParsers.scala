@@ -136,7 +136,7 @@ object JavaParsers {
       ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
-      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
+      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p).withMods(Modifiers(flags)) }
       DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), EmptyTree).withMods(Modifiers(flags))
     }
 
@@ -992,7 +992,7 @@ object JavaParsers {
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnumTrait)
+          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
       }
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
@@ -1011,7 +1011,7 @@ object JavaParsers {
           skipAhead()
           accept(RBRACE)
         }
-        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnumTrait | Flags.StableRealizable | Flags.JavaDefined | Flags.JavaStatic))
+        ValDef(name.toTermName, enumType, unimplementedExpr).withMods(Modifiers(Flags.JavaEnumValue | Flags.JavaStatic))
       }
     }
 

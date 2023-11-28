@@ -54,6 +54,9 @@ class ExtractAPI extends Phase {
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
 
+  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  override def skipIfJava(using Context): Boolean = false
+
   // SuperAccessors need to be part of the API (see the scripted test
   // `trait-super` for an example where this matters), this is only the case
   // after `PostTyper` (unlike `ExtractDependencies`, the simplication to trees

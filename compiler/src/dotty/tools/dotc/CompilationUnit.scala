@@ -19,7 +19,7 @@ import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations
 
-class CompilationUnit protected (val source: SourceFile) {
+class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
   override def toString: String = source.toString
 
@@ -29,6 +29,13 @@ class CompilationUnit protected (val source: SourceFile) {
 
   /** Is this the compilation unit of a Java file */
   def isJava: Boolean = source.file.name.endsWith(".java")
+
+  /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
+  def typedAsJava = isJava || {
+    val infoNN = info
+    infoNN != null && infoNN.tastyInfo.exists(_.attributes.isJava)
+  }
+
 
   /** The source version for this unit, as determined by a language import */
   var sourceVersion: Option[SourceVersion] = None
@@ -106,7 +113,7 @@ class CompilationUnit protected (val source: SourceFile) {
     myAssignmentSpans.nn
 }
 
-@sharable object NoCompilationUnit extends CompilationUnit(NoSource) {
+@sharable object NoCompilationUnit extends CompilationUnit(NoSource, info = null) {
 
   override def isJava: Boolean = false
 
@@ -122,13 +129,14 @@ object CompilationUnit {
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
-    val file = clsd.symbol.associatedFile.nn
-    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees)
+    val compilationUnitInfo = clsd.symbol.compilationUnitInfo.nn
+    val file = compilationUnitInfo.associatedFile
+    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees, compilationUnitInfo)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
-  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit = {
+  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean, info: CompilationUnitInfo)(using Context): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
-    val unit1 = new CompilationUnit(source)
+    val unit1 = new CompilationUnit(source, info)
     unit1.tpdTree = unpickled
     if (forceTrees) {
       val force = new Force
@@ -156,7 +164,8 @@ object CompilationUnit {
         NoSource
       }
       else source
-    new CompilationUnit(src)
+    val info = if src.exists then CompilationUnitInfo(src.file) else null
+    new CompilationUnit(src, info)
   }
 
   /** Force the tree to be loaded */

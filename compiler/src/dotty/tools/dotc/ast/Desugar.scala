@@ -17,6 +17,7 @@ import reporting.*
 import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
+import parsing.Parsers
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -143,8 +144,13 @@ object desugar {
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(using Context): ValDef =
+    derivedTermParam(vdef, vdef.unforcedRhs)
+
+  def derivedTermParam(vdef: ValDef, rhs: LazyTree)(using Context): ValDef =
     cpy.ValDef(vdef)(
-      tpt = DerivedFromParamTree().withSpan(vdef.tpt.span).watching(vdef))
+      tpt = DerivedFromParamTree().withSpan(vdef.tpt.span).watching(vdef),
+      rhs = rhs
+    )
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -544,8 +550,11 @@ object desugar {
       constrTparams.zipWithConserve(impliedTparams)((tparam, impliedParam) =>
         derivedTypeParam(tparam).withAnnotations(impliedParam.mods.annotations))
     val derivedVparamss =
-      constrVparamss.nestedMap(vparam =>
-        derivedTermParam(vparam).withAnnotations(Nil))
+      constrVparamss.nestedMap: vparam =>
+        val derived =
+          if ctx.compilationUnit.isJava then derivedTermParam(vparam, Parsers.unimplementedExpr)
+          else derivedTermParam(vparam)
+        derived.withAnnotations(Nil)
 
     val constr = cpy.DefDef(constr1)(paramss = joinParams(constrTparams, constrVparamss))
 

@@ -626,7 +626,7 @@ object SpaceEngine {
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
       case tp @ NamedType(Parts(parts), _)             => parts.map(tp.derivedSelect)
       case _: SingletonType                            => ListOfNoType
-      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
+      case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
 
       case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
@@ -843,7 +843,7 @@ object SpaceEngine {
         isCheckable(and.tp1) || isCheckable(and.tp2)
       }) ||
       tpw.isRef(defn.BooleanClass) ||
-      classSym.isAllOf(JavaEnumTrait) ||
+      classSym.isAllOf(JavaEnum) ||
       classSym.is(Case) && {
         if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
         else true // recursive case class: return true and other members can still fail the check
