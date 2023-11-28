@@ -7,6 +7,7 @@ import Contexts.*
 import Decorators.*
 import tasty.*
 import config.Printers.{noPrinter, pickling}
+import config.Feature
 import java.io.PrintStream
 import Periods.*
 import Phases.*
@@ -111,6 +112,8 @@ class Pickler extends Phase {
           val attributes = Attributes(
             scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
             explicitNulls = ctx.settings.YexplicitNulls.value,
+            captureChecked = Feature.ccEnabled,
+            withPureFuns = Feature.pureFunsEnabled,
           )
           AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
 

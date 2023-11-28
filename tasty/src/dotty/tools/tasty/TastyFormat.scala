@@ -273,6 +273,8 @@ Standard Section: "Attributes" Attribute*
 ```none
   Attribute     = SCALA2STANDARDLIBRARYattr
                   EXPLICITNULLSattr
+                  CAPTURECHECKEDattr
+                  WITHPUREFUNSattr
 ```
 
 **************************************************************************************/
@@ -611,6 +613,8 @@ object TastyFormat {
 
   final val SCALA2STANDARDLIBRARYattr = 1
   final val EXPLICITNULLSattr = 2
+  final val CAPTURECHECKEDattr = 3
+  final val WITHPUREFUNSattr = 4
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
@@ -830,6 +834,8 @@ object TastyFormat {
   def attributeTagToString(tag: Int): String = tag match {
     case SCALA2STANDARDLIBRARYattr => "SCALA2STANDARDLIBRARYattr"
     case EXPLICITNULLSattr => "EXPLICITNULLSattr"
+    case CAPTURECHECKEDattr => "CAPTURECHECKEDattr"
+    case WITHPUREFUNSattr => "WITHPUREFUNSattr"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.
