@@ -594,7 +594,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (base.typeSymbol == cls2) return true
           }
           else if tp1.typeParams.nonEmpty && !tp1.isAnyKind then
-            return recur(tp1, EtaExpansion(tp2))
+            return recur(tp1, tp2.etaExpand)
         fourthTry
     }
 
@@ -734,7 +734,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ =>
             val tparams1 = tp1.typeParams
             if (tparams1.nonEmpty)
-              return recur(tp1.etaExpand(tparams1), tp2) || fourthTry
+              return recur(tp1.etaExpand, tp2) || fourthTry
             tp2 match {
               case EtaExpansion(tycon2: TypeRef) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
                 recur(tp1, tycon2) || fourthTry
@@ -2820,7 +2820,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         tp.symbol match
           case cls: ClassSymbol =>
             if cls == defn.SingletonClass then defn.AnyType
-            else if cls.typeParams.nonEmpty then EtaExpansion(tp)
+            else if cls.typeParams.nonEmpty then tp.etaExpand
             else tp
           case sym =>
             if !ctx.erasedTypes && sym == defn.FromJavaObjectSymbol then defn.AnyType

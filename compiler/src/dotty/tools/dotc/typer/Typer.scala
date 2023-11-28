@@ -4283,7 +4283,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             tree1.withType(tp1)
           else
             // Eta-expand higher-kinded type
-            val tp1 = tree.tpe.etaExpand(tp.typeParamSymbols)
+            val tp1 = tree.tpe.etaExpand
             tree.withType(tp1)
         }
       if (ctx.mode.is(Mode.Pattern) || ctx.mode.isQuotedPattern || tree1.tpe <:< pt) tree1

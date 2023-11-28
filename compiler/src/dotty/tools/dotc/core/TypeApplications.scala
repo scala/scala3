@@ -33,10 +33,6 @@ object TypeApplications {
    */
   object EtaExpansion:
 
-    def apply(tycon: Type)(using Context): Type =
-      assert(tycon.typeParams.nonEmpty, tycon)
-      tycon.etaExpand(tycon.typeParamSymbols)
-
     /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
      *  contain the bounds of the type parameters of `C`. This is necessary to be able to
      *  contract the hk lambda to `C`.
@@ -244,7 +240,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   def topType(using Context): Type =
     if self.hasSimpleKind then
       defn.AnyType
-    else etaExpand(self.typeParams) match
+    else self.etaExpand match
       case tp: HKTypeLambda =>
         tp.derivedLambdaType(resType = tp.resultType.topType)
       case _ =>
@@ -301,44 +297,48 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Convert a type constructor `TC` which has type parameters `X1, ..., Xn`
    *  to `[X1, ..., Xn] -> TC[X1, ..., Xn]`.
    */
-  def etaExpand(tparams: List[TypeParamInfo])(using Context): Type =
-    HKTypeLambda.fromParams(tparams, self.appliedTo(tparams.map(_.paramRef)))
-      //.ensuring(res => res.EtaReduce =:= self, s"res = $res, core = ${res.EtaReduce}, self = $self, hc = ${res.hashCode}")
+  def etaExpand(using Context): Type =
+    val tparams = self.typeParams
+    val resType = self.appliedTo(tparams.map(_.paramRef))
+    self match
+      case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
+        val prefix = self.prefix
+        val owner = self.symbol.owner
+        // Calling asSeenFrom on the type parameter infos is important
+        // so that class type references within another prefix have
+        // their type parameters' info fixed.
+        // e.g. from pos/i18569:
+        //    trait M1:
+        //      trait A
+        //      trait F[T <: A]
+        //    object M2 extends M1
+        // Type parameter T in M1.F has an upper bound of M1#A
+        // But eta-expanding M2.F should have type parameters with an upper-bound of M2.A.
+        // So we take the prefix M2.type and the F symbol's owner, M1,
+        // to call asSeenFrom on T's info.
+        HKTypeLambda(tparams.map(_.paramName))(
+          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(prefix, owner)))),
+          tl => tl.integrate(tparams, resType))
+      case _ =>
+        HKTypeLambda.fromParams(tparams, resType)
 
   /** If self is not lambda-bound, eta expand it. */
   def ensureLambdaSub(using Context): Type =
-    if (isLambdaSub) self else EtaExpansion(self)
+    if isLambdaSub then self
+    else
+      assert(self.typeParams.nonEmpty, self)
+      self.etaExpand
 
   /** Eta expand if `self` is a (non-lambda) class reference and `bound` is a higher-kinded type */
   def etaExpandIfHK(bound: Type)(using Context): Type = {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
-      case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
-        EtaExpansion(self)
+      case self: TypeRef if self.symbol.isClass && self.typeParams.hasSameLengthAs(hkParams) =>
+        etaExpand
       case _ => self
     }
   }
-
-  // Like `target.etaExpand(target.typeParams)`
-  // except call `asSeenFrom` to fix class type parameter bounds
-  // e.g. from pos/i18569:
-  //    trait M1:
-  //      trait A
-  //      trait F[T <: A]
-  //    object M2 extends M1
-  // Type parameter T in M2.F has an upper bound of M1#A instead of M2.A
-  // So we take the prefix M2.type and the F symbol's owner, M1,
-  // to call asSeenFrom on T's info.
-  def etaExpandWithAsf(using Context): Type = self match
-    case self: TypeRef if self.symbol.isClass =>
-      val tparams = self.symbol.typeParams
-      val prefix = self.prefix
-      val owner = self.symbol.owner
-      HKTypeLambda(tparams.map(_.paramName))(
-        tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.info.asSeenFrom(prefix, owner)))),
-        tl => tl.integrate(tparams, self.appliedTo(tparams.map(_.paramRef))))
-    case _ => etaExpand(typeParams)
 
   /** Maps [Ts] => C[Ts] to C */
   def etaCollapse(using Context): Type = self match
