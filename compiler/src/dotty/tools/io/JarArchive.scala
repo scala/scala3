@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.*
  * that be can used as the compiler's output directory.
  */
 class JarArchive private (root: Directory) extends PlainDirectory(root) {
-  def close(): Unit = jpath.getFileSystem().close()
+  def close(): Unit = this.synchronized(jpath.getFileSystem().close())
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
   def allFileNames(): Iterator[String] =
     java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)

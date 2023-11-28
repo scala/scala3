@@ -9,7 +9,7 @@ import tasty.*
 import config.Printers.{noPrinter, pickling}
 import config.Feature
 import java.io.PrintStream
-import io.FileWriters.TastyWriter
+import io.FileWriters.{TastyWriter, ReadOnlyContext}
 import StdNames.{str, nme}
 import Periods.*
 import Phases.*
@@ -22,6 +22,11 @@ import compiletime.uninitialized
 import dotty.tools.io.{JarArchive, AbstractFile}
 import dotty.tools.dotc.printing.OutlinePrinter
 import scala.annotation.constructorOnly
+import scala.concurrent.Promise
+import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
+
+import scala.util.chaining.given
+import dotty.tools.io.FileWriters.BufferingDelayedReporting
 
 object Pickler {
   val name: String = "pickler"
@@ -33,8 +38,62 @@ object Pickler {
    */
   inline val ParallelPickling = true
 
+  class AsyncTastyHolder(val earlyOut: AbstractFile, val promise: Promise[AsyncTastyState])
+  class AsyncTastyState(val hasErrors: Boolean, val pending: Option[BufferingDelayedReporting])
+
+  // Why we only write to early output in the first run?
+  // ===================================================
+  // TL;DR the point of pipeline compilation is to start downstream projects early,
+  // so we don't want to wait for suspended units to be compiled.
+  //
+  // But why is it safe to ignore suspended units?
+  // If this project contains a transparent macro that is called in the same project,
+  // the compilation unit of that call will be suspended (if the macro implementation
+  // is also in this project), causing a second run.
+  // However before we do that run, we will have already requested sbt to begin
+  // early downstream compilation. This means that the suspended definitions will not
+  // be visible in *early* downstream compilation.
+  //
+  // However, sbt will by default prevent downstream compilation happening in this scenario,
+  // due to the existence of macro definitions. So we are protected from failure if user tries
+  // to use the suspended definitions.
+  //
+  // Additionally, it is recommended for the user to move macro implementations to another project
+  // if they want to force early output. In this scenario the suspensions will no longer occur, so now
+  // they will become visible in the early-output.
+  //
+  // See `sbt-test/pipelining/pipelining-scala-macro` and `sbt-test/pipelining/pipelining-scala-macro-force`
+  // for examples of this in action.
+  //
+  // Therefore we only need to write to early output in the first run. We also provide the option
+  // to diagnose suspensions with the `-Yno-suspended-units` flag.
+  def writeSigFilesAsync(
+      tasks: List[(String, Array[Byte])],
+      writer: EarlyFileWriter,
+      promise: Promise[AsyncTastyState])(using ctx: ReadOnlyContext): Unit = {
+    try
+      for (internalName, pickled) <- tasks do
+        val _ = writer.writeTasty(internalName, pickled)
+    finally
+      try
+        writer.close()
+      finally
+        promise.success(
+          AsyncTastyState(
+            hasErrors = ctx.reporter.hasErrors,
+            pending = (
+              ctx.reporter match
+                case buffered: BufferingDelayedReporting => Some(buffered)
+                case _ => None
+            )
+          )
+        )
+      end try
+    end try
+  }
+
   class EarlyFileWriter private (writer: TastyWriter, origin: AbstractFile):
-    def this(dest: AbstractFile)(using @constructorOnly ctx: Context) = this(TastyWriter(dest), dest)
+    def this(dest: AbstractFile)(using @constructorOnly ctx: ReadOnlyContext) = this(TastyWriter(dest), dest)
 
     export writer.writeTasty
 
@@ -50,13 +109,15 @@ object Pickler {
 class Pickler extends Phase {
   import ast.tpd.*
 
+  def doAsyncTasty(using Context): Boolean = ctx.asyncTastyPromise.isDefined
+
   override def phaseName: String = Pickler.name
 
   override def description: String = Pickler.description
 
   // No need to repickle trees coming from TASTY
   override def isRunnable(using Context): Boolean =
-    super.isRunnable && !ctx.settings.fromTasty.value
+    super.isRunnable && (!ctx.settings.fromTasty.value || doAsyncTasty)
 
   // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
   override def skipIfJava(using Context): Boolean = false
@@ -86,11 +147,20 @@ class Pickler extends Phase {
    */
   object serialized:
     val scratch = new ScratchData
+    private val buf = mutable.ListBuffer.empty[(String, Array[Byte])]
     def run(body: ScratchData => Array[Byte]): Array[Byte] =
       synchronized {
         scratch.reset()
         body(scratch)
       }
+    def commit(internalName: String, tasty: Array[Byte]): Unit = synchronized {
+      buf += ((internalName, tasty))
+    }
+    def result(): List[(String, Array[Byte])] = synchronized {
+      val res = buf.toList
+      buf.clear()
+      res
+    }
 
   private val executor = Executor[Array[Byte]]()
 
@@ -100,9 +170,28 @@ class Pickler extends Phase {
     if isOutline then ctx.fresh.setPrinterFn(OutlinePrinter(_))
     else ctx
 
+  /** only ran under -Ypickle-write and -from-tasty */
+  private def runFromTasty(unit: CompilationUnit)(using Context): Unit = {
+    val pickled = unit.pickled
+    for (cls, bytes) <- pickled do
+      serialized.commit(computeInternalName(cls), bytes())
+  }
+
+  private def computeInternalName(cls: ClassSymbol)(using Context): String =
+    if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX).nn
+    else cls.binaryClassName
+
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
+
+    if ctx.settings.fromTasty.value then
+      // skip the rest of the phase, as tasty is already "pickled",
+      // however we still need to set up tasks to write TASTy to
+      // early output when pipelining is enabled.
+      if doAsyncTasty then
+        runFromTasty(unit)
+      return ()
 
     for
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
@@ -137,6 +226,8 @@ class Pickler extends Phase {
       val positionWarnings = new mutable.ListBuffer[Message]()
       def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
 
+      val internalName = if doAsyncTasty then computeInternalName(cls) else ""
+
       def computePickled(): Array[Byte] = inContext(ctx.fresh) {
         serialized.run { scratch =>
           treePkl.compactify(scratch)
@@ -166,6 +257,10 @@ class Pickler extends Phase {
             println(i"**** pickled info of $cls")
             println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never"))
             println(i"**** end of pickled info of $cls")
+
+          if doAsyncTasty then
+            serialized.commit(internalName, pickled)
+
           pickled
         }
       }
@@ -194,13 +289,27 @@ class Pickler extends Phase {
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+    val isConcurrent = useExecutor
+
+    val writeTask: Option[() => Unit] = ctx.asyncTastyPromise.map: holder =>
+      () =>
+        given ReadOnlyContext = if isConcurrent then ReadOnlyContext.buffered else ReadOnlyContext.eager
+        val writer = Pickler.EarlyFileWriter(holder.earlyOut)
+        writeSigFilesAsync(serialized.result(), writer, holder.promise)
+
+    def runPhase(writeCB: (doWrite: () => Unit) => Unit) =
+      super.runOn(units).tap(_ => writeTask.foreach(writeCB))
+
     val result =
-      if useExecutor then
+      if isConcurrent then
         executor.start()
-        try super.runOn(units)
+        try
+          runPhase: doWrite =>
+            // unless we redesign executor to have "Unit" schedule overload, we need some sentinel value.
+            executor.schedule(() => { doWrite(); Array.emptyByteArray })
         finally executor.close()
       else
-        super.runOn(units)
+        runPhase(_())
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh
         .setSetting(ctx.settings.YreadComments, true)

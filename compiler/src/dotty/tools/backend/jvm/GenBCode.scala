@@ -10,6 +10,10 @@ import Symbols.*
 import dotty.tools.io.*
 import scala.collection.mutable
 import scala.compiletime.uninitialized
+import java.util.concurrent.TimeoutException
+
+import scala.concurrent.duration.given
+import scala.concurrent.Await
 
 class GenBCode extends Phase { self =>
 
@@ -90,6 +94,20 @@ class GenBCode extends Phase { self =>
     try
       val result = super.runOn(units)
       generatedClassHandler.complete()
+      for holder <- ctx.asyncTastyPromise do
+        try
+          val asyncState = Await.result(holder.promise.future, 5.seconds)
+          for reporter <- asyncState.pending do
+            reporter.relayReports(frontendAccess.backendReporting)
+        catch
+          case _: TimeoutException =>
+            report.error(
+              """Timeout (5s) in backend while waiting for async writing of TASTy files to -Yearly-tasty-output,
+                |  this may be a bug in the compiler.
+                |
+                |Alternatively consider turning off pipelining for this project.""".stripMargin
+            )
+      end for
       result
     finally
       // frontendAccess and postProcessor are created lazilly, clean them up only if they were initialized

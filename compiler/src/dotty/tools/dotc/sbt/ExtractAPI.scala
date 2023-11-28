@@ -70,11 +70,6 @@ class ExtractAPI extends Phase {
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val doZincCallback = ctx.runZincPhases
-    val sigWriter: Option[Pickler.EarlyFileWriter] = ctx.settings.YearlyTastyOutput.value match
-      case earlyOut if earlyOut.isDirectory && earlyOut.exists =>
-        Some(Pickler.EarlyFileWriter(earlyOut))
-      case _ =>
-        None
     val nonLocalClassSymbols = new mutable.HashSet[Symbol]
     val units0 =
       if doZincCallback then
@@ -82,7 +77,6 @@ class ExtractAPI extends Phase {
         super.runOn(units)(using ctx0)
       else
         units // still run the phase for the side effects (writing TASTy files to -Yearly-tasty-output)
-    sigWriter.foreach(writeSigFiles(units0, _))
     if doZincCallback then
       ctx.withIncCallback(recordNonLocalClasses(nonLocalClassSymbols, _))
     if ctx.settings.YjavaTasty.value then
@@ -91,57 +85,19 @@ class ExtractAPI extends Phase {
       units0
   end runOn
 
-  // Why we only write to early output in the first run?
-  // ===================================================
-  // TL;DR the point of pipeline compilation is to start downstream projects early,
-  // so we don't want to wait for suspended units to be compiled.
-  //
-  // But why is it safe to ignore suspended units?
-  // If this project contains a transparent macro that is called in the same project,
-  // the compilation unit of that call will be suspended (if the macro implementation
-  // is also in this project), causing a second run.
-  // However before we do that run, we will have already requested sbt to begin
-  // early downstream compilation. This means that the suspended definitions will not
-  // be visible in *early* downstream compilation.
-  //
-  // However, sbt will by default prevent downstream compilation happening in this scenario,
-  // due to the existence of macro definitions. So we are protected from failure if user tries
-  // to use the suspended definitions.
-  //
-  // Additionally, it is recommended for the user to move macro implementations to another project
-  // if they want to force early output. In this scenario the suspensions will no longer occur, so now
-  // they will become visible in the early-output.
-  //
-  // See `sbt-test/pipelining/pipelining-scala-macro` and `sbt-test/pipelining/pipelining-scala-macro-force`
-  // for examples of this in action.
-  //
-  // Therefore we only need to write to early output in the first run. We also provide the option
-  // to diagnose suspensions with the `-Yno-suspended-units` flag.
-  private def writeSigFiles(units: List[CompilationUnit], writer: Pickler.EarlyFileWriter)(using Context): Unit = {
-    try
-      for
-        unit <- units
-        (cls, pickled) <- unit.pickled
-        if cls.isDefinedInCurrentRun
-      do
-        val internalName =
-          if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX).nn
-          else cls.binaryClassName
-        val _ = writer.writeTasty(internalName, pickled())
-    finally
-      writer.close()
-      if ctx.settings.verbose.value then
-        report.echo("[sig files written]")
-    end try
-  }
-
   private def recordNonLocalClasses(nonLocalClassSymbols: mutable.HashSet[Symbol], cb: interfaces.IncrementalCallback)(using Context): Unit =
     for cls <- nonLocalClassSymbols do
       val sourceFile = cls.source
       if sourceFile.exists && cls.isDefinedInCurrentRun then
         recordNonLocalClass(cls, sourceFile, cb)
-    cb.apiPhaseCompleted()
-    cb.dependencyPhaseCompleted()
+    for holder <- ctx.asyncTastyPromise do
+      import scala.concurrent.ExecutionContext.Implicits.global
+      // do not expect to be completed with failure
+      holder.promise.future.foreach: state =>
+        if !state.hasErrors then
+          // We also await the promise at GenBCode to emit warnings/errors
+          cb.apiPhaseCompleted()
+          cb.dependencyPhaseCompleted()
 
   private def recordNonLocalClass(cls: Symbol, sourceFile: SourceFile, cb: interfaces.IncrementalCallback)(using Context): Unit =
     def registerProductNames(fullClassName: String, binaryClassName: String) =

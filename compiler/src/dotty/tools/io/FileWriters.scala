@@ -1,8 +1,7 @@
 package dotty.tools.io
 
-import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.core.Decorators.em
-import dotty.tools.dotc.report
+import scala.language.unsafeNulls
+
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.JarArchive
 import dotty.tools.io.PlainFile
@@ -25,12 +24,106 @@ import java.util.zip.CRC32
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import scala.language.unsafeNulls
+import scala.collection.mutable
+
+import dotty.tools.dotc.core.Contexts, Contexts.Context
+import dotty.tools.dotc.core.Decorators.em
+
+import dotty.tools.dotc.util.{SourcePosition, NoSourcePosition}
+
+import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.report
+
+import dotty.tools.backend.jvm.PostProcessorFrontendAccess.BackendReporting
+import scala.annotation.constructorOnly
 
 /** Copied from `dotty.tools.backend.jvm.ClassfileWriters` but no `PostProcessorFrontendAccess` needed */
 object FileWriters {
   type InternalName = String
   type NullableFile =  AbstractFile | Null
+
+  inline def ctx(using ReadOnlyContext): ReadOnlyContext = summon[ReadOnlyContext]
+
+  sealed trait DelayedReporting {
+    def hasErrors: Boolean
+    def error(message: Context ?=> Message, position: SourcePosition): Unit
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit
+    def log(message: String): Unit
+
+    def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
+    def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
+  }
+
+  final class EagerDelayedReporting(using captured: Context) extends DelayedReporting:
+    private var _hasErrors = false
+
+    def hasErrors: Boolean = _hasErrors
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit =
+      report.error(message, position)
+      _hasErrors = true
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit =
+      report.warning(message, position)
+
+    def log(message: String): Unit = report.echo(message)
+
+  final class BufferingDelayedReporting extends DelayedReporting {
+    // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
+    // We could use a listBuffer etc - but that would be extra allocation in the common case
+    // Note - all access is externally synchronized, as this allow the reports to be generated in on thread and
+    // consumed in another
+    private var bufferedReports = List.empty[Report]
+    private var _hasErrors = false
+    enum Report(val relay: Context ?=> BackendReporting => Unit):
+      case Error(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.error(message(ctx), position))
+      case Warning(message: Context => Message, position: SourcePosition) extends Report(ctx ?=> _.warning(message(ctx), position))
+      case Log(message: String) extends Report(_.log(message))
+
+    def hasErrors: Boolean = synchronized:
+      _hasErrors
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
+      bufferedReports ::= Report.Error({case given Context => message}, position)
+      _hasErrors = true
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit = synchronized:
+      bufferedReports ::= Report.Warning({case given Context => message}, position)
+
+    def log(message: String): Unit = synchronized:
+      bufferedReports ::= Report.Log(message)
+
+    /** Should only be called from main compiler thread. */
+    def relayReports(toReporting: BackendReporting)(using Context): Unit = synchronized:
+      if bufferedReports.nonEmpty then
+        bufferedReports.reverse.foreach(_.relay(toReporting))
+        bufferedReports = Nil
+  }
+
+  trait ReadSettings:
+    def jarCompressionLevel: Int
+    def debug: Boolean
+
+  trait ReadOnlyContext:
+
+    val settings: ReadSettings
+    val reporter: DelayedReporting
+
+  trait BufferedReadOnlyContext extends ReadOnlyContext:
+    val reporter: BufferingDelayedReporting
+
+  object ReadOnlyContext:
+    def readSettings(using ctx: Context): ReadSettings = new:
+      val jarCompressionLevel = ctx.settings.YjarCompressionLevel.value
+      val debug = ctx.settings.Ydebug.value
+
+    def buffered(using Context): BufferedReadOnlyContext = new:
+      val settings = readSettings
+      val reporter = BufferingDelayedReporting()
+
+    def eager(using Context): ReadOnlyContext = new:
+      val settings = readSettings
+      val reporter = EagerDelayedReporting()
 
   /**
    * The interface to writing classfiles. GeneratedClassHandler calls these methods to generate the
@@ -47,7 +140,7 @@ object FileWriters {
      *
      * @param name the internal name of the class, e.g. "scala.Option"
      */
-    def writeTasty(name: InternalName, bytes: Array[Byte])(using Context): NullableFile
+    def writeTasty(name: InternalName, bytes: Array[Byte])(using ReadOnlyContext): NullableFile
 
     /**
      * Close the writer. Behavior is undefined after a call to `close`.
@@ -60,7 +153,7 @@ object FileWriters {
 
   object TastyWriter {
 
-    def apply(output: AbstractFile)(using Context): TastyWriter = {
+    def apply(output: AbstractFile)(using ReadOnlyContext): TastyWriter = {
 
       // In Scala 2 depenening on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
@@ -73,7 +166,7 @@ object FileWriters {
 
     private final class SingleTastyWriter(underlying: FileWriter) extends TastyWriter {
 
-      override def writeTasty(className: InternalName, bytes: Array[Byte])(using Context): NullableFile = {
+      override def writeTasty(className: InternalName, bytes: Array[Byte])(using ReadOnlyContext): NullableFile = {
         underlying.writeFile(classToRelativePath(className), bytes)
       }
 
@@ -83,14 +176,14 @@ object FileWriters {
   }
 
   sealed trait FileWriter {
-    def writeFile(relativePath: String, bytes: Array[Byte])(using Context): NullableFile
+    def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): NullableFile
     def close(): Unit
   }
 
   object FileWriter {
-    def apply(file: AbstractFile, jarManifestMainClass: Option[String])(using Context): FileWriter =
+    def apply(file: AbstractFile, jarManifestMainClass: Option[String])(using ReadOnlyContext): FileWriter =
       if (file.isInstanceOf[JarArchive]) {
-        val jarCompressionLevel = ctx.settings.YjarCompressionLevel.value
+        val jarCompressionLevel = ctx.settings.jarCompressionLevel
         // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
         // created using `AbstractFile.bufferedOutputStream`instead of JarWritter
         val jarFile = file.underlyingSource.getOrElse{
@@ -127,7 +220,7 @@ object FileWriters {
 
     lazy val crc = new CRC32
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using Context): NullableFile = this.synchronized {
+    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): NullableFile = this.synchronized {
       val entry = new ZipEntry(relativePath)
       if (storeOnly) {
         // When using compression method `STORED`, the ZIP spec requires the CRC and compressed/
@@ -155,14 +248,14 @@ object FileWriters {
     val noAttributes = Array.empty[FileAttribute[?]]
     private val isWindows = scala.util.Properties.isWin
 
-    private def checkName(component: Path)(using Context): Unit = if (isWindows) {
+    private def checkName(component: Path)(using ReadOnlyContext): Unit = if (isWindows) {
       val specials = raw"(?i)CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]".r
       val name = component.toString
-      def warnSpecial(): Unit = report.warning(em"path component is special Windows device: ${name}")
+      def warnSpecial(): Unit = ctx.reporter.warning(em"path component is special Windows device: ${name}")
       specials.findPrefixOf(name).foreach(prefix => if (prefix.length == name.length || name(prefix.length) == '.') warnSpecial())
     }
 
-    def ensureDirForPath(baseDir: Path, filePath: Path)(using Context): Unit = {
+    def ensureDirForPath(baseDir: Path, filePath: Path)(using ReadOnlyContext): Unit = {
       import java.lang.Boolean.TRUE
       val parent = filePath.getParent
       if (!builtPaths.containsKey(parent)) {
@@ -192,7 +285,7 @@ object FileWriters {
     private val fastOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
     private val fallbackOpenOptions = util.EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using Context): NullableFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext): NullableFile = {
       val path = base.resolve(relativePath)
       try {
         ensureDirForPath(base, path)
@@ -213,10 +306,10 @@ object FileWriters {
         os.close()
       } catch {
         case e: FileConflictException =>
-          report.error(em"error writing ${path.toString}: ${e.getMessage}")
+          ctx.reporter.error(em"error writing ${path.toString}: ${e.getMessage}")
         case e: java.nio.file.FileSystemException =>
-          if (ctx.settings.Ydebug.value) e.printStackTrace()
-          report.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
+          if (ctx.settings.debug) e.printStackTrace()
+          ctx.reporter.error(em"error writing ${path.toString}: ${e.getClass.getName} ${e.getMessage}")
       }
       AbstractFile.getFile(path)
     }
@@ -241,7 +334,7 @@ object FileWriters {
       finally out.close()
     }
 
-    override def writeFile(relativePath: String, bytes: Array[Byte])(using Context):NullableFile = {
+    override def writeFile(relativePath: String, bytes: Array[Byte])(using ReadOnlyContext):NullableFile = {
       val outFile = getFile(base, relativePath)
       writeBytes(outFile, bytes)
       outFile

@@ -66,6 +66,13 @@ class Driver {
 
   protected def command: CompilerCommand = ScalacCommand
 
+  private def setupAsyncTasty(ictx: FreshContext): Unit = inContext(ictx):
+    ictx.settings.YearlyTastyOutput.value match
+      case earlyOut if earlyOut.isDirectory && earlyOut.exists =>
+        ictx.setInitialAsyncTasty()
+      case _ =>
+        () // do nothing
+
   /** Setup context with initialized settings from CLI arguments, then check if there are any settings that
    *  would change the default behaviour of the compiler.
    *
@@ -82,6 +89,7 @@ class Driver {
     Positioned.init(using ictx)
 
     inContext(ictx) {
+      setupAsyncTasty(ictx)
       if !ctx.settings.YdropComments.value || ctx.settings.YreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
