@@ -944,7 +944,17 @@ trait Checking {
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
+    def check(pat: Tree, pt: Type): Boolean =
+      // If pat is an unnamed tuple patterns, strip any named elements from `pt`.
+      // This could be avoided if we adapted in desugaring unnamed patterns
+      // with named scrutinees to be named instead. I did not follow that route
+      // because I fear that with the introduction of named pattern matching
+      // this case would be very common, and this alternative scheme would lead
+      // to a large amount of additional code that needs to be checked.
+      val normPt = pat.tpe.tupleElementTypesUpTo(1) match
+        case Some(defn.NamedTupleElem(_, _) :: _) => pt
+        case _ => pt.dropNamedTupleElems
+      (normPt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)

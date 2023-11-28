@@ -8,6 +8,10 @@ object NamedTuple:
 
   object Element:
     def apply[S <: String & Singleton, A](name: S, x: A): Element[name.type, A] = x
+
+    inline def unapply[S <: String & Singleton, A](named: Element[S, A]): Some[(S, A)] =
+      Some((compiletime.constValue[S], named))
+
     def extract[S <: String & Singleton]: ValueExtractor[S] = ValueExtractor[S]()
     extension [S <: String & Singleton, A](named: Element[S, A]) def value: A = named
 
@@ -22,3 +26,4 @@ object NamedTuple:
   extension [T <: Tuple](x: T) def dropNames: DropNames[T] =
     x.asInstanceOf // named and unnamed tuples have the same runtime representation
 end NamedTuple
+

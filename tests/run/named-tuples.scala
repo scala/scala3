@@ -96,4 +96,18 @@ val _: CombinedInfo = bob ++ addr
       val x: Person = bob1 // bob1 still has type Person with the unswapped elements
     case _ => assert(false)
 
+  val (bobName, _) = bob
+  val _: String = bobName
+
+  val bobNamed *: _ = bob
+  val _: NamedTuple.Element["name", String] = bobNamed
+
+  import NamedTuple.*
+  val Element(nameStr, n) *: Element(ageStr, a) *: EmptyTuple = bob
+  println(s"matched elements ($nameStr, $n), ($ageStr, $a)")
+
+  val Element(ageStr1, age) = bob(1)
+  assert(ageStr1 == "age" && age == 33)
+
+
 
