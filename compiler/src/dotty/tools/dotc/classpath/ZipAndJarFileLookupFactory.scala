@@ -53,7 +53,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     override protected def createFileEntry(file: FileZipArchive#Entry): BinaryFileEntry = BinaryFileEntry(file)
 
     override protected def isRequiredFileType(file: AbstractFile): Boolean =
-      file.isTasty || (file.isClass && file.classToTasty.isEmpty)
+      file.isTasty || (file.isClass && !file.hasSiblingTasty)
   }
 
   /**

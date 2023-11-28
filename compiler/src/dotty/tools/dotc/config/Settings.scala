@@ -64,7 +64,7 @@ object Settings:
 
   @unshared
   val settingCharacters = "[a-zA-Z0-9_\\-]*".r
-  def validateSettingString(name: String): Unit = 
+  def validateSettingString(name: String): Unit =
     assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
 
 
@@ -83,7 +83,7 @@ object Settings:
     deprecationMsg: Option[String] = None,
     // kept only for -Ykind-projector option compatibility
     legacyArgs: Boolean = false)(private[Settings] val idx: Int) {
-  
+
     validateSettingString(prefix.getOrElse(name))
     aliases.foreach(validateSettingString)
     assert(name.startsWith(s"-${category.prefixLetter}"), s"Setting $name does not start with category -$category")
@@ -92,7 +92,7 @@ object Settings:
     // Example: -opt Main.scala would be interpreted as -opt:Main.scala, and the source file would be ignored.
     assert(!(summon[ClassTag[T]] == ListTag && ignoreInvalidArgs), s"Ignoring invalid args is not supported for multivalue settings: $name")
 
-    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases  
+    val allFullNames: List[String] = s"$name" :: s"-$name" :: aliases
 
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
@@ -105,7 +105,7 @@ object Settings:
     def isMultivalue: Boolean = summon[ClassTag[T]] == ListTag
 
     def acceptsNoArg: Boolean = summon[ClassTag[T]] == BooleanTag || summon[ClassTag[T]] == OptionTag || choices.exists(_.contains(""))
-    
+
     def legalChoices: String =
       choices match {
         case Some(xs) if xs.isEmpty => ""
@@ -168,17 +168,17 @@ object Settings:
               update(x, args)
         catch case _: NumberFormatException =>
           fail(s"$argValue is not an integer argument for $name", args)
-        
-      def setOutput(argValue: String, args: List[String]) = 
+
+      def setOutput(argValue: String, args: List[String]) =
         val path = Directory(argValue)
-        val isJar = path.extension == "jar"
+        val isJar = path.ext.isJar
         if (!isJar && !path.isDirectory)
           fail(s"'$argValue' does not exist or is not a directory or .jar file", args)
         else {
           val output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
           update(output, args)
         }
-      
+
       def setVersion(argValue: String, args: List[String]) =
         ScalaVersion.parse(argValue) match {
           case Success(v) => update(v, args)
@@ -193,7 +193,7 @@ object Settings:
           case _ => update(strings, args)
 
 
-      def doSet(argRest: String) = 
+      def doSet(argRest: String) =
         ((summon[ClassTag[T]], args): @unchecked) match {
           case (BooleanTag, _) =>
             setBoolean(argRest, args)
@@ -224,16 +224,16 @@ object Settings:
           case _ =>
             missingArg
 
-      def matches(argName: String): Boolean = 
+      def matches(argName: String): Boolean =
         (allFullNames).exists(_ == argName.takeWhile(_ != ':')) || prefix.exists(arg.startsWith)
 
-      def argValRest: String = 
+      def argValRest: String =
         if(prefix.isEmpty) arg.dropWhile(_ != ':').drop(1) else arg.drop(prefix.get.length)
-      
-      if matches(arg) then 
+
+      if matches(arg) then
         if deprecationMsg.isDefined then
           warn(s"Option $name is deprecated: ${deprecationMsg.get}", args)
-        else 
+        else
           doSet(argValRest)
       else
         state
@@ -375,7 +375,7 @@ object Settings:
 
     def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
       publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases))
-    
+
     def DeprecatedSetting(category: SettingCategory, name: String, descr: String, deprecationMsg: String): Setting[Boolean] =
       publish(Setting(category, prependName(name), descr, false, deprecationMsg = Some(deprecationMsg)))
   }
