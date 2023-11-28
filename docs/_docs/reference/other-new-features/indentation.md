@@ -68,8 +68,10 @@ There are two rules:
        =  =>  ?=>  <-  catch  do  else  finally  for
        if  match  return  then  throw  try  while  yield
        ```
+       , or
 
-     - after the closing `)` of a condition in an old-style `if` or `while`.
+     - after an operator that appears on its own line, or
+     - after the closing `)` of a condition in an old-style `if` or `while`, or
      - after the closing `)` or `}` of the enumerations of an old-style `for` loop without a `do`.
 
     If an `<indent>` is inserted, the indentation width of the token on the next line

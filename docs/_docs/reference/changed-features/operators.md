@@ -167,6 +167,17 @@ Another example:
 This code is recognized as three different statements. `???` is syntactically a symbolic identifier, but
 neither of its occurrences is followed by a space and a token that can start an expression.
 
+Indentation is significant after an operator that appears on its own line.
+For instance, in
+```scala
+someCondition
+||
+   val helper = helperDef
+   anotherCondition(helper)
+```
+an `<indent>` token is inserted after the `||`. Since `<indent>` can start as an expression, the `||` operator is classified as a leading infix operator.
+```
+
 ## Unary operators
 
 A unary operator must not have explicit parameter lists even if they are empty.
