@@ -39,7 +39,7 @@ object DottyUnpickler {
 
   class AttributesSectionUnpickler extends SectionUnpickler[AttributeUnpickler](AttributesSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): AttributeUnpickler =
-      new AttributeUnpickler(reader)
+      new AttributeUnpickler(reader, nameAtRef)
   }
 }
 

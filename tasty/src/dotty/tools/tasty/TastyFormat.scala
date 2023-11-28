@@ -50,6 +50,7 @@ Macro-format:
                       // If positive, this is a NameRef for the fully qualified name of a term parameter.
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
+  Utf8Ref       = Nat                    // ordinal number of UTF8 in name table, starting from 1.
 ```
 
 Note: Unqualified names in the name table are strings. The context decides whether a name is
@@ -278,13 +279,13 @@ Standard Section: "Attributes" Attribute*
                   WITHPUREFUNSattr
                   JAVAattr
                   OUTLINEattr
-                  SOURCEFILEattr Utf8
+                  SOURCEFILEattr Utf8Ref
 ```
 
 Note: Attribute tags are grouped into 2 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 ```none
   Attribute Category 1 (tags 1-64)  :  tag
-  Attribute Category 2 (tags 65-128):  tag UTF8
+  Attribute Category 2 (tags 65-128):  tag Utf8Ref
 ```
 
 **************************************************************************************/

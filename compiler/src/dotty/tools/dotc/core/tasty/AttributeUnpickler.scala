@@ -6,8 +6,9 @@ import scala.collection.immutable.BitSet
 import scala.collection.immutable.TreeMap
 
 import dotty.tools.tasty.{TastyFormat, TastyReader, TastyBuffer}
+import dotty.tools.dotc.core.tasty.TastyUnpickler.NameTable
 
-class AttributeUnpickler(reader: TastyReader):
+class AttributeUnpickler(reader: TastyReader, nameAtRef: NameTable):
   import reader._
 
   lazy val attributes: Attributes = {
@@ -19,7 +20,9 @@ class AttributeUnpickler(reader: TastyReader):
       if tag < TastyFormat.firstStringAttrTag then
         booleanTags += tag
       else if tag < TastyFormat.firstUnassignedAttrTag then
-        stringTagValue += tag -> readUtf8()
+        val utf8Ref = readNameRef()
+        val value = nameAtRef(utf8Ref).toString
+        stringTagValue += tag -> value
       else
         assert(false, "unknown attribute tag: " + tag)
 

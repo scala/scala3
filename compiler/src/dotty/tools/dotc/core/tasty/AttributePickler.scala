@@ -21,8 +21,9 @@ object AttributePickler:
     assert(attributes.stringTagValues.exists(_._1 == TastyFormat.SOURCEFILEattr))
     for (tag, value) <- attributes.stringTagValues do
       assert(TastyFormat.firstStringAttrTag <= tag && tag < TastyFormat.firstUnassignedAttrTag, "Not a string attribute tag: " + tag)
+      val utf8Ref = pickler.nameBuffer.utf8Index(value)
       buf.writeByte(tag)
-      buf.writeUtf8(value)
+      buf.writeNat(utf8Ref.index)
 
   end pickleAttributes
 
