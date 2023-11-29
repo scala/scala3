@@ -571,8 +571,16 @@ object Parsers {
 
     object symbXMLBuilder extends xml.SymbolicXMLBuilder(this, true) // DEBUG choices
 
-    def xmlLiteral() : Tree = xmlp.xLiteral
-    def xmlLiteralPattern() : Tree = xmlp.xLiteralPattern
+    def xmlLiteral() : Tree = xmlDeprecationWarning(xmlp.xLiteral)
+    def xmlLiteralPattern() : Tree = xmlDeprecationWarning(xmlp.xLiteralPattern)
+
+    private def xmlDeprecationWarning(tree: Tree): Tree =
+      report.errorOrMigrationWarning(
+        em"""XML literals are no longer supported.
+             |See https://docs.scala-lang.org/scala3/reference/dropped-features/xml.html""",
+        tree.srcPos,
+        MigrationVersion.XmlLiteral)
+      tree
 
 /* -------- COMBINATORS -------------------------------------------------------- */
 
