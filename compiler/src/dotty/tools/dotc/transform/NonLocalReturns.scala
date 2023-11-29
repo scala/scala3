@@ -7,6 +7,7 @@ import MegaPhase.*
 import NameKinds.NonLocalReturnKeyName
 import config.SourceVersion.*
 import Decorators.em
+import dotty.tools.dotc.config.MigrationVersion
 
 object NonLocalReturns {
   import ast.tpd.*
@@ -96,11 +97,10 @@ class NonLocalReturns extends MiniPhase {
 
   override def transformReturn(tree: Return)(using Context): Tree =
     if isNonLocalReturn(tree) then
-      report.gradualErrorOrMigrationWarning(
+      report.errorOrMigrationWarning(
           em"Non local returns are no longer supported; use `boundary` and `boundary.break` in `scala.util` instead",
           tree.srcPos,
-          warnFrom = `3.2`,
-          errorFrom = future)
+          MigrationVersion.NonLocalReturns)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
     else tree
 }

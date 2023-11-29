@@ -36,6 +36,7 @@ import transform.ValueClasses.underlyingOfValueClass
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion.*
+import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
 import cc.isCaptureChecking
 
@@ -131,7 +132,7 @@ object Checking {
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
-            tree.srcPos, from = `3.0`)
+            tree.srcPos, MigrationVersion.Scala2to3)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
@@ -217,7 +218,7 @@ object Checking {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
       report.errorOrMigrationWarning(
-        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, from = `3.0`)
+        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, MigrationVersion.Scala2to3)
   }
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -690,7 +691,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, from = `3.0`))
+    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, MigrationVersion.Scala2to3))
     info
   }
 
@@ -919,18 +920,18 @@ trait Checking {
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
-      report.gradualErrorOrMigrationWarning(
+      report.errorOrMigrationWarning(
         message.append(
           i"""|
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
         pos,
-        warnFrom = `3.2`,
         // we tighten for-comprehension without `case` to error in 3.4,
         // but we keep pat-defs as warnings for now ("@unchecked"),
         // until we propose an alternative way to assert exhaustivity to the typechecker.
-        errorFrom = if isPatDef then `future` else `3.4`
+        if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
+        else MigrationVersion.ForComprehensionPatternWithoutCase
       )
       false
     }
@@ -1097,16 +1098,14 @@ trait Checking {
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
             def rewriteMsg = Message.rewriteNotice("The latter", version = `3.4-migration`)
-            report.gradualErrorOrMigrationWarning(
+            report.errorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
               tree.op.srcPos,
-              warnFrom = `3.4`,
-              errorFrom = future)
-            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then {
+              MigrationVersion.AlphanumericInfix)
+            if MigrationVersion.AlphanumericInfix.needsPatch then
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
-            }
           case _ =>
         }
     }

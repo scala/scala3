@@ -19,6 +19,7 @@ import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.{migrateTo3, fewerBracesEnabled}
 import config.SourceVersion.{`3.0`, `3.0-migration`}
+import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
 
 import java.util.Objects
@@ -257,8 +258,8 @@ object Scanners {
           report.errorOrMigrationWarning(
             em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier${rewriteNotice("This", `3.0-migration`)}",
             sourcePos(),
-            from = `3.0`)
-          if sourceVersion.isMigrating then
+            MigrationVersion.Scala2to3)
+          if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(offset), "`")
             patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
@@ -470,7 +471,7 @@ object Scanners {
             em"""$what starts with an operator;
                 |it is now treated as a continuation of the $previous,
                 |not as a separate statement.""",
-            sourcePos(), from = `3.0`)
+            sourcePos(), MigrationVersion.Scala2to3)
         true
       }
 
