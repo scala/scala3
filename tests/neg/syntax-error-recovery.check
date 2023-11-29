@@ -94,48 +94,6 @@
    |          Not found: bam
    |
    | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:7:2 -------------------------------------------
-6 |        2
-7 |  }
-  |         ^
-  |         Discarded non-Unit value of type Null. You may want to use `()`.
-  |
-  | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:15:2 ------------------------------------------
-14 |        2
-15 |  println(baz) // error
-   |         ^
-   |         Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:27:2 ------------------------------------------
-26 |      2
-27 |  println(bam) // error
-   |       ^
-   |       Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:36:2 ------------------------------------------
-35 |        2
-36 |  }
-   |         ^
-   |         Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:44:2 ------------------------------------------
-43 |        2
-44 |  println(baz) // error
-   |         ^
-   |         Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E190] Potential Issue Warning: tests/neg/syntax-error-recovery.scala:56:2 ------------------------------------------
-55 |      2
-56 |  println(bam) // error
-   |       ^
-   |       Discarded non-Unit value of type Null. You may want to use `()`.
-   |
-   | longer explanation available when compiling with `-explain`
 -- Warning: tests/neg/syntax-error-recovery.scala:61:2 -----------------------------------------------------------------
 61 |  println(bam)
    |  ^^^^^^^
