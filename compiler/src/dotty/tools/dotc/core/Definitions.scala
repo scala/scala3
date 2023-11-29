@@ -2237,7 +2237,7 @@ class Definitions {
     """.stripMargin)
 
     add(Any_hashCode,
-    """/** Calculate a hash code value for the object.
+    """/** Calculates a hash code value for the object.
       | *
       | *  The default hashing algorithm is platform dependent.
       | *
