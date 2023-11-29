@@ -2909,6 +2909,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         true
       case (_, _: HKLambda) =>
         true
+      case (tp1: ConstantType, tp2: AppliedType) if tp1 == ConstantType(Constant(0)) &&
+      defn.isCompiletime_S(tp2.tycon.typeSymbol) =>
+        // Special case for 0 and S[n]
+        true
+      case (tp1: AppliedType, tp2: ConstantType) if tp2 == ConstantType(Constant(0)) &&
+      defn.isCompiletime_S(tp1.tycon.typeSymbol) =>
+        true
       case (tp1: OrType, _)  =>
         provablyDisjoint(tp1.tp1, tp2) && provablyDisjoint(tp1.tp2, tp2)
       case (_, tp2: OrType)  =>
