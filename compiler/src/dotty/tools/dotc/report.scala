@@ -9,6 +9,7 @@ import config.SourceVersion
 import ast.*
 import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
+import dotty.tools.dotc.config.MigrationVersion
 
 object report:
 
@@ -80,15 +81,11 @@ object report:
     if ctx.settings.YdebugError.value then Thread.dumpStack()
     if ctx.settings.YdebugTypeError.value then ex.printStackTrace()
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos, from: SourceVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(from) then
-      if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then
-        if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
-      else error(msg, pos)
-
-  def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(errorFrom) then errorOrMigrationWarning(msg, pos, errorFrom)
-    else if sourceVersion.isAtLeast(warnFrom) then warning(msg, pos)
+  def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
+    if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
+      if !sourceVersion.isMigrating then error(msg, pos)
+      else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+    else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)

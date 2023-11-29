@@ -16,7 +16,8 @@ import Decorators.*
 import OverridingPairs.isOverridingPair
 import typer.ErrorReporting.*
 import config.Feature.{warnOnMigration, migrateTo3, sourceVersion}
-import config.SourceVersion.{`3.0`, `future`}
+import config.SourceVersion.`3.0`
+import config.MigrationVersion
 import config.Printers.refcheck
 import reporting.*
 import Constants.Constant
@@ -571,12 +572,10 @@ object RefChecks {
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
       else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.13)
-        if sourceVersion.isAtLeast(`future`) then
-          overrideError(i"cannot override val parameter ${other.showLocated}")
-        else
-          report.deprecationWarning(
-            em"overriding val parameter ${other.showLocated} is deprecated, will be illegal in a future version",
-            member.srcPos)
+        report.errorOrMigrationWarning(
+            em"cannot override val parameter ${other.showLocated}",
+            member.srcPos,
+            MigrationVersion.OverrideValParameter)
       else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
         overrideError("may not override non-experimental member")
       else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
@@ -831,7 +830,7 @@ object RefChecks {
                   em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
                       |  its type             $mbrType
                       |  does not conform to  ${mbrd.info}""",
-                  (if (mbr.owner == clazz) mbr else clazz).srcPos, from = `3.0`)
+                  (if (mbr.owner == clazz) mbr else clazz).srcPos, MigrationVersion.Scala2to3)
           }
         }
       }
@@ -845,7 +844,7 @@ object RefChecks {
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                report.errorOrMigrationWarning(problem, clazz.srcPos, from = `3.0`)
+                report.errorOrMigrationWarning(problem, clazz.srcPos, MigrationVersion.Scala2to3)
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)

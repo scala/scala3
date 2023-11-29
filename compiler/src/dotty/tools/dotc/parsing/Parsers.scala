@@ -33,6 +33,7 @@ import config.Feature
 import config.Feature.{sourceVersion, migrateTo3, globalOnlyImports}
 import config.SourceVersion.*
 import config.SourceVersion
+import dotty.tools.dotc.config.MigrationVersion
 
 object Parsers {
 
@@ -462,8 +463,8 @@ object Parsers {
         case t @ Typed(Ident(_), _) =>
           report.errorOrMigrationWarning(
             em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
-            in.sourcePos(), from = `3.0`)
-          if sourceVersion.isMigrating then
+            in.sourcePos(), MigrationVersion.Scala2to3)
+          if MigrationVersion.Scala2to3.needsPatch then
             patch(source, t.span.startPos, "(")
             patch(source, t.span.endPos, ")")
           convertToParam(t, mods) :: Nil
@@ -1314,8 +1315,8 @@ object Parsers {
                     |or enclose in braces '{$name} if you want a quoted expression.
                     |For now, you can also `import language.deprecated.symbolLiterals` to accept
                     |the idiom, but this possibility might no longer be available in the future.""",
-                in.sourcePos(), from = `3.0`)
-              if sourceVersion.isMigrating then
+                in.sourcePos(), MigrationVersion.Scala2to3)
+              if MigrationVersion.Scala2to3.needsPatch then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
@@ -1412,8 +1413,8 @@ object Parsers {
             em"""This opening brace will start a new statement in Scala 3.
                 |It needs to be indented to the right to keep being treated as
                 |an argument to the previous expression.${rewriteNotice()}""",
-            in.sourcePos(), from = `3.0`)
-          if sourceVersion.isMigrating then
+            in.sourcePos(), MigrationVersion.Scala2to3)
+          if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(in.offset), "  ")
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
@@ -1776,12 +1777,11 @@ object Parsers {
           t
         else
           val withSpan = Span(withOffset, withOffset + 4)
-          report.gradualErrorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             DeprecatedWithOperator(rewriteNotice(`3.4-migration`)),
             source.atSpan(withSpan),
-            warnFrom = `3.4`,
-            errorFrom = future)
-          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+            MigrationVersion.WithOperator)
+          if MigrationVersion.WithOperator.needsPatch then
             patch(source, withSpan, "&")
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
@@ -1882,12 +1882,11 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if !inTypeMatchPattern then
-            report.gradualErrorOrMigrationWarning(
+            report.errorOrMigrationWarning(
               em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
               in.sourcePos(),
-              warnFrom = `3.4`,
-              errorFrom = future)
-            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              MigrationVersion.WildcardType)
+            if MigrationVersion.WildcardType.needsPatch then
               patch(source, Span(in.offset, in.offset + 1), "?")
           end if
           val start = in.skipToken()
@@ -2111,7 +2110,7 @@ object Parsers {
       else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
           em"view bounds `<%' are no longer supported, use a context bound `:' instead",
-          in.sourcePos(), from = `3.0`)
+          in.sourcePos(), MigrationVersion.Scala2to3)
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
@@ -2260,7 +2259,7 @@ object Parsers {
         report.errorOrMigrationWarning(
           em"""`do <body> while <cond>` is no longer supported,
               |use `while <body> ; <cond> do ()` instead.${rewriteNotice()}""",
-          in.sourcePos(), from = `3.0`)
+          in.sourcePos(), MigrationVersion.Scala2to3)
         val start = in.skipToken()
         atSpan(start) {
           val body = expr()
@@ -2268,7 +2267,7 @@ object Parsers {
           val whileStart = in.offset
           accept(WHILE)
           val cond = expr()
-          if sourceVersion.isMigrating then
+          if MigrationVersion.Scala2to3.needsPatch then
             patch(source, Span(start, start + 2), "while ({")
             patch(source, Span(whileStart, whileStart + 5), ";")
             cond match {
@@ -2370,18 +2369,17 @@ object Parsers {
           val isVarargSplice = location.inArgs && followingIsVararg()
           in.nextToken()
           if isVarargSplice then
-            report.gradualErrorOrMigrationWarning(
+            report.errorOrMigrationWarning(
               em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice(`3.4-migration`)}",
               in.sourcePos(uscoreStart),
-              warnFrom = `3.4`,
-              errorFrom = future)
-            if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              MigrationVersion.VarargSpliceAscription)
+            if MigrationVersion.VarargSpliceAscription.needsPatch then
               patch(source, Span(t.span.end, in.lastOffset), "*")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.
                   |It is no longer allowed in operands of infix operations.""",
-              in.sourcePos(uscoreStart), from = `3.0`)
+              in.sourcePos(uscoreStart), MigrationVersion.Scala2to3)
           else
             syntaxError(SeqWildcardPatternPos(), uscoreStart)
           Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
@@ -2448,13 +2446,12 @@ object Parsers {
             report.errorOrMigrationWarning(
               em"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice(`future-migration`)}",
               source.atSpan(Span(start, in.lastOffset)),
-              from = future)
+              MigrationVersion.ParameterEnclosedByParenthesis)
             in.nextToken()
             val t = infixType()
-            if (sourceVersion == `future-migration`) {
+            if MigrationVersion.ParameterEnclosedByParenthesis.needsPatch then
               patch(source, Span(start), "(")
               patch(source, Span(in.lastOffset), ")")
-            }
             t
           }
           else TypeTree()
@@ -2958,15 +2955,13 @@ object Parsers {
       if in.isColon then
         val isVariableOrNumber = isVarPattern(p) || p.isInstanceOf[Number]
         if !isVariableOrNumber then
-          report.gradualErrorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             em"""Type ascriptions after patterns other than:
                 |  * variable pattern, e.g. `case x: String =>`
                 |  * number literal pattern, e.g. `case 10.5: Double =>`
                 |are no longer supported. Remove the type ascription or move it to a separate variable pattern.""",
             in.sourcePos(),
-            warnFrom = `3.3`,
-            errorFrom = future
-          )
+            MigrationVersion.AscriptionAfterPattern)
         in.nextToken()
         ascription(p, location)
       else p
@@ -3147,13 +3142,12 @@ object Parsers {
           else mods.withPrivateWithin(ident().toTypeName)
         }
         if mods1.is(Local) then
-          report.gradualErrorOrMigrationWarning(
+          report.errorOrMigrationWarning(
               em"""The [this] qualifier will be deprecated in the future; it should be dropped.
                   |See: https://docs.scala-lang.org/scala3/reference/dropped-features/this-qualifier.html${rewriteNotice(`3.4-migration`)}""",
               in.sourcePos(),
-              warnFrom = `3.4`,
-              errorFrom = future)
-          if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+              MigrationVersion.RemoveThisQualifier)
+          if MigrationVersion.RemoveThisQualifier.needsPatch then
             patch(source, Span(startOffset, in.lastOffset), "")
         mods1
       }
@@ -3542,8 +3536,8 @@ object Parsers {
           report.errorOrMigrationWarning(
             em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
-            from = future)
-          if sourceVersion == `future-migration` then
+            MigrationVersion.ImportWildcard)
+          if MigrationVersion.ImportWildcard.needsPatch then
             patch(source, Span(in.offset, in.offset + 1), "*")
         ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
 
@@ -3562,8 +3556,8 @@ object Parsers {
             report.errorOrMigrationWarning(
               em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
-              from = future)
-            if sourceVersion == `future-migration` then
+              MigrationVersion.ImportRename)
+            if MigrationVersion.ImportRename.needsPatch then
               patch(source, Span(in.offset, in.offset + 2),
                   if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
                   else " as ")
@@ -3674,13 +3668,12 @@ object Parsers {
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
-              report.gradualErrorOrMigrationWarning(
+              report.errorOrMigrationWarning(
                 em"""`= _` has been deprecated; use `= uninitialized` instead.
                         |`uninitialized` can be imported with `scala.compiletime.uninitialized`.${rewriteNotice(`3.4-migration`)}""",
                 in.sourcePos(rhsOffset),
-                warnFrom = `3.4`,
-                errorFrom = future)
-              if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+                MigrationVersion.UninitializedVars)
+              if MigrationVersion.UninitializedVars.needsPatch then
                 patch(source, Span(rhsOffset, rhsOffset + 1), "scala.compiletime.uninitialized")
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
@@ -3722,9 +3715,10 @@ object Parsers {
           else ": Unit "  // trailing space ensures that `def f()def g()` works.
         if migrateTo3 then
           report.errorOrMigrationWarning(
-            em"Procedure syntax no longer supported; `$toInsert` should be inserted here",
-            in.sourcePos(), from = `3.0`)
-          patch(source, Span(in.lastOffset), toInsert)
+            em"Procedure syntax no longer supported; `$toInsert` should be inserted here${rewriteNotice()}",
+            in.sourcePos(), MigrationVersion.Scala2to3)
+          if MigrationVersion.Scala2to3.needsPatch then
+            patch(source, Span(in.lastOffset), toInsert)
           true
         else
           false
@@ -4150,7 +4144,7 @@ object Parsers {
           if (in.token == LBRACE || in.token == COLONeol) {
             report.errorOrMigrationWarning(
               em"`extends` must be followed by at least one parent",
-              in.sourcePos(), from = `3.0`)
+              in.sourcePos(), MigrationVersion.Scala2to3)
             Nil
           }
           else constrApps()
