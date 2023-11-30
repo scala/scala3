@@ -1638,6 +1638,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             pt.findFunctionType match {
               case pt @ SAMType(sam)
               if !defn.isFunctionNType(pt) && mt <:< sam =>
+                if defn.isContextFunctionType(mt.resultType) then
+                  report.error(
+                    em"""Implementation restriction: cannot convert this expression to `$pt`
+                        |because its result type `${mt.resultType}` is a contextual function type.""",
+                    tree.srcPos)
+
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
                 // The resulting class `class $anon extends C[?] {...}` would be illegal,
                 // since type arguments to `C`'s super constructor cannot be constructed.
