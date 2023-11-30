@@ -62,6 +62,7 @@ tuple-fold.scala
 mt-redux-norm.perspective.scala
 i18211.scala
 named-tuples1.scala
+NamedTupleOps.scala
 
 # Opaque type
 i5720.scala
