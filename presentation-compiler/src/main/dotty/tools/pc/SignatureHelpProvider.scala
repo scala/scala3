@@ -37,8 +37,7 @@ object SignatureHelpProvider:
     val pos = driver.sourcePosition(params)
     val trees = driver.openedTrees(uri.nn)
 
-    val path =
-      Interactive.pathTo(trees, pos).dropWhile(t => notCurrentApply(t, pos))
+    val path = Interactive.pathTo(trees, pos)
 
     val (paramN, callableN, alternatives) =
       Signatures.signatureHelp(path, pos.span)
@@ -69,32 +68,6 @@ object SignatureHelpProvider:
       paramN
     )
   end signatureHelp
-
-  private def isValid(tree: tpd.Tree)(using Context): Boolean =
-    ctx.definitions.isTupleClass(
-      tree.symbol.owner.companionClass
-    ) || ctx.definitions.isFunctionType(tree.tpe)
-
-  private def notCurrentApply(
-      tree: tpd.Tree,
-      pos: SourcePosition
-  )(using Context): Boolean =
-    tree match
-      case unapply: tpd.UnApply =>
-        unapply.fun.span.contains(pos.span) || isValid(unapply)
-      case typeTree @ AppliedTypeTree(fun, _) =>
-        fun.span.contains(pos.span) || isValid(typeTree)
-      case typeApply @ TypeApply(fun, _) =>
-        fun.span.contains(pos.span) || isValid(typeApply)
-      case appl: tpd.GenericApply =>
-        /* find first apply that the cursor is located in arguments and not at function name
-         * for example in:
-         *   `Option(1).fold(2)(@@_ + 1)`
-         * we want to find the tree responsible for the entire location, not just `_ + 1`
-         */
-        appl.fun.span.contains(pos.span)
-
-      case _ => true
 
   private def withDocumentation(
       info: SymbolDocumentation,
