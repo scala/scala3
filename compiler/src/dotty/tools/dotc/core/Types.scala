@@ -1865,7 +1865,7 @@ object Types {
      *  @param alwaysDependent if true, always create a dependent function type.
      */
     def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
-      case mt: MethodType if !mt.isParamDependent =>
+      case mt: MethodType if !mt.isParamDependent && !mt.hasErasedParams =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
@@ -1878,6 +1878,9 @@ object Types {
         if alwaysDependent || mt.isResultDependent then
           RefinedType(funType, nme.apply, mt)
         else funType
+      case mt: MethodType if !mt.isParamDependent =>
+        assert(mt.hasErasedParams)
+        RefinedType(defn.ErasedFunctionType, nme.apply, mt)
     }
 
     /** The signature of this type. This is by default NotAMethod,

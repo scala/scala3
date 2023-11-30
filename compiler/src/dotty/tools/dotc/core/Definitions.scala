@@ -1466,6 +1466,7 @@ class Definitions {
   def PolyFunctionType = PolyFunctionClass.typeRef
 
   lazy val ErasedFunctionClass = requiredClass("scala.runtime.ErasedFunction")
+  def ErasedFunctionType = ErasedFunctionClass.typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(using Context): TypeName = cls.denot match
