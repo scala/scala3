@@ -154,7 +154,20 @@ abstract class Reporter extends interfaces.ReporterResult {
       val key = w.enablingOption.name
       addUnreported(key, 1)
     case _                                                  =>
-      if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
+      val hide = if !errorsReported && dia.isInstanceOf[Error] then
+        // We bump up errorCount so errorsReported is true while executing isHidden.
+        // We use errorsReported as a predicate for broken code.
+        // So now any code `isHidden` runs won't cause, for instance,
+        // assertion errors and thus compiler crashes.
+        // This normally amounts to forcing the message, which might run more code
+        // to generate useful hints for the user.
+        try
+          _errorCount += 1
+          isHidden(dia)
+        finally
+          _errorCount -= 1 // decrease rather than set back to `oldErrorCount` so we only ever decrease by 1
+      else isHidden(dia)
+      if !hide then // avoid isHidden test for summarized warnings so that message is not forced
         markReported(dia)
         withMode(Mode.Printing)(doReport(dia))
         dia match {
