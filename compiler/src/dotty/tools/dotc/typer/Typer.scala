@@ -1637,7 +1637,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case mt: MethodType =>
             pt.findFunctionType match {
               case pt @ SAMType(sam)
-              if !defn.isFunctionType(pt) && mt <:< sam =>
+              if !defn.isFunctionNType(pt) && mt <:< sam =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
                 // The resulting class `class $anon extends C[?] {...}` would be illegal,
                 // since type arguments to `C`'s super constructor cannot be constructed.
@@ -2871,7 +2871,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedAsFunction(tree: untpd.PostfixOp, pt: Type)(using Context): Tree = {
     val untpd.PostfixOp(qual, Ident(nme.WILDCARD)) = tree: @unchecked
-    val pt1 = if (defn.isFunctionType(pt)) pt else AnyFunctionProto
+    val pt1 = if (defn.isFunctionNType(pt)) pt else AnyFunctionProto
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(using nestedCtx)
     res match {
@@ -3886,7 +3886,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         sym.isConstructor
         || sym.matchNullaryLoosely
         || Feature.warnOnMigration(msg, tree.srcPos, version = `3.0`)
-          && { 
+          && {
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)
@@ -3919,7 +3919,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // Ignore `.apply` in `m.apply(...)`; it will later be simplified in typedSelect to `m(...)`
           adapt1(tree, pt1, locked)
         else
-          if (!defn.isFunctionType(pt))
+          if (!defn.isFunctionNType(pt))
             pt match {
               case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
                 report.warning(em"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.srcPos)
@@ -4034,7 +4034,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
-      def functionExpected = defn.isFunctionType(ptNorm)
+      def functionExpected = defn.isFunctionNType(ptNorm)
       def needsEta = pt.revealIgnored match
         case _: SingletonType | _: FunOrPolyProto => false
         case _ => true
@@ -4124,7 +4124,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
-        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
+        if defn.isFunctionNType(wtp) && !defn.isFunctionNType(pt) =>
           pt match {
             case SAMType(sam)
             if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>

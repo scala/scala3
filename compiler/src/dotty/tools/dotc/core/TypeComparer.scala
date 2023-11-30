@@ -658,7 +658,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case _ =>
                 isSubType(info1, info2)
 
-            if defn.isFunctionType(tp2) then
+            if defn.isFunctionNType(tp2) then
               tp1w.widenDealias match
                 case tp1: RefinedType =>
                   return isSubInfo(tp1.refinedInfo, tp2.refinedInfo)

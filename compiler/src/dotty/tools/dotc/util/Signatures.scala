@@ -302,7 +302,7 @@ object Signatures {
    * @param tree tree to validate
    */
   private def isValid(tree: tpd.Tree)(using Context): Boolean =
-    ctx.definitions.isTupleNType(tree.tpe) || ctx.definitions.isFunctionType(tree.tpe)
+    ctx.definitions.isTupleNType(tree.tpe) || ctx.definitions.isFunctionNType(tree.tpe)
 
   /**
    * Get unapply method result type omiting unknown types and another method calls.

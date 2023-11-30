@@ -106,7 +106,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             defn.isContextFunctionType(baseFun))
         val arity: Int =
           if defn.isErasedFunctionType(fun) then -1 // TODO support?
-          else if defn.isFunctionType(fun) then
+          else if defn.isFunctionNType(fun) then
             // TupledFunction[(...) => R, ?]
             fun.functionArgInfos match
               case funArgs :+ funRet
@@ -114,7 +114,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 // TupledFunction[(...funArgs...) => funRet, ?]
                 funArgs.size
               case _ => -1
-          else if defn.isFunctionType(tupled) then
+          else if defn.isFunctionNType(tupled) then
             // TupledFunction[?, (...) => R]
             tupled.functionArgInfos match
               case tupledArgs :: funRet :: Nil =>

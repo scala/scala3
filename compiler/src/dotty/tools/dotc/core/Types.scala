@@ -2760,7 +2760,7 @@ object Types {
     final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val sym =
-          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn 
+          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn
           else computeSymbol
         val allowPrivate = !sym.exists || sym.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
@@ -4054,7 +4054,7 @@ object Types {
       def addInto(tp: Type): Type = tp match
         case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
           tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
-        case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+        case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
           wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
         case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionOrPolyType(tp) =>
           wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
