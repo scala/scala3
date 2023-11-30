@@ -282,10 +282,13 @@ Standard Section: "Attributes" Attribute*
                   SOURCEFILEattr Utf8Ref
 ```
 
-Note: Attribute tags are grouped into 2 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
+Note: Attribute tags are grouped into categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
+      Unassigned categories can be used to extend and existing category or to add new kinds of attributes
 ```none
-  Attribute Category 1 (tags 1-64)  :  tag
-  Attribute Category 2 (tags 65-128):  tag Utf8Ref
+  Attribute Category 1 (tags 1-32)  :  tag
+  Attribute Category 2 (tags 33-128): // not assigned yet
+  Attribute Category 3 (tags 129-160):  tag Utf8Ref
+  Attribute Category 4 (tags 161-255): // not assigned yet
 ```
 
 **************************************************************************************/
@@ -617,8 +620,8 @@ object TastyFormat {
 
   // Attributes tags
 
-  // Attr Cat. 1: tag
-  final val firstBooleanAttrTag = SCALA2STANDARDLIBRARYattr
+  // Attribute Category 1 (tags 1-32)  :  tag
+  def isBooleanAttrTag(tag: Int): Boolean = 1 <= tag && tag <= 32
   final val SCALA2STANDARDLIBRARYattr = 1
   final val EXPLICITNULLSattr = 2
   final val CAPTURECHECKEDattr = 3
@@ -626,12 +629,15 @@ object TastyFormat {
   final val JAVAattr = 5
   final val OUTLINEattr = 6
 
-  // Attr Cat. 2: tag UTF8
-  final val firstStringAttrTag = SOURCEFILEattr
-  final val SOURCEFILEattr = 128
+  // Attribute Category 2 (tags 33-128): unassigned
 
-  // Attr Cat. 3: unassigned
-  final val firstUnassignedAttrTag = 129
+  // Attribute Category 3 (tags 129-160):  tag Utf8Ref
+  def isStringAttrTag(tag: Int): Boolean = 129 <= tag && tag <= 160
+  final val SOURCEFILEattr = 129
+
+  // Attribute Category 4 (tags 161-255): unassigned
+
+  // end of Attributes tags
 
 
   /** Useful for debugging */

@@ -232,8 +232,8 @@ class TastyPrinter(bytes: Array[Byte]) {
       while !isAtEnd do
         val tag = readByte()
         sb.append("  ").append(attributeTagToString(tag))
-        if tag < firstStringAttrTag then ()
-        else if tag < firstUnassignedAttrTag then
+        if isBooleanAttrTag(tag) then ()
+        else if isStringAttrTag(tag) then
           val utf8Ref = readNameRef()
           val value = nameAtRef(utf8Ref).toString
           sb.append(nameStr(s" ${utf8Ref.index} [$value]"))
