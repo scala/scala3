@@ -12,6 +12,10 @@ import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection, AttributesSection}
 import java.nio.file.{Files, Paths}
 import dotty.tools.io.{JarArchive, Path}
+import dotty.tools.tasty.TastyFormat.header
+
+import scala.compiletime.uninitialized
+import dotty.tools.tasty.TastyBuffer.Addr
 
 object TastyPrinter:
 
@@ -62,26 +66,43 @@ class TastyPrinter(bytes: Array[Byte]) {
 
   private val sb: StringBuilder = new StringBuilder
 
-  private val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
+  class TastyPrinterUnpickler extends TastyUnpickler(bytes) {
+    var namesStart: Addr = uninitialized
+    var namesEnd: Addr = uninitialized
+    override def readNames() = {
+      namesStart = reader.currentAddr
+      super.readNames()
+      namesEnd = reader.currentAddr
+    }
+  }
+
+  private val unpickler: TastyPrinterUnpickler = new TastyPrinterUnpickler
   import unpickler.{nameAtRef, unpickle}
 
   private def nameToString(name: Name): String = name.debugString
 
   private def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
 
+  private def printHeader(): Unit =
+    val header = unpickler.header
+    sb.append("Header:\n")
+    sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
+    sb.append("  tooling: ").append(header.toolingVersion).append("\n")
+    sb.append("     UUID: ").append(header.uuid).append("\n")
+    sb.append("\n")
+
   private def printNames(): Unit =
+    sb.append(s"Names (${unpickler.namesEnd.index - unpickler.namesStart.index} bytes, starting from ${unpickler.namesStart.index}):\n")
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
-      val index = nameStr("%4d".format(idx))
+      val index = nameStr("%6d".format(idx))
       sb.append(index).append(": ").append(nameToString(name)).append("\n")
     }
 
   def showContents(): String = {
-    sb.append("Names:\n")
+    printHeader()
     printNames()
-    sb.append("\n")
-    sb.append("Trees:\n")
     unpickle(new TreeSectionUnpickler) match {
-      case Some(s) => sb.append(s)
+      case Some(s) => sb.append("\n\n").append(s)
       case _ =>
     }
     unpickle(new PositionSectionUnpickler) match {
@@ -108,8 +129,8 @@ class TastyPrinter(bytes: Array[Byte]) {
       import reader.*
       var indent = 0
       def newLine() = {
-        val length = treeStr("%5d".format(index(currentAddr) - index(startAddr)))
-        sb.append(s"\n $length:" + " " * indent)
+        val length = treeStr("%6d".format(index(currentAddr) - index(startAddr)))
+        sb.append(s"\n$length:" + " " * indent)
       }
       def printNat() = sb.append(treeStr(" " + readNat()))
       def printName() = {
@@ -165,8 +186,7 @@ class TastyPrinter(bytes: Array[Byte]) {
           }
         indent -= 2
       }
-      sb.append(s"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr\n")
-      sb.append(s"${endAddr.index - startAddr.index} bytes of AST, base = $currentAddr\n")
+      sb.append(s"Trees (${endAddr.index - startAddr.index} bytes, starting from $base):")
       while (!isAtEnd) {
         printTree()
         newLine()
@@ -180,25 +200,29 @@ class TastyPrinter(bytes: Array[Byte]) {
     private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      import reader.*
       val posUnpickler = new PositionUnpickler(reader, tastyName)
-      sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
-      sb.append(" position bytes:\n")
+      sb.append(s"Positions (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
       val lineSizes = posUnpickler.lineSizes
-      sb.append(s"   lines: ${lineSizes.length}\n")
-      sb.append(posUnpickler.lineSizes.mkString("   line sizes: ", ", ", "\n"))
-      sb.append("   positions:\n")
+      sb.append(s"  lines: ${lineSizes.length}\n")
+      sb.append(s"  line sizes:\n")
+      val windowSize = 20
+      for window <-posUnpickler.lineSizes.sliding(windowSize, windowSize) do
+        sb.append("     ").append(window.mkString(", ")).append("\n")
+      // sb.append(posUnpickler.lineSizes.mkString("  line sizes: ", ", ", "\n"))
+      sb.append("  positions:\n")
       val spans = posUnpickler.spans
       val sorted = spans.toSeq.sortBy(_._1.index)
       for ((addr, pos) <- sorted) {
-        sb.append(treeStr("%10d".format(addr.index)))
+        sb.append(treeStr("%6d".format(addr.index)))
         sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")
       }
 
       val sources = posUnpickler.sourcePaths
-      sb.append(s"\n source paths:\n")
+      sb.append(s"\n  source paths:\n")
       val sortedPath = sources.toSeq.sortBy(_._1.index)
       for ((addr, path) <- sortedPath) {
-        sb.append(treeStr("%10d: ".format(addr.index)))
+        sb.append(treeStr("%6d: ".format(addr.index)))
         sb.append(path)
         sb.append("\n")
       }
@@ -212,14 +236,15 @@ class TastyPrinter(bytes: Array[Byte]) {
     private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
-      sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
+      import reader.*
       val comments = new CommentUnpickler(reader).comments
-      sb.append(s" comment bytes:\n")
-      val sorted = comments.toSeq.sortBy(_._1.index)
-      for ((addr, cmt) <- sorted) {
-        sb.append(treeStr("%10d".format(addr.index)))
-        sb.append(s": ${cmt.raw} (expanded = ${cmt.isExpanded})\n")
-      }
+      if !comments.isEmpty then
+        sb.append(s"Comments (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
+        val sorted = comments.toSeq.sortBy(_._1.index)
+        for ((addr, cmt) <- sorted) {
+          sb.append(treeStr("%6d".format(addr.index)))
+          sb.append(s": ${cmt.raw} (expanded = ${cmt.isExpanded})\n")
+        }
       sb.result
     }
   }
