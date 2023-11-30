@@ -258,10 +258,10 @@ class TastyPrinter(bytes: Array[Byte]) {
       import reader.*
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
       val attributes = new AttributeUnpickler(reader).attributes
-      sb.append(s"  attributes bytes:\n")
+      sb.append(s"Attributes (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
 
       for tag <- attributes.booleanTags do
-        sb.append("   ").append(attributeTagToString(tag)).append("\n")
+        sb.append("  ").append(attributeTagToString(tag)).append("\n")
 
       sb.result
     }
