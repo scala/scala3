@@ -18,6 +18,7 @@ import dotty.tools.vulpix.TestConfiguration
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, fail}
+import dotty.tools.io.AbstractFile
 
 class CommentPicklingTest {
 
@@ -116,7 +117,7 @@ class CommentPicklingTest {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
-        val unpickler = new DottyUnpickler(f.toByteArray())
+        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath), f.toByteArray())
         unpickler.enter(roots = Set.empty)
         unpickler.rootTrees(using ctx)
       }

@@ -235,7 +235,7 @@ class Pickler extends Phase {
     ctx.initialize()
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(bytes)
+        val unpickler = new DottyUnpickler(unit.source.file, bytes)
         unpickler.enter(roots = Set.empty)
         cls -> (unit, unpickler)
       }
