@@ -37,7 +37,7 @@ object TypeApplications {
      *  contain the bounds of the type parameters of `C`. This is necessary to be able to
      *  contract the hk lambda to `C`.
      */
-    private def weakerBounds(tp: HKTypeLambda, tparams: List[ParamInfo])(using Context): Boolean =
+    private def weakerBounds(tp: HKTypeLambda, fn: Type)(using Context): Boolean =
       val onlyEmptyBounds = tp.typeParams.forall(_.paramInfo == TypeBounds.empty)
       onlyEmptyBounds
         // Note: this pre-test helps efficiency. It is also necessary to workaround  #9965 since in some cases
@@ -46,18 +46,21 @@ object TypeApplications {
         // In this case, we can still return true if we know that the hk lambda bounds
         // are empty anyway.
       || {
+        val tparams = fn.typeParams
         val paramRefs = tparams.map(_.paramRef)
+        val prefix = fn match { case fn: TypeRef => fn.prefix       case _ => NoPrefix }
+        val owner  = fn match { case fn: TypeRef => fn.symbol.owner case _ => NoSymbol }
         tp.typeParams.corresponds(tparams) { (param1, param2) =>
-          param2.paramInfo frozen_<:< param1.paramInfo.substParams(tp, paramRefs)
+          param2.paramInfo.asSeenFrom(prefix, owner) frozen_<:< param1.paramInfo.substParams(tp, paramRefs)
         }
       }
 
     def unapply(tp: Type)(using Context): Option[Type] = tp match
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: Type, args))
+      case tp @ HKTypeLambda(tparams, AppliedType(fn, args))
       if fn.typeSymbol.isClass
          && tparams.hasSameLengthAs(args)
          && args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef)
-         && weakerBounds(tp, fn.typeParams) => Some(fn)
+         && weakerBounds(tp, fn) => Some(fn)
       case _ => None
 
   end EtaExpansion
@@ -302,7 +305,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     val resType = self.appliedTo(tparams.map(_.paramRef))
     self match
       case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
-        val prefix = self.prefix
         val owner = self.symbol.owner
         // Calling asSeenFrom on the type parameter infos is important
         // so that class type references within another prefix have
@@ -317,7 +319,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         // So we take the prefix M2.type and the F symbol's owner, M1,
         // to call asSeenFrom on T's info.
         HKTypeLambda(tparams.map(_.paramName))(
-          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(prefix, owner)))),
+          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(self.prefix, owner)))),
           tl => tl.integrate(tparams, resType))
       case _ =>
         HKTypeLambda.fromParams(tparams, resType)
