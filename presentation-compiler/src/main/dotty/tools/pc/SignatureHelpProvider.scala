@@ -5,18 +5,14 @@ import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
-import dotty.tools.dotc.ast.Trees.AppliedTypeTree
-import dotty.tools.dotc.ast.Trees.TypeApply
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.Signatures
-import dotty.tools.dotc.util.Signatures.Signature
+import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 import org.eclipse.lsp4j as l
@@ -28,52 +24,55 @@ object SignatureHelpProvider:
       params: OffsetParams,
       search: SymbolSearch
   ) =
-    val uri = params.uri()
-    val sourceFile = SourceFile.virtual(params.uri().nn, params.text().nn)
+    val uri = params.uri().nn
+    val sourceFile = SourceFile.virtual(uri, params.text().nn)
     driver.run(uri.nn, sourceFile)
 
-    given ctx: Context = driver.currentCtx
+    driver.compilationUnits.get(uri) match
+      case Some(unit) =>
+        given newCtx: Context = driver.currentCtx.fresh.setCompilationUnit(unit)
 
-    val pos = driver.sourcePosition(params)
-    val trees = driver.openedTrees(uri.nn)
+        val pos = driver.sourcePosition(params)
+        val treeSpanEnd = ctx.compilationUnit.tpdTree.span.end
 
-    val path = Interactive.pathTo(trees, pos)
+        // If we try to run signature help for named arg which happens to be the last line of the code
+        // it will return span outside tree, as parser ignores additional whitespaces:
+        //   def foo(aaa: Int, bbb: Int) = ???
+        //   foo(aaa // fail before writing the = sign
+        val adjustedSpan = if pos.span.end > treeSpanEnd then Spans.Span(treeSpanEnd)
+          else pos.span
 
-    val (paramN, callableN, alternatives) =
-      Signatures.signatureHelp(path, pos.span)
-    val infos = alternatives.flatMap { signature =>
-      signature.denot.map {
-        (signature, _)
-      }
-    }
+        val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, adjustedSpan)
+        val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
 
-    val signatureInfos = infos.map { case (signature, denot) =>
-      search.symbolDocumentation(denot.symbol) match
-        case Some(doc) =>
-          withDocumentation(
-            doc,
-            signature,
-            denot.symbol.is(Flags.JavaDefined)
-          ).getOrElse(signature)
-        case _ => signature
+        val infos = alternatives.flatMap: signature =>
+          signature.denot.map(signature -> _)
 
-    }
+        val signatureInfos = infos.map { case (signature, denot) =>
+          search.symbolDocumentation(denot.symbol) match
+            case Some(doc) =>
+              withDocumentation(
+                doc,
+                signature,
+                denot.symbol.is(Flags.JavaDefined)
+              ).getOrElse(signature)
+            case _ => signature
 
-    /* Versions prior to 3.2.1 did not support type parameters
-     * so we need to skip them.
-     */
-    new l.SignatureHelp(
-      signatureInfos.map(signatureToSignatureInformation).asJava,
-      callableN,
-      paramN
-    )
+        }
+
+        new l.SignatureHelp(
+          signatureInfos.map(signatureToSignatureInformation).asJava,
+          callableN,
+          paramN
+        )
+      case _ => new l.SignatureHelp()
   end signatureHelp
 
   private def withDocumentation(
       info: SymbolDocumentation,
       signature: Signatures.Signature,
       isJavaSymbol: Boolean
-  ): Option[Signature] =
+  ): Option[Signatures.Signature] =
     val allParams = info.parameters().nn.asScala
     def updateParams(
         params: List[Signatures.Param],

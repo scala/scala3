@@ -974,4 +974,21 @@ class SignatureHelpTest {
      .signatureHelp(m2, List(signature), None, 0)
   }
 
+  @Test def instantiatedTypeVarInExtensionMethods: Unit = {
+    val signature = S(s"test", Nil, List(List(P("x", "Int"))), Some("List[Int]"))
+    code"""|object O:
+           |  extension [T](xs: List[T]) def test(x: T): List[T] = ???
+           |  List(1,2,3).test(${m1}"""
+     .signatureHelp(m1, List(signature), None, 2)
+  }
+
+  @Test def instantiatedTypeVarInOldExtensionMethods: Unit = {
+    val signature = S(s"test", Nil, List(List(P("x", "Int"))), Some("List[Int]"))
+    code"""|object O:
+           |  implicit class TypeVarTest[T](xs: List[T]):
+           |    def test(x: T): List[T] = ???
+           |  List(1,2,3).test(${m1}"""
+     .signatureHelp(m1, List(signature), None, 0)
+  }
+
 }

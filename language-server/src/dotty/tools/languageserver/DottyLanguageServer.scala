@@ -552,13 +552,18 @@ class DottyLanguageServer extends LanguageServer
   override def signatureHelp(params: TextDocumentPositionParams) = computeAsync { canceltoken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
-    implicit def ctx: Context = driver.currentCtx
 
-    val pos = sourcePosition(driver, uri, params.getPosition)
-    val trees = driver.openedTrees(uri)
-    val path = Interactive.pathTo(trees, pos)
-    val (paramN, callableN, signatures) = Signatures.signatureHelp(path, pos.span)
-    new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
+    driver.compilationUnits.get(uri) match
+      case Some(unit) =>
+        given newCtx: Context = driver.currentCtx.fresh.setCompilationUnit(unit)
+
+        val pos = sourcePosition(driver, uri, params.getPosition)
+        val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, pos.span)
+        val (paramN, callableN, signatures) = Signatures.signatureHelp(path, pos.span)
+
+        new SignatureHelp(signatures.map(signatureToSignatureInformation).asJava, callableN, paramN)
+
+      case _ => new SignatureHelp()
 
   }
 

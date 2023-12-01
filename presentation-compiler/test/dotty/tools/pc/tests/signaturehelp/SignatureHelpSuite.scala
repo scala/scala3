@@ -437,8 +437,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  User(age = 1, @@)
         |}
       """.stripMargin,
-      """|apply(name: String, age: Int): User
-         |                    ^^^^^^^^
+      """|apply([age: Int], [name: String]): User
+         |                  ^^^^^^^^^^^^^^
          |""".stripMargin
     )
 
@@ -477,8 +477,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
         |  def x = user(str@@eet = 42, name = "", age = 2)
         |}
       """.stripMargin,
-      """|user(name: String, age: Int, street: Int): Int
-         |                             ^^^^^^^^^^^
+      """|user([street: Int], [name: String], [age: Int]): Int
+         |     ^^^^^^^^^^^^^
          |user(name: String, age: Int): Int
          |""".stripMargin
     )
@@ -758,6 +758,15 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
+  @Test def `instantiated-type-var-ext-1` =
+    check(
+      """|object O:
+         |  extension [T](xs: List[T]) def test(x: T): List[T] = ???
+         |  List(1,2,3).test(@@""".stripMargin,
+      """
+      """.stripMargin
+    )
+
   @Test def `instantiated-type-var-old-ext-1` =
     check(
       """|object O:
@@ -829,3 +838,206 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |                ^^^^^^
          |""".stripMargin
     )
+
+  @Test def `multiline-before` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(@@
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |           ^^^^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-after-first` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc", @@
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |                        ^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-between-first-and-second-a` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc"
+         |    @@
+         |
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |           ^^^^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-between-first-and-second-b` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc",
+         |    @@
+         |
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |                        ^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `multiline-end` =
+    check(
+      """|object Main {
+         |  def deployment(
+         |    fst: String,
+         |    snd: Int = 1,
+         |  ): Option[Int] = ???
+         |  val abc = deployment(
+         |    fst = "abc",
+         |    snd = 1
+         |  @@)
+         |}
+         |""".stripMargin,
+      """|deployment(fst: String, snd: Int): Option[Int]
+         |                        ^^^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-before` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[@@
+             Int,
+         |   String,
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+         |           ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-after` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |   Int, @@
+         |   String,
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+         |           ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-between-first-and-second-a` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |   Int,
+         |   @@
+         |
+         |   String
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+         |           ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-between-first-and-second-b` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |   Int,
+         |   @@
+         |
+         |   String,
+         |  ](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+         |              ^
+         |""".stripMargin
+     )
+
+  @Test def `type-var-multiline-end` =
+    check(
+      """|object Main {
+         |  def deployment[A, B](
+         |    fst: A,
+         |    snd: B,
+         |  ): Option[Int] = ???
+         |  val abc = deployment[
+         |     String,
+         |     Int,
+         |  @@](
+         |    fst = "abc",
+         |    snd = 1
+         |  )
+         |}
+         |""".stripMargin,
+      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+         |              ^
+         |""".stripMargin
+     )
