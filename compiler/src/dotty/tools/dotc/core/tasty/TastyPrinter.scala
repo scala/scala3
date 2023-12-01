@@ -64,8 +64,6 @@ object TastyPrinter:
 
 class TastyPrinter(bytes: Array[Byte]) {
 
-  private val sb: StringBuilder = new StringBuilder
-
   class TastyPrinterUnpickler extends TastyUnpickler(bytes) {
     var namesStart: Addr = uninitialized
     var namesEnd: Addr = uninitialized
@@ -83,7 +81,7 @@ class TastyPrinter(bytes: Array[Byte]) {
 
   private def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
 
-  private def printHeader(): Unit =
+  private def printHeader(sb: StringBuilder): Unit =
     val header = unpickler.header
     sb.append("Header:\n")
     sb.append(s"  version: ${header.majorVersion}.${header.minorVersion}.${header.experimentalVersion}\n")
@@ -91,7 +89,7 @@ class TastyPrinter(bytes: Array[Byte]) {
     sb.append("     UUID: ").append(header.uuid).append("\n")
     sb.append("\n")
 
-  private def printNames(): Unit =
+  private def printNames(sb: StringBuilder): Unit =
     sb.append(s"Names (${unpickler.namesEnd.index - unpickler.namesStart.index} bytes, starting from ${unpickler.namesStart.index}):\n")
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
       val index = nameStr("%6d".format(idx))
@@ -99,33 +97,19 @@ class TastyPrinter(bytes: Array[Byte]) {
     }
 
   def showContents(): String = {
-    printHeader()
-    printNames()
-    unpickle(new TreeSectionUnpickler) match {
-      case Some(s) => sb.append("\n\n").append(s)
-      case _ =>
-    }
-    unpickle(new PositionSectionUnpickler) match {
-      case Some(s) => sb.append("\n\n").append(s)
-      case _ =>
-    }
-    unpickle(new CommentSectionUnpickler) match {
-      case Some(s) => sb.append("\n\n").append(s)
-      case _ =>
-    }
-    unpickle(new AttributesSectionUnpickler) match {
-      case Some(s) => sb.append("\n\n").append(s)
-      case _ =>
-    }
+    val sb: StringBuilder = new StringBuilder
+    printHeader(sb)
+    printNames(sb)
+    unpickle(new TreeSectionUnpickler(sb))
+    unpickle(new PositionSectionUnpickler(sb))
+    unpickle(new CommentSectionUnpickler(sb))
+    unpickle(new AttributesSectionUnpickler(sb))
     sb.result
   }
 
-  class TreeSectionUnpickler extends SectionUnpickler[String](ASTsSection) {
+  class TreeSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](ASTsSection) {
     import dotty.tools.tasty.TastyFormat.*
-
-    private val sb: StringBuilder = new StringBuilder
-
-    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader.*
       var indent = 0
       def newLine() = {
@@ -186,23 +170,19 @@ class TastyPrinter(bytes: Array[Byte]) {
           }
         indent -= 2
       }
-      sb.append(s"Trees (${endAddr.index - startAddr.index} bytes, starting from $base):")
+      sb.append(s"\n\nTrees (${endAddr.index - startAddr.index} bytes, starting from $base):")
       while (!isAtEnd) {
         printTree()
         newLine()
       }
-      sb.result
     }
   }
 
-  class PositionSectionUnpickler extends SectionUnpickler[String](PositionsSection) {
-
-    private val sb: StringBuilder = new StringBuilder
-
-    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+  class PositionSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](PositionsSection) {
+    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader.*
       val posUnpickler = new PositionUnpickler(reader, tastyName)
-      sb.append(s"Positions (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
+      sb.append(s"\n\nPositions (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
       val lineSizes = posUnpickler.lineSizes
       sb.append(s"  lines: ${lineSizes.length}\n")
       sb.append(s"  line sizes:\n")
@@ -222,48 +202,37 @@ class TastyPrinter(bytes: Array[Byte]) {
       sb.append(s"\n  source paths:\n")
       val sortedPath = sources.toSeq.sortBy(_._1.index)
       for ((addr, nameRef) <- sortedPath) {
-        sb.append(treeStr("%6d: ".format(addr.index)))
+        sb.append(treeStr("%6d".format(addr.index)))
+        sb.append(": ")
         sb.append(nameStr(s"${nameRef.index} [${tastyName(nameRef)}]"))
         sb.append("\n")
       }
-
-      sb.result
     }
   }
 
-  class CommentSectionUnpickler extends SectionUnpickler[String](CommentsSection) {
-
-    private val sb: StringBuilder = new StringBuilder
-
-    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+  class CommentSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](CommentsSection) {
+    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader.*
       val comments = new CommentUnpickler(reader).comments
       if !comments.isEmpty then
-        sb.append(s"Comments (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
+        sb.append(s"\n\nComments (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
         val sorted = comments.toSeq.sortBy(_._1.index)
         for ((addr, cmt) <- sorted) {
           sb.append(treeStr("%6d".format(addr.index)))
           sb.append(s": ${cmt.raw} (expanded = ${cmt.isExpanded})\n")
         }
-      sb.result
     }
   }
 
-  class AttributesSectionUnpickler extends SectionUnpickler[String](AttributesSection) {
+  class AttributesSectionUnpickler(sb: StringBuilder) extends SectionUnpickler[Unit](AttributesSection) {
     import dotty.tools.tasty.TastyFormat.*
-
-    private val sb: StringBuilder = new StringBuilder
-
-    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+    def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader.*
-      sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
       val attributes = new AttributeUnpickler(reader).attributes
-      sb.append(s"  attributes bytes:\n")
+      sb.append(s"\n\nAttributes (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
 
       for tag <- attributes.booleanTags do
-        sb.append("   ").append(attributeTagToString(tag)).append("\n")
-
-      sb.result
+        sb.append("  ").append(attributeTagToString(tag)).append("\n")
     }
   }
 
