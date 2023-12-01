@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 sealed trait T
 class C extends T
 

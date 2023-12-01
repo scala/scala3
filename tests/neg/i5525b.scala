@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 erased   enum Foo6 {} // error: only access modifiers allowed
 

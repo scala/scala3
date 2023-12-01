@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 class i13011 {
   lazy implicit val simple1: String = simple1 // error

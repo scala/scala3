@@ -1,4 +1,4 @@
-// scalac: -release:8
+//> using options -release:8
 
 import java.time.LocalDate
 

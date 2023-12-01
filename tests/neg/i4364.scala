@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 object Test {
   def foo(c: java.util.function.Consumer[Integer]) = c.accept(0)

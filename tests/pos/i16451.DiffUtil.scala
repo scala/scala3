@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 object DiffUtil:
   private sealed trait Patch
   private final case class Unmodified(str: String) extends Patch

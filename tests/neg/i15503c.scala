@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:privates
+//> using options -Xfatal-warnings -Wunused:privates
 trait C
 class A:
   self: C => // OK

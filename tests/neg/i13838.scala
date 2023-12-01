@@ -1,4 +1,4 @@
-// scalac: -Ximplicit-search-limit 1000
+//> using options -Ximplicit-search-limit 1000
 
 implicit def catsSyntaxEq[A: Eq](a: A): Foo[A] = ???
 

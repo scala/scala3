@@ -1,4 +1,4 @@
-// scalac: -Xmacro-settings:a,b=1,c.b.a=x.y.z=1,myLogger.level=INFO
+//> using options -Xmacro-settings:a,b=1,c.b.a=x.y.z=1,myLogger.level=INFO
 
 import scala.compiletime.*
 

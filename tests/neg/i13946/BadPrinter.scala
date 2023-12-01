@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -feature
+//> using options -Xfatal-warnings -feature
 
 // in BadPrinter.scala
 import language.future

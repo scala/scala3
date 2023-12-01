@@ -1,4 +1,4 @@
-// scalac: -Xmacro-settings:one,two,three
+//> using options -Xmacro-settings:one,two,three
 
 import x.*
 

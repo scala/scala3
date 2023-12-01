@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 // Ensure we don't get "the type test for argType cannot be checked at runtime" warning
 

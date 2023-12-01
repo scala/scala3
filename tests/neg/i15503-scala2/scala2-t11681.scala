@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:params
+//> using options -Xfatal-warnings -Wunused:params
 //
 
 import Answers._

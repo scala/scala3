@@ -1,4 +1,4 @@
-// scalac: -Werror -explain
+//> using options -Werror -explain
 
 def test1 =
   synchronized { // error

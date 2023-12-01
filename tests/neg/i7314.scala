@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -source future
+//> using options -Xfatal-warnings -source future
 
 @main def Test =
   // conversion out of the opaque type:

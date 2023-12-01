@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wnonunit-statement -Wvalue-discard
+//> using options -Xfatal-warnings -Wnonunit-statement -Wvalue-discard
 import collection.ArrayOps
 import collection.mutable.{ArrayBuilder, LinkedHashSet, ListBuffer}
 import concurrent._

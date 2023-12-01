@@ -1,4 +1,4 @@
-// scalac: -explain
+//> using options -explain
 
 package t12717
 

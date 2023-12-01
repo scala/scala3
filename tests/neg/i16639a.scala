@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:all
+//> using options -Xfatal-warnings -Wunused:all
 //
 class Bippy(a: Int, b: Int) {
   private def this(c: Int) = this(c, c)           // warn /Dotty:NoWarn

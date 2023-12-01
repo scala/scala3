@@ -1,4 +1,4 @@
-// scalac: -source future -feature -Xfatal-warnings
+//> using options -source future -feature -Xfatal-warnings
 
 package adhoc
 class B extends A  // error: adhoc-extension (under -strict -feature -Xfatal-warnings)

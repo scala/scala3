@@ -1,4 +1,4 @@
-// scalac: -source:future
+//> using options -source:future
 
 trait Foo[A]:
   def map[B](f: A => B): Foo[B] = ???

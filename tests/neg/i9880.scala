@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 opaque type Bytes = Array[Byte]
 object Bytes:

@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 trait Is[A]
 case object IsInt extends Is[Int]
 case object IsString extends Is[String]

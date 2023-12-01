@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -deprecation
+//> using options -Xfatal-warnings -deprecation
 
 trait Pet(val name: String, rest: Int):
    def f(suffix: String) = s"$name$suffix$rest"
