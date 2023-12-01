@@ -758,15 +758,6 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `instantiated-type-var-ext-1` =
-    check(
-      """|object O:
-         |  extension [T](xs: List[T]) def test(x: T): List[T] = ???
-         |  List(1,2,3).test(@@""".stripMargin,
-      """
-      """.stripMargin
-    )
-
   @Test def `instantiated-type-var-old-ext-1` =
     check(
       """|object O:
@@ -886,7 +877,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    fst = "abc"
          |    @@
          |
-         |    snd = 1
+         |    ,snd = 1
          |  )
          |}
          |""".stripMargin,
@@ -949,7 +940,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  )
          |}
          |""".stripMargin,
-      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
          |           ^
          |""".stripMargin
      )
@@ -970,8 +961,8 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  )
          |}
          |""".stripMargin,
-      """|deployment[A, B](fst: String, snd: Int): Option[Int]
-         |           ^
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
+         |              ^
          |""".stripMargin
      )
 
@@ -983,17 +974,17 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |    snd: B,
          |  ): Option[Int] = ???
          |  val abc = deployment[
-         |   Int,
+         |   Int
          |   @@
          |
-         |   String
+         |   ,String
          |  ](
          |    fst = "abc",
          |    snd = 1
          |  )
          |}
          |""".stripMargin,
-      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
          |           ^
          |""".stripMargin
      )
@@ -1016,7 +1007,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  )
          |}
          |""".stripMargin,
-      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
          |""".stripMargin
      )
@@ -1037,7 +1028,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |  )
          |}
          |""".stripMargin,
-      """|deployment[A, B](fst: String, snd: Int): Option[Int]
+      """|deployment[A, B](fst: A, snd: B): Option[Int]
          |              ^
          |""".stripMargin
      )

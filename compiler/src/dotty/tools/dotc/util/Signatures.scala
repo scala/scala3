@@ -224,7 +224,15 @@ object Signatures {
         case _ => Nil
 
       val currentParamsIndex = untpdArgs.indexWhere(_.span.contains(span)) match
-        case -1 => if untpdArgs.forall(_.span.start > span.end) then 0 else (params.length - 1) max 0
+        case -1 if untpdArgs.isEmpty => 0
+        case -1 =>
+          commaIndex(untpdArgs, span) match
+            case Some(index) if index <= span.start => untpdArgs.takeWhile(_.span.start < span.start).length
+            case Some(index) => untpdArgs.takeWhile(_.span.start < span.start).length - 1
+            case None =>
+              if untpdArgs.head.span.start > span.start then 0
+              else untpdArgs.length - 1 max 0
+
         case n => n min (alternativeSymbol.paramSymss(paramssListIndex).length - 1)
 
       val firstOrderedParams =
@@ -247,6 +255,16 @@ object Signatures {
       (finalParamIndex, alternativeIndex, alternativeSignatures)
     else
       (0, 0, Nil)
+
+  /** Parser ignores white spaces on next lines, we have to manually find the index of comma */
+  private def commaIndex(untpdArgs: List[untpd.Tree], span: Span)(using Context): Option[Int] =
+    val previousArgIndex = untpdArgs.lastIndexWhere(_.span.end < span.start)
+    for
+      previousArg <- untpdArgs.lift(previousArgIndex)
+      nextArg <- untpdArgs.lift(previousArgIndex + 1)
+    yield
+      val text = ctx.source.content.slice(previousArg.span.end, nextArg.span.start)
+      text.indexOf(',') + previousArg.span.end
 
   /**
    * Extracts call informatioin for function in unapply context.
