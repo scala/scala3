@@ -1,3 +1,4 @@
+// scalac: -Xfatal-warnings
 abstract class RecoveryCompleted
 object RecoveryCompleted extends RecoveryCompleted
 

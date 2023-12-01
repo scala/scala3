@@ -42,30 +42,11 @@ class CompilationTests {
       compileFilesInDir("tests/new", defaultOptions.and("-source", "3.2")), // just to see whether 3.2 works
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
       compileFilesInDir("tests/pos-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
-      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/pos-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
-      compileFilesInDir("tests/pos-custom-args/strict", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
-      compileFile(
-        // succeeds despite -Xfatal-warnings because of -nowarn
-        "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
-        defaultOptions.and("-nowarn", "-Xfatal-warnings")
-      ),
-      compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
-      compileFile("tests/pos-special/i7575.scala", defaultOptions.andLanguageFeature("dynamics")),
-      compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
-      compileFile("tests/pos-special/kind-projector-underscores.scala", defaultOptions.and("-Ykind-projector:underscores")),
-      compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
-      compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
-      compileFile("tests/pos-custom-args/i9267.scala", defaultOptions.and("-Ystop-after:erasure")),
-      compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
-      compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
-      compileFile("tests/pos-custom-args/i13044.scala", defaultOptions.and("-Xmax-inlines:33")),
-      compileFile("tests/pos-custom-args/jdk-8-app.scala", defaultOptions.and("-release:8"))
     )
 
     if scala.util.Properties.isJavaAtLeast("16") then
@@ -141,29 +122,14 @@ class CompilationTests {
       compileFilesInDir("tests/neg", defaultOptions),
       compileFilesInDir("tests/neg-tailcall", defaultOptions),
       compileFilesInDir("tests/neg-strict", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
-      compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
-      compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
-      compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
-      compileFilesInDir("tests/neg-custom-args/nowarn", defaultOptions.and("-deprecation", "-Wunused:nowarn", "-Wconf:msg=@nowarn annotation does not suppress any warnings:e")),
-      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/allow-deep-subtypes", allowDeepSubtypes),
-      compileFilesInDir("tests/neg-custom-args/feature", defaultOptions.and("-Xfatal-warnings", "-feature")),
-      compileFilesInDir("tests/neg-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking")),
-      compileFilesInDir("tests/neg-custom-args/explain", defaultOptions.and("-explain")),
-      compileFile("tests/neg-custom-args/avoid-warn-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
-      compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
-      compileFile("tests/neg-custom-args/overrideClass.scala", scala2CompatMode),
-      compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/newline-braces.scala", scala2CompatMode.and("-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.andLanguageFeature("noAutoTupling")),
       compileFile("tests/neg-custom-args/i1650.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i12650.scala", allowDeepSubtypes),
-      compileFile("tests/neg-custom-args/i9517.scala", defaultOptions.and("-Xprint-types")),
       compileFile("tests/neg-custom-args/interop-polytypes.scala", allowDeepSubtypes.and("-Yexplicit-nulls")),
       compileFile("tests/neg-custom-args/conditionalWarnings.scala", allowDeepSubtypes.and("-deprecation").and("-Xfatal-warnings")),
       compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings"),
@@ -175,23 +141,7 @@ class CompilationTests {
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
       compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
-      compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/missing-targetName.scala", defaultOptions.and("-Yrequire-targetName", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-no-indent", "-Xfatal-warnings")),
-      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures.and("-language:_")),
-      compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
-      compileFile("tests/neg-custom-args/kind-projector-underscores.scala", defaultOptions.and("-Ykind-projector:underscores")),
-      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-language:experimental.erasedDefinitions")),
-      compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
-      compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
-      compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
-      compileFile("tests/neg-custom-args/capt-wf.scala", defaultOptions.and("-language:experimental.captureChecking", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/i13026.scala", defaultOptions.and("-print-lines")),
-      compileFile("tests/neg-custom-args/i13838.scala", defaultOptions.and("-Ximplicit-search-limit", "1000")),
-      compileFile("tests/neg-custom-args/jdk-9-app.scala", defaultOptions.and("-release:8")),
-      compileFile("tests/neg-custom-args/i10994.scala", defaultOptions.and("-source", "future")),
     ).checkExpectedErrors()
   }
 
@@ -208,10 +158,6 @@ class CompilationTests {
       compileFile("tests/run-custom-args/typeclass-derivation1.scala", defaultOptions.without(yCheckOptions*)),
       compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
-      compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
-      compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
-      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
-      compileFilesInDir("tests/run-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
       compileFilesInDir("tests/run-custom-args/captures", allowDeepSubtypes.and("-language:experimental.captureChecking")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init")),
@@ -253,7 +199,6 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings"),
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions),
     )
   }.checkExpectedErrors()
@@ -262,11 +207,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/pos-patmat", explicitNullsOptions and "-Xfatal-warnings"),
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls"),
-      compileFile("tests/explicit-nulls/pos-special/i14682.scala", explicitNullsOptions and "-Ysafe-init"),
-      compileFile("tests/explicit-nulls/pos-special/i14947.scala", explicitNullsOptions and "-Ytest-pickler" and "-Xprint-types"),
     )
   }.checkCompile()
 

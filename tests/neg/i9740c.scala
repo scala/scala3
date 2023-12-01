@@ -1,3 +1,4 @@
+// scalac: -Xfatal-warnings
 sealed trait Exp[T]
 case class IntExp(x: Int) extends Exp[Int]
 case class StrExp(x: String) extends Exp[String]
