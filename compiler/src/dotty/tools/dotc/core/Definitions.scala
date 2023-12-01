@@ -1108,7 +1108,7 @@ class Definitions {
         FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft.dealias match
-        case RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) =>
+        case ErasedFunctionOf(mt) =>
           Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
         case _ =>
           val tsym = ft.dealias.typeSymbol
@@ -1118,6 +1118,42 @@ class Definitions {
             else Some(targs.init, targs.last, tsym.name.isContextFunction)
           else None
     }
+  }
+
+  object PolyOrErasedFunctionOf {
+    /** Matches a refined `PolyFunction` or `ErasedFunction` type and extracts the apply info.
+     *
+     *  Pattern: `(PolyFunction | ErasedFunction) { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[MethodicType] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodicType)
+      if parent.derivesFrom(defn.PolyFunctionClass) || parent.derivesFrom(defn.ErasedFunctionClass) =>
+        Some(mt)
+      case _ => None
+  }
+
+  object PolyFunctionOf {
+    /** Matches a refined `PolyFunction` type and extracts the apply info.
+     *
+     *  Pattern: `PolyFunction { def apply: $pt }`
+     */
+    def unapply(ft: Type)(using Context): Option[PolyType] = ft.dealias match
+      case RefinedType(parent, nme.apply, pt: PolyType)
+      if parent.derivesFrom(defn.PolyFunctionClass) =>
+        Some(pt)
+      case _ => None
+  }
+
+  object ErasedFunctionOf {
+    /** Matches a refined `ErasedFunction` type and extracts the apply info.
+     *
+     *  Pattern: `ErasedFunction { def apply: $mt }`
+     */
+    def unapply(ft: Type)(using Context): Option[MethodType] = ft.dealias match
+      case RefinedType(parent, nme.apply, mt: MethodType)
+      if parent.derivesFrom(defn.ErasedFunctionClass) =>
+        Some(mt)
+      case _ => None
   }
 
   object PartialFunctionOf {
@@ -1705,18 +1741,6 @@ class Definitions {
   def isFunctionNType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
-  /** Does `tp` derive from `PolyFunction` or `ErasedFunction`? */
-  def isPolyOrErasedFunctionType(tp: Type)(using Context): Boolean =
-    isPolyFunctionType(tp) || isErasedFunctionType(tp)
-
-  /** Does `tp` derive from `PolyFunction`? */
-  def isPolyFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.PolyFunctionClass)
-
-  /** Does `tp` derive from `ErasedFunction`? */
-  def isErasedFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.ErasedFunctionClass)
-
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
    *  - scala.ContextFunctionN
@@ -1724,7 +1748,9 @@ class Definitions {
    *  - PolyFunction
    */
   def isFunctionType(tp: Type)(using Context): Boolean =
-    isFunctionNType(tp) || isPolyOrErasedFunctionType(tp)
+    isFunctionNType(tp)
+    || tp.derivesFrom(defn.PolyFunctionClass)   // TODO check for refinement?
+    || tp.derivesFrom(defn.ErasedFunctionClass) // TODO check for refinement?
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     for base <- bases; tp <- paramTypes do
@@ -1825,7 +1851,7 @@ class Definitions {
     tp.stripTypeVar.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
-      case tp1 @ RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) && mt.isContextualMethod =>
+      case tp1 @ ErasedFunctionOf(mt) if mt.isContextualMethod =>
         tp1
       case tp1 =>
         if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
@@ -1845,7 +1871,7 @@ class Definitions {
         atPhase(erasurePhase)(unapply(tp))
       else
         asContextFunctionType(tp) match
-          case RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) =>
+          case ErasedFunctionOf(mt) =>
             Some((mt.paramInfos, mt.resType, mt.erasedParams))
           case tp1 if tp1.exists =>
             val args = tp1.functionArgInfos
@@ -1855,7 +1881,7 @@ class Definitions {
 
   /* Returns a list of erased booleans marking whether parameters are erased, for a function type. */
   def erasedFunctionParameters(tp: Type)(using Context): List[Boolean] = tp.dealias match {
-    case RefinedType(parent, nme.apply, mt: MethodType) => mt.erasedParams
+    case ErasedFunctionOf(mt) => mt.erasedParams
     case tp if isFunctionNType(tp) => List.fill(functionArity(tp)) { false }
     case _ => Nil
   }

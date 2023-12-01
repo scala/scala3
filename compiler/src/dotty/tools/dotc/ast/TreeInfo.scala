@@ -947,6 +947,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def isStructuralTermSelectOrApply(tree: Tree)(using Context): Boolean = {
     def isStructuralTermSelect(tree: Select) =
       def hasRefinement(qualtpe: Type): Boolean = qualtpe.dealias match
+        case defn.PolyOrErasedFunctionOf(_) =>
+          false
         case RefinedType(parent, rname, rinfo) =>
           rname == tree.name || hasRefinement(parent)
         case tp: TypeProxy =>
@@ -959,10 +961,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           false
       !tree.symbol.exists
       && tree.isTerm
-      && {
-        val qualType = tree.qualifier.tpe
-        hasRefinement(qualType) && !defn.isPolyOrErasedFunctionType(qualType)
-      }
+      && hasRefinement(tree.qualifier.tpe)
     def loop(tree: Tree): Boolean = tree match
       case TypeApply(fun, _) =>
         loop(fun)
