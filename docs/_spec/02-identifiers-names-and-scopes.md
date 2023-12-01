@@ -8,15 +8,15 @@ chapter: 2
 
 Names in Scala identify types, values, methods, and classes which are collectively called _entities_.
 Names are introduced by local
-[definitions and declarations](04-basic-declarations-and-definitions.html#basic-declarations-and-definitions),
+[definitions](04-basic-definitions.html#basic-definitions),
 [inheritance](05-classes-and-objects.html#class-members),
-[import clauses](04-basic-declarations-and-definitions.html#import-clauses), or
+[import clauses](04-basic-definitions.html#import-clauses), or
 [package clauses](09-top-level-definitions.html#packagings)
 which are collectively called _bindings_.
 
 Bindings of different kinds have precedence defined on them:
 
-1. Definitions and declarations that are local, inherited, or made available by a package clause and also defined in the same compilation unit as the reference to them, have the highest precedence.
+1. Definitions that are local, inherited, or made available by a package clause and also defined in the same compilation unit as the reference to them, have the highest precedence.
 1. Explicit imports have the next highest precedence.
 1. Wildcard imports have the next highest precedence.
 1. Definitions made available by a package clause, but not also defined in the same compilation unit as the reference to them, as well as imports which are supplied by the compiler but not explicitly written in source code, have the lowest precedence.
@@ -48,7 +48,7 @@ A reference to an unqualified (type- or term-) identifier ´x´ is bound by the 
 
 It is an error if no such binding exists.
 If ´x´ is bound by an import clause, then the simple name ´x´ is taken to be equivalent to the qualified name to which ´x´ is mapped by the import clause.
-If ´x´ is bound by a definition or declaration, then ´x´ refers to the entity introduced by that binding.
+If ´x´ is bound by a definition, then ´x´ refers to the entity introduced by that binding.
 In that case, the type of ´x´ is the type of the referenced entity.
 
 A reference to a qualified (type- or term-) identifier ´e.x´ refers to the member of the type ´T´ of ´e´ which has the name ´x´ in the same namespace as the identifier.

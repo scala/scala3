@@ -3541,12 +3541,8 @@ object Parsers {
     /** Def      ::= val PatDef
      *             | var VarDef
      *             | def DefDef
-     *             | type {nl} TypeDcl
+     *             | type {nl} TypeDef
      *             | TmplDef
-     *  Dcl      ::= val ValDcl
-     *             | var ValDcl
-     *             | def DefDcl
-     *             | type {nl} TypeDcl
      *  EnumCase ::= `case' (id ClassConstr [`extends' ConstrApps]] | ids)
      */
     def defOrDcl(start: Int, mods: Modifiers): Tree = in.token match {
@@ -3567,12 +3563,10 @@ object Parsers {
         tmplDef(start, mods)
     }
 
-    /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
-     *            |  Pattern2 [‘:’ Type] ‘=’ Expr
+    /** PatDef  ::=  ids [‘:’ Type] [‘=’ Expr]
+     *            |  Pattern2 [‘:’ Type] [‘=’ Expr]
      *  VarDef  ::=  PatDef
-     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
-     *  ValDcl  ::=  id {`,' id} `:' Type
-     *  VarDcl  ::=  id {`,' id} `:' Type
+     *            |  id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
      */
     def patDefOrDcl(start: Offset, mods: Modifiers): Tree = atSpan(start, nameStart) {
       val first = pattern2()
@@ -3621,9 +3615,8 @@ object Parsers {
       }
     }
 
-    /** DefDef  ::=  DefSig [‘:’ Type] ‘=’ Expr
+    /** DefDef  ::=  DefSig [‘:’ Type] [‘=’ Expr]
      *            |  this TypelessClauses [DefImplicitClause] `=' ConstrExpr
-     *  DefDcl  ::=  DefSig `:' Type
      *  DefSig  ::=  id [DefTypeParamClause] DefTermParamClauses
      *
      * if clauseInterleaving is enabled:
@@ -3721,7 +3714,7 @@ object Parsers {
         argumentExprss(mkApply(Ident(nme.CONSTRUCTOR), argumentExprs()))
       }
 
-    /** TypeDcl ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
+    /** TypeDef ::=  id [TypeParamClause] {FunParamClause} TypeBounds [‘=’ Type]
      */
     def typeDefOrDcl(start: Offset, mods: Modifiers): Tree = {
       newLinesOpt()
@@ -4208,7 +4201,6 @@ object Parsers {
      *  TemplateStat     ::= Import
      *                     | Export
      *                     | Annotations Modifiers Def
-     *                     | Annotations Modifiers Dcl
      *                     | Extension
      *                     | Expr1
      *                     |
@@ -4238,10 +4230,10 @@ object Parsers {
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
-     *  RefineStat       ::=  ‘val’ VarDcl
-     *                     |  ‘def’ DefDcl
-     *                     |  ‘type’ {nl} TypeDcl
-     *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
+     *  RefineStat       ::=  ‘val’ VarDef
+     *                     |  ‘def’ DefDef
+     *                     |  ‘type’ {nl} TypeDef
+     *  (in reality we admit class defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
       val stats = new ListBuffer[Tree]
