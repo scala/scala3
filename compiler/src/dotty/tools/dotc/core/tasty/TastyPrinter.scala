@@ -202,7 +202,8 @@ class TastyPrinter(bytes: Array[Byte]) {
       sb.append(s"\n  source paths:\n")
       val sortedPath = sources.toSeq.sortBy(_._1.index)
       for ((addr, nameRef) <- sortedPath) {
-        sb.append(treeStr("%6d: ".format(addr.index)))
+        sb.append(treeStr("%6d".format(addr.index)))
+        sb.append(": ")
         sb.append(nameStr(s"${nameRef.index} [${tastyName(nameRef)}]"))
         sb.append("\n")
       }
