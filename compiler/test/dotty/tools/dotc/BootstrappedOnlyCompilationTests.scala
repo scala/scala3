@@ -128,7 +128,7 @@ class BootstrappedOnlyCompilationTests {
     val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/run-staging", withStagingOptions),
-      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
+      compileFilesInDir("tests/run-tasty-inspector", withTastyInspectorOptions)
     )
     val tests =
       if scala.util.Properties.isWin then basicTests

@@ -49,10 +49,9 @@ val experimentalDefinitionInLibrary = Set(
 
   //// New feature: capture checking
   "scala.annotation.capability",
-  "scala.annotation.internal.WithPureFuns",
-  "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
+  "scala.Pure",
   "scala.caps",
   "scala.caps$",
 
@@ -62,7 +61,15 @@ val experimentalDefinitionInLibrary = Set(
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 
+  //// New feature: -Ysafe-init-global
+  "scala.annotation.init",
+  "scala.annotation.init$",
+  "scala.annotation.init$.widen",
+  "scala.annotation.init$.region",
+
    //// New APIs: Quotes
+  // Should be stabilized in 3.4.0
+  "scala.quoted.Quotes.reflectModule.defnModule.FunctionClass",
   "scala.quoted.Quotes.reflectModule.FlagsModule.AbsOverride",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
@@ -76,21 +83,23 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newModule",
   "scala.quoted.Quotes.reflectModule.SymbolModule.freshName",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.info",
-  // Quotes for functions with erased parameters.
-  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
-  "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
-  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
-  "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
-  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass",
 
   // New feature: functions with erased parameters.
   // Need erasedDefinitions enabled.
-  "scala.runtime.ErasedFunction",
+  "scala.runtime.ErasedFunction", // will be removed (now using PolyFunction)
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
-  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass"
+  "scala.quoted.Quotes.reflectModule.defnModule.PolyFunctionClass",
+
+  // New feature: reverse method on Tuple
+  "scala.Tuple.reverse",
+  "scala.Tuple$.Helpers",
+  "scala.Tuple$.Helpers$",
+  "scala.Tuple$.Helpers$.ReverseImpl",
+  "scala.Tuple$.Reverse",
+  "scala.runtime.Tuples$.reverse"
 )
 
 
@@ -117,9 +126,9 @@ val experimentalDefinitionInLibrary = Set(
          |Found @experimental definition in library not listed:
          |${missingFromList.toSeq.sorted.mkString("\n")}
          |
-         |If added new experimental definitions to the library, add them to the list in tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala
+         |If added new experimental definitions to the library, add them to the list in tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala
          |
-         |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala"
+         |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala"
          |""".stripMargin
       )
       assert(missingInLibrary.isEmpty,
@@ -128,9 +137,9 @@ val experimentalDefinitionInLibrary = Set(
           |Listed @experimental definition was not found in the library
           |${missingInLibrary.toSeq.sorted.mkString("\n")}
           |
-          |If experimental definition was removed or stabilized, remove from the list in tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala
+          |If experimental definition was removed or stabilized, remove from the list in tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala
           |
-          |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-custom-args/tasty-inspector/stdlibExperimentalDefinitions.scala"
+          |Test only: sbt "scala3-bootstrapped/testCompilation tests/run-tasty-inspector/stdlibExperimentalDefinitions.scala"
           |""".stripMargin
         )
     }
