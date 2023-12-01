@@ -65,9 +65,9 @@ class ExtractAPI extends Phase {
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
-    val sourceFile = unit.source.file
+    val sourceFile = unit.source
     if (ctx.sbtCallback != null)
-      ctx.sbtCallback.startSource(sourceFile.file)
+      ctx.sbtCallback.startSource(sourceFile.underlyingZincFile)
 
     val apiTraverser = new ExtractAPICollector
     val classes = apiTraverser.apiSource(unit.tpdTree)
@@ -75,7 +75,7 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val pw = new PrintWriter(File(sourceFile.jpath).changeExtension("inc").toFile
+      val pw = new PrintWriter(File(sourceFile.file.jpath).changeExtension("inc").toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -85,8 +85,8 @@ class ExtractAPI extends Phase {
     if ctx.sbtCallback != null &&
       !ctx.compilationUnit.suspendedAtInliningPhase // already registered before this unit was suspended
     then
-      classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
-      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
+      classes.foreach(ctx.sbtCallback.api(sourceFile.underlyingZincFile, _))
+      mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.underlyingZincFile, _))
   }
 }
 

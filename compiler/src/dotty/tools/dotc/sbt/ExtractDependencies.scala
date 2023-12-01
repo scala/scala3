@@ -4,6 +4,7 @@ package sbt
 import scala.language.unsafeNulls
 
 import java.io.File
+import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
@@ -18,6 +19,7 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
+import dotty.tools.uncheckedNN
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
@@ -55,7 +57,7 @@ class ExtractDependencies extends Phase {
 
   override def isRunnable(using Context): Boolean = {
     def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+    super.isRunnable && (ctx.sbtCallback != null && ctx.sbtCallback.enabled() || forceRun)
   }
 
   // Check no needed. Does not transform trees
@@ -90,7 +92,7 @@ class ExtractDependencies extends Phase {
       } finally pw.close()
     }
 
-    if (ctx.sbtCallback != null) {
+    if (ctx.sbtCallback != null && ctx.sbtCallback.enabled()) {
       collector.usedNames.foreach {
         case (clazz, usedNames) =>
           val className = classNameAsString(clazz)
@@ -111,17 +113,17 @@ class ExtractDependencies extends Phase {
    */
   def recordDependency(dep: ClassDependency)(using Context): Unit = {
     val fromClassName = classNameAsString(dep.from)
-    val sourceFile = ctx.compilationUnit.source.file.file
+    val zincSourceFile = ctx.compilationUnit.source.underlyingZincFile
 
-    def binaryDependency(file: File, binaryClassName: String) =
-      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
+    def binaryDependency(file: Path, binaryClassName: String) =
+      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, zincSourceFile, dep.context)
 
     def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
       depFile match {
         case ze: ZipArchive#Entry => // The dependency comes from a JAR
           ze.underlyingSource match
-            case Some(zip) if zip.file != null =>
-              binaryDependency(zip.file, binaryClassName)
+            case Some(zip) if zip.jpath != null =>
+              binaryDependency(zip.jpath, binaryClassName)
             case _ =>
         case pf: PlainFile => // The dependency comes from a class file
           // FIXME: pf.file is null for classfiles coming from the modulepath
@@ -130,8 +132,8 @@ class ExtractDependencies extends Phase {
           // java.io.File, this means that we cannot record dependencies coming
           // from the modulepath. For now this isn't a big deal since we only
           // support having the standard Java library on the modulepath.
-          if pf.file != null then
-            binaryDependency(pf.file, binaryClassName)
+          if pf.jpath != null then
+            binaryDependency(pf.jpath, binaryClassName)
         case _ =>
           internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }
@@ -139,12 +141,16 @@ class ExtractDependencies extends Phase {
 
     val depFile = dep.to.associatedFile
     if (depFile != null) {
+      def depIsSameSource =
+        val depVF: xsbti.VirtualFile | Null = ctx.zincVirtualFiles.uncheckedNN.get(depFile.absolutePath)
+        depVF != null && depVF.id() == zincSourceFile.id()
+
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
         processExternalDependency(depFile, dep.to.binaryClassName)
-      } else if (allowLocal || depFile.file != sourceFile) {
+      else if (allowLocal || !depIsSameSource /* old: depFile.file != sourceFile.file */) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(dep.to)

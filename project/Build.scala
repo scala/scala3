@@ -551,7 +551,7 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
-        Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
+        Dependencies.compilerInterface,
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
         "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
@@ -668,7 +668,8 @@ object Build {
           val dottyTastyInspector = jars("scala3-tasty-inspector")
           val dottyInterfaces = jars("scala3-interfaces")
           val tastyCore = jars("tasty-core")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore).mkString(File.pathSeparator)))
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
         } else run(args)
       },
 
@@ -707,7 +708,8 @@ object Build {
           val dottyTastyInspector = jars("scala3-tasty-inspector")
           val tastyCore = jars("tasty-core")
           val asm = findArtifactPath(externalDeps, "scala-asm")
-          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
         val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
@@ -1051,8 +1053,7 @@ object Build {
       // when sbt reads the settings.
       Test / test := (LocalProject("scala3-sbt-bridge-tests") / Test / test).value,
 
-      // The `newCompilerInterface` is backward compatible with the `oldCompilerInterface`
-      libraryDependencies += Dependencies.newCompilerInterface % Provided
+      libraryDependencies += Dependencies.compilerInterface % Provided
     )
 
   // We use a separate project for the bridge tests since they can only be run

@@ -30,7 +30,7 @@ import scala.tools.asm
 import scala.tools.asm.tree._
 import tpd._
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.util.NoSourcePosition
+import dotty.tools.dotc.util.{NoSourcePosition, SourceFile}
 
 
 class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( val bTypes: BTypesFromSymbols[int.type]) { self =>
@@ -106,7 +106,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
   }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: interfaces.SourceFile): AbstractFile => Unit = clsFile => {
+  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: SourceFile): AbstractFile => Unit = clsFile => {
     val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
       (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
     }
@@ -116,10 +116,10 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
       ctx.compilerCallback.onClassGenerated(sourceFile, convertAbstractFile(clsFile), className)
 
     if (ctx.sbtCallback != null) {
-      val jSourceFile = sourceFile.jfile.orElse(null)
+      val jSourceFile = sourceFile.underlyingZincFile
       val cb = ctx.sbtCallback
-      if (isLocal) cb.generatedLocalClass(jSourceFile, clsFile.file)
-      else cb.generatedNonLocalClass(jSourceFile, clsFile.file, className, fullClassName)
+      if (isLocal) cb.generatedLocalClass(jSourceFile, clsFile.jpath)
+      else cb.generatedNonLocalClass(jSourceFile, clsFile.jpath, className, fullClassName)
     }
   }
 
