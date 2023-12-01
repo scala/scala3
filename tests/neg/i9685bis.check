@@ -1,9 +1,0 @@
--- [E008] Not Found Error: tests/neg/i9685bis.scala:25:4 ---------------------------------------------------------------
-25 |  1.asdf // error
-   |  ^^^^^^
-   |  value asdf is not a member of Int, but could be made available as an extension method.
-   |
-   |  The following import might make progress towards fixing the problem:
-   |
-   |    import foo.Baz.toBaz
-   |
