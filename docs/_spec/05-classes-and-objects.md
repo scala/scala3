@@ -46,8 +46,8 @@ It is forbidden for a template's superclass constructor ´sc´ to be an [enum cl
 The _least proper supertype_ of a template is the class type or [compound type](03-types.html#compound-types) consisting of all its parent class types.
 
 The statement sequence ´\mathit{stats}´ contains member definitions that define new members or overwrite members in the parent classes.
-If the template forms part of an abstract class or trait definition, the statement part ´\mathit{stats}´ may also contain declarations of abstract members.
-If the template forms part of a concrete class definition, ´\mathit{stats}´ may still contain declarations of abstract type members, but not of abstract term members.
+If the template forms part of an abstract class or trait definition, the statement part ´\mathit{stats}´ may also contain definitions of abstract members.
+If the template forms part of a concrete class definition, ´\mathit{stats}´ may still contain definitions of abstract type members, but not of abstract term members.
 Furthermore, ´\mathit{stats}´ may in any case also contain expressions; these are executed in the order they are given as part of the initialization of a template.
 
 The sequence of template statements may be prefixed with a formal parameter definition and an arrow, e.g. `´x´ =>`, or `´x´:´T´ =>`.
@@ -321,7 +321,7 @@ Modifiers preceding a repeated definition apply to all constituent definitions.
 The rules governing the validity and meaning of a modifier are as follows.
 
 ### `private`
-The `private` modifier can be used with any definition or declaration in a template.
+The `private` modifier can be used with any definition in a template.
 Private members of a template can be accessed only from within the directly enclosing template and its companion module or [companion class](#object-definitions).
 
 The `private` modifier is also valid for [top-level](09-top-level-definitions.html#packagings) templates.
@@ -359,18 +359,17 @@ A different form of qualification is `protected[this]`.
 A member ´M´ marked with this modifier is called _object-protected_; it can be accessed only from within the object in which it is defined. That is, a selection ´p.M´ is only legal if the prefix is `this` or `´O´.this`, for some class ´O´ enclosing the reference. In addition, the restrictions for unqualified `protected` apply.
 
 ### `override`
-The `override` modifier applies to class member definitions or declarations.
-It is mandatory for member definitions or declarations that override some other concrete member definition in a parent class.
-If an `override` modifier is given, there must be at least one overridden member definition or declaration (either concrete or abstract).
+The `override` modifier applies to class member definitions.
+It is mandatory for member definitions that override some other concrete member definition in a parent class.
+If an `override` modifier is given, there must be at least one overridden member definition (either concrete or abstract).
 
 ### `abstract override`
 The `override` modifier has an additional significance when combined with the `abstract` modifier.
 That modifier combination is only allowed for value members of traits.
 
-We call a member ´M´ of a template _incomplete_ if it is either abstract (i.e. defined by a declaration), or it is labeled `abstract` and `override` and every member overridden by ´M´ is again incomplete.
+We call a member ´M´ of a template _incomplete_ if it is either abstract, or it is labeled `abstract` and `override` and every member overridden by ´M´ is again incomplete.
 
 Note that the `abstract override` modifier combination does not influence the concept whether a member is concrete or abstract.
-A member is _abstract_ if only a declaration is given for it; it is _concrete_ if a full definition is given.
 
 ### `abstract`
 The `abstract` modifier is used in class definitions.
@@ -387,7 +386,7 @@ A `final` class member definition may not be overridden in subclasses.
 A `final` class may not be inherited by a template.
 `final` is redundant for object definitions.
 Members of final classes or objects are implicitly also final, so the `final` modifier is generally redundant for them, too.
-Note, however, that [constant value definitions](04-basic-declarations-and-definitions.html#value-declarations-and-definitions) do require an explicit `final` modifier, even if they are defined in a final class or object.
+Note, however, that [constant value definitions](04-basic-definitions.html#value-definitions) do require an explicit `final` modifier, even if they are defined in a final class or object.
 `final` is permitted for abstract classes but it may not be applied to traits or incomplete members, and it may not be combined in one modifier list with `sealed`.
 
 ### `sealed`
@@ -507,15 +506,15 @@ Here,
 
     If a class has no formal parameter section that is not implicit, an empty parameter section `()` is assumed.
 
-    If a formal parameter declaration ´x: T´ is preceded by a `val` or `var` keyword, an accessor (getter) [definition](04-basic-declarations-and-definitions.html#variable-declarations-and-definitions) for this parameter is implicitly added to the class.
+    If a formal parameter definition ´x: T´ is preceded by a `val` or `var` keyword, an accessor [definition](04-basic-definitions.html#value-definitions) for this parameter is implicitly added to the class.
 
-    The getter introduces a value member ´x´ of class ´c´ that is defined as an alias of the parameter.
-    If the introducing keyword is `var`, a setter accessor [`´x´_=`](04-basic-declarations-and-definitions.html#variable-declarations-and-definitions) is also implicitly added to the class.
-    In invocation of that setter  `´x´_=(´e´)` changes the value of the parameter to the result of evaluating ´e´.
+    The accessor introduces a value member ´x´ of class ´c´ that is defined as an alias of the parameter.
+    If the introducing keyword is `var`, a setter accessor [`´x´_=`](04-basic-definitions.html#variable-definitions) is also implicitly added to the class.
+    An invocation of that setter `´x´_=(´e´)` changes the value of the parameter to the result of evaluating ´e´.
 
-    The formal parameter declaration may contain modifiers, which then carry over to the accessor definition(s).
+    The formal parameter definition may contain modifiers, which then carry over to the accessor definition(s).
     When access modifiers are given for a parameter, but no `val` or `var` keyword, `val` is assumed.
-    A formal parameter prefixed by `val` or `var` may not at the same time be a [call-by-name parameter](04-basic-declarations-and-definitions.html#by-name-parameters).
+    A formal parameter prefixed by `val` or `var` may not at the same time be a [call-by-name parameter](04-basic-definitions.html#by-name-parameters).
 
   - ´t´ is a [template](#templates) of the form
 
@@ -633,7 +632,7 @@ If the case class definition contains an empty value parameter list, the `unappl
 def unapply[´\mathit{tps}\,´](´x´: ´c´[´\mathit{tps}\,´]) = x ne null
 ```
 
-The name of the `unapply` method is changed to `unapplySeq` if the first parameter section ´\mathit{ps}_1´ of ´c´ ends in a [repeated parameter](04-basic-declarations-and-definitions.html#repeated-parameters).
+The name of the `unapply` method is changed to `unapplySeq` if the first parameter section ´\mathit{ps}_1´ of ´c´ ends in a [repeated parameter](04-basic-definitions.html#repeated-parameters).
 
 A method named `copy` is implicitly added to every case class unless the class already has a member (directly defined or inherited) with that name, or the class has a repeated parameter.
 The method is defined as follows:
@@ -898,7 +897,7 @@ Such a class ´C´ is conceptually seen as a pair of a Scala class that contains
 Generally, a _companion module_ of a class is an object which has the same name as the class and is defined in the same scope and compilation unit.
 Conversely, the class is called the _companion class_ of the module.
 
-Very much like a concrete class definition, an object definition may still contain declarations of abstract type members, but not of abstract term members.
+Very much like a concrete class definition, an object definition may still contain definitions of abstract type members, but not of abstract term members.
 
 ## Enum Definitions
 
