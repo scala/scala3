@@ -49,15 +49,16 @@ import scala.compiletime.uninitialized
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
+ *  @param compilationUnitInfo  the compilation unit info of the TASTy
  *  @param posUnpicklerOpt     the unpickler for positions, if it exists
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
  *  @param attributeUnpicklerOpt the unpickler for attributes, if it exists
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameTable,
+                    compilationUnitInfo: CompilationUnitInfo,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    commentUnpicklerOpt: Option[CommentUnpickler],
-                    attributeUnpicklerOpt: Option[AttributeUnpickler]) {
+                    commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler.*
   import tpd.*
 
@@ -92,22 +93,21 @@ class TreeUnpickler(reader: TastyReader,
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = uninitialized
 
-  /** Was unpickled class compiled with capture checks? */
-  private val withCaptureChecks: Boolean =
-    attributeUnpicklerOpt.exists(_.attributes.captureChecked)
+  /** TASTy attributes */
+  private val attributes: Attributes = compilationUnitInfo.tastyInfo.get.attributes
 
-  private val unpicklingScala2Library =
-    attributeUnpicklerOpt.exists(_.attributes.scala2StandardLibrary)
+  /** Was unpickled class compiled with capture checks? */
+  private val withCaptureChecks: Boolean = attributes.captureChecked
+
+  private val unpicklingScala2Library = attributes.scala2StandardLibrary
 
   /** This dependency was compiled with explicit nulls enabled */
   // TODO Use this to tag the symbols of this dependency as compiled with explicit nulls (see use of unpicklingScala2Library).
-  private val explicitNulls =
-    attributeUnpicklerOpt.exists(_.attributes.explicitNulls)
+  private val explicitNulls = attributes.explicitNulls
 
-  private val unpicklingJava =
-    attributeUnpicklerOpt.exists(_.attributes.isJava)
+  private val unpicklingJava = attributes.isJava
 
-  private val isOutline = attributeUnpicklerOpt.exists(_.attributes.isOutline)
+  private val isOutline = attributes.isOutline
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -636,8 +636,8 @@ class TreeUnpickler(reader: TastyReader,
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(subReader(start, end)))
-            if (isClass)
-              newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord)
+            if isClass then
+              newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord, compilationUnitInfo)
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }

@@ -228,11 +228,17 @@ class TastyPrinter(bytes: Array[Byte]) {
     import dotty.tools.tasty.TastyFormat.*
     def unpickle(reader: TastyReader, tastyName: NameTable): Unit = {
       import reader.*
-      val attributes = new AttributeUnpickler(reader).attributes
       sb.append(s"\n\nAttributes (${reader.endAddr.index - reader.startAddr.index} bytes, starting from $base):\n")
-
-      for tag <- attributes.booleanTags do
-        sb.append("  ").append(attributeTagToString(tag)).append("\n")
+      while !isAtEnd do
+        val tag = readByte()
+        sb.append("  ").append(attributeTagToString(tag))
+        if isBooleanAttrTag(tag) then ()
+        else if isStringAttrTag(tag) then
+          val utf8Ref = readNameRef()
+          val value = nameAtRef(utf8Ref).toString
+          sb.append(nameStr(s" ${utf8Ref.index} [$value]"))
+        sb.append("\n")
+      sb.result
     }
   }
 

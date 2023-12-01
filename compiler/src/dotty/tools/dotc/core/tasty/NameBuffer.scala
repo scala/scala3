@@ -49,6 +49,10 @@ class NameBuffer extends TastyBuffer(10000) {
     }
   }
 
+  def utf8Index(value: String): NameRef =
+    import Decorators.toTermName
+    nameIndex(value.toTermName)
+
   private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit = {
     val lengthAddr = currentAddr
     var i = 0

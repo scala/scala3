@@ -420,20 +420,9 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
   private val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
       val tastyBytes = tastyFile.toByteArray
-      new tasty.DottyUnpickler(tastyBytes) // reads header and name table
+      new tasty.DottyUnpickler(tastyFile, tastyBytes) // reads header and name table
 
-  val compilationUnitInfo: CompilationUnitInfo | Null =
-    val tastyHeader = unpickler.unpickler.header
-    val tastyVersion = TastyVersion(
-      tastyHeader.majorVersion,
-      tastyHeader.minorVersion,
-      tastyHeader.experimentalVersion,
-    )
-    val attributes = unpickler.tastyAttributes
-    new CompilationUnitInfo(
-      tastyFile,
-      tastyInfo = Some(TastyInfo(tastyVersion, attributes)),
-    )
+  val compilationUnitInfo: CompilationUnitInfo | Null = unpickler.compilationUnitInfo
 
   def description(using Context): String = "TASTy file " + tastyFile.toString
 

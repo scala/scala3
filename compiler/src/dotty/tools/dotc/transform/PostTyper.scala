@@ -417,12 +417,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                   if illegalRefs.nonEmpty then
                     report.error(
                       em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
-            // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package) then
+              // Add SourceFile annotation to top-level classes
+              // TODO remove this annotation once the reference compiler uses the TASTy source file attribute.
               if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-                sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
+                sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)
