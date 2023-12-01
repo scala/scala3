@@ -15,6 +15,7 @@ class AttributeUnpickler(reader: TastyReader, nameAtRef: NameTable):
     val booleanTags = BitSet.newBuilder
     val stringTagValue = List.newBuilder[(Int, String)]
 
+    var lastTag = -1
     while !isAtEnd do
       val tag = readByte()
       if isBooleanAttrTag(tag) then
@@ -25,6 +26,11 @@ class AttributeUnpickler(reader: TastyReader, nameAtRef: NameTable):
         stringTagValue += tag -> value
       else
         assert(false, "unknown attribute tag: " + tag)
+
+      assert(tag != lastTag, s"duplicate attribute tag: $tag")
+      assert(tag > lastTag, s"attribute tags are not ordered: $tag after $lastTag")
+      lastTag = tag
+    end while
 
     new Attributes(booleanTags.result(), stringTagValue.result())
   }

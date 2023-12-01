@@ -281,6 +281,7 @@ Standard Section: "Attributes" Attribute*
                   OUTLINEattr
                   SOURCEFILEattr Utf8Ref
 ```
+Attribute tags cannot be repeated in an attribute section. Attributes are ordered by the tag ordinal.
 
 Note: Attribute tags are grouped into categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
       Unassigned categories can be used to extend and existing category or to add new kinds of attributes
