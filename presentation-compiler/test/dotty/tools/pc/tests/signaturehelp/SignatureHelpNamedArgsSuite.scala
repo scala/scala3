@@ -183,3 +183,48 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |                                     ^^^^^^^^^^^^^
          |""".stripMargin
     )
+
+  @Test def `named-param-before-first` =
+    check(
+      """|object O:
+         |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
+         |  method(@@paramC = 3)
+         |""".stripMargin,
+      """|method([paramC: Int], [paramA: Int], [paramB: Int], [paramD: Int]): Unit
+         |       ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-param-inside-reordered-last-arg` =
+    check(
+      """|object O:
+         |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
+         |  method(paramB = 3, paramA = 1, @@paramD = 3, paramC = 1)
+         |""".stripMargin,
+      """|method([paramB: Int], [paramA: Int], [paramD: Int], [paramC: Int]): Unit
+         |                                     ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-param-inside-reorderded-last-arg-1` =
+    check(
+      """|object O:
+         |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
+         |  method(paramB = 3, paramA = 1, p@@aramD = 3, paramC = 1)
+         |""".stripMargin,
+      """|method([paramB: Int], [paramA: Int], [paramD: Int], [paramC: Int]): Unit
+         |                                     ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-param-before-reorderded-last-arg-1` =
+    check(
+      """|object O:
+         |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
+         |  method(paramB = 3, paramA = 1,@@ paramD = 3, paramC = 1)
+         |""".stripMargin,
+      """|method([paramB: Int], [paramA: Int], [paramD: Int], [paramC: Int]): Unit
+         |                                     ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+

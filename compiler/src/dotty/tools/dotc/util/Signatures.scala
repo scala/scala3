@@ -227,12 +227,16 @@ object Signatures {
         case -1 if untpdArgs.isEmpty => 0
         case -1 =>
           commaIndex(untpdArgs, span) match
+            // comma is after CURSOR, so we are in parameter a
             case Some(index) if index <= span.start => untpdArgs.takeWhile(_.span.start < span.start).length
+            // comma is before CURSOR, so we are in parameter b
             case Some(index) => untpdArgs.takeWhile(_.span.start < span.start).length - 1
+            // we are either in first or last parameter
             case None =>
-              if untpdArgs.head.span.start > span.start then 0
+              if untpdArgs.head.span.start >= span.start then 0
               else untpdArgs.length - 1 max 0
 
+        // special case if we pass more arguments than function has parameters
         case n => n min (alternativeSymbol.paramSymss(paramssListIndex).length - 1)
 
       val firstOrderedParams =
@@ -240,10 +244,10 @@ object Signatures {
         val untpdParams = untpdArgs.map(_.span)
         originalParams.zip(untpdParams).takeWhile((original, untpd) => original == untpd).length
 
-      val reorderedNamedArgs = untpdArgs.drop(firstOrderedParams).takeWhile(_.span.start < span.start).collect:
+      val reorderedNamedArgs = untpdArgs.drop(firstOrderedParams).takeWhile(_.span.start <= span.start).collect:
         case namedArg: untpd.NamedArg => namedArg.name.show
 
-      val namedArgsAfterCursor = untpdArgs.drop(firstOrderedParams).dropWhile(_.span.start < span.start).collect:
+      val namedArgsAfterCursor = untpdArgs.drop(currentParamsIndex + 1).dropWhile(_.span.start <= span.start).collect:
         case namedArg: untpd.NamedArg => namedArg.name.show
 
       val pre = treeQualifier(fun)
@@ -256,7 +260,12 @@ object Signatures {
     else
       (0, 0, Nil)
 
-  /** Parser ignores white spaces on next lines, we have to manually find the index of comma */
+  /** Parser ignores chars between arguments, we have to manually find the index of comma
+   *  @param untpdArgs List of applied untyped arguments
+   *  @param span      The position of the cursor
+   *
+   *  @return None if we are in first or last parameter, comma index otherwise
+   */
   private def commaIndex(untpdArgs: List[untpd.Tree], span: Span)(using Context): Option[Int] =
     val previousArgIndex = untpdArgs.lastIndexWhere(_.span.end < span.start)
     for
