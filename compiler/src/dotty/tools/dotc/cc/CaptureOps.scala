@@ -236,6 +236,22 @@ extension (tp: Type)
    *  (2) all covariant occurrences of cap replaced by `x*`, provided there
    *  are no occurrences in `T` at other variances. (1) is standard, whereas
    *  (2) is new.
+   * 
+   *  For (2), multiple-flipped covariant occurrences of cap won't be replaced.
+   *  In other words,
+   *
+   *    - For xs: List[File^]  ==>  List[File^{xs*}], the cap is replaced;
+   *    - while f: [R] -> (op: File^ => R) -> R remains unchanged.
+   * 
+   *  Without this restriction, the signature of functions like withFile:
+   * 
+   *    (path: String) -> [R] -> (op: File^ => R) -> R
+   *
+   *  could be refined to
+   * 
+   *    (path: String) -> [R] -> (op: File^{withFile*} => R) -> R
+   *
+   *  which is clearly unsound.
    *
    *  Why is this sound? Covariant occurrences of cap must represent capabilities
    *  that are reachable from `x`, so they are included in the meaning of `{x*}`.
@@ -245,18 +261,27 @@ extension (tp: Type)
   def withReachCaptures(ref: Type)(using Context): Type =
     object narrowCaps extends TypeMap:
       var ok = true
-      def apply(t: Type) = t.dealias match
-        case t1 @ CapturingType(p, cs) if cs.isUniversal =>
-          if variance > 0 then
-            t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
-          else
-            ok = false
-            t
-        case _ => t match
-          case t @ CapturingType(p, cs) =>
-            t.derivedCapturingType(apply(p), cs) // don't map capture set variables
-          case t =>
-            mapOver(t)
+
+      /** Has the variance been flipped at this point? */
+      private var isFlipped: Boolean = false
+
+      def apply(t: Type) =
+        val saved = isFlipped
+        try
+          if variance <= 0 then isFlipped = true
+          t.dealias match
+            case t1 @ CapturingType(p, cs) if cs.isUniversal =>
+              if variance > 0 then
+                t1.derivedCapturingType(apply(p), if isFlipped then cs else ref.reach.singletonCaptureSet)
+              else
+                ok = false
+                t
+            case _ => t match
+              case t @ CapturingType(p, cs) =>
+                t.derivedCapturingType(apply(p), cs) // don't map capture set variables
+              case t =>
+                mapOver(t)
+        finally isFlipped = saved
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
         val tp1 = narrowCaps(tp)
