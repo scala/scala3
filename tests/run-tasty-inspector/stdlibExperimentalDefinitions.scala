@@ -73,6 +73,10 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: fromNullable for explicit nulls
   "scala.Predef$.fromNullable",
+
+  // New feature: named tuples
+  "scala.NamedTuple",
+  "scala.NamedTuple$",
 )
 
 
