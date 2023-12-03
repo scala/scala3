@@ -33,6 +33,7 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val into = experimental("into")
+  val namedTuples = experimental("namedTuples")
 
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
