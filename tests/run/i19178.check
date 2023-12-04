@@ -1,0 +1,4 @@
+Failure(java.util.NoSuchElementException: enum Foo has no case with ordinal: 3)
+Failure(java.lang.IllegalArgumentException: enum Foo has no case with name: Bar)
+Failure(java.util.NoSuchElementException: enum bar.Bar has no case with ordinal: 4)
+Failure(java.lang.IllegalArgumentException: enum bar.Bar has no case with name: Baz)
