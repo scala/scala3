@@ -35,6 +35,13 @@ class PatternMatcher extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
+  private val InInlinedCode = new util.Property.Key[Boolean]
+  private def inInlinedCode(using Context) = ctx.property(InInlinedCode).getOrElse(false)
+
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    if inInlinedCode then ctx
+    else ctx.fresh.setProperty(InInlinedCode, true)
+
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else {
@@ -46,9 +53,10 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      // check exhaustivity and unreachability
-      SpaceEngine.checkExhaustivity(tree)
-      SpaceEngine.checkRedundancy(tree)
+      if !inInlinedCode then
+        // check exhaustivity and unreachability
+        SpaceEngine.checkExhaustivity(tree)
+        SpaceEngine.checkRedundancy(tree)
 
       translated.ensureConforms(matchType)
     }
