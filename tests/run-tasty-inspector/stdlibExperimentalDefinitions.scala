@@ -92,12 +92,10 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
 
   // New feature: reverse method on Tuple
-  "scala.Tuple.reverse",
-  "scala.Tuple$.Helpers",
-  "scala.Tuple$.Helpers$",
-  "scala.Tuple$.Helpers$.ReverseImpl",
-  "scala.Tuple$.Reverse",
-  "scala.runtime.Tuples$.reverse"
+  "scala.Tuple.reverse", // can be stabilized in 3.4
+  "scala.Tuple$.Reverse", // can be stabilized in 3.4
+  "scala.Tuple$.ReverseOnto", // can be stabilized in 3.4
+  "scala.runtime.Tuples$.reverse", // can be stabilized in 3.4
 )
 
 
