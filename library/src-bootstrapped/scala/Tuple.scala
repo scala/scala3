@@ -9,35 +9,42 @@ sealed trait Tuple extends Product {
   import Tuple.*
 
   /** Create a copy of this tuple as an Array */
+  private[Tuple]
   inline def toArray: Array[Object] =
     runtime.Tuples.toArray(this)
 
   /** Create a copy of this tuple as a List */
+  private[Tuple]
   inline def toList: List[Union[this.type]] =
     this.productIterator.toList
       .asInstanceOf[List[Union[this.type]]]
 
   /** Create a copy of this tuple as an IArray */
+  private[Tuple]
   inline def toIArray: IArray[Object] =
     runtime.Tuples.toIArray(this)
 
   /** Return a copy of `this` tuple with an element appended */
+  private[Tuple]
   inline def :* [This >: this.type <: Tuple, L] (x: L): Append[This, L] =
     runtime.Tuples.append(x, this).asInstanceOf[Append[This, L]]
 
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
    */
+  private[Tuple]
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
     runtime.Tuples.cons(x, this).asInstanceOf[H *: This]
 
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
+  private[Tuple]
   inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
     runtime.Tuples.concat(this, that).asInstanceOf[Concat[This, that.type]]
 
   /** Return the size (or arity) of the tuple */
+  private[Tuple]
   inline def size[This >: this.type <: Tuple]: Size[This] =
     runtime.Tuples.size(this).asInstanceOf[Size[This]]
 
@@ -48,6 +55,7 @@ sealed trait Tuple extends Product {
    *  tuple types has a `EmptyTuple` tail. Otherwise the result type is
    *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
    */
+  private[Tuple]
   inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
     runtime.Tuples.zip(this, t2).asInstanceOf[Zip[This, T2]]
 
@@ -56,12 +64,14 @@ sealed trait Tuple extends Product {
    *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
    *  to be the cons type.
    */
+  private[Tuple]
   inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
    *  of its first n elements.
    */
+  private[Tuple]
   inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
     runtime.Tuples.take(this, n).asInstanceOf[Take[This, n.type]]
 
@@ -69,6 +79,7 @@ sealed trait Tuple extends Product {
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
    *  all its elements except the first n ones.
    */
+  private[Tuple]
   inline def drop[This >: this.type <: Tuple](n: Int): Drop[This, n.type] =
     runtime.Tuples.drop(this, n).asInstanceOf[Drop[This, n.type]]
 
@@ -76,18 +87,116 @@ sealed trait Tuple extends Product {
    *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
    *  of the remaining elements.
    */
+  private[Tuple]
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
-
-  /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
-   *  consisting all its elements.
-   */
-  @experimental
-  inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
-    runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
 
 object Tuple {
+
+  // TODO should it be `extension [H](x: H) def *:(tail: Tuple): H *: tuple.type` ?
+  extension [H, Tail <: Tuple](x: H)
+    /** Return a new tuple by prepending the element to `tail` tuple.
+     *  This operation is O(tail.size)
+     */
+    def *:(tail: Tail): H *: Tail = runtime.Tuples.cons(x, tail).asInstanceOf[H *: Tail]
+
+  extension [This <: Tuple](tuple: This)
+    /** Get the head of this tuple */
+    def head: Head[This] & Head[tuple.type] =
+      runtime.Tuples.apply(tuple, 0).asInstanceOf[Head[This] & Head[tuple.type]]
+
+    /** Get the tail of this tuple.
+     *  This operation is O(tuple.size)
+     */
+    def tail: Tail[This] & Tail[tuple.type] =
+      runtime.Tuples.tail(tuple).asInstanceOf[Tail[This] & Tail[tuple.type]]
+
+    /** Return the size (or arity) of the tuple */
+    def size: Size[This] & Size[tuple.type] =
+      runtime.Tuples.size(tuple).asInstanceOf[Size[This] & Size[tuple.type]]
+
+    /** Get the i-th element of this tuple.
+     *  Equivalent to productElement but with a precise return type.
+     */
+    def apply(n: Int): Elem[This, n.type] & Elem[tuple.type, n.type] =
+      runtime.Tuples.apply(tuple, n).asInstanceOf[Elem[This, n.type] & Elem[tuple.type, n.type]]
+
+    /** Get the initial part of the tuple without its last element */
+    def init: Init[This] & Init[tuple.type] =
+      runtime.Tuples.init(tuple).asInstanceOf[Init[This] & Init[tuple.type]]
+
+    /** Get the last of this tuple */
+    def last: Last[This] & Last[tuple.type] =
+      runtime.Tuples.last(tuple).asInstanceOf[Last[This] & Last[tuple.type]]
+
+    /** Return a copy of `tuple` with an element appended */
+    def :*[X] (x: X): Append[This, X] & Append[tuple.type, X] =
+      runtime.Tuples.append(x, tuple).asInstanceOf[Append[This, X] & Append[tuple.type, X]]
+
+    /** Return a new tuple by concatenating `this` tuple with `that` tuple.
+     *  This operation is O(this.size + that.size)
+     */
+    def ++(that: Tuple): Concat[This, that.type] & Concat[tuple.type, that.type] =
+      runtime.Tuples.concat(tuple, that).asInstanceOf[Concat[This, that.type] & Concat[tuple.type, that.type]]
+
+    /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
+     *  consisting all its elements.
+     */
+    @experimental
+    def reverse: Reverse[This] & Reverse[tuple.type] =
+      runtime.Tuples.reverse(tuple).asInstanceOf[Reverse[This] & Reverse[tuple.type]]
+
+    /** Given two tuples, `(a1, ..., an)` and `(a1, ..., an)`, returns a tuple
+     *  `((a1, b1), ..., (an, bn))`. If the two tuples have different sizes,
+     *  the extra elements of the larger tuple will be disregarded.
+     *  The result is typed as `((A1, B1), ..., (An, Bn))` if at least one of the
+     *  tuple types has a `EmptyTuple` tail. Otherwise the result type is
+     *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
+     */
+    // TODO change signature? def zip[That <: Tuple](that: That): Zip[This, tuple.type] & Zip[tuple.type, tuple.type] =
+    def zip[That <: Tuple](that: That): Zip[This, That] & Zip[tuple.type, That] =
+      runtime.Tuples.zip(tuple, that).asInstanceOf[Zip[This, That] & Zip[tuple.type, That]]
+
+     /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
+     *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
+     *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
+     *  to be the cons type.
+     */
+    def map[F[_]](f: [t] => t => F[t]): Map[This, F] & Map[tuple.type, F] =
+      runtime.Tuples.map(tuple, f).asInstanceOf[Map[This, F] & Map[tuple.type, F]]
+
+    /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
+     *  of its first n elements.
+     */
+    def take(n: Int): Take[This, n.type] & Take[tuple.type, n.type] =
+      runtime.Tuples.take(tuple, n).asInstanceOf[Take[This, n.type] & Take[tuple.type, n.type]]
+
+    /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
+     *  all its elements except the first n ones.
+     */
+    def drop(n: Int): Drop[This, n.type] & Take[tuple.type, n.type] =
+      runtime.Tuples.drop(tuple, n).asInstanceOf[Drop[This, n.type] & Take[tuple.type, n.type]]
+
+    /** Given a tuple `(a1, ..., am)`, returns a pair of the tuple `(a1, ..., an)`
+     *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
+     *  of the remaining elements.
+     */
+    def splitAt(n: Int): Split[This, n.type] & Split[tuple.type, n.type] =
+      runtime.Tuples.splitAt(tuple, n).asInstanceOf[Split[This, n.type] & Split[tuple.type, n.type]]
+
+    /** Create a copy of this tuple as a List */
+    def toList: List[Union[This]] & List[Union[tuple.type]] =
+      tuple.productIterator.toList.asInstanceOf[List[Union[This]] & List[Union[tuple.type]]]
+  end extension
+
+  extension (tuple: Tuple)
+    /** Create a copy of this tuple as an Array */
+    def toArray: Array[AnyRef] = runtime.Tuples.toArray(tuple)
+
+    /** Create a copy of this tuple as an IArray */
+    def toIArray: IArray[AnyRef] = runtime.Tuples.toIArray(tuple)
+  end extension
 
   /** Type of a tuple with an element appended */
   type Append[X <: Tuple, Y] <: NonEmptyTuple = X match {
@@ -98,24 +207,27 @@ object Tuple {
   /** Type of the head of a tuple */
   type Head[X <: Tuple] = X match {
     case x *: _ => x
+    case EmptyTuple => Nothing
   }
 
   /** Type of the initial part of the tuple without its last element */
   type Init[X <: Tuple] <: Tuple = X match {
     case _ *: EmptyTuple => EmptyTuple
-    case x *: xs =>
-      x *: Init[xs]
+    case x *: xs => x *: Init[xs]
+    case EmptyTuple => Nothing
   }
 
   /** Type of the tail of a tuple */
   type Tail[X <: Tuple] <: Tuple = X match {
     case _ *: xs => xs
+    case EmptyTuple => Nothing
   }
 
   /** Type of the last element of a tuple */
   type Last[X <: Tuple] = X match {
     case x *: EmptyTuple => x
     case _ *: xs => Last[xs]
+    case EmptyTuple => Nothing
   }
 
   /** Type of the concatenation of two tuples */
@@ -180,6 +292,7 @@ object Tuple {
    *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
    *  where `Ct` is `EmptyTuple` if `At` or `Bt` is `EmptyTuple`, otherwise `Ct` is `Tuple`.
    */
+  // TODO should zip be covariant? type Zip[T1 <: Tuple, +T2 <: Tuple] <: Tuple = ...
   type Zip[T1 <: Tuple, T2 <: Tuple] <: Tuple = (T1, T2) match {
     case (h1 *: t1, h2 *: t2) => (h1, h2) *: Zip[t1, t2]
     case (EmptyTuple, _) => EmptyTuple
@@ -294,24 +407,29 @@ sealed trait NonEmptyTuple extends Tuple {
   /** Get the i-th element of this tuple.
    *  Equivalent to productElement but with a precise return type.
    */
+  private[NonEmptyTuple]
   inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
     runtime.Tuples.apply(this, n).asInstanceOf[Elem[This, n.type]]
 
   /** Get the head of this tuple */
+  private[NonEmptyTuple]
   inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the initial part of the tuple without its last element */
+  private[NonEmptyTuple]
   inline def init[This >: this.type <: NonEmptyTuple]: Init[This] =
     runtime.Tuples.init(this).asInstanceOf[Init[This]]
 
   /** Get the last of this tuple */
+  private[NonEmptyTuple]
   inline def last[This >: this.type <: NonEmptyTuple]: Last[This] =
     runtime.Tuples.last(this).asInstanceOf[Last[This]]
 
   /** Get the tail of this tuple.
    *  This operation is O(this.size)
    */
+  private[NonEmptyTuple]
   inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 }

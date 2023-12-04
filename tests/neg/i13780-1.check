@@ -1,7 +1,7 @@
--- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:38:24 ----------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:38:26 ----------------------------------------------------------
 38 |    case x: (h *: t) => x.head // error
    |                        ^^^^^^
-   |                      Found:    Tuple.Head[VS & h *: t]
+   |                      Found:    Tuple.Head[VS & h *: t] & Tuple.Head[(x : VS & h *: t)]
    |                      Required: h
    |
    |                      where:    VS is a type in method foo with bounds <: Tuple

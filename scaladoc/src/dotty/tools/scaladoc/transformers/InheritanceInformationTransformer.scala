@@ -3,7 +3,7 @@ package transformers
 
 class InheritanceInformationTransformer(using DocContext) extends (Module => Module):
   override def apply(original: Module): Module =
-    val subtypes = getSupertypes(original.rootPackage).groupMap(_(0))(_(1)).view.mapValues(_.distinct).toMap
+    val subtypes = getSupertypes(original.rootPackage).groupMap(_._1)(_._2).view.mapValues(_.distinct).toMap
     original.updateMembers { m =>
       val edges = getEdges(m.asLink.copy(kind = bareClasslikeKind(m.kind)), subtypes)
       val st: Seq[LinkToType] = edges.map(_._1).distinct
