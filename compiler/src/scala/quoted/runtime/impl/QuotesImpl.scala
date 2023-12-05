@@ -23,6 +23,7 @@ import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers.*
 
 import scala.reflect.TypeTest
+import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 
 object QuotesImpl {
 
@@ -70,11 +71,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
-        throw Exception(
-          s"""Expr cast exception: ${self.show}
-            |of type: ${reflect.Printer.TypeReprCode.show(reflect.asTerm(self).tpe)}
-            |did not conform to type: ${reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X])}
-            |""".stripMargin
+        throw ExprCastException(
+          expectedType = reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X]),
+          actualType = reflect.Printer.TypeReprCode.show(reflect.asTerm(self).tpe),
+          exprCode = self.show
         )
     }
   end extension
