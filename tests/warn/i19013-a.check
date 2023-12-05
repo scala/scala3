@@ -1,0 +1,6 @@
+-- [E092] Pattern Match Unchecked Warning: tests/warn/i19013-a.scala:5:13 ----------------------------------------------
+5 |  catch case e: E => Some(e) // warn
+  |             ^^^^
+  |   the type test for E cannot be checked at runtime because it refers to an abstract type member or type parameter
+  |
+  | longer explanation available when compiling with `-explain`
