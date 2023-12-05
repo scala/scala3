@@ -69,6 +69,8 @@ object CompletionItemResolver extends ItemResolver:
               fullDocstring(tr.symbol, search)
             case _ =>
               ""
+        else if gsym.isTerm && gsym.info.typeSymbol.is(Module) then
+          fullDocstring(gsym.info.typeSymbol.companion, search)
         else ""
       else gsymDoc
     else

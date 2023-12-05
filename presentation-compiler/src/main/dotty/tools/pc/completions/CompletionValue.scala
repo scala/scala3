@@ -100,6 +100,8 @@ object CompletionValue:
           s"${labelWithSuffix(printer)} -${description(printer)}"
         else s"${labelWithSuffix(printer)}${description(printer)}"
       else if symbol.isType then labelWithSuffix(printer)
+      else if symbol.isTerm && symbol.info.typeSymbol.is(Module) then
+        s"${label}${description(printer)}"
       else s"$label: ${description(printer)}"
 
     private def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =

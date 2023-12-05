@@ -25,7 +25,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |  Lis@@
         |}""".stripMargin,
       """
-        |List:  scala.collection.immutable
+        |List scala.collection.immutable
         |List - java.awt
         |List - java.util
         |List - scala.collection.immutable
@@ -647,7 +647,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|None scala
-         |NoManifest:  scala.reflect
+         |NoManifest scala.reflect
          |""".stripMargin,
       topLines = Some(2)
     )
@@ -660,8 +660,8 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|Some(value) scala
-         |Seq:  scala.collection.immutable
-         |Set:  scala.collection.immutable
+         |Seq scala.collection.immutable
+         |Set scala.collection.immutable
          |""".stripMargin,
       topLines = Some(3)
     )
