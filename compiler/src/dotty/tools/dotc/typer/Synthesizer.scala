@@ -339,7 +339,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
      *  or a TermRef to a singleton value. These are
      *  the base elements required to generate a mirror.
      */
-    def reduce(mirroredType: Type)(using Context): Either[String, MirrorSource] = mirroredType match
+    def reduce(mirroredType: Type)(using Context): Either[String, MirrorSource] = mirroredType.normalized match
       case tp: TypeRef =>
         val sym = tp.symbol
         if sym.isClass then // direct ref to a class, not an alias
