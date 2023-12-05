@@ -823,6 +823,11 @@ object Erasure {
       }
     }
 
+    override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
+      atPhase(erasurePhase):
+        checkBind(promote(tree))
+      super.typedBind(tree, pt)
+
     /** Besides normal typing, this method does uncurrying and collects parameters
      *  to anonymous functions of arity > 22.
      */

@@ -106,7 +106,7 @@ trait TraceSyntax:
         finalize(trailing(res))
         res
       catch
-        case ex: runtime.NonLocalReturnControl[T] =>
+        case ex: runtime.NonLocalReturnControl[T @unchecked] =>
           finalize(trailing(ex.value))
           throw ex
         case ex: Throwable =>

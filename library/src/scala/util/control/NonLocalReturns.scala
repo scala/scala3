@@ -42,7 +42,7 @@ object NonLocalReturns {
     val returner = new ReturnThrowable[T]
     try op(using returner)
     catch {
-      case ex: ReturnThrowable[T] =>
+      case ex: ReturnThrowable[T @unchecked] =>
        if (ex.eq(returner)) ex.result else throw ex
     }
   }
