@@ -28,11 +28,10 @@ extension [A](xs: StrictList[A])
   def concat(ys: StrictList[A]): StrictList[A] =
     if xs.isEmpty then ys
     else xs.head #: xs.tail.concat(ys)
-end extension
 
-extension [A](x: A)
-  def #:(xs1: StrictList[A]): StrictList[A] =
-    StrictCons(x, xs1)
+  def #:(x: A): StrictList[A] =
+    StrictCons(x, xs)
+end extension
 
 def tabulate[A](n: Int)(gen: Int => A) =
   def recur(i: Int): StrictList[A] =

@@ -35,12 +35,15 @@ object Result:
       case (Err(e), Ok(_))    => Err(e :: Nil)
       case (Err(e1), Err(e2)) => Err(e1 :: e2 :: Nil)
 
+  end extension
+
+  extension [U <: Tuple, E](other: Result[U, List[E]])
     /** Validate both `r` and `other`; return a tuple of successes or a list of failures.
      *  Unlike with `zip`, the right hand side `other` must be a `Result` returning a `Tuple`,
      *  and the left hand side is added to it. See `Result.empty` for a convenient
      *  right unit of chains of `*:`s.
      */
-    def *: [U <: Tuple](other: Result[U, List[E]]): Result[T *: U, List[E]] = (r, other) match
+    def *: [T](r: Result[T, E]): Result[T *: U, List[E]] = (r, other) match
       case (Ok(x), Ok(ys))     => Ok(x *: ys)
       case (Ok(_), es: Err[?]) => es
       case (Err(e), Ok(_))     => Err(e :: Nil)

@@ -12,11 +12,11 @@ class Env:
 //     */
 //   def &&:[T <: ctx.Term](trm: T)(ext: env.Extra): (ctx.Type, T, env.Extra) = (tpe, trm, ext)
 
-extension [Ctx <: Context](using ctx: Ctx)(tpe: String)(using env: Env)
-  def :#:[T <: Boolean](trm: T)(ext: env.Extra): (String, T, env.Extra) = (tpe, trm, ext)
+extension [Ctx <: Context, T <: Boolean](using ctx: Ctx)(trm: T)(using env: Env)
+  def :#:(tpe: String)(ext: env.Extra): (String, T, env.Extra) = (tpe, trm, ext)
 
-extension [A](a: A)
-  def :*:[T <: Tuple](t: T): A *: T = a *: t
+extension [T <: Tuple](t: T)
+  def :*:[A](a: A): A *: T = a *: t
 
 @main def Test =
 

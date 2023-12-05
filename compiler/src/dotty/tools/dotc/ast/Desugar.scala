@@ -996,7 +996,7 @@ object desugar {
 
               def badRightAssoc(problem: String) =
                 report.error(em"right-associative extension method $problem", mdef.srcPos)
-                extParamss ++ mdef.paramss
+                () // extParamss ++ mdef.paramss
 
               rightParam match
                 case ValDefs(vparam :: Nil) =>
@@ -1010,15 +1010,16 @@ object desugar {
                     //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
                     //
                     // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-                    val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
-                    leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
+                    // val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+                    () // leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
                   else
                     badRightAssoc("cannot start with using clause")
                 case _ =>
                   badRightAssoc("must start with a single parameter")
             case _ =>
               // no value parameters, so not an infix operator.
-              extParamss ++ mdef.paramss
+              () // extParamss ++ mdef.paramss
+          extParamss ++ mdef.paramss
         else
           extParamss ++ mdef.paramss
     ).withMods(mdef.mods | ExtensionMethod)

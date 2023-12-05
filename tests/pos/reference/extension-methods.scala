@@ -10,7 +10,7 @@ object ExtMethods:
   assert(circle.circumference == circumference(circle))
 
   extension (x: String) def < (y: String) = x.compareTo(y) < 0
-  extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
+  extension [Elem](xs: Seq[Elem]) def #: (x: Elem) = x +: xs
   extension (x: Number) infix def min (y: Number) = x
 
   assert("a" < "bb")

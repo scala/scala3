@@ -8,7 +8,7 @@ trait Scope:
 extension (using s: Scope)(expr: s.Expr)
    def show = expr.toString
    def eval = s.value(expr)
-   def *: (other: s.Expr) = s.combine(expr, other)
+   def *: (other: s.Expr) = s.combine(other, expr)
 
 def f(using s: Scope)(x: s.Expr): (String, s.Value) =
    (x.show, x.eval)
