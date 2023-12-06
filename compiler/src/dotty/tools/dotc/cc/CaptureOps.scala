@@ -259,9 +259,17 @@ extension (tp: Type)
    *  occurrences of cap are allowed in instance types of type variables.
    */
   def withReachCaptures(ref: Type)(using Context): Type =
-    object narrowCaps extends TypeMap:
+    class CheckContraCaps extends TypeTraverser:
       var ok = true
+      def traverse(t: Type): Unit =
+        if ok then
+          t match
+            case CapturingType(_, cs) if cs.isUniversal && variance <= 0 =>
+              ok = false
+            case _ =>
+              traverseChildren(t)
 
+    object narrowCaps extends TypeMap:
       /** Has the variance been flipped at this point? */
       private var isFlipped: Boolean = false
 
@@ -270,12 +278,8 @@ extension (tp: Type)
         try
           if variance <= 0 then isFlipped = true
           t.dealias match
-            case t1 @ CapturingType(p, cs) if cs.isUniversal =>
-              if variance > 0 then
-                t1.derivedCapturingType(apply(p), if isFlipped then cs else ref.reach.singletonCaptureSet)
-              else
-                ok = false
-                t
+            case t1 @ CapturingType(p, cs) if cs.isUniversal && !isFlipped =>
+              t1.derivedCapturingType(apply(p), ref.reach.singletonCaptureSet)
             case _ => t match
               case t @ CapturingType(p, cs) =>
                 t.derivedCapturingType(apply(p), cs) // don't map capture set variables
@@ -284,12 +288,14 @@ extension (tp: Type)
         finally isFlipped = saved
     ref match
       case ref: CaptureRef if ref.isTrackableRef =>
-        val tp1 = narrowCaps(tp)
-        if narrowCaps.ok then
+        val checker = new CheckContraCaps
+        checker.traverse(tp)
+        if checker.ok then
+          val tp1 = narrowCaps(tp)
           if tp1 ne tp then capt.println(i"narrow $tp of $ref to $tp1")
           tp1
         else
-          capt.println(i"cannot narrow $tp of $ref to $tp1")
+          capt.println(i"cannot narrow $tp of $ref")
           tp
       case _ =>
         tp
