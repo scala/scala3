@@ -488,10 +488,11 @@ object Signatures {
       val reorderedParamsBeforeCursor = namedParamsBeforeCursor.flatMap: name =>
         params.find(_.name == name)
 
-      val (remainingNamed, remaining) = params
+      val (remainingNamedUnordered, remaining) = params
         .diff(reorderedParamsBeforeCursor).diff(ordered)
         .partition(p => namedParamsAfterCursor.contains(p.name))
 
+      val remainingNamed = remainingNamedUnordered.sortBy(p => namedParamsAfterCursor.indexOf(p.name))
       val reorderedArgs = (reorderedParamsBeforeCursor ++ remaining ++ remainingNamed)
         .map(_.copy(isReordered = reorderedParamsBeforeCursor.nonEmpty))
 

@@ -581,7 +581,7 @@ extends SyntaxMsg(UnboundPlaceholderParameterID) {
         |"""
 }
 
-class IllegalStartSimpleExpr(illegalToken: String)(using Context)
+class IllegalStartSimpleExpr(val illegalToken: String)(using Context)
 extends SyntaxMsg(IllegalStartSimpleExprID) {
   def msg(using Context) = i"expression expected but ${Red(illegalToken)} found"
   def explain(using Context) = {
@@ -1171,7 +1171,7 @@ extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
         |"""
 }
 
-class ExpectedTokenButFound(expected: Token, found: Token, prefix: String = "")(using Context)
+class ExpectedTokenButFound(val expected: Token, found: Token, prefix: String = "")(using Context)
 extends SyntaxMsg(ExpectedTokenButFoundID) {
 
   private def foundText = Tokens.showToken(found)

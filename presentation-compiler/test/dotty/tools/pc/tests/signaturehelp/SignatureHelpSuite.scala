@@ -1032,3 +1032,164 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |              ^
          |""".stripMargin
      )
+
+  // @Test def `dont-show-directly-after-parenthesis` =
+  //   check(
+  //     """|object Main {
+  //        |  def test(a: Int, b: Int): Int = ???
+  //        |  test(1, 2)@@
+  //        |}
+  //        |""".stripMargin,
+  //     ""
+  //    )
+
+  // @Test def `dont-show-directly-after-parenthesis-2` =
+  //   check(
+  //     """|object Main {
+  //        |  def test(a: Int, b: Int): Int = ???
+  //        |  test(1, 2)@@
+  //        |""".stripMargin,
+  //     ""
+  //    )
+
+  @Test def `show-directly-when-unclosed` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, (2 + 1)@@
+         |}
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `dont-show-after-parenthesis-1` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2) @@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-2` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)  @@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-newline` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)
+         |@@
+         |}
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `dont-show-after-parenthesis-newline-last-statement` =
+    check(
+      """|object Main:
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2)
+         |
+         |@@
+         |
+         |""".stripMargin,
+      ""
+     )
+
+  @Test def `show-after-parenthesis-newline-last-statement-unclosed-1` =
+    check(
+      """|object Main:
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |@@
+         |
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `show-after-parenthesis-newline-last-statement-unclosed-2` =
+    check(
+      """|object Main:
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, (1 + 2)
+         |
+         |@@
+         |
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `show-after-parenthesis-unclosed-1` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |  @@
+         |  println("")
+         |}
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `show-after-parenthesis-unclosed-2` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |  @@
+         |  println("")
+         |}
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `show-after-parenthesis-unclosed-3` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |  @@
+         |}
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+
+  @Test def `show-after-parenthesis-unclosed-4` =
+    check(
+      """|object Main {
+         |  def test(a: Int, b: Int): Int = ???
+         |  test(1, 2
+         |
+         |  @@
+         |}
+         |""".stripMargin,
+      """|test(a: Int, b: Int): Int
+         |             ^^^^^^
+         |""".stripMargin
+     )
+

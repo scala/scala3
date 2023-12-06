@@ -228,3 +228,25 @@ class SignatureHelpNamedArgsSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
+  @Test def `named-param-properly-order-1` =
+    check(
+      """|object O:
+         |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
+         |  method(par@@amB = 3, paramA = 1, paramD = 3, paramC = 1)
+         |""".stripMargin,
+      """|method([paramB: Int], [paramA: Int], [paramD: Int], [paramC: Int]): Unit
+         |       ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `named-param-properly-order-2` =
+    check(
+      """|object O:
+         |  def method(paramA: Int, paramB: Int, paramC: Int, paramD: Int): Unit = ???
+         |  method(paramB = 3, par@@amA = 1, paramD = 3, paramC = 1)
+         |""".stripMargin,
+      """|method([paramB: Int], [paramA: Int], [paramD: Int], [paramC: Int]): Unit
+         |                      ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+

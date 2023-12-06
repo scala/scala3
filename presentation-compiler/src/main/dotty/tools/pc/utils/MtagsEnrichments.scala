@@ -273,7 +273,7 @@ object MtagsEnrichments extends CommonMtagsEnrichments:
         val denot = sym.denot.asSeenFrom(pre.tpe.widenTermRefExpr)
         (denot.info, sym.withUpdatedTpe(denot.info))
       catch case NonFatal(e) => (sym.info, sym)
-    
+
     def isInfix(using ctx: Context) =
       tree match
         case Select(New(_), _) => false

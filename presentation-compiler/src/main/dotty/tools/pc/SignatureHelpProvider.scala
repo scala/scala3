@@ -1,21 +1,24 @@
 package dotty.tools.pc
 
-import scala.jdk.CollectionConverters._
-import scala.meta.pc.OffsetParams
-import scala.meta.pc.SymbolDocumentation
-import scala.meta.pc.SymbolSearch
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.parsing.Tokens.closingRegionTokens
+import dotty.tools.dotc.reporting.ErrorMessageID
+import dotty.tools.dotc.reporting.ExpectedTokenButFound
 import dotty.tools.dotc.util.Signatures
-import dotty.tools.dotc.util.Spans
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.Spans
 import dotty.tools.pc.utils.MtagsEnrichments.*
-
 import org.eclipse.lsp4j as l
+
+import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters.*
+import scala.meta.pc.OffsetParams
+import scala.meta.pc.SymbolDocumentation
+import scala.meta.pc.SymbolSearch
 
 object SignatureHelpProvider:
 
@@ -25,7 +28,8 @@ object SignatureHelpProvider:
       search: SymbolSearch
   ) =
     val uri = params.uri().nn
-    val sourceFile = SourceFile.virtual(uri, params.text().nn)
+    val text = params.text().nn
+    val sourceFile = SourceFile.virtual(uri, text)
     driver.run(uri.nn, sourceFile)
 
     driver.compilationUnits.get(uri) match
@@ -35,15 +39,49 @@ object SignatureHelpProvider:
         val pos = driver.sourcePosition(params)
         val treeSpanEnd = ctx.compilationUnit.tpdTree.span.end
 
+        lazy val firstUnclosedErrorAfterPos =
+          val unclosedErrors = ctx.reporter.allErrors.filter { _.msg match
+            case err: ExpectedTokenButFound => closingRegionTokens.contains(err.expected)
+            case _ => false
+          }
+          unclosedErrors.find(_.pos.span.start >= pos.span.end).flatMap(_.position.toScala)
+
         // If we try to run signature help for named arg which happens to be the last line of the code
         // it will return span outside tree, as parser ignores additional whitespaces:
         //   def foo(aaa: Int, bbb: Int) = ???
         //   foo(aaa // fail before writing the = sign
-        val adjustedSpan = if pos.span.end > treeSpanEnd then Spans.Span(treeSpanEnd)
+        val adjustedSpan = if pos.span.end > treeSpanEnd && firstUnclosedErrorAfterPos.nonEmpty then Spans.Span(treeSpanEnd)
           else pos.span
 
+
         val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, adjustedSpan)
-        val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
+
+        import dotty.tools.dotc.ast.tpd._
+
+        val maybeNewSpan = firstUnclosedErrorAfterPos match
+          case Some(errorPosition) =>
+            path
+              .headOption
+              // if in the head of the path, there is a tree defined between cursor and error position we are in correct tree
+              .filter(!_.existsSubTree(tree => tree.span.exists && tree.span.start >= pos.span.end))
+              .toList
+              // find possible trees which can be part of unclosed signature help
+              .flatMap(_.filterSubTrees:
+                case tree: (Apply | UnApply | AppliedTypeTree | TypeApply) => tree.span.end <= pos.span.end
+                case _ => false
+              ).filter(tree => tree.span.end <= errorPosition.end )
+              .maxByOption(_.span.end)
+              .map(tree => Spans.Span(tree.span.end)
+            )
+
+          case None => None
+
+
+        val adjustedPath = maybeNewSpan match
+          case Some(pos) => Interactive.pathTo(ctx.compilationUnit.tpdTree, pos)
+          case _ => path
+
+        val (paramN, callableN, alternatives) = Signatures.signatureHelp(adjustedPath, pos.span)
 
         val infos = alternatives.flatMap: signature =>
           signature.denot.map(signature -> _)
