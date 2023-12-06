@@ -97,6 +97,17 @@ object Signatures {
       case tp @ TypeApply(fun, types) => applyCallInfo(span, types, fun, true)
       case _ => (0, 0, Nil)
 
+
+  def isEnclosingApply(tree: tpd.Tree, span: Span)(using Context): Boolean =
+    tree match
+      case apply @ Apply(fun, _) => !fun.span.contains(span) && isValid(apply)
+      case unapply @ UnApply(fun, _, _) =>
+        !fun.span.contains(span) && !ctx.definitions.isFunctionNType(tree.tpe) // we want to show tuples in unapply
+      case typeTree @ AppliedTypeTree(fun, _) => !fun.span.contains(span) && isValid(typeTree)
+      case typeApply @ TypeApply(fun, _) => !fun.span.contains(span) && isValid(typeApply)
+      case _ => false
+
+
   /**
    * Finds enclosing application from given `path` for `span`.
    *
@@ -108,17 +119,26 @@ object Signatures {
    *         next subsequent application exists, it returns the latter
    */
   private def findEnclosingApply(path: List[tpd.Tree], span: Span)(using Context): tpd.Tree =
-    path.filterNot {
-      case apply @ Apply(fun, _) => fun.span.contains(span) || isValid(apply)
-      case unapply @ UnApply(fun, _, _) => fun.span.contains(span) || isValid(unapply)
-      case typeTree @ AppliedTypeTree(fun, _) => fun.span.contains(span) || isValid(typeTree)
-      case typeApply @ TypeApply(fun, _) => fun.span.contains(span) || isValid(typeApply)
-      case _ => true
-    } match {
+    import tpd.TreeOps
+
+    val filteredPath = path.filter:
+      case block @ Block(stats, expr) =>
+        block.existsSubTree(tree => isEnclosingApply(tree, span) && tree.span.contains(span))
+      case other => isEnclosingApply(other, span)
+
+    filteredPath match
       case Nil => tpd.EmptyTree
+      case tpd.Block(stats, expr) :: _ => // potential block containing lifted args
+
+        val enclosingFunction = stats.collectFirst:
+          case defdef: tpd.DefDef if defdef.rhs.span.contains(span) => defdef
+
+        val enclosingTree = enclosingFunction.getOrElse(expr)
+        findEnclosingApply(Interactive.pathTo(enclosingTree, span), span)
+
       case direct :: enclosing :: _ if isClosingSymbol(direct.source(span.end -1)) => enclosing
       case direct :: _ => direct
-    }
+
 
   private def isClosingSymbol(ch: Char) = ch == ')' || ch == ']'
 
@@ -303,7 +323,7 @@ object Signatures {
    * @param tree tree to validate
    */
   private def isValid(tree: tpd.Tree)(using Context): Boolean =
-    ctx.definitions.isTupleNType(tree.tpe) || ctx.definitions.isFunctionNType(tree.tpe)
+    !ctx.definitions.isTupleNType(tree.tpe) && !ctx.definitions.isFunctionNType(tree.tpe)
 
   /**
    * Get unapply method result type omiting unknown types and another method calls.

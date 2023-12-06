@@ -516,13 +516,14 @@ class SignatureHelpTest {
       .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
-  @Test def noUnapplyForTuple: Unit = {
+  @Test def unapplyForTuple: Unit = {
+    val signature = S("", Nil, List(List(P("", "Int"), P("", "Int"))), None)
     code"""object Main {
           |  (1, 2) match
           |    case (x${m1}, ${m2}) =>
           |}"""
-      .signatureHelp(m1, Nil, Some(0), 0)
-      .signatureHelp(m2, Nil, Some(0), 0)
+      .signatureHelp(m1, List(signature), Some(0), 0)
+      .signatureHelp(m2, List(signature), Some(0), 1)
   }
 
   @Test def unapplyCaseClass: Unit = {
@@ -693,7 +694,7 @@ class SignatureHelpTest {
       .signatureHelp(m1, sigs, None, 0)
       .signatureHelp(m2, sigs, None, 0)
       .signatureHelp(m3, sigs, Some(2), 0)
-      .signatureHelp(m4, sigs, None, 1)
+      .signatureHelp(m4, List(sig0, sig1), None, 1)
       .signatureHelp(m5, sigs, Some(2), 1)
       .signatureHelp(m6, sigs, Some(0), 1)
       .signatureHelp(m7, sigs, Some(1), 1)
