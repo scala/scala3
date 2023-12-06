@@ -72,17 +72,41 @@ class TypeUtils {
             else None
       recur(self.stripTypeVar, bound)
 
-    /** Is this a generic tuple that would fit into the range 1..22,
-     *  but is not already an instance of one of Tuple1..22?
-     *  In this case we need to cast it to make the TupleN/ members accessible.
-     *  This works only for generic tuples of known size up to 22.
-     */
-    def isSmallGenericTuple(using Context): Boolean =
+    /** Is this a generic tuple but not already an instance of one of Tuple1..22? */
+    def isGenericTuple(using Context): Boolean =
       self.derivesFrom(defn.PairClass)
       && !defn.isTupleNType(self.widenDealias)
-      && self.widenTermRefExpr.tupleElementTypesUpTo(Definitions.MaxTupleArity).match
-          case Some(elems) if elems.length <= Definitions.MaxTupleArity => true
-          case _ => false
+
+    /** Is this a generic tuple that would fit into the range 1..22?
+     *  In this case we need to cast it to make the TupleN members accessible.
+     *  This works only for generic tuples of known size up to 22.
+     */
+    def isSmallGenericTuple(using Context): Boolean = genericTupleArityCompare < 0
+
+    /** Is this a generic tuple with an arity above 22? */
+    def isLargeGenericTuple(using Context): Boolean = genericTupleArityCompare > 0
+
+    /** If this is a generic tuple with element types, compare the arity and return:
+     *    * -1, if the generic tuple is small (<= MaxTupleArity)
+     *    * 1, if the generic tuple is large (> MaxTupleArity)
+     *    * 0 if this isn't a generic tuple with element types
+     */
+    def genericTupleArityCompare(using Context): Int =
+      if self.isGenericTuple then
+        self.widenTermRefExpr.tupleElementTypesUpTo(Definitions.MaxTupleArity).match
+          case Some(elems) => if elems.length <= Definitions.MaxTupleArity then -1 else 1
+          case _ => 0
+      else 0
+
+    /** Is this a large generic tuple and is `pat` TupleXXL?
+     *  TupleXXL.unapplySeq extracts values of type TupleXXL
+     *  but large scrutinee terms are typed as large generic tuples.
+     *  This allows them to hold on to their precise element types,
+     *  but it means type-wise, the terms don't conform to the
+     *  extractor's parameter type, so this method identifies case.
+     */
+    def isTupleXXLExtract(pat: Type)(using Context): Boolean =
+      pat.typeSymbol == defn.TupleXXLClass && self.isLargeGenericTuple
 
     /** The `*:` equivalent of an instance of a Tuple class */
     def toNestedPairs(using Context): Type =
