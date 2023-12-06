@@ -214,7 +214,7 @@ class CompletionDocSuite extends BaseCompletionSuite:
       """.stripMargin,
       """
         |> Found documentation for scala/package.Vector.
-        |Vector:  scala.collection.immutable
+        |Vector scala.collection.immutable
         |""".stripMargin,
       includeDocs = true
     )
