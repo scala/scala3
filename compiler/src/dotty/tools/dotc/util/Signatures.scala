@@ -67,24 +67,6 @@ object Signatures {
     computeSignatureHelp(path, pos)
 
   /**
-   * Extract (current parameter index, function index, functions) out of a method call.
-   *
-   * @param path The path to the function application
-   * @param span The position of the cursor
-   *
-   * @return     A triple containing the index of the parameter being edited, the index of the function
-   *         being called, the list of overloads of this function).
-   */
-  @deprecated(
-    """This method is deprecated in favor of `signatureHelp`.
-       Returned denotation cannot be distinguished if its unapply or apply context""",
-    "3.1.3"
-  )
-  def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
-    val (paramN, funN, signatures) = computeSignatureHelp(path, span)
-    (paramN, funN, signatures.flatMap(_.denot))
-
-  /**
    * Computes call info (current parameter index, function index, functions) for a method call.
    *
    * @param path The path to the function application
