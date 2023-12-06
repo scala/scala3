@@ -1,5 +1,6 @@
 package dotty.tools.pc
 
+import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.*
@@ -11,10 +12,11 @@ import dotty.tools.dotc.reporting.ExpectedTokenButFound
 import dotty.tools.dotc.util.Signatures
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans
+import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.utils.MtagsEnrichments.*
 import org.eclipse.lsp4j as l
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
@@ -37,51 +39,8 @@ object SignatureHelpProvider:
         given newCtx: Context = driver.currentCtx.fresh.setCompilationUnit(unit)
 
         val pos = driver.sourcePosition(params)
-        val treeSpanEnd = ctx.compilationUnit.tpdTree.span.end
-
-        lazy val firstUnclosedErrorAfterPos =
-          val unclosedErrors = ctx.reporter.allErrors.filter { _.msg match
-            case err: ExpectedTokenButFound => closingRegionTokens.contains(err.expected)
-            case _ => false
-          }
-          unclosedErrors.find(_.pos.span.start >= pos.span.end).flatMap(_.position.toScala)
-
-        // If we try to run signature help for named arg which happens to be the last line of the code
-        // it will return span outside tree, as parser ignores additional whitespaces:
-        //   def foo(aaa: Int, bbb: Int) = ???
-        //   foo(aaa // fail before writing the = sign
-        val adjustedSpan = if pos.span.end > treeSpanEnd && firstUnclosedErrorAfterPos.nonEmpty then Spans.Span(treeSpanEnd)
-          else pos.span
-
-
-        val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, adjustedSpan)
-
-        import dotty.tools.dotc.ast.tpd._
-
-        val maybeNewSpan = firstUnclosedErrorAfterPos match
-          case Some(errorPosition) =>
-            path
-              .headOption
-              // if in the head of the path, there is a tree defined between cursor and error position we are in correct tree
-              .filter(!_.existsSubTree(tree => tree.span.exists && tree.span.start >= pos.span.end))
-              .toList
-              // find possible trees which can be part of unclosed signature help
-              .flatMap(_.filterSubTrees:
-                case tree: (Apply | UnApply | AppliedTypeTree | TypeApply) => tree.span.end <= pos.span.end
-                case _ => false
-              ).filter(tree => tree.span.end <= errorPosition.end )
-              .maxByOption(_.span.end)
-              .map(tree => Spans.Span(tree.span.end)
-            )
-
-          case None => None
-
-
-        val adjustedPath = maybeNewSpan match
-          case Some(pos) => Interactive.pathTo(ctx.compilationUnit.tpdTree, pos)
-          case _ => path
-
-        val (paramN, callableN, alternatives) = Signatures.signatureHelp(adjustedPath, pos.span)
+        val path = getPathWithUnclosedOpenings(pos.span)
+        val (paramN, callableN, alternatives) = Signatures.signatureHelp(path, pos.span)
 
         val infos = alternatives.flatMap: signature =>
           signature.denot.map(signature -> _)
@@ -105,6 +64,65 @@ object SignatureHelpProvider:
         )
       case _ => new l.SignatureHelp()
   end signatureHelp
+
+  /** Interactive.pathTo returns a path to the tree, by relying on Span.contains(otherSpan).
+   *  When there is an unclosed opening, parser will try to repair it, but the span of that tree
+   *  will end on the new line or next illegal token.
+   *
+   *  To support getting the tree withh unclosed opening, when our cursor is on the newline such as:
+   *  ```scala
+   *  def foo(aaa: Int, bbb: Int) = ???
+   *  foo(1,
+   *
+   *  @@
+   *  // eof or illegal token
+   *  ```
+   *  we need to rely on dianostics to locate last tree before the cursor
+   *  and `opnning closed` expected syntax error.
+   *
+   *  This is very hard to work around, as changing spans in the parser
+   *  will affect other parts of the compiler such as reporting
+   */
+  private def getPathWithUnclosedOpenings(span: Span)(using Context): List[Tree] =
+    lazy val firstUnclosedErrorAfterPos =
+      val unclosedErrors = ctx.reporter.allErrors.filter { _.msg match
+        case err: ExpectedTokenButFound => closingRegionTokens.contains(err.expected)
+        case _ => false
+      }
+      unclosedErrors.find(_.pos.span.start >= span.end).flatMap(_.position.toScala)
+
+    val treeSpanEnd = ctx.compilationUnit.tpdTree.span.end
+
+    // If we try to run signature help for named arg which happens to be the last line of the code
+    // it will return span outside tree, as parser ignores additional whitespaces:
+    //   def foo(aaa: Int, bbb: Int) = ???
+    //   foo(aaa // fail before writing the = sign
+    val adjustedSpan = if span.end > treeSpanEnd && firstUnclosedErrorAfterPos.nonEmpty then
+      Spans.Span(treeSpanEnd)
+    else span
+
+    lazy val path = Interactive.pathTo(ctx.compilationUnit.tpdTree, adjustedSpan)
+
+    val maybeNewSpan = firstUnclosedErrorAfterPos match
+      case Some(errorPosition) =>
+        path
+          .headOption
+          // if in the head of the path, there is a tree defined between cursor and error position we are in correct tree
+          .filter(!_.existsSubTree(tree => tree.span.exists && tree.span.start >= span.end))
+          .toList
+          // find possible trees which can be part of unclosed signature help
+          .flatMap(_.filterSubTrees:
+            case tree: (Apply | UnApply | AppliedTypeTree | TypeApply) => tree.span.end <= span.end
+            case _ => false
+          ).filter(tree => tree.span.end <= errorPosition.end)
+          .maxByOption(_.span.end)
+          .map(tree => Spans.Span(tree.span.end)
+        )
+      case None => None
+
+    maybeNewSpan
+      .map(Interactive.pathTo(ctx.compilationUnit.tpdTree, _))
+      .getOrElse(path)
 
   private def withDocumentation(
       info: SymbolDocumentation,
