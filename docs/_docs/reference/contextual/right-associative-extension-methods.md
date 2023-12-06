@@ -61,4 +61,36 @@ For instance, the `+::` method above would become
 This expansion has to be kept in mind when writing right-associative extension
 methods with inter-parameter dependencies.
 
-An overall simpler design could be obtained if right-associative operators could _only_ be defined as extension methods, and would be disallowed as normal methods. In that case neither arguments nor parameters would have to be swapped. Future versions of Scala should strive to achieve this simplification.
+This expansion also introduces some inconsistencies when calling the extension methods in non infix form. The user needs to invert the order of the arguments at call site manually. For instance:
+
+```scala
+  extension [T](x: T)
+    def *:(xs: List[T]): List[T] = ...
+
+  y.*:(ys) // error when following the parameter definition order
+  ys.*:(y)
+
+  *:(y)(ys) // error when following the parameter definition order
+  *:(ys)(y)
+```
+
+Another limitation of this representation is that it is impossible to pass the
+type parameters of the `def` explicitly. For instance:
+
+```scala
+  extension (x: Int)
+    def *:[T](xs: List[T]): List[T] = ...
+
+  xs.*:[Int](1) // error when trying to set T explicitly
+```
+
+The expansion of right-associative extension methods also affects the order in which contextual parameters can be passed explicitly.
+
+Group extension can also behave unintuitively, in general all extension in a
+group are extension on the receiver. Except if one of these extensions is a
+right-associative extension method, in which case that one is an extension on the type of its argument. For instance:
+```scala
+  extension (a: Int)
+    def :+(b: Long): Long = ... // extension on Int
+    def +:(b: Long): Long = ... // extension on Long
+```
