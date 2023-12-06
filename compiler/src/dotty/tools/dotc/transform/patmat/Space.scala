@@ -210,17 +210,13 @@ object SpaceEngine {
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
         else if isSubType(tp2, tp1) then b
-        else if canDecompose(a) then intersect(Or(decompose(a)), b)
-        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         if isSubType(tp2, tp1) then b
-        else if canDecompose(a) then intersect(Or(decompose(a)), b)
         else if isSubType(tp1, tp2) then a // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(b)
       case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
-        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else if isSubType(tp2, tp1) then a  // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
