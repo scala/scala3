@@ -319,10 +319,14 @@ object IArray:
     def zipAll[T1 >: T, U](that: Iterable[U], thisElem: T1, thatElem: U): IArray[(T1, U)] = genericArrayOps(arr).zipAll(that, thisElem, thatElem)
     def zipWithIndex: IArray[(T, Int)] = genericArrayOps(arr).zipWithIndex
 
-  extension [T, U >: T: ClassTag](arr: IArray[U])
-    def ++:(prefix: IterableOnce[T]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
-    def ++:(prefix: IArray[T]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
-    def +:(x: T): IArray[U] = genericArrayOps(arr).prepended(x)
+  extension [T, U >: T: ClassTag](prefix: IterableOnce[T])
+    def ++:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
+
+  extension [T, U >: T: ClassTag](prefix: IArray[T])
+    def ++:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
+
+  extension [T, U >: T: ClassTag](x: T)
+    def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
   // For backwards compatibility with code compiled without -Yexplicit-nulls
   private inline def mapNull[A, B](a: A, inline f: B): B =

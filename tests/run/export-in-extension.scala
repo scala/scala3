@@ -11,7 +11,7 @@ object O:
     export cm.*
     def succ: Int = x + 1
     def succ2: Int = succ + 1
-    def ::: (y: Int) = y - x
+    def ::: (y: Int) = x - y
 
 object O2:
   import O.C
@@ -20,7 +20,7 @@ object O2:
     export cm.{bar, baz, bam, ::}
     def succ: Int = x + 1
     def succ2: Int = succ + 1
-    def ::: (y: Int) = y - x
+    def ::: (y: Int) = x - y
 
 @main def Test =
   import O.*

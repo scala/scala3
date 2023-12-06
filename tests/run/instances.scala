@@ -31,7 +31,7 @@ object Test extends App {
   extension [T](xs: List[List[T]])
     def flattened = xs.foldLeft[List[T]](Nil)(_ ++ _)
 
-  extension [T](xs: Seq[T]) def :: (x: T) = x +: xs
+  extension [T](x: T) def :: (xs: Seq[T]) = x +: xs
 
   val ss: Seq[Int] = List(1, 2, 3)
   val ss1 = 0 :: ss

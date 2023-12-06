@@ -8,6 +8,4 @@ object Unrelated:
   extension (f: Foo)
     def h1: Int = 0
     def h2: Int = h1 + 1  // OK
-
-  extension (x: Int)
-    def ++: (f: Foo): Int = f.h2 + x  // OK
+    def ++: (x: Int): Int = h2 + x  // OK

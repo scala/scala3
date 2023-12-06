@@ -152,8 +152,8 @@ class HoverTypeSuite extends BaseHoverSuite:
          |class C
          |
          |object Foo:
-         |    extension [R](using A)(res: R)(using B)
-         |      def %:[T](main: T)(using C): R = ???
+         |    extension [T](using A)(main: T)(using B)
+         |      def %:[R](res: R)(using C): R = ???
          |    given A with {}
          |    given B with {}
          |    given C with {}
@@ -162,7 +162,7 @@ class HoverTypeSuite extends BaseHoverSuite:
          |end Foo
          |""".stripMargin,
       """|Int
-         |extension [R](using A)(using B)(res: R) def %:[T](main: T)(using C): R""".stripMargin.hover
+         |extension [T](using A)(main: T) def %:[R](res: R)(using B)(using C): R""".stripMargin.hover
     )
 
   @Test def `using` =

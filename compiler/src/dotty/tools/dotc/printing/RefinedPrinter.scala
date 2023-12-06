@@ -933,35 +933,35 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val coreSig =
           if isExtension then
             val paramss =
-              // if tree.name.isRightAssocOperatorName then
-              //   // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-              //   // we have the following encoding of tree.paramss:
-              //   //   (leftTyParams ++ leadingUsing
-              //   //      ++ rightTyParams ++ rightParam
-              //   //      ++ leftParam ++ trailingUsing ++ rest)
-              //   //   e.g.
-              //   //     extension [A](using B)(c: C)(using D)
-              //   //       def %:[E](f: F)(g: G)(using H): Res = ???
-              //   //   will have the following values:
-              //   //   - leftTyParams = List(`[A]`)
-              //   //   - leadingUsing = List(`(using B)`)
-              //   //   - rightTyParams = List(`[E]`)
-              //   //   - rightParam = List(`(f: F)`)
-              //   //   - leftParam = List(`(c: C)`)
-              //   //   - trailingUsing = List(`(using D)`)
-              //   //   - rest = List(`(g: G)`, `(using H)`)
-              //   // we need to swap (rightTyParams ++ rightParam) with (leftParam ++ trailingUsing)
-              //   val (leftTyParams, rest1) = tree.paramss.span(isTypeParamClause)
-              //   val (leadingUsing, rest2) = rest1.span(isUsingClause)
-              //   val (rightTyParams, rest3) = rest2.span(isTypeParamClause)
-              //   val (rightParam, rest4) = rest3.splitAt(1)
-              //   val (leftParam, rest5) = rest4.splitAt(1)
-              //   val (trailingUsing, rest6) = rest5.span(isUsingClause)
-              //   if leftParam.nonEmpty then
-              //     leftTyParams ::: leadingUsing ::: leftParam ::: trailingUsing ::: rightTyParams ::: rightParam ::: rest6
-              //   else
-              //     tree.paramss // it wasn't a binary operator, after all.
-              // else
+              if tree.name.isRightAssocOperatorName && !tree.mods.is(Infix) && !tree.symbol.is(Infix) then
+                // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
+                // we have the following encoding of tree.paramss:
+                //   (leftTyParams ++ leadingUsing
+                //      ++ rightTyParams ++ rightParam
+                //      ++ leftParam ++ trailingUsing ++ rest)
+                //   e.g.
+                //     extension [A](using B)(c: C)(using D)
+                //       def %:[E](f: F)(g: G)(using H): Res = ???
+                //   will have the following values:
+                //   - leftTyParams = List(`[A]`)
+                //   - leadingUsing = List(`(using B)`)
+                //   - rightTyParams = List(`[E]`)
+                //   - rightParam = List(`(f: F)`)
+                //   - leftParam = List(`(c: C)`)
+                //   - trailingUsing = List(`(using D)`)
+                //   - rest = List(`(g: G)`, `(using H)`)
+                // we need to swap (rightTyParams ++ rightParam) with (leftParam ++ trailingUsing)
+                val (leftTyParams, rest1) = tree.paramss.span(isTypeParamClause)
+                val (leadingUsing, rest2) = rest1.span(isUsingClause)
+                val (rightTyParams, rest3) = rest2.span(isTypeParamClause)
+                val (rightParam, rest4) = rest3.splitAt(1)
+                val (leftParam, rest5) = rest4.splitAt(1)
+                val (trailingUsing, rest6) = rest5.span(isUsingClause)
+                if leftParam.nonEmpty then
+                  leftTyParams ::: leadingUsing ::: leftParam ::: trailingUsing ::: rightTyParams ::: rightParam ::: rest6
+                else
+                  tree.paramss // it wasn't a binary operator, after all.
+              else
                 tree.paramss
             val trailingParamss = paramss
               .dropWhile(isUsingOrTypeParamClause)

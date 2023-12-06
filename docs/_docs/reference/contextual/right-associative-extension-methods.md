@@ -36,7 +36,22 @@ single explicit term parameter (in other words, `rightParam` is present). In the
 
 The Scala compiler pre-processes a right-associative infix operation such as `x +: xs`
 to `xs.+:(x)` if `x` is a pure expression or a call-by-name parameter and to `val y = x; xs.+:(y)` otherwise. This is necessary since a regular right-associative infix method
-is defined in the class of its right operand. To make up for this swap,
+is defined in the class of its right operand.
+
+### Natural Order Right-Associative Extension Methods
+If the right-associative extension methods is defined as infix, then the extension is used in its natural order. The `leftParam` is the receiver and
+the `rightParam` is the argument. The order of the parameters is kept consistent with the order of the arguments at call site after desugaring.
+For instance:
+
+```scala
+  extension [T](xs: List[T])
+    infix def +:: (x: T): List[T] = ...
+
+  y +:: ys // ys.::y // +::(ys)(y)
+```
+
+### Inverted Right-Associative Extension Methods
+To make up for the swap in the order at call site,
 the expansion of right-associative extension methods performs the inverse parameter swap. More precisely, if `rightParam` is present, the total parameter sequence
 of the extension method's expansion is:
 
@@ -59,6 +74,27 @@ For instance, the `+::` method above would become
 ```
 
 This expansion has to be kept in mind when writing right-associative extension
-methods with inter-parameter dependencies.
+methods with inter-parameter dependencies. To avoid this limitation use _natural order right-associative extension methods_.
 
-An overall simpler design could be obtained if right-associative operators could _only_ be defined as extension methods, and would be disallowed as normal methods. In that case neither arguments nor parameters would have to be swapped. Future versions of Scala should strive to achieve this simplification.
+This expansion also introduces some inconsistencies when calling the extension methods in non infix form. The user needs to invert the order of the arguments at call site manually. For instance:
+
+```scala
+  extension [T](x: T)
+    def *:(xs: List[T]): List[T] = ...
+
+  y.*:(ys) // error when following the parameter definition order
+  ys.*:(y)
+
+  *:(y)(ys) // error when following the parameter definition order
+  *:(ys)(y)
+```
+
+Another limitation of this representation is that it is impossible to pass the
+type parameters of the `def` explicitly. For instance:
+
+```scala
+  extension (x: Int)
+    def *:[T](xs: List[T]): List[T] = ???
+
+  xs.*:[Int](1) // error when trying to set T explicitly
+```

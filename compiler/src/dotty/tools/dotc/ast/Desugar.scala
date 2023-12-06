@@ -996,11 +996,18 @@ object desugar {
 
               def badRightAssoc(problem: String) =
                 report.error(em"right-associative extension method $problem", mdef.srcPos)
-                () // extParamss ++ mdef.paramss
+                extParamss ++ mdef.paramss
 
               rightParam match
                 case ValDefs(vparam :: Nil) =>
-                  if !vparam.mods.is(Given) then
+                  if vparam.mods.is(Given) then
+                    badRightAssoc("cannot start with using clause")
+                  else if mdef.mods.is(Infix) then
+                    // New encoding:
+                    // we keep the extension method as is and rely on the swap of arguments at call site
+                    extParamss ++ mdef.paramss
+                  else
+                    // Old encoding:
                     // we merge the extension parameters with the method parameters,
                     // swapping the operator arguments:
                     // e.g.
@@ -1010,16 +1017,13 @@ object desugar {
                     //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
                     //
                     // If you change the names of the clauses below, also change them in right-associative-extension-methods.md
-                    // val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
-                    () // leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
-                  else
-                    badRightAssoc("cannot start with using clause")
+                    val (leftTyParamsAndLeadingUsing, leftParamAndTrailingUsing) = extParamss.span(isUsingOrTypeParamClause)
+                    leftTyParamsAndLeadingUsing ::: rightTyParams ::: rightParam :: leftParamAndTrailingUsing ::: paramss1
                 case _ =>
                   badRightAssoc("must start with a single parameter")
             case _ =>
               // no value parameters, so not an infix operator.
-              () // extParamss ++ mdef.paramss
-          extParamss ++ mdef.paramss
+              extParamss ++ mdef.paramss
         else
           extParamss ++ mdef.paramss
     ).withMods(mdef.mods | ExtensionMethod)

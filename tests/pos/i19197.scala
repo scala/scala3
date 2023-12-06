@@ -1,5 +1,5 @@
 extension (tuple: Tuple)
-  def **:[T >: tuple.type <: Tuple, H](x: H): H *: T = ???
+  infix def **:[T >: tuple.type <: Tuple, H](x: H): H *: T = ???
 
 def test1: (Int, String, Char) = 1 **: ("a", 'b')
 def test2: (Int, String, Char) = ("a", 'b').**:(1)

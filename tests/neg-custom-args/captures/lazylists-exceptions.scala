@@ -20,8 +20,8 @@ final class LazyCons[+T](val x: T, val xs: () => LazyList[T]^) extends LazyList[
   def tail: LazyList[T]^{this} = xs()
 end LazyCons
 
-extension [A](xs1: => LazyList[A]^)
-  def #:(x: A): LazyList[A]^{xs1} =
+extension [A](x: A)
+  def #:(xs1: => LazyList[A]^): LazyList[A]^{xs1} =
     LazyCons(x, () => xs1)
 
 def tabulate[A](n: Int)(gen: Int => A): LazyList[A]^{gen} =

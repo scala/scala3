@@ -8,8 +8,8 @@ object Implementing_Tuples:
   type *:[H, T <: Tup] = ConsTup[H, T] // for type matching
   type EmptyTup = EmptyTup.type        // for type matching
 
-  extension [T <: Tup](tail: T)
-    def *:[H](head: H) = ConsTup(head, tail)
+  extension [H](head: H)
+    def *:[T <: Tup](tail: T) = ConsTup(head, tail)
 
   type Fold[T <: Tup, Seed, F[_,_]] = T match
     case EmptyTup => Seed

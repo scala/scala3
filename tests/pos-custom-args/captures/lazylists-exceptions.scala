@@ -42,8 +42,8 @@ extension [A](xs: LzyList[A]^)
     if n == 0 then xs else xs.tail.drop(n - 1)
 end extension
 
-extension [A](xs1: => LzyList[A]^)
-  def #:(x: A): LzyList[A]^{xs1} =
+extension [A](x: A)
+  def #:(xs1: => LzyList[A]^): LzyList[A]^{xs1} =
     LzyCons(x, () => xs1)
 
 def lazyCons[A](x: A, xs1: => LzyList[A]^): LzyList[A]^{xs1} =
