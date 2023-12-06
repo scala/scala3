@@ -1185,3 +1185,97 @@ class DocumentHighlightSuite extends BaseDocumentHighlightSuite:
          |val a = MyIntOut(1) <<+@@+>> 3
          |""".stripMargin,
     )
+
+  @Test def `constructor` = 
+    check(
+      """
+        |object Main {
+        |  class <<A@@bc>>[T](abc: T)
+        |  val x = new <<Abc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor1` = 
+    check(
+      """
+        |object Main {
+        |  case class <<Abc>>[T](abc: T)
+        |  val x = <<A@@bc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor2` = 
+    check(
+      """
+        |object Main {
+        |  class <<A@@bc>>[T](abc: T)
+        |  object <<Abc>>
+        |  val x = new <<Abc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor3` = 
+    check(
+      """
+        |object Main {
+        |  class <<Abc>>[T](abc: T)
+        |  object <<Abc>>
+        |  val x = new <<A@@bc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor4` = 
+    check(
+      """
+        |object Main {
+        |  class <<Abc>>[T](abc: T)
+        |  object <<Ab@@c>>
+        |  val x = new <<Abc>>(123)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor5` = 
+    check(
+      """
+        |object Main {
+        |  class <<Abc>>[T](abc: T)
+        |  object <<Abc>> {
+        |    def apply(abc: Int, bde: Int) = new <<Abc>>(abc + bde)
+        |  }
+        |  val x = <<Ab@@c>>(123, 456)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor6` = 
+    check(
+      """
+        |class <<Abc>>[T](a: T)
+        |object O {
+        |  def foo(a: Int) = new <<Abc>>[Int](a)
+        |  val x = <<Ab@@c>>[Int](2)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor7` = 
+    check(
+      """
+        |object Bar {
+        |class <<Abc>>[T](a: T)
+        |}
+        |
+        |object O {
+        |  val x = new Bar.<<Ab@@c>>(2)
+        |}""".stripMargin
+    )
+
+  @Test def `constructor8` = 
+    check(
+      """
+        |object Bar {
+        |class <<Abc>>[T](a: T)
+        |}
+        |
+        |object O {
+        |  val x = Bar.<<Ab@@c>>[Int](2)
+        |}""".stripMargin
+    )
