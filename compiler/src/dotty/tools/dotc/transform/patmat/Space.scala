@@ -836,6 +836,7 @@ object SpaceEngine {
       val tpw = tp.widen.dealias
       val classSym = tpw.classSymbol
       classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
+                                                         // requires an unknown number of changes to make work
       tpw.isInstanceOf[OrType] ||
       (tpw.isInstanceOf[AndType] && {
         val and = tpw.asInstanceOf[AndType]
