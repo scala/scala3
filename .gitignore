@@ -63,8 +63,8 @@ testlogs/
 local/
 compiler/test/debug/Gen.jar
 
-compiler/before-pickling.txt
-compiler/after-pickling.txt
+before-pickling.txt
+after-pickling.txt
 bench/compile.txt
 
 community-build/scala3-bootstrapped.version
