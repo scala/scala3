@@ -119,7 +119,7 @@ class HoverTypeSuite extends BaseHoverSuite:
       "extension (s: String) def double2: String".hover
     )
 
-  /* Currently there is no way to differentiate between
+    /* Currently there is no way to differentiate between
    * trailing using params in extension parameter and the
    * starting using params for the actual method.
    * As user can actually supply params to them by hand when
@@ -134,7 +134,7 @@ class HoverTypeSuite extends BaseHoverSuite:
          |class C
          |object Foo:
          |    extension [T](using A)(s: T)(using B)
-         |        def double[G](using C)(times: G) = (s.toString + s.toString) * times
+         |        def double[G <: Int](using C)(times: G) = (s.toString + s.toString) * times
          |    end extension
          |    given A with {}
          |    given B with {}
@@ -142,7 +142,7 @@ class HoverTypeSuite extends BaseHoverSuite:
          |    "".<<doub@@le(1)>>
          |end Foo
          |""".stripMargin,
-      "extension [T](using A)(s: T) def double(using B)[G](using C)(times: G): String".hover
+      "extension [T](using A)(s: T) def double(using B)[G <: Int](using C)(times: G): String".hover
     )
 
   @Test def `extension-methods-complex-binary` =
