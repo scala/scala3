@@ -149,6 +149,9 @@ class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError
     val unsafeFlags = cycleSym.flagsUNSAFE
     val isMethod = unsafeFlags.is(Method)
     val isVal = !isMethod && cycleSym.isTerm
+    val isConstructor = cycleSym.isConstructor
+
+    // println("isMethod?"+isMethod+",isConstr:"+isConstructor)
 
     /* This CyclicReference might have arisen from asking for `m`'s type while trying to infer it.
      * To try to diagnose this, walk the context chain searching for context in
@@ -161,6 +164,8 @@ class CyclicReference(val denot: SymDenotation)(using Context) extends TypeError
           case tree: untpd.ValOrDefDef if !tree.tpt.typeOpt.exists =>
             if (inImplicitSearch)
               TermMemberNeedsResultTypeForImplicitSearch(cycleSym)
+            else if (isConstructor)
+              CyclicMsgUnknownBug(cycleSym)
             else if (isMethod)
               OverloadedOrRecursiveMethodNeedsResultType(cycleSym)
             else if (isVal)

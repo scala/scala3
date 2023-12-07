@@ -1263,6 +1263,14 @@ extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
         |"""
 }
 
+class CyclicMsgUnknownBug(cycleSym: Symbol)(using Context)
+extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
+  def msg(using Context) = i"""Compiler bug: unknown cyclic error for $cycleSym. please report"""
+  def explain(using Context) =
+    i"""|For temporary fix, add type annotations to areas involving this constructor
+        """
+}
+
 class RecursiveValueNeedsResultType(cycleSym: Symbol)(using Context)
 extends CyclicMsg(RecursiveValueNeedsResultTypeID) {
   def msg(using Context) = i"""Recursive $cycleSym needs type"""
