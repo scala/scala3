@@ -287,11 +287,9 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult, argLen)
-    || {
-      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition)
-      isEmptyTp <:< ConstantType(Constant(false))
-    }
+    || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
+    || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
   }
 
   /** Is the unapply or unapplySeq irrefutable?
@@ -505,6 +503,7 @@ object SpaceEngine {
   def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
     if tp1 == ConstantType(Constant(null)) && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == ConstantType(Constant(null))
+    else if tp1.isTupleXXLExtract(tp2) then true // See isTupleXXLExtract, fixes TupleXXL parameter type
     else tp1 <:< tp2
   }
 
@@ -836,7 +835,8 @@ object SpaceEngine {
     def isCheckable(tp: Type): Boolean =
       val tpw = tp.widen.dealias
       val classSym = tpw.classSymbol
-      classSym.is(Sealed) ||
+      classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
+                                                         // requires an unknown number of changes to make work
       tpw.isInstanceOf[OrType] ||
       (tpw.isInstanceOf[AndType] && {
         val and = tpw.asInstanceOf[AndType]

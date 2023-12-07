@@ -936,7 +936,10 @@ trait Checking {
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
+    def check(pat: Tree, pt: Type): Boolean =
+      pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
+      || pt <:< pat.tpe
+      || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
