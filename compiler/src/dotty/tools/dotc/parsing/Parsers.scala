@@ -3389,7 +3389,7 @@ object Parsers {
      */
     def importOrExportClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
-      commaSeparated(importExpr(mkTree)) match {
+      commaSeparated(importExpr(leading, mkTree)) match {
         case t :: rest =>
           // The first import should start at the start offset of the keyword.
           val firstPos =
@@ -3444,13 +3444,18 @@ object Parsers {
      *  NamedSelector    ::=  id [‘as’ (id | ‘_’)]
      *  WildCardSelector ::=  ‘*' | ‘given’ [InfixType]
      */
-    def importExpr(mkTree: ImportConstr): () => Tree =
+    def importExpr(leading: Token, mkTree: ImportConstr): () => Tree =
+
+      def exprName =
+        (leading: @unchecked) match
+          case EXPORT => "export"
+          case IMPORT => "import"
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
         if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
-            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice(`future-migration`)}",
+            em"`_` is no longer supported for a wildcard $exprName; use `*` instead${rewriteNotice(`future-migration`)}",
             in.sourcePos(),
             from = future)
           patch(source, Span(in.offset, in.offset + 1), "*")
@@ -3469,7 +3474,7 @@ object Parsers {
         if in.token == ARROW || isIdent(nme.as) then
           if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
-              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
+              em"The $exprName renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice(`future-migration`)}",
               in.sourcePos(),
               from = future)
             patch(source, Span(in.offset, in.offset + 2),
@@ -3489,7 +3494,7 @@ object Parsers {
             case _ =>
               if isIdent(nme.raw.STAR) then wildcardSelector()
               else
-                if !idOK then syntaxError(em"named imports cannot follow wildcard imports")
+                if !idOK then syntaxError(em"named ${exprName}s cannot follow wildcard ${exprName}s")
                 namedSelector(termIdent())
         }
 
