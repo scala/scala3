@@ -3353,6 +3353,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
        * upper bound of an abstract type.
        *
        * See notably neg/wildcard-match.scala for examples of this.
+       *
+       * See neg/i13780.scala and neg/i13780-1.scala for ClassCastException
+       * reproducers if we disable this check.
        */
 
       def followEverythingConcrete(tp: Type): Type =
