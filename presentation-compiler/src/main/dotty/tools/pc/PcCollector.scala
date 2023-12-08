@@ -194,6 +194,13 @@ abstract class PcCollector[T](
       case (df: NamedDefTree) :: _
           if df.nameSpan.contains(pos.span) && !isGeneratedGiven(df) =>
         Some(symbolAlternatives(df.symbol), pos.withSpan(df.nameSpan))
+      /* enum cases with params
+       * enum Foo:
+       *  case B@@ar[A](i: A)
+       */
+      case (df: NamedDefTree) :: Template(_, _, self, _) :: _
+          if (df.name == nme.apply || df.name == nme.unapply) && df.nameSpan.isZeroExtent =>
+        Some(symbolAlternatives(self.tpt.symbol), self.sourcePos)
       /**
        * For traversing annotations:
        * @JsonNo@@tification("")
