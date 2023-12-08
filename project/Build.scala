@@ -351,6 +351,8 @@ object Build {
       // Reflect doesn't expect to see it as a standalone definition
       // and therefore it's easier just not to document it
       "-skip-by-id:scala.runtime.MatchCase",
+      "-skip-by-id:dotty.tools.tasty",
+      "-skip-by-id:dotty.tools.tasty.util",
       "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
       "-author",
       "-groups",
@@ -1917,7 +1919,9 @@ object ScaladocConfigs {
     def skipByRegex = SkipByRegex(List(".+\\.internal($|\\..+)", ".+\\.impl($|\\..+)"))
     def skipById = SkipById(List(
       "scala.runtime.stdLibPatches",
-      "scala.runtime.MatchCase"
+      "scala.runtime.MatchCase",
+      "dotty.tools.tasty",
+      "dotty.tools.tasty.util",
     ))
     def projectFooter = ProjectFooter(s"Copyright (c) 2002-$currentYear, LAMP/EPFL")
     def defaultTemplate = DefaultTemplate("static-site-main")
