@@ -411,7 +411,7 @@ object Inferencing {
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
     val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
-    vs foreachBinding { (tvar, v) =>
+    vs.underlying foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
         // if the tvar is covariant/contravariant (v == 1/-1, respectively) in the input type tp
         // then it is safe to instantiate if it doesn't occur in any of the GADT bounds.
@@ -444,8 +444,6 @@ object Inferencing {
     res
   }
 
-  type VarianceMap = SimpleIdentityMap[TypeVar, Integer]
-
   /** All occurrences of type vars in `tp` that satisfy predicate
    *  `include` mapped to their variances (-1/0/1) in both `tp` and
    *  `pt.finalResultType`, where
@@ -469,23 +467,18 @@ object Inferencing {
    *
    *  we want to instantiate U to x.type right away. No need to wait further.
    */
-  private def variances(tp: Type, pt: Type = WildcardType)(using Context): VarianceMap = {
+  private def variances(tp: Type, pt: Type = WildcardType)(using Context): VarianceMap[TypeVar] = {
     Stats.record("variances")
     val constraint = ctx.typerState.constraint
 
-    object accu extends TypeAccumulator[VarianceMap] {
+    object accu extends TypeAccumulator[VarianceMap[TypeVar]]:
       def setVariance(v: Int) = variance = v
-      def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
+      def apply(vmap: VarianceMap[TypeVar], t: Type): VarianceMap[TypeVar] = t match
         case t: TypeVar
         if !t.isInstantiated && accCtx.typerState.constraint.contains(t) =>
-          val v = vmap(t)
-          if (v == null) vmap.updated(t, variance)
-          else if (v == variance || v == 0) vmap
-          else vmap.updated(t, 0)
+          vmap.recordLocalVariance(t, variance)
         case _ =>
           foldOver(vmap, t)
-      }
-    }
 
     /** Include in `vmap` type variables occurring in the constraints of type variables
      *  already in `vmap`. Specifically:
@@ -497,10 +490,10 @@ object Inferencing {
      *     bounds as non-variant.
      *  Do this in a fixpoint iteration until `vmap` stabilizes.
      */
-    def propagate(vmap: VarianceMap): VarianceMap = {
+    def propagate(vmap: VarianceMap[TypeVar]): VarianceMap[TypeVar] = {
       var vmap1 = vmap
       def traverse(tp: Type) = { vmap1 = accu(vmap1, tp) }
-      vmap.foreachBinding { (tvar, v) =>
+      vmap.underlying.foreachBinding { (tvar, v) =>
         val param = tvar.origin
         constraint.entry(param) match
           case TypeBounds(lo, hi) =>
@@ -516,7 +509,7 @@ object Inferencing {
       if (vmap1 eq vmap) vmap else propagate(vmap1)
     }
 
-    propagate(accu(accu(SimpleIdentityMap.empty, tp), pt.finalResultType))
+    propagate(accu(accu(VarianceMap.empty, tp), pt.finalResultType))
   }
 
   /** Run the transformation after dealiasing but return the original type if it was a no-op. */
@@ -642,7 +635,7 @@ trait Inferencing { this: Typer =>
               if !tvar.isInstantiated then
                 // isInstantiated needs to be checked again, since previous interpolations could already have
                 // instantiated `tvar` through unification.
-                val v = vs(tvar)
+                val v = vs.computedVariance(tvar)
                 if v == null then buf += ((tvar, 0))
                 else if v.intValue != 0 then buf += ((tvar, v.intValue))
                 else comparing(cmp =>

@@ -1044,7 +1044,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ => tree
     }
 
-
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(using Context): NamedArg = {
     /* Special case for resolving types for arguments of an annotation defined in Java.
      * It allows that value of any type T can appear in positions where Array[T] is expected.
@@ -1325,7 +1324,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
-        case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
+        case SAMType(mt @ MethodTpe(_, formals, restpe), _) =>
           (formals,
            if (mt.isResultDependent)
              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
@@ -1636,22 +1635,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         meth1.tpe.widen match {
           case mt: MethodType =>
             pt.findFunctionType match {
-              case pt @ SAMType(sam)
-              if !defn.isFunctionNType(pt) && mt <:< sam =>
-                // SAMs of the form C[?] where C is a class cannot be conversion targets.
-                // The resulting class `class $anon extends C[?] {...}` would be illegal,
-                // since type arguments to `C`'s super constructor cannot be constructed.
-                def isWildcardClassSAM =
-                  !pt.classSymbol.is(Trait) && pt.argInfos.exists(_.isInstanceOf[TypeBounds])
+              case SAMType(samMeth, samParent)
+              if !defn.isFunctionNType(samParent) && mt <:< samMeth =>
+                if defn.isContextFunctionType(mt.resultType) then
+                  report.error(
+                    em"""Implementation restriction: cannot convert this expression to `$samParent`
+                        |because its result type `${mt.resultType}` is a contextual function type.""",
+                    tree.srcPos)
                 val targetTpe =
-                  if isFullyDefined(pt, ForceDegree.all) && !isWildcardClassSAM then
-                    pt
-                  else if pt.isRef(defn.PartialFunctionClass) then
+                  if isFullyDefined(samParent, ForceDegree.all) then
+                    samParent
+                  else if samParent.isRef(defn.PartialFunctionClass) then
                     // Replace the underspecified expected type by one based on the closure method type
                     defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
                   else
-                    report.error(em"result type of lambda is an underspecified SAM type $pt", tree.srcPos)
-                    pt
+                    report.error(em"result type of lambda is an underspecified SAM type $samParent", tree.srcPos)
+                    samParent
                 TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent)
@@ -3921,8 +3920,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           if (!defn.isFunctionNType(pt))
             pt match {
-              case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
-                report.warning(em"${tree.symbol} is eta-expanded even though $pt does not have the @FunctionalInterface annotation.", tree.srcPos)
+              case SAMType(_, samParent) if !pt1.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
+                report.warning(em"${tree.symbol} is eta-expanded even though $samParent does not have the @FunctionalInterface annotation.", tree.srcPos)
               case _ =>
             }
           simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
@@ -4085,9 +4084,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       }
     }
 
-    def toSAM(tree: Tree): Tree = tree match {
-      case tree: Block => tpd.cpy.Block(tree)(tree.stats, toSAM(tree.expr))
-      case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(pt)).withType(pt)
+    def toSAM(tree: Tree, samParent: Type): Tree = tree match {
+      case tree: Block => tpd.cpy.Block(tree)(tree.stats, toSAM(tree.expr, samParent))
+      case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(samParent)).withType(samParent)
     }
 
     def adaptToSubType(wtp: Type): Tree =
@@ -4126,13 +4125,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionNType(wtp) && !defn.isFunctionNType(pt) =>
           pt match {
-            case SAMType(sam)
-            if wtp <:< sam.toFunctionType(isJava = pt.classSymbol.is(JavaDefined)) =>
+            case SAMType(samMeth, samParent)
+            if wtp <:< samMeth.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined)) =>
               // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
               // body is typechecked.
-              return toSAM(tree)
+              return toSAM(tree, samParent)
             case _ =>
           }
         case _ =>

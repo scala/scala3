@@ -696,7 +696,7 @@ trait Applications extends Compatibility {
 
         def SAMargOK =
           defn.isFunctionNType(argtpe1) && formal.match
-            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+            case SAMType(samMeth, samParent) => argtpe <:< samMeth.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
             case _ => false
 
         isCompatible(argtpe, formal)
@@ -2080,7 +2080,7 @@ trait Applications extends Compatibility {
             *   new java.io.ObjectOutputStream(f)
             */
             pt match {
-              case SAMType(mtp) =>
+              case SAMType(mtp, _) =>
                 narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
               case _ =>
                 // pick any alternatives that are not methods since these might be convertible
