@@ -13,13 +13,6 @@ import org.junit.Test
 
 class InsertInferredTypeSuite extends BaseCodeActionSuite:
 
-  // override def extraDependencies(scalaVersion: String): Seq[Dependency] = {
-  //   val binaryVersion = createBinaryVersion(scalaVersion)
-  //   Seq(
-  //     Dependency.of("org.typelevel", s"cats-effect_$binaryVersion", "3.1.1")
-  //   )
-  // }
-
   @Test def `val` =
     checkEdit(
       """|object A{

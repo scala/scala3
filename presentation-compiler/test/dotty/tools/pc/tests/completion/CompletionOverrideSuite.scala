@@ -342,6 +342,44 @@ class CompletionOverrideSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
+  @Test def `jutil-package` =
+    checkEdit(
+      """|abstract class JUtil {
+         |  def foo: java.util.concurrent.CompletableFuture[Int]
+         |}
+         |class Main extends JUtil {
+         |  def foo@@
+         |}
+         |""".stripMargin,
+      """|import java.util.concurrent.CompletableFuture
+         |abstract class JUtil {
+         |  def foo: java.util.concurrent.CompletableFuture[Int]
+         |}
+         |class Main extends JUtil {
+         |  def foo: CompletableFuture[Int] = ${0:???}
+         |}
+         |""".stripMargin
+    )
+
+  @Test def `jutil-multiple-symbols` =
+    checkEdit(
+      """|abstract class JUtil {
+         |  def foo(x: java.util.List[Int]): java.util.List[Int]
+         |}
+         |class Main extends JUtil {
+         |  override def fo@@
+         |}
+         |""".stripMargin,
+      """|import java.{util => ju}
+         |abstract class JUtil {
+         |  def foo(x: java.util.List[Int]): java.util.List[Int]
+         |}
+         |class Main extends JUtil {
+         |  override def foo(x: ju.List[Int]): ju.List[Int] = ${0:???}
+         |}
+         |""".stripMargin
+    )
+
   @Test def `jutil-conflict` =
     checkEdit(
       """|package jutil
