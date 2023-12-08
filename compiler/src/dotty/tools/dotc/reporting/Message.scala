@@ -10,7 +10,6 @@ import printing.Formatting.hl
 import config.SourceVersion
 
 import scala.language.unsafeNulls
-
 import scala.annotation.threadUnsafe
 
 /** ## Tips for error message generation
@@ -383,6 +382,11 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
    *  to only a single message of that class to be issued.
    */
   def showAlways = false
+
+  /** A list of actions attached to this message to address the issue this
+    * message represents.
+    */
+  def actions(using Context): List[CodeAction] = List.empty
 
   override def toString = msg
 }
