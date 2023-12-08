@@ -16,7 +16,6 @@ import scala.jdk.CollectionConverters._
 import javax.tools.ToolProvider
 
 import org.junit.Assert._
-import org.junit.Assume.assumeFalse
 import org.junit.Test
 import org.junit.experimental.categories.Category
 
@@ -24,7 +23,6 @@ import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
-import dotty.Properties
 
 @main def updateExpect =
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
@@ -67,7 +65,6 @@ class SemanticdbTests:
   @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
 
   def runExpectTest(updateExpectFiles: Boolean): Unit =
-    assumeFalse("dotty/tests/semanticdb/metac.expect differs when using Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val target = generateSemanticdb()
     val errors = mutable.ArrayBuffer.empty[Path]
     val metacSb: StringBuilder = StringBuilder(5000)
