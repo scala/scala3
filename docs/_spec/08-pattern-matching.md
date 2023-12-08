@@ -518,7 +518,8 @@ If no such bounds can be found, a compile time error results.
 If such bounds are found, the pattern matching clause starting with ´p´ is then typed under the assumption that each ´a_i´ has lower bound ´L_i'´ instead of ´L_i´ and has upper bound ´U_i'´ instead of ´U_i´.
 
 The expected type of every block ´b_i´ is the expected type of the whole pattern matching expression.
-The type of the pattern matching expression is then the [weak least upper bound](03-types.html#weak-conformance) of the types of all blocks ´b_i´.
+If there is no expected type, [harmonization](./03-types.html#harmonization) is attempted on the list of all blocks ´b_i´.
+The type of the pattern matching expression is then the [least upper bound](03-types.html#least-upper-bounds-and-greatest-lower-bounds) of the types of all blocks ´b_i´ after harmonization.
 
 When applying a pattern matching expression to a selector value, patterns are tried in sequence until one is found which matches the [selector value](#patterns).
 Say this case is `case ´p_i \Rightarrow b_i´`.
@@ -595,7 +596,7 @@ If the expected type is [SAM-convertible](06-expressions.html#sam-conversion) to
 ```
 
 Here, each ´x_i´ is a fresh name.
-As was shown [here](06-expressions.html#anonymous-functions), this anonymous function is in turn equivalent to the following instance creation expression, where ´T´ is the weak least upper bound of the types of all ´b_i´.
+As was shown [here](06-expressions.html#anonymous-functions), this anonymous function is in turn equivalent to the following instance creation expression, where ´T´ is the least upper bound of the types of all ´b_i´.
 
 ```scala
 new scala.Function´k´[´S_1, ..., S_k´, ´T´] {
@@ -619,7 +620,7 @@ new scala.PartialFunction[´S´, ´T´] {
 }
 ```
 
-Here, ´x´ is a fresh name and ´T´ is the weak least upper bound of the types of all ´b_i´.
+Here, ´x´ is a fresh name and ´T´ is the least upper bound of the types of all ´b_i´.
 The final default case in the `isDefinedAt` method is omitted if one of the patterns ´p_1, ..., p_n´ is already a variable or wildcard pattern.
 
 ###### Example
