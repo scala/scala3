@@ -13,7 +13,7 @@ import Contexts._
 import Types._
 import Flags._
 import Mode.ImplicitsEnabled
-import NameKinds.{LazyImplicitName, EvidenceParamName}
+import NameKinds.{LazyImplicitName, ContextBoundParamName}
 import Symbols._
 import Types._
 import Decorators._
@@ -975,7 +975,7 @@ trait Implicits:
         def addendum = if (qt1 eq qt) "" else (i"\nWhere $qt is an alias of: $qt1")
         i"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
-        i"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
+        i"${ if paramName.is(ContextBoundParamName) then "a context parameter"
              else s"parameter $paramName" } of $methodStr"
     }
 
