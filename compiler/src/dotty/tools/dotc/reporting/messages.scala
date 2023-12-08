@@ -160,23 +160,27 @@ extends SyntaxMsg(CaseClassMissingParamListID) {
 
 class AnonymousFunctionMissingParamType(param: untpd.ValDef,
                                         tree: untpd.Function,
-                                        pt: Type)
+                                        inferredType: Type,
+                                        expectedType: Type,
+                                        )
                                         (using Context)
 extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
   def msg(using Context) = {
     val ofFun =
       if param.name.is(WildcardParamName)
           || (MethodType.syntheticParamNames(tree.args.length + 1) contains param.name)
-      then i" of expanded function:\n$tree"
+      then i"\n\nIn expanded function:\n$tree"
       else ""
 
     val inferred =
-      if (pt == WildcardType) ""
-      else i"\nWhat I could infer was: $pt"
+      if (inferredType == WildcardType) ""
+      else i"\n\nPartially inferred type for the parameter: $inferredType"
 
-    i"""Missing parameter type
-        |
-        |I could not infer the type of the parameter ${param.name}$ofFun.$inferred"""
+    val expected =
+      if (expectedType == WildcardType) ""
+      else i"\n\nExpected type for the whole anonymous function: $expectedType"
+
+    i"Could not infer type for parameter ${param.name} of anonymous function$ofFun$inferred$expected"
   }
 
   def explain(using Context) = ""
