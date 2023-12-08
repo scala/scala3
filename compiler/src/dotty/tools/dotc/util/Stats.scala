@@ -9,7 +9,11 @@ import collection.mutable
 
 @sharable object Stats {
 
+  // when false, Stats.record and Stats.trackTime are elided.
   inline val enabled = false
+
+  // set to true if only `trackTime` should be recorded by default
+  inline val timerOnly = false
 
   var monitored: Boolean = false
 
@@ -19,8 +23,8 @@ import collection.mutable
     override def default(key: String): Int = 0
   }
 
-  inline def record(inline fn: String, inline n: Int = 1): Unit =
-    if (enabled) doRecord(fn, n)
+  inline def record(inline fn: String, inline n: Int = 1, inline skip: Boolean = timerOnly): Unit =
+    if (enabled && !skip) doRecord(fn, n)
 
   def doRecord(fn: String, n: Int) =
     if (monitored) {
@@ -38,7 +42,7 @@ import collection.mutable
   def doTrackTime[T](fn: String)(op: => T): T = {
     if (monitored) {
       val start = System.nanoTime
-      try op finally record(fn, ((System.nanoTime - start) / 1000).toInt)
+      try op finally record(fn, ((System.nanoTime - start) / 1000).toInt, skip = false)
     }
     else op
   }
