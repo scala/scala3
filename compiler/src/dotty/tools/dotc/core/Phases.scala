@@ -321,10 +321,10 @@ object Phases {
     def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
       units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
-        try run(using unitCtx)
+        given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
+        try run
         catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
           println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
           throw ex
@@ -425,8 +425,8 @@ object Phases {
     final def prev: Phase =
       if (id > FirstPhaseId) myBase.phases(start - 1) else NoPhase
 
-    final def prevMega(using Context): Phase =
-      ctx.base.fusedContaining(ctx.phase.prev)
+    final def megaPhase(using Context): Phase =
+      ctx.base.fusedContaining(this)
 
     final def next: Phase =
       if (hasNext) myBase.phases(end + 1) else NoPhase
@@ -439,8 +439,8 @@ object Phases {
     final def monitor(doing: String)(body: => Unit)(using Context): Unit =
       try body
       catch
-        case NonFatal(ex) =>
-          report.echo(s"exception occurred while $doing ${ctx.compilationUnit}")
+        case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+          report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
 
     override def toString: String = phaseName
