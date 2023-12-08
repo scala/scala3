@@ -40,7 +40,7 @@ of the `tests/` directory. A small selection of test categories include:
 
 - `tests/pos` – tests that should compile: pass if compiles successfully.
 - `tests/neg` – should not compile: pass if fails compilation. Useful, e.g., to test an expected compiler error.
-- `tests/run` – these tests not only compile but are also run.
+- `tests/run` – these tests not only compile but are also run. Must include at least a `@main def Test = ...`.
 
 ### Naming and Running a Test Case
 
@@ -80,7 +80,7 @@ in a single run, this is called *joint compilation*. In this case use file names
 ### Checking Program Output
 
 `tests/run` tests verify the run-time behaviour of a test case. The output is checked by invoking a main method
-on a class `Test`, this can be done with either
+on a class `Test` (which is required to exist even if there is no checkfile), this can be done with either
 ```scala
 @main def Test: Unit = assert(1 > 0)
 ```
