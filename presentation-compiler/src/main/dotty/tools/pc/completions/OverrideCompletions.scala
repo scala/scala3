@@ -317,7 +317,7 @@ object OverrideCompletions:
         .sortBy(_.sourcePos.start)
       val source = indexedContext.ctx.source
 
-      val shouldCompleteBraces = decls.isEmpty && hasBraces(text, defn).isEmpty
+      val shouldCompleteBraces = decls.isEmpty && hasBracesOrColon(text, defn).isEmpty
 
       val (startIndent, indent, lastIndent) =
         calcIndent(defn, decls, source, text, shouldCompleteBraces)
@@ -470,7 +470,7 @@ object OverrideCompletions:
   private def inferEditPosition(text: String, defn: TargetDef)(using
       Context
   ): SourcePosition =
-    val span = hasBraces(text, defn)
+    val span = hasBracesOrColon(text, defn)
       .map { offset =>
         defn.sourcePos.span.withStart(offset + 1).withEnd(offset + 1)
       }
@@ -480,7 +480,9 @@ object OverrideCompletions:
     defn.sourcePos.withSpan(span)
   end inferEditPosition
 
-  private def hasBraces(text: String, defn: TargetDef): Option[Int] =
+  private def hasBracesOrColon(text: String, defn: TargetDef)(using
+      Context
+  ): Option[Int] =
     def hasSelfTypeAnnot = defn match
       case td: TypeDef =>
         td.rhs match
@@ -489,12 +491,20 @@ object OverrideCompletions:
           case _ => false
       case _ => false
     val start = defn.span.start
-    val offset =
+    val braceOffset =
       if hasSelfTypeAnnot then text.indexOf("=>", start) + 1
       else text.indexOf("{", start)
-    if offset > 0 && offset < defn.span.end then Some(offset)
-    else None
-  end hasBraces
+    if braceOffset > 0 && braceOffset < defn.span.end then Some(braceOffset)
+    else hasColon(text, defn)
+  end hasBracesOrColon
+
+  private def hasColon(text: String, defn: TargetDef)(using
+      Context
+  ): Option[Int] =
+    defn match
+      case td: TypeDef if text.charAt(td.rhs.span.end) == ':' =>
+        Some(td.rhs.span.end)
+      case _ => None
 
   private def fallbackFromParent(parent: Tree, name: String)(using Context) =
     val stats = parent match
