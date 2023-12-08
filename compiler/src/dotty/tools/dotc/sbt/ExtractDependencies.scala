@@ -4,6 +4,7 @@ package sbt
 import scala.language.unsafeNulls
 
 import java.io.File
+import java.nio.file.Path
 import java.util.{Arrays, EnumSet}
 
 import dotty.tools.dotc.ast.tpd
@@ -54,8 +55,7 @@ class ExtractDependencies extends Phase {
   override def description: String = ExtractDependencies.description
 
   override def isRunnable(using Context): Boolean = {
-    def forceRun = ctx.settings.YdumpSbtInc.value || ctx.settings.YforceSbtPhases.value
-    super.isRunnable && (ctx.sbtCallback != null || forceRun)
+    super.isRunnable && ctx.runZincPhases
   }
 
   // Check no needed. Does not transform trees
@@ -90,18 +90,16 @@ class ExtractDependencies extends Phase {
       } finally pw.close()
     }
 
-    if (ctx.sbtCallback != null) {
+    ctx.withIncCallback: cb =>
       collector.usedNames.foreach {
         case (clazz, usedNames) =>
           val className = classNameAsString(clazz)
           usedNames.names.foreach {
             case (usedName, scopes) =>
-              ctx.sbtCallback.usedName(className, usedName.toString, scopes)
+              cb.usedName(className, usedName.toString, scopes)
           }
       }
-
       collector.dependencies.foreach(recordDependency)
-    }
   }
 
   /*
@@ -111,27 +109,20 @@ class ExtractDependencies extends Phase {
    */
   def recordDependency(dep: ClassDependency)(using Context): Unit = {
     val fromClassName = classNameAsString(dep.from)
-    val sourceFile = ctx.compilationUnit.source.file.file
+    val sourceFile = ctx.compilationUnit.source
 
-    def binaryDependency(file: File, binaryClassName: String) =
-      ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
+    def binaryDependency(file: Path, binaryClassName: String) =
+      ctx.withIncCallback(_.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context))
 
     def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
       depFile match {
         case ze: ZipArchive#Entry => // The dependency comes from a JAR
           ze.underlyingSource match
-            case Some(zip) if zip.file != null =>
-              binaryDependency(zip.file, binaryClassName)
+            case Some(zip) if zip.jpath != null =>
+              binaryDependency(zip.jpath, binaryClassName)
             case _ =>
-        case pf: PlainFile => // The dependency comes from a class file
-          // FIXME: pf.file is null for classfiles coming from the modulepath
-          // (handled by JrtClassPath) because they cannot be represented as
-          // java.io.File, since the `binaryDependency` callback must take a
-          // java.io.File, this means that we cannot record dependencies coming
-          // from the modulepath. For now this isn't a big deal since we only
-          // support having the standard Java library on the modulepath.
-          if pf.file != null then
-            binaryDependency(pf.file, binaryClassName)
+        case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
+          binaryDependency(pf.jpath, binaryClassName)
         case _ =>
           internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }
@@ -144,11 +135,11 @@ class ExtractDependencies extends Phase {
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
         processExternalDependency(depFile, dep.to.binaryClassName)
-      } else if (allowLocal || depFile.file != sourceFile) {
+      } else if (allowLocal || depFile != sourceFile.file) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
         val toClassName = classNameAsString(dep.to)
-        ctx.sbtCallback.classDependency(toClassName, fromClassName, dep.context)
+        ctx.withIncCallback(_.classDependency(toClassName, fromClassName, dep.context))
       }
     }
   }

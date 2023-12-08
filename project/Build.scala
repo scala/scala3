@@ -525,6 +525,33 @@ object Build {
     recur(lines, false)
   }
 
+  /** replace imports of `com.google.protobuf.*` with compiler implemented version */
+  def replaceProtobuf(lines: List[String]): List[String] = {
+    def recur(ls: List[String]): List[String] = ls match {
+      case l :: rest =>
+        val lt = l.trim()
+        if (lt.isEmpty || lt.startsWith("package ") || lt.startsWith("import ")) {
+          val newLine =
+            if (lt.startsWith("import com.google.protobuf.")) {
+              if (lt == "import com.google.protobuf.CodedInputStream") {
+                "import dotty.tools.dotc.semanticdb.internal.SemanticdbInputStream as CodedInputStream"
+              } else if (lt == "import com.google.protobuf.CodedOutputStream") {
+                "import dotty.tools.dotc.semanticdb.internal.SemanticdbOutputStream as CodedOutputStream"
+              } else {
+                l
+              }
+            } else {
+              l
+            }
+          newLine :: recur(rest)
+        } else {
+          ls // don't check rest of file
+        }
+      case _ => ls
+    }
+    recur(lines)
+  }
+
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
       // Generate compiler.properties, used by sbt
@@ -551,7 +578,7 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "9.5.0-scala-1", // used by the backend
-        Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
+        Dependencies.compilerInterface,
         "org.jline" % "jline-reader" % "3.19.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.19.0",
         "org.jline" % "jline-terminal-jna" % "3.19.0", // needed for Windows
@@ -668,7 +695,8 @@ object Build {
           val dottyTastyInspector = jars("scala3-tasty-inspector")
           val dottyInterfaces = jars("scala3-interfaces")
           val tastyCore = jars("tasty-core")
-          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore).mkString(File.pathSeparator)))
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
         } else run(args)
       },
 
@@ -707,7 +735,8 @@ object Build {
           val dottyTastyInspector = jars("scala3-tasty-inspector")
           val tastyCore = jars("tasty-core")
           val asm = findArtifactPath(externalDeps, "scala-asm")
-          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
+          val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
+          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
         val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
@@ -1051,8 +1080,7 @@ object Build {
       // when sbt reads the settings.
       Test / test := (LocalProject("scala3-sbt-bridge-tests") / Test / test).value,
 
-      // The `newCompilerInterface` is backward compatible with the `oldCompilerInterface`
-      libraryDependencies += Dependencies.newCompilerInterface % Provided
+      libraryDependencies += Dependencies.compilerInterface % Provided
     )
 
   // We use a separate project for the bridge tests since they can only be run
@@ -1134,7 +1162,8 @@ object Build {
           val mtagsSharedSources = (targetDir ** "*.scala").get.toSet
           mtagsSharedSources.foreach(f => {
             val lines = IO.readLines(f)
-            IO.writeLines(f, insertUnsafeNullsImport(lines))
+            val substitutions = (replaceProtobuf(_)) andThen (insertUnsafeNullsImport(_))
+            IO.writeLines(f, substitutions(lines))
           })
           mtagsSharedSources
         } (Set(mtagsSharedSourceJar)).toSeq

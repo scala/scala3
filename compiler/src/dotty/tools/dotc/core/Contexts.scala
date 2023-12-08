@@ -34,25 +34,25 @@ import scala.annotation.internal.sharable
 
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import util.Property.Key
 import util.Store
-import xsbti.AnalysisCallback
 import plugins._
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 
 object Contexts {
 
-  private val (compilerCallbackLoc, store1) = Store.empty.newLocation[CompilerCallback]()
-  private val (sbtCallbackLoc,      store2) = store1.newLocation[AnalysisCallback]()
-  private val (printerFnLoc,        store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
-  private val (settingsStateLoc,    store4) = store3.newLocation[SettingsState]()
-  private val (compilationUnitLoc,  store5) = store4.newLocation[CompilationUnit]()
-  private val (runLoc,              store6) = store5.newLocation[Run | Null]()
-  private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
-  private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
-  private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo | Null]()
-  private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
+  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (incCallbackLoc,       store2) = store1.newLocation[IncrementalCallback | Null]()
+  private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
+  private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
+  private val (compilationUnitLoc,   store5) = store4.newLocation[CompilationUnit]()
+  private val (runLoc,               store6) = store5.newLocation[Run | Null]()
+  private val (profilerLoc,          store7) = store6.newLocation[Profiler]()
+  private val (notNullInfosLoc,      store8) = store7.newLocation[List[NotNullInfo]]()
+  private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
+  private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
 
   private val initialStore = store10
 
@@ -164,8 +164,18 @@ object Contexts {
     /** The compiler callback implementation, or null if no callback will be called. */
     def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
 
-    /** The sbt callback implementation if we are run from sbt, null otherwise */
-    def sbtCallback: AnalysisCallback = store(sbtCallbackLoc)
+    /** The Zinc callback implementation if we are run from Zinc, null otherwise */
+    def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
+
+    /** Run `op` if there exists an incremental callback */
+    inline def withIncCallback(inline op: IncrementalCallback => Unit): Unit =
+      val local = incCallback
+      if local != null then op(local)
+
+    def runZincPhases: Boolean =
+      def forceRun = settings.YdumpSbtInc.value || settings.YforceSbtPhases.value
+      val local = incCallback
+      local != null && local.enabled || forceRun
 
     /** The current plain printer */
     def printerFn: Context => Printer = store(printerFnLoc)
@@ -664,7 +674,7 @@ object Contexts {
     }
 
     def setCompilerCallback(callback: CompilerCallback): this.type = updateStore(compilerCallbackLoc, callback)
-    def setSbtCallback(callback: AnalysisCallback): this.type = updateStore(sbtCallbackLoc, callback)
+    def setIncCallback(callback: IncrementalCallback): this.type = updateStore(incCallbackLoc, callback)
     def setPrinterFn(printer: Context => Printer): this.type = updateStore(printerFnLoc, printer)
     def setSettings(settingsState: SettingsState): this.type = updateStore(settingsStateLoc, settingsState)
     def setRun(run: Run | Null): this.type = updateStore(runLoc, run)

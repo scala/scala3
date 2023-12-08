@@ -14,40 +14,37 @@ class TestCallback extends AnalysisCallback
 {
   case class TestUsedName(name: String, scopes: EnumSet[UseScope])
   val classDependencies = new ArrayBuffer[(String, String, DependencyContext)]
-  val binaryDependencies = new ArrayBuffer[(File, String, String, File, DependencyContext)]
-  val products = new ArrayBuffer[(File, File)]
+  val binaryDependencies = new ArrayBuffer[(Path, String, String, VirtualFileRef, DependencyContext)]
+  val products = new ArrayBuffer[(VirtualFileRef, Path)]
   val usedNamesAndScopes = scala.collection.mutable.Map.empty[String, Set[TestUsedName]].withDefaultValue(Set.empty)
-  val classNames = scala.collection.mutable.Map.empty[File, Set[(String, String)]].withDefaultValue(Set.empty)
-  val apis: scala.collection.mutable.Map[File, Seq[ClassLike]] = scala.collection.mutable.Map.empty
+  val classNames = scala.collection.mutable.Map.empty[VirtualFileRef, Set[(String, String)]].withDefaultValue(Set.empty)
+  val apis: scala.collection.mutable.Map[VirtualFileRef, Seq[ClassLike]] = scala.collection.mutable.Map.empty
 
   def usedNames = usedNamesAndScopes.view.mapValues(_.map(_.name)).toMap
 
-  override def startSource(source: File): Unit = {
+  override def startSource(source: File): Unit = ???
+  override def startSource(source: VirtualFile): Unit = {
     assert(!apis.contains(source), s"startSource can be called only once per source file: $source")
     apis(source) = Seq.empty
   }
-  override def startSource(source: VirtualFile): Unit = ???
 
-  override def binaryDependency(binary: File, name: String, fromClassName: String, source: File, context: DependencyContext): Unit = {
+  override def binaryDependency(binary: File, name: String, fromClassName: String, source: File, context: DependencyContext): Unit = ???
+  override def binaryDependency(binary: Path, name: String, fromClassName: String, source: VirtualFileRef, context: DependencyContext): Unit = {
     binaryDependencies += ((binary, name, fromClassName, source, context))
   }
-  override def binaryDependency(binary: Path, name: String, fromClassName: String, source: VirtualFileRef, context: DependencyContext): Unit = ???
 
-  override def generatedNonLocalClass(source: File,
-                             module: File,
-                             binaryClassName: String,
-                             srcClassName: String): Unit = {
+  override def generatedNonLocalClass(source: File, module: File, binaryClassName: String, srcClassName: String): Unit = ???
+  override def generatedNonLocalClass(source: VirtualFileRef, module: Path, binaryClassName: String, srcClassName: String): Unit = {
     products += ((source, module))
     classNames(source) += ((srcClassName, binaryClassName))
     ()
   }
-  override def generatedNonLocalClass(source: VirtualFileRef, module: Path, binaryClassName: String, srcClassName: String): Unit = ???
 
-  override def generatedLocalClass(source: File, module: File): Unit = {
+  override def generatedLocalClass(source: File, module: File): Unit = ???
+  override def generatedLocalClass(source: VirtualFileRef, module: Path): Unit = {
     products += ((source, module))
     ()
   }
-  override def generatedLocalClass(source: VirtualFileRef, module: Path): Unit = ???
 
   override def classDependency(onClassName: String, sourceClassName: String, context: DependencyContext): Unit = {
     if (onClassName != sourceClassName) classDependencies += ((onClassName, sourceClassName, context))
@@ -57,10 +54,10 @@ class TestCallback extends AnalysisCallback
     usedNamesAndScopes(className) += TestUsedName(name, scopes)
   }
 
-  override def api(source: File, classApi: ClassLike): Unit = {
+  override def api(source: File, classApi: ClassLike): Unit = ???
+  override def api(source: VirtualFileRef, classApi: ClassLike): Unit = {
     apis(source) = classApi +: apis(source)
   }
-  override def api(source: VirtualFileRef, classApi: ClassLike): Unit = ???
 
   override def problem(category: String, pos: xsbti.Position, message: String, severity: xsbti.Severity, reported: Boolean): Unit = ()
   override def dependencyPhaseCompleted(): Unit = ()
