@@ -16,10 +16,10 @@ object Test:
   type JsonArray = mutable.Buffer[Json]
 
   def encode(x: Json): Int = x match
-    case str: String => 1       // error
-    case b: Boolean => 2        // error
-    case i: Int => 3            // error
-    case d: Double => 4         // error
+    case str: String => 1
+    case b: Boolean => 2
+    case i: Int => 3
+    case d: Double => 4
     case arr: JsonArray => 5    // error
     case obj: JsonObject => 6   // error
     case _ => 7

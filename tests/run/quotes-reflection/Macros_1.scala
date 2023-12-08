@@ -20,7 +20,7 @@ def inspect2[A: Type](using Quotes): Expr[String] = {
         s"method $name: $paramStr"
       case vd @ ValDef(name, tpt, body) =>
         tpt.tpe match
-          case Refinement(parent, "apply", tpe: MethodType) if parent == defn.PolyFunctionClass.typeRef =>
+          case Refinement(parent, "apply", tpe: MethodType) if parent == defn.ErasedFunctionClass.typeRef =>
             assert(tpt.tpe.isErasedFunctionType)
 
             val params = tpe.paramNames.zip(tpe.paramTypes).map((n, t) => s"$n: ${t.show}").mkString("(", ", ", ")")
