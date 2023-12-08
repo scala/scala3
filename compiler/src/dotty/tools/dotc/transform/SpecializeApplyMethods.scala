@@ -90,7 +90,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   override def transformTemplate(tree: Template)(using Context) = {
     val cls = tree.symbol.owner.asClass
 
-    def synthesizeApply(names: collection.Set[TermName]): Tree = {
+    def synthesizeApply(names: List[TermName]): Tree = {
       val applyBuf = new mutable.ListBuffer[DefDef]
       names.foreach { name =>
         val applySym = cls.info.decls.lookup(name)

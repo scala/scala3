@@ -1741,27 +1741,27 @@ class Definitions {
   @tu lazy val Tuple2SpecializedParamClasses: PerRun[Set[Symbol]] = new PerRun(Tuple2SpecializedParamTypes.map(_.symbol))
 
   // Specialized type parameters defined for scala.Function{0,1,2}.
-  @tu lazy val Function1SpecializedParamTypes: collection.Set[TypeRef] =
-    Set(IntType, LongType, FloatType, DoubleType)
-  @tu lazy val Function2SpecializedParamTypes: collection.Set[TypeRef] =
-    Set(IntType, LongType, DoubleType)
-  @tu lazy val Function0SpecializedReturnTypes: collection.Set[TypeRef] =
-    ScalaNumericValueTypeList.toSet + UnitType + BooleanType
-  @tu lazy val Function1SpecializedReturnTypes: collection.Set[TypeRef] =
-    Set(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
-  @tu lazy val Function2SpecializedReturnTypes: collection.Set[TypeRef] =
+  @tu lazy val Function1SpecializedParamTypes: List[TypeRef] =
+    List(IntType, LongType, FloatType, DoubleType)
+  @tu lazy val Function2SpecializedParamTypes: List[TypeRef] =
+    List(IntType, LongType, DoubleType)
+  @tu lazy val Function0SpecializedReturnTypes: List[TypeRef] =
+    ScalaNumericValueTypeList :+ UnitType :+ BooleanType
+  @tu lazy val Function1SpecializedReturnTypes: List[TypeRef] =
+    List(UnitType, BooleanType, IntType, FloatType, LongType, DoubleType)
+  @tu lazy val Function2SpecializedReturnTypes: List[TypeRef] =
     Function1SpecializedReturnTypes
 
   @tu lazy val Function1SpecializedParamClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function1SpecializedParamTypes.map(_.symbol))
+    new PerRun(Function1SpecializedParamTypes.toSet.map(_.symbol))
   @tu lazy val Function2SpecializedParamClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function2SpecializedParamTypes.map(_.symbol))
+    new PerRun(Function2SpecializedParamTypes.toSet.map(_.symbol))
   @tu lazy val Function0SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function0SpecializedReturnTypes.map(_.symbol))
+    new PerRun(Function0SpecializedReturnTypes.toSet.map(_.symbol))
   @tu lazy val Function1SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function1SpecializedReturnTypes.map(_.symbol))
+    new PerRun(Function1SpecializedReturnTypes.toSet.map(_.symbol))
   @tu lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
-    new PerRun(Function2SpecializedReturnTypes.map(_.symbol))
+    new PerRun(Function2SpecializedReturnTypes.toSet.map(_.symbol))
 
   def isSpecializableTuple(base: Symbol, args: List[Type])(using Context): Boolean =
     args.length <= 2 && base.isClass && TupleSpecializedClasses.exists(base.asClass.derivesFrom) && args.match
@@ -1791,18 +1791,18 @@ class Definitions {
         false
     })
 
-  @tu lazy val Function0SpecializedApplyNames: collection.Set[TermName] =
+  @tu lazy val Function0SpecializedApplyNames: List[TermName] =
     for r <- Function0SpecializedReturnTypes
     yield nme.apply.specializedFunction(r, Nil).asTermName
 
-  @tu lazy val Function1SpecializedApplyNames: collection.Set[TermName] =
+  @tu lazy val Function1SpecializedApplyNames: List[TermName] =
     for
       r  <- Function1SpecializedReturnTypes
       t1 <- Function1SpecializedParamTypes
     yield
       nme.apply.specializedFunction(r, List(t1)).asTermName
 
-  @tu lazy val Function2SpecializedApplyNames: collection.Set[TermName] =
+  @tu lazy val Function2SpecializedApplyNames: List[TermName] =
     for
       r  <- Function2SpecializedReturnTypes
       t1 <- Function2SpecializedParamTypes
@@ -1811,7 +1811,7 @@ class Definitions {
       nme.apply.specializedFunction(r, List(t1, t2)).asTermName
 
   @tu lazy val FunctionSpecializedApplyNames: collection.Set[Name] =
-    Function0SpecializedApplyNames ++ Function1SpecializedApplyNames ++ Function2SpecializedApplyNames
+    Set.concat(Function0SpecializedApplyNames, Function1SpecializedApplyNames, Function2SpecializedApplyNames)
 
   def functionArity(tp: Type)(using Context): Int = tp.functionArgInfos.length - 1
 
