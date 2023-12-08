@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 object Test {
   var a = true

@@ -1,4 +1,4 @@
-// scalac: -Xsemanticdb
+//> using options -Xsemanticdb
 
 object Test {
   def main(args: Array[String]): Unit = {

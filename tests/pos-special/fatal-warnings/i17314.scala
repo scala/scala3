@@ -1,4 +1,4 @@
-// scalac: "-Wunused:all"
+//> using options "-Wunused:all"
 
 import java.net.URI
 

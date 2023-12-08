@@ -1,4 +1,4 @@
-// scalac: -Yrequire-targetName -Xfatal-warnings
+//> using options -Yrequire-targetName -Xfatal-warnings
 
 // Compile with -strict -Xfatal-warnings -deprecation
 import scala.annotation.targetName

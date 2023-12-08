@@ -1,4 +1,4 @@
-// scalac: -language:experimental.erasedDefinitions
+//> using options -language:experimental.erasedDefinitions
 
 def foo(erased x: Int, y: Int) = y
 def bar(x: Int, erased y: Int) = x

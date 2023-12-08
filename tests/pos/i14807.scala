@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 enum Foo:
   case One(value: String)
   case Two(value: Long, month: java.time.Month)

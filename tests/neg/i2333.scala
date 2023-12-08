@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -deprecation
+//> using options -Xfatal-warnings -deprecation
 
 @deprecated("bla", "2.11.0") class Foo {
   println("")

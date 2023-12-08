@@ -1,4 +1,4 @@
-// scalac: -Xprint:getters
+//> using options -Xprint:getters
 
 class A {
   extension (a: Int) {

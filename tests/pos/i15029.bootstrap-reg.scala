@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 // minimisation of a regression that occurred in bootstrapping
 class Test:
   def t(a: Boolean, b: Boolean) = (a, b) match

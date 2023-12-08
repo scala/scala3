@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:linted
+//> using options -Xfatal-warnings -Wunused:linted
 
 import collection.mutable.Set // error
 

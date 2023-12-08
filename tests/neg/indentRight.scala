@@ -1,4 +1,4 @@
-// scalac: -no-indent -Xfatal-warnings
+//> using options -no-indent -Xfatal-warnings
 
 trait A
     case class B() extends A  // error: Line is indented too far to the right

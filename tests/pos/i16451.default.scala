@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 
 import java.lang.reflect.*
 import scala.annotation.tailrec

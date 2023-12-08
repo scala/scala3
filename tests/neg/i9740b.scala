@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 enum Recovery:
   case RecoveryCompleted
 

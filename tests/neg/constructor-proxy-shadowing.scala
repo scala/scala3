@@ -1,4 +1,4 @@
-// scalac: -explain
+//> using options -explain
 
 object Test extends App {
   def A22(s: String): String = s

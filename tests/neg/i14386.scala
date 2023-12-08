@@ -1,4 +1,4 @@
-// scalac: -Werror
+//> using options -Werror
 def logLevelDetail(level: Int): String =
    s"""$level
 

@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:all
+//> using options -Xfatal-warnings -Wunused:all
 
 package foo:
   class Foo[T]

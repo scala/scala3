@@ -1,4 +1,4 @@
-// scalac: -explain
+//> using options -explain
 
 object Test1:
   def foo[T >: Any]: Unit = ()

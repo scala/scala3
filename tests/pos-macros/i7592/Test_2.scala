@@ -1,4 +1,4 @@
-// scalac: -Yretain-trees
+//> using options -Yretain-trees
 
 def return1 = 1
 

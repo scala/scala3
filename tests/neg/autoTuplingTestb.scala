@@ -1,4 +1,4 @@
-// scalac: -language:noAutoTupling
+//> using options -language:noAutoTupling
 
 object autoTupling {
 

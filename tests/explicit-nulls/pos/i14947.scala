@@ -1,4 +1,4 @@
-// scalac: -Ytest-pickler -Xprint-types
+//> using options -Ytest-pickler -Xprint-types
 
 class B:
   def g: String | Null = ???

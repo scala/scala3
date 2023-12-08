@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings -Wunused:unsafe-warn-patvars
+//> using options -Xfatal-warnings -Wunused:unsafe-warn-patvars
 // todo : change to :patvars
 
 sealed trait Calc

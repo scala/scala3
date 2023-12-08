@@ -1,4 +1,4 @@
-// scalac: -Xfatal-warnings
+//> using options -Xfatal-warnings
 
 import scala.language.future
 import scala.reflect.ClassTag

@@ -1,3 +1,3 @@
-// scalac: -Ystop-after:erasure
+//> using options -Ystop-after:erasure
 
 class A
