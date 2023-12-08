@@ -4,7 +4,7 @@ package printing
 
 import core._
 import Texts._, ast.Trees._
-import Types.{Type, SingletonType, LambdaParam},
+import Types.{Type, SingletonType, LambdaParam, NamedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
 import typer.Implicits.*
@@ -101,7 +101,7 @@ abstract class Printer {
   def toTextRef(tp: SingletonType): Text
 
   /** Textual representation of a prefix of some reference, ending in `.` or `#` */
-  def toTextPrefix(tp: Type): Text
+  def toTextPrefixOf(tp: NamedType): Text
 
   /** Textual representation of a reference in a capture set */
   def toTextCaptureRef(tp: Type): Text

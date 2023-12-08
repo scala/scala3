@@ -83,8 +83,8 @@ object SyntaxHighlighting {
         }
       }
 
-      for (span <- scanner.commentSpans)
-        highlightPosition(span, CommentColor)
+      for (comment <- scanner.comments)
+        highlightPosition(comment.span, CommentColor)
 
       object TreeHighlighter extends untpd.UntypedTreeTraverser {
         import untpd._
