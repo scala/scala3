@@ -3103,6 +3103,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               && xtree.isTerm
               && !untpd.isContextualClosure(xtree)
               && !ctx.mode.is(Mode.Pattern)
+              && !xtree.isInstanceOf[SplicePattern]
               && !ctx.isAfterTyper
               && !ctx.isInlineContext
             then
@@ -3945,6 +3946,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           && pt != SingletonTypeProto
           && pt != AssignProto
           && !ctx.mode.is(Mode.Pattern)
+          && !tree.isInstanceOf[SplicePattern]
           && !ctx.isAfterTyper
           && !ctx.isInlineContext
       then
