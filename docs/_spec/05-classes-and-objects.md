@@ -310,6 +310,7 @@ LocalModifier     ::=  ‘abstract’
                     |  ‘sealed’
                     |  ‘implicit’
                     |  ‘lazy’
+                    |  ‘infix’
 AccessModifier    ::=  (‘private’ | ‘protected’) [AccessQualifier]
 AccessQualifier   ::=  ‘[’ (id | ‘this’) ‘]’
 ```
@@ -400,6 +401,31 @@ A `lazy` value is initialized the first time it is accessed (which might never
 happen at all).
 Attempting to access a lazy value during its initialization might lead to looping behavior.
 If an exception is thrown during initialization, the value is considered uninitialized, and a later access will retry to evaluate its right hand side.
+
+### `infix`
+The `infix` modifier applies to method definitions and type definitions.
+It signals that the method or type is intended for use in infix position, even if it has an alphanumeric name.
+
+If a method overrides another, their `infix` annotations must agree. Either both are annotated with `infix`, or none of them are.
+
+The first non-receiver parameter list of an `infix` method must define exactly one parameter. Examples:
+
+```scala
+infix def op1(x: S): R             // ok
+infix def op2[T](x: T)(y: S): R    // ok
+infix def op3[T](x: T, y: S): R    // error: two parameters
+extension (x: A)
+  infix def op4(y: B): R          // ok
+  infix def op5(y1: B, y2: B): R  // error: two parameters
+```
+
+`infix` modifiers can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
+
+```scala
+infix type op[X, Y]
+```
+
+can be applied using infix syntax, i.e., `A op B`.
 
 ###### Example
 The following code illustrates the use of qualified private:

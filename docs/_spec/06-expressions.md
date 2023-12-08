@@ -10,22 +10,26 @@ chapter: 6
 Expr         ::=  (Bindings | id | ‘_’) ‘=>’ Expr
                |  Expr1
 Expr1        ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
+               |  ‘if‘ Expr ‘then‘ Expr [[semi] ‘else‘ Expr]
                |  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
-               |  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
-               |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
+               |  ‘while’ Expr ‘do’ Expr
+               |  ‘try’ Expr [Catches] [‘finally’ Expr]
+               |  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘do‘ | ‘yield’] Expr
+               |  ‘for’ Enumerators (‘do‘ | ‘yield’) Expr
                |  ‘throw’ Expr
                |  ‘return’ [Expr]
                |  [SimpleExpr ‘.’] id ‘=’ Expr
                |  SimpleExpr1 ArgumentExprs ‘=’ Expr
                |  PostfixExpr
                |  PostfixExpr Ascription
-               |  PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
 PostfixExpr  ::=  InfixExpr [id [nl]]
 InfixExpr    ::=  PrefixExpr
                |  InfixExpr id [nl] InfixExpr
+               |  InfixExpr MatchClause
 PrefixExpr   ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr
 SimpleExpr   ::=  ‘new’ (ClassTemplate | TemplateBody)
                |  BlockExpr
+               |  SimpleExpr ‘.’ MatchClause
                |  SimpleExpr1 [‘_’]
 SimpleExpr1  ::=  Literal
                |  Path
@@ -36,6 +40,7 @@ SimpleExpr1  ::=  Literal
                |  SimpleExpr1 ArgumentExprs
                |  XmlExpr
 Exprs        ::=  Expr {‘,’ Expr}
+MatchClause  ::=  ‘match’ ‘{’ CaseClauses ‘}’
 BlockExpr    ::=  ‘{’ CaseClauses ‘}’
                |  ‘{’ Block ‘}’
 Block        ::=  BlockStat {semi BlockStat} [ResultExpr]
@@ -44,6 +49,7 @@ ResultExpr   ::=  Expr1
 Ascription   ::=  ‘:’ InfixType
                |  ‘:’ Annotation {Annotation}
                |  ‘:’ ‘_’ ‘*’
+Catches      ::=  ‘catch‘ (Expr | ExprCaseClause)
 ```
 
 Expressions are composed of operators and operands.
@@ -545,6 +551,8 @@ This expression is then interpreted as ´e.\mathit{op}(e_1,...,e_n)´.
 A left-associative binary operation ´e_1;\mathit{op};e_2´ is interpreted as ´e_1.\mathit{op}(e_2)´. If ´\mathit{op}´ is right-associative and its parameter is passed by name, the same operation is interpreted as ´e_2.\mathit{op}(e_1)´.
 If ´\mathit{op}´ is right-associative and its parameter is passed by value, it is interpreted as `{ val ´x´=´e_1´; ´e_2´.´\mathit{op}´(´x\,´) }`, where ´x´ is a fresh name.
 
+Under `-source:future`, if the method name is alphanumeric and the target method is not marked [`infix`](./05-classes-and-objects.html#infix), a deprecation warning is emitted.
+
 ### Assignment Operators
 
 An _assignment operator_ is an operator symbol (syntax category `op` in [Identifiers](01-lexical-syntax.html#identifiers)) that ends in an equals character “`=`”, with the following exceptions:
@@ -677,6 +685,7 @@ def matmul(xss: Array[Array[Double]], yss: Array[Array[Double]]) = {
 
 ```ebnf
 Expr1          ::=  ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
+                 |  ‘if‘ Expr ‘then‘ Expr [[semi] ‘else‘ Expr]
 ```
 
 The _conditional expression_ `if (´e_1´) ´e_2´ else ´e_3´` chooses one of the values of ´e_2´ and ´e_3´, depending on the value of ´e_1´.
@@ -696,6 +705,7 @@ The conditional expression `if (´e_1´) ´e_2´` is evaluated as if it was `if 
 
 ```ebnf
 Expr1          ::=  ‘while’ ‘(’ Expr ‘)’ {nl} Expr
+                 |  ‘while’ Expr ‘do’ Expr
 ```
 
 The _while loop expression_ `while (´e_1´) ´e_2´` is typed and evaluated as if it was an application of `whileLoop (´e_1´) (´e_2´)` where the hypothetical method `whileLoop` is defined as follows.
@@ -870,14 +880,18 @@ The type of a throw expression is `scala.Nothing`.
 ## Try Expressions
 
 ```ebnf
-Expr1 ::=  ‘try’ Expr [‘catch’ Expr] [‘finally’ Expr]
+Expr1    ::=  ‘try’ Expr [Catches] [‘finally’ Expr]
+
+Catches  ::=  ‘catch‘ (Expr | ExprCaseClause)
 ```
 
-A _try expression_ is of the form `try { ´b´ } catch ´h´` where the handler ´h´ is usually a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions)
+A _try expression_ is of the form `try ´b´ catch ´h´` where the handler ´h´ is usually a [pattern matching anonymous function](08-pattern-matching.html#pattern-matching-anonymous-functions)
 
 ```scala
 { case ´p_1´ => ´b_1´ ... case ´p_n´ => ´b_n´ }
 ```
+
+If the handler is a single `ExprCaseClause`, it is a shorthand for that `ExprCaseClause` wrapped in a pattern matching anonymous function.
 
 This expression is evaluated by evaluating the block ´b´.
 If evaluation of ´b´ does not cause an exception to be thrown, the result of ´b´ is returned.
@@ -887,11 +901,11 @@ If the handler contains no case matching the thrown exception, the exception is 
 More generally, if the handler is a `PartialFunction`, it is applied only if it is defined at the given exception.
 
 Let ´\mathit{pt}´ be the expected type of the try expression.
-The block ´b´ is expected to conform to ´\mathit{pt}´.
+The expression ´b´ is expected to conform to ´\mathit{pt}´.
 The handler ´h´ is expected conform to type `scala.Function[scala.Throwable, ´\mathit{pt}\,´]`.
 The type of the try expression is the [least upper bound](03-types.html#least-upper-bounds-and-greatest-lower-bounds) of the type of ´b´ and the result type of ´h´.
 
-A try expression `try { ´b´ } finally ´e´` evaluates the block ´b´.
+A try expression `try ´b´ finally ´e´` evaluates the expression ´b´.
 If evaluation of ´b´ does not cause an exception to be thrown, the expression ´e´ is evaluated.
 If an exception is thrown during evaluation of ´e´, the evaluation of the try expression is aborted with the thrown exception.
 If no exception is thrown during evaluation of ´e´, the result of ´b´ is returned as the result of the try expression.
@@ -899,10 +913,10 @@ If no exception is thrown during evaluation of ´e´, the result of ´b´ is ret
 If an exception is thrown during evaluation of ´b´, the finally block ´e´ is also evaluated.
 If another exception ´e´ is thrown during evaluation of ´e´, evaluation of the try expression is aborted with the thrown exception.
 If no exception is thrown during evaluation of ´e´, the original exception thrown in ´b´ is re-thrown once evaluation of ´e´ has completed.
-The block ´b´ is expected to conform to the expected type of the try expression.
+The expression ´b´ is expected to conform to the expected type of the try expression.
 The finally expression ´e´ is expected to conform to type `Unit`.
 
-A try expression `try { ´b´ } catch ´e_1´ finally ´e_2´` is a shorthand for  `try { try { ´b´ } catch ´e_1´ } finally ´e_2´`.
+A try expression `try ´b´ catch ´e_1´ finally ´e_2´` is a shorthand for  `try { try ´b´ catch ´e_1´ } finally ´e_2´`.
 
 ## Anonymous Functions
 
