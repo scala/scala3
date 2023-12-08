@@ -16,6 +16,7 @@ PatVarDef   ::=  ‘val’ PatDef
 Def         ::=  PatVarDef
               |  ‘def’ FunDef
               |  ‘type’ {nl} TypeDef
+              |  ‘opaque‘ ‘type‘ {nl} OpaqueTypeDef
               |  TmplDef
 ```
 
@@ -218,16 +219,20 @@ A variable definition `var ´x_1, ..., x_n: T´ = ´e´` is a shorthand for the 
 ## Type Declarations and Type Aliases
 
 ```ebnf
-Dcl        ::=  ‘type’ {nl} TypeDcl
-TypeDcl    ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
-Def        ::=  ‘type’ {nl} TypeDef
-TypeDef    ::=  id [TypeParamClause] ‘=’ Type
+Dcl             ::=  ‘type’ {nl} TypeDcl
+TypeDcl         ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type]
+Def             ::=  ‘type’ {nl} TypeDef
+                  |  ‘opaque‘ ‘type‘ {nl} OpaqueTypeDef
+TypeDef         ::=  id [TypeParamClause] ‘=’ Type
+OpaqueTypeDef   ::=  id [TypeParamClause] [‘>:’ Type] [‘<:’ Type] ‘=’ Type
 ```
 
 A possibly parameterized _type declaration_ `type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´` declares ´t´ to be an abstract type.
 If omitted, ´L´ and ´H´ are implied to be `Nothing` and `scala.Any`, respectively.
 
 A possibly parameterized _type alias_ `type ´t´[´\mathit{tps}\,´] = ´T´` defines ´t´ to be a concrete type member.
+
+A possibly parameterized _opaque type alias_ `opaque type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
 
 If a type parameter clause `[´\mathit{tps}\,´]` is present, it is desugared away according to the rules in the following section.
 
@@ -248,7 +253,7 @@ A parameterized abstract type
 ```scala
 type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´
 ```
-is desugared into an unparameterized abstract type as follow:
+is desugared into an unparameterized abstract type as follows:
 - If `L` conforms to `Nothing`, then,
 
   ```scala
@@ -286,6 +291,25 @@ type ´t´ = [´\mathit{tps'}\,´] =>> ´T´
 ```
 where ´\mathit{tps'}´ is computed as in the previous case.
 
+#### Opaque Type Alias
+
+A parameterized type alias
+```scala
+type ´t´[´\mathit{tps}\,´] >: ´L´ <: ´H´ = ´T´
+```
+is desugared into an unparameterized opaque type alias as follows:
+- If `L` conforms to `Nothing`, then,
+
+  ```scala
+type ´t´ >: Nothing <: [´\mathit{tps'}\,´] =>> ´H´ = [´\mathit{tps'}\,´] =>> ´T´
+  ```
+- otherwise,
+
+  ```scala
+type ´t´ >: [´\mathit{tps'}\,´] =>> ´L´ <: [´\mathit{tps'}\,´] =>> ´H´ = [´\mathit{tps'}\,´] =>> ´T´
+  ```
+where ´\mathit{tps'}´ is computed as in the previous cases.
+
 ### Non-Parameterized Type Declarations and Type Aliases
 
 A _type declaration_ `type ´t´ >: ´L´ <: ´H´` declares ´t´ to be an abstract type whose [type definition](03-types.html#type-definitions) has the lower bound type ´L´ and upper bound type ´H´.
@@ -294,6 +318,19 @@ If a type declaration appears as a member declaration of a type, implementations
 It is a compile-time error if ´L´ does not conform to ´H´.
 
 A _type alias_ `type ´t´ = ´T´` defines ´t´ to be an alias name for the type ´T´.
+
+An _opaque type alias_ `opaque type ´t´ >: ´L´ <: ´H´ = ´T´` defines ´t´ to be an opaque type alias with public bounds `>: ´L´ <: ´H´` and a private alias `= ´T´`.
+An opaque type alias can only be declared within a [template](./05-classes-and-objects.html#templates).
+It cannot be `private` and cannot be overridden in subclasses.
+In order for the definition to be valid, ´T´ must satisfy some constraints:
+
+- ´L <: T´ and ´T <: H´ must be true,
+- ´T´ must not be a context function type, and
+- If ´T´ is a type lambda, its result must be a proper type (i.e., it cannot be a curried type lambda).
+
+When viewed from within its enclosing template, an opaque type alias behaves as a type alias with type definition `= ´T´`.
+When viewed from anywhere else, it behaves as a type declaration with type definition `>: ´L´ <: ´H´`.
+See [`memberType`](./03-types.html#member-type) for the precise mechanism that governs this dual view.
 
 The scope rules for [definitions](#basic-declarations-and-definitions) and [type parameters](#method-declarations-and-definitions) make it possible that a type name appears in its own bounds or in its right-hand side.
 However, it is a static error if a type alias refers recursively to the defined type itself.

@@ -176,4 +176,28 @@ l1.mul(x, z) // error: found l2.Logarithm, required l1.Logarithm
 ```
 In general, one can think of an opaque type as being only transparent in the scope of `private[this]`.
 
-[More details](opaques-details.md)
+## Top-level Opaque Types
+
+An opaque type alias on the top-level is transparent in all other top-level definitions in the sourcefile where it appears, but is opaque in nested
+objects and classes and in all other source files. Example:
+```scala
+// in test1.scala
+opaque type A = String
+val x: A = "abc"
+
+object obj:
+  val y: A = "abc"  // error: found: "abc", required: A
+
+// in test2.scala
+def z: String = x   // error: found: A, required: String
+```
+This behavior becomes clear if one recalls that top-level definitions are placed in their own synthetic object. For instance, the code in `test1.scala` would expand to
+```scala
+object test1$package:
+  opaque type A = String
+  val x: A = "abc"
+
+object obj:
+  val y: A = "abc"  // error: cannot assign "abc" to opaque type alias A
+```
+The opaque type alias `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
