@@ -1179,6 +1179,10 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkAnyRefMethodCall(tree)
     tree
 
+  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
+    if defn.ScalaBoxedClasses().contains(tree.qualifier.tpe.typeSymbol) && tree.name == nme.synchronized_ then
+      report.warning(SynchronizedCallOnBoxedClass(tree), tree.srcPos)
+    tree
 }
 
 /* todo: rewrite and re-enable

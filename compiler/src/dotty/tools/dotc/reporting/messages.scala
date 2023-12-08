@@ -2338,6 +2338,15 @@ class UnqualifiedCallToAnyRefMethod(stat: untpd.Tree, method: Symbol)(using Cont
        |you intended."""
 }
 
+class SynchronizedCallOnBoxedClass(stat: tpd.Tree)(using Context)
+  extends Message(SynchronizedCallOnBoxedClassID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Suspicious ${hl("synchronized")} call on boxed class"
+  def explain(using Context) =
+    i"""|You called the ${hl("synchronized")} method on a boxed primitive. This might not be what
+        |you intended."""
+}
+
 class TraitCompanionWithMutableStatic()(using Context)
   extends SyntaxMsg(TraitCompanionWithMutableStaticID) {
   def msg(using Context) = i"Companion of traits cannot define mutable @static fields"
