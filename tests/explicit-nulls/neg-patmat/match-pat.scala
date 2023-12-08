@@ -1,3 +1,5 @@
+// scalac: -Xfatal-warnings
+
 class Foo {
 
   val s: String = ???

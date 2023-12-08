@@ -1,0 +1,13 @@
+-- [E040] Syntax Error: tests/neg/nowarn-parser-error.scala:5:6 --------------------------------------------------------
+5 |  def def // error
+  |      ^^^
+  |      an identifier expected, but 'def' found
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E002] Syntax Warning: tests/neg/nowarn-parser-error.scala:4:10 -----------------------------------------------------
+4 |  def a = try 1 // warn
+  |          ^^^^^
+  |          A try without catch or finally is equivalent to putting
+  |          its body in a block; no exceptions are handled.
+  |
+  | longer explanation available when compiling with `-explain`
