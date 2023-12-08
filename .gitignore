@@ -37,6 +37,7 @@ metals.sbt
 
 # scala-cli
 .scala-build
+sbt-launch.jar
 
 # Partest
 dotty.jar
