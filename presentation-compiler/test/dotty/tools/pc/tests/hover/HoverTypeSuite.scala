@@ -277,3 +277,81 @@ class HoverTypeSuite extends BaseHoverSuite:
       """|def scalameta: String
          |""".stripMargin.hover
     )
+
+  @Test def `macro` =
+    check(
+      """|
+         |import scala.quoted.*
+         |
+         |def myMacroImpl(using Quotes) =
+         |  import quotes.reflect.Ident
+         |  def foo = ??? match
+         |    case x: I@@dent => x
+         |
+         |  def bar: Ident = foo
+         |
+         |  ???
+         |
+         |""".stripMargin,
+      """|type Ident: Ident
+         |""".stripMargin.hover,
+    )
+
+  @Test def `macro2` =
+    check(
+      """|
+         |
+         |import scala.quoted.*
+         |
+         |def myMacroImpl(using Quotes) =
+         |  import quotes.reflect.Ident
+         |  def foo = ??? match
+         |    case x: Ident => x
+         |
+         |  def bar: Ide@@nt = foo
+         |
+         |  ???
+         |
+         |""".stripMargin,
+      """|type Ident: Ident
+         |""".stripMargin.hover,
+  )
+
+  @Test def `nested-selectable` =
+    check(
+      """|trait Sel extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |val sel = (new Sel {}).asInstanceOf[Sel { val foo: Sel { def bar: Int } }]
+         |val bar = sel.foo.ba@@r
+         |""".stripMargin,
+      """|def bar: Int
+         |""".stripMargin.hover,
+  )
+
+  @Test def `nested-selectable2` =
+    check(
+      """|class SimpleSelectable(key : String, value: Any) extends Selectable:
+         |  def selectDynamic(name: String): Any =
+         |    if(name == key) value else ???
+         |
+         |type Node[T] = SimpleSelectable { val child: T }
+         |
+         |val leaf = SimpleSelectable("child", ()).asInstanceOf[Node[Unit]]
+         |val node = SimpleSelectable("child", leaf).asInstanceOf[Node[Node[Unit]]]
+         |
+         |val k = node.child.ch@@ild
+         |""".stripMargin,
+      """|val child: Unit
+         |""".stripMargin.hover,
+    )
+
+  @Test def `very-nested-selectable` =
+    check(
+      """|trait Sel extends Selectable:
+         |  def selectDynamic(name: String): Any = ???
+         |val sel = (new Sel {}).asInstanceOf[Sel { val foo: Sel { val bar: Sel { val ddd: Int } } }]
+         |val bar = sel.foo.bar.dd@@d
+         |""".stripMargin,
+      """|val ddd: Int
+         |""".stripMargin.hover,
+    )

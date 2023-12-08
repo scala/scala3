@@ -54,8 +54,8 @@ abstract class MockEntries:
     def apply(
         symbol: String,
         displayName: String,
-        typeParameterNames: Seq[String],
-        paramNames: Seq[String]
+        typeParameterNames: Seq[String] = Seq(),
+        paramNames: Seq[String] = Seq()
     ) =
       ScalaSymbolDocumentation(
         symbol,
