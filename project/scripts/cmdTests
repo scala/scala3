@@ -25,7 +25,7 @@ grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 echo "testing sbt scalac -print-tasty"
 clear_out "$OUT"
-"$SBT" ";scalac $SOURCE -d $OUT ;scalac -print-tasty -color:never $TASTY" > "$tmp"
+"$SBT" ";scalac $SOURCE -d $OUT ;scalac -print-tasty -color:never $OUT/$TASTY" > "$tmp"
 grep -qe "0: ASTs" "$tmp"
 grep -qe "0: 41 \[tests/pos/HelloWorld.scala\]" "$tmp"
 
