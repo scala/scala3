@@ -81,12 +81,12 @@ object PickledQuotes {
 
   /** Unpickle the tree contained in the TastyExpr */
   def unpickleTerm(pickled: String | List[String], typeHole: TypeHole, termHole: ExprHole)(using Context): Tree = {
-    val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
-    val Inlined(call, Nil, expansion) = unpickled: @unchecked
-    val inlineCtx = inlineContext(call)
-    val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
-    val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
-    cpy.Inlined(unpickled)(call, Nil, expansion2)
+    withMode(Mode.ReadPositions)(unpickle(pickled, isType = false)) match
+      case tree @ Inlined(call, Nil, expansion) =>
+        val inlineCtx = inlineContext(tree)
+        val expansion1 = spliceTypes(expansion, typeHole)(using inlineCtx)
+        val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)
+        cpy.Inlined(tree)(call, Nil, expansion2)
   }
 
 

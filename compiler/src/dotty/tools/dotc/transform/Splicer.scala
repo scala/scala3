@@ -245,7 +245,7 @@ object Splicer {
           case expr: Ident if expr.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
             expr.symbol.defTree.asInstanceOf[DefDef].rhs
-          case Inlined(EmptyTree, _, body1) => body1
+          case tree: Inlined if tree.inlinedFromOuterScope => tree.expansion
           case _ => body
         }
         new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)

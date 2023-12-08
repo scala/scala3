@@ -384,10 +384,10 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
     }
 
     tree match {
-      case Inlined(call, _, _) if !call.isEmpty =>
+      case tree: Inlined if !tree.inlinedFromOuterScope =>
         // The inlined call is normally ignored by TreeTraverser but we need to
         // record it as a dependency
-        traverse(call)
+        traverse(tree.call)
       case vd: ValDef if vd.symbol.is(ModuleVal) =>
         // Don't visit module val
       case t: Template if t.symbol.owner.is(ModuleClass) =>

@@ -342,8 +342,8 @@ class InlineReducer(inliner: Inliner)(using Context):
           }
         case Alternative(pats) =>
           pats.exists(reducePattern(caseBindingMap, scrut, _))
-        case Inlined(EmptyTree, Nil, ipat) =>
-          reducePattern(caseBindingMap, scrut, ipat)
+        case tree: Inlined if tree.inlinedFromOuterScope =>
+          reducePattern(caseBindingMap, scrut, tree.expansion)
         case _ => false
       }
     }
