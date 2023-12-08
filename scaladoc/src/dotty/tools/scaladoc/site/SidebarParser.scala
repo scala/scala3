@@ -34,6 +34,14 @@ object Sidebar:
 
   private def toSidebar(r: RawInput, content: String | java.io.File)(using CompilerContext): Sidebar = r match
     case RawInput(title, page, index, subsection, dir, hidden) if page.nonEmpty && index.isEmpty && subsection.isEmpty() =>
+      val pagePath = content match 
+        case f: java.io.File => 
+          val pagePath = f.toPath()
+                          .getParent()
+                          .resolve(s"_docs/$page")
+          if !Files.exists(pagePath) then
+            report.error(s"Page $page does not exist.")               
+        case s: String => None
       Sidebar.Page(Option.when(title.nonEmpty)(title), page, hidden)
     case RawInput(title, page, index, subsection, dir, hidden) if page.isEmpty && (!subsection.isEmpty() || !index.isEmpty()) =>
       Sidebar.Category(Option.when(title.nonEmpty)(title), Option.when(index.nonEmpty)(index), subsection.asScala.map(toSidebar(_, content)).toList, Option.when(dir.nonEmpty)(dir))
