@@ -1322,7 +1322,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
           (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
-        if (defn.isNonRefinedFunction(parent) || defn.isErasedFunctionType(parent)) && formals.length == defaultArity =>
+        if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
+          (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
+        case defn.ErasedFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
           (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, restpe), _) =>
           (formals,
@@ -3162,8 +3164,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else formals.map(untpd.TypeTree)
     }
 
-    val erasedParams = pt.dealias match {
-      case RefinedType(parent, nme.apply, mt: MethodType) => mt.erasedParams
+    val erasedParams = pt match {
+      case defn.ErasedFunctionOf(mt: MethodType) => mt.erasedParams
       case _ => paramTypes.map(_ => false)
     }
 
