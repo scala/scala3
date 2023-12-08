@@ -82,7 +82,8 @@ object report:
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, from: SourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
-      if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
+      if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then
+        if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
       else error(msg, pos)
 
   def gradualErrorOrMigrationWarning(msg: Message, pos: SrcPos, warnFrom: SourceVersion, errorFrom: SourceVersion)(using Context): Unit =
