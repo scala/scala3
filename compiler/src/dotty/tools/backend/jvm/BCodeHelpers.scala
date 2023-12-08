@@ -397,6 +397,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
       atPhase(erasurePhase) {
         val memberTpe =
           if (sym.is(Method)) sym.denot.info
+          else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
+            // Memoization field of getter entered after erasure, see run/i17069 for an example
+            sym.getter.denot.info.resultType
           else owner.denot.thisType.memberInfo(sym)
         getGenericSignatureHelper(sym, owner, memberTpe).orNull
       }
