@@ -366,12 +366,10 @@ object projects:
     // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
 
-
-  lazy val shapeless = SbtCommunityProject(
-    project       = "shapeless",
-    sbtTestCommand = """set deriving/scalacOptions -= "-Xfatal-warnings"; set typeable/scalacOptions -= "-Xfatal-warnings"; test""",
-      // selectively disable -Xfatal-warnings due to deprecations
-    sbtDocCommand = forceDoc("typeable", "deriving", "data"),
+  lazy val shapeless3 = SbtCommunityProject(
+    project = "shapeless-3",
+    sbtTestCommand = "testJVM; testJS",
+    sbtDocCommand = forceDoc("typeable", "deriving"),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init"), // due to -Xfatal-warnings
   )
 
@@ -796,7 +794,7 @@ def allProjects = List(
   projects.minitest,
   projects.fastparse,
   projects.stdLib213,
-  projects.shapeless,
+  projects.shapeless3,
   projects.xmlInterpolator,
   projects.effpi,
   projects.sconfig,
