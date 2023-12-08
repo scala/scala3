@@ -174,3 +174,35 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |increment2: Int (extension)
          |""".stripMargin
     )
+
+  @Test def `name-conflict` = 
+    checkEdit(
+      """
+        |package example
+        |
+        |import example.enrichments.*
+        |
+        |object enrichments:
+        |  extension (num: Int)
+        |    def plus(other: Int): Int = num + other
+        |
+        |def main = {
+        |  val plus = 100.plus(19)
+        |  val y = 19.pl@@
+        |}
+        |""".stripMargin,
+      """
+        |package example
+        |
+        |import example.enrichments.*
+        |
+        |object enrichments:
+        |  extension (num: Int)
+        |    def plus(other: Int): Int = num + other
+        |
+        |def main = {
+        |  val plus = 100.plus(19)
+        |  val y = 19.plus($0)
+        |}
+        |""".stripMargin
+    )

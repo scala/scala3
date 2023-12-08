@@ -825,3 +825,27 @@ class CompletionWorkspaceSuite extends BaseCompletionSuite:
          |MyType - demo.other""".stripMargin,
     )
 
+  @Test def `method-name-conflict` = 
+    checkEdit(
+      """|package demo
+         |
+         |object O {
+         |  def mmmm(x: Int) = x + 3
+         |  class Test {
+         |    val mmmm = "abc"
+         |    val foo = mmmm@@
+         |  }
+         |}
+         |""".stripMargin,
+      """|package demo
+         |
+         |object O {
+         |  def mmmm(x: Int) = x + 3
+         |  class Test {
+         |    val mmmm = "abc"
+         |    val foo = demo.O.mmmm($0)
+         |  }
+         |}
+         |""".stripMargin,
+      filter = _.contains("mmmm(x: Int)")
+    )
