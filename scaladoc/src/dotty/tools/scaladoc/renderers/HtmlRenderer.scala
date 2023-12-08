@@ -166,7 +166,14 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
     def icon(link: SocialLinks) = link.className
     args.socialLinks.map { link =>
       a(href := link.url) (
-        button(cls := s"icon-button ${icon(link)}")
+        link match
+          case SocialLinks.Custom(_, lightIcon, darkIcon) =>
+            Seq(
+              button(cls := s"icon-button ${icon(link)}", style := s"--bgimage:url(../../../../images/$lightIcon)"),
+              button(cls := s"icon-button ${icon(link)}-dark", style := s"--bgimage-dark:url(../../../../images/$darkIcon)")
+            )
+          case _ =>
+            button(cls := s"icon-button ${icon(link)}")
       )
     }
 
@@ -308,18 +315,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
             "Generated with"
           ),
           div(cls := "right-container")(
-            a(href := "https://github.com/lampepfl/dotty") (
-              button(cls := "icon-button gh")
-            ),
-            a(href := "https://twitter.com/scala_lang") (
-              button(cls := "icon-button twitter")
-            ),
-            a(href := "https://discord.com/invite/scala") (
-              button(cls := "icon-button discord"),
-            ),
-            a(href := "https://gitter.im/scala/scala") (
-              button(cls := "icon-button gitter"),
-            ),
+            socialLinks,
             div(cls := "text")(textFooter)
           ),
           div(cls := "text-mobile")(textFooter)
