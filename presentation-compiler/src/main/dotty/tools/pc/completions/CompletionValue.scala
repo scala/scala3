@@ -247,10 +247,10 @@ object CompletionValue:
       description
     override def insertMode: Option[InsertTextMode] = Some(InsertTextMode.AsIs)
 
-  def namedArg(label: String, sym: Symbol)(using
+  def namedArg(label: String, sym: ParamSymbol)(using
       Context
   ): CompletionValue =
-    NamedArg(label, sym.info.widenTermRefExpr, sym)
+    NamedArg(label, sym.info.widenTermRefExpr, sym.symbol)
 
   def keyword(label: String, insertText: String): CompletionValue =
     Keyword(label, Some(insertText))

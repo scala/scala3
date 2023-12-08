@@ -881,3 +881,55 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       topLines = Some(1),
     )
+
+
+  @Test def `lambda` =
+    check(
+      """|val hello: (x: Int) => Unit = x => println(x)
+         |val k = hello(@@)
+         |""".stripMargin,
+      """|x = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda2` =
+    check(
+      """|object O:
+         |  val hello: (x: Int, y: Int) => Unit = (x, _) => println(x)
+         |val k = O.hello(x = 1, @@)
+         |""".stripMargin,
+      """|y = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda3` =
+    check(
+      """|val hello: (x: Int) => (j: Int) => Unit = x => j => println(x)
+         |val k = hello(@@)
+         |""".stripMargin,
+      """|x = : Int
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda4` =
+    check(
+      """|val hello: (x: Int) => (j: Int) => (str: String) => Unit = x => j => str => println(str)
+         |val k = hello(x = 1)(2)(@@)
+         |""".stripMargin,
+      """|str = : String
+         |""".stripMargin,
+      topLines = Some(1),
+    )
+
+  @Test def `lambda5` =
+    check(
+      """|val hello: (x: Int) => Int => (str: String) => Unit = x => j => str => println(str)
+         |val k = hello(x = 1)(2)(@@)
+         |""".stripMargin,
+      """|str = : String
+         |""".stripMargin,
+      topLines = Some(1),
+    )
