@@ -244,6 +244,10 @@ class CompletionProvider(
                   mkItem(
                     "{" + sym.fullNameBackticked + completionTextSuffix + "}"
                   )
+                case _ if v.isExtensionMethod =>
+                  mkItem(
+                    ident.backticked(backtickSoftKeyword) + completionTextSuffix
+                  )
                 case _ =>
                   mkItem(
                     sym.fullNameBackticked(
