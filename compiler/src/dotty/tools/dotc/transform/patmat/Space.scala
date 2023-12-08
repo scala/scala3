@@ -444,7 +444,7 @@ object SpaceEngine {
    *
    *  We cannot use type erasure here, as it would lose the constraints
    *  involving GADTs. For example, in the following code, type
-   *  erasure would loose the constraint that `x` and `y` must be
+   *  erasure would lose the constraint that `x` and `y` must be
    *  the same type, resulting in false inexhaustive warnings:
    *
    *     sealed trait Expr[T]

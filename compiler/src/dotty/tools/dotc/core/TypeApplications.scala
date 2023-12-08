@@ -406,7 +406,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (typeParams.nonEmpty) appliedTo(args) else self
 
   /** A cycle-safe version of `appliedTo` where computing type parameters do not force
-   *  the typeconstructor. Instead, if the type constructor is completing, we make
+   *  the type constructor. Instead, if the type constructor is completing, we make
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */

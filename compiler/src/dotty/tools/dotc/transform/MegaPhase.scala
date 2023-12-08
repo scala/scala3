@@ -26,7 +26,7 @@ object MegaPhase {
    *
    *   - Stats: to prepare/transform a statement sequence in a block, template, or package def,
    *   - Unit : to prepare/transform a whole compilation unit
-   *   - Other: to prepape/transform a tree that does not have a specific prepare/transform
+   *   - Other: to prepare/transform a tree that does not have a specific prepare/transform
    *     method pair.
    */
   abstract class MiniPhase extends Phase {

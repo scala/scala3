@@ -2138,7 +2138,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // any references to other parameter types of the underlying hk lambda
         // in order not to get orphan parameters. Test case in pos/i15564.scala.
         // Note 1: It would be better to substitute actual arguments for corresponding
-        // formal paramaters, but it looks very hard to do this at the point where
+        // formal parameters, but it looks very hard to do this at the point where
         // a bound type variable is created.
         // Note 2: If the type constructor is a class type, no sanitization is needed
         // since we can refer to the other paraeters with dependent types C[...]#X.
@@ -3485,7 +3485,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               val app = tryExtMethod(alt)(using nestedCtx)
               (if nestedCtx.reporter.hasErrors then failures else successes)
                 += ((app, nestedCtx.typerState))
-            typr.println(i"multiple extensioin methods, success: ${successes.toList}, failure: ${failures.toList}")
+            typr.println(i"multiple extension methods, success: ${successes.toList}, failure: ${failures.toList}")
 
             def pick(alt: (Tree, TyperState)): Tree =
               val (app, ts) = alt

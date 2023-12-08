@@ -77,7 +77,7 @@ object Symbols {
 
     /** Does this symbol retain its definition tree?
      *  A good policy for this needs to balance costs and benefits, where
-     *  costs are mainly memoty leaks, in particular across runs.
+     *  costs are mainly memory leaks, in particular across runs.
      */
     def retainsDefTree(using Context): Boolean =
       ctx.settings.YretainTrees.value ||

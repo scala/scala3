@@ -122,7 +122,7 @@ trait TypeAssigner {
     val qualType0 = qual1.tpe.widenIfUnstable
     val qualType =
       if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
-        // constructors are selected on typeconstructor, type arguments are passed afterwards
+        // constructors are selected on type constructor, type arguments are passed afterwards
         errorType(em"$qualType0 takes type parameters", qual1.srcPos)
       else if !qualType0.isInstanceOf[TermType] && !qualType0.isError then
         errorType(em"$qualType0 is illegal as a selection prefix", qual1.srcPos)

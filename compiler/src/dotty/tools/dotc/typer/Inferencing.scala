@@ -141,7 +141,7 @@ object Inferencing {
    *   3. T is minimized if it has a lower bound (different from Nothing) in the
    *      current constraint (the bound might come from T's declaration).
    *   4. Otherwise, T is maximized if it has an upper bound (different from Any)
-   *      in the currented constraint (the bound might come from T's declaration).
+   *      in the current constraint (the bound might come from T's declaration).
    *   5. Otherwise, T is not instantiated at all.
 
    *  If (1) and (2) do not apply, and minimizeSelected is not set:
@@ -244,16 +244,16 @@ object Inferencing {
       * relationship _necessarily_ must hold.
       *
       * We accomplish that by:
-      *   - replacing covariant occurences with upper GADT bound
-      *   - replacing contravariant occurences with lower GADT bound
-      *   - leaving invariant occurences alone
+      *   - replacing covariant occurrences with upper GADT bound
+      *   - replacing contravariant occurrences with lower GADT bound
+      *   - leaving invariant occurrences alone
       *
       * Examples:
       *   - If we have GADT cstr A <: Int, then for all A <: Int, Option[A] <: Option[Int].
       *     Therefore, we can approximate Option[A] ~~ Option[Int].
       *   - If we have A >: S <: T, then for all such A, A => A <: S => T. This
       *     illustrates that it's fine to differently approximate different
-      *     occurences of same type.
+      *     occurrences of same type.
       *   - If we have A <: Int and F <: [A] => Option[A] (note the invariance),
       *     then we should approximate F[A] ~~ Option[A]. That is, we should
       *     respect the invariance of the type constructor.
@@ -453,7 +453,7 @@ object Inferencing {
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
    *
-   *  We need to take the occurences in `pt` into account because a type
+   *  We need to take the occurrences in `pt` into account because a type
    *  variable created when typing the current tree might only appear in the
    *  bounds of a type variable in the expected type, for example when
    *  `ConstraintHandling#legalBound` creates type variables when approximating
@@ -568,7 +568,7 @@ trait Inferencing { this: Typer =>
    *  Eligible for interpolation are all type variables owned by the current typerstate
    *  that are not in `locked` and whose `nestingLevel` is `>= ctx.nestingLevel`.
    *  Type variables occurring co- (respectively, contra-) variantly in the tree type
-   *  or expected type are minimized (respectvely, maximized). Non occurring type variables are minimized if they
+   *  or expected type are minimized (respectively, maximized). Non occurring type variables are minimized if they
    *  have a lower bound different from Nothing, maximized otherwise. Type variables appearing
    *  non-variantly in the type are left untouched.
    *

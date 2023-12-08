@@ -1751,7 +1751,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  any, or no constraint at all.
    *
    *  Otherwise, we infer _sufficient_ constraints: we try to keep the smaller of
-   *  the two constraints, but if never is smaller than the other, we just pick
+   *  the two constraints, but if neither is smaller than the other, we just pick
    *  the first one.
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
@@ -1961,7 +1961,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // is that if the refinement does not refer to a member symbol, we will have to
       // resort to reflection to invoke the member. And Java reflection needs to know exact
       // erased parameter types. See neg/i12211.scala. Other reflection algorithms could
-      // conceivably dispatch without knowning precise parameter signatures. One can signal
+      // conceivably dispatch without knowing precise parameter signatures. One can signal
       // this by inheriting from the `scala.reflect.SignatureCanBeImprecise` marker trait,
       // in which case the signature test is elided.
       def sigsOK(symInfo: Type, info2: Type) =
@@ -2785,7 +2785,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           else
             false
       case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if isSame(tycon1, tycon2) =>
-        // It is possible to conclude that two types applies are disjoint by
+        // It is possible to conclude that two types applied are disjoint by
         // looking at covariant type parameters if the said type parameters
         // are disjoin and correspond to fields.
         // (Type parameter disjointness is not enough by itself as it could
