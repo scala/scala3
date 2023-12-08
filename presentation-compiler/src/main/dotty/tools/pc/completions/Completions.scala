@@ -31,7 +31,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.completions.OverrideCompletions.OverrideExtractor
-import dotty.tools.pc.util.BuildInfo
+import dotty.tools.pc.buildinfo.BuildInfo
 import dotty.tools.pc.utils.MtagsEnrichments.*
 
 class Completions(
