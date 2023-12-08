@@ -23,6 +23,10 @@ t5031_2.scala
 i16997.scala
 i7414.scala
 i17588.scala
+i9804.scala
+i13433.scala
+i16649-irrefutable.scala
+strict-pattern-bindings-3.0-migration.scala
 
 # Tree is huge and blows stack for printing Text
 i7034.scala
