@@ -54,7 +54,7 @@ extends tpd.TreeTraverser:
         val boxedRes = recur(res)
         if boxedRes eq res then tp
         else tp1.derivedAppliedType(tycon, args.init :+ boxedRes)
-      case tp1 @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionOrPolyType(tp1) =>
+      case tp1 @ RefinedType(_, _, rinfo: MethodType) if defn.isFunctionType(tp1) =>
         val boxedRinfo = recur(rinfo)
         if boxedRinfo eq rinfo then tp
         else boxedRinfo.toFunctionType(isJava = false, alwaysDependent = true)
@@ -231,7 +231,7 @@ extends tpd.TreeTraverser:
                 tp.derivedAppliedType(tycon1, args1 :+ res1)
           else
             tp.derivedAppliedType(tycon1, args.mapConserve(arg => this(arg)))
-        case tp @ RefinedType(core, rname, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
+        case tp @ RefinedType(core, rname, rinfo: MethodType) if defn.isFunctionType(tp) =>
           val rinfo1 = apply(rinfo)
           if rinfo1 ne rinfo then rinfo1.toFunctionType(isJava = false, alwaysDependent = true)
           else tp
@@ -329,7 +329,7 @@ extends tpd.TreeTraverser:
               args.last, CaptureSet.empty, currentCs ++ outerCs)
             tp.derivedAppliedType(tycon1, args1 :+ resType1)
         tp1.capturing(outerCs)
-      case tp @ RefinedType(parent, nme.apply, rinfo: MethodType) if defn.isFunctionOrPolyType(tp) =>
+      case tp @ RefinedType(parent, nme.apply, rinfo: MethodType) if defn.isFunctionType(tp) =>
         propagateDepFunctionResult(mapOver(tp), currentCs ++ outerCs)
           .capturing(outerCs)
       case _ =>

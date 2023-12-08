@@ -222,7 +222,7 @@ object Implicits:
             case pt: ViewProto =>
               viewCandidateKind(ref.widen, pt.argType, pt.resType)
             case _: ValueTypeOrProto =>
-              if (defn.isFunctionType(pt)) Candidate.Value
+              if (defn.isFunctionNType(pt)) Candidate.Value
               else valueTypeCandidateKind(ref.widen)
             case _ =>
               Candidate.Value
@@ -968,7 +968,7 @@ trait Implicits:
   /** A string indicating the formal parameter corresponding to a  missing argument */
   def implicitParamString(paramName: TermName, methodStr: String, tree: Tree)(using Context): String =
     tree match {
-      case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
+      case Select(qual, nme.apply) if defn.isFunctionNType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
         def addendum = if (qt1 eq qt) "" else (i"\nWhere $qt is an alias of: $qt1")

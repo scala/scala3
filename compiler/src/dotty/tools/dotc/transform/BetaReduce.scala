@@ -90,7 +90,7 @@ object BetaReduce:
         recur(expr, argss)
       case _ => None
     tree match
-      case Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
+      case Apply(Select(fn, nme.apply), args) if defn.isFunctionNType(fn.tpe) =>
         recur(fn, List(args)) match
           case Some(reduced) =>
             seq(bindingsBuf.result(), reduced).withSpan(tree.span)

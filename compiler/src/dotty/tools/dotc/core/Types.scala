@@ -1865,7 +1865,7 @@ object Types {
      *  @param alwaysDependent if true, always create a dependent function type.
      */
     def toFunctionType(isJava: Boolean, dropLast: Int = 0, alwaysDependent: Boolean = false)(using Context): Type = this match {
-      case mt: MethodType if !mt.isParamDependent =>
+      case mt: MethodType if !mt.isParamDependent && !mt.hasErasedParams =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
@@ -1878,6 +1878,9 @@ object Types {
         if alwaysDependent || mt.isResultDependent then
           RefinedType(funType, nme.apply, mt)
         else funType
+      case mt: MethodType if !mt.isParamDependent =>
+        assert(mt.hasErasedParams)
+        RefinedType(defn.ErasedFunctionType, nme.apply, mt)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -2760,7 +2763,7 @@ object Types {
     final def withPrefix(prefix: Type)(using Context): Type = {
       def reload(): NamedType = {
         val sym =
-          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn 
+          if lastSymbol.nn.isValidInCurrentRun then lastSymbol.nn
           else computeSymbol
         val allowPrivate = !sym.exists || sym.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
@@ -4054,9 +4057,9 @@ object Types {
       def addInto(tp: Type): Type = tp match
         case tp @ AppliedType(tycon, args) if tycon.typeSymbol == defn.RepeatedParamClass =>
           tp.derivedAppliedType(tycon, addInto(args.head) :: Nil)
-        case tp @ AppliedType(tycon, args) if defn.isFunctionType(tp) =>
+        case tp @ AppliedType(tycon, args) if defn.isFunctionNType(tp) =>
           wrapConvertible(tp.derivedAppliedType(tycon, args.init :+ addInto(args.last)))
-        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionOrPolyType(tp) =>
+        case tp @ RefinedType(parent, rname, rinfo) if defn.isFunctionType(tp) =>
           wrapConvertible(tp.derivedRefinedType(parent, rname, addInto(rinfo)))
         case tp: MethodOrPoly =>
           tp.derivedLambdaType(resType = addInto(tp.resType))

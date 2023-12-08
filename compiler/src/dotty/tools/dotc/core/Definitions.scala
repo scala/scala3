@@ -1466,6 +1466,7 @@ class Definitions {
   def PolyFunctionType = PolyFunctionClass.typeRef
 
   lazy val ErasedFunctionClass = requiredClass("scala.runtime.ErasedFunction")
+  def ErasedFunctionType = ErasedFunctionClass.typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(cls: Symbol)(using Context): TypeName = cls.denot match
@@ -1700,12 +1701,20 @@ class Definitions {
    *  - scala.FunctionN
    *  - scala.ContextFunctionN
    */
-  def isFunctionType(tp: Type)(using Context): Boolean =
+  def isFunctionNType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
-  /** Is `tp` a specialized, refined function type? Either an `ErasedFunction` or a `PolyFunction`. */
-  def isRefinedFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.PolyFunctionClass) || isErasedFunctionType(tp)
+  /** Does `tp` derive from `PolyFunction` or `ErasedFunction`? */
+  def isPolyOrErasedFunctionType(tp: Type)(using Context): Boolean =
+    isPolyFunctionType(tp) || isErasedFunctionType(tp)
+
+  /** Does `tp` derive from `PolyFunction`? */
+  def isPolyFunctionType(tp: Type)(using Context): Boolean =
+    tp.derivesFrom(defn.PolyFunctionClass)
+
+  /** Does `tp` derive from `ErasedFunction`? */
+  def isErasedFunctionType(tp: Type)(using Context): Boolean =
+    tp.derivesFrom(defn.ErasedFunctionClass)
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
@@ -1713,8 +1722,8 @@ class Definitions {
    *  - ErasedFunction
    *  - PolyFunction
    */
-  def isFunctionOrPolyType(tp: Type)(using Context): Boolean =
-    isFunctionType(tp) || isRefinedFunctionType(tp)
+  def isFunctionType(tp: Type)(using Context): Boolean =
+    isFunctionNType(tp) || isPolyOrErasedFunctionType(tp)
 
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     for base <- bases; tp <- paramTypes do
@@ -1818,7 +1827,7 @@ class Definitions {
       case tp1 @ RefinedType(parent, nme.apply, mt: MethodType) if isErasedFunctionType(parent) && mt.isContextualMethod =>
         tp1
       case tp1 =>
-        if tp1.typeSymbol.name.isContextFunction && isFunctionType(tp1) then tp1
+        if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
         else NoType
 
   /** Is `tp` an context function type? */
@@ -1846,12 +1855,9 @@ class Definitions {
   /* Returns a list of erased booleans marking whether parameters are erased, for a function type. */
   def erasedFunctionParameters(tp: Type)(using Context): List[Boolean] = tp.dealias match {
     case RefinedType(parent, nme.apply, mt: MethodType) => mt.erasedParams
-    case tp if isFunctionType(tp) => List.fill(functionArity(tp)) { false }
+    case tp if isFunctionNType(tp) => List.fill(functionArity(tp)) { false }
     case _ => Nil
   }
-
-  def isErasedFunctionType(tp: Type)(using Context): Boolean =
-    tp.derivesFrom(defn.ErasedFunctionClass)
 
   /** A whitelist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =

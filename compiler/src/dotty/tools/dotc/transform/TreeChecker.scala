@@ -445,14 +445,12 @@ object TreeChecker {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       val tpe = tree.typeOpt
 
-      // Polymorphic apply methods stay structural until Erasure
-      val isPolyFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.PolyFunctionClass)
-      // Erased functions stay structural until Erasure
-      val isErasedFunctionApply = (tree.name eq nme.apply) && tree.qualifier.typeOpt.derivesFrom(defn.ErasedFunctionClass)
+      // PolyFunction and ErasedFunction apply methods stay structural until Erasure
+      val isRefinedFunctionApply = (tree.name eq nme.apply) && defn.isPolyOrErasedFunctionType(tree.qualifier.typeOpt)
       // Outer selects are pickled specially so don't require a symbol
       val isOuterSelect = tree.name.is(OuterSelectName)
       val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
-      if !(tree.isType || isPolyFunctionApply || isErasedFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
+      if !(tree.isType || isRefinedFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
         val denot = tree.denot
         assert(denot.exists, i"Selection $tree with type $tpe does not have a denotation")
         assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol, qualifier type = ${tree.qualifier.typeOpt}")
