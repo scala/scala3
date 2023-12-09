@@ -16,6 +16,7 @@ import reporting.*
 import config.Printers.{ transforms => debug }
 
 import patmat.Typ
+import dotty.tools.dotc.util.SrcPos
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -358,11 +359,8 @@ object TypeTestsCasts {
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
-          val isUnchecked = expr.tpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
-          if !isTrusted && !isUnchecked then
-            val whyNot = whyUncheckable(expr.tpe, argType, tree.span)
-            if whyNot.nonEmpty then
-              report.uncheckedWarning(UncheckedTypePattern(argType, whyNot), expr.srcPos)
+          if !isTrusted then
+            checkTypePattern(expr.tpe, argType, expr.srcPos)
           transformTypeTest(expr, argType,
             flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
         }
@@ -380,6 +378,19 @@ object TypeTestsCasts {
     }
     interceptWith(expr)
   }
+
+  /** After PatternMatcher, only Bind nodes are present in simple try-catch trees
+   *  See i19013
+   */
+  def checkBind(tree: Bind)(using Context) =
+    checkTypePattern(defn.ThrowableType, tree.body.tpe, tree.srcPos)
+
+  private def checkTypePattern(exprTpe: Type, castTpe: Type, pos: SrcPos)(using Context) =
+    val isUnchecked = exprTpe.widenTermRefExpr.hasAnnotation(defn.UncheckedAnnot)
+    if !isUnchecked then
+      val whyNot = whyUncheckable(exprTpe, castTpe, pos.span)
+      if whyNot.nonEmpty then
+        report.uncheckedWarning(UncheckedTypePattern(castTpe, whyNot), pos)
 
   private def effectiveClass(tp: Type)(using Context): Symbol =
     if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
