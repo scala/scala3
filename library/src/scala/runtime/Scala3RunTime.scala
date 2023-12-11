@@ -5,10 +5,14 @@ object Scala3RunTime:
   // Called by inline def assert's. Extracted to minimize the bytecode size at call site.
 
   def assertFailed(message: Any): Nothing =
-    throw new java.lang.AssertionError("assertion failed: " + message)
+    val assertionError = new java.lang.AssertionError("assertion failed: " + message)
+    assertionError.setStackTrace(assertionError.getStackTrace().nn.tail)
+    throw assertionError
 
   def assertFailed(): Nothing =
-    throw new java.lang.AssertionError("assertion failed")
+    val assertionError = new java.lang.AssertionError("assertion failed")
+    assertionError.setStackTrace(assertionError.getStackTrace().nn.tail)
+    throw assertionError
 
   /** Called by the inline extension def `nn`.
    *
