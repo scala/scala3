@@ -75,7 +75,7 @@ This expansion also introduces some inconsistencies when calling the extension m
 ```
 
 Another limitation of this representation is that it is impossible to pass the
-type parameters of the `def` explicitly. For instance:
+type parameters of the `def` explicitly, (unless called in prefix form). For instance:
 
 ```scala
   extension (x: Int)
