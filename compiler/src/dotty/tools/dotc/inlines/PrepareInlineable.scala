@@ -140,7 +140,7 @@ object PrepareInlineable {
 
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case _: Apply | _: TypeApply | _: RefTree
-        if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
+        if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor && !tree.symbol.owner.is(Package) =>
           val refPart = funPart(tree)
           val argss = allArgss(tree)
           val qual = qualifier(refPart)
