@@ -1010,7 +1010,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (tp2a ne tp2) // Follow the alias; this might avoid truncating the search space in the either below
           return recur(tp1, tp2a)
 
-        // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 | T12) <: T2
+        // Rewrite (T111 | T112) & T12 <: T2 to (T111 & T12) <: T2 and (T112 & T12) <: T2
         // and analogously for T11 & (T121 | T122) & T12 <: T2
         // `&' types to the left of <: are problematic, because
         // we have to choose one constraint set or another, which might cut off
@@ -1981,6 +1981,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       true
     else op2
   end necessaryEither
+
+  inline def rollbackConstraintsUnless(inline op: Boolean): Boolean =
+    val saved = constraint
+    var result = false
+    try result = ctx.gadtState.rollbackGadtUnless(op)
+    finally if !result then constraint = saved
+    result
 
   /** Decompose into conjunction of types each of which has only a single refinement */
   def decomposeRefinements(tp: Type, refines: List[(Name, Type)]): Type = tp match
