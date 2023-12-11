@@ -1,0 +1,6 @@
+-- Warning: tests/warn/i17429.scala:3:17 -------------------------------------------------------------------------------
+3 |    println(A(1) plus A(2)) // warn
+  |                 ^^^^
+  |                 Alphanumeric method plus is not declared infix; it should not be used as infix operator.
+  |                 Instead, use method syntax .plus(...) or backticked identifier `plus`.
+  |                 The latter can be rewritten automatically under -rewrite -source 3.4-migration.
