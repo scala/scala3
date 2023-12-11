@@ -259,9 +259,9 @@ object Predef extends LowPriorityImplicits {
    *  @group assertions
    */
   @elidable(ASSERTION)
-  def assert(assertion: Boolean): Unit = {
+  transparent inline def assert(inline assertion: Boolean): Unit = {
     if (!assertion)
-      throw new java.lang.AssertionError("assertion failed")
+      scala.runtime.Scala3RunTime.assertFailed()
   }
 
   /** Tests an expression, throwing an `AssertionError` if false.
@@ -274,9 +274,9 @@ object Predef extends LowPriorityImplicits {
    *  @group assertions
    */
   @elidable(ASSERTION) @inline
-  final def assert(assertion: Boolean, message: => Any): Unit = {
+  transparent inline def assert(inline assertion: Boolean, inline message: => Any): Unit = {
     if (!assertion)
-      throw new java.lang.AssertionError("assertion failed: "+ message)
+      scala.runtime.Scala3RunTime.assertFailed(message)
   }
 
   /** Tests an expression, throwing an `AssertionError` if false.

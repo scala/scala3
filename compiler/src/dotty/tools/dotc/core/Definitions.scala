@@ -1437,11 +1437,14 @@ class Definitions {
           )
 
       if patchCls.exists then
+        val patchedInSource = mutable.Set.empty[Symbol] // example: symbol patched in scala2-library-bootstrapped/src/scala/Predef.scala
         val patches = patchCls.info.decls.filter(patch =>
           !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
         for patch <- patches if !recurse(patch) do
           val e = scope.lookupEntry(patch.name)
-          if e != null then scope.unlink(e)
+          if e != null then
+            if e.sym.isInlineMethod then patchedInSource += patch
+            else scope.unlink(e)
         for patch <- patches do
           patch.ensureCompleted()
           if !recurse(patch) then
@@ -1452,8 +1455,9 @@ class Definitions {
               case _ =>
                 makeNonClassSymbol(patch)
               end match
-            sym.annotations = patch.annotations
-            scope.enter(sym)
+            if !patchedInSource(sym) then
+              sym.annotations = patch.annotations
+              scope.enter(sym)
           if patch.isClass then
             patch2(scope.lookup(patch.name).asClass, patch)
 

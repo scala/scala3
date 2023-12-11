@@ -9,6 +9,9 @@ object Scala2LibraryBootstrappedMiMaFilters {
         // Files that are not compiled in the bootstrapped library
         ProblemFilters.exclude[MissingClassProblem]("scala.AnyVal"),
 
+        // Overwritten inline methods
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Predef.assert"),
+
         // Scala language features
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language.<clinit>"),
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.language#experimental.<clinit>"),
