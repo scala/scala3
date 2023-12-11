@@ -6,7 +6,7 @@ import core.*
 import Types.*, Contexts.*, Flags.*
 import Symbols.*, Annotations.*, Trees.*, Symbols.*, Constants.Constant
 import Decorators.*
-import dotty.tools.dotc.transform.SymUtils.*
+
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are

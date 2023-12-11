@@ -9,7 +9,6 @@ import TypeOps.makePackageObjPrefixExplicit
 import backend.sjs.JSDefinitions
 import transform.ExplicitOuter.*
 import transform.ValueClasses.*
-import transform.TypeUtils.*
 import transform.ContextFunctionResults.*
 import unpickleScala2.Scala2Erasure
 import Decorators.*
@@ -72,7 +71,7 @@ end SourceLanguage
 object TypeErasure {
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || isDerivedValueClass(sym)
+    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass
 
   /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
    *
@@ -126,7 +125,7 @@ object TypeErasure {
     case tp: TypeRef =>
       val sym = tp.symbol
       sym.isClass &&
-      (!erasureDependsOnArgs(sym) || isDerivedValueClass(sym)) &&
+      (!erasureDependsOnArgs(sym) || sym.isDerivedValueClass) &&
       !defn.specialErasure.contains(sym) &&
       !defn.isSyntheticFunctionClass(sym)
     case _: TermRef =>
@@ -404,7 +403,6 @@ object TypeErasure {
       tp1 // After erasure, T | Nothing is just T and C | Null is just C, if C is a reference type.
     else tp1 match {
       case JavaArrayType(elem1) =>
-        import dotty.tools.dotc.transform.TypeUtils.*
         tp2 match {
           case JavaArrayType(elem2) =>
             if (elem1.isPrimitiveValueType || elem2.isPrimitiveValueType)
@@ -632,7 +630,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp: TypeRef =>
         val sym = tp.symbol
         if !sym.isClass then this(checkedSuperType(tp))
-        else if semiEraseVCs && isDerivedValueClass(sym) then eraseDerivedValueClass(tp)
+        else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
       case tp: AppliedType =>
@@ -640,7 +638,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
         else if (tycon.isRef(defn.PairClass)) erasePair(tp)
         else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
-        else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
+        else if (semiEraseVCs && tycon.classSymbol.isDerivedValueClass) eraseDerivedValueClass(tp)
         else this(checkedSuperType(tp))
       case tp: TermRef =>
         this(underlyingOfTermRef(tp))
@@ -900,7 +898,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           if (!info.exists) assert(false, i"undefined: $tp with symbol $sym")
           return sigName(info)
         }
-        if (semiEraseVCs && isDerivedValueClass(sym)) {
+        if (semiEraseVCs && sym.isDerivedValueClass) {
           val erasedVCRef = eraseDerivedValueClass(tp)
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }

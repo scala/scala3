@@ -2,3 +2,7 @@
 1 |def polyFun: PolyFunction { def apply: Int } = // error
   |                            ^^^^^^^^^^^^^^
   |Implementation restriction: PolyFunction apply must have exactly one parameter list and optionally type arguments. No by-name nor varags are allowed.
+-- Error: tests/neg/i18302d.scala:2:6 ----------------------------------------------------------------------------------
+2 |  new PolyFunction { def apply: Int = 1 } // error
+  |      ^^^^^^^^^^^^
+  |      `PolyFunction` marker trait is reserved for compiler generated refinements

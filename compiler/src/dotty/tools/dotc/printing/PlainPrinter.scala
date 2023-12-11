@@ -193,7 +193,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         "<overloaded " ~ toTextRef(tp) ~ ">"
       case tp: TypeRef =>
         if (printWithoutPrefix.contains(tp.symbol))
-          toText(tp.name)
+          selectionString(tp)
         else
           toTextPrefixOf(tp) ~ selectionString(tp)
       case tp: TermParamRef =>

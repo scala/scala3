@@ -31,7 +31,6 @@ import util.{SourceFile, Property}
 import ast.{Trees, tpd, untpd}
 import Trees.*
 import Decorators.*
-import transform.SymUtils.*
 import dotty.tools.dotc.quoted.QuotePatterns
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}
@@ -50,15 +49,16 @@ import scala.compiletime.uninitialized
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
+ *  @param compilationUnitInfo  the compilation unit info of the TASTy
  *  @param posUnpicklerOpt     the unpickler for positions, if it exists
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
  *  @param attributeUnpicklerOpt the unpickler for attributes, if it exists
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameTable,
+                    compilationUnitInfo: CompilationUnitInfo,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    commentUnpicklerOpt: Option[CommentUnpickler],
-                    attributeUnpicklerOpt: Option[AttributeUnpickler]) {
+                    commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler.*
   import tpd.*
 
@@ -93,19 +93,21 @@ class TreeUnpickler(reader: TastyReader,
   /** The root owner tree. See `OwnerTree` class definition. Set by `enterTopLevel`. */
   private var ownerTree: OwnerTree = uninitialized
 
-  /** Was unpickled class compiled with pureFunctions? */
-  private var withPureFuns: Boolean = false
+  /** TASTy attributes */
+  private val attributes: Attributes = compilationUnitInfo.tastyInfo.get.attributes
 
   /** Was unpickled class compiled with capture checks? */
-  private var withCaptureChecks: Boolean = false
+  private val withCaptureChecks: Boolean = attributes.captureChecked
 
-  private val unpicklingScala2Library =
-    attributeUnpicklerOpt.exists(_.attributes.scala2StandardLibrary)
+  private val unpicklingScala2Library = attributes.scala2StandardLibrary
 
   /** This dependency was compiled with explicit nulls enabled */
   // TODO Use this to tag the symbols of this dependency as compiled with explicit nulls (see use of unpicklingScala2Library).
-  private val explicitNulls =
-    attributeUnpicklerOpt.exists(_.attributes.explicitNulls)
+  private val explicitNulls = attributes.explicitNulls
+
+  private val unpicklingJava = attributes.isJava
+
+  private val isOutline = attributes.isOutline
 
   private def registerSym(addr: Addr, sym: Symbol) =
     symAtAddr(addr) = sym
@@ -612,7 +614,10 @@ class TreeUnpickler(reader: TastyReader,
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
-      val givenFlags = if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty else givenFlags0
+      val givenFlags =
+        if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty
+        else if unpicklingJava then givenFlags0 | JavaDefined
+        else givenFlags0
       pickling.println(i"creating symbol $name at $start with flags ${givenFlags.flagsString}, isAbsType = $isAbsType, $ttag")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -631,8 +636,8 @@ class TreeUnpickler(reader: TastyReader,
             rootd.symbol
           case _ =>
             val completer = adjustIfModule(new Completer(subReader(start, end)))
-            if (isClass)
-              newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord)
+            if isClass then
+              newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord, compilationUnitInfo)
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
@@ -656,13 +661,8 @@ class TreeUnpickler(reader: TastyReader,
       }
       registerSym(start, sym)
       if (isClass) {
-        if sym.owner.is(Package) then
-          if annots.exists(_.hasSymbol(defn.CaptureCheckedAnnot)) then
-            sym.setFlag(CaptureChecked)
-            withCaptureChecks = true
-            withPureFuns = true
-          else if annots.exists(_.hasSymbol(defn.WithPureFunsAnnot)) then
-            withPureFuns = true
+        if sym.owner.is(Package) && withCaptureChecks then
+          sym.setFlag(CaptureChecked)
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
@@ -1045,6 +1045,8 @@ class TreeUnpickler(reader: TastyReader,
       val parentReader = fork
       val parents = readParents(withArgs = false)(using parentCtx)
       val parentTypes = parents.map(_.tpe.dealias)
+      if cls.is(JavaDefined) && parentTypes.exists(_.derivesFrom(defn.JavaAnnotationClass)) then
+        cls.setFlag(JavaAnnotation)
       val self =
         if (nextByte == SELFDEF) {
           readByte()
@@ -1205,7 +1207,12 @@ class TreeUnpickler(reader: TastyReader,
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
         val qual = readTree()
-        val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
+        val denot0 = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
+        val denot =
+          if unpicklingJava && name == tpnme.Object && denot0.symbol == defn.ObjectClass then
+            defn.FromJavaObjectType.denot
+          else
+            denot0
         makeSelect(qual, name, denot)
 
       def readQualId(): (untpd.Ident, TypeRef) =
@@ -1224,6 +1231,11 @@ class TreeUnpickler(reader: TastyReader,
           forkAt(readAddr()).readTree()
         case IDENT =>
           untpd.Ident(readName()).withType(readType())
+        case ELIDED =>
+          if !isOutline then
+            report.error(
+              s"Illegal elided tree in unpickler without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}")
+          untpd.Ident(nme.WILDCARD).withType(readType())
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>

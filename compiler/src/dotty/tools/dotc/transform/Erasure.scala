@@ -29,7 +29,6 @@ import dotty.tools.dotc.ast.{tpd, untpd}
 import ast.TreeTypeMap
 import dotty.tools.dotc.core.{Constants, Flags}
 import ValueClasses.*
-import TypeUtils.*
 import ContextFunctionResults.*
 import ExplicitOuter.*
 import core.Mode
@@ -823,6 +822,11 @@ object Erasure {
         case _ => typedExpr(ntree, pt)
       }
     }
+
+    override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
+      atPhase(erasurePhase):
+        checkBind(promote(tree))
+      super.typedBind(tree, pt)
 
     /** Besides normal typing, this method does uncurrying and collects parameters
      *  to anonymous functions of arity > 22.

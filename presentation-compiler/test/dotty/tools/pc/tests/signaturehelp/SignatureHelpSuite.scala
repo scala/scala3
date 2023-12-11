@@ -703,7 +703,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin
     )
 
-  @Test def `local-method` = 
+  @Test def `local-method` =
     check(
       """
         |object Main {
@@ -721,7 +721,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
          |""".stripMargin,
     )
 
-  @Test def `local-method2` = 
+  @Test def `local-method2` =
       check(
         """
           |object Main {
@@ -739,7 +739,7 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
            |""".stripMargin,
       )
 
-  @Test def `local-method3` = 
+  @Test def `local-method3` =
     check(
       """
         |object Main {
@@ -755,5 +755,77 @@ class SignatureHelpSuite extends BaseSignatureHelpSuite:
       """|apply(b: String): String
          |      ^^^^^^^^^
          |apply(a: Int): Int
+         |""".stripMargin
+    )
+
+  @Test def `instantiated-type-var-old-ext-1` =
+    check(
+      """|object O:
+         |  implicit class Test[T](xs: List[T]):
+         |    def test(x: T): List[T] = ???
+         |  List(1,2,3).test(@@""".stripMargin,
+      """|test(x: Int): List[Int]
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `instantiated-type-var-old-ext-2` =
+    check(
+      """|object O:
+         |  implicit class Test[T](xs: List[T]):
+         |    def test(x: T): List[T] = ???
+         |  List(1,2,3).test(s@@""".stripMargin,
+      """|test(x: Int): List[Int]
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `instantiated-type-var-old-ext-3` =
+    check(
+      """|object O:
+         |  implicit class Test[T](xs: List[T]):
+         |    def test(x: T): List[T] = ???
+         |  List(1,2,3).test(@@)""".stripMargin,
+      """|test(x: Int): List[Int]
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `instantiated-type-var-old-ext-4` =
+    check(
+      """|object O:
+         |  implicit class Test[T](xs: List[T]):
+         |    def test(x: T): List[T] = ???
+         |  List(1,2,3).test(
+         |    @@
+         |  )""".stripMargin,
+      """|test(x: Int): List[Int]
+         |     ^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `instantiated-type-var-old-ext-5` =
+    check(
+      """|object O:
+         |  implicit class Test[T](xs: List[T]):
+         |    def test(x: T): List[T] = ???
+         |  List(1,2,3).test(
+         |    @@
+         |  println("test")
+         |""".stripMargin,
+      """|test(x: Int | Unit): List[Int | Unit]
+         |     ^^^^^^^^^^^^^
+         |""".stripMargin
+    )
+
+  @Test def `instantiated-type-var-old-ext-6` =
+    check(
+      """|object O:
+         |  implicit class Test[T](xs: List[T]):
+         |    def test(y: String, x: T): List[T] = ???
+         |  List(1,2,3).test("", @@)
+         |""".stripMargin,
+      """|test(y: String, x: Int): List[Int]
+         |                ^^^^^^
          |""".stripMargin
     )

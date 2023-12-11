@@ -23,7 +23,6 @@ import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
-import transform.TypeUtils.*
 import cc.{CapturingType, derivedCapturingType}
 
 import scala.annotation.internal.sharable
@@ -1696,7 +1695,7 @@ object SymDenotations {
             c.ensureCompleted()
       end completeChildrenIn
 
-      if is(Sealed) || isAllOf(JavaEnumTrait) then
+      if is(Sealed) || isAllOf(JavaEnum) && isClass then
         if !is(ChildrenQueried) then
           // Make sure all visible children are completed, so that
           // they show up in Child annotations. A possible child is visible if it
@@ -2588,7 +2587,7 @@ object SymDenotations {
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }

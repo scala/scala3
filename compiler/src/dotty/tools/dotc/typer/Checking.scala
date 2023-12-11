@@ -23,8 +23,6 @@ import util.SrcPos
 import util.Spans.Span
 import rewrites.Rewrites.patch
 import inlines.Inlines
-import transform.SymUtils.*
-import transform.ValueClasses.*
 import Decorators.*
 import ErrorReporting.{err, errorType}
 import config.Printers.{typr, patmatch}
@@ -34,11 +32,12 @@ import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import Inferencing.isFullyDefined
 import transform.patmat.SpaceEngine.{isIrrefutable, isIrrefutableQuotePattern}
+import transform.ValueClasses.underlyingOfValueClass
 import config.Feature
 import config.Feature.sourceVersion
 import config.SourceVersion.*
+import config.MigrationVersion
 import printing.Formatting.hlAsKeyword
-import transform.TypeUtils.*
 import cc.isCaptureChecking
 
 import collection.mutable
@@ -133,7 +132,7 @@ object Checking {
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
-            tree.srcPos, from = `3.0`)
+            tree.srcPos, MigrationVersion.Scala2to3)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
@@ -219,7 +218,7 @@ object Checking {
     val rstatus = realizability(tp)
     if (rstatus ne Realizable)
       report.errorOrMigrationWarning(
-        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, from = `3.0`)
+        em"$tp is not a legal $what\nsince it${rstatus.msg}", pos, MigrationVersion.Scala2to3)
   }
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -692,7 +691,7 @@ object Checking {
     }
     val notPrivate = new NotPrivate
     val info = notPrivate(sym.info)
-    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, from = `3.0`))
+    notPrivate.errors.foreach(report.errorOrMigrationWarning(_, sym.srcPos, MigrationVersion.Scala2to3))
     info
   }
 
@@ -710,7 +709,7 @@ object Checking {
       case _ =>
         report.error(ValueClassesMayNotContainInitalization(clazz), stat.srcPos)
     }
-    if (isDerivedValueClass(clazz)) {
+    if (clazz.isDerivedValueClass) {
       if (clazz.is(Trait))
         report.error(CannotExtendAnyVal(clazz), clazz.srcPos)
       if clazz.is(Module) then
@@ -845,6 +844,14 @@ object Checking {
     def reportNoRefinements(pos: SrcPos) =
       report.error("PolyFunction subtypes must refine the apply method", pos)
   }.traverse(tree)
+
+  /** Check that users do not extend the `PolyFunction` trait.
+   *  We only allow compiler generated `PolyFunction`s.
+   */
+  def checkPolyFunctionExtension(templ: Template)(using Context): Unit =
+    templ.parents.find(_.tpe.derivesFrom(defn.PolyFunctionClass)) match
+      case Some(parent) => report.error(s"`PolyFunction` marker trait is reserved for compiler generated refinements", parent.srcPos)
+      case None =>
 }
 
 trait Checking {
@@ -913,23 +920,26 @@ trait Checking {
           case RefutableExtractor => pat.source.atSpan(pat.span union sel.span)
         else pat.srcPos
       def rewriteMsg = Message.rewriteNotice("This patch", `3.2-migration`)
-      report.gradualErrorOrMigrationWarning(
+      report.errorOrMigrationWarning(
         message.append(
           i"""|
               |
               |If $usage is intentional, this can be communicated by $fix,
               |which $addendum.$rewriteMsg"""),
         pos,
-        warnFrom = `3.2`,
         // we tighten for-comprehension without `case` to error in 3.4,
         // but we keep pat-defs as warnings for now ("@unchecked"),
         // until we propose an alternative way to assert exhaustivity to the typechecker.
-        errorFrom = if isPatDef then `future` else `3.4`
+        if isPatDef then MigrationVersion.ForComprehensionUncheckedPathDefs
+        else MigrationVersion.ForComprehensionPatternWithoutCase
       )
       false
     }
 
-    def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt, Reason.NonConforming)
+    def check(pat: Tree, pt: Type): Boolean =
+      pt.isTupleXXLExtract(pat.tpe) // See isTupleXXLExtract, fixes TupleXXL parameter type
+      || pt <:< pat.tpe
+      || fail(pat, pt, Reason.NonConforming)
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.2`)
@@ -1071,12 +1081,17 @@ trait Checking {
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
     tree.op match {
       case id @ Ident(name: Name) =>
+        def methCompiledBeforeDeprecation =
+          meth.tastyInfo match
+            case Some(info) => info.version.major == 28 && info.version.minor < 4 // compiled before 3.4
+            case _ => false // compiled with the current compiler
         name.toTermName match {
           case name: SimpleName
           if !untpd.isBackquoted(id) &&
              !name.isOperatorName &&
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
+             !methCompiledBeforeDeprecation &&
              !infixOKSinceFollowedBy(tree.right) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
@@ -1085,16 +1100,15 @@ trait Checking {
                 ("extractor", (n: Name) => s"prefix syntax $n(...)")
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
-            def rewriteMsg = Message.rewriteNotice("The latter", version = `future-migration`)
+            def rewriteMsg = Message.rewriteNotice("The latter", version = `3.4-migration`)
             report.errorOrMigrationWarning(
               em"""Alphanumeric $kind $name is not declared ${hlAsKeyword("infix")}; it should not be used as infix operator.
                   |Instead, use ${alternative(name)} or backticked identifier `$name`.$rewriteMsg""",
               tree.op.srcPos,
-              from = future)
-            if sourceVersion == `future-migration` then {
+              MigrationVersion.AlphanumericInfix)
+            if MigrationVersion.AlphanumericInfix.needsPatch then
               patch(Span(tree.op.span.start, tree.op.span.start), "`")
               patch(Span(tree.op.span.end, tree.op.span.end), "`")
-            }
           case _ =>
         }
     }

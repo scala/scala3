@@ -18,10 +18,13 @@ import scala.collection.immutable.SortedMap
 import rewrites.Rewrites.patch
 import config.Feature
 import config.Feature.{migrateTo3, fewerBracesEnabled}
-import config.SourceVersion.`3.0`
+import config.SourceVersion.{`3.0`, `3.0-migration`}
+import config.MigrationVersion
 import reporting.{NoProfile, Profile, Message}
 
 import java.util.Objects
+import dotty.tools.dotc.reporting.Message.rewriteNotice
+import dotty.tools.dotc.config.Feature.sourceVersion
 
 object Scanners {
 
@@ -253,11 +256,12 @@ object Scanners {
         if scala3keywords.contains(keyword) && migrateTo3 then
           val what = tokenString(keyword)
           report.errorOrMigrationWarning(
-            em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier",
+            em"$what is now a keyword, write `$what` instead of $what to keep it as an identifier${rewriteNotice("This", `3.0-migration`)}",
             sourcePos(),
-            from = `3.0`)
-          patch(source, Span(offset), "`")
-          patch(source, Span(offset + identifier.length), "`")
+            MigrationVersion.Scala2to3)
+          if MigrationVersion.Scala2to3.needsPatch then
+            patch(source, Span(offset), "`")
+            patch(source, Span(offset + identifier.length), "`")
           IDENTIFIER
         else keyword
       val idx = identifier.start
@@ -467,7 +471,7 @@ object Scanners {
             em"""$what starts with an operator;
                 |it is now treated as a continuation of the $previous,
                 |not as a separate statement.""",
-            sourcePos(), from = `3.0`)
+            sourcePos(), MigrationVersion.Scala2to3)
         true
       }
 

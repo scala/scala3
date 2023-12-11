@@ -4,8 +4,6 @@ package ast
 
 import dotty.tools.dotc.transform.{ExplicitOuter, Erasure}
 import typer.ProtoTypes
-import transform.SymUtils.*
-import transform.TypeUtils.*
 import core.*
 import Scopes.newScope
 import util.Spans.*, Types.*, Contexts.*, Constants.*, Names.*, Flags.*, NameOps.*
@@ -1262,7 +1260,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   private class MapToUnderlying extends TreeMap {
     override def transform(tree: Tree)(using Context): Tree = tree match {
-      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) =>
+      case tree: Ident if isBinding(tree.symbol) && skipLocal(tree.symbol) && !tree.symbol.is(Module) =>
         tree.symbol.defTree match {
           case defTree: ValOrDefDef =>
             val rhs = defTree.rhs

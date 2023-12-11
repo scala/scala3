@@ -16,8 +16,6 @@ import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import transform.TypeUtils.*
-import transform.SymUtils.*
 import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
@@ -2086,9 +2084,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             ExprType(info1.resType)
           case info1 => info1
 
-        isSubInfo(info1, info2, m.symbol.info.orElse(info1))
-        || matchAbstractTypeMember(m.info)
-        || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo))
+        m.symbol.hasTargetName(m.symbol.name) && (
+          isSubInfo(info1, info2, m.symbol.info.orElse(info1))
+          || matchAbstractTypeMember(m.info)
+          || (tp1.isStable && m.symbol.isStableMember && isSubType(TermRef(tp1, m.symbol), tp2.refinedInfo)))
       end qualifies
 
       tp1.member(name).hasAltWithInline(qualifies)

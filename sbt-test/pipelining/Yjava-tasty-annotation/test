@@ -1,0 +1,3 @@
+> a/compile
+# Test depending on a java compiled annotation through TASTy
+> b/compile

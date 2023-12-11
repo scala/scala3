@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile}
@@ -63,6 +63,9 @@ class ExtractDependencies extends Phase {
 
   // Check no needed. Does not transform trees
   override def isCheckable: Boolean = false
+
+  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  override def skipIfJava(using Context): Boolean = false
 
   // This phase should be run directly after `Frontend`, if it is run after
   // `PostTyper`, some dependencies will be lost because trees get simplified.

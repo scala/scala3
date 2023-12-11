@@ -141,7 +141,7 @@ object NamerOps:
         ConstructorCompanionFlags, ConstructorCompanionFlags,
         constructorCompanionCompleter(cls),
         coord = cls.coord,
-        assocFile = cls.assocFile)
+        compUnitInfo = cls.compUnitInfo)
     companion.moduleClass.registerCompanion(cls)
     cls.registerCompanion(companion.moduleClass)
     companion
@@ -150,7 +150,7 @@ object NamerOps:
     newSymbol(tsym.owner, tsym.name.toTermName,
         ConstructorCompanionFlags | StableRealizable | Method, ExprType(prefix.select(proxy)), coord = tsym.coord)
 
-  /** Add all necesssary constructor proxy symbols for members of class `cls`. This means:
+  /** Add all necessary constructor proxy symbols for members of class `cls`. This means:
    *
    *   - if a member is a class, or type alias, that needs a constructor companion, add one,
    *     provided no member with the same name exists.

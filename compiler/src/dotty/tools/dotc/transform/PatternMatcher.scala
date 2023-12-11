@@ -8,8 +8,7 @@ import Symbols.*, Contexts.*, Types.*, StdNames.*, NameOps.*
 import patmat.SpaceEngine
 import util.Spans.*
 import typer.Applications.*
-import SymUtils.*
-import TypeUtils.*
+
 import Annotations.*
 import Flags.*, Constants.*
 import Decorators.*
@@ -36,6 +35,13 @@ class PatternMatcher extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
+  private val InInlinedCode = new util.Property.Key[Boolean]
+  private def inInlinedCode(using Context) = ctx.property(InInlinedCode).getOrElse(false)
+
+  override def prepareForInlined(tree: Inlined)(using Context): Context =
+    if inInlinedCode then ctx
+    else ctx.fresh.setProperty(InInlinedCode, true)
+
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else {
@@ -47,9 +53,10 @@ class PatternMatcher extends MiniPhase {
         case rt => tree.tpe
       val translated = new Translator(matchType, this).translateMatch(tree)
 
-      // check exhaustivity and unreachability
-      SpaceEngine.checkExhaustivity(tree)
-      SpaceEngine.checkRedundancy(tree)
+      if !inInlinedCode then
+        // check exhaustivity and unreachability
+        SpaceEngine.checkExhaustivity(tree)
+        SpaceEngine.checkRedundancy(tree)
 
       translated.ensureConforms(matchType)
     }
@@ -330,7 +337,7 @@ object PatternMatcher {
         lazy val caseAccessors = caseClass.caseAccessors
 
         def isSyntheticScala2Unapply(sym: Symbol) =
-          sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
+          sym.is(Synthetic) && sym.owner.is(Scala2x)
 
         def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
           ref(defn.RuntimeTuplesModule)
@@ -1023,7 +1030,7 @@ object PatternMatcher {
           case Block((_: ValDef) :: Block(_, Match(_, cases)) :: Nil, _) => cases
           case _ => Nil
         val caseThreshold =
-          if ValueClasses.isDerivedValueClass(tpt.tpe.typeSymbol) then 1
+          if tpt.tpe.typeSymbol.isDerivedValueClass then 1
           else MinSwitchCases
         def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)

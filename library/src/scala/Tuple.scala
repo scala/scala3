@@ -96,7 +96,7 @@ object Tuple {
   }
 
   /** Type of the head of a tuple */
-  type Head[X <: NonEmptyTuple] = X match {
+  type Head[X <: Tuple] = X match {
     case x *: _ => x
   }
 
@@ -108,7 +108,7 @@ object Tuple {
   }
 
   /** Type of the tail of a tuple */
-  type Tail[X <: NonEmptyTuple] <: Tuple = X match {
+  type Tail[X <: Tuple] <: Tuple = X match {
     case _ *: xs => xs
   }
 

@@ -244,9 +244,6 @@ object Annotations {
         }
         else None
     }
-
-    def makeSourceFile(path: String, span: Span)(using Context): Annotation =
-      apply(defn.SourceFileAnnot, Literal(Constant(path)), span)
   }
 
   @sharable val EmptyAnnotation = Annotation(EmptyTree)

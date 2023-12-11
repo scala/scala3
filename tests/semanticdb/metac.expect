@@ -3460,6 +3460,7 @@ Text => empty
 Language => Scala
 Symbols => 12 entries
 Occurrences => 33 entries
+Diagnostics => 1 entries
 Synthetics => 4 entries
 
 Symbols:
@@ -3510,6 +3511,11 @@ Occurrences:
 [20:2..20:3): V -> example/StructuralTypes.V.
 [20:4..20:13): scalameta -> scala/reflect/Selectable#selectDynamic().
 [21:4..21:19): StructuralTypes -> example/StructuralTypes.
+
+Diagnostics:
+[14:20..14:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
+Instead, use method syntax .foo(...) or backticked identifier `foo`.
+The latter can be rewritten automatically under -rewrite -source 3.4-migration.
 
 Synthetics:
 [12:2..12:6):user => reflectiveSelectable(*)

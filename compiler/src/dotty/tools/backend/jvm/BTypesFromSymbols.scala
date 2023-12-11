@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.transform.SymUtils.*
+
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Phases
 
@@ -304,7 +304,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I, val frontendAcce
       .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
       .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
       .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
-      .addFlagIf(sym.isAllOf(JavaEnumTrait), ACC_ENUM)
+      .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
       .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)

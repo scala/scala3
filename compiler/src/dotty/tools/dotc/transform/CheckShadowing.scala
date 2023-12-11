@@ -19,8 +19,7 @@ import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.semanticdb.TypeOps
 import dotty.tools.dotc.cc.boxedCaptureSet
-import dotty.tools.dotc.core.Symbols.NoSymbol
-import dotty.tools.dotc.transform.SymUtils.isParamOrAccessor
+import dotty.tools.dotc.core.Symbols.{NoSymbol, isParamOrAccessor}
 import scala.collection.mutable
 import dotty.tools.dotc.core.Scopes.Scope
 import scala.collection.immutable.HashMap

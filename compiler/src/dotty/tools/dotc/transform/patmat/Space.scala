@@ -5,7 +5,6 @@ package patmat
 
 import core.*
 import Types.*
-import TypeUtils.*
 import Contexts.*
 import Flags.*
 import ast.*
@@ -18,7 +17,6 @@ import typer.*
 import Applications.*
 import Inferencing.*
 import ProtoTypes.*
-import transform.SymUtils.*
 import reporting.*
 import config.Printers.{exhaustivity => debug}
 import util.{SrcPos, NoSourcePosition}
@@ -289,11 +287,9 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult, argLen)
-    || {
-      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition)
-      isEmptyTp <:< ConstantType(Constant(false))
-    }
+    || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
+    || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
   }
 
   /** Is the unapply or unapplySeq irrefutable?
@@ -507,6 +503,7 @@ object SpaceEngine {
   def isSubType(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"$tp1 <:< $tp2", debug, show = true) {
     if tp1 == ConstantType(Constant(null)) && !ctx.mode.is(Mode.SafeNulls)
     then tp2 == ConstantType(Constant(null))
+    else if tp1.isTupleXXLExtract(tp2) then true // See isTupleXXLExtract, fixes TupleXXL parameter type
     else tp1 <:< tp2
   }
 
@@ -628,7 +625,7 @@ object SpaceEngine {
       case tp if tp.isRef(defn.UnitClass)              => ConstantType(Constant(())) :: Nil
       case tp @ NamedType(Parts(parts), _)             => parts.map(tp.derivedSelect)
       case _: SingletonType                            => ListOfNoType
-      case tp if tp.classSymbol.isAllOf(JavaEnumTrait) => tp.classSymbol.children.map(_.termRef)
+      case tp if tp.classSymbol.isAllOf(JavaEnum)      => tp.classSymbol.children.map(_.termRef)
         // the class of a java enum value is the enum class, so this must follow SingletonType to not loop infinitely
 
       case tp @ AppliedType(Parts(parts), targs) if tp.classSymbol.children.isEmpty =>
@@ -838,14 +835,15 @@ object SpaceEngine {
     def isCheckable(tp: Type): Boolean =
       val tpw = tp.widen.dealias
       val classSym = tpw.classSymbol
-      classSym.is(Sealed) ||
+      classSym.is(Sealed) && !tpw.isLargeGenericTuple || // exclude large generic tuples from exhaustivity
+                                                         // requires an unknown number of changes to make work
       tpw.isInstanceOf[OrType] ||
       (tpw.isInstanceOf[AndType] && {
         val and = tpw.asInstanceOf[AndType]
         isCheckable(and.tp1) || isCheckable(and.tp2)
       }) ||
       tpw.isRef(defn.BooleanClass) ||
-      classSym.isAllOf(JavaEnumTrait) ||
+      classSym.isAllOf(JavaEnum) ||
       classSym.is(Case) && {
         if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
         else true // recursive case class: return true and other members can still fail the check

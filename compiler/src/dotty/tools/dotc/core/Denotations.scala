@@ -298,14 +298,13 @@ object Denotations {
                        name: Name,
                        site: Denotation = NoDenotation,
                        args: List[Type] = Nil,
-                       source: AbstractFile | Null = null,
                        generateStubs: Boolean = true)
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
       disambiguate(p) match {
         case m @ MissingRef(ownerd, name) if generateStubs =>
           if ctx.settings.YdebugMissingRefs.value then m.ex.printStackTrace()
-          newStubSymbol(ownerd.symbol, name, source)
+          newStubSymbol(ownerd.symbol, name)
         case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =

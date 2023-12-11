@@ -11,7 +11,7 @@
 -- [E172] Type Error: tests/neg/i5498-postfixOps.scala:6:0 -------------------------------------------------------------
 6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
   |^
-  |No given instance of type scala.concurrent.duration.DurationConversions.Classifier[Null] was found for parameter ev of method second in trait DurationConversions
+  |Ambiguous given instances: both object spanConvert in object DurationConversions and object fromNowConvert in object DurationConversions match type scala.concurrent.duration.DurationConversions.Classifier[C] of parameter ev of method second in trait DurationConversions
 -- [E007] Type Mismatch Error: tests/neg/i5498-postfixOps.scala:6:24 ---------------------------------------------------
 6 |  Seq(1, 2).filter(List(1,2) contains) // error: usage of postfix operator // error // error (type error) // error (type error)
   |                        ^

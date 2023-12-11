@@ -12,7 +12,7 @@ import core.Decorators.*
 import collection.mutable
 import ast.Trees.*
 import core.NameKinds.SuperArgName
-import SymUtils.*
+
 import core.Decorators.*
 
 object HoistSuperArgs {

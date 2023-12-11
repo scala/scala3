@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.TypeOps.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
-import dotty.tools.dotc.transform.SymUtils.*
+
 
 import scala.collection.mutable
 

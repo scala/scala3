@@ -6,7 +6,7 @@ import ast.tpd.*
 import Annotations.*
 import Contexts.*
 import Symbols.*
-import SymUtils.*
+
 import Decorators.*
 import Flags.*
 import Names.*

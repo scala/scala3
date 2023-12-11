@@ -48,6 +48,19 @@ class SealedDescendantsTest extends DottyTest {
   end enumOpt
 
   @Test
+  def javaEnum: Unit =
+    expectedDescendents("java.util.concurrent.TimeUnit",
+      "TimeUnit"          ::
+      "NANOSECONDS.type"  ::
+      "MICROSECONDS.type" ::
+      "MILLISECONDS.type" ::
+      "SECONDS.type"      ::
+      "MINUTES.type"      ::
+      "HOURS.type"        ::
+      "DAYS.type"         :: Nil
+    )
+
+  @Test
   def hierarchicalSharedChildren: Unit =
     // Q is a child of both Z and A and should appear once
     // X is a child of both A and Q and should appear once
@@ -91,10 +104,22 @@ class SealedDescendantsTest extends DottyTest {
     )
   end hierarchicalSharedChildrenB
 
-  def expectedDescendents(source: String, root: String, expected: List[String]) =
-    exploreRoot(source, root) { rootCls =>
-      val descendents = rootCls.sealedDescendants.map(sym => s"${sym.name}${if (sym.isTerm) ".type" else ""}")
-      assertEquals(expected.toString, descendents.toString)
+  def assertMatchingDescenants(rootCls: Symbol, expected: List[String])(using Context): Unit =
+    val descendents = rootCls.sealedDescendants.map(sym => s"${sym.name}${if (sym.isTerm) ".type" else ""}")
+    assertEquals(expected.toString, descendents.toString)
+
+  def expectedDescendents(root: String, expected: List[String]): Unit =
+    exploreRootNoSource(root)(assertMatchingDescenants(_, expected))
+
+  def expectedDescendents(source: String, root: String, expected: List[String]): Unit =
+    exploreRoot(source, root)(assertMatchingDescenants(_, expected))
+
+  def exploreRootNoSource(root: String)(op: Context ?=> ClassSymbol => Unit) =
+    val source1 = s"""package testsealeddescendants
+                    |object Foo { def foo: $root = ??? }""".stripMargin
+    checkCompile("typer", source1) { (_, context) =>
+      given Context = context
+      op(requiredClass(root))
     }
 
   def exploreRoot(source: String, root: String)(op: Context ?=> ClassSymbol => Unit) =

@@ -10,3 +10,4 @@
 8 |  val s = s"$enum" // warn
   |           ^
   |           enum is now a keyword, write `enum` instead of enum to keep it as an identifier
+  |           This can be rewritten automatically under -rewrite -source 3.0-migration.

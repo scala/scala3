@@ -1,4 +1,4 @@
-object Scanners {
+class Scanners {
   enum IndentWidth {
     case Run(ch: Char, n: Int)
     case Conc(l: IndentWidth, r: Run)

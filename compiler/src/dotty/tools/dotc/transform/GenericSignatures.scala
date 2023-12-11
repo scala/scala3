@@ -14,8 +14,7 @@ import core.TypeApplications.{EtaExpansion, TypeParamInfo}
 import core.TypeErasure.{erasedGlb, erasure, fullErasure, isGenericArrayElement, tupleArity}
 import core.Types.*
 import core.classfile.ClassfileConstants
-import SymUtils.*
-import TypeUtils.*
+
 import config.Printers.transforms
 import reporting.trace
 import java.lang.StringBuilder
@@ -273,7 +272,7 @@ object GenericSignatures {
             if (!primitiveOK) jsig(defn.ObjectType)
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
-          else if (ValueClasses.isDerivedValueClass(sym)) {
+          else if (sym.isDerivedValueClass) {
             val erasedUnderlying = fullErasure(tp)
             if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
               classSig(sym, pre, args)

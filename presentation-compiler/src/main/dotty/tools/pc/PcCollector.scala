@@ -144,6 +144,22 @@ abstract class PcCollector[T](
           if id.symbol
             .is(Flags.Param) && id.symbol.owner.is(Flags.ExtensionMethod) =>
         Some(findAllExtensionParamSymbols(id.sourcePos, id.name, id.symbol))
+      /**
+       * Workaround for missing symbol in:
+       * class A[T](a: T)
+       * val x = new <<A>>(1)
+       */
+      case t :: (n: New) :: (sel: Select) :: _
+          if t.symbol == NoSymbol && sel.symbol.isConstructor =>
+        Some(symbolAlternatives(sel.symbol.owner), namePos(t))
+      /**
+       * Workaround for missing symbol in:
+       * class A[T](a: T)
+       * val x = <<A>>[Int](1)
+       */
+      case (sel @ Select(New(t), _)) :: (_: TypeApply) :: _
+          if sel.symbol.isConstructor =>
+        Some(symbolAlternatives(sel.symbol.owner), namePos(t))
       /* simple identifier:
        * val a = val@@ue + value
        */
@@ -404,6 +420,22 @@ abstract class PcCollector[T](
             )
           else occurrences
         /**
+         * Workaround for missing symbol in:
+         * class A[T](a: T)
+         * val x = new <<A>>(1)
+         */
+        case sel @ Select(New(t), _)
+            if sel.span.isCorrect &&
+              sel.symbol.isConstructor &&
+              t.symbol == NoSymbol =>
+          if soughtFilter(_ == sel.symbol.owner) then
+            occurrences + collect(
+              sel,
+              namePos(t),
+              Some(sel.symbol.owner),
+            )
+          else occurrences
+        /**
          * All select statements such as:
          * val a = hello.<<b>>
          */
@@ -564,6 +596,11 @@ abstract class PcCollector[T](
         Span(span.start, span.start + realName.length, point)
       else Span(point, span.end, point)
     else span
+
+  private def namePos(tree: Tree): SourcePosition =
+    tree match
+      case sel: Select => sel.sourcePos.withSpan(selectNameSpan(sel))
+      case _ => tree.sourcePos
 end PcCollector
 
 object PcCollector:

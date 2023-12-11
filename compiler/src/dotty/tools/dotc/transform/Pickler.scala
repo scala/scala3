@@ -7,7 +7,10 @@ import Contexts.*
 import Decorators.*
 import tasty.*
 import config.Printers.{noPrinter, pickling}
+import config.Feature
 import java.io.PrintStream
+import io.ClassfileWriterOps
+import StdNames.str
 import Periods.*
 import Phases.*
 import Symbols.*
@@ -16,6 +19,7 @@ import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
 import util.concurrent.{Executor, Future}
 import compiletime.uninitialized
+import dotty.tools.io.JarArchive
 
 object Pickler {
   val name: String = "pickler"
@@ -26,6 +30,9 @@ object Pickler {
    *  only in backend.
    */
   inline val ParallelPickling = true
+
+  class EarlyFileWriter(writer: ClassfileWriterOps):
+    export writer.{writeTasty, close}
 }
 
 /** This phase pickles trees */
@@ -38,7 +45,10 @@ class Pickler extends Phase {
 
   // No need to repickle trees coming from TASTY
   override def isRunnable(using Context): Boolean =
-    super.isRunnable && !ctx.settings.fromTasty.value
+    super.isRunnable && (!ctx.settings.fromTasty.value || ctx.settings.YjavaTasty.value)
+
+  // when `-Yjava-tasty` is set we actually want to run this phase on Java sources
+  override def skipIfJava(using Context): Boolean = false
 
   private def output(name: String, msg: String) = {
     val s = new PrintStream(name)
@@ -73,7 +83,8 @@ class Pickler extends Phase {
   private val executor = Executor[Array[Byte]]()
 
   private def useExecutor(using Context) =
-    Pickler.ParallelPickling && !ctx.settings.YtestPickler.value
+    Pickler.ParallelPickling && !ctx.settings.YtestPickler.value &&
+    !ctx.settings.YjavaTasty.value // disable parallel pickling when `-Yjava-tasty` is set (internal testing only)
 
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
@@ -85,8 +96,26 @@ class Pickler extends Phase {
     do
       if ctx.settings.YtestPickler.value then beforePickling(cls) = tree.show
 
+      val sourceRelativePath =
+        val reference = ctx.settings.sourceroot.value
+        util.SourceFile.relativePath(unit.source, reference)
+      val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
+      if isJavaAttr then
+        // assert that Java sources didn't reach Pickler without `-Yjava-tasty`.
+        assert(ctx.settings.YjavaTasty.value, "unexpected Java source file without -Yjava-tasty")
+      val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
+      val attributes = Attributes(
+        sourceFile = sourceRelativePath,
+        scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
+        explicitNulls = ctx.settings.YexplicitNulls.value,
+        captureChecked = Feature.ccEnabled,
+        withPureFuns = Feature.pureFunsEnabled,
+        isJava = isJavaAttr,
+        isOutline = isOutline
+      )
+
       val pickler = new TastyPickler(cls)
-      val treePkl = new TreePickler(pickler)
+      val treePkl = new TreePickler(pickler, attributes)
       treePkl.pickle(tree :: Nil)
       Profile.current.recordTasty(treePkl.buf.length)
 
@@ -108,10 +137,6 @@ class Pickler extends Phase {
                 pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
                 scratch.commentBuffer)
 
-          val attributes = Attributes(
-            scala2StandardLibrary = ctx.settings.YcompileScala2Library.value,
-            explicitNulls = ctx.settings.YexplicitNulls.value,
-          )
           AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
 
           val pickled = pickler.assembleParts()
@@ -151,13 +176,22 @@ class Pickler extends Phase {
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
-    val result =
-      if useExecutor then
-        executor.start()
-        try super.runOn(units)
-        finally executor.close()
+    val sigWriter: Option[Pickler.EarlyFileWriter] = ctx.settings.YjavaTastyOutput.value match
+      case jar: JarArchive if jar.exists =>
+        Some(Pickler.EarlyFileWriter(ClassfileWriterOps(jar)))
+      case _ =>
+        None
+    val units0 =
+      if ctx.settings.fromTasty.value then
+        // we still run the phase for the side effect of writing the pipeline tasty files
+        units
       else
-        super.runOn(units)
+        if useExecutor then
+          executor.start()
+          try super.runOn(units)
+          finally executor.close()
+        else
+          super.runOn(units)
     if ctx.settings.YtestPickler.value then
       val ctx2 = ctx.fresh
         .setSetting(ctx.settings.YreadComments, true)
@@ -168,7 +202,32 @@ class Pickler extends Phase {
           .setReporter(new ThrowingReporter(ctx.reporter))
           .addMode(Mode.ReadPositions)
       )
+    val result =
+      if ctx.settings.YjavaTasty.value then
+        sigWriter.foreach(writeJavaSigFiles(units0, _))
+        units0.filterNot(_.typedAsJava) // remove java sources, this is the terminal phase when `-Yjava-tasty` is set
+      else
+        units0
     result
+  }
+
+  private def writeJavaSigFiles(units: List[CompilationUnit], writer: Pickler.EarlyFileWriter)(using Context): Unit = {
+    var count = 0
+    try
+      for
+        unit <- units if unit.typedAsJava
+        (cls, pickled) <- unit.pickled
+        if cls.isDefinedInCurrentRun
+      do
+        val binaryName = cls.binaryClassName.replace('.', java.io.File.separatorChar).nn
+        val binaryClassName = if (cls.is(Module)) binaryName.stripSuffix(str.MODULE_SUFFIX).nn else binaryName
+        writer.writeTasty(binaryClassName, pickled())
+        count += 1
+    finally
+      writer.close()
+      if ctx.settings.verbose.value then
+        report.echo(s"[$count java sig files written]")
+    end try
   }
 
   private def testUnpickler(using Context): Unit =
@@ -176,7 +235,7 @@ class Pickler extends Phase {
     ctx.initialize()
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(bytes)
+        val unpickler = new DottyUnpickler(unit.source.file, bytes)
         unpickler.enter(roots = Set.empty)
         cls -> (unit, unpickler)
       }

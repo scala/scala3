@@ -45,13 +45,12 @@ import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion.*
 import rewrites.Rewrites.patch
 import staging.StagingLevel
-import transform.SymUtils.*
-import transform.TypeUtils.*
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
 import cc.CheckCaptures
 import config.Config
+import config.MigrationVersion
 
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.rewrites.Rewrites
@@ -447,8 +446,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 if !symsMatch && !suppressErrors then
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
-                    pos, from = `3.0`)
-                  if migrateTo3 then
+                    pos, MigrationVersion.Scala2to3)
+                  if MigrationVersion.Scala2to3.needsPatch then
                     patch(Span(pos.span.start),
                       if prevCtx.owner == refctx.owner.enclosingClass then "this."
                       else s"${prevCtx.owner.name}.this.")
@@ -707,8 +706,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
        // but that is done only after we search for extension methods or conversions.
       typedSelect(tree, pt, qual)
-    else if defn.isSmallGenericTuple(qual.tpe) then
-      val elems = defn.tupleTypes(qual.tpe.widenTermRefExpr).getOrElse(Nil)
+    else if qual.tpe.isSmallGenericTuple then
+      val elems = qual.tpe.widenTermRefExpr.tupleElementTypes.getOrElse(Nil)
       typedSelect(tree, pt, qual.cast(defn.tupleType(elems)))
     else
       val tree1 = tryExtensionOrConversion(
@@ -729,7 +728,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             if checkedType1.exists then
               gadts.println(i"Member selection healed by GADT approximation")
               finish(tree1, qual1, checkedType1)
-            else if defn.isSmallGenericTuple(qual1.tpe) then
+            else if qual1.tpe.isSmallGenericTuple then
               gadts.println(i"Tuple member selection healed by GADT approximation")
               typedSelect(tree, pt, qual1)
             else
@@ -2436,7 +2435,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                                          // wrt to operand order for `&`, we include the explicit subtype test here.
                                          // See also #5649.
             then body1.tpe
-            else pt & body1.tpe
+            else body1.tpe match
+              case btpe: TypeRef
+              if btpe.symbol == defn.TupleXXLClass && pt.tupleElementTypes.isDefined =>
+                // leave the original tuple type; don't mix with & TupleXXL which would only obscure things
+                pt
+              case _ =>
+                pt & body1.tpe
           val sym = newPatternBoundSymbol(name, symTp, tree.span)
           if (pt == defn.ImplicitScrutineeTypeRef || tree.mods.is(Given)) sym.setFlag(Given)
           if (ctx.mode.is(Mode.InPatternAlternative))
@@ -2983,14 +2988,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
-        report.errorOrMigrationWarning(msg, tree.srcPos, from = `3.0`)
-        if (migrateTo3) {
+        report.errorOrMigrationWarning(msg, tree.srcPos, MigrationVersion.Scala2to3)
+        if MigrationVersion.Scala2to3.needsPatch then
           // Under -rewrite, patch `x _` to `(() => x)`
           msg.actions
             .headOption
             .foreach(Rewrites.applyAction)
           return typed(untpd.Function(Nil, qual), pt)
-        }
     }
     nestedCtx.typerState.commit()
 
@@ -3005,13 +3009,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
       else s"use `$prefix<function>$suffix` instead"
     def rewrite = Message.rewriteNotice("This construct", `3.4-migration`)
-    report.gradualErrorOrMigrationWarning(
+    report.errorOrMigrationWarning(
       em"""The syntax `<function> _` is no longer supported;
           |you can $remedy$rewrite""",
       tree.srcPos,
-      warnFrom = `3.4`,
-      errorFrom = future)
-    if sourceVersion.isMigrating && sourceVersion.isAtLeast(`3.4-migration`) then
+      MigrationVersion.FunctionUnderscore)
+    if MigrationVersion.FunctionUnderscore.needsPatch then
       patch(Span(tree.span.start), prefix)
       patch(Span(qual.span.end, tree.span.end), suffix)
 
@@ -3140,7 +3143,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                     else ""
                   val namePos = tree.sourcePos.withSpan(tree.nameSpan)
                   report.errorOrMigrationWarning(
-                    em"`?` is not a valid type name$addendum", namePos, from = `3.0`)
+                    em"`?` is not a valid type name$addendum", namePos, MigrationVersion.Scala2to3)
                 if tree.isClassDef then
                   typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
                 else

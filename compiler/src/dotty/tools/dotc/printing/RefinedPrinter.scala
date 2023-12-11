@@ -23,8 +23,6 @@ import Trees.*
 import TypeApplications.*
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
-import transform.TypeUtils.*
-import transform.SymUtils.*
 import config.{Config, Feature}
 
 import dotty.tools.dotc.util.SourcePosition
@@ -235,7 +233,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def appliedText(tp: Type): Text = tp match
       case tp @ AppliedType(tycon, args) =>
-        tp.tupleElementTypes match
+        tp.tupleElementTypesUpTo(200, normalize = false) match
           case Some(types) if types.size >= 2 && !printDebug => toTextTuple(types)
           case _ =>
             val tsym = tycon.typeSymbol

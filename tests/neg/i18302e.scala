@@ -1,4 +1,4 @@
 def polyFun: PolyFunction {  } = // error
-  new PolyFunction {  }
+  new PolyFunction {  } // error
 
 def polyFun(f: PolyFunction {  }) = () // error

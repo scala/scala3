@@ -29,7 +29,7 @@ def foo: (Int &: String) & Boolean
 scala> def foo: Int &: (Boolean & String) = ???
 def foo: Int &: (Boolean & String)
 scala> import scala.annotation.showAsInfix
-scala> @scala.annotation.showAsInfix class Mappy[T,U]
+scala> @scala.annotation.showAsInfix infix class Mappy[T,U]
 // defined class Mappy
 scala> def foo: (Int Mappy Boolean) && String = ???
 def foo: (Int Mappy Boolean) && String

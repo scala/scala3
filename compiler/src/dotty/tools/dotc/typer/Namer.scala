@@ -23,8 +23,6 @@ import parsing.Parsers.Parser
 import Annotations.*
 import Inferencing.*
 import transform.ValueClasses.*
-import transform.TypeUtils.*
-import transform.SymUtils.*
 import TypeErasure.erasure
 import reporting.*
 import config.Feature.sourceVersion
@@ -250,7 +248,7 @@ class Namer { typer: Typer =>
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
-            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.source.file))
+            newClassSymbol(ctx.owner, name, _, _, _, tree.nameSpan, ctx.compilationUnit.info))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>

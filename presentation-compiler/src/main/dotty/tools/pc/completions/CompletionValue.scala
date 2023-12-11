@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.transform.SymUtils.*
 import dotty.tools.pc.printer.ShortenedTypePrinter
 import dotty.tools.pc.utils.MtagsEnrichments.decoded
 
@@ -65,6 +64,7 @@ object CompletionValue:
     def symbol: Symbol
     def isFromWorkspace: Boolean = false
     override def completionItemDataKind = CompletionItemData.None
+    def isExtensionMethod: Boolean = false
 
     override def completionData(
         buildTargetIdentifier: String
@@ -101,6 +101,8 @@ object CompletionValue:
           s"${labelWithSuffix(printer)} -${description(printer)}"
         else s"${labelWithSuffix(printer)}${description(printer)}"
       else if symbol.isType then labelWithSuffix(printer)
+      else if symbol.isTerm && symbol.info.typeSymbol.is(Module) then
+        s"${label}${description(printer)}"
       else s"$label: ${description(printer)}"
 
     private def labelWithSuffix(printer: ShortenedTypePrinter)(using Context): String =
@@ -152,6 +154,7 @@ object CompletionValue:
     override def completionItemKind(using Context): CompletionItemKind =
       CompletionItemKind.Method
     override def completionItemDataKind: Integer = CompletionSource.ExtensionKind.ordinal
+    override def isExtensionMethod: Boolean = true
     override def description(printer: ShortenedTypePrinter)(using Context): String =
       s"${printer.completionSymbol(symbol)} (extension)"
 

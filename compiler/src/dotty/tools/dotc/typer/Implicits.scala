@@ -24,7 +24,6 @@ import ErrorReporting.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
 import Typer.BindingPrec, BindingPrec.*
-import transform.TypeUtils.*
 import Hashable.*
 import util.{EqHashMap, Stats}
 import config.{Config, Feature}

@@ -2,6 +2,10 @@
 1 |def polyFun: PolyFunction = // error
   |             ^^^^^^^^^^^^
   |             PolyFunction subtypes must refine the apply method
+-- Error: tests/neg/i18302f.scala:2:6 ----------------------------------------------------------------------------------
+2 |  new PolyFunction {  } // error
+  |      ^^^^^^^^^^^^
+  |      `PolyFunction` marker trait is reserved for compiler generated refinements
 -- Error: tests/neg/i18302f.scala:4:16 ---------------------------------------------------------------------------------
 4 |def polyFun2(a: PolyFunction) = () // error
   |                ^^^^^^^^^^^^
@@ -10,3 +14,7 @@
 6 |val polyFun3: PolyFunction = // error
   |              ^^^^^^^^^^^^
   |              PolyFunction subtypes must refine the apply method
+-- Error: tests/neg/i18302f.scala:7:6 ----------------------------------------------------------------------------------
+7 |  new PolyFunction {  } // error
+  |      ^^^^^^^^^^^^
+  |      `PolyFunction` marker trait is reserved for compiler generated refinements

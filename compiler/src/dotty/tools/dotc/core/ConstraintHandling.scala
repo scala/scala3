@@ -10,7 +10,6 @@ import Flags.*
 import config.Config
 import config.Printers.typr
 import typer.ProtoTypes.{newTypeVar, representedParamRef}
-import transform.TypeUtils.isTransparent
 import UnificationDirection.*
 import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet

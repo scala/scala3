@@ -1,0 +1,37 @@
+[[syntax trees at end of                     typer]] // tests/printing/i19019.scala
+package <empty> {
+  final lazy module val ObjectWithSelf: ObjectWithSelf = new ObjectWithSelf()
+  final module class ObjectWithSelf() extends Object() {
+    this: ObjectWithSelf.type =>
+    final lazy module val StaticObjectNoSelf: ObjectWithSelf.StaticObjectNoSelf
+       = new ObjectWithSelf.StaticObjectNoSelf()
+    final module class StaticObjectNoSelf() extends Object() {
+      this: ObjectWithSelf.StaticObjectNoSelf.type =>
+      def foo: Any = this
+    }
+    final lazy module val StaticObjectWithSelf:
+      ObjectWithSelf.StaticObjectWithSelf =
+      new ObjectWithSelf.StaticObjectWithSelf()
+    final module class StaticObjectWithSelf() extends Object() {
+      self: ObjectWithSelf.StaticObjectWithSelf.type =>
+      def foo: Any = self
+    }
+    class Container() extends Object() {
+      final lazy module val NonStaticObjectNoSelf:
+        Container.this.NonStaticObjectNoSelf =
+        new Container.this.NonStaticObjectNoSelf()
+      final module class NonStaticObjectNoSelf() extends Object() {
+        this: Container.this.NonStaticObjectNoSelf.type =>
+        def foo: Any = this
+      }
+      final lazy module val NonStaticObjectWithSelf:
+        Container.this.NonStaticObjectWithSelf =
+        new Container.this.NonStaticObjectWithSelf()
+      final module class NonStaticObjectWithSelf() extends Object() {
+        self: Container.this.NonStaticObjectWithSelf.type =>
+        def foo: Any = self
+      }
+    }
+  }
+}
+

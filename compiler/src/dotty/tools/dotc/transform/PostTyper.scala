@@ -12,7 +12,7 @@ import typer.ErrorReporting.errorTree
 import Types.*, Contexts.*, Names.*, Flags.*, DenotTransformers.*, Phases.*
 import SymDenotations.*, StdNames.*, Annotations.*, Trees.*, Scopes.*
 import Decorators.*
-import Symbols.*, SymUtils.*, NameOps.*
+import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
@@ -370,6 +370,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val callTrace = ref(call.symbol)(using ctx.withSource(pos.source)).withSpan(pos.span)
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
+          Checking.checkPolyFunctionExtension(templ)
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
@@ -416,17 +417,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                   if illegalRefs.nonEmpty then
                     report.error(
                       em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
-            // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package) then
+              // Add SourceFile annotation to top-level classes
+              // TODO remove this annotation once the reference compiler uses the TASTy source file attribute.
               if ctx.compilationUnit.source.exists && sym != defn.SourceFileAnnot then
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
-                sym.addAnnotation(Annotation.makeSourceFile(relativePath, tree.span))
-              if sym != defn.WithPureFunsAnnot && sym != defn.CaptureCheckedAnnot then
-                if Feature.ccEnabled then
-                  sym.addAnnotation(Annotation(defn.CaptureCheckedAnnot, tree.span))
-                else if Feature.pureFunsEnabled then
-                  sym.addAnnotation(Annotation(defn.WithPureFunsAnnot, tree.span))
+                sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)

@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core.*
-import Symbols.*, Types.*, Contexts.*, Names.*, StdNames.*, Constants.*, SymUtils.*
+import Symbols.*, Types.*, Contexts.*, Names.*, StdNames.*, Constants.*
 import Flags.*
 import DenotTransformers.*
 import Decorators.*
@@ -10,8 +10,7 @@ import NameOps.*
 import Annotations.Annotation
 import typer.ProtoTypes.constrained
 import ast.untpd
-import ValueClasses.isDerivedValueClass
-import SymUtils.*
+
 import util.Property
 import util.Spans.Span
 import config.Printers.derive
@@ -90,7 +89,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def caseAndValueMethods(clazz: ClassSymbol)(using Context): List[Tree] = {
     val clazzType = clazz.appliedRef
     lazy val accessors =
-      if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
+      if clazz.isDerivedValueClass then clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
     val isEnumValue = clazz.isAnonymousClass && clazz.info.parents.head.classSymbol.is(Enum)
     val isSimpleEnumValue = isEnumValue && !clazz.owner.isAllOf(EnumCase)
@@ -98,12 +97,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val isNonJavaEnumValue = isEnumValue && !isJavaEnumValue
 
     val symbolsToSynthesize: List[Symbol] =
-      if (clazz.is(Case))
-        if (clazz.is(Module)) caseModuleSymbols
+      if clazz.is(Case) then
+        if clazz.is(Module) then caseModuleSymbols
         else caseSymbols
-      else if (isNonJavaEnumValue) nonJavaEnumValueSymbols
-      else if (isEnumValue) enumValueSymbols
-      else if (isDerivedValueClass(clazz)) valueSymbols
+      else if isNonJavaEnumValue then nonJavaEnumValueSymbols
+      else if isEnumValue then enumValueSymbols
+      else if clazz.isDerivedValueClass then valueSymbols
       else Nil
 
     def syntheticDefIfMissing(sym: Symbol): List[Tree] =

@@ -292,7 +292,7 @@ trait BCodeHelpers extends BCodeIdiomatic {
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
-        case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnumTrait) =>
+        case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnum) =>
           val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -397,6 +397,9 @@ trait BCodeHelpers extends BCodeIdiomatic {
       atPhase(erasurePhase) {
         val memberTpe =
           if (sym.is(Method)) sym.denot.info
+          else if sym.denot.validFor.phaseId > erasurePhase.id && sym.isField && sym.getter.exists then
+            // Memoization field of getter entered after erasure, see run/i17069 for an example
+            sym.getter.denot.info.resultType
           else owner.denot.thisType.memberInfo(sym)
         getGenericSignatureHelper(sym, owner, memberTpe).orNull
       }

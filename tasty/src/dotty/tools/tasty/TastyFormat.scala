@@ -16,6 +16,7 @@ Micro-syntax:
   Nat           = LongInt                 -- non-negative value, fits in an Int without overflow
   Digit         = 0 | ... | 127
   StopDigit     = 128 | ... | 255         -- value = digit - 128
+  Utf8          = Nat UTF8-CodePoint*
 ```
 
 Macro-format:
@@ -24,12 +25,12 @@ Macro-format:
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
   UUID          = Byte*16                 -- random UUID
-  VersionString = Length UTF8-CodePoint*  -- string that represents the compiler that produced the TASTy
+  VersionString = Utf8                    -- string that represents the compiler that produced the TASTy
 
   Section       = NameRef Length Bytes
   Length        = Nat                     -- length of rest of entry in bytes
 
-  Name          = UTF8              Length UTF8-CodePoint*
+  Name          = UTF8              Utf8
                   QUALIFIED         Length qualified_NameRef selector_NameRef               -- A.B
                   EXPANDED          Length qualified_NameRef selector_NameRef               -- A$$B, semantically a NameKinds.ExpandedName
                   EXPANDPREFIX      Length qualified_NameRef selector_NameRef               -- A$B, prefix of expanded name, see NamedKinds.ExpandPrefixName
@@ -49,6 +50,7 @@ Macro-format:
                       // If positive, this is a NameRef for the fully qualified name of a term parameter.
 
   NameRef       = Nat                    // ordinal number of name in name table, starting from 1.
+  Utf8Ref       = Nat                    // ordinal number of UTF8 in name table, starting from 1.
 ```
 
 Note: Unqualified names in the name table are strings. The context decides whether a name is
@@ -88,6 +90,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   SELECTin       Length possiblySigned_NameRef qual_Term owner_Type -- qual.name, referring to a symbol declared in owner that has the given signature (see note below)
                   QUALTHIS              typeIdent_Tree                             -- id.this, different from THIS in that it contains a qualifier ident with position.
                   NEW                   clsType_Term                               -- new cls
+                  ELIDED                exprType_Type                              -- elided expression of the given type
                   THROW                 throwableExpr_Term                         -- throw throwableExpr
                   NAMEDARG              paramName_NameRef arg_Term                 -- paramName = arg
                   APPLY          Length fn_Term arg_Term*                          -- fn(args)
@@ -234,11 +237,11 @@ Note: The signature of a SELECTin or TERMREFin node is the signature of the sele
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 ```none
-  Category 1 (tags 1-59)   :  tag
-  Category 2 (tags 60-89)  :  tag Nat
-  Category 3 (tags 90-109) :  tag AST
-  Category 4 (tags 110-127):  tag Nat AST
-  Category 5 (tags 128-255):  tag Length <payload>
+  Tree Category 1 (tags 1-59)   :  tag
+  Tree Category 2 (tags 60-89)  :  tag Nat
+  Tree Category 3 (tags 90-109) :  tag AST
+  Tree Category 4 (tags 110-127):  tag Nat AST
+  Tree Category 5 (tags 128-255):  tag Length <payload>
 ```
 
 Standard-Section: "Positions" LinesSizes Assoc*
@@ -265,13 +268,28 @@ All elements of a position section are serialized as Ints
 
 Standard Section: "Comments" Comment*
 ```none
-  Comment       = UTF8 LongInt              // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
+  Comment       = Utf8 LongInt              // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 ```
 
 Standard Section: "Attributes" Attribute*
 ```none
   Attribute     = SCALA2STANDARDLIBRARYattr
                   EXPLICITNULLSattr
+                  CAPTURECHECKEDattr
+                  WITHPUREFUNSattr
+                  JAVAattr
+                  OUTLINEattr
+                  SOURCEFILEattr Utf8Ref
+```
+Attribute tags cannot be repeated in an attribute section. Attributes are ordered by the tag ordinal.
+
+Note: Attribute tags are grouped into categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
+      Unassigned categories can be used to extend and existing category or to add new kinds of attributes
+```none
+  Attribute Category 1 (tags 1-32)  :  tag
+  Attribute Category 2 (tags 33-128): // not assigned yet
+  Attribute Category 3 (tags 129-160):  tag Utf8Ref
+  Attribute Category 4 (tags 161-255): // not assigned yet
 ```
 
 **************************************************************************************/
@@ -435,9 +453,9 @@ object TastyFormat {
 
   final val SOURCE = 4
 
- // AST tags
-  // Cat. 1:    tag
+  // AST tags
 
+  // Tree Cat. 1:    tag
   final val firstSimpleTreeTag = UNITconst
   // final val ??? = 1
   final val UNITconst = 2
@@ -486,8 +504,8 @@ object TastyFormat {
   final val EMPTYCLAUSE = 45
   final val SPLITCLAUSE = 46
 
-  // Cat. 2:    tag Nat
-
+  // Tree Cat. 2:    tag Nat
+  final val firstNatTreeTag = SHAREDterm
   final val SHAREDterm = 60
   final val SHAREDtype = 61
   final val TERMREFdirect = 62
@@ -506,8 +524,8 @@ object TastyFormat {
   final val IMPORTED = 75
   final val RENAMED = 76
 
-  // Cat. 3:    tag AST
-
+  // Tree Cat. 3:    tag AST
+  final val firstASTTreeTag = THIS
   final val THIS = 90
   final val QUALTHIS = 91
   final val CLASSconst = 92
@@ -522,10 +540,11 @@ object TastyFormat {
   final val SINGLETONtpt = 101
   final val BOUNDED = 102
   final val EXPLICITtpt = 103
+  final val ELIDED = 104
 
 
-  // Cat. 4:    tag Nat AST
-
+  // Tree Cat. 4:    tag Nat AST
+  final val firstNatASTTreeTag = IDENT
   final val IDENT = 110
   final val IDENTtpt = 111
   final val SELECT = 112
@@ -537,8 +556,8 @@ object TastyFormat {
   final val SELFDEF = 118
   final val NAMEDARG = 119
 
-  // Cat. 5:    tag Length ...
-
+  // Tree Cat. 5:    tag Length ...
+  final val firstLengthTreeTag = PACKAGE
   final val PACKAGE = 128
   final val VALDEF = 129
   final val DEFDEF = 130
@@ -600,16 +619,27 @@ object TastyFormat {
 
   final val HOLE = 255
 
-  final val firstNatTreeTag = SHAREDterm
-  final val firstASTTreeTag = THIS
-  final val firstNatASTTreeTag = IDENT
-  final val firstLengthTreeTag = PACKAGE
-
-
   // Attributes tags
 
+  // Attribute Category 1 (tags 1-32)  :  tag
+  def isBooleanAttrTag(tag: Int): Boolean = 1 <= tag && tag <= 32
   final val SCALA2STANDARDLIBRARYattr = 1
   final val EXPLICITNULLSattr = 2
+  final val CAPTURECHECKEDattr = 3
+  final val WITHPUREFUNSattr = 4
+  final val JAVAattr = 5
+  final val OUTLINEattr = 6
+
+  // Attribute Category 2 (tags 33-128): unassigned
+
+  // Attribute Category 3 (tags 129-160):  tag Utf8Ref
+  def isStringAttrTag(tag: Int): Boolean = 129 <= tag && tag <= 160
+  final val SOURCEFILEattr = 129
+
+  // Attribute Category 4 (tags 161-255): unassigned
+
+  // end of Attributes tags
+
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
@@ -617,7 +647,7 @@ object TastyFormat {
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
-    firstLengthTreeTag <= tag && tag <= MATCHtpt ||
+    firstLengthTreeTag <= tag && tag <= MATCHCASEtype ||
     tag == HOLE
 
   def isParamTag(tag: Int): Boolean = tag == PARAM || tag == TYPEPARAM
@@ -823,12 +853,18 @@ object TastyFormat {
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
     case EXPLICITtpt => "EXPLICITtpt"
+    case ELIDED => "ELIDED"
     case HOLE => "HOLE"
   }
 
   def attributeTagToString(tag: Int): String = tag match {
     case SCALA2STANDARDLIBRARYattr => "SCALA2STANDARDLIBRARYattr"
     case EXPLICITNULLSattr => "EXPLICITNULLSattr"
+    case CAPTURECHECKEDattr => "CAPTURECHECKEDattr"
+    case WITHPUREFUNSattr => "WITHPUREFUNSattr"
+    case JAVAattr => "JAVAattr"
+    case OUTLINEattr => "OUTLINEattr"
+    case SOURCEFILEattr => "SOURCEFILEattr"
   }
 
   /** @return If non-negative, the number of leading references (represented as nats) of a length/trees entry.

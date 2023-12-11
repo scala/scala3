@@ -71,7 +71,7 @@ def tastyFiles(name: String, allowEmpty: Boolean = false, rootPck: String = "tes
   }
   def collectFiles(dir: File): List[File] = listFilesSafe(dir).toList.flatMap {
       case f if f.isDirectory => collectFiles(f)
-      case f if f.getName endsWith ".tasty" => f :: Nil
+      case f if f.getName.endsWith(".tasty") => f :: Nil
       case _ => Nil
     }
   val outputDir = BuildInfo.test_testcasesOutputDir

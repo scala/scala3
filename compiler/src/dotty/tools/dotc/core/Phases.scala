@@ -333,16 +333,25 @@ object Phases {
     def subPhases: List[Run.SubPhase] = Nil
     final def traversals: Int = if subPhases.isEmpty then 1 else subPhases.length
 
+    /** skip the phase for a Java compilation unit, may depend on -Yjava-tasty */
+    def skipIfJava(using Context): Boolean = true
+
     /** @pre `isRunnable` returns true */
     def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
       val buf = List.newBuilder[CompilationUnit]
+      // factor out typedAsJava check when not needed
+      val doSkipJava = ctx.settings.YjavaTasty.value && this <= picklerPhase && skipIfJava
       for unit <- units do
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         if ctx.run.enterUnit(unit) then
-          try run
+          try
+            if doSkipJava && unit.typedAsJava then
+              ()
+            else
+              run
           catch case ex: Throwable if !ctx.run.enrichedErrorMessage =>
             println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
             throw ex

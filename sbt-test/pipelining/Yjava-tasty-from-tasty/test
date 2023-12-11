@@ -1,0 +1,5 @@
+> a/compile
+# test reading java tasty with -from-tasty
+> a_from_tasty/compile
+# test java tasty is still written even with -from-tasty
+> b/run

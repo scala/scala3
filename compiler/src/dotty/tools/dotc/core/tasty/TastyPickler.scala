@@ -13,14 +13,8 @@ import collection.mutable
 import core.Symbols.ClassSymbol
 import Decorators.*
 
-object TastyPickler {
-
-  private val versionStringBytes = {
-    val compilerString = s"Scala ${config.Properties.simpleVersionString}"
-    compilerString.getBytes(java.nio.charset.StandardCharsets.UTF_8)
-  }
-
-}
+object TastyPickler:
+  private val versionString = s"Scala ${config.Properties.simpleVersionString}"
 
 class TastyPickler(val rootCls: ClassSymbol) {
 
@@ -48,13 +42,12 @@ class TastyPickler(val rootCls: ClassSymbol) {
     val uuidHi: Long = otherSectionHashes.fold(0L)(_ ^ _)
 
     val headerBuffer = {
-      val buf = new TastyBuffer(header.length + TastyPickler.versionStringBytes.length + 32)
+      val buf = new TastyBuffer(header.length + TastyPickler.versionString.length + 32)
       for (ch <- header) buf.writeByte(ch.toByte)
       buf.writeNat(MajorVersion)
       buf.writeNat(MinorVersion)
       buf.writeNat(ExperimentalVersion)
-      buf.writeNat(TastyPickler.versionStringBytes.length)
-      buf.writeBytes(TastyPickler.versionStringBytes, TastyPickler.versionStringBytes.length)
+      buf.writeUtf8(TastyPickler.versionString)
       buf.writeUncompressedLong(uuidLow)
       buf.writeUncompressedLong(uuidHi)
       buf

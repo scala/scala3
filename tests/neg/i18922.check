@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i18922.scala:11:27 ------------------------------------------------------------
+11 |def test = doClose(Resource()) // error
+   |                   ^^^^^^^^^^
+   |                   Found:    Resource
+   |                   Required: Object{def close(): Unit}
+   |
+   | longer explanation available when compiling with `-explain`

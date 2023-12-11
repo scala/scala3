@@ -8,4 +8,4 @@
   |    ^^^
   |    Alphanumeric method foo is not declared infix; it should not be used as infix operator.
   |    Instead, use method syntax .foo(...) or backticked identifier `foo`.
-  |    The latter can be rewritten automatically under -rewrite -source future-migration.
+  |    The latter can be rewritten automatically under -rewrite -source 3.4-migration.

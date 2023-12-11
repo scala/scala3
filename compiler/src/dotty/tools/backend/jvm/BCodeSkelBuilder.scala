@@ -20,7 +20,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
-import dotty.tools.dotc.transform.SymUtils.*
+
 
 /*
  *

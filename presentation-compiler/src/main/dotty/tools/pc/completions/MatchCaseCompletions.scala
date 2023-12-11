@@ -349,11 +349,7 @@ object CaseKeywordCompletion:
       symTpe <:< tpe
 
     val parents = getParentTypes(tpe, List.empty)
-    parents.toList.map { parent =>
-      // There is an issue in Dotty, `sealedStrictDescendants` ends in an exception for java enums. https://github.com/lampepfl/dotty/issues/15908
-      if parent.isAllOf(JavaEnumTrait) then parent.children
-      else sealedStrictDescendants(parent)
-    } match
+    parents.toList.map(sealedStrictDescendants) match
       case Nil => Nil
       case subcls :: Nil => subcls
       case subcls =>
@@ -409,9 +405,7 @@ class CompletionValueGenerator(
       Context
   ): Option[String] =
     val isModuleLike =
-      sym.is(Flags.Module) || sym.isOneOf(JavaEnumTrait) || sym.isOneOf(
-        JavaEnumValue
-      ) || sym.isAllOf(EnumCase)
+      sym.is(Flags.Module) || sym.isOneOf(JavaEnum) || sym.isOneOf(JavaEnumValue) || sym.isAllOf(EnumCase)
     if isModuleLike && hasBind then None
     else
       val pattern =
