@@ -11,8 +11,7 @@ import collection.mutable
 import Denotations.{SingleDenotation, staticRef}
 import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
-import Comments.CommentsContext
-import Comments.Comment
+import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
 import config.Feature
 import Symbols.requiredModuleRef

@@ -5,7 +5,7 @@ package tasty
 
 import scala.language.unsafeNulls
 
-import Comments.CommentsContext
+import Comments.docCtx
 import Contexts.*
 import Symbols.*
 import Types.*
