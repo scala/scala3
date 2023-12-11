@@ -1,0 +1,10 @@
+-- [E007] Type Mismatch Error: tests/neg/i18678b.scala:3:16 ------------------------------------------------------------
+3 |def s: String = "" // error
+  |                ^^
+  |                Found:    ("" : String)
+  |                Required: String²
+  |
+  |                where:    String  is a class in package java.lang
+  |                          String² is a class in the empty package
+  |
+  | longer explanation available when compiling with `-explain`

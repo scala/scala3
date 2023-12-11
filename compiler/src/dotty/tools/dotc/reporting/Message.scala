@@ -88,7 +88,7 @@ object Message:
       def followAlias(e1: Recorded): Recorded = e1 match {
         case e1: Symbol if e1.isAliasType =>
           val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
-          if (underlying.name == e1.name) underlying else e1
+          if (underlying.name == e1.name) underlying else e1.namedType.dealias.typeSymbol
         case _ => e1
       }
       val key = SeenKey(str, isType)
