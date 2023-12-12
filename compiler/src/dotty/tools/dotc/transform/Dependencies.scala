@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core.*
@@ -184,7 +185,6 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
     def setLogicOwner(local: Symbol) =
       val encClass = local.owner.enclosingClass
       val preferEncClass =
-        (
           encClass.isStatic
             // non-static classes can capture owners, so should be avoided
           && (encClass.isProperlyContainedIn(local.topLevelClass)
@@ -192,15 +192,22 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
               || encClass.is(ModuleClass, butNot = Package)
                   // needed to not cause deadlocks in classloader. see t5375.scala
               )
-        )
-        || (
+          && (!sym.isAnonymousFunction || sym.owner.ownersIterator.exists(_.isConstructor))
+            // For anonymous functions in static objects, we prefer them to be static because
+            // that means lambdas are memoized and can be serialized even if the enclosing object
+            // is not serializable. See run/lambda-serialization-gc.scala and run/i19224.scala.
+            // On the other hand, we don't want to lift anonymous functions from inside the
+            // object constructor to be static since that can cause deadlocks by its interaction
+            // with class initialization. See run/deadlock.scala, which works in Scala 3
+            // but deadlocks in Scala 2.
+        ||
           /* Scala.js: Never move any member beyond the boundary of a DynamicImportThunk.
            * DynamicImportThunk subclasses are boundaries between the eventual ES modules
            * that can be dynamically loaded. Moving members across that boundary changes
            * the dynamic and static dependencies between ES modules, which is forbidden.
            */
           ctx.settings.scalajs.value && encClass.isSubClass(jsdefn.DynamicImportThunkClass)
-        )
+          
       logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass
 
     tree match
