@@ -1,5 +1,0 @@
--- Error: tests/neg/wildcard-type-syntax-3.4.scala:7:17 ----------------------------------------------------------------
-7 |    case _: List[_] => // error: migration warning
-  |                 ^
-  |                 `_` is deprecated for wildcard arguments of types: use `?` instead
-  |                 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
