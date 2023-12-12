@@ -55,8 +55,7 @@ class PatternMatcher extends MiniPhase {
 
       if !inInlinedCode then
         // check exhaustivity and unreachability
-        SpaceEngine.checkExhaustivity(tree)
-        SpaceEngine.checkRedundancy(tree)
+        SpaceEngine.checkMatch(tree)
 
       translated.ensureConforms(matchType)
     }
