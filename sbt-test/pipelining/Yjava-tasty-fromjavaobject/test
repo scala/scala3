@@ -1,0 +1,9 @@
+> a/compile
+# test depending on a java compiled enum through TASTy
+> b/run
+# double check against the real java classes
+> bAlt/run
+# check that java Array T is Array T & Object
+-> c/compile
+# double check against the real java classes
+-> cAlt/compile
