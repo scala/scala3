@@ -11,3 +11,11 @@ lazy val b = project.in(file("b"))
     Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-annotation-java-tasty.jar")),
     scalacOptions += "-Ycheck:all",
   )
+
+// same as b, but adds the real classes to the classpath instead of the tasty jar
+lazy val bAlt = project.in(file("b-alt"))
+  .settings(
+    Compile / sources := (b / Compile / sources).value,
+    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-annotation-classes")),
+    scalacOptions += "-Ycheck:all",
+  )

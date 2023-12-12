@@ -1,3 +1,5 @@
 > a/compile
 # Test depending on a java static final result, and method result through TASTy
 > b/run
+# double check against the real java classes
+> bAlt/run

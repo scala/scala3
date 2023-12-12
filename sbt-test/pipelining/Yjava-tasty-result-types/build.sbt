@@ -15,3 +15,15 @@ lazy val b = project.in(file("b"))
     fork := true, // we have to fork the JVM if we actually want to run the code with correct failure semantics
     Runtime / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-result-types-classes"), // make sure the java classes are visible at runtime
   )
+
+// same as b, but adds the real classes to the classpath instead of the tasty jar
+lazy val bAlt = project.in(file("b-alt"))
+  .settings(
+    Compile / sources := (b / Compile / sources).value,
+    Compile / unmanagedClasspath := Seq(Attributed.blank((ThisBuild / baseDirectory).value / "a-result-types-classes")),
+    scalacOptions += "-Ycheck:all",
+  )
+  .settings(
+    fork := true, // we have to fork the JVM if we actually want to run the code with correct failure semantics
+    Runtime / unmanagedClasspath += Attributed.blank((ThisBuild / baseDirectory).value / "a-result-types-classes"), // make sure the java classes are visible at runtime
+  )
