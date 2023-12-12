@@ -96,7 +96,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TreeMethods: TreeMethods with
       extension (self: Tree)
-        def pos: Position = self.sourcePos
+        def pos: Position =
+          val treePos = self.sourcePos
+          if treePos.exists then treePos
+          else
+            if xCheckMacro then report.warning(s"Missing tree position (defaulting to position 0): ${Printer.TreeStructure.show(self)}\nThis is a compiler bug. Please report it.")
+            self.source.atSpan(dotc.util.Spans.Span(0))
+
         def symbol: Symbol = self.symbol
         def show(using printer: Printer[Tree]): String = printer.show(self)
         def isExpr: Boolean =
@@ -2625,7 +2631,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def info: TypeRepr = self.denot.info
 
         def pos: Option[Position] =
-          if self.exists then Some(self.sourcePos) else None
+          if self.exists then
+            val symPos = self.sourcePos
+            if symPos.exists then Some(symPos)
+            else
+              if xCheckMacro then report.warning(s"Missing symbol position (defaulting to position 0): $self\nThis is a compiler bug. Please report it.")
+              Some(self.source.atSpan(dotc.util.Spans.Span(0)))
+          else None
 
         def docstring: Option[String] =
           import dotc.core.Comments.CommentsContext
