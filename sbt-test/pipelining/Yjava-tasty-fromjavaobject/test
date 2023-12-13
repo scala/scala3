@@ -1,4 +1,7 @@
+# compile Java sources, and send them to TASTy
 > a/compile
+# compile Java sources, and check that they are pickled correctly
+> aCheck/compile
 # test depending on a java compiled enum through TASTy
 > b/run
 # double check against the real java classes
