@@ -441,7 +441,11 @@ class TreeUnpickler(reader: TastyReader,
           readPackageRef().termRef
         case TYPEREF =>
           val name = readName().toTypeName
-          TypeRef(readType(), name)
+          val pre = readType()
+          if unpicklingJava && name == tpnme.Object && (pre.termSymbol eq defn.JavaLangPackageVal) then
+            defn.FromJavaObjectType
+          else
+            TypeRef(pre, name)
         case TERMREF =>
           val sname = readName()
           val prefix = readType()
@@ -1202,12 +1206,11 @@ class TreeUnpickler(reader: TastyReader,
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
         val qual = readTree()
-        val denot0 = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
         val denot =
-          if unpicklingJava && name == tpnme.Object && denot0.symbol == defn.ObjectClass then
-            defn.FromJavaObjectType.denot
+          if unpicklingJava && name == tpnme.Object && qual.symbol == defn.JavaLangPackageVal then
+            defn.FromJavaObjectSymbol.denot
           else
-            denot0
+            accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
         makeSelect(qual, name, denot)
 
       def readQualId(): (untpd.Ident, TypeRef) =
