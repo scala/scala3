@@ -95,7 +95,7 @@ covtest.Inlined$package$
 testInlined
 155
 159
-6
+7
 List
 Ident
 false
@@ -197,7 +197,7 @@ covtest.Inlined$package$
 testInlined
 180
 184
-7
+8
 List
 Ident
 false

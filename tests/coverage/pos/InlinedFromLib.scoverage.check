@@ -95,7 +95,7 @@ covtest.InlinedFromLib$package$
 testInlined
 198
 202
-7
+8
 List
 Ident
 false
@@ -197,7 +197,7 @@ covtest.InlinedFromLib$package$
 testInlined
 223
 227
-8
+9
 List
 Ident
 false
