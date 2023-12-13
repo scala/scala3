@@ -6,7 +6,7 @@ object BImport {
 
   val newA = new AImport
 
-  val newAInner = new AImport.Inner[Int]()
+  val newAInner = new AImport.Inner[Int](23, true)
 
   def testImport() = {
     newA.meth1(1) // OK
@@ -18,6 +18,14 @@ object BImport {
     newA.meth7(ai: _*) // OK (will copy the array at Erasure)
 
     newAInner.meth1(1) // OK
+
+    assert((newAInner.field1: Int) == 23) // OK
+    newAInner.field1 = 31 // OK
+    assert((newAInner.getter1: Int) == 31) // OK
+
+    assert(newAInner.field2 == true) // OK
+    newAInner.field2 = false // OK
+    assert(newAInner.getter2 == false) // OK
   }
 }
 

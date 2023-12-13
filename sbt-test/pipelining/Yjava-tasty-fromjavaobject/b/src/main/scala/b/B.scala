@@ -7,8 +7,8 @@ object B {
 
   val newA = new A
 
-  val newAInner = new A.Inner[Int]()
-  val newAInner_sel = new A.Inner_sel[Int]()
+  val newAInner = new A.Inner[Int](23, true)
+  val newAInner_sel = new A.Inner_sel[Int](23, true)
 
   @main
   def test = {
@@ -35,6 +35,20 @@ object B {
     newAInner.meth2(1) // OK
     newAInner_sel.meth1(1) // OK
     newAInner_sel.meth2(1) // OK
+
+    assert((newAInner.field1: Int) == 23) // OK
+    newAInner.field1 = 31 // OK
+    assert((newAInner.getter1: Int) == 31) // OK
+    assert(newAInner.field2 == true) // OK
+    newAInner.field2 = false // OK
+    assert(newAInner.getter2 == false) // OK
+
+    assert((newAInner_sel.field1: Int) == 23) // OK
+    newAInner_sel.field1 = 31 // OK
+    assert((newAInner_sel.getter1: Int) == 31) // OK
+    assert(newAInner_sel.field2 == true) // OK
+    newAInner_sel.field2 = false // OK
+    assert(newAInner_sel.getter2 == false) // OK
 
     BImport.testImport() // OK
   }

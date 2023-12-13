@@ -5,14 +5,30 @@ package a;
 public class A {
 
   public static class Inner<T> extends Object {
-    public Inner() {}
+    public T field1;
+    public T getter1() { return field1; }
+    public Object field2;
+    public Object getter2() { return field2; }
+
+    public Inner(T param1, Object param2) {
+      this.field1 = param1;
+      this.field2 = param2;
+    }
 
     public void meth1(T arg) {}
     public <U extends T> void meth2(U arg) {}
   }
 
   public static class Inner_sel<T> extends java.lang.Object {
-    public Inner_sel() {}
+    public T field1;
+    public T getter1() { return field1; }
+    public java.lang.Object field2;
+    public java.lang.Object getter2() { return field2; }
+
+    public Inner_sel(T param1, java.lang.Object param2) {
+      this.field1 = param1;
+      this.field2 = param2;
+    }
 
     public void meth1(T arg) {}
     public <U extends T> void meth2(U arg) {}

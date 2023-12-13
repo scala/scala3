@@ -8,7 +8,15 @@ import java.lang.Object;
 public class AImport {
 
   public static class Inner<T> extends Object {
-    public Inner() {}
+    public T field1;
+    public T getter1() { return field1; }
+    public Object field2;
+    public Object getter2() { return field2; }
+
+    public Inner(T param1, Object param2) {
+      this.field1 = param1;
+      this.field2 = param2;
+    }
 
     public void meth1(T arg) {}
   }
