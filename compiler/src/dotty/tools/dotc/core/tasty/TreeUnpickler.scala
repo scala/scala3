@@ -1231,8 +1231,9 @@ class TreeUnpickler(reader: TastyReader,
           untpd.Ident(readName()).withType(readType())
         case ELIDED =>
           if !isOutline then
-            report.error(
-              s"Illegal elided tree in unpickler without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}")
+            val msg =
+              s"Illegal elided tree in unpickler at $start without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}"
+            report.error(msg)
           untpd.Ident(nme.WILDCARD).withType(readType())
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
