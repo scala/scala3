@@ -1,7 +1,7 @@
-// may not compile anymore in Scala 3.4+
+// does not compile anymore in Scala 3.4+
 package pkg
 
-import scala.language.`3.3`
+import scala.language.`3.4`
 
 trait P[+T]
 
@@ -24,4 +24,4 @@ def classItem: P[RegexTree] = ???
 def charClassIntersection: P[CharClassIntersection] = ???
 
 def x =
-  (charClassIntersection.rep() | classItem.rep())
+  (charClassIntersection.rep() | classItem.rep()) // error

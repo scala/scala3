@@ -117,7 +117,7 @@ object ProtoTypes {
     def constrainResult(meth: Symbol, mt: Type, pt: Type)(using Context): Boolean =
       if (Inlines.isInlineable(meth)) {
         // Stricter behaviour in 3.4+: do not apply `wildApprox` to non-transparent inlines
-        if (Feature.sourceVersion.isAtLeast(SourceVersion.future)) {
+        if (Feature.sourceVersion.isAtLeast(SourceVersion.`3.4`)) {
           if (meth.is(Transparent)) {
             constrainResult(mt, wildApprox(pt))
             // do not constrain the result type of transparent inline methods
