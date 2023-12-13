@@ -27,7 +27,7 @@ covtest.OnError
 onError
 56
 67
-3
+4
 onError
 DefDef
 false
@@ -44,7 +44,7 @@ covtest.Imperative
 readName2
 121
 134
-7
+8
 readName2
 DefDef
 false
@@ -61,7 +61,7 @@ covtest.Imperative
 readPerson
 252
 309
-13
+14
 onError
 Apply
 false
@@ -78,7 +78,7 @@ covtest.Imperative
 readPerson
 252
 295
-13
+14
 <init>
 Apply
 false
@@ -95,7 +95,7 @@ covtest.Imperative
 $anonfun
 267
 294
-13
+14
 apply
 Apply
 false
@@ -112,7 +112,7 @@ covtest.Imperative
 readPerson
 192
 206
-11
+12
 readPerson
 DefDef
 false

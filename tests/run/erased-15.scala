@@ -1,5 +1,7 @@
 //> using options -language:experimental.erasedDefinitions
 
+import scala.runtime.ErasedFunction
+
 object Test {
 
   def main(args: Array[String]): Unit = {

@@ -49,9 +49,10 @@ val experimentalDefinitionInLibrary = Set(
 
   //// New feature: capture checking
   "scala.annotation.capability",
+  "scala.annotation.internal.WithPureFuns",
+  "scala.annotation.internal.requiresCapability",
   "scala.annotation.retains",
   "scala.annotation.retainsByName",
-  "scala.Pure",
   "scala.caps",
   "scala.caps$",
 
@@ -61,15 +62,8 @@ val experimentalDefinitionInLibrary = Set(
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 
-  //// New feature: -Ysafe-init-global
-  "scala.annotation.init",
-  "scala.annotation.init$",
-  "scala.annotation.init$.widen",
-  "scala.annotation.init$.region",
-
-   //// New APIs: Quotes
+  //// New APIs: Quotes
   // Should be stabilized in 3.4.0
-  "scala.quoted.Quotes.reflectModule.defnModule.FunctionClass",
   "scala.quoted.Quotes.reflectModule.FlagsModule.AbsOverride",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
@@ -91,15 +85,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.hasErasedParams",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.erasedArgs",
   "scala.quoted.Quotes.reflectModule.TermParamClauseMethods.hasErasedArgs",
-  "scala.quoted.Quotes.reflectModule.defnModule.PolyFunctionClass",
-
-  // New feature: reverse method on Tuple
-  "scala.Tuple.reverse",
-  "scala.Tuple$.Helpers",
-  "scala.Tuple$.Helpers$",
-  "scala.Tuple$.Helpers$.ReverseImpl",
-  "scala.Tuple$.Reverse",
-  "scala.runtime.Tuples$.reverse"
+  "scala.quoted.Quotes.reflectModule.defnModule.ErasedFunctionClass",
 )
 
 
