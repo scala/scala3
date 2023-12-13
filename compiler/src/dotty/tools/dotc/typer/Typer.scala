@@ -4194,7 +4194,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val funExpected = functionExpected
           val arity =
             if funExpected then
-              defn.functionArity(ptNorm)
+              if !isFullyDefined(pt, ForceDegree.none) && isFullyDefined(wtp, ForceDegree.none) then
+                // if method type is fully defined, but expected type is not,
+                // prioritize method parameter types as parameter types of the eta-expanded closure
+                0
+              else defn.functionArity(ptNorm)
             else
               val nparams = wtp.paramInfos.length
               if nparams > 1

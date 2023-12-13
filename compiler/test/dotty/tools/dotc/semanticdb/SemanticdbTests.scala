@@ -102,7 +102,7 @@ class SemanticdbTests:
       |inspect with:
       |  diff $expect ${expect.resolveSibling("" + expect.getFileName + ".out")}
       |Or else update all expect files with
-      |  sbt 'scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
+      |  sbt 'scala3-compiler-bootstrapped/Test/runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
     if errors.nonEmpty then
       fail(s"${errors.size} errors in expect test.")
