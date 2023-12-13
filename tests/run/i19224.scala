@@ -20,3 +20,6 @@ object Test extends App {
     assert(t1.x() == t2.x()) // true on Scala 2, was false on Scala 3...
   }
 }
+class C {
+  def x(): Int => String = (i: Int) => i.toString
+}
