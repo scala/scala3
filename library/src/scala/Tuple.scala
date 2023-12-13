@@ -1,6 +1,6 @@
 package scala
 
-import annotation.{experimental, showAsInfix}
+import annotation.showAsInfix
 import compiletime.*
 import compiletime.ops.int.*
 
@@ -65,7 +65,6 @@ sealed trait Tuple extends Product {
   inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
     runtime.Tuples.take(this, n).asInstanceOf[Take[This, n.type]]
 
-
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
    *  all its elements except the first n ones.
    */
@@ -82,7 +81,6 @@ sealed trait Tuple extends Product {
   /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
    *  consisting all its elements.
    */
-  @experimental
   inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
     runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
 }
@@ -201,14 +199,11 @@ object Tuple {
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
   /** Type of the reversed tuple */
-  @experimental
   type Reverse[X <: Tuple] = Helpers.ReverseImpl[EmptyTuple, X]
 
-  @experimental
   object Helpers:
 
     /** Type of the reversed tuple */
-    @experimental
     type ReverseImpl[Acc <: Tuple, X <: Tuple] <: Tuple = X match
       case x *: xs => ReverseImpl[x *: Acc, xs]
       case EmptyTuple => Acc
