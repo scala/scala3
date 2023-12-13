@@ -192,7 +192,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
      */
     def setLogicOwner(local: Symbol) =
       val encClass = local.owner.enclosingClass
-      // When to [efer enclosing class over enclosing package:
+      // When to prefer the enclosing class over the enclosing package:
       val preferEncClass =
           encClass.isStatic
             // If class is not static, we try to hoist the method out of
