@@ -3295,7 +3295,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
          */
-        @experimental
         def paramVariances: List[Flags]
       end extension
     end TypeLambdaMethods
@@ -4123,7 +4122,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  Variance flags can be one of `Flags.{Covariant, Contravariant, EmptyFlags}`.
          *  If this is not the symbol of a type parameter the result is `Flags.EmptyFlags`.
          */
-        @experimental
         def paramVariance: Flags
 
         /** Signature of this definition */

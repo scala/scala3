@@ -68,8 +68,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.annotation.init$.region",
 
    //// New APIs: Quotes
-  "scala.quoted.Quotes.reflectModule.TypeLambdaMethods.paramVariances",
-  "scala.quoted.Quotes.reflectModule.SymbolMethods.paramVariance",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
   // Cant be stabilized yet.
