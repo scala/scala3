@@ -4516,7 +4516,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def JavaStatic: Flags
 
       /** Is this an annotation defined in Java */
-      @experimental def JavaAnnotation: Flags
+      def JavaAnnotation: Flags
 
       /** Is this symbol `lazy` */
       def Lazy: Flags
