@@ -120,12 +120,13 @@ object JavaParsers {
       // can call it.
       // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
-        if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil)
+        if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil, Parsers.unimplementedExpr)
         stats1 = constr1 :: stats1
-        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
+        constr1 =
+          makeConstructor(List(scalaDot(tpnme.Unit)), tparams, EmptyTree, Flags.JavaDefined | Flags.PrivateLocal)
       }
       else if (constr1 == EmptyTree) {
-        constr1 = makeConstructor(List(), tparams)
+        constr1 = makeConstructor(List(), tparams, EmptyTree)
       }
       Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
     }
@@ -135,9 +136,9 @@ object JavaParsers {
     def makeParam(name: TermName, tpt: Tree): ValDef =
       ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
 
-    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
+    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], body: Tree, flags: FlagSet = Flags.JavaDefined): DefDef = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p).withMods(Modifiers(flags)) }
-      DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), EmptyTree).withMods(Modifiers(flags))
+      DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), body).withMods(Modifiers(flags))
     }
 
     // ------------- general parsing ---------------------------
@@ -750,7 +751,7 @@ object JavaParsers {
       atSpan(cdef.span) {
         assert(cdef.span.exists)
         ModuleDef(cdef.name.toTermName,
-          makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
+          makeTemplate(List(), statics, List(), needsDummyConstr = false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }
 
     def addCompanionObject(statics: List[Tree], cdef: TypeDef): List[Tree] =
@@ -821,7 +822,7 @@ object JavaParsers {
       val interfaces = interfacesOpt()
       val (statics, body) = typeBody(CLASS, name, tparams)
       val cls = atSpan(start, nameOffset) {
-        TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, true)).withMods(mods)
+        TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, needsDummyConstr = true)).withMods(mods)
       }
       addCompanionObject(statics, cls)
     }
@@ -864,7 +865,7 @@ object JavaParsers {
             parents = superclass :: interfaces,
             stats = canonicalConstructor :: accessors ::: body,
             tparams = tparams,
-            true
+            needsDummyConstr = true
           )
         ).withMods(mods)
       }
@@ -887,7 +888,7 @@ object JavaParsers {
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.JavaInterface)
+          makeTemplate(parents, body, tparams, needsDummyConstr = false)).withMods(mods | Flags.JavaInterface)
       }
       addCompanionObject(statics, iface)
     }
@@ -940,7 +941,7 @@ object JavaParsers {
       }
       val constr = DefDef(nme.CONSTRUCTOR,
         List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
-      val templ = makeTemplate(annotationParents, constr :: body, List(), true)
+      val templ = makeTemplate(annotationParents, constr :: body, List(), needsDummyConstr = true)
       val annot = atSpan(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.JavaInterface | Flags.JavaAnnotation)
       }
@@ -992,7 +993,7 @@ object JavaParsers {
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
+          makeTemplate(superclazz :: interfaces, body, List(), needsDummyConstr = true)).withMods(mods | Flags.JavaEnum)
       }
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
