@@ -875,7 +875,7 @@ object Objects:
    * @param ctor        The symbol of the target constructor.
    * @param args        The arguments passsed to the constructor.
    */
-  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], inKlass: ClassSymbol): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer match
 
     case _ : Fun | _: OfArray  =>
@@ -914,7 +914,7 @@ object Objects:
         instance
 
     case ValueSet(values) =>
-      values.map(ref => instantiate(ref, klass, ctor, args, inKlass)).join
+      values.map(ref => instantiate(ref, klass, ctor, args)).join
   }
 
   /** Handle local variable definition, `val x = e` or `var x = e`.
@@ -1088,7 +1088,7 @@ object Objects:
         val cls = tref.classSymbol.asClass
         withTrace(trace2) {
           val outer = outerValue(tref, thisV, klass)
-          instantiate(outer, cls, ctor, args, klass)
+          instantiate(outer, cls, ctor, args)
         }
 
       case Apply(ref, arg :: Nil) if ref.symbol == defn.InitRegionMethod =>
