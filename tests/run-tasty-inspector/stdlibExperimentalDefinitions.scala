@@ -72,7 +72,6 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolMethods.paramVariance",
   // Can be stabilized in 3.4.0 (unsure) or later
   "scala.quoted.Quotes.reflectModule.CompilationInfoModule.XmacroSettings",
-  "scala.quoted.Quotes.reflectModule.FlagsModule.JavaAnnotation",
   // Cant be stabilized yet.
   // Need newClass variant that can add constructor parameters.
   // Need experimental annotation macros to check that design works.
