@@ -17,6 +17,7 @@ object OutlinePrinter:
 
 /** A printer that elides known standard tree forms from the rhs of def and val.
   * Typically used for printing Java trees which elide the rhs.
+  * Note that there may still be some differences if you compare before and after pickling.
   */
 class OutlinePrinter private (_ctx: Context) extends RefinedPrinter(_ctx) {
 

@@ -163,6 +163,11 @@ class TreeUnpickler(reader: TastyReader,
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)
 
+    def skipParentTree(tag: Int): Unit = {
+      if tag == SPLITCLAUSE then ()
+      else skipTree(tag)
+    }
+    def skipParentTree(): Unit = skipParentTree(readByte())
     def skipTree(tag: Int): Unit = {
       if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
@@ -1011,7 +1016,7 @@ class TreeUnpickler(reader: TastyReader,
      *                   parsed in this way as InferredTypeTrees.
      */
     def readParents(withArgs: Boolean)(using Context): List[Tree] =
-      collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
+      collectWhile({val tag = nextByte; tag != SELFDEF && tag != DEFDEF && tag != SPLITCLAUSE}) {
         nextUnsharedTag match
           case APPLY | TYPEAPPLY | BLOCK =>
             if withArgs then readTree()
@@ -1038,7 +1043,8 @@ class TreeUnpickler(reader: TastyReader,
       val bodyFlags = {
         val bodyIndexer = fork
         // The first DEFDEF corresponds to the primary constructor
-        while (bodyIndexer.reader.nextByte != DEFDEF) bodyIndexer.skipTree()
+        while ({val tag = bodyIndexer.reader.nextByte; tag != DEFDEF && tag != SPLITCLAUSE}) do
+          bodyIndexer.skipParentTree()
         bodyIndexer.indexStats(end)
       }
       val parentReader = fork
@@ -1057,7 +1063,38 @@ class TreeUnpickler(reader: TastyReader,
           cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
           selfInfo = if (self.isEmpty) NoType else self.tpt.tpe
         ).integrateOpaqueMembers
-      val constr = readIndexedDef().asInstanceOf[DefDef]
+
+      val (constr, stats0) =
+        if nextByte == SPLITCLAUSE then
+          assert(unpicklingJava, s"unexpected SPLITCLAUSE at $start")
+          val tag = readByte()
+          def ta = ctx.typeAssigner
+          val flags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
+          val pflags = Flags.JavaDefined | Flags.Param
+          val tdefRefs = tparams.map(_.symbol.asType)
+          val ctorCompleter = new LazyType {
+            def complete(denot: SymDenotation)(using Context) =
+              val sym = denot.symbol
+              lazy val tparamSyms: List[TypeSymbol] = tparams.map: tdef =>
+                val completer = new LazyType {
+                  def complete(denot: SymDenotation)(using Context) =
+                    denot.info = tdef.symbol.asType.info.subst(tdefRefs, tparamSyms.map(_.typeRef))
+                }
+                newSymbol(sym, tdef.name, pflags, completer, coord = cls.coord)
+              val paramSym =
+                newSymbol(sym, nme.syntheticParamName(1), pflags, defn.UnitType, coord = cls.coord)
+              val paramSymss = tparamSyms :: List(paramSym) :: Nil
+              val res = effectiveResultType(sym, paramSymss)
+              denot.info = methodType(paramSymss, res)
+              denot.setParamss(paramSymss)
+          }
+          val ctorSym = newSymbol(ctx.owner, nme.CONSTRUCTOR, flags, ctorCompleter, coord = coordAt(start))
+          val accSym = newSymbol(cls, nme.syntheticParamName(1), flags, defn.UnitType, coord = ctorSym.coord)
+          val ctorDef = tpd.DefDef(ctorSym, EmptyTree)
+          val accessor = tpd.ValDef(accSym, ElidedTree(accSym.info))
+          (ctorDef.setDefTree, accessor.setDefTree :: Nil)
+        else
+          readIndexedDef().asInstanceOf[DefDef] -> Nil
       val mappedParents: LazyTreeList =
         if parents.exists(_.isInstanceOf[InferredTypeTree]) then
           // parents were not read fully, will need to be read again later on demand
@@ -1068,7 +1105,7 @@ class TreeUnpickler(reader: TastyReader,
 
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
-        tparams ++ vparams ++ stats
+        tparams ++ vparams ++ stats0 ++ stats
       })
       defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
@@ -1178,6 +1215,9 @@ class TreeUnpickler(reader: TastyReader,
 
 // ------ Reading trees -----------------------------------------------------
 
+    private def ElidedTree(tpe: Type)(using Context): Tree =
+      untpd.Ident(nme.WILDCARD).withType(tpe)
+
     def readTree()(using Context): Tree = {
       val sctx = sourceChangeContext()
       if (sctx `ne` ctx) return readTree()(using sctx)
@@ -1234,7 +1274,7 @@ class TreeUnpickler(reader: TastyReader,
             val msg =
               s"Illegal elided tree in unpickler at $start without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}"
             report.error(msg)
-          untpd.Ident(nme.WILDCARD).withType(readType())
+          ElidedTree(readType())
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>

@@ -361,7 +361,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         else
           throw ex
     if sym.is(Method) && sym.owner.isClass then
-      profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
+      profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
     for docCtx <- ctx.docCtx do
       val comment = docCtx.docstrings.lookup(sym)
       if comment != null then
@@ -617,7 +617,17 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 }
               }
             }
-            pickleStats(tree.constr :: rest)
+            if isJavaPickle then
+              val rest0 = rest.dropWhile:
+                case stat: ValOrDefDef => stat.symbol.is(Flags.Invisible)
+                case _ => false
+              if tree.constr.symbol.is(Flags.Invisible) then
+                writeByte(SPLITCLAUSE)
+                pickleStats(rest0)
+              else
+                pickleStats(tree.constr :: rest0)
+            else
+              pickleStats(tree.constr :: rest)
           }
         case Import(expr, selectors) =>
           writeByte(IMPORT)

@@ -120,10 +120,10 @@ object JavaParsers {
       // can call it.
       // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
+        val fakeFlags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
         if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil, Parsers.unimplementedExpr)
         stats1 = constr1 :: stats1
-        constr1 =
-          makeConstructor(List(scalaDot(tpnme.Unit)), tparams, EmptyTree, Flags.JavaDefined | Flags.PrivateLocal)
+        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, EmptyTree, fakeFlags)
       }
       else if (constr1 == EmptyTree) {
         constr1 = makeConstructor(List(), tparams, EmptyTree)
