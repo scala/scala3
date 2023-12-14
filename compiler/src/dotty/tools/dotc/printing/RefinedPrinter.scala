@@ -29,8 +29,6 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef}
 
-import scala.annotation.unused
-
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   /** A stack of enclosing DefDef, TypeDef, or ClassDef, or ModuleDefs nodes */
@@ -922,7 +920,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     dclTextOr(tree) {
       modText(tree.mods, tree.symbol, keywordStr(if (tree.mods.is(Mutable)) "var" else "val"), isType = false) ~~
         valDefText(nameIdText(tree)) ~ optAscription(tree.tpt) ~
-        withEnclosingDef(tree) { optText(tree.rhs)(rhs => " = " ~ rhsValDef(tree.rhs, rhs)) }
+        withEnclosingDef(tree) { rhsValDef(tree) }
     }
   }
 
@@ -979,19 +977,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
         coreSig
         ~ optAscription(tree.tpt)
-        ~ optText(tree.rhs)(rhs =>
-            " = " ~ rhsDefDef(tree.rhs, keywordText("macro ").provided(tree.symbol.isScala2Macro) ~ rhs))
+        ~ rhsDefDef(tree)
       }
     }
   }
 
   /** Inspect the rhs of a ValDef, overridden in OutlinePrinter */
-  protected def rhsValDef[T <: Untyped](@unused("override may inspect rhs") rhs: Tree[T], original: => Text): Text =
-    original
+  protected def rhsValDef[T <: Untyped](tree: ValDef[T]): Text =
+    optText(tree.rhs)(" = " ~ _)
 
   /** Inspect the rhs of a DefDef, overridden in OutlinePrinter */
-  protected def rhsDefDef[T <: Untyped](@unused("override may inspect rhs") rhs: Tree[T], original: => Text): Text =
-    original
+  protected def rhsDefDef[T <: Untyped](tree: DefDef[T]): Text =
+    optText(tree.rhs)(" = " ~ keywordText("macro ").provided(tree.symbol.isScala2Macro) ~ _)
 
   protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
     val Template(constr @ DefDef(_, paramss, _, _), _, self, _) = impl

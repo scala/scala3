@@ -87,8 +87,8 @@ class Pickler extends Phase {
     Pickler.ParallelPickling && !ctx.settings.YtestPickler.value &&
     !ctx.settings.YjavaTasty.value // disable parallel pickling when `-Yjava-tasty` is set (internal testing only)
 
-  private def adjustPrinter(ictx: Context): Context =
-    if ictx.compilationUnit.typedAsJava then
+  private def adjustPrinter(ictx: Context, isOutline: Boolean): Context =
+    if isOutline then
       // use special printer because Java parser will use `Predef.???` as rhs,
       // which conflicts with the unpickling of ELIDED as `Ident(nme.WILDCARD).withType(tpe)`
       // In the future we could modify the typer/parser to elide the rhs in the same way.
@@ -105,7 +105,7 @@ class Pickler extends Phase {
       tree <- sliceTopLevel(unit.tpdTree, cls)
     do
       if ctx.settings.YtestPickler.value then
-        beforePickling(cls) = tree.show(using adjustPrinter(ctx))
+        beforePickling(cls) = tree.show(using adjustPrinter(ctx, unit.typedAsJava))
 
       val sourceRelativePath =
         val reference = ctx.settings.sourceroot.value
@@ -260,7 +260,7 @@ class Pickler extends Phase {
       val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)
       freshUnit.needsCaptureChecking = unit.needsCaptureChecking
       freshUnit.knowsPureFuns = unit.knowsPureFuns
-      inContext(adjustPrinter(rootCtx.fresh.setCompilationUnit(freshUnit))):
+      inContext(adjustPrinter(rootCtx.fresh.setCompilationUnit(freshUnit), unit.typedAsJava)):
         testSame(i"$unpickled%\n%", beforePickling(cls), cls)
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
