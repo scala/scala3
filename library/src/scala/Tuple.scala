@@ -202,16 +202,13 @@ object Tuple {
 
   /** Type of the reversed tuple */
   @experimental
-  type Reverse[X <: Tuple] = Helpers.ReverseImpl[EmptyTuple, X]
+  type Reverse[X <: Tuple] = ReverseOnto[X, EmptyTuple]
 
+  /** Prepends all elements of a tuple in reverse order onto the other tuple */
   @experimental
-  object Helpers:
-
-    /** Type of the reversed tuple */
-    @experimental
-    type ReverseImpl[Acc <: Tuple, X <: Tuple] <: Tuple = X match
-      case x *: xs => ReverseImpl[x *: Acc, xs]
-      case EmptyTuple => Acc
+  type ReverseOnto[From <: Tuple, +To <: Tuple] <: Tuple = From match
+    case x *: xs => ReverseOnto[xs, x *: To]
+    case EmptyTuple => To
 
   /** Transforms a tuple `(T1, ..., Tn)` into `(T1, ..., Ti)`. */
   type Take[T <: Tuple, N <: Int] <: Tuple = N match {
