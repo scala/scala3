@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core.*
@@ -181,26 +182,47 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         if enclClass.isContainedIn(thisClass) then thisClass
         else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
 
+    /** Set the first owner of a local method or class that's nested inside a term.
+     *  This is either the enclosing package or the enclosing class. If the former,
+     *  the method will be be translated to a static method of its toplevel class.
+     *  In that case, we might later re-adjust the owner to a nested class via
+     *  `narrowTo` when we see that the method refers to the this-type of that class.
+     *  We choose the enclosing package when there's something potentially to gain from this
+     *  and when it is safe to do so
+     */
     def setLogicOwner(local: Symbol) =
       val encClass = local.owner.enclosingClass
+      // When to prefer the enclosing class over the enclosing package:
       val preferEncClass =
-        (
           encClass.isStatic
-            // non-static classes can capture owners, so should be avoided
+            // If class is not static, we try to hoist the method out of
+            // the class to avoid the outer pointer.
           && (encClass.isProperlyContainedIn(local.topLevelClass)
-              // can be false for symbols which are defined in some weird combination of supercalls.
+                // If class is nested in an outer object, we prefer to leave the method in the class,
+                // since putting it in the outer object makes access more complicated
               || encClass.is(ModuleClass, butNot = Package)
-                  // needed to not cause deadlocks in classloader. see t5375.scala
+                // If class is an outermost object we also want to avoid making the
+                // method static since that could cause deadlocks in interacting
+                // with class initialization. See deadlock.scala
               )
-        )
-        || (
+          && (!sym.isAnonymousFunction || sym.owner.ownersIterator.exists(_.isConstructor))
+            // The previous conditions mean methods in static objects and nested static classes
+            // don't get lifted out to be static. In general it is prudent to do that. However,
+            // for anonymous functions, we prefer them to be static because that means lambdas
+            // are memoized and can be serialized even if the enclosing object or class
+            // is not serializable. See run/lambda-serialization-gc.scala and run/i19224.scala.
+            // On the other hand, we don't want to lift anonymous functions from inside the
+            // object or class constructor to be static since that can cause again deadlocks
+            // by its interaction with class initialization. See run/deadlock.scala, which works
+            // in Scala 3 but deadlocks in Scala 2.
+        ||
           /* Scala.js: Never move any member beyond the boundary of a DynamicImportThunk.
            * DynamicImportThunk subclasses are boundaries between the eventual ES modules
            * that can be dynamically loaded. Moving members across that boundary changes
            * the dynamic and static dependencies between ES modules, which is forbidden.
            */
           ctx.settings.scalajs.value && encClass.isSubClass(jsdefn.DynamicImportThunkClass)
-        )
+
       logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass
 
     tree match
