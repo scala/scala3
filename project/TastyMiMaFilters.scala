@@ -67,10 +67,17 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.processThread"), // before: lazy val; after: def
     ProblemMatcher.make(ProblemKind.IncompatibleKindChange, "scala.sys.process.ProcessImpl.CompoundProcess.futureValue"), // before: lazy val; after: def
 
-    // Problem: ???
-    // Member is defined and has explicit result type
-    // https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/convert/JavaCollectionWrappers.scala#L66-L71
+    // Problem?
+    //   https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/convert/JavaCollectionWrappers.scala#L66-L71
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator"), // The member scala.collection.convert.JavaCollectionWrappers.IterableWrapperTrait.iterator with signature ():scala.collection.convert.JavaCollectionWrappers.IteratorWrapper does not have a correspondant in current version
+
+    // Problem?
+    //   https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/mutable/ArrayBuilder.scala#L504C1-L504C87
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.mutable.ArrayBuilder.ofUnit.addAll"), // The member scala.collection.mutable.ArrayBuilder.ofUnit.addAll with signature (java.lang.Object,scala.Int,scala.Int):scala.collection.mutable.ArrayBuilder$.ofUnit does not have a correspondant in current version
+
+    // Probably OK (TASTy MiMa bug): Patched Predef members
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.valueOf"), // The member scala.Predef.valueOf with signature (1):java.lang.Object does not have a correspondant in current version
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.summon"), // The member scala.Predef.summon with signature (1,java.lang.Object):java.lang.Object does not have a correspondant in current version
 
     // TASTy-MiMa bugs
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.appendedAll"),
