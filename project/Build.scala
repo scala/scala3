@@ -712,6 +712,10 @@ object Build {
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
 
+        val argsWithDefaultClasspath: List[String] =
+          if (args.contains("-classpath")) args
+          else insertClasspathInArgs(args, (baseDirectory.value / ".." / "out" / "default-last-scalac-out.jar").getPath)
+
         val scalaLib = findArtifactPath(externalDeps, "scala-library")
         val dottyLib = jars("scala3-library")
 
@@ -725,7 +729,7 @@ object Build {
         } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
-          val args1 = args.filter(_ != "-with-compiler")
+          val args1 = argsWithDefaultClasspath.filter(_ != "-with-compiler")
           val asm = findArtifactPath(externalDeps, "scala-asm")
           val dottyCompiler = jars("scala3-compiler")
           val dottyStaging = jars("scala3-staging")
@@ -734,7 +738,7 @@ object Build {
           val tastyCore = jars("tasty-core")
           val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
           run(insertClasspathInArgs(args1, List(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface).mkString(File.pathSeparator)))
-        } else run(args)
+        } else run(argsWithDefaultClasspath)
       },
 
       run := scalac.evaluated,
@@ -750,6 +754,8 @@ object Build {
         val decompile = args0.contains("-decompile")
         val printTasty = args0.contains("-print-tasty")
         val debugFromTasty = args0.contains("-Ythrough-tasty")
+        val defaultOutputDirectory =
+          if (printTasty || decompile || debugFromTasty || args0.contains("-d")) Nil else List("-d", (baseDirectory.value / ".." / "out" / "default-last-scalac-out.jar").getPath)
         val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
             arg != "-with-compiler" && arg != "-Ythrough-tasty" && arg != "-print-tasty")
         val main =
@@ -783,7 +789,7 @@ object Build {
           extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
         }
 
-        val fullArgs = main :: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
+        val fullArgs = main :: defaultOutputDirectory ::: (if (printTasty) args else insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator)))
 
         (Compile / runMain).toTask(fullArgs.mkString(" ", " ", ""))
       }.evaluated,
