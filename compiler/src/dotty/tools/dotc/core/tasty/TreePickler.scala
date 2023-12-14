@@ -203,7 +203,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         else
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleNameAndSig(sym.name, tpe.signature, sym.targetName)
-            pickleType(tpe.prefix)
+          pickleType(tpe.prefix)
       }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
