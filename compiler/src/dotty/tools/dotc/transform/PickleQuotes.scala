@@ -304,7 +304,7 @@ object PickleQuotes {
     def pickleAsTasty() = {
       val body1 =
         if body.isType then body
-        else Inlined(ref(ctx.owner.topLevelClass.typeRef).withSpan(quote.span), Nil, body)
+        else Inlined(Inlines.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body)
       val pickleQuote = PickledQuotes.pickleQuote(body1)
       val pickledQuoteStrings = pickleQuote match
         case x :: Nil => Literal(Constant(x))
