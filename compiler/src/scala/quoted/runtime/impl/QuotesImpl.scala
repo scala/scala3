@@ -2640,7 +2640,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           else None
 
         def docstring: Option[String] =
-          import dotc.core.Comments.CommentsContext
+          import dotc.core.Comments.docCtx
           val docCtx = ctx.docCtx.getOrElse {
             throw new RuntimeException(
               "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
