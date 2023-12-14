@@ -53,6 +53,9 @@ class CompilationTests {
     if scala.util.Properties.isJavaAtLeast("16") then
       tests ::= compileFilesInDir("tests/pos-java16+", defaultOptions.and("-Ysafe-init"))
 
+    if scala.util.Properties.isJavaAtLeast("21") then
+      tests ::= compileFilesInDir("tests/pos-java21+", defaultOptions.withJavacOnlyOptions("--enable-preview", "--release", "21"))  
+
     aggregateTests(tests*).checkCompile()
   }
 
