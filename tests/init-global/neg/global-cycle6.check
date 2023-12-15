@@ -1,0 +1,29 @@
+-- Warning: tests/init-global/neg/global-cycle6.scala:1:7 --------------------------------------------------------------
+1 |object A {             
+  |       ^
+  |       Cyclic initialization: object A -> object B -> object A. Calling trace:
+  |       ├── object A {	[ global-cycle6.scala:1 ]
+  |       │   ^
+  |       ├── val n: Int = B.m	[ global-cycle6.scala:2 ]
+  |       │                ^
+  |       ├── object B {	[ global-cycle6.scala:8 ]
+  |       │   ^
+  |       ├── val a = new A.Inner	[ global-cycle6.scala:9 ]
+  |       │           ^^^^^^^^^^^
+  |       ├── class Inner {	[ global-cycle6.scala:3 ]
+  |       │   ^
+  |       └── println(n)	[ global-cycle6.scala:4 ]
+  |                   ^
+-- Warning: tests/init-global/neg/global-cycle6.scala:4:12 -------------------------------------------------------------
+4 |    println(n)         
+  |            ^
+  |            Access uninitialized field value n. Calling trace:
+  |            ├── object B {	[ global-cycle6.scala:8 ]
+  |            │   ^
+  |            ├── val a = new A.Inner	[ global-cycle6.scala:9 ]
+  |            │           ^^^^^^^^^^^
+  |            ├── class Inner {	[ global-cycle6.scala:3 ]
+  |            │   ^
+  |            └── println(n)	[ global-cycle6.scala:4 ]
+  |                        ^
+No warnings can be incurred under -Werror.

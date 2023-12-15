@@ -5,9 +5,11 @@ object A:
   def foo(): Pair =
     var x = 6
     new Pair(
-      (y => x = y),   // error
+      (y => x = y),   
       () => x
     )
 
 object B:
   A.p.f(10)
+
+// nopos-error: No warnings can be incurred under -Werror.

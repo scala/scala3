@@ -7,4 +7,6 @@ object A:
   val n = array(0).foo()  // ok
 
 object B:
-  var y = A.array(0).foo() * 2 // error
+  var y = A.array(0).foo() * 2 
+
+// nopos-error: No warnings can be incurred under -Werror.

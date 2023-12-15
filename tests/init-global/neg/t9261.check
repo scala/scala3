@@ -1,0 +1,9 @@
+-- Warning: tests/init-global/neg/t9261.scala:2:12 ---------------------------------------------------------------------
+2 |case object Buy extends OrderType(Sell)       
+  |            ^
+  |            Cyclic initialization: object Buy -> object Sell -> object Buy. Calling trace:
+  |            ├── case object Buy extends OrderType(Sell)	[ t9261.scala:2 ]
+  |            │                                     ^^^^
+  |            └── case object Sell extends OrderType(Buy)	[ t9261.scala:3 ]
+  |                                                   ^^^
+No warnings can be incurred under -Werror.

@@ -1,0 +1,9 @@
+-- Warning: tests/init-global/neg/unapplySeq-implicit-arg.scala:11:20 --------------------------------------------------
+11 |  val i2: Int = Seq(i2) match 
+   |                    ^^
+   |                    Access uninitialized field value i2. Calling trace:
+   |                    ├── object Bar {	[ unapplySeq-implicit-arg.scala:1 ]
+   |                    │   ^
+   |                    └── val i2: Int = Seq(i2) match	[ unapplySeq-implicit-arg.scala:11 ]
+   |                                          ^^
+No warnings can be incurred under -Werror.

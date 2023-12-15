@@ -3,4 +3,6 @@ object A:
   array(0) = 10
 
 object B:
-  var y = A.array(0) * 2 // error
+  var y = A.array(0) * 2 
+
+// nopos-error: No warnings can be incurred under -Werror.

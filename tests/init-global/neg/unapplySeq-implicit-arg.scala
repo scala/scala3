@@ -8,7 +8,9 @@ object Bar {
 
   given Foo = new Foo
   val i1: Int = 0
-  val i2: Int = Seq(i2) match // error
+  val i2: Int = Seq(i2) match 
     case Bar(i) => i
     case _ => 0
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

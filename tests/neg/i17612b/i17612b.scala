@@ -18,12 +18,12 @@ object i17612b:
 	trait BaseB
 	trait BaseC(var x2: Int)
 
-	class Derived(x : Int, x3: Int, y: Int, z2: Int) extends BaseB, BaseC(x3), Base(x, y + 1, z2): // error // error / for x, y translated to private[this] x field & shadowing var Base.x, Base.y
+	class Derived(x : Int, x3: Int, y: Int, z2: Int) extends BaseB, BaseC(x3), Base(x, y + 1, z2): // warn // warn / for x, y translated to private[this] x field & shadowing var Base.x, Base.y
 		private def hello() = 4
-		private val shadowed2 = 2 + 2 // error (In Scala 2 we cannot do that got the warning)
-		private[this] val shadowed3 = 3 + 3 // error
+		private val shadowed2 = 2 + 2 // warn (In Scala 2 we cannot do that got the warning)
+		private[this] val shadowed3 = 3 + 3 // warn
 
-		private val shadowed5 = 5 + 5 // error
+		private val shadowed5 = 5 + 5 // warn
 		private val notShadowed2 = -4
 
 		val lambda: Int => Int => Int =
@@ -38,7 +38,8 @@ object i17612b:
 		override def toString =
 			s"x : ${x.toString}, y : ${y.toString}"
 
-	class UnderDerived(x: Int, y: Int, z: Int) extends Derived(x, 1, y, z) // error // error // error
+	class UnderDerived(x: Int, y: Int, z: Int) extends Derived(x, 1, y, z) // warn // warn // warn
 
 	def main(args: Array[String]) =
 		val derived = new Derived(1, 1, 1, 1)
+// nopos-error: No warnings can be incurred under -Werror.

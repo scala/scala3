@@ -5,7 +5,7 @@ object A:
     val b = a
     Box(b)
 
-  val box = f(n)   // error
+  val box = f(n)   // warn
   val n = 10
 
 object B:
@@ -15,5 +15,5 @@ object B:
     lazy val b = a
     Box(b)
 
-  val box = f(n)   // error
+  val box = f(n)   // warn
   val n = 10

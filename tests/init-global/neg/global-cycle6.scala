@@ -1,7 +1,7 @@
-object A {             // error
+object A {             
   val n: Int = B.m
   class Inner {
-    println(n)         // error
+    println(n)         
   }
 }
 
@@ -23,3 +23,4 @@ object O {
     val m: Int = 10
   }
 }
+// nopos-error: No warnings can be incurred under -Werror.

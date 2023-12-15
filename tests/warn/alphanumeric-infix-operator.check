@@ -1,5 +1,5 @@
--- Error: tests/neg/alphanumeric-infix-operator.scala:8:6 --------------------------------------------------------------
-8 |  foo x 1 // error (because it was compiled with 3.4+)
+-- Warning: tests/warn/alphanumeric-infix-operator.scala:6:6 -----------------------------------------------------------
+6 |  foo x 1 // warn (because it was compiled with 3.4+)
   |      ^
   |      Alphanumeric method x is not declared infix; it should not be used as infix operator.
   |      Instead, use method syntax .x(...) or backticked identifier `x`.

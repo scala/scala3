@@ -1,0 +1,21 @@
+-- Warning: tests/init-global/neg/t9115.scala:4:14 ---------------------------------------------------------------------
+4 |  case object D1 extends Z(aaa) 
+  |              ^
+  |              Cyclic initialization: object D1 -> object D -> object D1. Calling trace:
+  |              ├── case object D1 extends Z(aaa)	[ t9115.scala:4 ]
+  |              │                            ^^^
+  |              ├── object D {	[ t9115.scala:1 ]
+  |              │   ^
+  |              └── println(D1)	[ t9115.scala:6 ]
+  |                          ^^
+-- Warning: tests/init-global/neg/t9115.scala:1:7 ----------------------------------------------------------------------
+1 |object D { 
+  |       ^
+  |       Cyclic initialization: object D -> object D2 -> object D. Calling trace:
+  |       ├── object D {	[ t9115.scala:1 ]
+  |       │   ^
+  |       ├── println(D2)	[ t9115.scala:7 ]
+  |       │           ^^
+  |       └── case object D2 extends Z(aaa) // 'null' when calling D.D2 first time	[ t9115.scala:5 ]
+  |                                    ^^^
+No warnings can be incurred under -Werror.

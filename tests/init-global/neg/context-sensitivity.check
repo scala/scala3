@@ -1,0 +1,11 @@
+-- Warning: tests/init-global/neg/context-sensitivity.scala:9:21 -------------------------------------------------------
+9 |  def foo(): Int = A.m  
+  |                   ^^^
+  |                   Access uninitialized field value m. Calling trace:
+  |                   ├── object A:	[ context-sensitivity.scala:14 ]
+  |                   │   ^
+  |                   ├── val m: Int = box1.value.foo()	[ context-sensitivity.scala:17 ]
+  |                   │                ^^^^^^^^^^^^^^^^
+  |                   └── def foo(): Int = A.m	[ context-sensitivity.scala:9 ]
+  |                                        ^^^
+No warnings can be incurred under -Werror.

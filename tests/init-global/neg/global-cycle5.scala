@@ -7,7 +7,7 @@ object A {
 }
 
 object B {
-  val b: Int = A.a.foo()  // error
+  val b: Int = A.a.foo()  
 }
 
 class Y extends X {
@@ -21,3 +21,4 @@ object C {
 def main = {
   A.a = new Y(); C
 }
+// nopos-error: No warnings can be incurred under -Werror.

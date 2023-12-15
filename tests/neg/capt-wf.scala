@@ -13,12 +13,12 @@ def test(c: Cap, other: String): Unit =
   val x3a: () -> String = s1
   val s2 = () => if x1 == null then "" else "abc"
   val x4: C^{s2} = ??? // OK
-  val x5: C^{c, c} = ??? // error: redundant // error: redundant
+  val x5: C^{c, c} = ??? // warn: redundant // warn: redundant
   // val x6: C^{c}^{c} = ??? // would be syntax error
-  val x7: Cap^{c} = ??? // error: redundant
+  val x7: Cap^{c} = ??? // warn: redundant
   // val x8: C^{c}^{cap} = ??? // would be syntax error
-  val x9: C^{c, cap}  = ??? // error: redundant
-  val x10: C^{cap, c} = ??? // error: redundant
+  val x9: C^{c, cap}  = ??? // warn: redundant
+  val x10: C^{cap, c} = ??? // warn: redundant
 
   def even(n: Int): Boolean = if n == 0 then true else odd(n - 1)
   def odd(n: Int): Boolean = if n == 1 then true else even(n - 1)
@@ -35,3 +35,4 @@ def test(c: Cap, other: String): Unit =
   val y3: String^{ev} = ??? // error cs is empty
 
   ()
+// nopos-error: No warnings can be incurred under -Werror.

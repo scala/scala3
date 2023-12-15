@@ -5,7 +5,7 @@ object A:
   array(0) = new Box(10)
 
   def length: Int = array.length
-  def apply(i: Int): Box = array(i)             // error
+  def apply(i: Int): Box = array(i)             
   def drop(n: Int): Seq[Box] = array.toSeq
   def toSeq: Seq[Box] = array.toSeq
 
@@ -15,3 +15,5 @@ object A:
 object B:
   A.array match
   case A(b) =>
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -8,16 +8,18 @@ object DeadLockTest {
 
   }
 
-  object Parent {                    // error
+  object Parent {                    
     trait Child {
       Thread.sleep(2000) // ensure concurrent behavior
       val parent = Parent
       def siblings = parent.children - this
     }
 
-    object Child1 extends Child     // error
+    object Child1 extends Child     
     object Child2 extends Child
 
     final val children = Set(Child1, Child2)
   }
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

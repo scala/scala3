@@ -6,7 +6,7 @@ class B {
   val a = new A
 }
 
-object O {           // error
+object O {           
   val n: Int = 10
   println(P.m)
 }
@@ -18,3 +18,5 @@ object P {
 object Q {
   def bar(b: B) = b.a.foo()
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

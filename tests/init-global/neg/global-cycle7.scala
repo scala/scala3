@@ -1,9 +1,9 @@
-object A {              // error
+object A {              
   val n: Int = B.m
 }
 
 object B {
-  val m: Int = A.n      // error
+  val m: Int = A.n      
 }
 
 abstract class TokensCommon {
@@ -16,3 +16,5 @@ object JavaTokens extends TokensCommon {
   final def maxToken: Int = DOUBLE
   final val DOUBLE = 188
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

@@ -1,0 +1,21 @@
+-- Warning: tests/init-global/neg/global-cycle7.scala:1:7 --------------------------------------------------------------
+1 |object A {              
+  |       ^
+  |       Cyclic initialization: object A -> object B -> object A. Calling trace:
+  |       ├── object A {	[ global-cycle7.scala:1 ]
+  |       │   ^
+  |       ├── val n: Int = B.m	[ global-cycle7.scala:2 ]
+  |       │                ^
+  |       ├── object B {	[ global-cycle7.scala:5 ]
+  |       │   ^
+  |       └── val m: Int = A.n	[ global-cycle7.scala:6 ]
+  |                        ^
+-- Warning: tests/init-global/neg/global-cycle7.scala:6:17 -------------------------------------------------------------
+6 |  val m: Int = A.n      
+  |               ^^^
+  |               Access uninitialized field value n. Calling trace:
+  |               ├── object B {	[ global-cycle7.scala:5 ]
+  |               │   ^
+  |               └── val m: Int = A.n	[ global-cycle7.scala:6 ]
+  |                                ^^^
+No warnings can be incurred under -Werror.

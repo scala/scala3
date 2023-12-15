@@ -7,4 +7,5 @@ object A:
 object B:
   val box: A.Box = A.box
   val a: Int = box.initial
-  val b: Int = box.value // error
+  val b: Int = box.value 
+// nopos-error: No warnings can be incurred under -Werror.

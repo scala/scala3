@@ -1,0 +1,10 @@
+-- Warning: tests/init-global/neg/global-irrelevance6.scala:9:17 -------------------------------------------------------
+9 |  var y = A.array(0).foo() * 2 
+  |          ^^^^^^^^^^
+  |Reading mutable state of object A during initialization of object B.
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object B:	[ global-irrelevance6.scala:8 ]
+  |│   ^
+  |└── var y = A.array(0).foo() * 2	[ global-irrelevance6.scala:9 ]
+  |            ^^^^^^^^^^
+No warnings can be incurred under -Werror.

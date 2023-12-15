@@ -1,0 +1,14 @@
+-- Warning: tests/init-global/neg/mutable-read8.scala:6:12 -------------------------------------------------------------
+6 |  if (Stats.monitored) println("record stats") 
+  |      ^^^^^^^^^^^^^^^
+  |Reading mutable state of object Stats during initialization of object NoCompleter.
+  |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+  |├── object NoCompleter extends LazyType	[ mutable-read8.scala:11 ]
+  |│   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |├── class LazyType extends UncachedGroundType	[ mutable-read8.scala:9 ]
+  |│   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |├── class UncachedGroundType {	[ mutable-read8.scala:5 ]
+  |│   ^
+  |└── if (Stats.monitored) println("record stats")	[ mutable-read8.scala:6 ]
+  |        ^^^^^^^^^^^^^^^
+No warnings can be incurred under -Werror.

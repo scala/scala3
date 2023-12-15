@@ -1,0 +1,11 @@
+-- Warning: tests/init-global/neg/return.scala:4:31 --------------------------------------------------------------------
+4 |      return (a: Int) => a + B.n        
+  |                             ^^^
+  |                             Access uninitialized field value n. Calling trace:
+  |                             ├── object B:	[ return.scala:8 ]
+  |                             │   ^
+  |                             ├── val n = A.foo(-10)(20)	[ return.scala:9 ]
+  |                             │           ^^^^^^^^^^^^^^
+  |                             └── return (a: Int) => a + B.n	[ return.scala:4 ]
+  |                                                        ^^^
+No warnings can be incurred under -Werror.

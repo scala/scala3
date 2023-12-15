@@ -1,0 +1,17 @@
+-- Warning: tests/init-global/neg/global-cycle8.scala:9:7 --------------------------------------------------------------
+9 |object O {           
+  |       ^
+  |       Cyclic initialization: object O -> object P -> object O. Calling trace:
+  |       ├── object O {	[ global-cycle8.scala:9 ]
+  |       │   ^
+  |       ├── println(P.m)	[ global-cycle8.scala:11 ]
+  |       │           ^
+  |       ├── object P {	[ global-cycle8.scala:14 ]
+  |       │   ^
+  |       ├── val m = Q.bar(new B)	[ global-cycle8.scala:15 ]
+  |       │           ^^^^^^^^^^^^
+  |       ├── def bar(b: B) = b.a.foo()	[ global-cycle8.scala:19 ]
+  |       │                   ^^^^^^^^^
+  |       └── def foo() = println(O.n)	[ global-cycle8.scala:2 ]
+  |                               ^
+No warnings can be incurred under -Werror.

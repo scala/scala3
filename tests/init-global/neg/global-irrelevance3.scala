@@ -6,9 +6,11 @@ object A:
     var x = 6
     new Pair(
       y => x = y,
-      (() => x)   // error
+      (() => x)   
     )
 
 
 object B:
   var y = A.p.g()
+
+// nopos-error: No warnings can be incurred under -Werror.

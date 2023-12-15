@@ -5,4 +5,6 @@ object A:
 object B:
   val boxes: Array[A.Box] = Array(A.box)
   val box: A.Box = boxes(0)
-  val x: Int = box.value // error
+  val x: Int = box.value 
+
+// nopos-error: No warnings can be incurred under -Werror.

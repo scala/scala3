@@ -14,3 +14,4 @@ val b = (A(1): A | B) match {
   case B(_) => "OK"
   case C(_) => "NOT OK" // error
 }
+// nopos-error: No warnings can be incurred under -Werror.

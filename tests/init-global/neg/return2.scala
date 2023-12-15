@@ -1,6 +1,6 @@
 object A:
   def foo(x: Int): Int => Int =
-    val f = (a: Int) => a + B.n      // error
+    val f = (a: Int) => a + B.n      
     var i = 0
 
     val g = () => return f
@@ -11,3 +11,5 @@ object A:
 
 object B:
   val n = A.foo(-10)(20)
+
+// nopos-error: No warnings can be incurred under -Werror.

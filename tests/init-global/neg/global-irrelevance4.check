@@ -1,0 +1,12 @@
+-- Warning: tests/init-global/neg/global-irrelevance4.scala:8:9 --------------------------------------------------------
+8 |      (y => x = y),   
+  |       ^^^^^^^^^^
+  |       Mutating object A during initialization of object B.
+  |       Mutating other static objects during the initialization of one static object is forbidden. Calling trace:
+  |       ├── object B:	[ global-irrelevance4.scala:12 ]
+  |       │   ^
+  |       ├── A.p.f(10)	[ global-irrelevance4.scala:13 ]
+  |       │   ^^^^^^^^^
+  |       └── (y => x = y),	[ global-irrelevance4.scala:8 ]
+  |            ^^^^^^^^^^
+No warnings can be incurred under -Werror.

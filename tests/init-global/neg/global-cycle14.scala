@@ -5,10 +5,12 @@ object O {
   val d = Data(3)
 }
 
-object A {              // error
+object A {              
   val n: Int = B.m
 }
 
 object B {
-  val m: Int = A.n      // error
+  val m: Int = A.n      
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

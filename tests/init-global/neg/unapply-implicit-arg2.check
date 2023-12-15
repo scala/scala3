@@ -1,0 +1,13 @@
+-- Warning: tests/init-global/neg/unapply-implicit-arg2.scala:7:51 -----------------------------------------------------
+7 |    if i == 0 then Some(f1.m1(i1)) else Some(f1.m2(i2)) 
+  |                                                   ^^
+  |                         Access uninitialized field value i2. Calling trace:
+  |                         ├── object Bar {	[ unapply-implicit-arg2.scala:1 ]
+  |                         │   ^
+  |                         ├── case Bar(i) => i	[ unapply-implicit-arg2.scala:12 ]
+  |                         │        ^^^^^^
+  |                         ├── def unapply(using f1: Foo)(i: Int): Option[Int] =	[ unapply-implicit-arg2.scala:6 ]
+  |                         │   ^
+  |                         └── if i == 0 then Some(f1.m1(i1)) else Some(f1.m2(i2))	[ unapply-implicit-arg2.scala:7 ]
+  |                                                                            ^^
+No warnings can be incurred under -Werror.

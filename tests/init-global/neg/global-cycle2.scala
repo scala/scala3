@@ -3,5 +3,7 @@ object A {
 }
 
 object B {
-  def foo(): Int = A.a * 2  // error
+  def foo(): Int = A.a * 2  
 }
+
+// nopos-error: No warnings can be incurred under -Werror.

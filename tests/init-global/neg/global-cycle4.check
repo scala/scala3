@@ -1,0 +1,11 @@
+-- Warning: tests/init-global/neg/global-cycle4.scala:10:21 ------------------------------------------------------------
+10 |  def foo(): Int = O.a + 10       
+   |                   ^^^
+   |                   Access uninitialized field value a. Calling trace:
+   |                   ├── object O {	[ global-cycle4.scala:17 ]
+   |                   │   ^
+   |                   ├── val a: Int = D(5).bar().foo()	[ global-cycle4.scala:18 ]
+   |                   │                ^^^^^^^^^^^^^^^^
+   |                   └── def foo(): Int = O.a + 10	[ global-cycle4.scala:10 ]
+   |                                        ^^^
+No warnings can be incurred under -Werror.

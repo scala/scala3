@@ -1,0 +1,10 @@
+-- Warning: tests/init-global/neg/mutable-read4.scala:10:20 ------------------------------------------------------------
+10 |  val n: Int = boxA.value 
+   |               ^^^^^^^^^^
+   |Reading mutable state of object A during initialization of object B.
+   |Reading mutable state of other static objects is forbidden as it breaks initialization-time irrelevance. Calling trace:
+   |├── object B:	[ mutable-read4.scala:6 ]
+   |│   ^
+   |└── val n: Int = boxA.value	[ mutable-read4.scala:10 ]
+   |                 ^^^^^^^^^^
+No warnings can be incurred under -Werror.

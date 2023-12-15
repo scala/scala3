@@ -7,7 +7,7 @@ class B extends A {
 }
 
 class C extends A {
-  def foo(): Int = O.a + 10       // error
+  def foo(): Int = O.a + 10       
 }
 
 class D(x: Int) {
@@ -17,3 +17,5 @@ class D(x: Int) {
 object O {
   val a: Int = D(5).bar().foo()
 }
+
+// nopos-error: No warnings can be incurred under -Werror.
