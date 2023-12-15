@@ -5162,6 +5162,16 @@ object Types extends TypeUtils {
           foldOver(missing, tp)
     end CheckCapturesPresent
 
+    /** Tries to convert a match type case pattern in HKTypeLambda form into a spec'ed `MatchTypeCasePattern`.
+     *
+     *  This method recovers the structure of *legal patterns* as defined in SIP-56
+     *  from the unstructured `HKTypeLambda` coming from the typer.
+     *
+     *  It must adhere to the specification of legal patterns defined at
+     *  https://docs.scala-lang.org/sips/match-types-spec.html#legal-patterns
+     *
+     *  Returns `null` if the pattern in `caseLambda` is a not a legal pattern.
+     */
     private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCasePattern | Null =
       var typeParamRefsAccountedFor: Int = 0
 

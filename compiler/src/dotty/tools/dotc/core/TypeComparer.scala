@@ -2771,9 +2771,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         false
     } || tycon.derivesFrom(defn.PairClass)
 
-  /** Are `tp1` and `tp2` provablyDisjoint types?
-   *
-   *  `true` implies that we found a proof; uncertainty defaults to `false`.
+  /** Are `tp1` and `tp2` provablyDisjoint types, i.e., is `tp1 ⋔ tp2` true?
    *
    *  Proofs rely on the following properties of Scala types:
    *
@@ -2786,14 +2784,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Note on soundness: the correctness of match types relies on on the
    *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
+   *
+   *  This method must adhere to the specification of disjointness in SIP-56:
+   *  https://docs.scala-lang.org/sips/match-types-spec.html#disjointness
+   *
+   *  The pattern matcher reachability test uses it for its own purposes, so we
+   *  generalize it to *also* handle type variables and their GADT bounds.
+   *  This is fine because match type reduction always operates under frozen
+   *  GADT constraints.
+   *
+   *  Other than that generalization, `provablyDisjoint` must not depart from
+   *  the specified "provably disjoint" relation. In particular, it is not
+   *  allowed to reply `false` instead of "I don't know". It must say `true`
+   *  iff the spec says `true` and must say `false` iff the spec says `false`.
    */
   def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean =
     provablyDisjoint(tp1, tp2, null)
 
-  def provablyDisjoint(tp1: Type, tp2: Type, pending: util.HashSet[(Type, Type)] | Null)(
+  private def provablyDisjoint(tp1: Type, tp2: Type, pending: util.HashSet[(Type, Type)] | Null)(
       using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
 
+    // Computes ⌈tp⌉ (see the spec), generalized to handle GADT bounds
     @scala.annotation.tailrec
     def disjointnessBoundary(tp: Type): Type = tp match
       case tp: TypeRef =>
@@ -3344,6 +3356,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         MatchResult.Stuck
     end matchSubTypeTest
 
+    // See https://docs.scala-lang.org/sips/match-types-spec.html#matching
     def matchSpeccedPatMat(spec: MatchTypeCaseSpec.SpeccedPatMat): MatchResult =
       /* Concreteness checking
        *
