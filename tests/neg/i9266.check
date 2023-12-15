@@ -1,5 +1,0 @@
--- Error: tests/neg/i9266.scala:5:22 -----------------------------------------------------------------------------------
-5 |def test = { implicit x: Int => x + x } // error
-  |                      ^
-  |                      This syntax is no longer supported; parameter needs to be enclosed in (...)
-  |                      This construct can be rewritten automatically under -rewrite -source future-migration.
