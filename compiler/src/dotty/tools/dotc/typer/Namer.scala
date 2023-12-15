@@ -26,7 +26,7 @@ import Nullables.*
 import transform.ValueClasses.*
 import TypeErasure.erasure
 import reporting.*
-import config.Feature.sourceVersion
+import config.Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
 
 import scala.compiletime.uninitialized
@@ -1199,7 +1199,7 @@ class Namer { typer: Typer =>
                 target = target.etaExpand(target.typeParams)
               newSymbol(
                 cls, forwarderName,
-                Exported | Final,
+                Exported | (if Feature.enabled(modularity) then EmptyFlags else Final),
                 TypeAlias(target),
                 coord = span)
               // Note: This will always create unparameterzied aliases. So even if the original type is
