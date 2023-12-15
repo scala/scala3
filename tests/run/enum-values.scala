@@ -61,7 +61,7 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
     catch
       case e: java.lang.reflect.InvocationTargetException => // TODO: maybe reflect.Selectable should catch this?
         assert(e.getCause.isInstanceOf[java.util.NoSuchElementException]
-          && e.getCause.getMessage == ordinal.toString)
+          && e.getCause.getMessage == s"enum ${companion.getClass.getName.stripSuffix("$")} has no case with ordinal: $ordinal")
 
   fetchFromOrdinal(companion = Color,       compare = Red, Green, Blue)
   fetchFromOrdinal(companion = Suits,       compare = Clubs, Spades, Diamonds, Hearts)

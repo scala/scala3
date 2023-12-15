@@ -126,7 +126,7 @@ object DesugarEnums {
 
     val valuesOfBody: Tree =
       val defaultCase =
-        val msg = Apply(Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
+        val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with name: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
           Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
       val stringCases = enumValues.map(enumValue =>
@@ -148,7 +148,8 @@ object DesugarEnums {
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
-        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Select(ordinal, nme.toString_) :: Nil)))
+        val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with ordinal: ")), nme.PLUS), Select(ordinal, nme.toString_))
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(msg :: Nil)))
       if !constraints.cached then
         fromOrdinalMeth(throwArg)
       else
