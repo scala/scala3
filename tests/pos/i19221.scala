@@ -1,35 +1,49 @@
-class T1
+// Product component types, and the sequence element type
+final class A; final class B; final class C
+final class E
 
-class P1
-final class P2
-class P3
+// Conforms to both sequence matches and product sequence matches
+class Both extends Product1[A]:
+  def length: Int          = toSeq.length
+  def apply(i: Int): E     = toSeq.apply(i)
+  def drop(n: Int): Seq[E] = toSeq.drop(n)
+  def toSeq: Seq[E]        = Seq(new E, new E)
 
-class E1
-class E2 extends E1
-class E3 extends E1
+  def canEqual(that: Any) = that.isInstanceOf[Both @unchecked]
 
-object VarExt:
-  def unapplySeq(t1: T1): U1 = new U1
+  val _1: A      = new A
+  val _2: B      = new B
+  val _3: Seq[C] = Seq(new C)
 
-class U1 extends Product1[P1]:
-  def canEqual(that: Any): Boolean = ???
+// Like Both, but with a missing _2
+class AlmostBoth extends Product1[A]:
+  def length: Int          = toSeq.length
+  def apply(i: Int): E     = toSeq.apply(i)
+  def drop(n: Int): Seq[E] = toSeq.drop(n)
+  def toSeq: Seq[E]        = Seq(new E, new E)
 
-  val _1: P1      = new P1
-  val _2: P2      = new P2
-  val _3: Seq[P3] = Seq(new P3)
+  def canEqual(that: Any) = that.isInstanceOf[AlmostBoth @unchecked]
 
-  def length: Int           = ???
-  def apply(i: Int): E1     = ???
-  def drop(n: Int): Seq[E2] = ???
-  def toSeq: Seq[E3]        = ???
+  val _1: A      = new A
+  val _3: Seq[C] = Seq(new C)
+
+// An extractor result holder, to return Both or BothAlmost
+class GetBoth       { def isEmpty: Boolean = false; def get = new Both       }
+class GetAlmostBoth { def isEmpty: Boolean = false; def get = new AlmostBoth }
+
+// The extractors
+object Both          { def unapplySeq(x: Any): Both          = new Both          }
+object AlmostBoth    { def unapplySeq(x: Any): AlmostBoth    = new AlmostBoth    }
+object GetBoth       { def unapplySeq(x: Any): GetBoth       = new GetBoth       }
+object GetAlmostBoth { def unapplySeq(x: Any): GetAlmostBoth = new GetAlmostBoth }
 
 class Test:
-  def m1(t1: T1): Unit = t1 match
-    case VarExt(c1, cs*) => // CCE: class P1 cannot be cast to class E1
-      val e1: E1       = c1
-      val e1s: Seq[E1] = cs
+  def t1a(x: Any): Seq[E] = x match { case Both(es*)          => es }
+  def t1b(x: Any): Seq[E] = x match { case AlmostBoth(es*)    => es }
+  def t1c(x: Any): Seq[E] = x match { case GetBoth(es*)       => es }
+  def t1d(x: Any): Seq[E] = x match { case GetAlmostBoth(es*) => es }
 
-object Main:
-  def main(args: Array[String]): Unit =
-    new Test().m1(new T1)
-
+  def t2a(x: Any): (E, Seq[E]) = x match { case Both(e, es*)          => (e, es) }
+  def t2b(x: Any): (E, Seq[E]) = x match { case AlmostBoth(e, es*)    => (e, es) }
+  def t2c(x: Any): (E, Seq[E]) = x match { case GetBoth(e, es*)       => (e, es) }
+  def t2d(x: Any): (E, Seq[E]) = x match { case GetAlmostBoth(e, es*) => (e, es) }
