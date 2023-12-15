@@ -28,6 +28,7 @@ import config.{Config, Feature}
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.ast.untpd.{MemberDef, Modifiers, PackageDef, RefTree, Template, TypeDef, ValOrDefDef}
 import cc.{CaptureSet, CapturingType, toCaptureSet, IllegalCaptureRef}
+import dotty.tools.dotc.parsing.JavaParsers
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -1015,10 +1016,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val (params, rest) = impl.body partition {
         case stat: TypeDef => stat.symbol.is(Param)
         case stat: ValOrDefDef =>
-          stat.symbol.is(ParamAccessor) && !stat.symbol.isSetter
+          val sym = stat.symbol
+          sym.is(ParamAccessor) && !sym.isSetter
+          || sym.isAllOf(JavaParsers.fakeFlags | Param)
         case _ => false
       }
-      params ::: rest
+      val params0 =
+        if constr.symbol.isAllOf(JavaParsers.fakeFlags) then
+          // filter out fake param accessors
+          params.filterNot(_.symbol.isAllOf(JavaParsers.fakeFlags | Param))
+        else
+          params
+      params0 ::: rest
     }
     else impl.body
 

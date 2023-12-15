@@ -21,6 +21,18 @@ object OutlinePrinter:
   */
 class OutlinePrinter private (_ctx: Context) extends RefinedPrinter(_ctx) {
 
+  /** print the symbol infos of type params for the fake java constructor */
+  def shouldShowInfo(tsym: Symbol): Boolean =
+    tsym != NoSymbol && {
+      val ctor = tsym.owner
+      ctor.isAllOf(JavaDefined | PrivateLocal | Invisible) && ctor.isConstructor
+    }
+
+  override def paramsText[T <: Untyped](params: ParamClause[T]): Text = (params: @unchecked) match
+    case untpd.TypeDefs(tparams) if shouldShowInfo(tparams.head.symbol) =>
+      "[" ~ toText(tparams.map(_.symbol.info), ", ") ~ "]"
+    case _ => super.paramsText(params)
+
   /* Typical patterns seen in output of typer for Java code, plus the output of unpickling an ELIDED tree */
   def isElidableExpr[T <: Untyped](tree: Tree[T]): Boolean = tree match {
     case tree if tree.isEmpty => false

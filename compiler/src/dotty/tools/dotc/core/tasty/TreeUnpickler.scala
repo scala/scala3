@@ -1064,37 +1064,37 @@ class TreeUnpickler(reader: TastyReader,
           selfInfo = if (self.isEmpty) NoType else self.tpt.tpe
         ).integrateOpaqueMembers
 
-      val (constr, stats0) =
+      val constr =
         if nextByte == SPLITCLAUSE then
           assert(unpicklingJava, s"unexpected SPLITCLAUSE at $start")
           val tag = readByte()
           def ta = ctx.typeAssigner
           val flags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
-          val pflags = Flags.JavaDefined | Flags.Param
-          val tdefRefs = tparams.map(_.symbol.asType)
           val ctorCompleter = new LazyType {
             def complete(denot: SymDenotation)(using Context) =
               val sym = denot.symbol
-              lazy val tparamSyms: List[TypeSymbol] = tparams.map: tdef =>
+              val pflags = flags | Flags.Param
+              val tparamRefs = tparams.map(_.symbol.asType)
+              lazy val derivedTparamSyms: List[TypeSymbol] = tparams.map: tdef =>
                 val completer = new LazyType {
                   def complete(denot: SymDenotation)(using Context) =
-                    denot.info = tdef.symbol.asType.info.subst(tdefRefs, tparamSyms.map(_.typeRef))
+                    denot.info = tdef.symbol.asType.info.subst(tparamRefs, derivedTparamRefs)
                 }
-                newSymbol(sym, tdef.name, pflags, completer, coord = cls.coord)
-              val paramSym =
+                newSymbol(sym, tdef.name, Flags.JavaDefined | Flags.Param, completer, coord = cls.coord)
+              lazy val derivedTparamRefs: List[Type] = derivedTparamSyms.map(_.typeRef)
+              val vparamSym =
                 newSymbol(sym, nme.syntheticParamName(1), pflags, defn.UnitType, coord = cls.coord)
-              val paramSymss = tparamSyms :: List(paramSym) :: Nil
+              val vparamSymss: List[List[Symbol]] = List(vparamSym) :: Nil
+              val paramSymss =
+                if derivedTparamSyms.nonEmpty then derivedTparamSyms :: vparamSymss else vparamSymss
               val res = effectiveResultType(sym, paramSymss)
               denot.info = methodType(paramSymss, res)
               denot.setParamss(paramSymss)
           }
           val ctorSym = newSymbol(ctx.owner, nme.CONSTRUCTOR, flags, ctorCompleter, coord = coordAt(start))
-          val accSym = newSymbol(cls, nme.syntheticParamName(1), flags, defn.UnitType, coord = ctorSym.coord)
-          val ctorDef = tpd.DefDef(ctorSym, EmptyTree)
-          val accessor = tpd.ValDef(accSym, ElidedTree(accSym.info))
-          (ctorDef.setDefTree, accessor.setDefTree :: Nil)
+          tpd.DefDef(ctorSym, EmptyTree).setDefTree // fake primary constructor
         else
-          readIndexedDef().asInstanceOf[DefDef] -> Nil
+          readIndexedDef().asInstanceOf[DefDef]
       val mappedParents: LazyTreeList =
         if parents.exists(_.isInstanceOf[InferredTypeTree]) then
           // parents were not read fully, will need to be read again later on demand
@@ -1105,7 +1105,7 @@ class TreeUnpickler(reader: TastyReader,
 
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
-        tparams ++ vparams ++ stats0 ++ stats
+        tparams ++ vparams ++ stats
       })
       defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)

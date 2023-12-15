@@ -510,7 +510,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def scalaRuntimeDot(name: Name)(using SourceFile): Select = Select(scalaDot(nme.runtime), name)
   def scalaUnit(implicit src: SourceFile): Select = scalaDot(tpnme.Unit)
   def scalaAny(implicit src: SourceFile): Select = scalaDot(tpnme.Any)
-  def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.CAPTURE_ROOT)
