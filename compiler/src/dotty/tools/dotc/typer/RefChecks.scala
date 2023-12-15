@@ -298,9 +298,10 @@ object RefChecks {
    *    1.9. If M is erased, O is erased. If O is erased, M is erased or inline.
    *    1.10.  If O is inline (and deferred, otherwise O would be final), M must be inline
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
-   *    1.12.  If O is non-experimental, M must be non-experimental.
-   *    1.13   Under -source future, if O is a val parameter, M must be a val parameter
+   *    1.12.  Under -source future, if O is a val parameter, M must be a val parameter
    *           that passes its value on to O.
+   *    1.13.  If O is non-experimental, M must be non-experimental.
+   *    1.14.  If O has @publicInBinary, M must have @publicInBinary.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -571,13 +572,15 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
-      else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.13)
+      else if other.is(ParamAccessor) && !isInheritedAccessor(member, other) then // (1.12)
         report.errorOrMigrationWarning(
             em"cannot override val parameter ${other.showLocated}",
             member.srcPos,
             MigrationVersion.OverrideValParameter)
-      else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
+      else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.13)
         overrideError("may not override non-experimental member")
+      else if !member.hasAnnotation(defn.PublicInBinaryAnnot) && other.hasAnnotation(defn.PublicInBinaryAnnot) then // (1.14)
+        overrideError("also needs to be declared with @publicInBinary")
       else if other.hasAnnotation(defn.DeprecatedOverridingAnnot) then
         overrideDeprecation("", member, other, "removed or renamed")
     end checkOverride

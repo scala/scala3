@@ -1033,10 +1033,7 @@ object SymDenotations {
 
     /** Is this a member that will become public in the generated binary */
     def hasPublicInBinary(using Context): Boolean =
-      isTerm && (
-        hasAnnotation(defn.PublicInBinaryAnnot) ||
-        allOverriddenSymbols.exists(sym => sym.hasAnnotation(defn.PublicInBinaryAnnot))
-      )
+      isTerm && hasAnnotation(defn.PublicInBinaryAnnot)
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
