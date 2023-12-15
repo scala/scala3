@@ -13,7 +13,7 @@ import ast.{untpd, tpd}
 import Contexts.*, Symbols.*, Types.*, Names.*, Constants.*, Decorators.*, Annotations.*, Flags.*
 import Comments.{Comment, docCtx}
 import NameKinds.*
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import config.Config
 import collection.mutable
 import reporting.{Profile, NoProfile}
@@ -48,6 +48,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   private val docStrings = util.EqHashMap[untpd.MemberDef, Comment]()
 
   private var profile: Profile = NoProfile
+
+  private val isOutlinePickle: Boolean = attributes.isOutline
+  private val isJavaPickle: Boolean = attributes.isJava
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
@@ -188,19 +191,19 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       def pickleExternalRef(sym: Symbol) = {
         val isShadowedRef =
           sym.isClass && tpe.prefix.member(sym.name).symbol != sym
-        if (sym.is(Flags.Private) || isShadowedRef) {
+        if sym.is(Flags.Private) || isShadowedRef then
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
             pickleNameAndSig(sym.name, sym.signature, sym.targetName)
             pickleType(tpe.prefix)
             pickleType(sym.owner.typeRef)
           }
-        }
-        else {
+        else if isJavaPickle && sym == defn.FromJavaObjectSymbol then
+          pickleType(defn.ObjectType) // when unpickling Java TASTy, replace by <FromJavaObject>
+        else
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleNameAndSig(sym.name, tpe.signature, sym.targetName)
           pickleType(tpe.prefix)
-        }
       }
       if (sym.is(Flags.Package)) {
         writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
@@ -342,7 +345,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           case _: Template | _: Hole => pickleTree(tpt)
           case _ if tpt.isType => pickleTpt(tpt)
         }
-        if attributes.isOutline && sym.isTerm && attributes.isJava then
+        if isOutlinePickle && sym.isTerm && isJavaPickle then
           // TODO: if we introduce outline typing for Scala definitions
           // then we will need to update the check here
           pickleElidedUnlessEmpty(rhs, tpt.tpe)
@@ -358,7 +361,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         else
           throw ex
     if sym.is(Method) && sym.owner.isClass then
-      profile.recordMethodSize(sym, currentAddr.index - addr.index, mdef.span)
+      profile.recordMethodSize(sym, (currentAddr.index - addr.index) max 1, mdef.span)
     for docCtx <- ctx.docCtx do
       val comment = docCtx.docstrings.lookup(sym)
       if comment != null then
@@ -614,7 +617,17 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                 }
               }
             }
-            pickleStats(tree.constr :: rest)
+            if isJavaPickle then
+              val rest0 = rest.dropWhile:
+                case stat: ValOrDefDef => stat.symbol.is(Flags.Invisible)
+                case _ => false
+              if tree.constr.symbol.is(Flags.Invisible) then
+                writeByte(SPLITCLAUSE)
+                pickleStats(rest0)
+              else
+                pickleStats(tree.constr :: rest0)
+            else
+              pickleStats(tree.constr :: rest)
           }
         case Import(expr, selectors) =>
           writeByte(IMPORT)

@@ -163,6 +163,11 @@ class TreeUnpickler(reader: TastyReader,
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)
 
+    def skipParentTree(tag: Int): Unit = {
+      if tag == SPLITCLAUSE then ()
+      else skipTree(tag)
+    }
+    def skipParentTree(): Unit = skipParentTree(readByte())
     def skipTree(tag: Int): Unit = {
       if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
@@ -441,7 +446,11 @@ class TreeUnpickler(reader: TastyReader,
           readPackageRef().termRef
         case TYPEREF =>
           val name = readName().toTypeName
-          TypeRef(readType(), name)
+          val pre = readType()
+          if unpicklingJava && name == tpnme.Object && (pre.termSymbol eq defn.JavaLangPackageVal) then
+            defn.FromJavaObjectType
+          else
+            TypeRef(pre, name)
         case TERMREF =>
           val sname = readName()
           val prefix = readType()
@@ -1007,7 +1016,7 @@ class TreeUnpickler(reader: TastyReader,
      *                   parsed in this way as InferredTypeTrees.
      */
     def readParents(withArgs: Boolean)(using Context): List[Tree] =
-      collectWhile(nextByte != SELFDEF && nextByte != DEFDEF) {
+      collectWhile({val tag = nextByte; tag != SELFDEF && tag != DEFDEF && tag != SPLITCLAUSE}) {
         nextUnsharedTag match
           case APPLY | TYPEAPPLY | BLOCK =>
             if withArgs then readTree()
@@ -1034,7 +1043,8 @@ class TreeUnpickler(reader: TastyReader,
       val bodyFlags = {
         val bodyIndexer = fork
         // The first DEFDEF corresponds to the primary constructor
-        while (bodyIndexer.reader.nextByte != DEFDEF) bodyIndexer.skipTree()
+        while ({val tag = bodyIndexer.reader.nextByte; tag != DEFDEF && tag != SPLITCLAUSE}) do
+          bodyIndexer.skipParentTree()
         bodyIndexer.indexStats(end)
       }
       val parentReader = fork
@@ -1053,7 +1063,38 @@ class TreeUnpickler(reader: TastyReader,
           cls.owner.thisType, cls, parentTypes, cls.unforcedDecls,
           selfInfo = if (self.isEmpty) NoType else self.tpt.tpe
         ).integrateOpaqueMembers
-      val constr = readIndexedDef().asInstanceOf[DefDef]
+
+      val constr =
+        if nextByte == SPLITCLAUSE then
+          assert(unpicklingJava, s"unexpected SPLITCLAUSE at $start")
+          val tag = readByte()
+          def ta = ctx.typeAssigner
+          val flags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
+          val ctorCompleter = new LazyType {
+            def complete(denot: SymDenotation)(using Context) =
+              val sym = denot.symbol
+              val pflags = flags | Flags.Param
+              val tparamRefs = tparams.map(_.symbol.asType)
+              lazy val derivedTparamSyms: List[TypeSymbol] = tparams.map: tdef =>
+                val completer = new LazyType {
+                  def complete(denot: SymDenotation)(using Context) =
+                    denot.info = tdef.symbol.asType.info.subst(tparamRefs, derivedTparamRefs)
+                }
+                newSymbol(sym, tdef.name, Flags.JavaDefined | Flags.Param, completer, coord = cls.coord)
+              lazy val derivedTparamRefs: List[Type] = derivedTparamSyms.map(_.typeRef)
+              val vparamSym =
+                newSymbol(sym, nme.syntheticParamName(1), pflags, defn.UnitType, coord = cls.coord)
+              val vparamSymss: List[List[Symbol]] = List(vparamSym) :: Nil
+              val paramSymss =
+                if derivedTparamSyms.nonEmpty then derivedTparamSyms :: vparamSymss else vparamSymss
+              val res = effectiveResultType(sym, paramSymss)
+              denot.info = methodType(paramSymss, res)
+              denot.setParamss(paramSymss)
+          }
+          val ctorSym = newSymbol(ctx.owner, nme.CONSTRUCTOR, flags, ctorCompleter, coord = coordAt(start))
+          tpd.DefDef(ctorSym, EmptyTree).setDefTree // fake primary constructor
+        else
+          readIndexedDef().asInstanceOf[DefDef]
       val mappedParents: LazyTreeList =
         if parents.exists(_.isInstanceOf[InferredTypeTree]) then
           // parents were not read fully, will need to be read again later on demand
@@ -1174,6 +1215,9 @@ class TreeUnpickler(reader: TastyReader,
 
 // ------ Reading trees -----------------------------------------------------
 
+    private def ElidedTree(tpe: Type)(using Context): Tree =
+      untpd.Ident(nme.WILDCARD).withType(tpe)
+
     def readTree()(using Context): Tree = {
       val sctx = sourceChangeContext()
       if (sctx `ne` ctx) return readTree()(using sctx)
@@ -1202,12 +1246,11 @@ class TreeUnpickler(reader: TastyReader,
 
       def completeSelect(name: Name, sig: Signature, target: Name): Select =
         val qual = readTree()
-        val denot0 = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
         val denot =
-          if unpicklingJava && name == tpnme.Object && denot0.symbol == defn.ObjectClass then
-            defn.FromJavaObjectType.denot
+          if unpicklingJava && name == tpnme.Object && qual.symbol == defn.JavaLangPackageVal then
+            defn.FromJavaObjectSymbol.denot
           else
-            denot0
+            accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
         makeSelect(qual, name, denot)
 
       def readQualId(): (untpd.Ident, TypeRef) =
@@ -1228,9 +1271,10 @@ class TreeUnpickler(reader: TastyReader,
           untpd.Ident(readName()).withType(readType())
         case ELIDED =>
           if !isOutline then
-            report.error(
-              s"Illegal elided tree in unpickler without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}")
-          untpd.Ident(nme.WILDCARD).withType(readType())
+            val msg =
+              s"Illegal elided tree in unpickler at $start without ${attributeTagToString(OUTLINEattr)}, ${ctx.source}"
+            report.error(msg)
+          ElidedTree(readType())
         case IDENTtpt =>
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>

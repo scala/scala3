@@ -81,8 +81,9 @@ Standard-Section: "ASTs" TopLevelStat*
   Param         = TypeParam
                   TermParam
   Template      = TEMPLATE       Length TypeParam* TermParam* parent_Term* Self?
-                                        Stat*                                      -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
+                                        EndParents? Stat*                          -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
+  EndParents    = SPLITCLAUSE                                                      -- explicitly end the template header, e.g. if there is no primary constructor
 
   Term          = Path                                                             -- Paths represent both types and terms
                   IDENT                 NameRef Type                               -- Used when term ident’s type is not a TermRef

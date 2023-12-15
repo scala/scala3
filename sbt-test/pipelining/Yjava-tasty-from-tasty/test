@@ -3,3 +3,5 @@
 > a_from_tasty/compile
 # test java tasty is still written even with -from-tasty
 > b/run
+# double check against the real java classes
+> bAlt/run

@@ -10,7 +10,7 @@ import config.Printers.{noPrinter, pickling}
 import config.Feature
 import java.io.PrintStream
 import io.ClassfileWriterOps
-import StdNames.str
+import StdNames.{str, nme}
 import Periods.*
 import Phases.*
 import Symbols.*
@@ -20,6 +20,7 @@ import collection.mutable
 import util.concurrent.{Executor, Future}
 import compiletime.uninitialized
 import dotty.tools.io.JarArchive
+import dotty.tools.dotc.printing.OutlinePrinter
 
 object Pickler {
   val name: String = "pickler"
@@ -86,6 +87,10 @@ class Pickler extends Phase {
     Pickler.ParallelPickling && !ctx.settings.YtestPickler.value &&
     !ctx.settings.YjavaTasty.value // disable parallel pickling when `-Yjava-tasty` is set (internal testing only)
 
+  private def printerContext(isOutline: Boolean)(using Context): Context =
+    if isOutline then ctx.fresh.setPrinterFn(OutlinePrinter(_))
+    else ctx
+
   override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
@@ -94,7 +99,8 @@ class Pickler extends Phase {
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
     do
-      if ctx.settings.YtestPickler.value then beforePickling(cls) = tree.show
+      if ctx.settings.YtestPickler.value then beforePickling(cls) =
+        tree.show(using printerContext(unit.typedAsJava))
 
       val sourceRelativePath =
         val reference = ctx.settings.sourceroot.value
@@ -242,11 +248,15 @@ class Pickler extends Phase {
     pickling.println("************* entered toplevel ***********")
     val rootCtx = ctx
     for ((cls, (unit, unpickler)) <- unpicklers) do
+      val testJava = unit.typedAsJava
+      if testJava then
+        if unpickler.unpickler.nameAtRef.contents.exists(_ == nme.FromJavaObject) then
+          report.error(em"Pickled reference to FromJavaObject in Java defined $cls in ${cls.source}")
       val unpickled = unpickler.rootTrees
       val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)
       freshUnit.needsCaptureChecking = unit.needsCaptureChecking
       freshUnit.knowsPureFuns = unit.knowsPureFuns
-      inContext(rootCtx.fresh.setCompilationUnit(freshUnit)):
+      inContext(printerContext(testJava)(using rootCtx.fresh.setCompilationUnit(freshUnit))):
         testSame(i"$unpickled%\n%", beforePickling(cls), cls)
 
   private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =

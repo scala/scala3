@@ -12,6 +12,7 @@ import Scanners.Offset
 import Parsers.*
 import core.*
 import Contexts.*
+import Symbols.defn
 import Names.*
 import Types.*
 import ast.Trees.*
@@ -26,6 +27,9 @@ import scala.collection.mutable.{ListBuffer, LinkedHashMap}
 object JavaParsers {
 
   import ast.untpd.*
+
+
+  val fakeFlags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
 
   class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
@@ -89,16 +93,16 @@ object JavaParsers {
 
     // --------- tree building -----------------------------
 
-    def scalaAnnotationDot(name: Name): Select = Select(scalaDot(nme.annotation), name)
-
     def javaDot(name: Name): Tree =
       Select(rootDot(nme.java), name)
 
     def javaLangDot(name: Name): Tree =
       Select(javaDot(nme.lang), name)
 
-    /** Tree representing `java.lang.Object` */
-    def javaLangObject(): Tree = javaLangDot(tpnme.Object)
+    /** Synthetic tree representing `java.lang.Object`.
+     *  The typer will type all references to `java.lang.Object` as `FromJavaObject`.
+     */
+    def ObjectTpt(): Tree = TypeTree(defn.FromJavaObjectType) // javaLangDot(tpnme.Object)
 
     /** Tree representing `java.lang.Record` */
     def javaLangRecord(): Tree = javaLangDot(tpnme.Record)
@@ -107,6 +111,8 @@ object JavaParsers {
       AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
+      def UnitTpt(): Tree = TypeTree(defn.UnitType)
+
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
         case (meth: DefDef) :: rest if meth.name == nme.CONSTRUCTOR => (meth, rest)
         case first :: rest =>
@@ -120,12 +126,12 @@ object JavaParsers {
       // can call it.
       // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
-        if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil)
+        if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil, Parsers.unimplementedExpr)
         stats1 = constr1 :: stats1
-        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
+        constr1 = makeConstructor(List(UnitTpt()), tparams, EmptyTree, fakeFlags)
       }
       else if (constr1 == EmptyTree) {
-        constr1 = makeConstructor(List(), tparams)
+        constr1 = makeConstructor(List(), tparams, EmptyTree)
       }
       Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
     }
@@ -133,11 +139,11 @@ object JavaParsers {
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
       makeParam(nme.syntheticParamName(count), tpt)
     def makeParam(name: TermName, tpt: Tree): ValDef =
-      ValDef(name, tpt, EmptyTree).withMods(Modifiers(Flags.JavaDefined | Flags.Param))
+      ValDef(name, tpt, EmptyTree).withFlags(Flags.JavaDefined | Flags.Param)
 
-    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
-      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p).withMods(Modifiers(flags)) }
-      DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), EmptyTree).withMods(Modifiers(flags))
+    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], body: Tree, flags: FlagSet = Flags.JavaDefined): DefDef = {
+      val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p).withAddedFlags(flags) }
+      DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), body).withFlags(flags)
     }
 
     // ------------- general parsing ---------------------------
@@ -306,7 +312,7 @@ object JavaParsers {
         if (in.token == QMARK) {
           val offset = in.offset
           in.nextToken()
-          val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else javaLangObject()
+          val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else ObjectTpt()
           val lo = if (in.token == SUPER)   { in.nextToken() ; typ() } else EmptyTree
           atSpan(offset) {
             /*
@@ -507,7 +513,7 @@ object JavaParsers {
       atSpan(in.offset) {
         annotations()
         val name = identForType()
-        val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else javaLangObject()
+        val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else ObjectTpt()
         TypeDef(name, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))
       }
 
@@ -568,7 +574,7 @@ object JavaParsers {
       if in.token == IDENTIFIER && in.name == jnme.RECORDid then
         in.token = RECORD
 
-    def termDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = {
+    def termDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = {
       val inInterface = definesInterface(parentToken)
       val tparams = if (in.token == LT) typeParams(Flags.JavaDefined | Flags.Param) else List()
       val isVoid = in.token == VOID
@@ -740,17 +746,17 @@ object JavaParsers {
       ValDef(name, tpt2, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
-    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match
+    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = in.token match
       case CLASS | ENUM | RECORD | INTERFACE | AT =>
         typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
       case _ =>
-        termDecl(start, mods, parentToken, parentTParams)
+        termDecl(start, mods, parentToken)
 
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
       atSpan(cdef.span) {
         assert(cdef.span.exists)
         ModuleDef(cdef.name.toTermName,
-          makeTemplate(List(), statics, List(), false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
+          makeTemplate(List(), statics, List(), needsDummyConstr = false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }
 
     def addCompanionObject(statics: List[Tree], cdef: TypeDef): List[Tree] =
@@ -817,11 +823,11 @@ object JavaParsers {
           typ()
         }
         else
-          javaLangObject()
+          ObjectTpt()
       val interfaces = interfacesOpt()
-      val (statics, body) = typeBody(CLASS, name, tparams)
+      val (statics, body) = typeBody(CLASS, name)
       val cls = atSpan(start, nameOffset) {
-        TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, true)).withMods(mods)
+        TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, needsDummyConstr = true)).withMods(mods)
       }
       addCompanionObject(statics, cls)
     }
@@ -834,7 +840,7 @@ object JavaParsers {
       val header = formalParams()
       val superclass = javaLangRecord() // records always extend java.lang.Record
       val interfaces = interfacesOpt() // records may implement interfaces
-      val (statics, body) = typeBody(RECORD, name, tparams)
+      val (statics, body) = typeBody(RECORD, name)
 
       // We need to generate accessors for every param, if no method with the same name is already defined
 
@@ -864,7 +870,7 @@ object JavaParsers {
             parents = superclass :: interfaces,
             stats = canonicalConstructor :: accessors ::: body,
             tparams = tparams,
-            true
+            needsDummyConstr = true
           )
         ).withMods(mods)
       }
@@ -882,24 +888,24 @@ object JavaParsers {
           repsep(() => typ(), COMMA)
         }
         else
-          List(javaLangObject())
-      val (statics, body) = typeBody(INTERFACE, name, tparams)
+          List(ObjectTpt())
+      val (statics, body) = typeBody(INTERFACE, name)
       val iface = atSpan(start, nameOffset) {
         TypeDef(
           name,
-          makeTemplate(parents, body, tparams, false)).withMods(mods | Flags.JavaInterface)
+          makeTemplate(parents, body, tparams, needsDummyConstr = false)).withMods(mods | Flags.JavaInterface)
       }
       addCompanionObject(statics, iface)
     }
 
-    def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
+    def typeBody(leadingToken: Int, parentName: Name): (List[Tree], List[Tree]) = {
       accept(LBRACE)
-      val defs = typeBodyDecls(leadingToken, parentName, parentTParams)
+      val defs = typeBodyDecls(leadingToken, parentName)
       accept(RBRACE)
       defs
     }
 
-    def typeBodyDecls(parentToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
+    def typeBodyDecls(parentToken: Int, parentName: Name): (List[Tree], List[Tree]) = {
       val inInterface = definesInterface(parentToken)
       val statics = new ListBuffer[Tree]
       val members = new ListBuffer[Tree]
@@ -915,7 +921,7 @@ object JavaParsers {
         else {
           adaptRecordIdentifier()
           if (in.token == ENUM || in.token == RECORD || definesInterface(in.token)) mods |= Flags.JavaStatic
-          val decls = memberDecl(start, mods, parentToken, parentTParams)
+          val decls = memberDecl(start, mods, parentToken)
           (if (mods.is(Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
             statics
           else
@@ -925,7 +931,7 @@ object JavaParsers {
       (statics.toList, members.toList)
     }
     def annotationParents: List[Tree] = List(
-      javaLangObject(),
+      ObjectTpt(),
       Select(javaLangDot(nme.annotation), tpnme.Annotation)
     )
     def annotationDecl(start: Offset, mods: Modifiers): List[Tree] = {
@@ -933,14 +939,14 @@ object JavaParsers {
       accept(INTERFACE)
       val nameOffset = in.offset
       val name = identForType()
-      val (statics, body) = typeBody(AT, name, List())
+      val (statics, body) = typeBody(AT, name)
       val constructorParams = body.collect {
         case dd: DefDef =>
           makeParam(dd.name, dd.tpt)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
         List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
-      val templ = makeTemplate(annotationParents, constr :: body, List(), true)
+      val templ = makeTemplate(annotationParents, constr :: body, List(), needsDummyConstr = true)
       val annot = atSpan(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.JavaInterface | Flags.JavaAnnotation)
       }
@@ -968,7 +974,7 @@ object JavaParsers {
       val (statics, body) =
         if (in.token == SEMI) {
           in.nextToken()
-          typeBodyDecls(ENUM, name, List())
+          typeBodyDecls(ENUM, name)
         }
         else
           (List(), List())
@@ -992,7 +998,7 @@ object JavaParsers {
         Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnum)
+          makeTemplate(superclazz :: interfaces, body, List(), needsDummyConstr = true)).withMods(mods | Flags.JavaEnum)
       }
       addCompanionObject(consts ::: statics ::: predefs, enumclazz)
     }
@@ -1092,7 +1098,7 @@ object JavaParsers {
    */
   class OutlineJavaParser(source: SourceFile)(using Context) extends JavaParser(source) with OutlineParserCommon {
     override def skipBracesHook(): Option[Tree] = None
-    override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
+    override def typeBody(leadingToken: Int, parentName: Name): (List[Tree], List[Tree]) = {
       skipBraces()
       (List(EmptyValDef), List(EmptyTree))
     }
