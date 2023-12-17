@@ -1,6 +1,6 @@
 //> using options -Xfatal-warnings
-
 import scala.language.implicitConversions
+import language.future
 
 object Test1:
   given c: Conversion[ String, Int ] with
@@ -13,7 +13,7 @@ object Prices {
   opaque type Price = BigDecimal
 
   object Price{
-    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
+    given Ordering[Price] = summon[Ordering[BigDecimal]] // was error, now avoided
   }
 }
 

@@ -1,0 +1,6 @@
+-- Error: tests/neg/i15474.scala:16:56 ---------------------------------------------------------------------------------
+16 |    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
+   |                                                        ^
+   |                                        Warning: result of implicit search for Ordering[BigDecimal] will change.
+   |                                        current result: given instance given_Ordering_Price in object Price
+   |                                        result with -source future: object BigDecimal in object Ordering
