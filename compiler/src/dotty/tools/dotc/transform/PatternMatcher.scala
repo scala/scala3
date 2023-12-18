@@ -376,8 +376,9 @@ object PatternMatcher {
                 val arity = productArity(get.tpe, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
-                    if (arity > 0) unapplyProductSeqPlan(getResult, args, arity)
-                    else unapplySeqPlan(getResult, args)
+                    if unapplySeqTypeElemTp(get.tpe).exists
+                    then unapplySeqPlan(getResult, args)
+                    else unapplyProductSeqPlan(getResult, args, arity)
                   }
                 else
                   letAbstract(get) { getResult =>
