@@ -1,31 +1,18 @@
--- Error: tests/neg/i15474.scala:7:35 ----------------------------------------------------------------------------------
-7 |    def apply(from: String): Int = from.toInt   // error
-  |                                   ^^^^
+-- Error: tests/neg/i15474.scala:6:39 ----------------------------------------------------------------------------------
+6 |  given c: Conversion[ String, Int ] = _.toInt   // error
+  |                                       ^
   |                             Warning: result of implicit search for ?{ toInt: ? } will change.
-  |                             Current result Test1.c will be no longer eligible
+  |                             Current result Test2.c will be no longer eligible
   |                               because it is not defined before the search position.
   |                             Result with new rules: augmentString.
   |                             To opt into the new rules, use the `experimental.avoidLoopingGivens` language import.
   |
   |                             To fix the problem without the language import, you could try one of the following:
-  |                               - rearrange definitions so that Test1.c comes earlier,
+  |                               - rearrange definitions so that Test2.c comes earlier,
   |                               - use an explicit conversion,
   |                               - use an import to get extension method into scope.
--- Error: tests/neg/i15474.scala:10:39 ---------------------------------------------------------------------------------
-10 |  given c: Conversion[ String, Int ] = _.toInt   // error
-   |                                       ^
-   |                           Warning: result of implicit search for ?{ toInt: ? } will change.
-   |                           Current result Test2.c will be no longer eligible
-   |                             because it is not defined before the search position.
-   |                           Result with new rules: augmentString.
-   |                           To opt into the new rules, use the `experimental.avoidLoopingGivens` language import.
-   |
-   |                           To fix the problem without the language import, you could try one of the following:
-   |                             - rearrange definitions so that Test2.c comes earlier,
-   |                             - use an explicit conversion,
-   |                             - use an import to get extension method into scope.
--- Error: tests/neg/i15474.scala:16:56 ---------------------------------------------------------------------------------
-16 |    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
+-- Error: tests/neg/i15474.scala:12:56 ---------------------------------------------------------------------------------
+12 |    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
    |                                                        ^
    |                           Warning: result of implicit search for Ordering[BigDecimal] will change.
    |                           Current result Prices.Price.given_Ordering_Price will be no longer eligible

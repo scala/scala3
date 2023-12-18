@@ -1569,8 +1569,10 @@ trait Implicits:
 
         /** Does candidate `cand` come too late for it to be considered as an
          *  eligible candidate? This is the case if `cand` appears in the same
-         *  scope as a given definition enclosing the search point and comes
-         *  later in the source or coincides with that given definition.
+         *  scope as a given definition enclosing the search point (with no
+         *  class methods between the given definition and the search point)
+         *  and `cand` comes later in the source or coincides with that given
+         *  definition.
          */
         def comesTooLate(cand: Candidate): Boolean =
           val candSym = cand.ref.symbol
@@ -1578,7 +1580,7 @@ trait Implicits:
             if sym.owner == candSym.owner then
               if sym.is(ModuleClass) then candSucceedsGiven(sym.sourceModule)
               else sym.is(Given) && sym.span.exists && sym.span.start <= candSym.span.start
-            else if sym.is(Package) then false
+            else if sym.owner.isClass then false
             else candSucceedsGiven(sym.owner)
 
           ctx.isTyper
