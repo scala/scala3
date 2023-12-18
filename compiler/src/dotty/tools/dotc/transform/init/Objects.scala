@@ -1339,13 +1339,13 @@ object Objects:
         if fun.symbol.name == nme.unapplySeq then
           var resultTp = unapplyResTp
           var elemTp = unapplySeqTypeElemTp(resultTp)
-          var arity = productArity(resultTp, NoSourcePosition)
+          var arity = productArity(resultTp)
           var needsGet = false
           if (!elemTp.exists && arity <= 0) {
             needsGet = true
             resultTp = resultTp.select(nme.get).finalResultType
             elemTp = unapplySeqTypeElemTp(resultTp.widen)
-            arity = productSelectorTypes(resultTp, NoSourcePosition).size
+            arity = productSelectorTypes(resultTp).size
           }
 
           var resToMatch = unapplyRes

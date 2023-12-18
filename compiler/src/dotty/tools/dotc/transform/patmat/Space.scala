@@ -276,7 +276,7 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult, argLen)
-    || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
+    || extractorMemberType(unappResult, nme.isEmpty) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
     || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
   }
@@ -349,7 +349,7 @@ object SpaceEngine {
       val fun1 = funPart(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
-        val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
+        val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType)
         if (fun.symbol.owner == defn.SeqFactoryClass && defn.ListType.appliedTo(elemTp) <:< pat.tpe)
           // The exhaustivity and reachability logic already handles decomposing sum types (into its subclasses)
           // and product types (into its components).  To get better counter-examples for patterns that are of type
@@ -391,14 +391,14 @@ object SpaceEngine {
     case tp => Typ(tp, decomposed = true)
   }
 
-  private def unapplySeqInfo(resTp: Type, pos: SrcPos)(using Context): (Int, Type, Type) = {
+  private def unapplySeqInfo(resTp: Type)(using Context): (Int, Type, Type) = {
     var resultTp = resTp
     var elemTp = unapplySeqTypeElemTp(resultTp)
-    var arity = productArity(resultTp, pos)
+    var arity = productArity(resultTp)
     if (!elemTp.exists && arity <= 0) {
       resultTp = resTp.select(nme.get).finalResultType
       elemTp = unapplySeqTypeElemTp(resultTp.widen)
-      arity = productSelectorTypes(resultTp, pos).size
+      arity = productSelectorTypes(resultTp).size
     }
     (arity, elemTp, resultTp)
   }
@@ -552,17 +552,17 @@ object SpaceEngine {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
         if (isUnapplySeq) {
-          val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.srcPos)
+          val (arity, elemTp, resultTp) = unapplySeqInfo(resTp)
           if (elemTp.exists) defn.ListType.appliedTo(elemTp) :: Nil
           else {
-            val sels = productSeqSelectors(resultTp, arity, unappSym.srcPos)
+            val sels = productSeqSelectors(resultTp, arity)
             sels.init :+ defn.ListType.appliedTo(sels.last)
           }
         }
         else {
-          val arity = productArity(resTp, unappSym.srcPos)
+          val arity = productArity(resTp)
           if (arity > 0)
-            productSelectorTypes(resTp, unappSym.srcPos)
+            productSelectorTypes(resTp)
           else {
             val getTp = resTp.select(nme.get).finalResultType match
               case tp: TermRef if !tp.isOverloaded =>
@@ -572,7 +572,7 @@ object SpaceEngine {
                 tp.underlying.widenExpr
               case tp => tp
             if (argLen == 1) getTp :: Nil
-            else productSelectorTypes(getTp, unappSym.srcPos)
+            else productSelectorTypes(getTp)
           }
         }
       }
@@ -791,7 +791,7 @@ object SpaceEngine {
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
       classSym.is(Case) && {
-        if seen.add(tpw) then productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
+        if seen.add(tpw) then productSelectorTypes(tpw).exists(isCheckable(_))
         else true // recursive case class: return true and other members can still fail the check
       }
 

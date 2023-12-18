@@ -362,8 +362,8 @@ object PatternMatcher {
             else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
               unapplySeqPlan(unappResult, args)
             }
-            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.srcPos)) {
-              val arity = productArity(unapp.tpe.widen, unapp.srcPos)
+            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length)) {
+              val arity = productArity(unapp.tpe.widen)
               unapplyProductSeqPlan(unappResult, args, arity)
             }
             else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
@@ -373,7 +373,7 @@ object PatternMatcher {
               assert(isGetMatch(unapp.tpe))
               val argsPlan = {
                 val get = ref(unappResult).select(nme.get, _.info.isParameterless)
-                val arity = productArity(get.tpe, unapp.srcPos)
+                val arity = productArity(get.tpe)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
                     if unapplySeqTypeElemTp(get.tpe).exists

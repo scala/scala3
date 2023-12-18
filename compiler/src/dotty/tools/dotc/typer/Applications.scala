@@ -41,38 +41,34 @@ object Applications {
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
 
-  def extractorMemberType(tp: Type, name: Name, errorPos: SrcPos)(using Context): Type = {
-    val ref = extractorMember(tp, name)
-    if (ref.isOverloaded)
-      errorType(em"Overloaded reference to $ref is not allowed in extractor", errorPos)
-    ref.info.widenExpr.annotatedToRepeated
-  }
+  def extractorMemberType(tp: Type, name: Name)(using Context): Type =
+    extractorMember(tp, name).info.widenExpr.annotatedToRepeated
 
   /** Does `tp` fit the "product match" conditions as an unapply result type
    *  for a pattern with `numArgs` subpatterns?
    *  This is the case if `tp` has members `_1` to `_N` where `N == numArgs`.
    */
-  def isProductMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean =
-    numArgs > 0 && productArity(tp, errorPos) == numArgs
+  def isProductMatch(tp: Type, numArgs: Int)(using Context): Boolean =
+    numArgs > 0 && productArity(tp) == numArgs
 
   /** Does `tp` fit the "product-seq match" conditions as an unapply result type
    *  for a pattern with `numArgs` subpatterns?
    *  This is the case if (1) `tp` has members `_1` to `_N` where `N <= numArgs + 1`.
    *                      (2) `tp._N` conforms to Seq match
    */
-  def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean = {
-    val arity = productArity(tp, errorPos)
+  def isProductSeqMatch(tp: Type, numArgs: Int)(using Context): Boolean = {
+    val arity = productArity(tp)
     arity > 0 && arity <= numArgs + 1 &&
-      unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
+      unapplySeqTypeElemTp(productSelectorTypes(tp).last).exists
   }
 
   /** Does `tp` fit the "get match" conditions as an unapply result type?
    *  This is the case of `tp` has a `get` member as well as a
    *  parameterless `isEmpty` member of result type `Boolean`.
    */
-  def isGetMatch(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean =
-    extractorMemberType(tp, nme.isEmpty, errorPos).widenSingleton.isRef(defn.BooleanClass) &&
-    extractorMemberType(tp, nme.get, errorPos).exists
+  def isGetMatch(tp: Type)(using Context): Boolean =
+    extractorMemberType(tp, nme.isEmpty).widenSingleton.isRef(defn.BooleanClass) &&
+    extractorMemberType(tp, nme.get).exists
 
   /** If `getType` is of the form:
     *  ```
@@ -107,8 +103,8 @@ object Applications {
     if (isValid) elemTp else NoType
   }
 
-  def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
-    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
+  def productSelectorTypes(tp: Type)(using Context): List[Type] = {
+    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n))
     sels.takeWhile(_.exists).toList
   }
 
@@ -125,8 +121,8 @@ object Applications {
     case _ =>
       Nil
 
-  def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
-    if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
+  def productArity(tp: Type)(using Context): Int =
+    if (defn.isProductSubType(tp)) productSelectorTypes(tp).size else -1
 
   def productSelectors(tp: Type)(using Context): List[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield
@@ -134,16 +130,16 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
+  def getUnapplySelectors(tp: Type, args: List[untpd.Tree])(using Context): List[Type] =
     if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
-      val sels = productSelectorTypes(tp, pos)
+      val sels = productSelectorTypes(tp)
       if (sels.length == args.length) sels
       else tp :: Nil
     }
     else tp :: Nil
 
-  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
-    val selTps = productSelectorTypes(tp, pos)
+  def productSeqSelectors(tp: Type, argsNum: Int)(using Context): List[Type] = {
+    val selTps = productSelectorTypes(tp)
     val arity = selTps.length
     val elemTp = unapplySeqTypeElemTp(selTps.last)
     (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
@@ -157,7 +153,7 @@ object Applications {
         case fn: RefTree => fn.name
     val unapplyName = getName(unapplyFn) // tolerate structural `unapply`, which does not have a symbol
 
-    def getTp = extractorMemberType(unapplyResult, nme.get, pos)
+    def getTp = extractorMemberType(unapplyResult, nme.get)
 
     def fail = {
       report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
@@ -167,26 +163,26 @@ object Applications {
     def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] = {
       val elemTp = unapplySeqTypeElemTp(tp)
       if (elemTp.exists) args.map(Function.const(elemTp))
-      else if (isProductSeqMatch(tp, args.length, pos)) productSeqSelectors(tp, args.length, pos)
+      else if (isProductSeqMatch(tp, args.length)) productSeqSelectors(tp, args.length)
       else if tp.derivesFrom(defn.NonEmptyTupleClass) then foldApplyTupleType(tp)
       else fallback
     }
 
     if (unapplyName == nme.unapplySeq)
       unapplySeq(unapplyResult) {
-        if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
+        if (isGetMatch(unapplyResult)) unapplySeq(getTp)(fail)
         else fail
       }
     else {
       assert(unapplyName == nme.unapply)
-      if (isProductMatch(unapplyResult, args.length, pos))
-        productSelectorTypes(unapplyResult, pos)
-      else if (isGetMatch(unapplyResult, pos))
-        getUnapplySelectors(getTp, args, pos)
+      if (isProductMatch(unapplyResult, args.length))
+        productSelectorTypes(unapplyResult)
+      else if (isGetMatch(unapplyResult))
+        getUnapplySelectors(getTp, args)
       else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
         Nil
-      else if (defn.isProductSubType(unapplyResult) && productArity(unapplyResult, pos) != 0)
-        productSelectorTypes(unapplyResult, pos)
+      else if (defn.isProductSubType(unapplyResult) && productArity(unapplyResult) != 0)
+        productSelectorTypes(unapplyResult)
           // this will cause a "wrong number of arguments in pattern" error later on,
           // which is better than the message in `fail`.
       else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
