@@ -20,6 +20,7 @@ import ContextOps.*
 import NameKinds.DefaultGetterName
 import ProtoTypes.*
 import Inferencing.*
+import printing.*, Texts.*
 import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.Feature
@@ -130,20 +131,66 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def getUnapplySelectors(tp: Type, args: List[untpd.Tree])(using Context): List[Type] =
-    if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
-      val sels = productSelectorTypes(tp)
-      if (sels.length == args.length) sels
-      else tp :: Nil
-    }
-    else tp :: Nil
-
   def productSeqSelectors(tp: Type, argsNum: Int)(using Context): List[Type] = {
     val selTps = productSelectorTypes(tp)
     val arity = selTps.length
     val elemTp = unapplySeqTypeElemTp(selTps.last)
     (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
   }
+
+  sealed trait Extractor extends Product with Showable:
+    def toText(p: Printer): Text = inContext(p.printerContext):
+      this match
+      case BooleanMatch()          => i"BooleanMatch"
+      case SingleMatch(getTp)      => i"SingleMatch($getTp)"
+      case ProductMatch(getTp)     => i"ProductMatch($getTp)"
+      case TupleMatch(getTp)       => i"TupleMatch($getTp)"
+      case SeqMatch(getTp, elemTp) => i"SeqMatch($getTp, $elemTp)"
+      case ProdSeqMatch(getTp)     => i"ProdSeqMatch($getTp)"
+      case TupleSeqMatch(getTp)    => i"TupleSeqMatch($getTp)"
+      case NoExtractor             => i"NoExtractor"
+
+  case object NoExtractor extends Extractor
+
+  sealed trait FixedArityExtractor extends Extractor
+  case class BooleanMatch() extends FixedArityExtractor
+  case class ProductMatch(getTp: Type) extends FixedArityExtractor
+  case class TupleMatch(getTp: Type) extends FixedArityExtractor
+  case class SingleMatch(getTp: Type) extends FixedArityExtractor
+
+  sealed trait VariadicExtractor extends Extractor
+  case class SeqMatch(getTp: Type, elemTp: Type) extends VariadicExtractor
+  case class ProdSeqMatch(getTp: Type) extends VariadicExtractor
+  case class TupleSeqMatch(getTp: Type) extends VariadicExtractor
+
+  def extractorKind(resTp: Type, name: Name, numArgs: Int)(using Context): Extractor =
+    def fixedArity: Extractor =
+      if resTp.widenSingleton.isRef(defn.BooleanClass) then BooleanMatch()
+      else if isProductMatch(resTp, numArgs) then ProductMatch(NoType)
+      else if resTp.derivesFrom(defn.NonEmptyTupleClass) then TupleMatch(NoType)
+      else if isGetMatch(resTp) then
+        val getTp = extractorMemberType(resTp, nme.get)
+        if numArgs == 1 then SingleMatch(getTp)
+        else if getTp.derivesFrom(defn.SeqClass) then SingleMatch(getTp)
+        else if productSelectorTypes(getTp).size == numArgs then ProductMatch(getTp)
+        else if getTp.derivesFrom(defn.NonEmptyTupleClass) then TupleMatch(getTp)
+        else SingleMatch(getTp)
+      else NoExtractor
+
+    def variadic(getTp: Type, isGet: Boolean): Extractor =
+      val tp = getTp.orElse(resTp)
+      val elemTp = unapplySeqTypeElemTp(tp)
+      if elemTp.exists then SeqMatch(getTp, elemTp)
+      else if isProductSeqMatch(tp, numArgs) then ProdSeqMatch(getTp)
+      else if tp.derivesFrom(defn.NonEmptyTupleClass) then TupleSeqMatch(getTp)
+      else if !isGet && isGetMatch(resTp) then variadic(extractorMemberType(resTp, nme.get), isGet = true)
+      else NoExtractor
+
+    name match
+      case nme.unapply    => fixedArity
+      case nme.unapplySeq => variadic(NoType, isGet = false)
+      case _              => NoExtractor
+  end extractorKind
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] = {
     def getName(fn: Tree): Name =
@@ -153,45 +200,30 @@ object Applications {
         case fn: RefTree => fn.name
     val unapplyName = getName(unapplyFn) // tolerate structural `unapply`, which does not have a symbol
 
-    def getTp = extractorMemberType(unapplyResult, nme.get)
+    extractorKind(unapplyResult, unapplyName, args.length) match
+      case BooleanMatch()          => Nil
+      case SingleMatch(getTp)      => getTp :: Nil
+      case ProductMatch(getTp)     => productSelectorTypes(getTp.orElse(unapplyResult))
+      case TupleMatch(getTp)       => tupleComponentTypes2(getTp.orElse(unapplyResult))
 
-    def fail = {
-      report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
-      Nil
-    }
+      case SeqMatch(getTp, elemTp) => args.map(Function.const(elemTp))
+      case ProdSeqMatch(getTp)     => productSeqSelectors(getTp.orElse(unapplyResult), args.length)
+      case TupleSeqMatch(getTp)    => tupleComponentTypes2(getTp.orElse(unapplyResult))
 
-    def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] = {
-      val elemTp = unapplySeqTypeElemTp(tp)
-      if (elemTp.exists) args.map(Function.const(elemTp))
-      else if (isProductSeqMatch(tp, args.length)) productSeqSelectors(tp, args.length)
-      else if tp.derivesFrom(defn.NonEmptyTupleClass) then foldApplyTupleType(tp)
-      else fallback
-    }
-
-    if (unapplyName == nme.unapplySeq)
-      unapplySeq(unapplyResult) {
-        if (isGetMatch(unapplyResult)) unapplySeq(getTp)(fail)
-        else fail
-      }
-    else {
-      assert(unapplyName == nme.unapply)
-      if (isProductMatch(unapplyResult, args.length))
-        productSelectorTypes(unapplyResult)
-      else if (isGetMatch(unapplyResult))
-        getUnapplySelectors(getTp, args)
-      else if (unapplyResult.widenSingleton isRef defn.BooleanClass)
-        Nil
-      else if (defn.isProductSubType(unapplyResult) && productArity(unapplyResult) != 0)
-        productSelectorTypes(unapplyResult)
+      case NoExtractor =>
+        if unapplyName == nme.unapply
+          && defn.isProductSubType(unapplyResult) && productArity(unapplyResult) != 0
+        then
+          productSelectorTypes(unapplyResult)
           // this will cause a "wrong number of arguments in pattern" error later on,
           // which is better than the message in `fail`.
-      else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
-        foldApplyTupleType(unapplyResult)
-      else fail
-    }
+        else
+          report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
+          Nil
   }
 
-  def foldApplyTupleType(tp: Type)(using Context): List[Type] =
+  def tupleComponentTypes2(tp: Type)(using Context): List[Type] =
+    // TODO: Compare with tupleComponentTypes
     object tupleFold extends TypeAccumulator[List[Type]]:
       override def apply(accum: List[Type], t: Type): List[Type] =
         t match

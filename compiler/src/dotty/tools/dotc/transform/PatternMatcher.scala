@@ -332,6 +332,7 @@ object PatternMatcher {
 
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
+        val resTp = unapp.tpe.widen.finalResultType
         def caseClass = unapp.symbol.owner.linkedClass
         lazy val caseAccessors = caseClass.caseAccessors
 
@@ -343,54 +344,50 @@ object PatternMatcher {
             .select(defn.RuntimeTuples_apply)
             .appliedTo(receiver, Literal(Constant(i)))
 
+        def maybeGet(getTp: Type)(f: (Type, Symbol) => Plan) =
+          letAbstract(unapp): unappResult =>
+            if getTp == NoType then
+              f(resTp, unappResult)
+            else
+              val argsPlan =
+                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
+                letAbstract(get): getResult =>
+                  f(get.tpe, getResult)
+              TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
+
         if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
           def tupleSel(sym: Symbol) = ref(scrutinee).select(sym)
           val isGenericTuple = defn.isTupleClass(caseClass) &&
             !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
           val components = if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee))) else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
-        else if (unapp.tpe <:< (defn.BooleanType))
-          TestPlan(GuardTest, unapp, unapp.span, onSuccess)
-        else
-          letAbstract(unapp) { unappResult =>
-            val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
-            if (isProductMatch(unapp.tpe.widen, args.length) && !isUnapplySeq) {
-              val selectors = productSelectors(unapp.tpe).take(args.length)
-                .map(ref(unappResult).select(_))
+        else extractorKind(resTp, unapp.symbol.name, args.length) match
+          case BooleanMatch() =>
+            TestPlan(GuardTest, unapp, unapp.span, onSuccess)
+          case ProductMatch(getTp) =>
+            maybeGet(getTp): (tp, res) =>
+              val selectors = productSelectors(tp).take(args.length).map(ref(res).select(_))
               matchArgsPlan(selectors, args, onSuccess)
-            }
-            else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
-              unapplySeqPlan(unappResult, args)
-            }
-            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length)) {
-              val arity = productArity(unapp.tpe.widen)
-              unapplyProductSeqPlan(unappResult, args, arity)
-            }
-            else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
-              val components = (0 until foldApplyTupleType(unappResult.denot.info).length).toList.map(tupleApp(_, ref(unappResult)))
+          case TupleMatch(getTp) =>
+            maybeGet(getTp): (tp, res) =>
+              val components = tupleComponentTypes2(tp).indices.toList.map(tupleApp(_, ref(res)))
               matchArgsPlan(components, args, onSuccess)
-            else {
-              assert(isGetMatch(unapp.tpe))
-              val argsPlan = {
-                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
-                val arity = productArity(get.tpe)
-                if (isUnapplySeq)
-                  letAbstract(get) { getResult =>
-                    if unapplySeqTypeElemTp(get.tpe).exists
-                    then unapplySeqPlan(getResult, args)
-                    else unapplyProductSeqPlan(getResult, args, arity)
-                  }
-                else
-                  letAbstract(get) { getResult =>
-                    val selectors =
-                      if (args.tail.isEmpty) ref(getResult) :: Nil
-                      else productSelectors(get.tpe).map(ref(getResult).select(_))
-                    matchArgsPlan(selectors, args, onSuccess)
-                  }
-              }
-              TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
-            }
-          }
+          case SingleMatch(getTp) =>
+            maybeGet(getTp): (tp, res) =>
+              matchArgsPlan(ref(res) :: Nil, args, onSuccess)
+
+          case SeqMatch(getTp, elemTp) =>
+            maybeGet(getTp): (tp, res) =>
+              unapplySeqPlan(res, args)
+          case ProdSeqMatch(getTp) =>
+            maybeGet(getTp): (tp, res) =>
+              unapplyProductSeqPlan(res, args, productArity(tp))
+          case TupleSeqMatch(getTp) =>
+            maybeGet(getTp): (tp, res) =>
+              val components = tupleComponentTypes2(tp).indices.toList.map(tupleApp(_, ref(res)))
+              matchArgsPlan(components, args, onSuccess)
+
+          case x @ NoExtractor => unreachable(x)
       }
 
       // begin patternPlan
