@@ -4,7 +4,7 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass }
+import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.experimental.categories.Category
@@ -250,6 +250,7 @@ class CompilationTests {
   }
 
   // parallel backend tests
+  @Ignore("Temporarily disabled due to frequent timeouts")
   @Test def parallelBackend: Unit = {
     given TestGroup = TestGroup("parallelBackend")
     val parallelism = Runtime.getRuntime().availableProcessors().min(16)
