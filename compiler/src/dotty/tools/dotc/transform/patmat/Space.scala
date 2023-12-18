@@ -210,17 +210,13 @@ object SpaceEngine {
       case (a @ Typ(tp1, _), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
         else if isSubType(tp2, tp1) then b
-        else if canDecompose(a) then intersect(Or(decompose(a)), b)
-        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         if isSubType(tp2, tp1) then b
-        else if canDecompose(a) then intersect(Or(decompose(a)), b)
         else if isSubType(tp1, tp2) then a // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(b)
       case (Prod(tp1, fun, ss), b @ Typ(tp2, _)) =>
         if isSubType(tp1, tp2) then a
-        else if canDecompose(b) then intersect(a, Or(decompose(b)))
         else if isSubType(tp2, tp1) then a  // problematic corner case: inheriting a case class
         else intersectUnrelatedAtomicTypes(tp1, tp2)(a)
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
@@ -880,7 +876,7 @@ object SpaceEngine {
     case _                                          => tp
   })
 
-  def checkExhaustivity(m: Match)(using Context): Unit = if exhaustivityCheckable(m.selector) then trace(i"checkExhaustivity($m)", debug) {
+  def checkExhaustivity(m: Match)(using Context): Unit = trace(i"checkExhaustivity($m)", debug) {
     val selTyp = toUnderlying(m.selector.tpe).dealias
     debug.println(i"selTyp = $selTyp")
 
@@ -903,7 +899,7 @@ object SpaceEngine {
       report.warning(PatternMatchExhaustivity(showSpaces(deduped), m), m.selector)
   }
 
-  private def redundancyCheckable(sel: Tree)(using Context): Boolean =
+  private def reachabilityCheckable(sel: Tree)(using Context): Boolean =
     // Ignore Expr[T] and Type[T] for unreachability as a special case.
     // Quote patterns produce repeated calls to the same unapply method, but with different implicit parameters.
     // Since we assume that repeated calls to the same unapply method overlap
@@ -913,7 +909,7 @@ object SpaceEngine {
     && !sel.tpe.widen.isRef(defn.QuotedExprClass)
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
-  def checkRedundancy(m: Match)(using Context): Unit = if redundancyCheckable(m.selector) then trace(i"checkRedundancy($m)", debug) {
+  def checkReachability(m: Match)(using Context): Unit = trace(i"checkReachability($m)", debug) {
     val cases = m.cases.toIndexedSeq
 
     val selTyp = toUnderlying(m.selector.tpe).dealias
@@ -965,4 +961,8 @@ object SpaceEngine {
       i += 1
     }
   }
+
+  def checkMatch(m: Match)(using Context): Unit =
+    if exhaustivityCheckable(m.selector) then checkExhaustivity(m)
+    if reachabilityCheckable(m.selector) then checkReachability(m)
 }

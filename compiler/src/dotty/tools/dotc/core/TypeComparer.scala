@@ -2848,10 +2848,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (tp1: TypeRef, tp2: TypeRef) if tp1.symbol.isClass && tp2.symbol.isClass =>
         val cls1 = tp1.classSymbol
         val cls2 = tp2.classSymbol
-        def isDecomposable(tp: Symbol): Boolean =
-           tp.is(Sealed) && !tp.hasAnonymousChild
+        val sameKind = tp1.hasSameKindAs(tp2)
+        def isDecomposable(sym: Symbol): Boolean =
+          sameKind && sym.is(Sealed) && !sym.hasAnonymousChild
         def decompose(sym: Symbol, tp: Type): List[Type] =
-          sym.children.map(x => refineUsingParent(tp, x)).filter(_.exists)
+          val tpSimple = tp.applyIfParameterized(tp.typeParams.map(_ => WildcardType))
+          sym.children.map(x => refineUsingParent(tpSimple, x)).filter(_.exists)
         if (cls1.derivesFrom(cls2) || cls2.derivesFrom(cls1))
           false
         else
