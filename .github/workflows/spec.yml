@@ -26,10 +26,11 @@ jobs:
       # Keep in sync with ./docs/_spec/Dockerfile
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '2.7'
+          ruby-version: '3.0'
       - name: Install required gems
         run: |
-          gem update --system
+          gem update --system 3.2.3
+          gem install rexml
           gem install sass-embedded -v 1.58.0
           gem install bundler:1.17.2 jekyll
           bundle install
