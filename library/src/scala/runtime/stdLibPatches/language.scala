@@ -95,10 +95,10 @@ object language:
      *  givens. By the new rules, a given may not implicitly use itself or givens
      *  defined after it.
      *
-     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/avoid-looping-givens]]
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/given-loop-prevention]]
      */
-    @compileTimeOnly("`avoidLoopingGivens` can only be used at compile time in import statements")
-    object avoidLoopingGivens
+    @compileTimeOnly("`givenLoopPrevention` can only be used at compile time in import statements")
+    object givenLoopPrevention
 
     /** Was needed to add support for relaxed imports of extension methods.
       * The language import is no longer needed as this is now a standard feature since SIP was accepted.

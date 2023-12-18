@@ -1,4 +1,4 @@
-import language.experimental.avoidLoopingGivens
+import language.experimental.givenLoopPrevention
 
 class A
 class B

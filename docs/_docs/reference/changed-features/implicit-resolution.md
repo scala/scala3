@@ -164,26 +164,3 @@ The new rules are as follows: An implicit `a` defined in `A` is more specific th
 Condition (*) is new. It is necessary to ensure that the defined relation is transitive.
 
 [//]: # todo: expand with precise rules
-
-**9.** Implicit resolution now tries to avoid recursive givens that can lead to an infinite loop at runtime. Here is an example:
-
-```scala
-object Prices {
-  opaque type Price = BigDecimal
-
-  object Price{
-    given Ordering[Price] = summon[Ordering[BigDecimal]] // was error, now avoided
-  }
-}
-```
-
-Previously, implicit resolution would resolve the `summon` to the given in `Price`, leading to an infinite loop (a warning was issued in that case). We now use the underlying given in `BigDecimal` instead. We achieve that by adding the following rule for implicit search:
-
- - When doing an implicit search while checking the implementation of a `given` definition `G`, discard all search results that lead back to `G` or to a given
-with the same owner as `G` that comes later in the source than `G`.
-
-The new behavior is enabled under `-source future`. In earlier versions, a
-warning is issued where that behavior will change.
-
-Old-style implicit definitions are unaffected by this change.
-

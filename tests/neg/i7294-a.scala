@@ -1,3 +1,5 @@
+//> using options -Xfatal-warnings
+
 package foo
 
 trait Foo { def g(x: Int): Any }
