@@ -1,0 +1,17 @@
+-- [E007] Type Mismatch Error: tests/neg/i15312.scala:7:27 -------------------------------------------------------------
+7 |val b: F[{type A = Int}] = "asd" // error
+  |                           ^^^^^
+  |                           Found:    ("asd" : String)
+  |                           Required: F[Object{type A = Int}]
+  |
+  |                           Note: a match type could not be fully reduced:
+  |
+  |                             trying to reduce  F[Object{type A = Int}]
+  |                             failed since selector Object{type A = Int}
+  |                             does not match  case Object{type A = Float} => Int
+  |                             and cannot be shown to be disjoint from it either.
+  |                             Therefore, reduction cannot advance to the remaining case
+  |
+  |                               case Object{type A = Int} => String
+  |
+  | longer explanation available when compiling with `-explain`

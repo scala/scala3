@@ -1,17 +1,19 @@
-//> using options -source:3.3
-
 trait TC[T]
 
 object TC {
   def optionTCForPart[T](implicit tc: TC[ExtractPart[T]]): TC[Option[ExtractPart[T]]] = new TC[Option[ExtractPart[T]]] {}
 }
 
+trait ThingWithPart {
+  type Part
+}
+
 type ExtractPart[T] = T match {
   case PartField[t] => t
 }
-type PartField[T] = Any { type Part = T }
+type PartField[T] = ThingWithPart { type Part = T }
 
-class ValuePartHolder {
+class ValuePartHolder extends ThingWithPart {
   type Part = Value
 }
 

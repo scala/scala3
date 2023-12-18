@@ -14,8 +14,8 @@
    |                                  does not uniquely determine parameters a, b in
    |                                    case (a, b) => a
    |                                  The computed bounds for the parameters are:
-   |                                    a >: Any
-   |                                    b >: Any
+   |                                    a
+   |                                    b
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780.scala:18:31 ------------------------------------------------------------
@@ -34,8 +34,8 @@
    |                           does not uniquely determine parameters a, b in
    |                             case (a, b) => a
    |                           The computed bounds for the parameters are:
-   |                             a >: Int
-   |                             b >: Int
+   |                             a <: Int
+   |                             b <: Int
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i13780.scala:23:37 ------------------------------------------------------------
@@ -54,7 +54,7 @@
    |                                 does not uniquely determine parameters a, b in
    |                                   case (a, b) => a
    |                                 The computed bounds for the parameters are:
-   |                                   a >: String
-   |                                   b >: String
+   |                                   a <: String
+   |                                   b <: String
    |
    | longer explanation available when compiling with `-explain`

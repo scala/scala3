@@ -1,3 +1,7 @@
+object Opaque {
+  opaque type FieldType[K, +V] <: V = V
+}
+
 import Opaque.*
 
 object Test {
@@ -11,5 +15,5 @@ object Test {
   //val f2: Int = f
 
   type R = FieldType["A", Int] *: FieldType["B", Double] *: FieldType["C", String] *: FieldType["D", Boolean] *: EmptyTuple
-  summon[FindField[R, "B"] =:= Double]
+  summon[FindField[R, "B"] =:= Double] // error
 }

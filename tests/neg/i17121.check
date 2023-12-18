@@ -1,0 +1,24 @@
+-- [E191] Type Error: tests/neg/i17121.scala:13:17 ---------------------------------------------------------------------
+13 |  type G1[X] = X match { case Consumer[List[t]] => t } // error
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               The match type contains an illegal case:
+   |                   case Consumer[List[t]] => t
+   |               (this error can be ignored for now with `-source:3.3`)
+-- [E191] Type Error: tests/neg/i17121.scala:15:17 ---------------------------------------------------------------------
+15 |  type G2[X] = X match { case Consumer[Consumer[t]] => t } // error
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               The match type contains an illegal case:
+   |                   case Consumer[Consumer[t]] => t
+   |               (this error can be ignored for now with `-source:3.3`)
+-- [E191] Type Error: tests/neg/i17121.scala:17:17 ---------------------------------------------------------------------
+17 |  type G3[X] = X match { case Consumer[Consumer[Consumer[t]]] => t } // error
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               The match type contains an illegal case:
+   |                   case Consumer[Consumer[Consumer[t]]] => t
+   |               (this error can be ignored for now with `-source:3.3`)
+-- [E191] Type Error: tests/neg/i17121.scala:19:17 ---------------------------------------------------------------------
+19 |  type G4[X] = X match { case Consumer[List[Consumer[t]]] => t } // error
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               The match type contains an illegal case:
+   |                   case Consumer[List[Consumer[t]]] => t
+   |               (this error can be ignored for now with `-source:3.3`)

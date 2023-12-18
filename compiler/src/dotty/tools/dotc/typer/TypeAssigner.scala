@@ -297,6 +297,8 @@ trait TypeAssigner {
           else fntpe.resultType // fast path optimization
         else
           errorType(em"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+      case err: ErrorType =>
+        err
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsMsg(fn, ""), tree.srcPos)
@@ -563,5 +565,3 @@ object TypeAssigner extends TypeAssigner:
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
     case _ => if ctx.erasedTypes then defn.SeqType else defn.SeqType.appliedTo(elemType)
-
-

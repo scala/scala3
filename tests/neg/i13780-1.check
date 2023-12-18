@@ -1,0 +1,39 @@
+-- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:38:24 ----------------------------------------------------------
+38 |    case x: (h *: t) => x.head // error
+   |                        ^^^^^^
+   |                      Found:    Tuple.Head[VS & h *: t]
+   |                      Required: h
+   |
+   |                      where:    VS is a type in method foo with bounds <: Tuple
+   |                                h  is a type in method foo with bounds 
+   |                                t  is a type in method foo with bounds <: Tuple
+   |
+   |
+   |                      Note: a match type could not be fully reduced:
+   |
+   |                        trying to reduce  Tuple.Head[VS & h *: t]
+   |                        failed since selector VS & h *: t
+   |                        does not uniquely determine parameter x in
+   |                          case x *: _ => x
+   |                        The computed bounds for the parameter are:
+   |                          x <: h
+   |                      Note that implicit conversions were not tried because the result of an implicit conversion
+   |                      must be more specific than h
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i13780-1.scala:52:31 ----------------------------------------------------------
+52 |  def unpair: SelectH[Y & W] = "" // error
+   |                               ^^
+   |                               Found:    ("" : String)
+   |                               Required: SelectH[A.this.Y & A.this.W]
+   |
+   |                               Note: a match type could not be fully reduced:
+   |
+   |                                 trying to reduce  SelectH[A.this.Y & A.this.W]
+   |                                 failed since selector A.this.Y & A.this.W
+   |                                 does not uniquely determine parameter h in
+   |                                   case h *: _ => h
+   |                                 The computed bounds for the parameter are:
+   |                                   h
+   |
+   | longer explanation available when compiling with `-explain`

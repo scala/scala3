@@ -7,7 +7,7 @@ import Flags.*
 import Names.*
 import StdNames.*, NameOps.*
 import NullOpsDecorator.*
-import NameKinds.SkolemName
+import NameKinds.{SkolemName, WildcardParamName}
 import Scopes.*
 import Constants.*
 import Contexts.*
@@ -30,6 +30,8 @@ import Hashable.*
 import Uniques.*
 import collection.mutable
 import config.Config
+import config.Feature.sourceVersion
+import config.SourceVersion
 import annotation.{tailrec, constructorOnly}
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import config.Printers.{core, typr, matchTypes}
@@ -5036,7 +5038,7 @@ object Types extends TypeUtils {
           trace(i"reduce match type $this $hashCode", matchTypes, show = true)(inMode(Mode.Type) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               val saved = ctx.typerState.snapshot()
-              try cmp.matchCases(scrutinee.normalized, cases)
+              try cmp.matchCases(scrutinee.normalized, cases.map(MatchTypeCaseSpec.analyze(_)))
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
               finally
@@ -5087,6 +5089,190 @@ object Types extends TypeUtils {
           case _ => None
         case _ => None
   }
+
+  enum MatchTypeCasePattern:
+    case Capture(num: Int, isWildcard: Boolean)
+    case TypeTest(tpe: Type)
+    case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
+    case CompileTimeS(argPattern: MatchTypeCasePattern)
+    case AbstractTypeConstructor(tycon: Type, argPatterns: List[MatchTypeCasePattern])
+    case TypeMemberExtractor(typeMemberName: TypeName, capture: Capture)
+
+    def isTypeTest: Boolean =
+      this.isInstanceOf[TypeTest]
+
+    def needsConcreteScrutInVariantPos: Boolean = this match
+      case Capture(_, isWildcard) => !isWildcard
+      case TypeTest(_)            => false
+      case _                      => true
+  end MatchTypeCasePattern
+
+  enum MatchTypeCaseSpec:
+    case SubTypeTest(origMatchCase: Type, pattern: Type, body: Type)
+    case SpeccedPatMat(origMatchCase: HKTypeLambda, captureCount: Int, pattern: MatchTypeCasePattern, body: Type)
+    case LegacyPatMat(origMatchCase: HKTypeLambda)
+    case MissingCaptures(origMatchCase: HKTypeLambda, missing: collection.BitSet)
+
+    def origMatchCase: Type
+  end MatchTypeCaseSpec
+
+  object MatchTypeCaseSpec:
+    def analyze(cas: Type)(using Context): MatchTypeCaseSpec =
+      cas match
+        case cas: HKTypeLambda if !sourceVersion.isAtLeast(SourceVersion.`3.4`) =>
+          // Always apply the legacy algorithm under -source:3.3 and below
+          LegacyPatMat(cas)
+        case cas: HKTypeLambda =>
+          val defn.MatchCase(pat, body) = cas.resultType: @unchecked
+          val missing = checkCapturesPresent(cas, pat)
+          if !missing.isEmpty then
+            MissingCaptures(cas, missing)
+          else
+            val specPattern = tryConvertToSpecPattern(cas, pat)
+            if specPattern != null then
+              SpeccedPatMat(cas, cas.paramNames.size, specPattern, body)
+            else
+              LegacyPatMat(cas)
+        case _ =>
+          val defn.MatchCase(pat, body) = cas: @unchecked
+          SubTypeTest(cas, pat, body)
+    end analyze
+
+    /** Checks that all the captures of the case are present in the case.
+     *
+     *  Sometimes, because of earlier substitutions of an abstract type constructor,
+     *  we can end up with patterns that do not mention all their captures anymore.
+     *  This can happen even when the body still refers to these missing captures.
+     *  In that case, we must always consider the case to be unmatchable, i.e., to
+     *  become `Stuck`.
+     *
+     *  See pos/i12127.scala for an example.
+     */
+    def checkCapturesPresent(cas: HKTypeLambda, pat: Type)(using Context): collection.BitSet =
+      val captureCount = cas.paramNames.size
+      val missing = new mutable.BitSet(captureCount)
+      missing ++= (0 until captureCount)
+      new CheckCapturesPresent(cas).apply(missing, pat)
+
+    private class CheckCapturesPresent(cas: HKTypeLambda)(using Context) extends TypeAccumulator[mutable.BitSet]:
+      def apply(missing: mutable.BitSet, tp: Type): mutable.BitSet = tp match
+        case TypeParamRef(binder, num) if binder eq cas =>
+          missing -= num
+        case _ =>
+          foldOver(missing, tp)
+    end CheckCapturesPresent
+
+    /** Tries to convert a match type case pattern in HKTypeLambda form into a spec'ed `MatchTypeCasePattern`.
+     *
+     *  This method recovers the structure of *legal patterns* as defined in SIP-56
+     *  from the unstructured `HKTypeLambda` coming from the typer.
+     *
+     *  It must adhere to the specification of legal patterns defined at
+     *  https://docs.scala-lang.org/sips/match-types-spec.html#legal-patterns
+     *
+     *  Returns `null` if the pattern in `caseLambda` is a not a legal pattern.
+     */
+    private def tryConvertToSpecPattern(caseLambda: HKTypeLambda, pat: Type)(using Context): MatchTypeCasePattern | Null =
+      var typeParamRefsAccountedFor: Int = 0
+
+      def rec(pat: Type, variance: Int): MatchTypeCasePattern | Null =
+        pat match
+          case pat @ TypeParamRef(binder, num) if binder eq caseLambda =>
+            typeParamRefsAccountedFor += 1
+            MatchTypeCasePattern.Capture(num, isWildcard = pat.paramName.is(WildcardParamName))
+
+          case pat @ AppliedType(tycon: TypeRef, args) if variance == 1 =>
+            val tyconSym = tycon.symbol
+            if tyconSym.isClass then
+              if tyconSym.name.startsWith("Tuple") && defn.isTupleNType(pat) then
+                rec(pat.toNestedPairs, variance)
+              else
+                recArgPatterns(pat) { argPatterns =>
+                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams).exists {
+                    (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
+                  }
+                  MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns, needsConcreteScrut)
+                }
+            else if defn.isCompiletime_S(tyconSym) && args.sizeIs == 1 then
+              val argPattern = rec(args.head, variance)
+              if argPattern == null then
+                null
+              else if argPattern.isTypeTest then
+                MatchTypeCasePattern.TypeTest(pat)
+              else
+                MatchTypeCasePattern.CompileTimeS(argPattern)
+            else
+              tycon.info match
+                case _: RealTypeBounds =>
+                  recAbstractTypeConstructor(pat)
+                case TypeAlias(tl @ HKTypeLambda(onlyParam :: Nil, resType: RefinedType)) =>
+                  /* Unlike for eta-expanded classes, the typer does not automatically
+                   * dealias poly type aliases to refined types. So we have to give them
+                   * a chance here.
+                   * We are quite specific about the shape of type aliases that we are willing
+                   * to dealias this way, because we must not dealias arbitrary type constructors
+                   * that could refine the bounds of the captures; those would amount of
+                   * type-test + capture combos, which are out of the specced match types.
+                   */
+                  rec(pat.superType, variance)
+                case _ =>
+                  null
+
+          case pat @ AppliedType(tycon: TypeParamRef, _) if variance == 1 =>
+            recAbstractTypeConstructor(pat)
+
+          case pat @ RefinedType(parent, refinedName: TypeName, TypeAlias(alias @ TypeParamRef(binder, num)))
+              if variance == 1 && (binder eq caseLambda) =>
+            parent.member(refinedName) match
+              case refinedMember: SingleDenotation if refinedMember.exists =>
+                // Check that the bounds of the capture contain the bounds of the inherited member
+                val refinedMemberBounds = refinedMember.info
+                val captureBounds = caseLambda.paramInfos(num)
+                if captureBounds.contains(refinedMemberBounds) then
+                  /* In this case, we know that any member we eventually find during reduction
+                   * will have bounds that fit in the bounds of the capture. Therefore, no
+                   * type-test + capture combo is necessary, and we can apply the specced match types.
+                   */
+                  val capture = rec(alias, variance = 0).asInstanceOf[MatchTypeCasePattern.Capture]
+                  MatchTypeCasePattern.TypeMemberExtractor(refinedName, capture)
+                else
+                  // Otherwise, a type-test + capture combo might be necessary, and we are out of spec
+                  null
+              case _ =>
+                // If the member does not refine a member of the `parent`, we are out of spec
+                null
+
+          case _ =>
+            MatchTypeCasePattern.TypeTest(pat)
+      end rec
+
+      def recAbstractTypeConstructor(pat: AppliedType): MatchTypeCasePattern | Null =
+        recArgPatterns(pat) { argPatterns =>
+          MatchTypeCasePattern.AbstractTypeConstructor(pat.tycon, argPatterns)
+        }
+      end recAbstractTypeConstructor
+
+      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCasePattern | Null): MatchTypeCasePattern | Null =
+        val AppliedType(tycon, args) = pat
+        val tparams = tycon.typeParams
+        val argPatterns = args.zip(tparams).map { (arg, tparam) =>
+          rec(arg, tparam.paramVarianceSign)
+        }
+        if argPatterns.exists(_ == null) then
+          null
+        else
+          val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not null
+          if argPatterns1.forall(_.isTypeTest) then
+            MatchTypeCasePattern.TypeTest(pat)
+          else
+            whenNotTypeTest(argPatterns1)
+      end recArgPatterns
+
+      val result = rec(pat, variance = 1)
+      if typeParamRefsAccountedFor == caseLambda.paramNames.size then result
+      else null
+    end tryConvertToSpecPattern
+  end MatchTypeCaseSpec
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
 

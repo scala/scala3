@@ -154,7 +154,11 @@ object TypeTestsCasts {
 
           case x =>
             // always false test warnings are emitted elsewhere
-            TypeComparer.provablyDisjoint(x, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
+            // provablyDisjoint wants fully applied types as input; because we're in the middle of erasure, we sometimes get raw types here
+            val xApplied =
+              val tparams = x.typeParams
+              if tparams.isEmpty then x else x.appliedTo(tparams.map(_ => WildcardType))
+            TypeComparer.provablyDisjoint(xApplied, tpe.derivedAppliedType(tycon, targs.map(_ => WildcardType)))
             || typeArgsDeterminable(X, tpe)
             ||| i"its type arguments can't be determined from $X"
         }
