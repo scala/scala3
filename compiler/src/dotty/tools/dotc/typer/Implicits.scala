@@ -1569,19 +1569,18 @@ trait Implicits:
 
         /** Does candidate `cand` come too late for it to be considered as an
          *  eligible candidate? This is the case if `cand` appears in the same
-         *  scope as a given definition enclosing the search point (with no
-         *  class methods between the given definition and the search point)
-         *  and `cand` comes later in the source or coincides with that given
-         *  definition.
+         *  scope as a given definition of the form `given ... = ...` that
+         *  encloses the search point and `cand` comes later in the source or
+         *  coincides with that given definition.
          */
         def comesTooLate(cand: Candidate): Boolean =
           val candSym = cand.ref.symbol
           def candSucceedsGiven(sym: Symbol): Boolean =
-            if sym.owner == candSym.owner then
-              if sym.is(ModuleClass) then candSucceedsGiven(sym.sourceModule)
-              else sym.is(Given) && sym.span.exists && sym.span.start <= candSym.span.start
-            else if sym.owner.isClass then false
-            else candSucceedsGiven(sym.owner)
+            val owner = sym.owner
+            if owner == candSym.owner then
+              sym.is(GivenVal) && sym.span.exists && sym.span.start <= candSym.span.start
+            else if owner.isClass then false
+            else candSucceedsGiven(owner)
 
           ctx.isTyper
           && !candSym.isOneOf(TermParamOrAccessor | Synthetic)
@@ -1596,7 +1595,7 @@ trait Implicits:
 
         def checkResolutionChange(result: SearchResult) =
           if (eligible ne preEligible)
-              && !Feature.enabled(Feature.avoidLoopingGivens)
+              && !Feature.enabled(Feature.givenLoopPrevention)
           then
             val prevResult = searchImplicit(preEligible, contextual)
             prevResult match
@@ -1617,17 +1616,20 @@ trait Implicits:
                   case result: SearchSuccess if prevResult.ref frozen_=:= result.ref =>
                     // OK
                   case _ =>
-                    report.error(
-                      em"""Warning: result of implicit search for $pt will change.
+                    val msg =
+                      em"""Result of implicit search for $pt will change.
                           |Current result ${showResult(prevResult)} will be no longer eligible
                           |  because it is not defined before the search position.
                           |Result with new rules: ${showResult(result)}.
-                          |To opt into the new rules, use the `experimental.avoidLoopingGivens` language import.
+                          |To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
                           |
                           |To fix the problem without the language import, you could try one of the following:
+                          |  - use a `given ... with` clause as the enclosing given,
                           |  - rearrange definitions so that ${showResult(prevResult)} comes earlier,
-                          |  - use an explicit $remedy.""",
-                      srcPos)
+                          |  - use an explicit $remedy."""
+                    if sourceVersion.isAtLeast(SourceVersion.`3.5`)
+                    then report.error(msg, srcPos)
+                    else report.warning(msg.append("\nThis will be an error in Scala 3.5 and later."), srcPos)
               case _ =>
             prevResult
           else result

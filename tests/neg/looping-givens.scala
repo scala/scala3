@@ -1,3 +1,5 @@
+//> using options -Xfatal-warnings
+
 class A
 class B
 

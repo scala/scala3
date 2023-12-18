@@ -1,19 +1,5 @@
--- Error: tests/neg/i7294-a.scala:6:10 ---------------------------------------------------------------------------------
-6 |  case x: T => x.g(10) // error // error
-  |          ^
-  |          Warning: result of implicit search for scala.reflect.TypeTest[Nothing, T] will change.
-  |          Current result foo.i7294-a$package.f will be no longer eligible
-  |            because it is not defined before the search position.
-  |          Result with new rules: No Matching Implicit.
-  |          To opt into the new rules, use the `experimental.avoidLoopingGivens` language import.
-  |
-  |          To fix the problem without the language import, you could try one of the following:
-  |            - rearrange definitions so that foo.i7294-a$package.f comes earlier,
-  |            - use an explicit argument.
-  |
-  |          where:    T is a type in given instance f with bounds <: foo.Foo
--- [E007] Type Mismatch Error: tests/neg/i7294-a.scala:6:18 ------------------------------------------------------------
-6 |  case x: T => x.g(10) // error // error
+-- [E007] Type Mismatch Error: tests/neg/i7294-a.scala:8:18 ------------------------------------------------------------
+8 |  case x: T => x.g(10) // error // error
   |               ^^^^^^^
   |               Found:    Any
   |               Required: T
@@ -21,3 +7,19 @@
   |               where:    T is a type in given instance f with bounds <: foo.Foo
   |
   | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i7294-a.scala:8:10 ---------------------------------------------------------------------------------
+8 |  case x: T => x.g(10) // error // error
+  |          ^
+  |          Result of implicit search for scala.reflect.TypeTest[Nothing, T] will change.
+  |          Current result foo.i7294-a$package.f will be no longer eligible
+  |            because it is not defined before the search position.
+  |          Result with new rules: No Matching Implicit.
+  |          To opt into the new rules, use the `experimental.givenLoopPrevention` language import.
+  |
+  |          To fix the problem without the language import, you could try one of the following:
+  |            - use a `given ... with` clause as the enclosing given,
+  |            - rearrange definitions so that foo.i7294-a$package.f comes earlier,
+  |            - use an explicit argument.
+  |          This will be an error in Scala 3.5 and later.
+  |
+  |          where:    T is a type in given instance f with bounds <: foo.Foo
