@@ -4,10 +4,10 @@ import scala.language.implicitConversions
 
 object Test1:
   given c: Conversion[ String, Int ] with
-    def apply(from: String): Int = from.toInt   // was error, now avoided
+    def apply(from: String): Int = from.toInt   // error
 
 object Test2:
-  given c: Conversion[ String, Int ] = _.toInt   // now avoided, was loop not detected, could be used as a fallback to avoid the warning.
+  given c: Conversion[ String, Int ] = _.toInt   // error
 
 object Prices {
   opaque type Price = BigDecimal

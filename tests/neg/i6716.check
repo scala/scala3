@@ -1,12 +1,12 @@
 -- Error: tests/neg/i6716.scala:12:39 ----------------------------------------------------------------------------------
 12 |  given Monad[Bar] = summon[Monad[Foo]] // error
    |                                       ^
-   |                                       Warning: result of implicit search for Monad[Foo] will change.
-   |                                       Current result Bar.given_Monad_Bar will be no longer eligible
-   |                                         because it is not defined before the search position.
-   |                                       Result with new rules: Foo.given_Monad_Foo.
-   |                                       To opt into the new rules, use the `avoidLoopingGivens` language import,
+   |                           Warning: result of implicit search for Monad[Foo] will change.
+   |                           Current result Bar.given_Monad_Bar will be no longer eligible
+   |                             because it is not defined before the search position.
+   |                           Result with new rules: Foo.given_Monad_Foo.
+   |                           To opt into the new rules, use the `experimental.avoidLoopingGivens` language import.
    |
-   |                                       To fix the problem you could try one of the following:
-   |                                         - rearrange definitions,
-   |                                         - use an explicit argument.
+   |                           To fix the problem without the language import, you could try one of the following:
+   |                             - rearrange definitions so that Bar.given_Monad_Bar comes earlier,
+   |                             - use an explicit argument.
