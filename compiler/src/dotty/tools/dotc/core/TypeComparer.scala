@@ -2808,8 +2808,22 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               val optGadtBounds = gadtBounds(sym)
               if optGadtBounds != null then disjointnessBoundary(optGadtBounds.hi)
               else disjointnessBoundary(tp.superTypeNormalized)
-      case tp @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
-        tp
+      case tp @ AppliedType(tycon: TypeRef, targs) if tycon.symbol.isClass =>
+        /* The theory says we should just return `tp` here. However, due to how
+         * baseType works (called from `isBaseTypeWithDisjointArguments`),
+         * it can create infinitely growing towers of `AnnotatedType`s. This
+         * defeats the infinite recursion detection with the `pending` set.
+         * Therefore, we eagerly remove all non-refining annotations. We are
+         * allowed to do that because they don't affect subtyping (so cannot
+         * create an ill-kinded `AppliedType`) and would anyway be stripped
+         * later on by the recursive calls to `provablyDisjoint`, though
+         * `disjointnessBoundary`).
+         * See tests/pos/provably-disjoint-infinite-recursion-1.scala for an example.
+         */
+        tp.derivedAppliedType(
+          tycon,
+          targs.mapConserve(_.stripAnnots(keep = _.symbol.derivesFrom(defn.RefiningAnnotationClass)))
+        )
       case tp: TermRef =>
         val isEnumValue = tp.termSymbol.isAllOf(EnumCase, butNot = JavaDefined)
         if isEnumValue then tp
