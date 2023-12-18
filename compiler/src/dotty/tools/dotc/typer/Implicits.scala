@@ -1587,46 +1587,54 @@ trait Implicits:
           && candSucceedsGiven(ctx.owner)
         end comesTooLate
 
-        val eligible = if contextual then preEligible.filterNot(comesTooLate) else preEligible
+        val eligible = // the eligible candidates that come before the search point
+          if contextual && sourceVersion.isAtLeast(SourceVersion.`3.4`)
+          then preEligible.filterNot(comesTooLate)
+          else preEligible
 
         def checkResolutionChange(result: SearchResult) =
           if (eligible ne preEligible)
               && !Feature.enabled(Feature.avoidLoopingGivens)
-          then searchImplicit(preEligible.diff(eligible), contextual) match
-            case prevResult: SearchSuccess =>
-              def remedy = pt match
-                case _: SelectionProto =>
-                  "conversion,\n  - use an import to get extension method into scope"
-                case _: ViewProto =>
-                  "conversion"
-                case _ =>
-                  "argument"
+          then
+            val prevResult = searchImplicit(preEligible, contextual)
+            prevResult match
+              case prevResult: SearchSuccess =>
+                def remedy = pt match
+                  case _: SelectionProto =>
+                    "conversion,\n  - use an import to get extension method into scope"
+                  case _: ViewProto =>
+                    "conversion"
+                  case _ =>
+                    "argument"
 
-              def showResult(r: SearchResult) = r match
-                case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
-                case r => r.show
+                def showResult(r: SearchResult) = r match
+                  case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
+                  case r => r.show
 
-              result match
-                case result: SearchSuccess if prevResult.ref frozen_=:= result.ref =>
-                  // OK
-                case _ =>
-                  report.error(
-                    em"""Warning: result of implicit search for $pt will change.
-                        |Current result ${showResult(prevResult)} will be no longer eligible
-                        |  because it is not defined before the search position.
-                        |Result with new rules: ${showResult(result)}.
-                        |To opt into the new rules, use the `avoidLoopingGivens` language import,
-                        |
-                        |To fix the problem you could try one of the following:
-                        |  - rearrange definitions,
-                        |  - use an explicit $remedy.""",
-                    srcPos)
-            case _ =>
+                result match
+                  case result: SearchSuccess if prevResult.ref frozen_=:= result.ref =>
+                    // OK
+                  case _ =>
+                    report.error(
+                      em"""Warning: result of implicit search for $pt will change.
+                          |Current result ${showResult(prevResult)} will be no longer eligible
+                          |  because it is not defined before the search position.
+                          |Result with new rules: ${showResult(result)}.
+                          |To opt into the new rules, use the `experimental.avoidLoopingGivens` language import.
+                          |
+                          |To fix the problem without the language import, you could try one of the following:
+                          |  - rearrange definitions so that ${showResult(prevResult)} comes earlier,
+                          |  - use an explicit $remedy.""",
+                      srcPos)
+              case _ =>
+            prevResult
+          else result
         end checkResolutionChange
 
-        searchImplicit(eligible, contextual) match
+        val result = searchImplicit(eligible, contextual)
+        result match
           case result: SearchSuccess =>
-            result
+            checkResolutionChange(result)
           case failure: SearchFailure =>
             failure.reason match
               case _: AmbiguousImplicits => failure
@@ -1641,15 +1649,14 @@ trait Implicits:
                     else ctxImplicits.nn.outerImplicits: ContextualImplicits | Null
                       // !!! Dotty problem: without the ContextualImplicits | Null type ascription
                       // we get a Ycheck failure after arrayConstructors due to "Types differ"
-                  val result = searchImplicit(newCtxImplicits).recoverWith:
-                    failure2 => failure2.reason match
-                      case _: AmbiguousImplicits => failure2
-                      case _ =>
-                        reason match
-                          case (_: DivergingImplicit) => failure
-                          case _ => List(failure, failure2).maxBy(_.tree.treeSize)
-                  checkResolutionChange(result)
-                  result
+                  checkResolutionChange:
+                    searchImplicit(newCtxImplicits).recoverWith:
+                      failure2 => failure2.reason match
+                        case _: AmbiguousImplicits => failure2
+                        case _ =>
+                          reason match
+                            case (_: DivergingImplicit) => failure
+                            case _ => List(failure, failure2).maxBy(_.tree.treeSize)
                 else failure
     end searchImplicit
 
