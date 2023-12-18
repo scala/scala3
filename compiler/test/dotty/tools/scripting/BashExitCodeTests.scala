@@ -7,6 +7,7 @@ import scala.language.unsafeNulls
 import java.nio.file.Files, java.nio.charset.StandardCharsets.UTF_8
 import org.junit.{ After, Test }
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
 
 import ScriptTestEnv.*
@@ -19,6 +20,7 @@ class BashExitCodeTests:
 
   /** Verify the exit code of running `cmd args*`. */
   def verifyExit(cmd: String, args: String*)(expectedExitCode: Int): Unit =
+    assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val (validTest, exitCode, stdout, stderr) = bashCommand((cmd +: args).mkString(" "))
     if verifyValid(validTest) then
       assertEquals({
