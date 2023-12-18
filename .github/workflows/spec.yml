@@ -29,7 +29,8 @@ jobs:
           ruby-version: '2.7'
       - name: Install required gems
         run: |
-          gem update --system
+          gem install "rubygems-update:<3.5" --no-document
+          update_rubygems
           gem install sass-embedded -v 1.58.0
           gem install bundler:1.17.2 jekyll
           bundle install
