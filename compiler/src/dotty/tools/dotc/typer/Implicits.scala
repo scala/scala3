@@ -1589,19 +1589,40 @@ trait Implicits:
 
         val eligible = if contextual then preEligible.filterNot(comesTooLate) else preEligible
 
-        def checkResolutionChange(result: SearchResult) = result match
-          case result: SearchSuccess
-          if (eligible ne preEligible) && !sourceVersion.isAtLeast(SourceVersion.`future`) =>
-            searchImplicit(preEligible.diff(eligible), contextual) match
-              case prevResult: SearchSuccess =>
-                report.error(
-                  em"""Warning: result of implicit search for $pt will change.
-                      |current result: ${prevResult.ref.symbol.showLocated}
-                      |result with -source future: ${result.ref.symbol.showLocated}""",
-                  srcPos
-                )
-              case _ =>
-          case _ =>
+        def checkResolutionChange(result: SearchResult) =
+          if (eligible ne preEligible)
+              && !Feature.enabled(Feature.avoidLoopingGivens)
+          then searchImplicit(preEligible.diff(eligible), contextual) match
+            case prevResult: SearchSuccess =>
+              def remedy = pt match
+                case _: SelectionProto =>
+                  "conversion,\n  - use an import to get extension method into scope"
+                case _: ViewProto =>
+                  "conversion"
+                case _ =>
+                  "argument"
+
+              def showResult(r: SearchResult) = r match
+                case r: SearchSuccess => ctx.printer.toTextRef(r.ref).show
+                case r => r.show
+
+              result match
+                case result: SearchSuccess if prevResult.ref frozen_=:= result.ref =>
+                  // OK
+                case _ =>
+                  report.error(
+                    em"""Warning: result of implicit search for $pt will change.
+                        |Current result ${showResult(prevResult)} will be no longer eligible
+                        |  because it is not defined before the search position.
+                        |Result with new rules: ${showResult(result)}.
+                        |To opt into the new rules, use the `avoidLoopingGivens` language import,
+                        |
+                        |To fix the problem you could try one of the following:
+                        |  - rearrange definitions,
+                        |  - use an explicit $remedy.""",
+                    srcPos)
+            case _ =>
+        end checkResolutionChange
 
         searchImplicit(eligible, contextual) match
           case result: SearchSuccess =>
