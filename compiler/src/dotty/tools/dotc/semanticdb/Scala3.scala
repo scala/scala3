@@ -77,9 +77,6 @@ object Scala3:
   type SemanticSymbol = Symbol | FakeSymbol
 
   given SemanticSymbolOps : AnyRef with
-    import SymbolOps.*
-    import StringOps.*
-
     extension (sym: SemanticSymbol)
       def name(using Context): Name = sym match
         case s: Symbol => s.name
