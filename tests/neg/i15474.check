@@ -1,6 +1,12 @@
 -- Error: tests/neg/i15474.scala:16:56 ---------------------------------------------------------------------------------
 16 |    given Ordering[Price] = summon[Ordering[BigDecimal]] // error
    |                                                        ^
-   |                                        Warning: result of implicit search for Ordering[BigDecimal] will change.
-   |                                        current result: given instance given_Ordering_Price in object Price
-   |                                        result with -source future: object BigDecimal in object Ordering
+   |                                     Warning: result of implicit search for Ordering[BigDecimal] will change.
+   |                                     Current result Prices.Price.given_Ordering_Price will be no longer eligible
+   |                                       because it is not defined before the search position.
+   |                                     Result with new rules: scala.math.Ordering.BigDecimal.
+   |                                     To opt into the new rules, use the `avoidLoopingGivens` language import,
+   |
+   |                                     To fix the problem you could try one of the following:
+   |                                       - rearrange definitions,
+   |                                       - use an explicit argument.

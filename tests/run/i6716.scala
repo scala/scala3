@@ -1,6 +1,6 @@
 //> using options -Xfatal-warnings
 
-import language.future
+import scala.language.experimental.avoidLoopingGivens
 
 trait Monad[T]:
   def id: String
@@ -11,7 +11,7 @@ object Foo {
 
 opaque type Bar = Foo
 object Bar {
-  given Monad[Bar] = summon[Monad[Foo]] // error
+  given Monad[Bar] = summon[Monad[Foo]] // was error fixed by avoidLoopingGivens
 }
 
 object Test extends App {

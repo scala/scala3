@@ -1,6 +1,6 @@
 //> using options -Xfatal-warnings
 import scala.language.implicitConversions
-import language.future
+import scala.language.experimental.avoidLoopingGivens
 
 object Test1:
   given c: Conversion[ String, Int ] with

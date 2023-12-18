@@ -2,5 +2,11 @@
 12 |  given Monad[Bar] = summon[Monad[Foo]] // error
    |                                       ^
    |                                       Warning: result of implicit search for Monad[Foo] will change.
-   |                                       current result: given instance given_Monad_Bar in object Bar
-   |                                       result with -source future: object given_Monad_Foo in object Foo
+   |                                       Current result Bar.given_Monad_Bar will be no longer eligible
+   |                                         because it is not defined before the search position.
+   |                                       Result with new rules: Foo.given_Monad_Foo.
+   |                                       To opt into the new rules, use the `avoidLoopingGivens` language import,
+   |
+   |                                       To fix the problem you could try one of the following:
+   |                                         - rearrange definitions,
+   |                                         - use an explicit argument.

@@ -1781,6 +1781,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeRepr
 
     given TypeReprMethods: TypeReprMethods with
+      import SymbolMethods.*
+
       extension (self: TypeRepr)
 
         def show(using printer: Printer[TypeRepr]): String = printer.show(self)
@@ -2608,6 +2610,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Symbol
 
     given SymbolMethods: SymbolMethods with
+      import FlagsMethods.*
+
       extension (self: Symbol)
         def owner: Symbol = self.denot.owner
         def maybeOwner: Symbol = self.denot.maybeOwner
