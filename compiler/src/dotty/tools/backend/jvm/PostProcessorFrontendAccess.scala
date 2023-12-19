@@ -8,12 +8,13 @@ import java.util.{Collection => JCollection, Map => JMap}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
+import scala.compiletime.uninitialized
 
 /**
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess {
+sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackendInterface) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
@@ -25,10 +26,27 @@ sealed abstract class PostProcessorFrontendAccess {
   def getEntryPoints: List[String]
 
   private val frontendLock: AnyRef = new Object()
-  inline final def frontendSynch[T](inline x: T): T = frontendLock.synchronized(x)
+  inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
 }
 
 object PostProcessorFrontendAccess {
+  /* A container for value with lazy initialization synchronized on compiler frontend
+   * Used for sharing variables requiring a Context for initialization, between different threads
+   * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
+   */
+  class Lazy[T](init: Context ?=> T)(using frontendAccess: PostProcessorFrontendAccess) {
+    @volatile private var isInit: Boolean = false
+    private var v: T = uninitialized
+
+    def get: T =
+      if isInit then v
+      else frontendAccess.frontendSynch {
+        if !isInit then v = init
+        isInit = true
+        v
+    }
+  }
+
   sealed trait CompilerSettings {
     def debug: Boolean
     def target: String // javaOutputVersion
@@ -79,7 +97,7 @@ object PostProcessorFrontendAccess {
   }
 
 
-  class Impl[I <: DottyBackendInterface](val int: I, entryPoints: HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess {
+  class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess(int) {
     lazy val compilerSettings: CompilerSettings = buildCompilerSettings()
 
     private def buildCompilerSettings(): CompilerSettings = new CompilerSettings {
@@ -125,7 +143,7 @@ object PostProcessorFrontendAccess {
        else local.nn
      }
 
-    object directBackendReporting extends BackendReporting {
+    override object directBackendReporting extends BackendReporting {
       def error(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.error(message, position))
       def warning(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.warning(message, position))
       def log(message: String): Unit = frontendSynch(report.log(message))
