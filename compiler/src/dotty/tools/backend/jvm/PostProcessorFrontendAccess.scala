@@ -27,6 +27,7 @@ sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackend
 
   private val frontendLock: AnyRef = new Object()
   inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
+  inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
 }
 
 object PostProcessorFrontendAccess {
@@ -59,6 +60,7 @@ object PostProcessorFrontendAccess {
     def jarCompressionLevel: Int
     def backendParallelism: Int
     def backendMaxWorkerQueue: Option[Int]
+    def outputOnlyTasty: Boolean
   }
 
   sealed trait BackendReporting {
@@ -97,16 +99,16 @@ object PostProcessorFrontendAccess {
   }
 
 
-  class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess(int) {
-    lazy val compilerSettings: CompilerSettings = buildCompilerSettings()
+  class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess(int) {
+    override def compilerSettings: CompilerSettings = _compilerSettings.get
+    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
 
-    private def buildCompilerSettings(): CompilerSettings = new CompilerSettings {
+    private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
-         def valueSetByUser: Option[T] =
-           Option(s.value).filter(_ != s.default)
-      def s = ctx.settings
+         def valueSetByUser: Option[T] = Option(s.value).filter(_ != s.default)
+      inline def s = ctx.settings
 
-      lazy val target =
+      override val target =
         val releaseValue = Option(s.javaOutputVersion.value).filter(_.nonEmpty)
         val targetValue = Option(s.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
         (releaseValue, targetValue) match
@@ -117,13 +119,14 @@ object PostProcessorFrontendAccess {
             release
           case (None, None) => "8" // least supported version by default
 
-      lazy val debug: Boolean = ctx.debug
-      lazy val dumpClassesDirectory: Option[String] = s.Ydumpclasses.valueSetByUser
-      lazy val outputDirectory: AbstractFile = s.outputDir.value
-      lazy val mainClass: Option[String] = s.XmainClass.valueSetByUser
-      lazy val jarCompressionLevel: Int = s.YjarCompressionLevel.value
-      lazy val backendParallelism: Int = s.YbackendParallelism.value
-      lazy val backendMaxWorkerQueue: Option[Int] = s.YbackendWorkerQueue.valueSetByUser
+      override val debug: Boolean = ctx.debug
+      override val dumpClassesDirectory: Option[String] = s.Ydumpclasses.valueSetByUser
+      override val outputDirectory: AbstractFile = s.outputDir.value
+      override val mainClass: Option[String] = s.XmainClass.valueSetByUser
+      override val jarCompressionLevel: Int = s.YjarCompressionLevel.value
+      override val backendParallelism: Int = s.YbackendParallelism.value
+      override val backendMaxWorkerQueue: Option[Int] = s.YbackendWorkerQueue.valueSetByUser
+      override val outputOnlyTasty: Boolean = s.YoutputOnlyTasty.value
      }
 
      private lazy val localReporter = new ThreadLocal[BackendReporting]

@@ -16,9 +16,8 @@ import scala.tools.asm.tree.ClassNode
  */
 class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes: BTypes) {
   self =>
-  import bTypes.{classBTypeFromInternalName, int}
+  import bTypes.{classBTypeFromInternalName}
   import frontendAccess.{backendReporting, compilerSettings}
-  import int.given
 
   val backendUtils = new BackendUtils(this)
   val classfileWriters = new ClassfileWriters(frontendAccess)
@@ -27,7 +26,7 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
   type ClassnamePosition = (String, SourcePosition)
   private val caseInsensitively = new ConcurrentHashMap[String, ClassnamePosition]
 
-  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !ctx.settings.YoutputOnlyTasty.value then {
+  def sendToDisk(clazz: GeneratedClass, sourceFile: AbstractFile): Unit = if !compilerSettings.outputOnlyTasty then {
     val classNode = clazz.classNode
     val internalName = classNode.name.nn
     val bytes =

@@ -59,9 +59,7 @@ abstract class CoreBTypesFromSymbols[I <: DottyBackendInterface] extends CoreBTy
   import bTypes.*
   import DottyBackendInterface.*
   import dotty.tools.dotc.core.Contexts.Context
-
-  inline def perRunLazy[T](init: Context ?=> T): Lazy[T] = new Lazy(init)(using frontendAccess)
-
+  import frontendAccess.perRunLazy
   /**
    * Maps primitive types to their corresponding PrimitiveBType. The map is defined lexically above
    * the first use of `classBTypeFromSymbol` because that method looks at the map.
