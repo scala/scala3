@@ -38,5 +38,6 @@ object MigrationVersion:
   val ImportWildcard = MigrationVersion(future, future)
   val ImportRename = MigrationVersion(future, future)
   val ParameterEnclosedByParenthesis = MigrationVersion(future, future)
+  val XmlLiteral = MigrationVersion(future, future)
 
 end MigrationVersion

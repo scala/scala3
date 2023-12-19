@@ -277,7 +277,7 @@ object MarkupParsers {
      *                | xmlTag1 '/' '>'
      */
     def element: Tree = {
-      val start = curOffset
+      val start = curOffset // FIXME should be `curOffset - 1` (scalatest and tests/neg/i19100.scala must be updated)
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
@@ -435,7 +435,7 @@ object MarkupParsers {
      *                  | Name [S] '/' '>'
      */
     def xPattern: Tree = {
-      var start = curOffset
+      var start = curOffset // FIXME should be `curOffset - 1` (scalatest and tests/neg/i19100.scala must be updated)
       val qname = xName
       debugLastStartElement = (start, qname) :: debugLastStartElement
       xSpaceOpt()

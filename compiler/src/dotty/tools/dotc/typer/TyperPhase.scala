@@ -12,6 +12,8 @@ import parsing.{Parser => ParserPhase}
 import config.Printers.typr
 import inlines.PrepareInlineable
 import util.Stats.*
+import dotty.tools.dotc.config.Feature
+import dotty.tools.dotc.config.SourceVersion
 
 /**
  *
@@ -83,7 +85,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
 
     ctx.base.parserPhase match {
       case p: ParserPhase =>
-        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
+        if p.firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists && Feature.sourceVersion == SourceVersion.future then
           report.error(
             """To support XML literals, your project must depend on scala-xml.
               |See https://github.com/scala/scala-xml for more information.""".stripMargin,
