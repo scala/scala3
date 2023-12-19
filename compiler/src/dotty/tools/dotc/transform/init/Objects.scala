@@ -1374,8 +1374,6 @@ object Objects:
               val toSeqRes = call(resToMatch, selectors.last, Nil, resultTp, superType = NoType, needResolve = true)
               val toSeqResTp = resultTp.memberInfo(selectors.last).finalResultType
               evalSeqPatterns(toSeqRes, toSeqResTp, elemTp, seqPats)
-          case TupleSeqMatch(getTp) =>
-            ???
 
           // distribute unapply to patterns
           case BooleanMatch() =>

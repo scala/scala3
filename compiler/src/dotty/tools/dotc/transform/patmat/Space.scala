@@ -368,7 +368,6 @@ object SpaceEngine {
         case _: FixedArityExtractor  => Prod(erase(pat.tpe.stripAnnots), funRef, pats.map(project))
         case SeqMatch(getTp, elemTp) => unapplySeqIsh(getTp, elemTp)
         case ProdSeqMatch(getTp)     => unapplySeqIsh(getTp, NoType)
-        case TupleSeqMatch(getTp)    => Prod(erase(pat.tpe.stripAnnots), funRef, pats.map(project))
         case x @ NoExtractor         => unreachable(x)
 
     case Typed(pat @ UnApply(_, _, _), _) =>
@@ -548,7 +547,6 @@ object SpaceEngine {
       case ProdSeqMatch(getTp)     =>
         val sels = productSeqSelectors(getTp.orElse(resTp), argLen)
         sels.init :+ defn.ListType.appliedTo(sels.last)
-      case TupleSeqMatch(getTp)    => tupleComponentTypes2(getTp.orElse(resTp))
 
       case x @ NoExtractor => unreachable(x)
 

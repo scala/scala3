@@ -147,7 +147,6 @@ object Applications {
       case TupleMatch(getTp)       => i"TupleMatch($getTp)"
       case SeqMatch(getTp, elemTp) => i"SeqMatch($getTp, $elemTp)"
       case ProdSeqMatch(getTp)     => i"ProdSeqMatch($getTp)"
-      case TupleSeqMatch(getTp)    => i"TupleSeqMatch($getTp)"
       case NoExtractor             => i"NoExtractor"
 
   case object NoExtractor extends Extractor
@@ -161,7 +160,6 @@ object Applications {
   sealed trait VariadicExtractor extends Extractor
   case class SeqMatch(getTp: Type, elemTp: Type) extends VariadicExtractor
   case class ProdSeqMatch(getTp: Type) extends VariadicExtractor
-  case class TupleSeqMatch(getTp: Type) extends VariadicExtractor
 
   def extractorKind(resTp: Type, name: Name, numArgs: Int)(using Context): Extractor =
     def fixedArity: Extractor =
@@ -182,7 +180,6 @@ object Applications {
       val elemTp = unapplySeqTypeElemTp(tp)
       if elemTp.exists then SeqMatch(getTp, elemTp)
       else if isProductSeqMatch(tp, numArgs) then ProdSeqMatch(getTp)
-      else if tp.derivesFrom(defn.NonEmptyTupleClass) then TupleSeqMatch(getTp)
       else if !isGet && isGetMatch(resTp) then variadic(extractorMemberType(resTp, nme.get), isGet = true)
       else NoExtractor
 
@@ -208,7 +205,6 @@ object Applications {
 
       case SeqMatch(getTp, elemTp) => args.map(Function.const(elemTp))
       case ProdSeqMatch(getTp)     => productSeqSelectors(getTp.orElse(unapplyResult), args.length)
-      case TupleSeqMatch(getTp)    => tupleComponentTypes2(getTp.orElse(unapplyResult))
 
       case NoExtractor =>
         if unapplyName == nme.unapply

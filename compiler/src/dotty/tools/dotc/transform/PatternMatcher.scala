@@ -382,10 +382,6 @@ object PatternMatcher {
           case ProdSeqMatch(getTp) =>
             maybeGet(getTp): (tp, res) =>
               unapplyProductSeqPlan(res, args, productArity(tp))
-          case TupleSeqMatch(getTp) =>
-            maybeGet(getTp): (tp, res) =>
-              val components = tupleComponentTypes2(tp).indices.toList.map(tupleApp(_, ref(res)))
-              matchArgsPlan(components, args, onSuccess)
 
           case x @ NoExtractor => unreachable(x)
       }
