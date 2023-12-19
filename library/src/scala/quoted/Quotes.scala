@@ -2442,10 +2442,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        // TODO:deprecate in 3.4 and stabilize `erasedArgs` and `hasErasedArgs`.
-        // @deprecated("Use `hasErasedArgs`","3.4")
+        @deprecated("Use `hasErasedArgs` and `erasedArgs`", "3.4")
         def isErased: Boolean
-
         /** List of `erased` flags for each parameter of the clause */
         @experimental
         def erasedArgs: List[Boolean]
@@ -3226,10 +3224,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this the type of using parameter clause `(implicit X1, ..., Xn)`, `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
         /** Is this the type of erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
-        // TODO:deprecate in 3.4 and stabilize `erasedParams` and `hasErasedParams`.
-        // @deprecated("Use `hasErasedParams`","3.4")
+        @deprecated("Use `hasErasedParams` and `erasedParams`", "3.4")
         def isErased: Boolean
-
         /** List of `erased` flags for each parameters of the clause */
         @experimental
         def erasedParams: List[Boolean]
@@ -4364,7 +4360,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *   -  ...
       *   -  Nth element is `FunctionN`
       */
-      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments","3.4")
+      @deprecated("Use overload of `FunctionClass` with 1 or 2 arguments", "3.4")
       def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
       /** Class symbol of a function class `scala.FunctionN`.
