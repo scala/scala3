@@ -27,6 +27,7 @@ sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackend
 
   private val frontendLock: AnyRef = new Object()
   inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
+  inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
   inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
 }
 
