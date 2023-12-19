@@ -46,8 +46,10 @@ class YCheckPositions extends Phase {
                   sources = old
                 case tree @ Inlined(call, bindings, expansion) =>
                   // bindings.foreach(traverse(_)) // TODO check inline proxies (see tests/tun/lst)
-                  sources = call.symbol.source :: sources
-                  if (!isMacro(call)) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
+                  sources = call.symbol.topLevelClass.source :: sources
+                  if !isMacro(call) // FIXME macro implementations can drop Inlined nodes. We should reinsert them after macro expansion based on the positions of the trees
+                    && !isBootstrappedPredefWithPatchedMethods(call) // FIXME The patched symbol has a different source as the definition of Predef. Solution: define them directly in `Predef`s TASTy and do not patch (see #19231).
+                  then
                     traverse(expansion)(using inlineContext(tree).withSource(sources.head))
                   sources = sources.tail
                 case _ => traverseChildren(tree)
@@ -59,12 +61,17 @@ class YCheckPositions extends Phase {
       case _ =>
     }
 
+  private def isBootstrappedPredefWithPatchedMethods(call: Tree)(using Context) =
+    val sym = call.symbol
+    (sym.is(Inline) && sym.owner == defn.ScalaPredefModuleClass && sym.owner.is(Scala2Tasty))
+    || (sym == defn.ScalaPredefModuleClass && sym.is(Scala2Tasty))
+
   private def isMacro(call: Tree)(using Context) =
     call.symbol.is(Macro) ||
-        (call.symbol.isClass && call.tpe.derivesFrom(defn.MacroAnnotationClass)) ||
-    // In 3.0-3.3, the call of a macro after typer is encoded as a Select while other inlines are Ident.
-    // In those versions we kept the reference to the top-level class instead of the methods.
-    (!(ctx.phase <= postTyperPhase) && call.symbol.isClass && call.isInstanceOf[Select])
+    (call.symbol.isClass && call.tpe.derivesFrom(defn.MacroAnnotationClass)) ||
+    // The call of a macro after typer is encoded as a Select while other inlines are Ident
+    // TODO remove this distinction once Inline nodes of expanded macros can be trusted (also in Inliner.inlineCallTrace)
+    (!(ctx.phase <= postTyperPhase) && call.isInstanceOf[Select])
 
 }
 

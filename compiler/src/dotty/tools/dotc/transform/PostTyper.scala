@@ -370,7 +370,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val pos = call.sourcePos
           CrossVersionChecks.checkExperimentalRef(call.symbol, pos)
           withMode(Mode.NoInline)(transform(call))
-          val callTrace = ref(call.symbol)(using ctx.withSource(pos.source)).withSpan(pos.span)
+          val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
           Checking.checkPolyFunctionExtension(templ)
