@@ -58,6 +58,9 @@ val experimentalDefinitionInLibrary = Set(
   //// New feature: into
   "scala.annotation.allowConversions",
 
+  //// New feature: @publicInBinary
+  "scala.annotation.publicInBinary",
+
   //// New feature: Macro annotations
   "scala.annotation.MacroAnnotation",
 

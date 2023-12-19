@@ -146,4 +146,4 @@ scala> Vector.unapplySeq(Vector(2))
 val res35: scala.collection.SeqFactory.UnapplySeqWrapper[Int] = scala.collection.SeqFactory$UnapplySeqWrapper@df507bfd
 
 scala> new scala.concurrent.duration.DurationInt(5)
-val res36: scala.concurrent.duration.package.DurationInt = scala.concurrent.duration.package$DurationInt@5
+val res36: scala.concurrent.duration.DurationInt = scala.concurrent.duration.package$DurationInt@5

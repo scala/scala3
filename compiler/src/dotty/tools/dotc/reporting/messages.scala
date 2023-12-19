@@ -3091,3 +3091,40 @@ class ImplausiblePatternWarning(pat: tpd.Tree, selType: Type)(using Context)
           |$pat  could match selector of type  $selType
           |only if there is an `equals` method identifying elements of the two types."""
     def explain(using Context) = ""
+
+class UnstableInlineAccessor(accessed: Symbol, accessorTree: tpd.Tree)(using Context)
+  extends Message(UnstableInlineAccessorID) {
+  def kind = MessageKind.Compatibility
+
+  def msg(using Context) =
+    i"""Unstable inline accessor ${accessor.name} was generated in $where."""
+
+  def explain(using Context) =
+    i"""Access to non-public $accessed causes the automatic generation of an accessor.
+       |This accessor is not stable, its name may change or it may disappear
+       |if not needed in a future version.
+       |
+       |To make sure that the inlined code is binary compatible you must make sure that
+       |$accessed is public in the binary API.
+       | * Option 1: Annotate $accessed with @publicInBinary
+       | * Option 2: Make $accessed public
+       |
+       |This change may break binary compatibility if a previous version of this
+       |library was compiled with generated accessors. Binary compatibility should
+       |be checked using MiMa. If binary compatibility is broken, you should add the
+       |old accessor explicitly in the source code. The following code should be
+       |added to $where:
+       |  @publicInBinary private[$within] ${accessorTree.show}
+       |"""
+
+  private def accessor = accessorTree.symbol
+
+  private def where =
+    if accessor.owner.name.isPackageObjectName then s"package ${within}"
+    else if accessor.owner.is(Module) then s"object $within"
+    else s"class $within"
+
+  private def within =
+    if accessor.owner.name.isPackageObjectName then accessor.owner.owner.name.stripModuleClassSuffix
+    else accessor.owner.name.stripModuleClassSuffix
+}
