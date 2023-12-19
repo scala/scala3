@@ -1,6 +1,6 @@
 package scala.annotation
 
-/** A binary API is a definition that is annotated with `@publicInBinary` or overrides a definition annotated with `@publicInBinary`.
+/** A binary API is a definition that is annotated with `@publicInBinary`.
  *  This annotation can be placed on `def`, `val`, `lazy val`, `var`, class constructors, `object`, and `given` definitions.
  *  A binary API will be publicly available in the bytecode. Tools like TASTy MiMa will take this into account to check
  *  compatibility.

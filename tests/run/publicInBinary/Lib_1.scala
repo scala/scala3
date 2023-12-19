@@ -21,14 +21,15 @@ class Foo(@publicInBinary private[Foo] val paramVal: Int, @publicInBinary privat
     paramVal + paramVar + protectedVal + packagePrivateVal + protectedVar + packagePrivateVar
 
 class Bar() extends Foo(3, 3):
+  @publicInBinary
   override protected val protectedVal: Int = 2
-
+  @publicInBinary
   override private[foo] val packagePrivateVal: Int = 2
 
   inline def bar: Int = protectedVal + packagePrivateVal
 
 class Baz() extends Foo(4, 4):
-  @publicInBinary // TODO warn? Not needed because Foo.protectedVal is already @publicInBinary
+  @publicInBinary
   override protected val protectedVal: Int = 2
 
   @publicInBinary
