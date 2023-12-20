@@ -136,7 +136,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala2-library-tasty-tests/run ;scala2-library-tasty-tests/test; scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
+          ./project/scripts/sbt ";dist/pack; scala3-bootstrapped/compile; scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala3-compiler-bootstrapped/scala3CompilerCoursierTest:test"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
@@ -145,7 +145,7 @@ jobs:
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
 
       - name: Test with Scala 2 library TASTy (fast)
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testCompilation tests/run/typelevel-peano.scala; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests" # only test a subset of test to avoid doubling the CI execution time
+        run: ./project/scripts/scala2-library-tasty-fast-tests.sh
 
       - name: Test with Scala 2 library with CC TASTy (fast)
         run: ./project/scripts/sbt "scala2-library-cc/compile; scala2-library-cc-tasty/compile" # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
@@ -189,7 +189,7 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test with Scala 2 library TASTy
-        run: ./project/scripts/sbt ";set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty ;scala3-bootstrapped/test"
+        run: ./project/scripts/sbt "scala2-library-bootstrapped/compile; scala2-library-tasty/compile; set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty; scala3-bootstrapped/test"
 
       # TODO test all the test configurations in non-CC library (currently disabled due to bug while loading the library)
       # - name: Test with Scala 2 library with CC TASTy
@@ -241,6 +241,9 @@ jobs:
         run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
+      - name: Test with Scala 2 library TASTy (fast)
+        run: sbt ";scala2-library-bootstrapped/compile; scala2-library-tasty/compile; scala2-library-tasty-tests/run; scala2-library-tasty-tests/test; set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty;scala3-bootstrapped/testCompilation i5; scala3-bootstrapped/testOnly dotty.tools.backend.jvm.DottyBytecodeTests"
+
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
@@ -266,6 +269,9 @@ jobs:
       - name: Scala.js Test
         run: sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
+
+      - name: Test with Scala 2 library TASTy
+        run: sbt ";scala2-library-bootstrapped/compile; scala2-library-tasty/compile; scala2-library-tasty-tests/run; scala2-library-tasty-tests/test; set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty;scala3-bootstrapped/test"
 
   mima:
     name: MiMa
@@ -547,13 +553,16 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/* ;scala2-library-tasty-tests/run ;scala2-library-tasty-tests/test"
+          ./project/scripts/sbt ";dist/pack ;scala3-bootstrapped/compile ;scala3-bootstrapped/test ;sbt-test/scripted scala2-compat/*"
           ./project/scripts/cmdTests
           ./project/scripts/bootstrappedOnlyCmdTests
 
       - name: Scala.js Test
         run: |
           ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test ;sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test ;sjsCompilerTests/test"
+
+      - name: Test with Scala 2 library TASTy (fast)
+        run: ./project/scripts/scala2-library-tasty-fast-tests.sh
 
   publish_nightly:
     runs-on: [self-hosted, Linux]

@@ -177,7 +177,7 @@ We can enable this library in the build using the SBT setting `useScala2LibraryT
 
 ```
 $ sbt
-> set ThisBuild/Build.useScala2LibraryTasty := true
+> set ThisBuild/Build.scala2Library := Build.Scala2LibraryTasty
 > scala3-compiler-bootstrapped/scalac MyFile.scala
 > scala3-compiler-bootstrapped/test
 > scala3-compiler-bootstrapped/testCompilation
