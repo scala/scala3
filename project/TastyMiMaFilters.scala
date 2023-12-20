@@ -3,6 +3,16 @@ import tastymima.intf._
 
 object TastyMiMaFilters {
   val StdlibBootstrapped: java.util.List[ProblemMatcher] = asList(
+
+    // FIXME: method overwritten in scala2-library-bootstrapped/src/scala/Predef.scala
+    ProblemMatcher.make(ProblemKind.IncompatibleTypeChange, "scala.Predef.nn"), // The symbol scala.Predef.nn has an incompatible type in current version: before: [T](x: T)(x.type & T); after: [T](x: scala.|[T, scala.Null])scala.&[x.type, T]
+    // FIXME: method NOT overwritten yet in scala2-library-bootstrapped/src/scala/Predef.scala
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.valueOf"), // The member scala.Predef.valueOf with signature (1):java.lang.Object does not have a correspondant in current version
+    // FIXME: method NOT overwritten yet in scala2-library-bootstrapped/src/scala/Predef.scala
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.ne"), // The member scala.Predef.ne with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
+    // FIXME: method NOT overwritten yet in scala2-library-bootstrapped/src/scala/Predef.scala
+    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.eq"), // The member scala.Predef.eq with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
+
     // Probably OK
     ProblemMatcher.make(ProblemKind.IncompatibleSelfTypeChange, "scala.*"),
 
@@ -54,11 +64,6 @@ object TastyMiMaFilters {
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.TableStepperBase.i0_="),
     ProblemMatcher.make(ProblemKind.NewAbstractMember, "scala.collection.convert.impl.TableStepperBase.maxLength_="),
 
-    // Problem: ???
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.nn"), // The member scala.Predef.nn with signature (1,java.lang.Object):java.lang.Object does not have a correspondant in current version
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.ne"), // The member scala.Predef.ne with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.eq"), // The member scala.Predef.eq with signature (java.lang.Object,java.lang.Object):scala.Boolean does not have a correspondant in current version
-
     // Probably OK: protected lazy val (processThread, (futureThread, futureValue), destroyer) = { ... }
     // None of these can be accessed from user code.
     // https://github.com/scala/scala/blob/cff8a9af4da67658d8e1e32f929e1aff03ffa384/src/library/scala/sys/process/ProcessImpl.scala#L99C5-L99C83
@@ -74,10 +79,6 @@ object TastyMiMaFilters {
     // Problem?
     //   https://github.com/scala/scala/blob/2.13.x/src/library/scala/collection/mutable/ArrayBuilder.scala#L504C1-L504C87
     ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.collection.mutable.ArrayBuilder.ofUnit.addAll"), // The member scala.collection.mutable.ArrayBuilder.ofUnit.addAll with signature (java.lang.Object,scala.Int,scala.Int):scala.collection.mutable.ArrayBuilder$.ofUnit does not have a correspondant in current version
-
-    // Probably OK (TASTy MiMa bug): Patched Predef members
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.valueOf"), // The member scala.Predef.valueOf with signature (1):java.lang.Object does not have a correspondant in current version
-    ProblemMatcher.make(ProblemKind.MissingTermMember, "scala.Predef.summon"), // The member scala.Predef.summon with signature (1,java.lang.Object):java.lang.Object does not have a correspondant in current version
 
     // TASTy-MiMa bugs
     ProblemMatcher.make(ProblemKind.InternalError, "scala.collection.SeqView.appendedAll"),
