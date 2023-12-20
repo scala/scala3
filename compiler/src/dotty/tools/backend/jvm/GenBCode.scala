@@ -75,7 +75,7 @@ class GenBCode extends Phase { self =>
   }
 
   override def run(using Context): Unit =
-    frontendAccess.frontendSynch {
+    frontendAccess.frontendSynchWithoutContext {
       backendInterface.ctx
       .asInstanceOf[FreshContext]
       .setCompilationUnit(ctx.compilationUnit)

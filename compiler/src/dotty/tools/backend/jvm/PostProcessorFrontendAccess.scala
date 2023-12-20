@@ -8,12 +8,13 @@ import java.util.{Collection => JCollection, Map => JMap}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Phases
+import scala.compiletime.uninitialized
 
 /**
  * Functionality needed in the post-processor whose implementation depends on the compiler
  * frontend. All methods are synchronized.
  */
-sealed abstract class PostProcessorFrontendAccess {
+sealed abstract class PostProcessorFrontendAccess(backendInterface: DottyBackendInterface) {
   import PostProcessorFrontendAccess.*
 
   def compilerSettings: CompilerSettings
@@ -25,10 +26,29 @@ sealed abstract class PostProcessorFrontendAccess {
   def getEntryPoints: List[String]
 
   private val frontendLock: AnyRef = new Object()
-  inline final def frontendSynch[T](inline x: T): T = frontendLock.synchronized(x)
+  inline final def frontendSynch[T](inline x: Context ?=> T): T = frontendLock.synchronized(x(using backendInterface.ctx))
+  inline final def frontendSynchWithoutContext[T](inline x: T): T = frontendLock.synchronized(x)
+  inline def perRunLazy[T](inline init: Context ?=> T): Lazy[T] = new Lazy(init)(using this)
 }
 
 object PostProcessorFrontendAccess {
+  /* A container for value with lazy initialization synchronized on compiler frontend
+   * Used for sharing variables requiring a Context for initialization, between different threads
+   * Similar to Scala 2 BTypes.LazyVar, but without re-initialization of BTypes.LazyWithLock. These were not moved to PostProcessorFrontendAccess only due to problematic architectural decisions.
+   */
+  class Lazy[T](init: Context ?=> T)(using frontendAccess: PostProcessorFrontendAccess) {
+    @volatile private var isInit: Boolean = false
+    private var v: T = uninitialized
+
+    def get: T =
+      if isInit then v
+      else frontendAccess.frontendSynch {
+        if !isInit then v = init
+        isInit = true
+        v
+    }
+  }
+
   sealed trait CompilerSettings {
     def debug: Boolean
     def target: String // javaOutputVersion
@@ -41,6 +61,7 @@ object PostProcessorFrontendAccess {
     def jarCompressionLevel: Int
     def backendParallelism: Int
     def backendMaxWorkerQueue: Option[Int]
+    def outputOnlyTasty: Boolean
   }
 
   sealed trait BackendReporting {
@@ -79,16 +100,16 @@ object PostProcessorFrontendAccess {
   }
 
 
-  class Impl[I <: DottyBackendInterface](val int: I, entryPoints: HashSet[String])(using ctx: Context) extends PostProcessorFrontendAccess {
-    lazy val compilerSettings: CompilerSettings = buildCompilerSettings()
+  class Impl[I <: DottyBackendInterface](int: I, entryPoints: HashSet[String]) extends PostProcessorFrontendAccess(int) {
+    override def compilerSettings: CompilerSettings = _compilerSettings.get
+    private lazy val _compilerSettings: Lazy[CompilerSettings] = perRunLazy(buildCompilerSettings)
 
-    private def buildCompilerSettings(): CompilerSettings = new CompilerSettings {
+    private def buildCompilerSettings(using ctx: Context): CompilerSettings = new CompilerSettings {
       extension [T](s: dotty.tools.dotc.config.Settings.Setting[T])
-         def valueSetByUser: Option[T] =
-           Option(s.value).filter(_ != s.default)
-      def s = ctx.settings
+         def valueSetByUser: Option[T] = Option(s.value).filter(_ != s.default)
+      inline def s = ctx.settings
 
-      lazy val target =
+      override val target =
         val releaseValue = Option(s.javaOutputVersion.value).filter(_.nonEmpty)
         val targetValue = Option(s.XuncheckedJavaOutputVersion.value).filter(_.nonEmpty)
         (releaseValue, targetValue) match
@@ -99,13 +120,14 @@ object PostProcessorFrontendAccess {
             release
           case (None, None) => "8" // least supported version by default
 
-      lazy val debug: Boolean = ctx.debug
-      lazy val dumpClassesDirectory: Option[String] = s.Ydumpclasses.valueSetByUser
-      lazy val outputDirectory: AbstractFile = s.outputDir.value
-      lazy val mainClass: Option[String] = s.XmainClass.valueSetByUser
-      lazy val jarCompressionLevel: Int = s.YjarCompressionLevel.value
-      lazy val backendParallelism: Int = s.YbackendParallelism.value
-      lazy val backendMaxWorkerQueue: Option[Int] = s.YbackendWorkerQueue.valueSetByUser
+      override val debug: Boolean = ctx.debug
+      override val dumpClassesDirectory: Option[String] = s.Ydumpclasses.valueSetByUser
+      override val outputDirectory: AbstractFile = s.outputDir.value
+      override val mainClass: Option[String] = s.XmainClass.valueSetByUser
+      override val jarCompressionLevel: Int = s.YjarCompressionLevel.value
+      override val backendParallelism: Int = s.YbackendParallelism.value
+      override val backendMaxWorkerQueue: Option[Int] = s.YbackendWorkerQueue.valueSetByUser
+      override val outputOnlyTasty: Boolean = s.YoutputOnlyTasty.value
      }
 
      private lazy val localReporter = new ThreadLocal[BackendReporting]
@@ -125,7 +147,7 @@ object PostProcessorFrontendAccess {
        else local.nn
      }
 
-    object directBackendReporting extends BackendReporting {
+    override object directBackendReporting extends BackendReporting {
       def error(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.error(message, position))
       def warning(message: Context ?=> Message, position: SourcePosition): Unit = frontendSynch(report.warning(message, position))
       def log(message: String): Unit = frontendSynch(report.log(message))

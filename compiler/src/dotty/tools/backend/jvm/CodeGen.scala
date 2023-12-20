@@ -38,7 +38,6 @@ import dotty.tools.dotc.util.NoSourcePosition
 class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( val bTypes: BTypesFromSymbols[int.type]) { self =>
   import DottyBackendInterface.symExtensions
   import bTypes.*
-  import int.given
 
   private lazy val mirrorCodeGen = Impl.JMirrorBuilder()
 
@@ -125,7 +124,7 @@ class CodeGen(val int: DottyBackendInterface, val primitives: DottyPrimitives)( 
   }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile): AbstractFile => Unit = {
+  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile)(using Context): AbstractFile => Unit = {
     val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
       (ExtractDependencies.classNameAsString(claszSymbol), claszSymbol.isLocal)
     }
