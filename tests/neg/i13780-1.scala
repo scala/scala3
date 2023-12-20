@@ -19,7 +19,7 @@
  * Note that the code can be fixed with an explicit type argument to `.head`:
  *
  * def foo[VS <: Tuple](x: VS): SelectH[VS] = x match
- *   case x: (h *: t) => Tuple.head[h *: t](x)
+ *   case x: (h *: t) => x.head[h *: t]
  *
  * So it *seems* like it would be fine to relax the rule, based on the insight
  * that `VS` in `Tuple.Head[VS & (h *: t)]` does not contribute anything to the
@@ -38,7 +38,7 @@ object ExampleFromSpata:
     case x: (h *: t) => x.head // error
 
   def bar[VS <: Tuple](x: VS): SelectH[VS] = x match
-    case x: (h *: t) => Tuple.head[h *: t](x) // ok
+    case x: (h *: t) => x.head[h *: t] // ok
 end ExampleFromSpata
 
 trait Z {

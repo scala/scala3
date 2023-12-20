@@ -9,4 +9,4 @@ class Alt:
     case c1 @ C1() => // GADT constr: T := Tuple
       val t1: T        = c1.getZ
       val t2: Int *: T = (1: Int) *: t1
-      val i1: Int      = (t2: Int *: T).head
+      val i1: Int      = (t2: Int *: T).head[Int *: T]
