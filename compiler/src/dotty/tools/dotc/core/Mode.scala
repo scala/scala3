@@ -41,6 +41,8 @@ object Mode {
   val Pattern: Mode = newMode(0, "Pattern")
   val Type: Mode = newMode(1, "Type")
 
+  val PatternOrTypeBits: Mode = Pattern | Type
+
   val ImplicitsEnabled: Mode = newMode(2, "ImplicitsEnabled")
   val InferringReturnType: Mode = newMode(3, "InferringReturnType")
 
@@ -120,8 +122,6 @@ object Mode {
   /** Read original positions when unpickling from TASTY */
   val ReadPositions: Mode = newMode(17, "ReadPositions")
 
-  val PatternOrTypeBits: Mode = Pattern | Type
-
   /** We are elaborating the fully qualified name of a package clause.
    *  In this case, identifiers should never be imported.
    */
@@ -132,6 +132,8 @@ object Mode {
 
   /** We are typing the body of an inline method */
   val InlineableBody: Mode = newMode(21, "InlineableBody")
+
+  val NewGivenRules: Mode = newMode(22, "NewGivenRules")
 
   /** We are synthesizing the receiver of an extension method */
   val SynthesizeExtMethodReceiver: Mode = newMode(23, "SynthesizeExtMethodReceiver")
