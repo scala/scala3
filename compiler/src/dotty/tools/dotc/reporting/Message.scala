@@ -147,7 +147,7 @@ object Message:
       }
 
       def addendum(cat: String, info: Type): String = info match {
-        case bounds @ TypeBounds(lo, hi) if bounds ne TypeBounds.empty =>
+        case bounds @ TypeBounds(lo, hi) if !(bounds =:= TypeBounds.empty) =>
           if (lo eq hi) i" which is an alias of $lo"
           else i" with $cat ${boundsStr(bounds)}"
         case _ =>

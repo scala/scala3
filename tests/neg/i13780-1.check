@@ -5,7 +5,7 @@
    |                      Required: h
    |
    |                      where:    VS is a type in method foo with bounds <: Tuple
-   |                                h  is a type in method foo with bounds 
+   |                                h  is a type in method foo
    |                                t  is a type in method foo with bounds <: Tuple
    |
    |
