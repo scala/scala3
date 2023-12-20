@@ -51,6 +51,7 @@ import NullOpsDecorator.*
 import cc.CheckCaptures
 import config.Config
 import config.MigrationVersion
+import Migrations.*
 
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.rewrites.Rewrites
@@ -3137,13 +3138,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case tree: untpd.TypeDef =>
               // separate method to keep dispatching method `typedNamed` short which might help the JIT
               def typedTypeOrClassDef: Tree =
-                if tree.name eq tpnme.? then
-                  val addendum = if sym.owner.is(TypeParam)
-                    then ", use `_` to denote a higher-kinded type parameter"
-                    else ""
-                  val namePos = tree.sourcePos.withSpan(tree.nameSpan)
-                  report.errorOrMigrationWarning(
-                    em"`?` is not a valid type name$addendum", namePos, MigrationVersion.Scala2to3)
+                migrateKindProjectorQMark(tree, sym)
                 if tree.isClassDef then
                   typedClassDef(tree, sym.asClass)(using ctx.localContext(tree, sym))
                 else
@@ -3818,24 +3813,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
-        if (matchingApply(wtp, pt))
+        if matchingApply(wtp, pt) then
+          migrateContextBoundParams(tree, wtp, pt)
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
           else tree
         else if wtp.isContextualMethod then
-          def isContextBoundParams = wtp.stripPoly match
-            case MethodType(ContextBoundParamName(_) :: _) => true
-            case _ => false
-          if sourceVersion == `future-migration` && isContextBoundParams && pt.args.nonEmpty
-          then // Under future-migration, don't infer implicit arguments yet for parameters
-               // coming from context bounds. Issue a warning instead and offer a patch.
-            def rewriteMsg = Message.rewriteNotice("This code", `future-migration`)
-            report.migrationWarning(
-              em"""Context bounds will map to context parameters.
-                  |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""", tree.srcPos)
-            patch(Span(pt.args.head.span.start), "using ")
-            tree
-          else
-            adaptNoArgs(wtp)  // insert arguments implicitly
+          adaptNoArgs(wtp)  // insert arguments implicitly
         else if (tree.symbol.isPrimaryConstructor && tree.symbol.info.firstParamTypes.isEmpty)
           readapt(tree.appliedToNone) // insert () to primary constructors
         else
@@ -4441,7 +4424,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean =
     val isUsingApply = pt.applyKind == ApplyKind.Using
     methType.isContextualMethod == isUsingApply
-    || methType.isImplicitMethod && isUsingApply // for a transition allow `with` arguments for regular implicit parameters
+    || methType.isImplicitMethod && isUsingApply // for a transition allow `using` arguments for regular implicit parameters
 
   /** Check that `tree == x: pt` is typeable. Used when checking a pattern
    *  against a selector of type `pt`. This implementation accounts for
